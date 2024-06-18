@@ -1,0 +1,6786 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.1"
+   viewBox="-623.6221 -856.063 2181.3083 2330.5788"
+   width="2181.3083"
+   height="2330.5788"
+   id="svg596"
+   sodipodi:docname="ext_sort.svg"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview596"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:lockguides="false"
+     inkscape:zoom="1.0208591"
+     inkscape:cx="766.51127"
+     inkscape:cy="317.86953"
+     inkscape:window-width="2224"
+     inkscape:window-height="1212"
+     inkscape:window-x="2240"
+     inkscape:window-y="25"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg596" />
+  <defs
+     id="defs4">
+    <marker
+       orient="auto"
+       overflow="visible"
+       markerUnits="strokeWidth"
+       id="FilledArrow_Marker"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       viewBox="-1 -4 10 8"
+       markerWidth="10"
+       markerHeight="8"
+       color="black">
+      <g
+         id="g1">
+        <path
+           d="M 8 0 L 0 -3 L 0 3 Z"
+           fill="currentColor"
+           stroke="currentColor"
+           stroke-width="1"
+           id="path1" />
+      </g>
+    </marker>
+    <marker
+       orient="auto"
+       overflow="visible"
+       markerUnits="strokeWidth"
+       id="FilledArrow_Marker_2"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       viewBox="-1 -4 10 8"
+       markerWidth="10"
+       markerHeight="8"
+       color="#a5a5a5">
+      <g
+         id="g2">
+        <path
+           d="M 8 0 L 0 -3 L 0 3 Z"
+           fill="currentColor"
+           stroke="currentColor"
+           stroke-width="1"
+           id="path2" />
+      </g>
+    </marker>
+    <marker
+       orient="auto"
+       overflow="visible"
+       markerUnits="strokeWidth"
+       id="FilledArrow_Marker_3"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       viewBox="-1 -4 10 8"
+       markerWidth="10"
+       markerHeight="8"
+       color="#a5a5a5">
+      <g
+         id="g3">
+        <path
+           d="M 8 0 L 0 -3 L 0 3 Z"
+           fill="currentColor"
+           stroke="currentColor"
+           stroke-width="1"
+           id="path3" />
+      </g>
+    </marker>
+    <marker
+       orient="auto"
+       overflow="visible"
+       markerUnits="strokeWidth"
+       id="FilledArrow_Marker_4"
+       stroke-linejoin="miter"
+       stroke-miterlimit="10"
+       viewBox="-1 -4 10 8"
+       markerWidth="10"
+       markerHeight="8"
+       color="black">
+      <g
+         id="g4">
+        <path
+           d="M 8 0 L 0 -3 L 0 3 Z"
+           fill="currentColor"
+           stroke="currentColor"
+           stroke-width="1"
+           id="path4" />
+      </g>
+    </marker>
+  </defs>
+  <g
+     id="Graphic_149"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-403.189,-380.5118)"
+       fill="#000000"
+       id="text56"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan55">Case 0a:  Initial query completes</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan56">  Sort buffers in memory </tspan></text>
+  </g>
+  <g
+     id="Graphic_150"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-403.189,-329.4882)"
+       fill="#000000"
+       id="text58"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan57">Case 0b:  Initial query does complete </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan58">but user makes no further queries</tspan></text>
+  </g>
+  <g
+     id="Graphic_151"
+     transform="translate(32.32572,115.58892)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-403.189,-414.52757)"
+       fill="#000000"
+       id="text59"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan59">Case 0:  Unordered, everything fits</tspan></text>
+  </g>
+  <g
+     id="Graphic_165"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="-283.46457"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect59" />
+    <rect
+       x="-283.46457"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect60" />
+    <text
+       transform="translate(-278.46457,-774.57835)"
+       fill="#000000"
+       id="text60"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="32.884918"
+         y="15"
+         xml:space="preserve"
+         id="tspan60">Array</tspan></text>
+  </g>
+  <g
+     id="Graphic_164"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="-113.38583"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect61" />
+    <rect
+       x="-113.38583"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect62" />
+    <text
+       transform="translate(-108.38583,-783.80235)"
+       fill="#000000"
+       id="text63"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="7.684917"
+         y="15"
+         xml:space="preserve"
+         id="tspan62">(In)complete </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="31.540916"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan63">query</tspan></text>
+  </g>
+  <g
+     id="Line_163"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="-170.07874"
+       y1="-765.35437"
+       x2="-123.28583"
+       y2="-765.35437"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line63" />
+  </g>
+  <g
+     id="Graphic_162"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="56.692917"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect63" />
+    <rect
+       x="56.692917"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect64" />
+    <text
+       transform="translate(61.692915,-793.02635)"
+       fill="#000000"
+       id="text66"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="32.284916"
+         y="15"
+         xml:space="preserve"
+         id="tspan64">User- </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="18.212917"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan65">Specified </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="26.188917"
+         y="51.895996"
+         xml:space="preserve"
+         id="tspan66">Buffers</tspan></text>
+  </g>
+  <g
+     id="Line_161"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="-3.1470891e-15"
+       y1="-765.35437"
+       x2="46.792915"
+       y2="-765.35437"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line66" />
+  </g>
+  <g
+     id="Graphic_160"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="226.77167"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect66" />
+    <rect
+       x="226.77167"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect67" />
+    <text
+       transform="translate(231.77166,-783.80235)"
+       fill="#000000"
+       id="text68"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="34.956917"
+         y="15"
+         xml:space="preserve"
+         id="tspan67">User </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="11.988917"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan68">Processing</tspan></text>
+  </g>
+  <g
+     id="Line_159"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="170.07874"
+       y1="-765.35437"
+       x2="216.87166"
+       y2="-765.35437"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line68" />
+  </g>
+  <g
+     id="Graphic_158"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="396.8504"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect68" />
+    <rect
+       x="396.8504"
+       y="-793.70081"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect69" />
+    <text
+       transform="translate(401.8504,-774.57835)"
+       fill="#000000"
+       id="text69"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="7.9729171"
+         y="15"
+         xml:space="preserve"
+         id="tspan69">User Output</tspan></text>
+  </g>
+  <g
+     id="Line_157"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="340.1575"
+       y1="-765.35437"
+       x2="386.95041"
+       y2="-765.35437"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line69" />
+  </g>
+  <g
+     id="Graphic_156"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="45.354328"
+       y="-742.67719"
+       width="141.73228"
+       height="68.031502"
+       fill="#ffffff"
+       id="rect70" />
+    <path
+       d="m 45.35433,-742.6772 h 141.73229 v 68.0315 H 45.35433 Z"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-dasharray="4, 4"
+       stroke-width="1"
+       id="path70" />
+  </g>
+  <g
+     id="Graphic_155"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="62.362209"
+       y="-731.33862"
+       width="102.04725"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect71" />
+    <rect
+       x="62.362209"
+       y="-731.33862"
+       width="102.04725"
+       height="11.338583"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect72" />
+    <text
+       transform="translate(67.36221,-732.6693)"
+       fill="#000000"
+       id="text72"><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="31.621281"
+         y="10"
+         xml:space="preserve"
+         id="tspan72">Data</tspan></text>
+  </g>
+  <g
+     id="Graphic_154"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="90.708656"
+       y="-697.32288"
+       width="62.362209"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect73" />
+    <rect
+       x="90.708656"
+       y="-697.32288"
+       width="62.362209"
+       height="11.338583"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect74" />
+    <text
+       transform="translate(95.70866,-698.6536)"
+       fill="#000000"
+       id="text74"><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="0.97700119"
+         y="10"
+         xml:space="preserve"
+         id="tspan74">Offsets</tspan></text>
+  </g>
+  <g
+     id="Graphic_153"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="62.362209"
+       y="-714.33069"
+       width="102.04725"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect75" />
+    <rect
+       x="62.362209"
+       y="-714.33069"
+       width="102.04725"
+       height="11.338583"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect76" />
+    <text
+       transform="translate(67.36221,-715.6614)"
+       fill="#000000"
+       id="text76"><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="31.621281"
+         y="10"
+         xml:space="preserve"
+         id="tspan76">Data</tspan></text>
+  </g>
+  <g
+     id="Graphic_152"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="-130.39371"
+       y="-742.67719"
+       width="141.73228"
+       height="22.677166"
+       fill="#ffffff"
+       id="rect77" />
+    <path
+       d="M -130.3937,-742.6772 H 11.338583 V -720 H -130.3937 Z"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-dasharray="4, 4"
+       stroke-width="1"
+       id="path77" />
+    <text
+       transform="translate(-125.3937,-737.6772)"
+       fill="#000000"
+       id="text77"><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="8.2567673"
+         y="10"
+         xml:space="preserve"
+         id="tspan77">TILEDB_ROW_MAJOR</tspan></text>
+  </g>
+  <g
+     id="Line_166"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <path
+       d="m 283.46457,-793.7008 v -51.0236 H -56.692915 v 41.1236"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="path78" />
+  </g>
+  <g
+     id="Graphic_167"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-324.2363,-851.063)"
+       fill="#000000"
+       id="text78"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan78">Case -1:  Legacy Reader</tspan></text>
+  </g>
+  <g
+     id="Graphic_193"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="-283.46457"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect78" />
+    <rect
+       x="-283.46457"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect79" />
+    <text
+       transform="translate(-278.46457,-491.1138)"
+       fill="#000000"
+       id="text79"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="32.884918"
+         y="15"
+         xml:space="preserve"
+         id="tspan79">Array</tspan></text>
+  </g>
+  <g
+     id="Graphic_192"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="-113.38583"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect80" />
+    <rect
+       x="-113.38583"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect81" />
+    <text
+       transform="translate(-108.38583,-500.3378)"
+       fill="#000000"
+       id="text82"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="7.684917"
+         y="15"
+         xml:space="preserve"
+         id="tspan81">(In)complete </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="31.540916"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan82">query</tspan></text>
+  </g>
+  <g
+     id="Line_191"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="-170.07874"
+       y1="-481.8898"
+       x2="-123.28583"
+       y2="-481.8898"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line82" />
+  </g>
+  <g
+     id="Graphic_190"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="56.692917"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect82" />
+    <rect
+       x="56.692917"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect83" />
+    <text
+       transform="translate(61.692915,-509.5618)"
+       fill="#000000"
+       id="text85"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="32.284916"
+         y="15"
+         xml:space="preserve"
+         id="tspan83">User-</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="18.212917"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan84">Specified </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="26.188917"
+         y="51.895996"
+         xml:space="preserve"
+         id="tspan85">Buffers</tspan></text>
+  </g>
+  <g
+     id="Line_189"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="-3.1470891e-15"
+       y1="-481.8898"
+       x2="46.792915"
+       y2="-481.8898"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line85" />
+  </g>
+  <g
+     id="Graphic_188"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="226.77167"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect85" />
+    <rect
+       x="226.77167"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect86" />
+    <text
+       transform="translate(231.77166,-500.3378)"
+       fill="#000000"
+       id="text87"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="12.716917"
+         y="15"
+         xml:space="preserve"
+         id="tspan86">In-Memory </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="36.732918"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan87">Sort</tspan></text>
+  </g>
+  <g
+     id="Line_187"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <path
+       d="m 113.38583,-453.5433 v 56.6929 h 24.11575"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="path87" />
+  </g>
+  <g
+     id="Graphic_186"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="396.8504"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect87" />
+    <rect
+       x="396.8504"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect88" />
+    <text
+       transform="translate(401.8504,-500.3378)"
+       fill="#000000"
+       id="text89"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="34.956917"
+         y="15"
+         xml:space="preserve"
+         id="tspan88">User </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="11.988917"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan89">Processing</tspan></text>
+  </g>
+  <g
+     id="Line_185"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="340.1575"
+       y1="-481.8898"
+       x2="386.95041"
+       y2="-481.8898"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line89" />
+  </g>
+  <g
+     id="Graphic_181"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="147.40158"
+       y="-425.19687"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect89" />
+    <rect
+       x="147.40158"
+       y="-425.19687"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect90" />
+    <text
+       transform="translate(152.40158,-415.2984)"
+       fill="#000000"
+       id="text91"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="9.4849167"
+         y="15"
+         xml:space="preserve"
+         id="tspan90">Regularized </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="26.188917"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan91">Buffers</tspan></text>
+  </g>
+  <g
+     id="Line_180"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <path
+       d="m 260.7874,-396.8504 h 22.67717 v -46.7929"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="path91" />
+  </g>
+  <g
+     id="Graphic_178"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="300.47244"
+       y="-459.21259"
+       width="85.039368"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect91" />
+    <path
+       d="m 300.47245,-459.2126 h 85.03935 v 56.6929 h -85.03935 z"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-dasharray="4, 4"
+       stroke-width="1"
+       id="path92" />
+    <text
+       transform="translate(305.47245,-451.86615)"
+       fill="#000000"
+       id="text94"><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="1.5138283"
+         y="10"
+         xml:space="preserve"
+         id="tspan92">proxy_sort</tspan><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="8.7150002"
+         y="24"
+         xml:space="preserve"
+         id="tspan93">par_sort</tspan><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="5.1144142"
+         y="38"
+         xml:space="preserve"
+         id="tspan94">std::sort</tspan></text>
+  </g>
+  <g
+     id="Group_171"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_177">
+      <rect
+         x="130.39371"
+         y="-374.17325"
+         width="141.73228"
+         height="102.04725"
+         fill="#ffffff"
+         id="rect94" />
+      <path
+         d="M 130.3937,-374.17324 H 272.126 V -272.126 H 130.3937 Z"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="path94" />
+      <text
+         transform="translate(135.3937,-369.17324)"
+         fill="#000000"
+         id="text95"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="37.061455"
+           y="10"
+           xml:space="preserve"
+           id="tspan95">zip_view</tspan></text>
+    </g>
+    <g
+       id="Graphic_176">
+      <rect
+         x="141.73228"
+         y="-334.48819"
+         width="124.72441"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect95" />
+      <path
+         d="M 141.73229,-334.4882 H 266.4567 v 56.69292 H 141.73229 Z"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="path95" />
+      <text
+         transform="translate(146.73229,-329.4882)"
+         fill="#000000"
+         id="text96"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="3.3534164"
+           y="10"
+           xml:space="preserve"
+           id="tspan96">var_length_view</tspan></text>
+    </g>
+    <g
+       id="Graphic_175">
+      <rect
+         x="153.07088"
+         y="-351.49606"
+         width="102.04725"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect96" />
+      <rect
+         x="153.07088"
+         y="-351.49606"
+         width="102.04725"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect97" />
+      <text
+         transform="translate(158.07087,-352.8268)"
+         fill="#000000"
+         id="text97"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="31.621281"
+           y="10"
+           xml:space="preserve"
+           id="tspan97">Data</tspan></text>
+    </g>
+    <g
+       id="Graphic_174">
+      <rect
+         x="181.41733"
+         y="-294.80316"
+         width="62.362209"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect98" />
+      <rect
+         x="181.41733"
+         y="-294.80316"
+         width="62.362209"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect99" />
+      <text
+         transform="translate(186.41733,-296.13387)"
+         fill="#000000"
+         id="text99"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="0.97700119"
+           y="10"
+           xml:space="preserve"
+           id="tspan99">Offsets</tspan></text>
+    </g>
+    <g
+       id="Graphic_173">
+      <rect
+         x="153.07088"
+         y="-311.81104"
+         width="102.04725"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect100" />
+      <rect
+         x="153.07088"
+         y="-311.81104"
+         width="102.04725"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect101" />
+      <text
+         transform="translate(158.07087,-313.14174)"
+         fill="#000000"
+         id="text101"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="31.621281"
+           y="10"
+           xml:space="preserve"
+           id="tspan101">Data</tspan></text>
+    </g>
+    <g
+       id="Graphic_172">
+      <rect
+         x="243.77953"
+         y="-294.80316"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect102" />
+      <rect
+         x="243.77953"
+         y="-294.80316"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect103" />
+    </g>
+  </g>
+  <g
+     id="Graphic_170"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="-130.39371"
+       y="-459.21259"
+       width="141.73228"
+       height="28.346457"
+       fill="#ffffff"
+       id="rect104" />
+    <path
+       d="M -130.3937,-459.2126 H 11.338583 v 28.34645 H -130.3937 Z"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-dasharray="4, 4"
+       stroke-width="1"
+       id="path104" />
+    <text
+       transform="translate(-125.3937,-452.0394)"
+       fill="#000000"
+       id="text104"><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="8.2567673"
+         y="10"
+         xml:space="preserve"
+         id="tspan104">TILEDB_UNORDERED</tspan></text>
+  </g>
+  <g
+     id="Graphic_198"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="566.92914"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect105" />
+    <rect
+       x="566.92914"
+       y="-510.23624"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect106" />
+    <text
+       transform="translate(571.92915,-491.1138)"
+       fill="#000000"
+       id="text106"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="7.9729171"
+         y="15"
+         xml:space="preserve"
+         id="tspan106">User Output</tspan></text>
+  </g>
+  <g
+     id="Line_197"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="510.23624"
+       y1="-481.8898"
+       x2="557.02917"
+       y2="-481.8898"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line106" />
+  </g>
+  <g
+     id="Graphic_199"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-318.1496,-12.007874)"
+       fill="#000000"
+       id="text108"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan107">Case 1:  Unordered, initial user query </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan108">does not fit into memory budget</tspan></text>
+  </g>
+  <g
+     id="Graphic_200"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(56.310744,-539.252)"
+       fill="#000000"
+       id="text109"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="1.4210855e-14"
+         y="15"
+         xml:space="preserve"
+         id="tspan109">N elements per</tspan></text>
+  </g>
+  <g
+     id="Graphic_202"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(57.251785,-586.148)"
+       fill="#000000"
+       id="text111"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="1.0788345"
+         y="15"
+         xml:space="preserve"
+         id="tspan110">M attributes + </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="10.174835"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan111">dimensions</tspan></text>
+  </g>
+  <g
+     id="Graphic_203"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(305.47245,-391.8504)"
+       fill="#000000"
+       id="text118"><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan112">proxy_sort</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         y="11"
+         xml:space="preserve"
+         id="tspan113"> will </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="26"
+         xml:space="preserve"
+         id="tspan114">require single array </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="40.335999"
+         xml:space="preserve"
+         id="tspan115">of N </tspan><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         y="40.335999"
+         xml:space="preserve"
+         id="tspan116">size_t</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         y="40.335999"
+         xml:space="preserve"
+         id="tspan117"> to </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="55.335999"
+         xml:space="preserve"
+         id="tspan118">hold permutation</tspan></text>
+  </g>
+  <g
+     id="Graphic_204"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(305.47245,-318.1496)"
+       fill="#000000"
+       id="text122"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan119">Other sorts can </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan120">be done in-place, </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan121">with no additional </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="54.007996"
+         xml:space="preserve"
+         id="tspan122">memory required</tspan></text>
+  </g>
+  <g
+     id="Graphic_205"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-40.35433,-391.8504)"
+       fill="#000000"
+       id="text129"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="37.481453"
+         y="11"
+         xml:space="preserve"
+         id="tspan123">Copying TileDB offset </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="25.745455"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan124">format data to Arrow for </tspan><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="22.102703"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan125">var_length_view </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan126">will </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="3.1784229"
+         y="54.672001"
+         xml:space="preserve"
+         id="tspan127">require additional N </tspan><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         y="54.672001"
+         xml:space="preserve"
+         id="tspan128">size_t </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="109.31345"
+         y="69.671997"
+         xml:space="preserve"
+         id="tspan129">per view</tspan></text>
+  </g>
+  <g
+     id="Graphic_206"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-40.35433,-306.81103)"
+       fill="#000000"
+       id="text136"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="62.885452"
+         y="11"
+         xml:space="preserve"
+         id="tspan130">Regularizing with </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="3.2147043"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan131">alt_</tspan><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan132">var_length_view </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan133">will </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="43.049454"
+         y="40.335999"
+         xml:space="preserve"
+         id="tspan134">require additional 2N </tspan><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="62.77042"
+         y="54.672001"
+         xml:space="preserve"
+         id="tspan135">size_t</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         y="54.672001"
+         xml:space="preserve"
+         id="tspan136"> per view</tspan></text>
+  </g>
+  <g
+     id="Graphic_207"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-312.48032,43.143376)"
+       fill="#000000"
+       id="text142"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan137">Phase Ia: Incomplete query into user-</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan138">specified buffers</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="51.895996"
+         xml:space="preserve"
+         id="tspan139">Phase 1b: Buffer regularization</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="70.343987"
+         xml:space="preserve"
+         id="tspan140">Phase 1c: In-memory sort</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="88.791992"
+         xml:space="preserve"
+         id="tspan141">Phase Id: Abstract partitioning</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="107.23999"
+         xml:space="preserve"
+         id="tspan142">Phase 1e: Write blocks to dense array</tspan></text>
+  </g>
+  <g
+     id="Graphic_217"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(447.20474,-23.346457)"
+       fill="#000000"
+       id="text149"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan143">A block view has a </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan144">uniform number of </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan145">elements per attribute /</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="54.007996"
+         xml:space="preserve"
+         id="tspan146">dimension, the total </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="68.343994"
+         xml:space="preserve"
+         id="tspan147">memory usage of which </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="82.679993"
+         xml:space="preserve"
+         id="tspan148">fits under a specified </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="97.015991"
+         xml:space="preserve"
+         id="tspan149">byte limit.</tspan></text>
+  </g>
+  <g
+     id="Graphic_218"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(305.47245,5)"
+       fill="#000000"
+       id="text151"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan150">Sort entire user </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan151">buffers</tspan></text>
+  </g>
+  <g
+     id="Graphic_219"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(305.47245,50.35433)"
+       fill="#000000"
+       id="text158"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan152">Once partitioned into </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan153">blocks, each block </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan154">will be internally </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="54.007996"
+         xml:space="preserve"
+         id="tspan155">sorted, and each </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="68.343994"
+         xml:space="preserve"
+         id="tspan156">block will be sorted </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="82.679993"
+         xml:space="preserve"
+         id="tspan157">with respect to other </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="97.015991"
+         xml:space="preserve"
+         id="tspan158">blocks</tspan></text>
+  </g>
+  <g
+     id="Group_318"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_38">
+      <rect
+         x="-283.46457"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect158" />
+      <rect
+         x="-283.46457"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect159" />
+      <text
+         transform="translate(-278.46457,-94.26337)"
+         fill="#000000"
+         id="text159"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="32.884918"
+           y="15"
+           xml:space="preserve"
+           id="tspan159">Array</tspan></text>
+    </g>
+    <g
+       id="Graphic_37">
+      <rect
+         x="-113.38583"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect160" />
+      <rect
+         x="-113.38583"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect161" />
+      <text
+         transform="translate(-108.38583,-103.48737)"
+         fill="#000000"
+         id="text162"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="11.828917"
+           y="15"
+           xml:space="preserve"
+           id="tspan161">Incomplete </tspan><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="31.540916"
+           y="33.448002"
+           xml:space="preserve"
+           id="tspan162">query</tspan></text>
+    </g>
+    <g
+       id="Line_36">
+      <line
+         x1="-170.07874"
+         y1="-85.039368"
+         x2="-123.28583"
+         y2="-85.039368"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="line162" />
+    </g>
+    <g
+       id="Graphic_35">
+      <rect
+         x="56.692917"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect162" />
+      <rect
+         x="56.692917"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect163" />
+      <text
+         transform="translate(61.692915,-112.71137)"
+         fill="#000000"
+         id="text165"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="32.284916"
+           y="15"
+           xml:space="preserve"
+           id="tspan163">User-</tspan><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="18.212917"
+           y="33.448002"
+           xml:space="preserve"
+           id="tspan164">Specified </tspan><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="26.188917"
+           y="51.895996"
+           xml:space="preserve"
+           id="tspan165">Buffers</tspan></text>
+    </g>
+    <g
+       id="Line_34">
+      <line
+         x1="-3.1470891e-15"
+         y1="-85.039368"
+         x2="46.792915"
+         y2="-85.039368"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="line165" />
+    </g>
+    <g
+       id="Graphic_39">
+      <rect
+         x="226.77167"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect165" />
+      <rect
+         x="226.77167"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect166" />
+      <text
+         transform="translate(231.77166,-103.48737)"
+         fill="#000000"
+         id="text167"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="12.716917"
+           y="15"
+           xml:space="preserve"
+           id="tspan166">In-Memory </tspan><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="36.732918"
+           y="33.448002"
+           xml:space="preserve"
+           id="tspan167">Sort</tspan></text>
+    </g>
+    <g
+       id="Line_46">
+      <path
+         d="M 113.38583,-56.692915 V 0 h 24.11575"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="path167" />
+    </g>
+    <g
+       id="Graphic_47">
+      <rect
+         x="396.8504"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect167" />
+      <rect
+         x="396.8504"
+         y="-113.38583"
+         width="113.38583"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect168" />
+      <text
+         transform="translate(401.8504,-103.48737)"
+         fill="#000000"
+         id="text169"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="21.468918"
+           y="15"
+           xml:space="preserve"
+           id="tspan168">Abstract </tspan><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="11.100917"
+           y="33.448002"
+           xml:space="preserve"
+           id="tspan169">Partitioning</tspan></text>
+    </g>
+    <g
+       id="Line_48">
+      <line
+         x1="340.1575"
+         y1="-85.039368"
+         x2="386.95041"
+         y2="-85.039368"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="line169" />
+    </g>
+    <g
+       id="Line_49">
+      <path
+         d="m 453.5433,-113.38583 v -39.68504 H -56.692915 v 29.78504"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="path169" />
+    </g>
+    <g
+       id="Line_60">
+      <line
+         x1="510.23624"
+         y1="-85.039368"
+         x2="557.02917"
+         y2="-85.039368"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="line170" />
+    </g>
+    <g
+       id="Graphic_117">
+      <rect
+         x="147.40158"
+         y="-28.346457"
+         width="113.38583"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect170" />
+      <rect
+         x="147.40158"
+         y="-28.346457"
+         width="113.38583"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect171" />
+      <text
+         transform="translate(152.40158,-18.447998)"
+         fill="#000000"
+         id="text172"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="9.4849167"
+           y="15"
+           xml:space="preserve"
+           id="tspan171">Regularized </tspan><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="26.188917"
+           y="33.448002"
+           xml:space="preserve"
+           id="tspan172">Buffers</tspan></text>
+    </g>
+    <g
+       id="Line_121">
+      <path
+         d="m 260.7874,0 h 22.67717 v -46.792915"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="path172" />
+    </g>
+    <g
+       id="Graphic_130">
+      <rect
+         x="464.8819"
+         y="-62.362209"
+         width="90.708656"
+         height="22.677166"
+         fill="#ffffff"
+         id="rect172" />
+      <path
+         d="m 464.8819,-62.36221 h 90.70867 v 22.67717 H 464.8819 Z"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="path173" />
+      <text
+         transform="translate(469.8819,-58.023623)"
+         fill="#000000"
+         id="text173"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="4.3484726"
+           y="10"
+           xml:space="preserve"
+           id="tspan173">block_view</tspan></text>
+    </g>
+    <g
+       id="Graphic_125">
+      <rect
+         x="300.47244"
+         y="-62.362209"
+         width="85.039368"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect173" />
+      <path
+         d="M 300.47245,-62.36221 H 385.5118 V -5.6692915 H 300.47245 Z"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="path174" />
+      <text
+         transform="translate(305.47245,-55.01575)"
+         fill="#000000"
+         id="text176"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="8.7150002"
+           y="10"
+           xml:space="preserve"
+           id="tspan174">par_sort</tspan><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="5.1144142"
+           y="24"
+           xml:space="preserve"
+           id="tspan175">std::sort</tspan><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="1.5138283"
+           y="38"
+           xml:space="preserve"
+           id="tspan176">proxy_sort</tspan></text>
+    </g>
+    <g
+       id="Group_131">
+      <g
+         id="Graphic_124">
+        <rect
+           x="130.39371"
+           y="22.677166"
+           width="141.73228"
+           height="102.04725"
+           fill="#ffffff"
+           id="rect176" />
+        <path
+           d="M 130.3937,22.677166 H 272.126 V 124.72441 H 130.3937 Z"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-dasharray="4, 4"
+           stroke-width="1"
+           id="path176" />
+        <text
+           transform="translate(135.3937,27.677166)"
+           fill="#000000"
+           id="text177"><tspan
+             font-family="'Courier New'"
+             font-size="12px"
+             fill="#000000"
+             x="37.061455"
+             y="10"
+             xml:space="preserve"
+             id="tspan177">zip_view</tspan></text>
+      </g>
+      <g
+         id="Graphic_122">
+        <rect
+           x="141.73228"
+           y="62.362209"
+           width="124.72441"
+           height="56.692917"
+           fill="#ffffff"
+           id="rect177" />
+        <path
+           d="M 141.73229,62.36221 H 266.4567 v 56.69291 H 141.73229 Z"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-dasharray="4, 4"
+           stroke-width="1"
+           id="path177" />
+        <text
+           transform="translate(146.73229,67.36221)"
+           fill="#000000"
+           id="text178"><tspan
+             font-family="'Courier New'"
+             font-size="12px"
+             fill="#000000"
+             x="3.3534164"
+             y="10"
+             xml:space="preserve"
+             id="tspan178">var_length_view</tspan></text>
+      </g>
+      <g
+         id="Graphic_120">
+        <rect
+           x="153.07088"
+           y="45.354328"
+           width="102.04725"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect178" />
+        <rect
+           x="153.07088"
+           y="45.354328"
+           width="102.04725"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect179" />
+        <text
+           transform="translate(158.07087,44.023623)"
+           fill="#000000"
+           id="text179"><tspan
+             font-family="'Courier New'"
+             font-size="12px"
+             fill="#000000"
+             x="31.621281"
+             y="10"
+             xml:space="preserve"
+             id="tspan179">Data</tspan></text>
+      </g>
+      <g
+         id="Graphic_119">
+        <rect
+           x="181.41733"
+           y="102.04725"
+           width="62.362209"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect180" />
+        <rect
+           x="181.41733"
+           y="102.04725"
+           width="62.362209"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect181" />
+        <text
+           transform="translate(186.41733,100.71654)"
+           fill="#000000"
+           id="text181"><tspan
+             font-family="'Courier New'"
+             font-size="12px"
+             fill="#000000"
+             x="0.97700119"
+             y="10"
+             xml:space="preserve"
+             id="tspan181">Offsets</tspan></text>
+      </g>
+      <g
+         id="Graphic_118">
+        <rect
+           x="153.07088"
+           y="85.039368"
+           width="102.04725"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect182" />
+        <rect
+           x="153.07088"
+           y="85.039368"
+           width="102.04725"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect183" />
+        <text
+           transform="translate(158.07087,83.70866)"
+           fill="#000000"
+           id="text183"><tspan
+             font-family="'Courier New'"
+             font-size="12px"
+             fill="#000000"
+             x="31.621281"
+             y="10"
+             xml:space="preserve"
+             id="tspan183">Data</tspan></text>
+      </g>
+      <g
+         id="Graphic_123">
+        <rect
+           x="243.77953"
+           y="102.04725"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect184" />
+        <rect
+           x="243.77953"
+           y="102.04725"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect185" />
+      </g>
+    </g>
+    <g
+       id="Graphic_142">
+      <rect
+         x="-130.39371"
+         y="-62.362209"
+         width="141.73228"
+         height="28.346457"
+         fill="#ffffff"
+         id="rect186" />
+      <path
+         d="M -130.3937,-62.36221 H 11.338583 v 28.34646 H -130.3937 Z"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="path186" />
+      <text
+         transform="translate(-125.3937,-55.18898)"
+         fill="#000000"
+         id="text186"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="8.2567673"
+           y="10"
+           xml:space="preserve"
+           id="tspan186">TILEDB_UNORDERED</tspan></text>
+    </g>
+    <g
+       id="Group_225">
+      <g
+         id="Graphic_61">
+        <rect
+           x="566.92914"
+           y="-113.38583"
+           width="113.38583"
+           height="56.692917"
+           fill="#ffffff"
+           id="rect187" />
+        <rect
+           x="566.92914"
+           y="-113.38583"
+           width="113.38583"
+           height="56.692917"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect188" />
+        <text
+           transform="translate(571.92915,-108.38583)"
+           fill="#000000"
+           id="text188"><tspan
+             font-family="'Helvetica Neue'"
+             font-size="16px"
+             fill="#000000"
+             x="7.9889169"
+             y="15"
+             xml:space="preserve"
+             id="tspan188">Dense Array</tspan></text>
+      </g>
+      <g
+         id="Group_216">
+        <g
+           id="Graphic_208">
+          <rect
+             x="578.2677"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             fill="#ffffff"
+             id="rect189" />
+          <rect
+             x="578.2677"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect190" />
+        </g>
+        <g
+           id="Graphic_209">
+          <rect
+             x="589.60632"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             fill="#ffffff"
+             id="rect191" />
+          <rect
+             x="589.60632"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect192" />
+        </g>
+        <g
+           id="Graphic_210">
+          <rect
+             x="600.94489"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             fill="#ffffff"
+             id="rect193" />
+          <rect
+             x="600.94489"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect194" />
+        </g>
+        <g
+           id="Graphic_211">
+          <rect
+             x="612.28351"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             fill="#ffffff"
+             id="rect195" />
+          <rect
+             x="612.28351"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect196" />
+        </g>
+        <g
+           id="Graphic_212">
+          <rect
+             x="623.62207"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             fill="#ffffff"
+             id="rect197" />
+          <rect
+             x="623.62207"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect198" />
+        </g>
+        <g
+           id="Graphic_213">
+          <rect
+             x="634.96063"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             fill="#ffffff"
+             id="rect199" />
+          <rect
+             x="634.96063"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect200" />
+        </g>
+        <g
+           id="Graphic_214">
+          <rect
+             x="646.29919"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             fill="#ffffff"
+             id="rect201" />
+          <rect
+             x="646.29919"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect202" />
+        </g>
+        <g
+           id="Graphic_215">
+          <rect
+             x="657.63782"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             fill="#ffffff"
+             id="rect203" />
+          <rect
+             x="657.63782"
+             y="-79.370079"
+             width="11.338583"
+             height="11.338583"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect204" />
+        </g>
+      </g>
+    </g>
+    <g
+       id="Graphic_221">
+      <text
+         transform="translate(571.92915,-136.73229)"
+         fill="#000000"
+         id="text204"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="12px"
+           fill="#000000"
+           x="0"
+           y="11"
+           xml:space="preserve"
+           id="tspan204">Temporary storage</tspan></text>
+    </g>
+  </g>
+  <g
+     id="Graphic_222"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(634.29136,-46.023623)"
+       fill="#000000"
+       id="text211"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan205">The temporary dense </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan206">array is a “meta-block” </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan207">in some sense, it </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="54.007996"
+         xml:space="preserve"
+         id="tspan208">contains a sorted set of </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="68.343994"
+         xml:space="preserve"
+         id="tspan209">sorted blocks (each of </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="82.679993"
+         xml:space="preserve"
+         id="tspan210">which, in turn, is a </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="97.015991"
+         xml:space="preserve"
+         id="tspan211">“meta-element”)</tspan></text>
+  </g>
+  <g
+     id="Graphic_223"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(452.87403,95.70866)"
+       fill="#000000"
+       id="text217"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan212">Only a minimal amount of </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan213">memory per block is </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan214">required to represent a </tspan><tspan
+         font-family="'Courier New'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="54.007996"
+         xml:space="preserve"
+         id="tspan215">block_view </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         y="54.007996"
+         xml:space="preserve"
+         id="tspan216">No copies </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="69.007996"
+         xml:space="preserve"
+         id="tspan217">of data are made.</tspan></text>
+  </g>
+  <g
+     id="Graphic_224"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(639.96065,175.07874)"
+       fill="#000000"
+       id="text220"><tspan
+         font-family="'Helvetica Neue'"
+         font-weight="bold"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="12"
+         xml:space="preserve"
+         id="tspan218">Each block gets </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-weight="bold"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="27.348083"
+         xml:space="preserve"
+         id="tspan219">its own tile (and </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-weight="bold"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="42.696167"
+         xml:space="preserve"
+         id="tspan220">vice-versa)</tspan></text>
+  </g>
+  <g
+     id="Graphic_310"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-539.252,288.46457)"
+       fill="#000000"
+       id="text222"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan221">Phase II: Merge sort blocks </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan222">from temporary arrays</tspan></text>
+  </g>
+  <g
+     id="Graphic_311"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-431.53545,515.23623)"
+       fill="#000000"
+       id="text225"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan223">Additional memory is required to buffer </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan224">input blocks, equal to the size of a block </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan225">times the number of temporary arrays </tspan></text>
+  </g>
+  <g
+     id="Graphic_312"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(469.8819,424.52757)"
+       fill="#000000"
+       id="text231"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan226">Because of memory constraints, we </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan227">may not be able to sort all of the </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan228">previously-created blocks in one pass, </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="54.007996"
+         xml:space="preserve"
+         id="tspan229">so we may need to do multiple </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="68.343994"
+         xml:space="preserve"
+         id="tspan230">additional passes — and then passes </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="82.679993"
+         xml:space="preserve"
+         id="tspan231">over those passes</tspan></text>
+  </g>
+  <g
+     id="Graphic_313"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(469.8819,322.48032)"
+       fill="#000000"
+       id="text234"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan232">The size of this array will be the </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan233">combined size of all of the input temp </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan234">arrays sorted in this pass</tspan></text>
+  </g>
+  <g
+     id="Group_319"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_316">
+      <rect
+         x="-175.74805"
+         y="351.49606"
+         width="45.354328"
+         height="147.40158"
+         fill="#ffffff"
+         id="rect239" />
+      <rect
+         x="-175.74805"
+         y="351.49606"
+         width="45.354328"
+         height="147.40158"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect240" />
+    </g>
+    <g
+       id="Graphic_66">
+      <rect
+         x="-113.38583"
+         y="396.8504"
+         width="113.38583"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect241" />
+      <rect
+         x="-113.38583"
+         y="396.8504"
+         width="113.38583"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect242" />
+      <text
+         transform="translate(-108.38583,406.74886)"
+         fill="#000000"
+         id="text243"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="12.716917"
+           y="15"
+           xml:space="preserve"
+           id="tspan242">In-Memory </tspan><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="11.916917"
+           y="33.448002"
+           xml:space="preserve"
+           id="tspan243">Merge Sort</tspan></text>
+    </g>
+    <g
+       id="Graphic_73">
+      <rect
+         x="56.692917"
+         y="396.8504"
+         width="113.38583"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect243" />
+      <rect
+         x="56.692917"
+         y="396.8504"
+         width="113.38583"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect244" />
+      <text
+         transform="translate(61.692915,406.74886)"
+         fill="#000000"
+         id="text245"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="21.468918"
+           y="15"
+           xml:space="preserve"
+           id="tspan244">Abstract </tspan><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="11.100917"
+           y="33.448002"
+           xml:space="preserve"
+           id="tspan245">Partitioning</tspan></text>
+    </g>
+    <g
+       id="Group_226">
+      <g
+         id="Graphic_236">
+        <rect
+           x="-334.48819"
+           y="345.82681"
+           width="113.38583"
+           height="45.354328"
+           fill="#ffffff"
+           id="rect245" />
+        <rect
+           x="-334.48819"
+           y="345.82681"
+           width="113.38583"
+           height="45.354328"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect246" />
+        <text
+           transform="translate(-329.4882,350.8268)"
+           fill="#000000"
+           id="text246"><tspan
+             font-family="'Helvetica Neue'"
+             font-size="16px"
+             fill="#000000"
+             x="11.092917"
+             y="15"
+             xml:space="preserve"
+             id="tspan246">Temp Array</tspan></text>
+      </g>
+      <g
+         id="Group_227">
+        <g
+           id="Graphic_235">
+          <rect
+             x="-323.1496"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect247" />
+          <rect
+             x="-323.1496"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect248" />
+        </g>
+        <g
+           id="Graphic_234">
+          <rect
+             x="-311.81104"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect249" />
+          <rect
+             x="-311.81104"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect250" />
+        </g>
+        <g
+           id="Graphic_233">
+          <rect
+             x="-300.47244"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect251" />
+          <rect
+             x="-300.47244"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect252" />
+        </g>
+        <g
+           id="Graphic_232">
+          <rect
+             x="-289.13388"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect253" />
+          <rect
+             x="-289.13388"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect254" />
+        </g>
+        <g
+           id="Graphic_231">
+          <rect
+             x="-277.79529"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect255" />
+          <rect
+             x="-277.79529"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect256" />
+        </g>
+        <g
+           id="Graphic_230">
+          <rect
+             x="-266.4567"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect257" />
+          <rect
+             x="-266.4567"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect258" />
+        </g>
+        <g
+           id="Graphic_229">
+          <rect
+             x="-255.11812"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect259" />
+          <rect
+             x="-255.11812"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect260" />
+        </g>
+        <g
+           id="Graphic_228">
+          <rect
+             x="-243.77953"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect261" />
+          <rect
+             x="-243.77953"
+             y="373.0394"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect262" />
+        </g>
+      </g>
+    </g>
+    <g
+       id="Group_248">
+      <g
+         id="Graphic_258">
+        <rect
+           x="-334.48819"
+           y="402.51971"
+           width="113.38583"
+           height="45.354328"
+           fill="#ffffff"
+           id="rect263" />
+        <rect
+           x="-334.48819"
+           y="402.51971"
+           width="113.38583"
+           height="45.354328"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect264" />
+        <text
+           transform="translate(-329.4882,407.5197)"
+           fill="#000000"
+           id="text264"><tspan
+             font-family="'Helvetica Neue'"
+             font-size="16px"
+             fill="#000000"
+             x="11.092917"
+             y="15"
+             xml:space="preserve"
+             id="tspan264">Temp Array</tspan></text>
+      </g>
+      <g
+         id="Group_249">
+        <g
+           id="Graphic_257">
+          <rect
+             x="-323.1496"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect265" />
+          <rect
+             x="-323.1496"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect266" />
+        </g>
+        <g
+           id="Graphic_256">
+          <rect
+             x="-311.81104"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect267" />
+          <rect
+             x="-311.81104"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect268" />
+        </g>
+        <g
+           id="Graphic_255">
+          <rect
+             x="-300.47244"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect269" />
+          <rect
+             x="-300.47244"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect270" />
+        </g>
+        <g
+           id="Graphic_254">
+          <rect
+             x="-289.13388"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect271" />
+          <rect
+             x="-289.13388"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect272" />
+        </g>
+        <g
+           id="Graphic_253">
+          <rect
+             x="-277.79529"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect273" />
+          <rect
+             x="-277.79529"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect274" />
+        </g>
+        <g
+           id="Graphic_252">
+          <rect
+             x="-266.4567"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect275" />
+          <rect
+             x="-266.4567"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect276" />
+        </g>
+        <g
+           id="Graphic_251">
+          <rect
+             x="-255.11812"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect277" />
+          <rect
+             x="-255.11812"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect278" />
+        </g>
+        <g
+           id="Graphic_250">
+          <rect
+             x="-243.77953"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect279" />
+          <rect
+             x="-243.77953"
+             y="429.7323"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect280" />
+        </g>
+      </g>
+    </g>
+    <g
+       id="Group_259">
+      <g
+         id="Graphic_269">
+        <rect
+           x="-334.48819"
+           y="459.21259"
+           width="113.38583"
+           height="45.354328"
+           fill="#ffffff"
+           id="rect281" />
+        <rect
+           x="-334.48819"
+           y="459.21259"
+           width="113.38583"
+           height="45.354328"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect282" />
+        <text
+           transform="translate(-329.4882,464.2126)"
+           fill="#000000"
+           id="text282"><tspan
+             font-family="'Helvetica Neue'"
+             font-size="16px"
+             fill="#000000"
+             x="11.092917"
+             y="15"
+             xml:space="preserve"
+             id="tspan282">Temp Array</tspan></text>
+      </g>
+      <g
+         id="Group_260">
+        <g
+           id="Graphic_268">
+          <rect
+             x="-323.1496"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect283" />
+          <rect
+             x="-323.1496"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect284" />
+        </g>
+        <g
+           id="Graphic_267">
+          <rect
+             x="-311.81104"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect285" />
+          <rect
+             x="-311.81104"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect286" />
+        </g>
+        <g
+           id="Graphic_266">
+          <rect
+             x="-300.47244"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect287" />
+          <rect
+             x="-300.47244"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect288" />
+        </g>
+        <g
+           id="Graphic_265">
+          <rect
+             x="-289.13388"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect289" />
+          <rect
+             x="-289.13388"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect290" />
+        </g>
+        <g
+           id="Graphic_264">
+          <rect
+             x="-277.79529"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect291" />
+          <rect
+             x="-277.79529"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect292" />
+        </g>
+        <g
+           id="Graphic_263">
+          <rect
+             x="-266.4567"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect293" />
+          <rect
+             x="-266.4567"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect294" />
+        </g>
+        <g
+           id="Graphic_262">
+          <rect
+             x="-255.11812"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect295" />
+          <rect
+             x="-255.11812"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect296" />
+        </g>
+        <g
+           id="Graphic_261">
+          <rect
+             x="-243.77953"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             fill="#ffffff"
+             id="rect297" />
+          <rect
+             x="-243.77953"
+             y="486.4252"
+             width="11.338583"
+             height="9.0708656"
+             stroke="#808080"
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="1"
+             id="rect298" />
+        </g>
+      </g>
+    </g>
+    <g
+       id="Graphic_270">
+      <rect
+         x="-192.75591"
+         y="362.83466"
+         width="11.338583"
+         height="10.204725"
+         fill="#ffffff"
+         id="rect299" />
+      <rect
+         x="-192.75591"
+         y="362.83466"
+         width="11.338583"
+         height="10.204725"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect300" />
+    </g>
+    <g
+       id="Line_271">
+      <line
+         x1="-221.10237"
+         y1="368.1496"
+         x2="-202.65572"
+         y2="368.03433"
+         marker-end="url(#FilledArrow_Marker_2)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line300" />
+    </g>
+    <g
+       id="Graphic_274">
+      <rect
+         x="-158.74016"
+         y="362.83466"
+         width="11.338583"
+         height="10.204725"
+         fill="#ffffff"
+         id="rect301" />
+      <rect
+         x="-158.74016"
+         y="362.83466"
+         width="11.338583"
+         height="10.204725"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect302" />
+    </g>
+    <g
+       id="Line_273">
+      <line
+         x1="-181.41733"
+         y1="367.93701"
+         x2="-168.64017"
+         y2="367.93701"
+         marker-end="url(#FilledArrow_Marker_3)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line302" />
+    </g>
+    <g
+       id="Graphic_278">
+      <rect
+         x="-192.75591"
+         y="419.52756"
+         width="11.338583"
+         height="10.204725"
+         fill="#ffffff"
+         id="rect303" />
+      <rect
+         x="-192.75591"
+         y="419.52756"
+         width="11.338583"
+         height="10.204725"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect304" />
+    </g>
+    <g
+       id="Line_277">
+      <line
+         x1="-221.10237"
+         y1="424.84253"
+         x2="-202.65572"
+         y2="424.72723"
+         marker-end="url(#FilledArrow_Marker_3)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line304" />
+    </g>
+    <g
+       id="Graphic_276">
+      <rect
+         x="-158.74016"
+         y="419.52756"
+         width="11.338583"
+         height="10.204725"
+         fill="#ffffff"
+         id="rect305" />
+      <rect
+         x="-158.74016"
+         y="419.52756"
+         width="11.338583"
+         height="10.204725"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect306" />
+    </g>
+    <g
+       id="Line_275">
+      <line
+         x1="-181.41733"
+         y1="424.62994"
+         x2="-168.64017"
+         y2="424.62994"
+         marker-end="url(#FilledArrow_Marker_3)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line306" />
+    </g>
+    <g
+       id="Graphic_282">
+      <rect
+         x="-192.75591"
+         y="476.22049"
+         width="11.338583"
+         height="10.204725"
+         fill="#ffffff"
+         id="rect307" />
+      <rect
+         x="-192.75591"
+         y="476.22049"
+         width="11.338583"
+         height="10.204725"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect308" />
+    </g>
+    <g
+       id="Line_281">
+      <line
+         x1="-221.10237"
+         y1="481.53546"
+         x2="-202.65572"
+         y2="481.42014"
+         marker-end="url(#FilledArrow_Marker_3)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line308" />
+    </g>
+    <g
+       id="Graphic_280">
+      <rect
+         x="-158.74016"
+         y="476.22049"
+         width="11.338583"
+         height="10.204725"
+         fill="#ffffff"
+         id="rect309" />
+      <rect
+         x="-158.74016"
+         y="476.22049"
+         width="11.338583"
+         height="10.204725"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect310" />
+    </g>
+    <g
+       id="Line_279">
+      <line
+         x1="-181.41733"
+         y1="481.32285"
+         x2="-168.64017"
+         y2="481.32285"
+         marker-end="url(#FilledArrow_Marker_3)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line310" />
+    </g>
+    <g
+       id="Line_283">
+      <line
+         x1="-147.40158"
+         y1="371.30524"
+         x2="-112.91596"
+         y2="391.79376"
+         marker-end="url(#FilledArrow_Marker_3)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line311" />
+    </g>
+    <g
+       id="Line_284">
+      <line
+         x1="-147.40158"
+         y1="424.6633"
+         x2="-123.28566"
+         y2="424.80515"
+         marker-end="url(#FilledArrow_Marker_3)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line312" />
+    </g>
+    <g
+       id="Line_285">
+      <line
+         x1="-147.40158"
+         y1="478.0213"
+         x2="-113.92371"
+         y2="458.52539"
+         marker-end="url(#FilledArrow_Marker_3)"
+         stroke="#a5a5a5"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="line313" />
+    </g>
+    <g
+       id="Graphic_296">
+      <rect
+         x="226.77167"
+         y="396.8504"
+         width="226.77167"
+         height="56.692917"
+         fill="#ffffff"
+         id="rect313" />
+      <rect
+         x="226.77167"
+         y="396.8504"
+         width="226.77167"
+         height="56.692917"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect314" />
+      <text
+         transform="translate(231.77166,401.8504)"
+         fill="#000000"
+         id="text314"><tspan
+           font-family="'Helvetica Neue'"
+           font-size="16px"
+           fill="#000000"
+           x="64.681831"
+           y="15"
+           xml:space="preserve"
+           id="tspan314">Dense Array</tspan></text>
+    </g>
+    <g
+       id="Group_287">
+      <g
+         id="Graphic_295">
+        <rect
+           x="238.11024"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect315" />
+        <rect
+           x="238.11024"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect316" />
+      </g>
+      <g
+         id="Graphic_294">
+        <rect
+           x="249.44884"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect317" />
+        <rect
+           x="249.44884"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect318" />
+      </g>
+      <g
+         id="Graphic_293">
+        <rect
+           x="260.78741"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect319" />
+        <rect
+           x="260.78741"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect320" />
+      </g>
+      <g
+         id="Graphic_292">
+        <rect
+           x="272.12601"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect321" />
+        <rect
+           x="272.12601"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect322" />
+      </g>
+      <g
+         id="Graphic_291">
+        <rect
+           x="283.46457"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect323" />
+        <rect
+           x="283.46457"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect324" />
+      </g>
+      <g
+         id="Graphic_290">
+        <rect
+           x="294.80316"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect325" />
+        <rect
+           x="294.80316"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect326" />
+      </g>
+      <g
+         id="Graphic_289">
+        <rect
+           x="306.14175"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect327" />
+        <rect
+           x="306.14175"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect328" />
+      </g>
+      <g
+         id="Graphic_288">
+        <rect
+           x="317.48032"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect329" />
+        <rect
+           x="317.48032"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect330" />
+      </g>
+    </g>
+    <g
+       id="Group_297">
+      <g
+         id="Graphic_305">
+        <rect
+           x="351.49606"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect331" />
+        <rect
+           x="351.49606"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect332" />
+      </g>
+      <g
+         id="Graphic_304">
+        <rect
+           x="362.83466"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect333" />
+        <rect
+           x="362.83466"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect334" />
+      </g>
+      <g
+         id="Graphic_303">
+        <rect
+           x="374.17325"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect335" />
+        <rect
+           x="374.17325"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect336" />
+      </g>
+      <g
+         id="Graphic_302">
+        <rect
+           x="385.51181"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect337" />
+        <rect
+           x="385.51181"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect338" />
+      </g>
+      <g
+         id="Graphic_301">
+        <rect
+           x="396.8504"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect339" />
+        <rect
+           x="396.8504"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect340" />
+      </g>
+      <g
+         id="Graphic_300">
+        <rect
+           x="408.189"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect341" />
+        <rect
+           x="408.189"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect342" />
+      </g>
+      <g
+         id="Graphic_299">
+        <rect
+           x="419.52756"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect343" />
+        <rect
+           x="419.52756"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect344" />
+      </g>
+      <g
+         id="Graphic_298">
+        <rect
+           x="430.86615"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           fill="#ffffff"
+           id="rect345" />
+        <rect
+           x="430.86615"
+           y="430.86615"
+           width="11.338583"
+           height="11.338583"
+           stroke="#808080"
+           stroke-linecap="round"
+           stroke-linejoin="round"
+           stroke-width="1"
+           id="rect346" />
+      </g>
+    </g>
+    <g
+       id="Graphic_306">
+      <rect
+         x="328.81891"
+         y="430.86615"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect347" />
+      <rect
+         x="328.81891"
+         y="430.86615"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect348" />
+    </g>
+    <g
+       id="Graphic_307">
+      <rect
+         x="340.1575"
+         y="430.86615"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect349" />
+      <rect
+         x="340.1575"
+         y="430.86615"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect350" />
+    </g>
+    <g
+       id="Line_308">
+      <line
+         x1="170.07874"
+         y1="425.19687"
+         x2="216.87166"
+         y2="425.19687"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="line350" />
+    </g>
+    <g
+       id="Line_309">
+      <path
+         d="M 340.1575,396.8504 V 300.47245 H -277.79528 V 335.9268"
+         marker-end="url(#FilledArrow_Marker)"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="path350" />
+    </g>
+    <g
+       id="Graphic_317">
+      <rect
+         x="-204.0945"
+         y="493.22836"
+         width="102.04725"
+         height="24"
+         fill="#ffffff"
+         id="rect351" />
+      <path
+         d="m -204.0945,493.22836 h 102.04725 v 24 H -204.0945 Z"
+         stroke="#000000"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-dasharray="4, 4"
+         stroke-width="1"
+         id="path351" />
+      <text
+         transform="translate(-199.0945,498.22836)"
+         fill="#000000"
+         id="text351"><tspan
+           font-family="'Courier New'"
+           font-size="12px"
+           fill="#000000"
+           x="0"
+           y="10"
+           xml:space="preserve"
+           id="tspan351">block_buffer</tspan></text>
+    </g>
+  </g>
+  <g
+     id="Graphic_320"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="-22.677166"
+       y="481.8898"
+       width="113.38583"
+       height="56.692917"
+       fill="#ffffff"
+       id="rect352" />
+    <rect
+       x="-22.677166"
+       y="481.8898"
+       width="113.38583"
+       height="56.692917"
+       stroke="#808080"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect353" />
+    <text
+       transform="translate(-17.677166,501.01224)"
+       fill="#000000"
+       id="text353"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="7.2289171"
+         y="15"
+         xml:space="preserve"
+         id="tspan353">User Buffers</tspan></text>
+  </g>
+  <g
+     id="Line_321"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <path
+       d="m -56.692915,453.5433 v 56.69293 h 24.115749"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="path353" />
+  </g>
+  <g
+     id="Line_322"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <path
+       d="m 90.70866,510.23623 h 22.67717 V 463.4433"
+       marker-end="url(#FilledArrow_Marker)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="path354" />
+  </g>
+  <g
+     id="Graphic_323"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(793.0315,-136.73229)"
+       fill="#000000"
+       id="text357"><tspan
+         font-family="'Courier New'"
+         font-size="18px"
+         fill="#000000"
+         x="0"
+         y="17"
+         xml:space="preserve"
+         id="tspan354">Schema</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="18px"
+         fill="#000000"
+         y="17"
+         xml:space="preserve"
+         id="tspan355">?</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="33"
+         xml:space="preserve"
+         id="tspan356">- Dimensions are 0 to M </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="47.335999"
+         xml:space="preserve"
+         id="tspan357">    - M = num_blocks * block_size</tspan></text>
+  </g>
+  <g
+     id="Graphic_324"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(793.0315,-68.70079)"
+       fill="#000000"
+       id="text360"><tspan
+         font-family="'Courier New'"
+         font-size="18px"
+         fill="#000000"
+         x="0"
+         y="17"
+         xml:space="preserve"
+         id="tspan358">Metadata</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="18px"
+         fill="#000000"
+         y="17"
+         xml:space="preserve"
+         id="tspan359">?</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="33"
+         xml:space="preserve"
+         id="tspan360">- Store size of each block </tspan></text>
+  </g>
+  <g
+     id="Graphic_325"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(793.0315,-6.338583)"
+       fill="#000000"
+       id="text363"><tspan
+         font-family="'Courier New'"
+         font-size="18px"
+         fill="#000000"
+         x="0"
+         y="17"
+         xml:space="preserve"
+         id="tspan361">tiledb::Group</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="18px"
+         fill="#000000"
+         y="17"
+         xml:space="preserve"
+         id="tspan362">?</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="33"
+         xml:space="preserve"
+         id="tspan363">- each metablock is an array</tspan></text>
+  </g>
+  <g
+     id="Graphic_326"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(963.1103,50.35433)"
+       fill="#000000"
+       id="text380"><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="10"
+         xml:space="preserve"
+         id="tspan364">group</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="23"
+         xml:space="preserve"
+         id="tspan365">├── 0</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="36"
+         xml:space="preserve"
+         id="tspan366">│   ├── 0</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="49"
+         xml:space="preserve"
+         id="tspan367">│   ├── 1</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="62"
+         xml:space="preserve"
+         id="tspan368">│   ├── ...</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="75"
+         xml:space="preserve"
+         id="tspan369">│   └── n</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="88"
+         xml:space="preserve"
+         id="tspan370">├── 1</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="101"
+         xml:space="preserve"
+         id="tspan371">│   ├── 0</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="114"
+         xml:space="preserve"
+         id="tspan372">│   ├── 1</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="127"
+         xml:space="preserve"
+         id="tspan373">│   ├── ...</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="140"
+         xml:space="preserve"
+         id="tspan374">│   └── n</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="153"
+         xml:space="preserve"
+         id="tspan375">├── ...</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="166"
+         xml:space="preserve"
+         id="tspan376">└── m</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="179"
+         xml:space="preserve"
+         id="tspan377">    ├── 0</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="192"
+         xml:space="preserve"
+         id="tspan378">    ├── 1</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="205"
+         xml:space="preserve"
+         id="tspan379">    ├── ...</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="218"
+         xml:space="preserve"
+         id="tspan380">    └── n</tspan></text>
+  </g>
+  <g
+     id="Graphic_327"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(798.7008,56.023623)"
+       fill="#000000"
+       id="text387"><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="10"
+         xml:space="preserve"
+         id="tspan381">group</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="23"
+         xml:space="preserve"
+         id="tspan382">└── iter</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="36"
+         xml:space="preserve"
+         id="tspan383">    └── metablock</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="62"
+         xml:space="preserve"
+         id="tspan384">group</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="75"
+         xml:space="preserve"
+         id="tspan385">└── iter</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="88"
+         xml:space="preserve"
+         id="tspan386">    └── iter</tspan><tspan
+         font-family="Menlo"
+         font-size="11px"
+         fill="#000000"
+         x="0"
+         y="101"
+         xml:space="preserve"
+         id="tspan387">        └── metablock</tspan></text>
+  </g>
+  <g
+     id="Graphic_328"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(634.29136,78.70079)"
+       fill="#000000"
+       id="text392"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="11"
+         xml:space="preserve"
+         id="tspan388">The temporary dense </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="25.336"
+         xml:space="preserve"
+         id="tspan389">array stores everything </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="39.671997"
+         xml:space="preserve"
+         id="tspan390">that was in the original </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="54.007996"
+         xml:space="preserve"
+         id="tspan391">user buffers (but sorted </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="12px"
+         fill="#000000"
+         x="0"
+         y="68.343994"
+         xml:space="preserve"
+         id="tspan392">and tiled into blocks)</tspan></text>
+  </g>
+  <g
+     id="Group_329"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_337">
+      <rect
+         x="725.66931"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect392" />
+      <rect
+         x="725.66931"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect393" />
+    </g>
+    <g
+       id="Graphic_336">
+      <rect
+         x="737.00787"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect394" />
+      <rect
+         x="737.00787"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect395" />
+    </g>
+    <g
+       id="Graphic_335">
+      <rect
+         x="748.3465"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect396" />
+      <rect
+         x="748.3465"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect397" />
+    </g>
+    <g
+       id="Graphic_334">
+      <rect
+         x="759.68512"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect398" />
+      <rect
+         x="759.68512"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect399" />
+    </g>
+    <g
+       id="Graphic_333">
+      <rect
+         x="771.02362"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect400" />
+      <rect
+         x="771.02362"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect401" />
+    </g>
+    <g
+       id="Graphic_332">
+      <rect
+         x="782.36218"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect402" />
+      <rect
+         x="782.36218"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect403" />
+    </g>
+    <g
+       id="Graphic_331">
+      <rect
+         x="793.70081"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect404" />
+      <rect
+         x="793.70081"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect405" />
+    </g>
+    <g
+       id="Graphic_330">
+      <rect
+         x="805.03943"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect406" />
+      <rect
+         x="805.03943"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect407" />
+    </g>
+  </g>
+  <g
+     id="Graphic_338"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="725.66931"
+       y="-351.49606"
+       width="56.692917"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect408" />
+    <rect
+       x="725.66931"
+       y="-351.49606"
+       width="56.692917"
+       height="11.338583"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect409" />
+  </g>
+  <g
+     id="Graphic_339"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="782.36218"
+       y="-351.49606"
+       width="45.354328"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect410" />
+    <rect
+       x="782.36218"
+       y="-351.49606"
+       width="45.354328"
+       height="11.338583"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect411" />
+  </g>
+  <g
+     id="Group_340"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_348">
+      <rect
+         x="816.37799"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect412" />
+      <rect
+         x="816.37799"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect413" />
+    </g>
+    <g
+       id="Graphic_347">
+      <rect
+         x="827.71661"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect414" />
+      <rect
+         x="827.71661"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect415" />
+    </g>
+    <g
+       id="Graphic_346">
+      <rect
+         x="839.05511"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect416" />
+      <rect
+         x="839.05511"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect417" />
+    </g>
+    <g
+       id="Graphic_345">
+      <rect
+         x="850.39368"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect418" />
+      <rect
+         x="850.39368"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect419" />
+    </g>
+    <g
+       id="Graphic_344">
+      <rect
+         x="861.7323"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect420" />
+      <rect
+         x="861.7323"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect421" />
+    </g>
+    <g
+       id="Graphic_343">
+      <rect
+         x="873.07092"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect422" />
+      <rect
+         x="873.07092"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect423" />
+    </g>
+    <g
+       id="Graphic_342">
+      <rect
+         x="884.40948"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect424" />
+      <rect
+         x="884.40948"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect425" />
+    </g>
+    <g
+       id="Graphic_341">
+      <rect
+         x="895.74811"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect426" />
+      <rect
+         x="895.74811"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect427" />
+    </g>
+  </g>
+  <g
+     id="Group_349"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_357">
+      <rect
+         x="907.08661"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect428" />
+      <rect
+         x="907.08661"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect429" />
+    </g>
+    <g
+       id="Graphic_356">
+      <rect
+         x="918.42517"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect430" />
+      <rect
+         x="918.42517"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect431" />
+    </g>
+    <g
+       id="Graphic_355">
+      <rect
+         x="929.76379"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect432" />
+      <rect
+         x="929.76379"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect433" />
+    </g>
+    <g
+       id="Graphic_354">
+      <rect
+         x="941.10242"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect434" />
+      <rect
+         x="941.10242"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect435" />
+    </g>
+    <g
+       id="Graphic_353">
+      <rect
+         x="952.44098"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect436" />
+      <rect
+         x="952.44098"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect437" />
+    </g>
+    <g
+       id="Graphic_352">
+      <rect
+         x="963.7796"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect438" />
+      <rect
+         x="963.7796"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect439" />
+    </g>
+    <g
+       id="Graphic_351">
+      <rect
+         x="975.1181"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect440" />
+      <rect
+         x="975.1181"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect441" />
+    </g>
+    <g
+       id="Graphic_350">
+      <rect
+         x="986.45673"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect442" />
+      <rect
+         x="986.45673"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect443" />
+    </g>
+  </g>
+  <g
+     id="Group_358"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_366">
+      <rect
+         x="997.79529"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect444" />
+      <rect
+         x="997.79529"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect445" />
+    </g>
+    <g
+       id="Graphic_365">
+      <rect
+         x="1009.1339"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect446" />
+      <rect
+         x="1009.1339"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect447" />
+    </g>
+    <g
+       id="Graphic_364">
+      <rect
+         x="1020.4725"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect448" />
+      <rect
+         x="1020.4725"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect449" />
+    </g>
+    <g
+       id="Graphic_363">
+      <rect
+         x="1031.811"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect450" />
+      <rect
+         x="1031.811"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect451" />
+    </g>
+    <g
+       id="Graphic_362">
+      <rect
+         x="1043.1497"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect452" />
+      <rect
+         x="1043.1497"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect453" />
+    </g>
+    <g
+       id="Graphic_361">
+      <rect
+         x="1054.4882"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect454" />
+      <rect
+         x="1054.4882"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect455" />
+    </g>
+    <g
+       id="Graphic_360">
+      <rect
+         x="1065.8268"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect456" />
+      <rect
+         x="1065.8268"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect457" />
+    </g>
+    <g
+       id="Graphic_359">
+      <rect
+         x="1077.1654"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect458" />
+      <rect
+         x="1077.1654"
+         y="-402.51971"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect459" />
+    </g>
+  </g>
+  <g
+     id="Graphic_367"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="827.71661"
+       y="-351.49606"
+       width="68.031502"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect460" />
+    <rect
+       x="827.71661"
+       y="-351.49606"
+       width="68.031502"
+       height="11.338583"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect461" />
+  </g>
+  <g
+     id="Graphic_368"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="895.74811"
+       y="-351.49606"
+       width="45.354328"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect462" />
+    <rect
+       x="895.74811"
+       y="-351.49606"
+       width="45.354328"
+       height="11.338583"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect463" />
+  </g>
+  <g
+     id="Graphic_369"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="941.10242"
+       y="-351.49606"
+       width="39.68504"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect464" />
+    <rect
+       x="941.10242"
+       y="-351.49606"
+       width="39.68504"
+       height="11.338583"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect465" />
+  </g>
+  <g
+     id="Graphic_370"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="980.78741"
+       y="-351.49606"
+       width="68.031502"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect466" />
+    <rect
+       x="980.78741"
+       y="-351.49606"
+       width="68.031502"
+       height="11.338583"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect467" />
+  </g>
+  <g
+     id="Graphic_371"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="1048.8188"
+       y="-351.49606"
+       width="45.354328"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect468" />
+    <rect
+       x="1048.8188"
+       y="-351.49606"
+       width="45.354328"
+       height="11.338583"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect469" />
+  </g>
+  <g
+     id="Graphic_372"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="725.66931"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect470" />
+    <rect
+       x="725.66931"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect471" />
+  </g>
+  <g
+     id="Graphic_373"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="799.37012"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect472" />
+    <rect
+       x="799.37012"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect473" />
+  </g>
+  <g
+     id="Graphic_374"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="873.07092"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect474" />
+    <rect
+       x="873.07092"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect475" />
+  </g>
+  <g
+     id="Graphic_375"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="946.77173"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect476" />
+    <rect
+       x="946.77173"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect477" />
+  </g>
+  <g
+     id="Graphic_376"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="1020.4725"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect478" />
+    <rect
+       x="1020.4725"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect479" />
+  </g>
+  <g
+     id="Graphic_377"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="1094.1733"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect480" />
+    <rect
+       x="1094.1733"
+       y="-294.80316"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect481" />
+  </g>
+  <g
+     id="Graphic_378"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="725.45624"
+       y="-291.86197"
+       width="56.692917"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect482" />
+    <rect
+       x="725.45624"
+       y="-291.86197"
+       width="56.692917"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect483" />
+  </g>
+  <g
+     id="Graphic_379"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="799.89227"
+       y="-292.07504"
+       width="50.501389"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect484" />
+    <rect
+       x="799.89227"
+       y="-292.07504"
+       width="50.501389"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect485" />
+  </g>
+  <g
+     id="Graphic_380"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="873.59308"
+       y="-292.07504"
+       width="61.839973"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect486" />
+    <rect
+       x="873.59308"
+       y="-292.07504"
+       width="61.839973"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect487" />
+  </g>
+  <g
+     id="Graphic_381"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(1099.1733,-413.27004)"
+       fill="#000000"
+       id="text487"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan487">User buffers (zipped)</tspan></text>
+  </g>
+  <g
+     id="Graphic_382"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(1110.5118,-363.50395)"
+       fill="#000000"
+       id="text489"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="2.224"
+         y="15"
+         xml:space="preserve"
+         id="tspan488">chunk_view (of zipped), </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="1.024"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan489">variable number of cells</tspan></text>
+  </g>
+  <g
+     id="Graphic_383"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(1172.874,-306.81103)"
+       fill="#000000"
+       id="text492"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="25.380283"
+         y="15"
+         xml:space="preserve"
+         id="tspan490">Data blocks (wrapping chunks), </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0.17228407"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan491">constant bytes per block and constant </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="37.820286"
+         y="51.895996"
+         xml:space="preserve"
+         id="tspan492">cells per block (pad chunks)</tspan></text>
+  </g>
+  <g
+     id="Graphic_384"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="946.77173"
+       y="-292.07504"
+       width="45.354328"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect492" />
+    <rect
+       x="946.77173"
+       y="-292.07504"
+       width="45.354328"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect493" />
+  </g>
+  <g
+     id="Graphic_385"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="1020.4725"
+       y="-292.07504"
+       width="45.354328"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect494" />
+    <rect
+       x="1020.4725"
+       y="-292.07504"
+       width="45.354328"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect495" />
+  </g>
+  <g
+     id="Graphic_386"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="1094.1733"
+       y="-292.07504"
+       width="68.031502"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect496" />
+    <rect
+       x="1094.1733"
+       y="-292.07504"
+       width="68.031502"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect497" />
+  </g>
+  <g
+     id="Graphic_398"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="725.88239"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect498" />
+    <rect
+       x="725.88239"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect499" />
+  </g>
+  <g
+     id="Graphic_397"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="793.91388"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect500" />
+    <rect
+       x="793.91388"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect501"
+       inkscape:label="rect501" />
+  </g>
+  <g
+     id="Graphic_396"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="861.94537"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect502" />
+    <rect
+       x="861.94537"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect503" />
+  </g>
+  <g
+     id="Graphic_395"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="929.97693"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect504" />
+    <rect
+       x="929.97693"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect505" />
+  </g>
+  <g
+     id="Graphic_394"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="998.00842"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect506" />
+    <rect
+       x="998.00842"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect507" />
+  </g>
+  <g
+     id="Graphic_393"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="1066.0399"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       fill="#ffffff"
+       id="rect508" />
+    <rect
+       x="1066.0399"
+       y="-232.44095"
+       width="68.031502"
+       height="17.007874"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect509" />
+  </g>
+  <g
+     id="Graphic_392"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="727.13989"
+       y="-229.49977"
+       width="56.692917"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect510" />
+    <rect
+       x="727.13989"
+       y="-229.49977"
+       width="56.692917"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect511" />
+  </g>
+  <g
+     id="Graphic_391"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="794.4361"
+       y="-228.97754"
+       width="50.501389"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect512" />
+    <rect
+       x="794.4361"
+       y="-228.97754"
+       width="50.501389"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect513" />
+  </g>
+  <g
+     id="Graphic_390"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="862.46759"
+       y="-228.97754"
+       width="61.839973"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect514" />
+    <rect
+       x="862.46759"
+       y="-228.97754"
+       width="61.839973"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect515" />
+  </g>
+  <g
+     id="Graphic_389"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="929.97693"
+       y="-228.97754"
+       width="45.354328"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect516" />
+    <rect
+       x="929.97693"
+       y="-228.97754"
+       width="45.354328"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect517" />
+  </g>
+  <g
+     id="Graphic_388"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="998.00842"
+       y="-228.97754"
+       width="45.354328"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect518" />
+    <rect
+       x="998.00842"
+       y="-228.97754"
+       width="45.354328"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect519" />
+  </g>
+  <g
+     id="Graphic_387"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <rect
+       x="1066.0399"
+       y="-228.97754"
+       width="68.031502"
+       height="11.338583"
+       fill="#ffffff"
+       id="rect520" />
+    <rect
+       x="1066.0399"
+       y="-228.97754"
+       width="68.031502"
+       height="11.338583"
+       stroke="#666666"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="rect521" />
+  </g>
+  <g
+     id="Graphic_399"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(1150.1969,-233.11024)"
+       fill="#000000"
+       id="text521"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="6.9633188e-13"
+         y="15"
+         xml:space="preserve"
+         id="tspan521">Array (one block per tile)</tspan></text>
+  </g>
+  <g
+     id="Group_427"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_435">
+      <rect
+         x="725.66931"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect522" />
+      <rect
+         x="725.66931"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect523" />
+    </g>
+    <g
+       id="Graphic_434">
+      <rect
+         x="737.00787"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect524" />
+      <rect
+         x="737.00787"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect525" />
+    </g>
+    <g
+       id="Graphic_433">
+      <rect
+         x="748.3465"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect526" />
+      <rect
+         x="748.3465"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect527" />
+    </g>
+    <g
+       id="Graphic_432">
+      <rect
+         x="759.68512"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect528" />
+      <rect
+         x="759.68512"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect529" />
+    </g>
+    <g
+       id="Graphic_431">
+      <rect
+         x="771.02362"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect530" />
+      <rect
+         x="771.02362"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect531" />
+    </g>
+    <g
+       id="Graphic_430">
+      <rect
+         x="782.36218"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect532" />
+      <rect
+         x="782.36218"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect533" />
+    </g>
+    <g
+       id="Graphic_429">
+      <rect
+         x="793.70081"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect534" />
+      <rect
+         x="793.70081"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect535" />
+    </g>
+    <g
+       id="Graphic_428">
+      <rect
+         x="805.03943"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect536" />
+      <rect
+         x="805.03943"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect537" />
+    </g>
+  </g>
+  <g
+     id="Group_418"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_426">
+      <rect
+         x="816.37799"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect538" />
+      <rect
+         x="816.37799"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect539" />
+    </g>
+    <g
+       id="Graphic_425">
+      <rect
+         x="827.71661"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect540" />
+      <rect
+         x="827.71661"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect541" />
+    </g>
+    <g
+       id="Graphic_424">
+      <rect
+         x="839.05511"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect542" />
+      <rect
+         x="839.05511"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect543" />
+    </g>
+    <g
+       id="Graphic_423">
+      <rect
+         x="850.39368"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect544" />
+      <rect
+         x="850.39368"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect545" />
+    </g>
+    <g
+       id="Graphic_422">
+      <rect
+         x="861.7323"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect546" />
+      <rect
+         x="861.7323"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect547" />
+    </g>
+    <g
+       id="Graphic_421">
+      <rect
+         x="873.07092"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect548" />
+      <rect
+         x="873.07092"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect549" />
+    </g>
+    <g
+       id="Graphic_420">
+      <rect
+         x="884.40948"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect550" />
+      <rect
+         x="884.40948"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect551" />
+    </g>
+    <g
+       id="Graphic_419">
+      <rect
+         x="895.74811"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect552" />
+      <rect
+         x="895.74811"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect553" />
+    </g>
+  </g>
+  <g
+     id="Group_409"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_417">
+      <rect
+         x="907.08661"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect554" />
+      <rect
+         x="907.08661"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect555" />
+    </g>
+    <g
+       id="Graphic_416">
+      <rect
+         x="918.42517"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect556" />
+      <rect
+         x="918.42517"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect557" />
+    </g>
+    <g
+       id="Graphic_415">
+      <rect
+         x="929.76379"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect558" />
+      <rect
+         x="929.76379"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect559" />
+    </g>
+    <g
+       id="Graphic_414">
+      <rect
+         x="941.10242"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect560" />
+      <rect
+         x="941.10242"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect561" />
+    </g>
+    <g
+       id="Graphic_413">
+      <rect
+         x="952.44098"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect562" />
+      <rect
+         x="952.44098"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect563" />
+    </g>
+    <g
+       id="Graphic_412">
+      <rect
+         x="963.7796"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect564" />
+      <rect
+         x="963.7796"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect565" />
+    </g>
+    <g
+       id="Graphic_411">
+      <rect
+         x="975.1181"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect566" />
+      <rect
+         x="975.1181"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect567" />
+    </g>
+    <g
+       id="Graphic_410">
+      <rect
+         x="986.45673"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect568" />
+      <rect
+         x="986.45673"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect569" />
+    </g>
+  </g>
+  <g
+     id="Group_400"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <g
+       id="Graphic_408">
+      <rect
+         x="997.79529"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect570" />
+      <rect
+         x="997.79529"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect571" />
+    </g>
+    <g
+       id="Graphic_407">
+      <rect
+         x="1009.1339"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect572" />
+      <rect
+         x="1009.1339"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect573" />
+    </g>
+    <g
+       id="Graphic_406">
+      <rect
+         x="1020.4725"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect574" />
+      <rect
+         x="1020.4725"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect575" />
+    </g>
+    <g
+       id="Graphic_405">
+      <rect
+         x="1031.811"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect576" />
+      <rect
+         x="1031.811"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect577" />
+    </g>
+    <g
+       id="Graphic_404">
+      <rect
+         x="1043.1497"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect578" />
+      <rect
+         x="1043.1497"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect579" />
+    </g>
+    <g
+       id="Graphic_403">
+      <rect
+         x="1054.4882"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect580" />
+      <rect
+         x="1054.4882"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect581" />
+    </g>
+    <g
+       id="Graphic_402">
+      <rect
+         x="1065.8268"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect582" />
+      <rect
+         x="1065.8268"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect583" />
+    </g>
+    <g
+       id="Graphic_401">
+      <rect
+         x="1077.1654"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         fill="#ffffff"
+         id="rect584" />
+      <rect
+         x="1077.1654"
+         y="-413.85831"
+         width="11.338583"
+         height="11.338583"
+         stroke="#808080"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="1"
+         id="rect585" />
+    </g>
+  </g>
+  <g
+     id="Line_436"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <line
+       x1="685.98431"
+       y1="-147.40158"
+       x2="724.76141"
+       y2="-191.02585"
+       marker-end="url(#FilledArrow_Marker_4)"
+       stroke="#000000"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       stroke-width="1"
+       id="line585" />
+  </g>
+  <g
+     id="Graphic_437"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(725,-182.08662)"
+       fill="#000000"
+       id="text585"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan585">Zoom in to temporary storage array format</tspan></text>
+  </g>
+  <g
+     id="Graphic_438"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(1150.1969,-204.76379)"
+       fill="#000000"
+       id="text587"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="2.224"
+         y="15"
+         xml:space="preserve"
+         id="tspan586">Array = “metablock”, </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="1.984"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan587">one per phase I pass</tspan></text>
+  </g>
+  <g
+     id="Graphic_439"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-618.6221,356.49607)"
+       fill="#000000"
+       id="text590"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan588">Case 1: One block from each temp </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="33.448002"
+         xml:space="preserve"
+         id="tspan589">array will fit into memory, only one </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="51.895996"
+         xml:space="preserve"
+         id="tspan590">Phase II pass needed</tspan></text>
+  </g>
+  <g
+     id="Graphic_440"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(-618.6221,430.19686)"
+       fill="#000000"
+       id="text595"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="15"
+         xml:space="preserve"
+         id="tspan591">Case 2: One block from each temp </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="34.448002"
+         xml:space="preserve"
+         id="tspan592">array will </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-style="italic"
+         font-weight="bold"
+         font-size="16px"
+         fill="#000000"
+         y="34.448002"
+         xml:space="preserve"
+         id="tspan593">not</tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         y="34.448002"
+         xml:space="preserve"
+         id="tspan594"> fit into memory, we need </tspan><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="0"
+         y="52.912109"
+         xml:space="preserve"
+         id="tspan595">multiple Phase II passes, hierarchical</tspan></text>
+  </g>
+  <g
+     id="Graphic_441"
+     transform="translate(39.182687,123.42546)"
+     style="fill:none;fill-opacity:1;stroke:none;stroke-dasharray:none;stroke-opacity:1">
+    <text
+       transform="translate(1327.4702,-335.25903)"
+       fill="#000000"
+       id="text596"
+       inkscape:label="text596"><tspan
+         font-family="'Helvetica Neue'"
+         font-size="16px"
+         fill="#000000"
+         x="1.563194e-13"
+         y="15"
+         xml:space="preserve"
+         id="tspan596">(Save chunk sizes as metadata)</tspan></text>
+  </g>
+</svg>

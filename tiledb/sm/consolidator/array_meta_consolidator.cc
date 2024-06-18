@@ -47,8 +47,10 @@ namespace tiledb::sm {
 /* ****************************** */
 
 ArrayMetaConsolidator::ArrayMetaConsolidator(
-    const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    ContextResources& resources,
+    const Config& config,
+    StorageManager* storage_manager)
+    : Consolidator(resources, storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -69,8 +71,8 @@ Status ArrayMetaConsolidator::consolidate(
 
   // Open array for reading
   auto array_uri = URI(array_name);
-  Array array_for_reads(storage_manager_->resources(), array_uri);
-  RETURN_NOT_OK(array_for_reads.open(
+  Array array_for_reads(resources_, array_uri);
+  throw_if_not_ok(array_for_reads.open(
       QueryType::READ,
       config_.timestamp_start_,
       config_.timestamp_end_,
@@ -79,7 +81,7 @@ Status ArrayMetaConsolidator::consolidate(
       key_length));
 
   // Open array for writing
-  Array array_for_writes(storage_manager_->resources(), array_uri);
+  Array array_for_writes(resources_, array_uri);
   RETURN_NOT_OK_ELSE(
       array_for_writes.open(
           QueryType::WRITE, encryption_type, encryption_key, key_length),
@@ -144,10 +146,10 @@ Status ArrayMetaConsolidator::set_config(const Config& config) {
   Config merged_config = resources_.config();
   merged_config.inherit(config);
   bool found = false;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
   assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
 

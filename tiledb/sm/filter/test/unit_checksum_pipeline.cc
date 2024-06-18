@@ -56,7 +56,7 @@ TEST_CASE(
   ThreadPool tp(4);
   ChecksumMD5Filter md5_filter(Datatype::UINT64);
   md5_pipeline.add_filter(md5_filter);
-  CHECK(md5_pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+  md5_pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
   CHECK(tile->size() == 0);
   CHECK(tile->filtered_buffer().size() != 0);
 
@@ -76,8 +76,7 @@ TEST_CASE(
   FilterPipeline sha_256_pipeline;
   ChecksumMD5Filter sha_256_filter(Datatype::UINT64);
   sha_256_pipeline.add_filter(sha_256_filter);
-  CHECK(sha_256_pipeline.run_forward(&dummy_stats, tile2.get(), nullptr, &tp)
-            .ok());
+  sha_256_pipeline.run_forward(&dummy_stats, tile2.get(), nullptr, &tp);
   CHECK(tile2->size() == 0);
   CHECK(tile2->filtered_buffer().size() != 0);
 

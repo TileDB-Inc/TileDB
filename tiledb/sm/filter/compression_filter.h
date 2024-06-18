@@ -126,7 +126,7 @@ class CompressionFilter : public Filter {
   /**
    * Compress the given input into the given output.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,

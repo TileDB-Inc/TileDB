@@ -52,7 +52,7 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   void dump(FILE* out) const override;
 
-  Status run_forward(
+  void run_forward(
       const WriterTile&,
       WriterTile* const,
       FilterBuffer* input_metadata,
