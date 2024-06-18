@@ -36,8 +36,6 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 
-#include "tiledb/api/c_api/context/context_api_internal.h"
-
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
@@ -48,15 +46,12 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
-struct DomainFx : TemporaryDirectoryFixture {};
-
 template <class T, int n>
 inline T& dom_buffer_offset(void* p) {
   return *static_cast<T*>(static_cast<void*>(static_cast<char*>(p) + n));
 }
 
-TEST_CASE_METHOD(
-    DomainFx, "Domain: Test deserialization", "[domain][deserialize]") {
+TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
   char serialized_buffer[72];
   char* p = &serialized_buffer[0];
 
@@ -128,7 +123,7 @@ TEST_CASE_METHOD(
       Layout::ROW_MAJOR,
       Layout::ROW_MAJOR,
       fp,
-      ctx->resources().create_memory_tracker())};
+      get_test_memory_tracker())};
   CHECK(dom->dim_num() == dim_num);
 
   auto dim1{dom->dimension_ptr("d1")};
@@ -144,8 +139,7 @@ TEST_CASE_METHOD(
   CHECK(dim2->filters().size() == num_filters2);
 }
 
-TEST_CASE_METHOD(
-    DomainFx, "Domain: Test dimension_ptr is not oob", "[domain][oob]") {
-  auto d = tiledb::sm::Domain(ctx->resources().create_memory_tracker());
+TEST_CASE("Domain: Test dimension_ptr is not oob", "[domain][oob]") {
+  auto d = tiledb::sm::Domain(get_test_memory_tracker());
   REQUIRE_THROWS(d.dimension_ptr(0));
 }
