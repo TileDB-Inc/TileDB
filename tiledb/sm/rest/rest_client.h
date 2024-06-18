@@ -566,6 +566,10 @@ class RestClient {
    * @return Status
    */
   Status ensure_json_null_delimited_string(Buffer* buffer);
+
+  /** Load all custom headers from the given config.  */
+  static std::unordered_map<std::string, std::string> load_headers(
+      const Config& cfg);
 };
 
 }  // namespace tiledb::sm

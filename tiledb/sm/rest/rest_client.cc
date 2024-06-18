@@ -60,6 +60,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/constants.h"
@@ -147,6 +148,8 @@ Status RestClient::init(
   bool found = false;
   RETURN_NOT_OK(config_->get<bool>(
       "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
+
+  extra_headers_ = load_headers(*config_);
 
   return Status::Ok();
 }
@@ -1661,6 +1664,20 @@ RestClient::post_consolidation_plan_from_rest(
       serialization_type_, returned_data);
 }
 
+std::unordered_map<std::string, std::string> RestClient::load_headers(
+    const Config& cfg) {
+  std::unordered_map<std::string, std::string> ret;
+  auto iter = ConfigIter(cfg, constants::rest_header_prefix);
+  for (; !iter.end(); iter.next()) {
+    auto key = iter.param();
+    if (key.size() == 0) {
+      continue;
+    }
+    ret[key] = iter.value();
+  }
+  return ret;
+}
+
 #else
 
 RestClient::RestClient() {
@@ -1829,6 +1846,11 @@ Status RestClient::post_vacuum_to_rest(const URI&, const Config&) {
 std::vector<std::vector<std::string>>
 RestClient::post_consolidation_plan_from_rest(
     const URI&, const Config&, uint64_t) {
+  throw RestClientDisabledException();
+}
+
+std::unordered_map<std::string, std::string> RestClient::load_headers(
+    const Config& cfg) {
   throw RestClientDisabledException();
 }
 
