@@ -36,9 +36,6 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 
-#include "test/support/src/helpers.h"
-#include "test/support/src/vfs_helpers.h"
-
 #include <test/support/tdb_catch.h>
 
 using namespace tiledb;

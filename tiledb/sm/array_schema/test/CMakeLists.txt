@@ -30,9 +30,6 @@ commence(unit_test array_schema)
     this_target_object_libraries(array_schema)
     # should be `this_target_include_directories`, when available
     target_include_directories(unit_array_schema PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
-    if (NOT MSVC)
-        target_compile_options(unit_array_schema PUBLIC -Wno-deprecated-declarations)
-    endif()
     this_target_sources(
         main.cc
         unit_array_schema.cc
