@@ -72,7 +72,7 @@ class NDRectangle {
       : ctx_(ctx)
       , domain_(domain) {
     tiledb_ndrectangle_t* capi_ndrect;
-    ctx.handle_error(tiledb_ndrect_alloc(ctx.ptr().get(), &capi_ndrect));
+    ctx.handle_error(tiledb_ndrectangle_alloc(ctx.ptr().get(), &capi_ndrect));
     ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(capi_ndrect, deleter_);
   }
 
@@ -86,97 +86,79 @@ class NDRectangle {
   /* ********************************* */
 
   /**
-   * Adds an 1D range along a dimension name, in the form
-   * (start, end). The datatype of the range
-   * must be the same as the dimension datatype.
-   *
+   * Set the range on an N-dimensional rectangle for a dimension name,
    * **Example:**
    *
-   * @code{.cpp}
-   * // Set an 1D range on dimension 0, assuming the domain type is int64.
-   * int64_t start = 10;
-   * int64_t end = 20;
-   * ndrect.set_range(0, start, end);
+   * @code{.c}
+   * tiledb_range_t range;
+   * range.min = &min;
+   * range.min_size = sizeof(min);
+   * range.max = &max;
+   * range.max_size = sizeof(max);
+   * nd.set_range(ctx, "dim", &range);
    * @endcode
    *
-   * @tparam T The dimension datatype.
    * @param dim_name The name of the dimension to add the range to.
-   * @param start The range start to add.
-   * @param end The range end to add.
+   * @param range The range to add.
    * @return Reference to this NDRectangle.
    */
-  template <class T>
-  NDRectangle& set_range(const std::string& dim_name, T start, T end) {
-    impl::type_check<T>(domain_.dimension(dim_name).type());
+  NDRectangle& set_range(const std::string& dim_name, tiledb_range_t range) {
     auto& ctx = ctx_.get();
-    // ctx.handle_error(); TODO
+    ctx.handle_error(tiledb_ndrectangle_set_range(
+        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
     return *this;
   }
 
   /**
-   * Adds an 1D range along a dimension index, in the form
-   * (start, end). The datatype of the range
-   * must be the same as the dimension datatype.
-   *
+   * Set the range on an N-dimensional rectangle for dimension at idx,
    * **Example:**
    *
-   * @code{.cpp}
-   * // Set an 1D range on dimension 0, assuming the domain type is int64.
-   * int64_t start = 10;
-   * int64_t end = 20;
-   * ndrect.set_range(0, start, end);
+   * @code{.c}
+   * tiledb_range_t range;
+   * range.min = &min;
+   * range.min_size = sizeof(min);
+   * range.max = &max;
+   * range.max_size = sizeof(max);
+   * nd.set_range(ctx, 1, &range);
    * @endcode
    *
-   * @tparam T The dimension datatype.
    * @param dim_idx The index of the dimension to add the range to.
-   * @param start The range start to add.
-   * @param end The range end to add.
+   * @param range The range to add.
    * @return Reference to this NDRectangle.
    */
-  template <class T>
-  NDRectangle& set_range(uint32_t dim_idx, T start, T end) {
-    impl::type_check<T>(domain_.dimension(dim_idx).type());
+  NDRectangle& set_range(uint32_t dim_idx, tiledb_range_t range) {
     auto& ctx = ctx_.get();
-    // ctx.handle_error(); TODO
+    ctx.handle_error(tiledb_ndrectangle_set_range(
+        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
     return *this;
   }
 
   /**
-   * Retrieves a range for a given dimension name.
-   * The template datatype must be the same as that of the
-   * underlying array.
+   * Get the range set on an N-dimensional rectangle for a dimension name.
    *
-   * @tparam T The dimension datatype.
    * @param dim_name The dimension name.
-   * @return A duplex of the form (start, end).
+   * @return The requested range.
    */
-  template <class T>
-  std::array<T, 2> range(const std::string& dim_name) {
-    impl::type_check<T>(domain.dimension(dim_name).type());
+  tiledb_range_t range(const std::string& dim_name) {
     auto& ctx = ctx_.get();
-    const void *start, *end;
-    // ctx.handle_error(); TODO
-    std::array<T, 2> ret = {{*(const T*)start, *(const T*)end}};
-    return ret;
+    tiledb_range_t range;
+    ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
+        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
+    return range;
   }
 
   /**
-   * Retrieves a range for a given dimension index.
-   * The template datatype must be the same as that of the
-   * underlying array.
+   * Get the range set on an N-dimensional rectangle for a dimension index.
    *
-   * @tparam T The dimension datatype.
    * @param dim_idx The dimension index.
-   * @return A duplex of the form (start, end).
+   * @return The requested range.
    */
-  template <class T>
-  std::array<T, 2> range(unsigned dim_idx) {
-    impl::type_check<T>(domain.dimension(dim_idx).type());
+  tiledb_range_t range(unsigned dim_idx) {
     auto& ctx = ctx_.get();
-    const void *start, *end;
-    // ctx.handle_error(); TODO
-    std::array<T, 2> ret = {{*(const T*)start, *(const T*)end}};
-    return ret;
+    tiledb_range_t range;
+    ctx.handle_error(tiledb_ndrectangle_get_range(
+        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
+    return range;
   }
 
   /** Returns the C TileDB ndrect object. */
