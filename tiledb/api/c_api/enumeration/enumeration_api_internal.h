@@ -131,6 +131,9 @@ struct tiledb_enumeration_handle_t
   [[nodiscard]] inline const span<uint8_t> offsets() const {
     return enumeration_->offsets();
   }
+
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_enumeration_handle_t& enumeration);
 };
 
 namespace tiledb::api {

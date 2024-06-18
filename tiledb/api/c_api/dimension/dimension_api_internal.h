@@ -103,10 +103,6 @@ struct tiledb_dimension_handle_t
     throw_if_not_ok(dimension_->set_cell_val_num(x));
   }
 
-  [[nodiscard]] shared_ptr<const tiledb::sm::Dimension> copy() const {
-    return dimension_;
-  }
-
   [[nodiscard]] inline const tiledb::sm::FilterPipeline& filters() const {
     return dimension_->filters();
   }
@@ -130,6 +126,9 @@ struct tiledb_dimension_handle_t
   [[nodiscard]] inline const tiledb::sm::ByteVecValue& tile_extent() const {
     return dimension_->tile_extent();
   }
+
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_dimension_handle_t& dim);
 };
 
 namespace tiledb::api {

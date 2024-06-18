@@ -34,6 +34,13 @@
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/common/memory_tracker.h"
 
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_domain_handle_t& domain) {
+  os << *domain.domain_;
+  return os;
+}
+
 namespace tiledb::api {
 
 int32_t tiledb_domain_alloc(
@@ -149,7 +156,7 @@ int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
     return TILEDB_ERR;
 
   std::stringstream ss;
-  ss << *domain->copy_domain();
+  ss << *domain;
   size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
   if (r != ss.str().size()) {
     throw CAPIException("Error writing domain to output stream");
@@ -161,9 +168,10 @@ int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
 int32_t tiledb_domain_dump_str(
     const tiledb_domain_t* domain, tiledb_string_t** out) {
   ensure_domain_is_valid(domain);
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
-  ss << *domain->copy_domain();
+  ss << *domain;
   *out = tiledb_string_handle_t::make_handle(ss.str());
   return TILEDB_OK;
 }

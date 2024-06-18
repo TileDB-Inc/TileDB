@@ -190,6 +190,11 @@ struct tiledb_attribute_handle_t
   [[nodiscard]] std::optional<std::string> get_enumeration_name() const {
     return attr_->get_enumeration_name();
   };
+  /**
+   * Facade for `Attribute` function
+   */
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_attribute_handle_t& attr);
 };
 
 namespace tiledb::api {

@@ -38,6 +38,13 @@
 #include "attribute_api_internal.h"
 #include "tiledb/sm/enums/datatype.h"
 
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_attribute_handle_t& attr) {
+  os << *attr.attr_;
+  return os;
+}
+
 namespace tiledb::api {
 
 int32_t tiledb_attribute_alloc(
@@ -140,7 +147,7 @@ int32_t tiledb_attribute_dump(
     return TILEDB_ERR;
 
   std::stringstream ss;
-  ss << *attr->copy_attribute();
+  ss << *attr;
   size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
   if (r != ss.str().size()) {
     throw CAPIException(
@@ -153,9 +160,10 @@ int32_t tiledb_attribute_dump(
 int32_t tiledb_attribute_dump_str(
     const tiledb_attribute_handle_t* attr, tiledb_string_t** out) {
   ensure_attribute_is_valid(attr);
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
-  ss << *attr->copy_attribute();
+  ss << *attr;
   *out = tiledb_string_handle_t::make_handle(ss.str());
 
   return TILEDB_OK;

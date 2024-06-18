@@ -726,6 +726,7 @@ int32_t tiledb_array_schema_dump_str(
     tiledb_string_t** out) {
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
+  ensure_output_pointer_is_valid(out);
   std::stringstream ss;
   ss << *array_schema->array_schema_;
   *out = tiledb_string_handle_t::make_handle(ss.str());
