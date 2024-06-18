@@ -1,5 +1,5 @@
 /**
- * @file   unit_concurrent_set.cc
+ * @file   unit_concurrent_map.cc
  *
  * @section LICENSE
  *
