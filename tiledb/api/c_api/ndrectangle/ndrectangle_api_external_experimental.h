@@ -70,7 +70,7 @@ typedef struct tiledb_ndrectangle_handle_t tiledb_ndrectangle_t;
  * @param ndr The n-dimensional rectangle to be allocated
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ndrectangle_alloc(
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_alloc(
     tiledb_ctx_t* ctx,
     tiledb_domain_t* domain,
     tiledb_ndrectangle_t** ndr) TILEDB_NOEXCEPT;
@@ -89,7 +89,7 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_alloc(
  * @param ndr The n-dimensional rectangle to be freed
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr)
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr)
     TILEDB_NOEXCEPT;
 
 /**
@@ -113,7 +113,7 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr)
  * @param range The range returned as output argument
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range_from_name(
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_get_range_from_name(
     tiledb_ctx_t* ctx,
     tiledb_ndrectangle_t* ndr,
     const char* name,
@@ -140,7 +140,7 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range_from_name(
  * @param range The range returned as output argument
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range(
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_get_range(
     tiledb_ctx_t* ctx,
     tiledb_ndrectangle_t* ndr,
     uint32_t idx,
@@ -166,7 +166,7 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range(
  * @param range The range to be set on the ND rectangle
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ndrectangle_set_range_for_name(
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_set_range_for_name(
     tiledb_ctx_t* ctx,
     tiledb_ndrectangle_t* ndr,
     const char* name,
@@ -192,7 +192,7 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_set_range_for_name(
  * @param range The range to be set on the ND rectangle
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ndrectangle_set_range(
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_set_range(
     tiledb_ctx_t* ctx,
     tiledb_ndrectangle_t* ndr,
     uint32_t idx,

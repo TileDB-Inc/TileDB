@@ -66,7 +66,7 @@ typedef struct tiledb_current_domain_handle_t tiledb_current_domain_t;
  * @param current_domain The current domain to be allocated
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_current_domain_create(
+TILEDB_EXPORT capi_return_t tiledb_current_domain_create(
     tiledb_ctx_t* ctx,
     tiledb_current_domain_t** current_domain) TILEDB_NOEXCEPT;
 
@@ -84,7 +84,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_create(
  * @param current_domain The current domain to be freed
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_current_domain_free(
+TILEDB_EXPORT capi_return_t tiledb_current_domain_free(
     tiledb_current_domain_t** current_domain) TILEDB_NOEXCEPT;
 
 /**
@@ -116,7 +116,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_free(
  * @param ndr The N-dimensional rectangle to be set
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_current_domain_set_ndrectangle(
+TILEDB_EXPORT capi_return_t tiledb_current_domain_set_ndrectangle(
     tiledb_current_domain_t* current_domain,
     tiledb_ndrectangle_t* ndr) TILEDB_NOEXCEPT;
 
@@ -138,7 +138,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_set_ndrectangle(
  * @param ndr The N-dimensional rectangle of the current domain
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_current_domain_get_ndrectangle(
+TILEDB_EXPORT capi_return_t tiledb_current_domain_get_ndrectangle(
     tiledb_current_domain_t* current_domain,
     tiledb_ndrectangle_t** ndr) TILEDB_NOEXCEPT;
 
@@ -156,7 +156,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_get_ndrectangle(
  * @param is_empty True if nothing is set on the current domain
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_current_domain_get_is_empty(
+TILEDB_EXPORT capi_return_t tiledb_current_domain_get_is_empty(
     tiledb_current_domain_t* current_domain,
     uint32_t* is_empty) TILEDB_NOEXCEPT;
 
@@ -174,7 +174,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_get_is_empty(
  * @param type The type of representation set on the current domain
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_current_domain_get_type(
+TILEDB_EXPORT capi_return_t tiledb_current_domain_get_type(
     tiledb_current_domain_t* current_domain,
     tiledb_current_domain_type_t* type) TILEDB_NOEXCEPT;
 
