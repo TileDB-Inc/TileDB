@@ -85,9 +85,12 @@ class NDRectangle {
    * @param schema C API NDRectangle object
    */
 
-  NDRectangle(const tiledb::Context& ctx, tiledb_ndrectangle_t* ndrect)
+  NDRectangle(
+      const tiledb::Context& ctx,
+      tiledb_ndrectangle_t* ndrect,
+      const tiledb::Domain& domain)
       : ctx_(ctx)
-      , domain_(Domain(ctx, (tiledb_domain_t*)nullptr)) {
+      , domain_(domain) {
     ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(ndrect, deleter_);
   }
 
@@ -223,6 +226,11 @@ class NDRectangle {
   /** Returns the C TileDB ndrect object. */
   std::shared_ptr<tiledb_ndrectangle_t> ptr() const {
     return ndrect_;
+  }
+
+  // Getter for domain_
+  tiledb::Domain domain() const {
+    return domain_;
   }
 
  private:

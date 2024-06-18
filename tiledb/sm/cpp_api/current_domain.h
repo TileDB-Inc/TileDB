@@ -80,14 +80,16 @@ class CurrentDomain {
    * @param type The TileDB currentDomain type
    */
   explicit CurrentDomain(const Context& ctx)
-      : ctx_(ctx) {
+      : ctx_(ctx)
+      , domain_(Domain(ctx, (tiledb_domain_t*)nullptr)) {
     tiledb_current_domain_t* cd;
     ctx.handle_error(tiledb_current_domain_create(ctx.ptr().get(), &cd));
     current_domain_ = std::shared_ptr<tiledb_current_domain_t>(cd, deleter_);
   }
 
   CurrentDomain(const tiledb::Context& ctx, tiledb_current_domain_t* cd)
-      : ctx_(ctx) {
+      : ctx_(ctx)
+      , domain_(Domain(ctx, (tiledb_domain_t*)nullptr)) {
     current_domain_ = std::shared_ptr<tiledb_current_domain_t>(cd, deleter_);
   }
 
@@ -122,6 +124,7 @@ class CurrentDomain {
    */
   CurrentDomain& set_ndrectangle(const NDRectangle& ndrect) {
     auto& ctx = ctx_.get();
+    domain_ = ndrect.domain();
     ctx.handle_error(tiledb_current_domain_set_ndrectangle(
         current_domain_.get(), ndrect.ptr().get()));
 
@@ -139,7 +142,7 @@ class CurrentDomain {
     auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_current_domain_get_ndrectangle(current_domain_.get(), &nd));
-    return NDRectangle(ctx, nd);
+    return NDRectangle(ctx, nd, domain_);
   }
 
   /**
@@ -160,6 +163,9 @@ class CurrentDomain {
   /** The TileDB context. */
   std::reference_wrapper<const Context> ctx_;
 
+  /** The domain of the NDRectangle cached */
+  Domain domain_;
+
   /** Pointer to the TileDB C current_domain object. */
   std::shared_ptr<tiledb_current_domain_t> current_domain_;
 
@@ -172,7 +178,8 @@ class CurrentDomain {
 
 /** Get a string representation of a current_domain status for an output stream.
  */
-inline std::ostream& operator<<(std::ostream& os, const CurrentDomain& d) {
+inline std::ostream& operator<<(std::ostream& os, const CurrentDomain& cd) {
+  (void)cd;
   os << "CurrentDomain<";
   os << '>';
   return os;

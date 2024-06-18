@@ -208,6 +208,7 @@ if (TILEDB_CPP_API)
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
     src/test-cppapi-ndrectangle.cc
+    src/test-cppapi-current-domain.cc
     src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc
