@@ -70,16 +70,6 @@ namespace tiledb {
 class CurrentDomain {
  public:
   /* ********************************* */
-  /*           TYPE DEFINITIONS        */
-  /* ********************************* */
-
-  /** The currentDomain type. */
-  enum class CurrentDomainType {
-    /** N-DImensional rectangle.*/
-    NDRECTANGLE
-  };
-
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -111,42 +101,49 @@ class CurrentDomain {
   }
 
   /** Returns the currentDomain type. */
-  CurrentDomainType type() const {
+  tiledb_current_domain_type_t type() const {
     tiledb_current_domain_type_t type;
     auto& ctx = ctx_.get();
-    // ctx.handle_error(); TODO
-    return to_status(type);
+    ctx.handle_error(
+      tiledb_current_domain_get_type(current_domain_.get(), &type);
+    return type;
   }
 
   /**
-   * Set the NDRectangle
+   *Set a N-dimensional rectangle representation on a current domain.
+   * Error if the current domain passed is not empty.
    *
-   * @param ndrect The ndrect to be used.
+   * @param ndrect The N-dimensional rectangle to be used.
    */
-  CurrentDomain& set_ndrect(const NDRectangle& ndrect) {
+  CurrentDomain& set_ndrectangle(const NDRectangle& ndrect) {
     auto& ctx = ctx_.get();
-    // ctx.handle_error(); TODO
+    ctx.handle_error(tiledb_current_domain_set_ndrectangle(
+        current_domain_.get(), ndrect.ptr().get()));
 
     return *this;
   }
 
   /**
-   * Get the NDRectangle
-   * @return NDRectangle
+   * Get the N-dimensional rectangle associated with the current domain object,
+   * error if the current domain is empty or a different representation is set.
+   *
+   *  @return The N-dimensional rectangle of the current domain
    */
   NDRectangle ndrectangle() const {
     tiledb_ndrectangle_t* nd;
-    // TODO
+    ctx.handle_error(
+        tiledb_current_domain_get_ndrectangle(current_domain_.get(), &nd));
     return NDRectangle(&nd);
   }
 
   /**
-   * Returns `true` if the current_domain is empty
+   * Check if the current_domain is empty
    */
   bool is_empty() const {
     int ret;
     auto& ctx = ctx_.get();
-    // ctx.handle_error(); TODO
+    ctx.handle_error(
+        tiledb_current_domain_get_is_empty(current_domain_.get(), &ret));
     return (bool)ret;
   }
 
@@ -170,12 +167,8 @@ class CurrentDomain {
 /** Get a string representation of a current_domain status for an output stream.
  */
 inline std::ostream&
-operator<<(std::ostream& os, const CurrentDomainType& type) {
-  switch (type) {
-    case NDRECTANGLE:
-      os << "NDRECTANGLE";
-      break;
-  }
+operator<<(std::ostream& os, const CurrentDomain& d) {
+  os << "CurrentDomain<" << " " << d.ndrectangle() << " >";
   return os;
 }
 
