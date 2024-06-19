@@ -151,6 +151,11 @@ Status RestClient::init(
 
   load_headers(*config_);
 
+  RETURN_NOT_OK(config_->get("rest.payer_namespace", &c_str));
+  if (c_str != nullptr) {
+    extra_headers_["X-Payer"] = std::string(c_str);
+  }
+
   return Status::Ok();
 }
 
