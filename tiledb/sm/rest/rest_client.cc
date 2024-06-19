@@ -78,6 +78,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class RestClientException : public StatusException {
+ public:
+  explicit RestClientException(const std::string& message)
+      : StatusException("RestClient", message) {
+  }
+};
+
 class RestClientDisabledException : public RestClientException {
  public:
   explicit RestClientDisabledException()
