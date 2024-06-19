@@ -163,8 +163,8 @@ class ArraySchemaExperimental {
    *
    * @return Copy of the schema's currentDomain
    */
-  CurrentDomain current_domain(
-      const Context& ctx, const ArraySchema& array_schema) const {
+  static CurrentDomain current_domain(
+      const Context& ctx, const ArraySchema& array_schema) {
     tiledb_current_domain_t* current_domain;
     ctx.handle_error(tiledb_array_schema_get_current_domain(
         ctx.ptr().get(), array_schema.ptr().get(), &current_domain));
@@ -176,15 +176,13 @@ class ArraySchemaExperimental {
    * Sets the currentDomain.
    *
    * @param current_domain The currentDomain to use
-   * @return Reference to this `ArraySchema` instance.
    */
-  ArraySchemaExperimental& set_current_domain(
+  static void set_current_domain(
       const Context& ctx,
       const ArraySchema& array_schema,
       const CurrentDomain& current_domain) {
     ctx.handle_error(tiledb_array_schema_set_current_domain(
         ctx.ptr().get(), array_schema.ptr().get(), current_domain.ptr().get()));
-    return *this;
   }
 
   /**

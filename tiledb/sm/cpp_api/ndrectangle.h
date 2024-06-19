@@ -69,8 +69,7 @@ class NDRectangle {
   /* ********************************* */
 
   explicit NDRectangle(const tiledb::Context& ctx, const tiledb::Domain& domain)
-      : ctx_(ctx)
-      , domain_(domain) {
+      : ctx_(ctx) {
     tiledb_ndrectangle_t* capi_ndrect;
     ctx.handle_error(tiledb_ndrectangle_alloc(
         ctx.ptr().get(), domain.ptr().get(), &capi_ndrect));
@@ -85,12 +84,8 @@ class NDRectangle {
    * @param schema C API NDRectangle object
    */
 
-  NDRectangle(
-      const tiledb::Context& ctx,
-      tiledb_ndrectangle_t* ndrect,
-      const tiledb::Domain& domain)
-      : ctx_(ctx)
-      , domain_(domain) {
+  NDRectangle(const tiledb::Context& ctx, tiledb_ndrectangle_t* ndrect)
+      : ctx_(ctx) {
     ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(ndrect, deleter_);
   }
 
@@ -125,7 +120,6 @@ class NDRectangle {
    */
   template <class T>
   NDRectangle& set_range(const std::string& dim_name, T start, T end) {
-    impl::type_check<T>(domain_.dimension(dim_name).type());
     auto& ctx = ctx_.get();
 
     // Create the tiledb_range_t struct and fill it
@@ -164,7 +158,6 @@ class NDRectangle {
    */
   template <class T>
   NDRectangle& set_range(uint32_t dim_idx, T start, T end) {
-    impl::type_check<T>(domain_.dimension(dim_idx).type());
     auto& ctx = ctx_.get();
     // Create the tiledb_range_t struct and fill it
     tiledb_range_t range;
@@ -192,7 +185,6 @@ class NDRectangle {
    */
   template <class T>
   std::array<T, 2> range(const std::string& dim_name) {
-    impl::type_check<T>(domain_.dimension(dim_name).type());
     auto& ctx = ctx_.get();
     tiledb_range_t range;
     ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
@@ -213,7 +205,6 @@ class NDRectangle {
    */
   template <class T>
   std::array<T, 2> range(unsigned dim_idx) {
-    impl::type_check<T>(domain_.dimension(dim_idx).type());
     auto& ctx = ctx_.get();
     tiledb_range_t range;
     ctx.handle_error(tiledb_ndrectangle_get_range(
@@ -228,10 +219,10 @@ class NDRectangle {
     return ndrect_;
   }
 
-  // Getter for domain_
-  tiledb::Domain domain() const {
-    return domain_;
-  }
+  // // Getter for domain_
+  // tiledb::Domain domain() const {
+  //   return domain_;
+  // }
 
  private:
   /* ********************************* */
@@ -240,9 +231,6 @@ class NDRectangle {
 
   /** The TileDB context. */
   std::reference_wrapper<const Context> ctx_;
-
-  /** The domain of the schema the query targets at */
-  Domain domain_;
 
   /** Pointer to the C TileDB domain object. */
   std::shared_ptr<tiledb_ndrectangle_t> ndrect_;
