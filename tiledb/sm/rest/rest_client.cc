@@ -1674,7 +1674,6 @@ void RestClient::load_headers(const Config& cfg) {
     }
     extra_headers_[key] = iter.value();
   }
-  return ret;
 }
 
 #else
