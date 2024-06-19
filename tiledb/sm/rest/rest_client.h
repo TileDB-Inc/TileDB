@@ -53,7 +53,6 @@ class FragmentInfo;
 class Query;
 class MemoryTracker;
 class QueryPlan;
-class WhiteboxRestClient;
 
 enum class SerializationType : uint8_t;
 
