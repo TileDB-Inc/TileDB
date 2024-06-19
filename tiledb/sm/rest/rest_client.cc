@@ -60,6 +60,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/constants.h"
@@ -76,6 +77,21 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class RestClientException : public StatusException {
+ public:
+  explicit RestClientException(const std::string& message)
+      : StatusException("RestClient", message) {
+  }
+};
+
+class RestClientDisabledException : public RestClientException {
+ public:
+  explicit RestClientDisabledException()
+      : RestClientException(
+            "Cannot use rest client; serialization not enabled.") {
+  }
+};
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -129,6 +145,8 @@ Status RestClient::init(
   RETURN_NOT_OK(config_->get("rest.server_serialization_format", &c_str));
   if (c_str != nullptr)
     RETURN_NOT_OK(serialization_type_enum(c_str, &serialization_type_));
+
+  load_headers(*config_);
 
   return Status::Ok();
 }
@@ -1640,6 +1658,17 @@ RestClient::post_consolidation_plan_from_rest(
       serialization_type_, returned_data);
 }
 
+void RestClient::load_headers(const Config& cfg) {
+  for (auto iter = ConfigIter(cfg, constants::rest_header_prefix); !iter.end();
+       iter.next()) {
+    auto key = iter.param();
+    if (key.size() == 0) {
+      continue;
+    }
+    extra_headers_[key] = iter.value();
+  }
+}
+
 #else
 
 RestClient::RestClient() {
@@ -1836,6 +1865,10 @@ RestClient::post_consolidation_plan_from_rest(
     const URI&, const Config&, uint64_t) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+void RestClient::load_headers(const Config&) {
+  throw RestClientDisabledException();
 }
 
 #endif  // TILEDB_SERIALIZATION

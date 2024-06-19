@@ -419,6 +419,13 @@ class RestClient {
   std::vector<std::vector<std::string>> post_consolidation_plan_from_rest(
       const URI& uri, const Config& config, uint64_t fragment_size);
 
+  /**
+   * Constant accessor to `extra_headers_` member variable.
+   */
+  const std::unordered_map<std::string, std::string>& extra_headers() const {
+    return extra_headers_;
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -567,6 +574,9 @@ class RestClient {
    * @return Status
    */
   Status ensure_json_null_delimited_string(Buffer* buffer);
+
+  /** Load all custom headers from the given config.  */
+  void load_headers(const Config& cfg);
 };
 
 }  // namespace sm
