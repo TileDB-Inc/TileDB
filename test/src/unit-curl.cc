@@ -128,3 +128,19 @@ TEST_CASE(
               .ok());
   CHECK(rest_client.rest_server() == "http://localhost:8080");
 }
+
+TEST_CASE(
+    "RestClient: Ensure custom headers are set",
+    "[rest-client][custom-headers]") {
+  tiledb::sm::Config cfg;
+  REQUIRE(cfg.set("rest.custom_headers.abc", "def").ok());
+  REQUIRE(cfg.set("rest.custom_headers.ghi", "jkl").ok());
+
+  ContextResources resources(
+      cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
+  // We copy because the [] operator is not const-qualified.
+  auto extra_headers = resources.rest_client()->extra_headers();
+  CHECK(extra_headers.size() == 2);
+  CHECK(extra_headers["abc"] == "def");
+  CHECK(extra_headers["ghi"] == "jkl");
+}
