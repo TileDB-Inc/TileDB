@@ -69,6 +69,13 @@ class ArrayDimensionLabelQueries {
   /**
    * Constructor.
    *
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Query class on StorageManager.
+   * For now, we still need to keep the storage_manager argument, but once the
+   * dependency is gone, the signature will be
+   * ArrayDimensionLabelQueries(ContextResources&, Array*, ...).
+   *
+   * @param resources The context resources.
    * @param storage_manager Storage manager object.
    * @param array Parent array the dimension labels are defined on.
    * @param subarray Subarray for the query on the parent array.
@@ -78,6 +85,7 @@ class ArrayDimensionLabelQueries {
    * @param fragment_name Optional fragment name for writing fragments.
    */
   ArrayDimensionLabelQueries(
+      ContextResources& resources,
       StorageManager* storage_manager,
       Array* array,
       const Subarray& subarray,

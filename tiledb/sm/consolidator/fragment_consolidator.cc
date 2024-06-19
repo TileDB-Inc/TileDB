@@ -668,7 +668,12 @@ Status FragmentConsolidator::create_queries(
 
   // Create read query
   query_r = tdb_unique_ptr<Query>(tdb_new(
-      Query, storage_manager_, array_for_reads, nullopt, read_memory_budget));
+      Query,
+      resources_,
+      storage_manager_,
+      array_for_reads,
+      nullopt,
+      read_memory_budget));
   throw_if_not_ok(query_r->set_layout(Layout::GLOBAL_ORDER));
 
   // Dense consolidation will do a tile aligned read.
@@ -695,6 +700,7 @@ Status FragmentConsolidator::create_queries(
   // Create write query
   query_w = tdb_unique_ptr<Query>(tdb_new(
       Query,
+      resources_,
       storage_manager_,
       array_for_writes,
       fragment_name,
