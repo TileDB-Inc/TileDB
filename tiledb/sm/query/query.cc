@@ -1847,6 +1847,18 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       all_dense &= frag_md->dense();
     }
 
+    // We are going to deprecate dense arrays with sparse fragments in 2.27 but
+    // log a warning for now.
+    if (array_schema_->dense() && !all_dense) {
+      LOG_WARN(
+          "This dense array contains sparse fragments. Support for reading "
+          "sparse fragments in dense arrays will be removed in TileDB version "
+          "2.27 to be released in September 2024. To make sure this array "
+          "continues to work after an upgrade to version 2.27 or later, please "
+          "consolidate the sparse fragments using a TileDB version 2.26 or "
+          "earlier.");
+    }
+
     if (is_dimension_label_ordered_read_) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedDimLabelReader,
