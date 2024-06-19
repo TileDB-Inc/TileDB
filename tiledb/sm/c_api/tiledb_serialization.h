@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * This file declares the TileDB C API for serialization.
+ * APIs defined in this header are currently unstable and subject to breaking
+ * changes between minor releases.
  */
 
 #ifndef TILEDB_SERIALIZATION_H
@@ -106,6 +108,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array(
  * @param client_side Allows to specify different behavior depending on who is
  * serializing, the client (1) or the Cloud server (0). This is sometimes needed
  * since they are both using the same Core library APIs for serialization.
+ * @param array_uri uri of the array to deserialize.
  * @param array Will be set to a newly allocated array.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -114,6 +117,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
+    const char* array_uri,
     tiledb_array_t** array) TILEDB_NOEXCEPT;
 
 /**
