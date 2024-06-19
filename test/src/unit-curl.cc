@@ -138,11 +138,10 @@ TEST_CASE(
 
   ContextResources resources(
       cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
-  // We copy because the [] operator is not const-qualified.
-  auto extra_headers = resources.rest_client()->extra_headers();
+  const auto& extra_headers = resources.rest_client()->extra_headers();
   CHECK(extra_headers.size() == 2);
-  CHECK(extra_headers["abc"] == "def");
-  CHECK(extra_headers["ghi"] == "jkl");
+  CHECK(extra_headers.at("abc") == "def");
+  CHECK(extra_headers.at("ghi") == "jkl");
 }
 
 TEST_CASE(
@@ -153,6 +152,6 @@ TEST_CASE(
 
   ContextResources resources(
       cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
-  auto extra_headers = resources.rest_client()->extra_headers();
-  CHECK(extra_headers["X-Payer"] == "foo");
+  const auto& extra_headers = resources.rest_client()->extra_headers();
+  CHECK(extra_headers.at("X-Payer") == "foo");
 }
