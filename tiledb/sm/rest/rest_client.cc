@@ -149,7 +149,7 @@ Status RestClient::init(
   RETURN_NOT_OK(config_->get<bool>(
       "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
 
-  extra_headers_ = load_headers(*config_);
+  load_headers(*config_);
 
   return Status::Ok();
 }
@@ -1664,8 +1664,7 @@ RestClient::post_consolidation_plan_from_rest(
       serialization_type_, returned_data);
 }
 
-std::unordered_map<std::string, std::string> RestClient::load_headers(
-    const Config& cfg) {
+void RestClient::load_headers(const Config& cfg) {
   std::unordered_map<std::string, std::string> ret;
   for (auto iter = ConfigIter(cfg, constants::rest_header_prefix); !iter.end();
        iter.next()) {
@@ -1673,7 +1672,7 @@ std::unordered_map<std::string, std::string> RestClient::load_headers(
     if (key.size() == 0) {
       continue;
     }
-    ret[key] = iter.value();
+    extra_headers_[key] = iter.value();
   }
   return ret;
 }
@@ -1849,8 +1848,7 @@ RestClient::post_consolidation_plan_from_rest(
   throw RestClientDisabledException();
 }
 
-std::unordered_map<std::string, std::string> RestClient::load_headers(
-    const Config&) {
+void RestClient::load_headers(const Config&) {
   throw RestClientDisabledException();
 }
 

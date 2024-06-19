@@ -58,11 +58,6 @@ class WhiteboxRestClient;
 enum class SerializationType : uint8_t;
 
 class RestClient {
-  /**
-   * WhiteboxRestClient makes available internals of RestClient for testing.
-   */
-  friend class WhiteboxRestClient;
-
  public:
   /** Constructor. */
   RestClient();
@@ -572,10 +567,14 @@ class RestClient {
    * @return Status
    */
   Status ensure_json_null_delimited_string(Buffer* buffer);
-
+  /**
+   * Constant accessor to `extra_headers_` member variable.
+   */
+  const std::unordered_map<std::string, std::string>& extra_headers() const {
+    return extra_headers_;
+  }
   /** Load all custom headers from the given config.  */
-  static std::unordered_map<std::string, std::string> load_headers(
-      const Config& cfg);
+  void load_headers(const Config& cfg);
 };
 
 }  // namespace tiledb::sm
