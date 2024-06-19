@@ -126,7 +126,8 @@ TEST_CASE_METHOD(
   CHECK(!cd.is_empty());
 
   // Check if ranges are the same
-  CHECK(cd.ndrectangle().range<int>(0) == ndrect.range<int>(0));
+  CHECK(cd.ndrectangle().range<int>(0)[0] == ndrect.range<int>(0)[0]);
+  CHECK(cd.ndrectangle().range<int>(0)[1] == ndrect.range<int>(0)[1]);
 
   CHECK_THROWS(cd.ndrectangle().range<int>(1));
 }
@@ -197,7 +198,8 @@ TEST_CASE_METHOD(
   auto n = cd.ndrectangle();
 
   // Check if ranges are the same
-  CHECK(n.range<int>(0) == ndrect_two.range<int>(0));
+  CHECK(n.range<int>(0)[0] == ndrect_two.range<int>(0)[0]);
+  CHECK(n.range<int>(0)[1] == ndrect_two.range<int>(0)[1]);
 
   // Clean up.
   array.close();

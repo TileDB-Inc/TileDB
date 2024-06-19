@@ -55,18 +55,6 @@
 #include <vector>
 
 namespace tiledb {
-
-/**
- *
- * @details
- * See examples for more usage details.
- *
- * **Example:**
- *
- * @code{.cpp}
- *
- * @endcode
- */
 class CurrentDomain {
  public:
   /* ********************************* */
@@ -86,6 +74,12 @@ class CurrentDomain {
     current_domain_ = std::shared_ptr<tiledb_current_domain_t>(cd, deleter_);
   }
 
+  /**
+   * Creates a TileDB current_domain object.
+   *
+   * @param ctx TileDB context
+   * @param cd The TileDB currentDomain C api pointer
+   */
   CurrentDomain(const tiledb::Context& ctx, tiledb_current_domain_t* cd)
       : ctx_(ctx) {
     current_domain_ = std::shared_ptr<tiledb_current_domain_t>(cd, deleter_);
@@ -100,12 +94,18 @@ class CurrentDomain {
   /*                API                */
   /* ********************************* */
 
-  /** Returns a shared pointer to the C TileDB current_domain object. */
+  /** Returns a shared pointer to the C TileDB current_domain object.
+   *
+   * @return The C API pointer
+   */
   std::shared_ptr<tiledb_current_domain_t> ptr() const {
     return current_domain_;
   }
 
-  /** Returns the currentDomain type. */
+  /** Returns the currentDomain type.
+   *
+   * @return The currentDomain type.
+   */
   tiledb_current_domain_type_t type() const {
     tiledb_current_domain_type_t type;
     auto& ctx = ctx_.get();
@@ -119,6 +119,7 @@ class CurrentDomain {
    * Error if the current domain passed is not empty.
    *
    * @param ndrect The N-dimensional rectangle to be used.
+   * @return Reference to this `currentDomain` instance.
    */
   CurrentDomain& set_ndrectangle(const NDRectangle& ndrect) {
     auto& ctx = ctx_.get();
@@ -132,7 +133,7 @@ class CurrentDomain {
    * Get the N-dimensional rectangle associated with the current domain object,
    * error if the current domain is empty or a different representation is set.
    *
-   *  @return The N-dimensional rectangle of the current domain
+   * @return The N-dimensional rectangle of the current domain
    */
   NDRectangle ndrectangle() const {
     tiledb_ndrectangle_t* nd;
@@ -144,13 +145,15 @@ class CurrentDomain {
 
   /**
    * Check if the current_domain is empty
+   *
+   * @return True if the currentDomain is empty
    */
   bool is_empty() const {
     uint32_t ret;
     auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_current_domain_get_is_empty(current_domain_.get(), &ret));
-    return (bool)ret;
+    return static_cast<bool>(ret);
   }
 
  private:

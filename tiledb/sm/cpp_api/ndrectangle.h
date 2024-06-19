@@ -46,28 +46,18 @@
 
 namespace tiledb {
 
-/**
- * Represents an NDRectangle. This is similar to the non empty domain API with
- *the exception is doesn’t differentiate between fixed and var size. It will be
- *used in the future to replace the return value of the non empty domain API.
- *Note that an NDRectangle object should have all dimensions specified before
- *it can be used in any call to set an ND rectangle
- *
- * @details
- * **Example:**
- *
- * @code{.cpp}
- *
- * TODO
- * @endcode
- *
- **/
 class NDRectangle {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /**
+   * Constructor
+   *
+   * @param ctx The TileDB context
+   * @param domain The input Domain
+   */
   explicit NDRectangle(const tiledb::Context& ctx, const tiledb::Domain& domain)
       : ctx_(ctx) {
     tiledb_ndrectangle_t* capi_ndrect;
@@ -77,13 +67,13 @@ class NDRectangle {
   }
 
   /**
-   * Loads the NDRectangle of an existing currentDomain with the input C
-   * NDRectangle object.
+   * Constructor
    *
-   * @param ctx TileDB context
-   * @param schema C API NDRectangle object
+   * @param ctx The TileDB context
+   * @param ndrect The NDRectangle C API pointer
+   *
+   * @note The object will manage the lifetime of tiledb_ndrectangle_t*
    */
-
   NDRectangle(const tiledb::Context& ctx, tiledb_ndrectangle_t* ndrect)
       : ctx_(ctx) {
     ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(ndrect, deleter_);
