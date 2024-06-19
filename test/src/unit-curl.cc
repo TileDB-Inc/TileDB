@@ -43,6 +43,14 @@
 
 using namespace tiledb::sm;
 
+class tiledb::sm::WhiteboxRestClient {
+ public:
+  static std::unordered_map<std::string, std::string> get_extra_headers(
+      const RestClient& rest_client) {
+    return rest_client.extra_headers_;
+  }
+};
+
 TEST_CASE("CURL: Test curl's header parsing callback", "[curl]") {
   // Initialize data that in real life scenario would be initialized by
   // RestClient
@@ -138,8 +146,8 @@ TEST_CASE(
 
   ContextResources resources(
       cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
-  // We copy because the [] operator is not const-qualified.
-  auto extra_headers = resources.rest_client()->extra_headers();
+  auto extra_headers =
+      WhiteboxRestClient::get_extra_headers(*resources.rest_client());
   CHECK(extra_headers.size() == 2);
   CHECK(extra_headers["abc"] == "def");
   CHECK(extra_headers["ghi"] == "jkl");

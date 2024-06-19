@@ -53,10 +53,16 @@ class FragmentInfo;
 class Query;
 class MemoryTracker;
 class QueryPlan;
+class WhiteboxRestClient;
 
 enum class SerializationType : uint8_t;
 
 class RestClient {
+  /**
+   * WhiteboxRestClient makes available internals of RestClient for testing.
+   */
+  friend class WhiteboxRestClient;
+
  public:
   /** Constructor. */
   RestClient();
