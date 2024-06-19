@@ -567,12 +567,14 @@ class RestClient {
    * @return Status
    */
   Status ensure_json_null_delimited_string(Buffer* buffer);
+
   /**
    * Constant accessor to `extra_headers_` member variable.
    */
   const std::unordered_map<std::string, std::string>& extra_headers() const {
     return extra_headers_;
   }
+
   /** Load all custom headers from the given config.  */
   void load_headers(const Config& cfg);
 };
