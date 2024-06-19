@@ -234,21 +234,6 @@ class NDRectangle {
   impl::Deleter deleter_;
 };
 
-/* ********************************* */
-/*               MISC                */
-/* ********************************* */
-
-/** Get a string representation of the domain for an output stream. */
-inline std::ostream& operator<<(std::ostream& os, const NDRectangle& nd) {
-  (void)nd;
-  os << "NDRectangle<";
-  // for (const auto& dimension : domain_.dimensions()) {
-  //   os << " " << dimension;
-  // }
-  os << '>';
-  return os;
-}
-
 }  // namespace tiledb
 
 #endif  // TILEDB_CPP_API_NDRECTANGLE_H
