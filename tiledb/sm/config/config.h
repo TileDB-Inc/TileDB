@@ -555,6 +555,9 @@ class Config {
   /** The S3 KMS key id for KMS server-side-encryption. */
   static const std::string VFS_S3_SSE_KMS_KEY_ID;
 
+  /** The S3 storage class to upload objects to. */
+  static const std::string VFS_S3_STORAGE_CLASS;
+
   /** Request timeout in milliseconds. */
   static const std::string VFS_S3_REQUEST_TIMEOUT_MS;
 
