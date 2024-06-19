@@ -1665,7 +1665,6 @@ RestClient::post_consolidation_plan_from_rest(
 }
 
 void RestClient::load_headers(const Config& cfg) {
-  std::unordered_map<std::string, std::string> ret;
   for (auto iter = ConfigIter(cfg, constants::rest_header_prefix); !iter.end();
        iter.next()) {
     auto key = iter.param();
