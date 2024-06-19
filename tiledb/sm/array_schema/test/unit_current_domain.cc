@@ -514,6 +514,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
   auto orig_schema = opened_array->array_schema_latest_ptr();
+  std::cout << "First schema URI: " << orig_schema->array_uri().c_str()
+            << std::endl;
 
   auto current_domain_expanded =
       this->create_current_domain({r_expanded, r_expanded}, orig_schema);
@@ -529,6 +531,17 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   // Read it back
   auto new_schema = this->get_array_schema_latest();
+  std::cout << "New schema URI: " << new_schema->array_uri().c_str()
+            << std::endl;
+
+  if constexpr (!std::is_same_v<TestType, std::string>) {
+    auto nd_ranges =
+        new_schema->get_current_domain()->ndrectangle()->get_ndranges();
+    std::cout << "RANGE 0: " << nd_ranges[0].template end_as<int32_t>()
+              << std::endl;
+    std::cout << "RANGE 1: " << nd_ranges[1].template end_as<int32_t>()
+              << std::endl;
+  }
 
   REQUIRE(
       new_schema->get_current_domain()->ndrectangle()->get_ndranges() ==
