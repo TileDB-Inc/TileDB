@@ -360,6 +360,11 @@ class Tile : public TileBase {
  * Tile object for write operations.
  */
 class WriterTile : public TileBase {
+  /**
+   * Allow access to max_tile_chunk_size_ for testing.
+   */
+  friend class WhiteboxWriterTile;
+
  public:
   /**
    * returns a Tile initialized with parameters commonly used for
@@ -380,13 +385,6 @@ class WriterTile : public TileBase {
    */
   static uint32_t compute_chunk_size(
       const uint64_t tile_size, const uint64_t tile_cell_size);
-
-  /**
-   * Override max_tile_chunk_size_ used to process tile chunks in parallel.
-   *
-   * @param max_tile_chunk_size The maximum chunk size.
-   */
-  static void set_max_tile_chunk_size(uint64_t max_tile_chunk_size);
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

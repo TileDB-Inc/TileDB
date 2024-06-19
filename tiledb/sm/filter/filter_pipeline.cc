@@ -45,6 +45,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
+#include "webp_filter.h"
 
 using namespace tiledb::common;
 
@@ -644,6 +645,8 @@ bool FilterPipeline::use_tile_chunking(
     } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
+  } else if (has_filter(FilterType::FILTER_WEBP)) {
+    return false;
   }
 
   return true;
