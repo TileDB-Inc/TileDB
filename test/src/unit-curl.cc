@@ -144,3 +144,16 @@ TEST_CASE(
   CHECK(extra_headers["abc"] == "def");
   CHECK(extra_headers["ghi"] == "jkl");
 }
+
+TEST_CASE(
+    "RestClient: Ensure payer namespace is set",
+    "[rest-client][payer-namespace]") {
+  tiledb::sm::Config cfg;
+  REQUIRE(cfg.set("rest.payer_namespace", "foo").ok());
+
+  ContextResources resources(
+      cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
+  auto extra_headers = resources.rest_client()->extra_headers();
+  CHECK(extra_headers.size() == 1);
+  CHECK(extra_headers["X-Payer"] == "foo");
+}
