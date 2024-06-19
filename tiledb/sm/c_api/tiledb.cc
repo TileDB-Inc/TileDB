@@ -705,8 +705,7 @@ int32_t tiledb_array_schema_dump(
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (out == nullptr)
-    return TILEDB_ERR;
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
 
@@ -725,8 +724,9 @@ int32_t tiledb_array_schema_dump_str(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_string_t** out) {
-  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
   ensure_output_pointer_is_valid(out);
   std::stringstream ss;
   ss << *array_schema->array_schema_;

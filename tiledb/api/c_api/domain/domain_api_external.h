@@ -250,7 +250,7 @@ TILEDB_EXPORT int32_t tiledb_domain_dump(
 TILEDB_EXPORT int32_t tiledb_domain_dump_str(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
-    tiledb_string_t** out) TILEDB_NOEXCEPT;
+    tiledb_string_handle_t** out) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

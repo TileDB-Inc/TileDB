@@ -32,10 +32,7 @@
 
 #include "../../c_api_support/c_api_support.h"
 #include "../filter_list/filter_list_api_internal.h"
-#include "../string/string_api_external.h"
-#include "dimension_api_external.h"
 #include "dimension_api_internal.h"
-#include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
 #include "tiledb/common/memory_tracker.h"
 
@@ -140,9 +137,7 @@ int32_t tiledb_dimension_get_tile_extent(
 
 int32_t tiledb_dimension_dump(const tiledb_dimension_t* dim, FILE* out) {
   ensure_dimension_is_valid(dim);
-
-  if (out == nullptr)
-    return TILEDB_ERR;
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
   ss << *dim;

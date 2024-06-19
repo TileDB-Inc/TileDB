@@ -28,7 +28,7 @@
 
 #include "../../c_api_support/c_api_support.h"
 #include "../dimension/dimension_api_internal.h"
-#include "../string/string_api_external.h"
+#include "../string/string_api_internal.h"
 #include "domain_api_external.h"
 #include "domain_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
@@ -144,9 +144,7 @@ int32_t tiledb_domain_has_dimension(
 
 int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
   ensure_domain_is_valid(domain);
-
-  if (out == nullptr)
-    return TILEDB_ERR;
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
   ss << *domain;
@@ -159,7 +157,7 @@ int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
 }
 
 int32_t tiledb_domain_dump_str(
-    const tiledb_domain_t* domain, tiledb_string_t** out) {
+    const tiledb_domain_t* domain, tiledb_string_handle_t** out) {
   ensure_domain_is_valid(domain);
   ensure_output_pointer_is_valid(out);
 
@@ -254,7 +252,7 @@ CAPI_INTERFACE(
     domain_dump_str,
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
-    tiledb_string_t** out) {
+    tiledb_string_handle_t** out) {
   return api_entry_context<tiledb::api::tiledb_domain_dump_str>(
       ctx, domain, out);
 }

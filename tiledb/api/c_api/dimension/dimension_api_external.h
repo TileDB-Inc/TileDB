@@ -36,7 +36,6 @@
 #include "../api_external_common.h"
 #include "../datatype/datatype_api_external.h"
 #include "../filter_list/filter_list_api_external.h"
-#include "../string/string_api_external.h"
 
 // For the `FILE *` argument in `tiledb_dimension_dump`
 #include <stdio.h>

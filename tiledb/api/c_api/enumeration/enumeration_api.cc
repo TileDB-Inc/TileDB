@@ -176,12 +176,10 @@ capi_return_t tiledb_enumeration_get_offsets(
 capi_return_t tiledb_enumeration_dump(
     tiledb_enumeration_t* enumeration, FILE* out) {
   ensure_enumeration_is_valid(enumeration);
-
-  if (out == nullptr)
-    return TILEDB_ERR;
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
-  ss << *enumeration->copy();
+  ss << *enumeration;
   size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
   if (r != ss.str().size()) {
     throw CAPIException(
@@ -330,8 +328,8 @@ CAPI_INTERFACE(
 CAPI_INTERFACE(
     enumeration_dump_str,
     tiledb_ctx_t* ctx,
-    tiledb_enumeration_t* enumeration,
-    tiledb_string_t** out) {
+    tiledb_enumeration_handle_t* enumeration,
+    tiledb_string_handle_t** out) {
   return api_entry_context<tiledb::api::tiledb_enumeration_dump_str>(
       ctx, enumeration, out);
 }
