@@ -78,6 +78,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class RestClientDisabledException : public RestClientException {
+ public:
+  explicit RestClientDisabledException()
+      : RestClientException(
+            "Cannot use rest client; serialization not enabled.") {
+  }
+};
+
 #ifdef TILEDB_SERIALIZATION
 
 RestClient::RestClient()
