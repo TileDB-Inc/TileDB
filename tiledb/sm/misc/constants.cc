@@ -773,6 +773,9 @@ const unsigned concurrent_attr_reads = 2;
 /** The redirection header key in REST response. */
 extern const std::string redirection_header_key = "location";
 
+/** The config key prefix for REST custom headers. */
+const std::string rest_header_prefix = "rest.custom_headers.";
+
 /** String describing MIME_AUTODETECT. */
 const std::string mime_autodetect_str = "AUTODETECT";
 
