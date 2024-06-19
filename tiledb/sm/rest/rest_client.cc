@@ -1667,8 +1667,8 @@ RestClient::post_consolidation_plan_from_rest(
 std::unordered_map<std::string, std::string> RestClient::load_headers(
     const Config& cfg) {
   std::unordered_map<std::string, std::string> ret;
-  auto iter = ConfigIter(cfg, constants::rest_header_prefix);
-  for (; !iter.end(); iter.next()) {
+  for (auto iter = ConfigIter(cfg, constants::rest_header_prefix); !iter.end();
+       iter.next()) {
     auto key = iter.param();
     if (key.size() == 0) {
       continue;
@@ -1850,7 +1850,7 @@ RestClient::post_consolidation_plan_from_rest(
 }
 
 std::unordered_map<std::string, std::string> RestClient::load_headers(
-    const Config& cfg) {
+    const Config&) {
   throw RestClientDisabledException();
 }
 
