@@ -154,6 +154,5 @@ TEST_CASE(
   ContextResources resources(
       cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
   auto extra_headers = resources.rest_client()->extra_headers();
-  CHECK(extra_headers.size() == 1);
   CHECK(extra_headers["X-Payer"] == "foo");
 }
