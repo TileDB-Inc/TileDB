@@ -219,11 +219,6 @@ class NDRectangle {
     return ndrect_;
   }
 
-  // // Getter for domain_
-  // tiledb::Domain domain() const {
-  //   return domain_;
-  // }
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
