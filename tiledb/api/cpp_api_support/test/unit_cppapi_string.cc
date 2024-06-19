@@ -71,6 +71,7 @@ TEST_CASE(
   REQUIRE(result == test_string);
 }
 
+#ifndef HAVE_SANITIZER
 TEST_CASE(
     "CAPIString: Test that accessing freed handle fails",
     "[capi_string][freed_handle]") {
@@ -82,6 +83,7 @@ TEST_CASE(
   size_t length = 0;
   REQUIRE(tiledb_string_view(handle_copy, &chars, &length) == TILEDB_ERR);
 }
+#endif
 
 TEST_CASE(
     "CAPIString: Test convert_to_string with null handle", "[capi_string]") {

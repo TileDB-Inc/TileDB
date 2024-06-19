@@ -1,5 +1,5 @@
 /**
- * @file unit-current_domain.cc
+ * @file unit_current_domain.cc
  *
  * @section LICENSE
  *
