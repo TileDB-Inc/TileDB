@@ -53,17 +53,14 @@ TEST_CASE_METHOD(
   domain.add_dimension(d1);
   domain.add_dimension(d2);
 
-  // Create NDRectangle
+  // Create an NDRectangle and set ranges
   tiledb::NDRectangle ndrect(ctx_, domain);
-
-  // add ranges
   int range_one[] = {10, 20};
-  ndrect.set_range(0, range_one[0], range_one[1]);
-
   int range_two[] = {30, 40};
+  ndrect.set_range(0, range_one[0], range_one[1]);
   ndrect.set_range(1, range_two[0], range_two[1]);
 
-  // Get ranges
+  // Get and check ranges
   auto range = ndrect.range<int>(0);
   CHECK(range[0] == 10);
   CHECK(range[1] == 20);
@@ -71,17 +68,15 @@ TEST_CASE_METHOD(
   CHECK(range[0] == 30);
   CHECK(range[1] == 40);
 
-  // Create a currentDomain
+  // Create a currentDomain and set the NDRectangle
   tiledb::CurrentDomain current_domain(ctx_);
-
-  // set the NDRectangle
   current_domain.set_ndrectangle(ndrect);
 
   CHECK_FALSE(current_domain.is_empty());
 
   auto rect = current_domain.ndrectangle();
 
-  // Check ranges
+  // Get and check ranges
   range = rect.range<int>(0);
   CHECK(range[0] == 10);
   CHECK(range[1] == 20);

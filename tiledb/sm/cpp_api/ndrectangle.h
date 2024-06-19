@@ -89,9 +89,8 @@ class NDRectangle {
   /* ********************************* */
 
   /**
-   * Adds an 1D range along a dimension name, in the form
-   * (start, end). The datatype of the range
-   * must be the same as the dimension datatype.
+   * Adds an 1D range along a dimension name, in the form (start, end). The
+   * datatype of the range must be the same as the dimension datatype.
    *
    * **Example:**
    *
@@ -127,9 +126,8 @@ class NDRectangle {
   }
 
   /**
-   * Adds an 1D range along a dimension index, in the form
-   * (start, end). The datatype of the range
-   * must be the same as the dimension datatype.
+   * Adds an 1D range along a dimension index, in the form (start, end). The
+   * datatype of the range must be the same as the dimension datatype.
    *
    * **Example:**
    *
@@ -165,9 +163,8 @@ class NDRectangle {
   }
 
   /**
-   * Retrieves a range for a given dimension name.
-   * The template datatype must be the same as that of the
-   * underlying array.
+   * Retrieves a range for a given dimension name. The template datatype must be
+   * the same as that of the underlying array.
    *
    * @tparam T The dimension datatype.
    * @param dim_name The dimension name.
@@ -185,9 +182,8 @@ class NDRectangle {
   }
 
   /**
-   * Retrieves a range for a given dimension index.
-   * The template datatype must be the same as that of the
-   * underlying array.
+   * Retrieves a range for a given dimension index. The template datatype must
+   * be the same as that of the underlying array.
    *
    * @tparam T The dimension datatype.
    * @param dim_idx The dimension index.
@@ -204,7 +200,11 @@ class NDRectangle {
     return ret;
   }
 
-  /** Returns the C TileDB ndrect object. */
+  /**
+   * Returns the C TileDB ndrect object.
+   *
+   * @return The C pointer to the NDRectangle object
+   * */
   std::shared_ptr<tiledb_ndrectangle_t> ptr() const {
     return ndrect_;
   }

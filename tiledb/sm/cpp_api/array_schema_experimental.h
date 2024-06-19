@@ -161,7 +161,9 @@ class ArraySchemaExperimental {
    * Returns a copy of the schema's array currentDomain. To change the
    * currentDomain, use `set_current_domain()`.
    *
-   * @return Copy of the schema's currentDomain
+   * @param ctx The TileDB context.
+   * @param array_schema The array schema.
+   * @return Copy of the schema's currentDomain.
    */
   static CurrentDomain current_domain(
       const Context& ctx, const ArraySchema& array_schema) {
@@ -175,7 +177,9 @@ class ArraySchemaExperimental {
   /**
    * Sets the currentDomain.
    *
-   * @param current_domain The currentDomain to use
+   * @param ctx The TileDB context.
+   * @param array_schema The array schema.
+   * @param current_domain The currentDomain to use.
    */
   static void set_current_domain(
       const Context& ctx,

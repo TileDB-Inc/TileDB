@@ -94,7 +94,8 @@ class CurrentDomain {
   /*                API                */
   /* ********************************* */
 
-  /** Returns a shared pointer to the C TileDB current_domain object.
+  /**
+   * Returns a shared pointer to the C TileDB currentDomain object.
    *
    * @return The C API pointer
    */
@@ -102,7 +103,8 @@ class CurrentDomain {
     return current_domain_;
   }
 
-  /** Returns the currentDomain type.
+  /**
+   * Returns the currentDomain type.
    *
    * @return The currentDomain type.
    */
@@ -115,7 +117,7 @@ class CurrentDomain {
   }
 
   /**
-   *Set a N-dimensional rectangle representation on a current domain.
+   * Set a N-dimensional rectangle representation on a current domain.
    * Error if the current domain passed is not empty.
    *
    * @param ndrect The N-dimensional rectangle to be used.
