@@ -148,6 +148,12 @@ Status RestClient::init(
 
   load_headers(*config_);
 
+  if (auto payer =
+          config_->get<std::string>("rest.payer_namespace", Config::must_find);
+      !payer.empty()) {
+    extra_headers_["X-Payer"] = std::move(payer);
+  }
+
   return Status::Ok();
 }
 

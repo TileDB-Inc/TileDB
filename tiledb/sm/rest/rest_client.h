@@ -575,7 +575,7 @@ class RestClient {
    */
   Status ensure_json_null_delimited_string(Buffer* buffer);
 
-  /** Load all custom headers from the given config.  */
+  /** Load all custom headers from the given config. */
   void load_headers(const Config& cfg);
 };
 
