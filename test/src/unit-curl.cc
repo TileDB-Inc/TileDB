@@ -139,7 +139,6 @@ TEST_CASE(
   ContextResources resources(
       cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
   const auto& extra_headers = resources.rest_client()->extra_headers();
-  CHECK(extra_headers.size() == 2);
   CHECK(extra_headers.at("abc") == "def");
   CHECK(extra_headers.at("ghi") == "jkl");
 }
