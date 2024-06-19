@@ -381,7 +381,6 @@ void WebpFilter::set_extents(const std::vector<ByteVecValue>& extents) {
     throw StatusException(Status_FilterError(
         "Tile extents too large; Max size WebP image is 16383x16383 pixels"));
   }
-  WriterTile::set_max_tile_chunk_size(extents_.first * extents_.second);
 }
 
 template void WebpFilter::set_extents<uint8_t>(
