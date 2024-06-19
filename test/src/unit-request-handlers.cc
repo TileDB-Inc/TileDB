@@ -357,7 +357,7 @@ RequestHandlerFx::~RequestHandlerFx() {
 
 void RequestHandlerFx::create_array() {
   auto schema = create_schema();
-  throw_if_not_ok(Array::create(ctx_.resources(), uri_, schema, enc_key_));
+  Array::create(ctx_.resources(), uri_, schema, enc_key_);
 }
 
 void RequestHandlerFx::delete_array() {

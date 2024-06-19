@@ -217,7 +217,6 @@ void UpdatesFx::check_update_conditions(
     // Compare to negated condition.
     auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
     CHECK(tiledb::test::ast_equal(conditions->at(i).ast(), cmp.ast()));
-
     auto& loaded_update_values = update_values->at(i);
     for (uint64_t j = 0; j < uvs[i].size(); j++) {
       CHECK(uvs[i][j].field_name() == loaded_update_values[j].field_name());

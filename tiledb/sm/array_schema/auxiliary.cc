@@ -51,7 +51,7 @@ namespace tiledb::sm {
 /*                API                */
 /* ********************************* */
 
-Status store_array_schema(
+void store_array_schema(
     ContextResources& resources,
     const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key) {
@@ -122,8 +122,6 @@ Status store_array_schema(
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
     GenericTileIO::store_data(resources, abs_enmr_uri, tile, encryption_key);
   }
-
-  return Status::Ok();
 }
 
 }  // namespace tiledb::sm

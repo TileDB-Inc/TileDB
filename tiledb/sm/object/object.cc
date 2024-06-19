@@ -56,7 +56,6 @@ bool is_array(ContextResources& resources, const URI& uri) {
     auto&& [st, exists] =
         resources.rest_client()->check_array_exists_from_rest(uri);
     throw_if_not_ok(st);
-    assert(exists.has_value());
     return exists.value();
   } else {
     // Check if the schema directory exists or not
@@ -77,32 +76,32 @@ bool is_array(ContextResources& resources, const URI& uri) {
   }
 }
 
-Status is_group(ContextResources& resources, const URI& uri, bool* is_group) {
+bool is_group(ContextResources& resources, const URI& uri) {
   // Handle remote array
   if (uri.is_tiledb()) {
     auto&& [st, exists] =
         resources.rest_client()->check_group_exists_from_rest(uri);
     throw_if_not_ok(st);
-    *is_group = *exists;
+    return exists.value();
   } else {
     // Check for new group details directory
     auto& vfs = resources.vfs();
-    throw_if_not_ok(
-        vfs.is_dir(uri.join_path(constants::group_detail_dir_name), is_group));
+    bool dir_exists = false;
+    throw_if_not_ok(vfs.is_dir(
+        uri.join_path(constants::group_detail_dir_name), &dir_exists));
 
-    if (*is_group) {
-      return Status::Ok();
+    if (dir_exists) {
+      return true;
     }
 
     // Fall back to older group file to check for legacy (pre-format 12) groups
     throw_if_not_ok(
-        vfs.is_file(uri.join_path(constants::group_filename), is_group));
+        vfs.is_file(uri.join_path(constants::group_filename), &dir_exists));
+    return dir_exists;
   }
-  return Status::Ok();
 }
 
-Status object_type(
-    ContextResources& resources, const URI& uri, ObjectType* type) {
+ObjectType object_type(ContextResources& resources, const URI& uri) {
   URI dir_uri = uri;
   if (uri.is_s3() || uri.is_azure() || uri.is_gcs()) {
     // Always add a trailing '/' in the S3/Azure/GCS case so that listing the
@@ -116,62 +115,57 @@ Status object_type(
     bool is_dir = false;
     throw_if_not_ok(resources.vfs().is_dir(uri, &is_dir));
     if (!is_dir) {
-      *type = ObjectType::INVALID;
-      return Status::Ok();
+      return ObjectType::INVALID;
     }
   }
-  bool exists = is_array(resources, uri);
-  if (exists) {
-    *type = ObjectType::ARRAY;
-    return Status::Ok();
+
+  if (is_array(resources, uri)) {
+    return ObjectType::ARRAY;
+  }
+  if (is_group(resources, uri)) {
+    return ObjectType::GROUP;
   }
 
-  throw_if_not_ok(is_group(resources, uri, &exists));
-  if (exists) {
-    *type = ObjectType::GROUP;
-    return Status::Ok();
-  }
-
-  *type = ObjectType::INVALID;
-  return Status::Ok();
+  return ObjectType::INVALID;
 }
 
-Status object_move(
+void object_move(
     ContextResources& resources, const char* old_path, const char* new_path) {
   auto old_uri = URI(old_path);
-  if (old_uri.is_invalid())
+  if (old_uri.is_invalid()) {
     throw ObjectException(
         "Cannot move object '" + std::string(old_path) + "'; Invalid URI");
+  }
 
   auto new_uri = URI(new_path);
-  if (new_uri.is_invalid())
+  if (new_uri.is_invalid()) {
     throw ObjectException(
         "Cannot move object to '" + std::string(new_path) + "'; Invalid URI");
+  }
 
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources, old_uri, &obj_type));
-  if (obj_type == ObjectType::INVALID)
+  if (object_type(resources, old_uri) == ObjectType::INVALID) {
     throw ObjectException(
         "Cannot move object '" + std::string(old_path) +
         "'; Invalid TileDB object");
+  }
 
-  return resources.vfs().move_dir(old_uri, new_uri);
+  throw_if_not_ok(resources.vfs().move_dir(old_uri, new_uri));
 }
 
-Status object_remove(ContextResources& resources, const char* path) {
+void object_remove(ContextResources& resources, const char* path) {
   auto uri = URI(path);
-  if (uri.is_invalid())
+  if (uri.is_invalid()) {
     throw ObjectException(
         "Cannot remove object '" + std::string(path) + "'; Invalid URI");
+  }
 
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources, uri, &obj_type));
-  if (obj_type == ObjectType::INVALID)
+  if (object_type(resources, uri) == ObjectType::INVALID) {
     throw ObjectException(
         "Cannot remove object '" + std::string(path) +
         "'; Invalid TileDB object");
+  }
 
-  return resources.vfs().remove_dir(uri);
+  throw_if_not_ok(resources.vfs().remove_dir(uri));
 }
 
 }  // namespace tiledb::sm

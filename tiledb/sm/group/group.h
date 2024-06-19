@@ -74,9 +74,8 @@ class Group {
    *
    * @param resources The context resources.
    * @param uri The URI of the group to be created.
-   * @return Status
    */
-  static Status create(ContextResources& resources, const URI& uri);
+  static void create(ContextResources& resources, const URI& uri);
 
   /** Returns the group directory object. */
   const shared_ptr<GroupDirectory> group_directory() const;
@@ -236,9 +235,8 @@ class Group {
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @return Status
    */
-  static Status consolidate_metadata(
+  static void consolidate_metadata(
       ContextResources& resources,
       const char* group_name,
       const Config& config);
