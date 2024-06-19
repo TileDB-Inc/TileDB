@@ -25,7 +25,16 @@ jobs:
 
       - name: 'Homebrew setup'
         run: brew install automake pkg-config
-        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+        if: ${{ startsWith(matrix.os, 'macos-') }}
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
+
+      - name: Setup MSVC toolset
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+        with:
+          arch: x64
 
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
