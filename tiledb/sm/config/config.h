@@ -125,6 +125,9 @@ class Config {
   /** Refactored query submit is disabled by default */
   static const std::string REST_USE_REFACTORED_QUERY_SUBMIT;
 
+  /** The namespace that should be charged for the request. */
+  static const std::string REST_PAYER_NAMESPACE;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
