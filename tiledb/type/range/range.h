@@ -191,22 +191,6 @@ class Range {
   /** Move constructor. */
   Range(Range&&) = default;
 
-  /** ALlocator-aware copy constructor. */
-  Range(const Range& other, const allocator_type& alloc)
-      : range_(other.range_, alloc)
-      , range_start_size_(other.range_start_size_)
-      , var_size_(other.var_size_)
-      , partition_depth_(other.partition_depth_) {
-  }
-
-  /** Allocator-aware move constructor. */
-  Range(Range&& other, const allocator_type& alloc)
-      : range_(std::move(other.range_), alloc)
-      , range_start_size_(other.range_start_size_)
-      , var_size_(other.var_size_)
-      , partition_depth_(other.partition_depth_) {
-  }
-
   /** Destructor. */
   ~Range() = default;
 
