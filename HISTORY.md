@@ -1,3 +1,15 @@
+# TileDB v2.24.1 Release Notes
+
+## Defects removed
+
+* Fix segfaults in WebP queries ran in parallel. [#5065](https://github.com/TileDB-Inc/TileDB/pull/5065)
+
+## Configuration changes
+
+* Add `vfs.s3.storage_class` config option to set the storage class of newly uploaded S3 objects. [#5053](https://github.com/TileDB-Inc/TileDB/pull/5053)
+* Add `rest.custom_headers.*` config option to set custom headers on REST requests. [#5104](https://github.com/TileDB-Inc/TileDB/pull/5104)
+* Add `rest.payer_namespace` config option to set the namespace to be charged for REST requests. [#5105](https://github.com/TileDB-Inc/TileDB/pull/5105)
+
 # TileDB v2.24.0 Release Notes
 
 ## Deprecation announcements
