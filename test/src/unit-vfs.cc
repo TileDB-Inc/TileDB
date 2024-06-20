@@ -740,6 +740,13 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
       config.set("vfs.azure.storage_account_name", "devstoreaccount1"));
   require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
   require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
+  if (sas_token.empty()) {
+    // If the SAS token is empty, the VFS will try to connect to Microsoft Entra
+    // ID to obtain credentials, which can take a long time because of retries.
+    // Set a dummy access key (which won't be used because we are not going to
+    // perform any requests) to prevent Entra ID from being chosen.
+    require_tiledb_ok(config.set("vfs.azure.storage_account_key", "foobar"));
+  }
   tiledb::sm::Azure azure;
   ThreadPool thread_pool(1);
   require_tiledb_ok(azure.init(config, &thread_pool));
