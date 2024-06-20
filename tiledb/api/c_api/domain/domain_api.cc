@@ -31,7 +31,6 @@
 #include "../string/string_api_internal.h"
 #include "domain_api_external.h"
 #include "domain_api_internal.h"
-#include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
@@ -144,7 +143,7 @@ int32_t tiledb_domain_has_dimension(
 
 int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
   ensure_domain_is_valid(domain);
-  ensure_output_pointer_is_valid(out);
+  ensure_cstream_handle_is_valid(out);
 
   std::stringstream ss;
   ss << *domain;
@@ -159,7 +158,7 @@ int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
 int32_t tiledb_domain_dump_str(
     const tiledb_domain_t* domain, tiledb_string_handle_t** out) {
   ensure_domain_is_valid(domain);
-  ensure_output_pointer_is_valid(out);
+  ensure_cstream_handle_is_valid(out);
 
   std::stringstream ss;
   ss << *domain;

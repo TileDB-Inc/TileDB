@@ -135,7 +135,7 @@ int32_t tiledb_attribute_get_cell_size(
 int32_t tiledb_attribute_dump(
     const tiledb_attribute_handle_t* attr, FILE* out) {
   ensure_attribute_is_valid(attr);
-  ensure_output_pointer_is_valid(out);
+  ensure_cstream_handle_is_valid(out);
 
   std::stringstream ss;
   ss << *attr;
@@ -151,7 +151,7 @@ int32_t tiledb_attribute_dump(
 int32_t tiledb_attribute_dump_str(
     const tiledb_attribute_handle_t* attr, tiledb_string_t** out) {
   ensure_attribute_is_valid(attr);
-  ensure_output_pointer_is_valid(out);
+  ensure_cstream_handle_is_valid(out);
 
   std::stringstream ss;
   ss << *attr;

@@ -337,8 +337,8 @@ TILEDB_EXPORT capi_return_t tiledb_enumeration_dump(
  */
 TILEDB_EXPORT int32_t tiledb_enumeration_dump_str(
     tiledb_ctx_t* ctx,
-    tiledb_enumeration_handle_t* enumeration,
-    tiledb_string_handle_t** out) TILEDB_NOEXCEPT;
+    tiledb_enumeration_t* enumeration,
+    tiledb_string_t** out) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
