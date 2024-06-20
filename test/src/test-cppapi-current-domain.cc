@@ -103,14 +103,11 @@ TEST_CASE_METHOD(
     CurrentDomainFx,
     "C++ API: CurrentDomain - String dimensions",
     "[cppapi][ArraySchema][string-dims][currentDomain]") {
-  // Create the C++ context.
-
+  // Create domain
   auto d1 = tiledb::Dimension::create(
       ctx_, "d1", TILEDB_STRING_ASCII, nullptr, nullptr);
   auto d2 = tiledb::Dimension::create(
       ctx_, "d2", TILEDB_STRING_ASCII, nullptr, nullptr);
-
-  // Create domain
   tiledb::Domain domain(ctx_);
   domain.add_dimension(d1);
   domain.add_dimension(d2);
@@ -172,7 +169,6 @@ TEST_CASE_METHOD(
       ctx_, schema, current_domain));
 
   auto cd = tiledb::ArraySchemaExperimental::current_domain(ctx_, schema);
-
   CHECK(!cd.is_empty());
 
   // Check if ranges are the same
@@ -192,6 +188,7 @@ TEST_CASE_METHOD(
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
   }
+
   // Create domain.
   tiledb::Domain domain(ctx_);
   auto d = tiledb::Dimension::create<int32_t>(ctx_, "d", {{1, 999}}, 2);
