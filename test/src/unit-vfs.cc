@@ -709,35 +709,33 @@ TEST_CASE(
 
 #ifdef HAVE_AZURE
 TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
+  // Test the construction of Azure Blob Storage URIs from account name and SAS
+  // token. We are not actually connecting to Azure Blob Storage in this test.
   std::string sas_token, custom_endpoint, expected_endpoint;
   SECTION("No SAS token") {
     sas_token = "";
-    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+    expected_endpoint = "https://exampleaccount.blob.core.windows.net";
   }
   SECTION("SAS token without leading question mark") {
     sas_token = "baz=qux&foo=bar";
     expected_endpoint =
-        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+        "https://exampleaccount.blob.core.windows.net?baz=qux&foo=bar";
   }
   SECTION("SAS token with leading question mark") {
     sas_token = "?baz=qux&foo=bar";
     expected_endpoint =
-        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+        "https://exampleaccount.blob.core.windows.net?baz=qux&foo=bar";
   }
   SECTION("SAS token in both endpoint and config option") {
     sas_token = "baz=qux&foo=bar";
     custom_endpoint =
-        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+        "https://exampleaccount.blob.core.windows.net?baz=qux&foo=bar";
     expected_endpoint =
-        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
-  }
-  SECTION("No SAS token") {
-    sas_token = "";
-    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+        "https://exampleaccount.blob.core.windows.net?baz=qux&foo=bar";
   }
   Config config;
   require_tiledb_ok(
-      config.set("vfs.azure.storage_account_name", "devstoreaccount1"));
+      config.set("vfs.azure.storage_account_name", "exampleaccount"));
   require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
   require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
   if (sas_token.empty()) {
