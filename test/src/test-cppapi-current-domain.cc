@@ -102,7 +102,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CurrentDomainFx,
     "C++ API: CurrentDomain - String dimensions",
-    "[cppapi][ArraySchema][string-dims][currentDomain][dstara]") {
+    "[cppapi][ArraySchema][string-dims][currentDomain]") {
   // Create the C++ context.
 
   auto d1 = tiledb::Dimension::create(
