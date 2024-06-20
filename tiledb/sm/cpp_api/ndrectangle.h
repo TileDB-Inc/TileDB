@@ -150,16 +150,114 @@ class NDRectangle {
     // Create the tiledb_range_t struct and fill it
     tiledb_range_t range;
     range.min = static_cast<const void*>(&start);
-    // tiledb_datatype_size()
     range.min_size = sizeof(T);
     range.max = static_cast<const void*>(&end);
     range.max_size = sizeof(T);
 
-    // Pass the struct to tiledb_ndrectangle_set_range_for_name
+    // Pass the struct to tiledb_ndrectangle_set_range
     ctx.handle_error(tiledb_ndrectangle_set_range(
         ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
 
     return *this;
+  }
+
+  /**
+   * Adds a 1D string range along a dimension index, in the form (start, end).
+   * Applicable only to variable-sized dimensions
+   *
+   * @param dim_idx The index of the dimension to add the range to.
+   * @param start The range start to add.
+   * @param end The range end to add.
+   * @return Reference to this NDRectangle.
+   */
+  NDRectangle& set_range(
+      uint32_t dim_idx, const std::string& start, const std::string& end) {
+    auto& ctx = ctx_.get();
+    // Create the tiledb_range_t struct and fill it
+    tiledb_range_t range;
+    range.min = static_cast<const void*>(start.c_str());
+    range.min_size = start.size();
+    range.max = static_cast<const void*>(end.c_str());
+    range.max_size = end.size();
+
+    // Pass the struct to tiledb_ndrectangle_set_range
+    ctx.handle_error(tiledb_ndrectangle_set_range(
+        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
+
+    return *this;
+  }
+
+  /**
+   * Adds a 1D string range along a dimension index, in the form (start, end).
+   * Applicable only to variable-sized dimensions
+   *
+   * @param dim_name The name of the dimension to add the range to.
+   * @param start The range start to add.
+   * @param end The range end to add.
+   * @return Reference to this NDRectangle.
+   */
+  NDRectangle& set_range(
+      const std::string& dim_name,
+      const std::string& start,
+      const std::string& end) {
+    auto& ctx = ctx_.get();
+    // Create the tiledb_range_t struct and fill it
+    tiledb_range_t range;
+    range.min = static_cast<const void*>(start.c_str());
+    range.min_size = start.size();
+    range.max = static_cast<const void*>(end.c_str());
+    range.max_size = end.size();
+
+    // Pass the struct to tiledb_ndrectangle_set_range_for_name
+    ctx.handle_error(tiledb_ndrectangle_set_range_for_name(
+        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
+
+    return *this;
+  }
+
+  /**
+   * Retrieves a range for a given variable length string dimension index and
+   * range id.
+   *
+   * @param dim_idx The dimension index.
+   * @param range_idx The range index.
+   * @return A pair of the form (start, end).
+   */
+  std::array<std::string, 2> range(unsigned dim_idx) {
+    auto& ctx = ctx_.get();
+    tiledb_range_t range;
+
+    ctx.handle_error(tiledb_ndrectangle_get_range(
+        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
+
+    std::string start_str(static_cast<const char*>(range.min), range.min_size);
+    std::string end_str(static_cast<const char*>(range.max), range.max_size);
+
+    std::array<std::string, 2> ret = {
+        {std::move(start_str), std::move(end_str)}};
+    return ret;
+  }
+
+  /**
+   * Retrieves a range for a given variable length string dimension index and
+   * range id.
+   *
+   * @param dim_name The dimension name.
+   * @param range_idx The range index.
+   * @return A pair of the form (start, end).
+   */
+  std::array<std::string, 2> range(const std::string& dim_name) {
+    auto& ctx = ctx_.get();
+    tiledb_range_t range;
+    ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
+        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
+
+    std::string start_str(static_cast<const char*>(range.min), range.min_size);
+    std::string end_str(static_cast<const char*>(range.max), range.max_size);
+
+    std::array<std::string, 2> ret = {
+        {std::move(start_str), std::move(end_str)}};
+    return ret;
   }
 
   /**
@@ -204,7 +302,7 @@ class NDRectangle {
    * Returns the C TileDB ndrect object.
    *
    * @return The C pointer to the NDRectangle object
-   * */
+   */
   std::shared_ptr<tiledb_ndrectangle_t> ptr() const {
     return ndrect_;
   }

@@ -39,13 +39,27 @@
 
 using namespace tiledb::test;
 
-TEST_CASE_METHOD(
-    TemporaryDirectoryFixture,
-    "C++ API: CurrentDomain - Basic",
-    "[cppapi][ArraySchema][currentDomain]") {
-  // Create the C++ context.
-  tiledb::Context ctx_{ctx, false};
+struct CurrentDomainFx {
+  VFSTestSetup vfs_test_setup_;
 
+  // Constructors/destructors.
+  CurrentDomainFx();
+
+  // TileDB context
+  tiledb_ctx_t* ctx_c_;
+  tiledb::Context ctx_;
+};
+
+CurrentDomainFx::CurrentDomainFx() {
+  tiledb::Config config;
+  ctx_c_ = vfs_test_setup_.ctx_c;
+  ctx_ = vfs_test_setup_.ctx();
+}
+
+TEST_CASE_METHOD(
+    CurrentDomainFx,
+    "C++ API: CurrentDomain - Integer dimensions",
+    "[cppapi][ArraySchema][currentDomain]") {
   // Create domain
   tiledb::Domain domain(ctx_);
   auto d1 = tiledb::Dimension::create<int32_t>(ctx_, "x", {{0, 100}}, 10);
@@ -86,10 +100,55 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    TemporaryDirectoryFixture,
+    CurrentDomainFx,
+    "C++ API: CurrentDomain - String dimensions",
+    "[cppapi][ArraySchema][string-dims][currentDomain][dstara]") {
+  // Create the C++ context.
+
+  auto d1 = tiledb::Dimension::create(
+      ctx_, "d1", TILEDB_STRING_ASCII, nullptr, nullptr);
+  auto d2 = tiledb::Dimension::create(
+      ctx_, "d2", TILEDB_STRING_ASCII, nullptr, nullptr);
+
+  // Create domain
+  tiledb::Domain domain(ctx_);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+
+  // Create an NDRectangle and set ranges
+  tiledb::NDRectangle ndrect(ctx_, domain);
+  ndrect.set_range(0, std::string("a"), std::string("c"));
+  ndrect.set_range(1, std::string("b"), std::string("db"));
+
+  // Get and check ranges
+  std::array<std::string, 2> range = ndrect.range(0);
+  CHECK(range[0] == "a");
+  CHECK(range[1] == "c");
+  range = ndrect.range(1);
+  CHECK(range[0] == "b");
+  CHECK(range[1] == "db");
+
+  // Create a currentDomain and set the NDRectangle
+  tiledb::CurrentDomain current_domain(ctx_);
+  current_domain.set_ndrectangle(ndrect);
+
+  CHECK_FALSE(current_domain.is_empty());
+
+  auto rect = current_domain.ndrectangle();
+
+  // Get and check ranges
+  range = ndrect.range(0);
+  CHECK(range[0] == "a");
+  CHECK(range[1] == "c");
+  range = ndrect.range(1);
+  CHECK(range[0] == "b");
+  CHECK(range[1] == "db");
+}
+
+TEST_CASE_METHOD(
+    CurrentDomainFx,
     "C++ API: CurrentDomain - Add to ArraySchema",
     "[cppapi][ArraySchema][currentDomain]") {
-  tiledb::Context ctx_{ctx, false};
   // Create domain.
   tiledb::Domain domain(ctx_);
   auto d = tiledb::Dimension::create<int32_t>(ctx_, "d", {{1, 999}}, 2);
@@ -100,17 +159,13 @@ TEST_CASE_METHOD(
   schema.set_domain(domain);
   schema.add_attribute(tiledb::Attribute::create<int>(ctx_, "a"));
 
-  // Create NDRectangle
+  // Create NDRectangle and set ranges
   tiledb::NDRectangle ndrect(ctx_, domain);
-
-  // Set ranges
   int range_one[] = {10, 20};
   ndrect.set_range(0, range_one[0], range_one[1]);
 
-  // Create the currentDomain
+  // Create the currentDomain and set NDRectangle
   tiledb::CurrentDomain current_domain(ctx_);
-
-  // Set the NDrectangle
   current_domain.set_ndrectangle(ndrect);
 
   CHECK_NOTHROW(tiledb::ArraySchemaExperimental::set_current_domain(
@@ -128,12 +183,11 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    TemporaryDirectoryFixture,
+    CurrentDomainFx,
     "C++ API: CurrentDomain - Evolve",
     "[cppapi][ArraySchema][currentDomain]") {
   const std::string array_name = "test_current_domain_expansion";
 
-  tiledb::Context ctx_{ctx, false};
   tiledb::VFS vfs(ctx_);
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
@@ -148,17 +202,13 @@ TEST_CASE_METHOD(
   schema.set_domain(domain);
   schema.add_attribute(tiledb::Attribute::create<int>(ctx_, "a"));
 
-  // Create NDRectangle
+  // Create NDRectangle and set ranges
   tiledb::NDRectangle ndrect(ctx_, domain);
-
-  // Set ranges
   int range_one[] = {10, 20};
   ndrect.set_range(0, range_one[0], range_one[1]);
 
-  // Create the currentDomain
+  // Create the currentDomain and set NDRectangle
   tiledb::CurrentDomain current_domain(ctx_);
-
-  // Set the NDrectangle
   current_domain.set_ndrectangle(ndrect);
 
   tiledb::ArraySchemaExperimental::set_current_domain(
@@ -169,30 +219,21 @@ TEST_CASE_METHOD(
 
   // Create new currentDomain to test evolution
   tiledb::CurrentDomain new_current_domain(ctx_);
-
   int range_two[] = {5, 30};
-
   tiledb::NDRectangle ndrect_two(ctx_, domain);
-
   ndrect_two.set_range(0, range_two[0], range_two[1]);
-
-  // Set the NDrectangle
   new_current_domain.set_ndrectangle(ndrect_two);
 
   // Schema evolution
   tiledb::ArraySchemaEvolution se(ctx_);
-
   se.expand_current_domain(new_current_domain);
-
-  // Apply the evolution to the schema using array URI.
   se.array_evolve(array_name);
 
+  // Open array to check the ranges
   tiledb::Array array(ctx_, array_name, TILEDB_READ);
   auto s = array.schema();
   auto cd = tiledb::ArraySchemaExperimental::current_domain(ctx_, s);
   auto n = cd.ndrectangle();
-
-  // Check if ranges are the same
   CHECK(n.range<int>(0)[0] == ndrect_two.range<int>(0)[0]);
   CHECK(n.range<int>(0)[1] == ndrect_two.range<int>(0)[1]);
 
