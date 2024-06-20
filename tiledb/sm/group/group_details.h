@@ -139,9 +139,8 @@ class GroupDetails {
    * @param group_detail_folder_uri group details folder
    * @param group_detail_uri uri for detail file to write
    * @param encryption_key encryption key for at-rest encryption
-   * @return status
    */
-  Status store(
+  void store(
       ContextResources& resources,
       const URI& group_detail_folder_uri,
       const URI& group_detail_uri,

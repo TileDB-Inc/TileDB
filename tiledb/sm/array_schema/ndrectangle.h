@@ -99,7 +99,7 @@ class NDRectangle {
    * @param domain The domain from array schema
    * @return A new ndrectangle.
    */
-  static shared_ptr<const NDRectangle> deserialize(
+  static shared_ptr<NDRectangle> deserialize(
       Deserializer& deserializer,
       shared_ptr<MemoryTracker> memory_tracker,
       shared_ptr<Domain> domain);

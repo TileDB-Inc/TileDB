@@ -40,6 +40,7 @@
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api/current_domain/current_domain_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api/domain/domain_api_internal.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
@@ -811,6 +812,40 @@ int32_t tiledb_array_schema_has_attribute(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_schema_set_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t* current_domain) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_handle_is_valid(current_domain);
+
+  array_schema->array_schema_->set_current_domain(
+      current_domain->current_domain());
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_get_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t** current_domain) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_output_pointer_is_valid(current_domain);
+
+  // There is always a current domain on an ArraySchema instance,
+  // when none was set explicitly, there is an empty current domain.
+  *current_domain = tiledb_current_domain_handle_t::make_handle(
+      array_schema->array_schema_->get_current_domain());
+
+  return TILEDB_OK;
+}
+
 /* ********************************* */
 /*            SCHEMA EVOLUTION       */
 /* ********************************* */
@@ -933,6 +968,22 @@ capi_return_t tiledb_array_schema_evolution_drop_enumeration(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_array_schema_evolution_expand_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_current_domain_t* expanded_domain) {
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_handle_is_valid(expanded_domain);
+
+  array_schema_evolution->array_schema_evolution_->expand_current_domain(
+      expanded_domain->current_domain());
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
@@ -1002,8 +1053,8 @@ int32_t tiledb_query_alloc(
   }
 
   // Create query
-  (*query)->query_ = new (std::nothrow)
-      tiledb::sm::Query(ctx->storage_manager(), array->array_);
+  (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
+      ctx->resources(), ctx->storage_manager(), array->array_);
   if ((*query)->query_ == nullptr) {
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
@@ -2588,8 +2639,8 @@ int32_t tiledb_array_create(
     throw_if_not_ok(
         key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
     // Create the array
-    throw_if_not_ok(tiledb::sm::Array::create(
-        ctx->resources(), uri, array_schema->array_schema_, key));
+    tiledb::sm::Array::create(
+        ctx->resources(), uri, array_schema->array_schema_, key);
 
     // Create any dimension labels in the array.
     for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
@@ -2607,11 +2658,11 @@ int32_t tiledb_array_create(
       }
 
       // Create the dimension label array with the same key.
-      throw_if_not_ok(tiledb::sm::Array::create(
+      tiledb::sm::Array::create(
           ctx->resources(),
           dim_label_ref.uri(uri),
           dim_label_ref.schema(),
-          key));
+          key);
     }
   }
   return TILEDB_OK;
@@ -2659,8 +2710,8 @@ int32_t tiledb_array_create_with_key(
         key_length));
 
     // Create the array
-    throw_if_not_ok(tiledb::sm::Array::create(
-        ctx->resources(), uri, array_schema->array_schema_, key));
+    tiledb::sm::Array::create(
+        ctx->resources(), uri, array_schema->array_schema_, key);
 
     // Create any dimension labels in the array.
     for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
@@ -2678,11 +2729,11 @@ int32_t tiledb_array_create_with_key(
       }
 
       // Create the dimension label array with the same key.
-      throw_if_not_ok(tiledb::sm::Array::create(
+      tiledb::sm::Array::create(
           ctx->resources(),
           dim_label_ref.uri(uri),
           dim_label_ref.schema(),
-          key));
+          key);
     }
   }
   return TILEDB_OK;
@@ -2919,8 +2970,8 @@ int32_t tiledb_array_encryption_type(
 
   // Get encryption type
   tiledb::sm::EncryptionType enc;
-  throw_if_not_ok(sm::Array::encryption_type(
-      ctx->resources(), tiledb::sm::URI(array_uri), &enc));
+  sm::Array::encryption_type(
+      ctx->resources(), tiledb::sm::URI(array_uri), &enc);
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
   return TILEDB_OK;
@@ -3046,11 +3097,11 @@ int32_t tiledb_array_evolve(
   throw_if_not_ok(
       key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
   // Evolve schema
-  throw_if_not_ok(tiledb::sm::Array::evolve_array_schema(
+  tiledb::sm::Array::evolve_array_schema(
       ctx->resources(),
       uri,
       array_schema_evolution->array_schema_evolution_,
-      key));
+      key);
 
   // Success
   return TILEDB_OK;
@@ -3101,10 +3152,10 @@ int32_t tiledb_array_upgrade_version(
   }
 
   // Upgrade version
-  throw_if_not_ok(tiledb::sm::Array::upgrade_version(
+  tiledb::sm::Array::upgrade_version(
       ctx->resources(),
       uri,
-      (config == nullptr) ? ctx->config() : config->config()));
+      (config == nullptr) ? ctx->config() : config->config());
 
   return TILEDB_OK;
 }
@@ -3115,22 +3166,20 @@ int32_t tiledb_array_upgrade_version(
 
 int32_t tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
-  auto uri = tiledb::sm::URI(path);
-  tiledb::sm::ObjectType object_type;
-  throw_if_not_ok(tiledb::sm::object_type(ctx->resources(), uri, &object_type));
-
-  *type = static_cast<tiledb_object_t>(object_type);
+  ensure_output_pointer_is_valid(type);
+  *type = static_cast<tiledb_object_t>(
+      tiledb::sm::object_type(ctx->resources(), tiledb::sm::URI(path)));
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
-  throw_if_not_ok(object_remove(ctx->resources(), path));
+  object_remove(ctx->resources(), path);
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
-  throw_if_not_ok(object_move(ctx->resources(), old_path, new_path));
+  object_move(ctx->resources(), old_path, new_path);
   return TILEDB_OK;
 }
 
@@ -3768,8 +3817,8 @@ int32_t tiledb_deserialize_query_and_array(
   }
 
   // Create query
-  (*query)->query_ = new (std::nothrow)
-      tiledb::sm::Query(ctx->storage_manager(), (*array)->array_);
+  (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
+      ctx->resources(), ctx->storage_manager(), (*array)->array_);
   if ((*query)->query_ == nullptr) {
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
@@ -4347,7 +4396,8 @@ capi_return_t tiledb_handle_query_plan_request(
   api::ensure_buffer_is_valid(request);
   api::ensure_buffer_is_valid(response);
 
-  tiledb::sm::Query query(ctx->storage_manager(), array->array_);
+  tiledb::sm::Query query(
+      ctx->resources(), ctx->storage_manager(), array->array_);
   tiledb::sm::serialization::deserialize_query_plan_request(
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       request->buffer(),
@@ -5579,6 +5629,24 @@ CAPI_INTERFACE(
       ctx, array_schema, name, has_attr);
 }
 
+CAPI_INTERFACE(
+    array_schema_set_current_domain,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t* current_domain) {
+  return api_entry<tiledb::api::tiledb_array_schema_set_current_domain>(
+      ctx, array_schema, current_domain);
+}
+
+CAPI_INTERFACE(
+    array_schema_get_current_domain,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t** current_domain) {
+  return api_entry<tiledb::api::tiledb_array_schema_get_current_domain>(
+      ctx, array_schema, current_domain);
+}
+
 /* ********************************* */
 /*            SCHEMA EVOLUTION       */
 /* ********************************* */
@@ -5642,6 +5710,16 @@ CAPI_INTERFACE(
     const char* enumeration_name) {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_drop_enumeration>(
       ctx, array_schema_evolution, enumeration_name);
+}
+
+CAPI_INTERFACE(
+    array_schema_evolution_expand_current_domain,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_current_domain_t* expanded_domain) {
+  return api_entry<
+      tiledb::api::tiledb_array_schema_evolution_expand_current_domain>(
+      ctx, array_schema_evolution, expanded_domain);
 }
 
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(

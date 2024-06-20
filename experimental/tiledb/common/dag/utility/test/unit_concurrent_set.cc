@@ -39,10 +39,10 @@
 namespace tiledb::common {}
 using namespace tiledb::common;
 
-TEST_CASE("ConcurrentSet: Construct", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Construct", "[concurrent_set]") {
 }
 
-TEST_CASE("ConcurrentSet: Test empty", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test empty", "[concurrent_set]") {
   ConcurrentSet<int> numbers;
   CHECK(numbers.empty() == true);
 
@@ -51,19 +51,19 @@ TEST_CASE("ConcurrentSet: Test empty", "[concurrent_set") {
   CHECK(numbers.empty() == false);
 }
 
-TEST_CASE("ConcurrentSet: Test size", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test size", "[concurrent_set]") {
   ConcurrentSet<int> numbers{1, 3, 5, 7, 11};
   CHECK(numbers.size() == 5);
 }
 
-TEST_CASE("ConcurrentSet: Test clear", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test clear", "[concurrent_set]") {
   ConcurrentSet<int> numbers{1, 2, 3};
   CHECK(numbers.size() == 3);
   numbers.clear();
   CHECK(numbers.empty());
 }
 
-TEST_CASE("ConcurrentSet: Test insert", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test insert", "[concurrent_set]") {
   ConcurrentSet<int> set;
 
   auto result_1 = set.insert(3);
@@ -110,11 +110,11 @@ size_t set_emplace() {
   return set.size();
 }
 
-TEST_CASE("ConcurrentSet: Test emplace", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test emplace", "[concurrent_set]") {
   CHECK(set_emplace() == nof_operations * nof_operations * nof_operations);
 }
 
-TEST_CASE("ConcurrentSet: Test erase", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test erase", "[concurrent_set]") {
   ConcurrentSet<int> numbers = {1, 2, 3, 4, 1, 2, 3, 4};
 
   CHECK(numbers.size() == 4);
@@ -132,7 +132,7 @@ TEST_CASE("ConcurrentSet: Test erase", "[concurrent_set") {
   CHECK(numbers.erase(2) == 0);
 }
 
-TEST_CASE("ConcurrentSet: Test swap", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test swap", "[concurrent_set]") {
   {
     ConcurrentSet<int> a1{3, 1, 3, 2, 7}, a2{5, 4, 5};
 
@@ -178,7 +178,7 @@ TEST_CASE("ConcurrentSet: Test swap", "[concurrent_set") {
   }
 }
 
-TEST_CASE("ConcurrentSet: Test extract", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test extract", "[concurrent_set]") {
   ConcurrentSet<int> cont0{1, 2, 3};
   ConcurrentSet<int> cont1{1, 2, 3};
   ConcurrentSet<int> cont2{2, 3};
@@ -217,7 +217,7 @@ bool operator<(const FatKey& fk1, const FatKey& fk2) {
   return fk1.x < fk2.x;
 }
 
-TEST_CASE("ConcurrentSet: Test find", "[concurrent_set") {
+TEST_CASE("ConcurrentSet: Test find", "[concurrent_set]") {
   // simple comparison demo
   ConcurrentSet<int> example = {1, 2, 3, 4};
 

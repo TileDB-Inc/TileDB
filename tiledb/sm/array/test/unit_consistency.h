@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/array/test/unit_consistency.cc
+ * @file tiledb/sm/array/test/unit_consistency.h
  *
  * @section LICENSE
  *
@@ -124,7 +124,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
     throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
     // Create the (empty) array on disk.
-    throw_if_not_ok(Array::create(resources, uri, schema, key));
+    Array::create(resources, uri, schema, key);
     tdb_unique_ptr<Array> array(new Array{resources, uri, *this});
 
     return array;

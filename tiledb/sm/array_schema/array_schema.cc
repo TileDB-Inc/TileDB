@@ -144,7 +144,7 @@ ArraySchema::ArraySchema(
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
     FilterPipeline coords_filters,
-    shared_ptr<const CurrentDomain> current_domain,
+    shared_ptr<CurrentDomain> current_domain,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , uri_(uri)
@@ -1378,7 +1378,7 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
 
   // Load the array current domain, if this is an older array, it'll get by
   // default an empty current domain object
-  auto current_domain = make_shared<const CurrentDomain>(
+  auto current_domain = make_shared<CurrentDomain>(
       memory_tracker, constants::current_domain_version);
   if (version >= constants::current_domain_min_format_version) {
     current_domain =
@@ -1756,7 +1756,7 @@ void ArraySchema::generate_uri(
 }
 
 void ArraySchema::expand_current_domain(
-    shared_ptr<const CurrentDomain> new_current_domain) {
+    shared_ptr<CurrentDomain> new_current_domain) {
   if (new_current_domain == nullptr) {
     throw ArraySchemaException(
         "The argument specified for current domain expansion is nullptr.");
@@ -1776,12 +1776,11 @@ void ArraySchema::expand_current_domain(
   current_domain_ = new_current_domain;
 }
 
-shared_ptr<const CurrentDomain> ArraySchema::get_current_domain() const {
+shared_ptr<CurrentDomain> ArraySchema::get_current_domain() const {
   return current_domain_;
 }
 
-void ArraySchema::set_current_domain(
-    shared_ptr<const CurrentDomain> current_domain) {
+void ArraySchema::set_current_domain(shared_ptr<CurrentDomain> current_domain) {
   if (current_domain == nullptr) {
     throw ArraySchemaException(
         "The argument specified for setting the current domain on the "

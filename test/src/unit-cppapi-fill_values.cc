@@ -88,7 +88,7 @@ void create_array_1d(
   schema.set_domain(domain);
   schema.add_attributes(a1, a2, a3);
 
-  CHECK_NOTHROW(Array::create(array_name, schema));
+  Array::create(array_name, schema);
 }
 
 void write_array_1d_partial(

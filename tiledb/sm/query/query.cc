@@ -82,11 +82,12 @@ static uint64_t get_effective_memory_budget(
 /* ****************************** */
 
 Query::Query(
+    ContextResources& resources,
     StorageManager* storage_manager,
     shared_ptr<Array> array,
     optional<std::string> fragment_name,
     optional<uint64_t> memory_budget)
-    : resources_(storage_manager->resources())
+    : resources_(resources)
     , stats_(resources_.stats().create_child("Query"))
     , logger_(resources_.logger()->clone("Query", ++logger_id_))
     , query_memory_tracker_(resources_.memory_tracker_manager().create_tracker(
@@ -710,6 +711,7 @@ void Query::init() {
       // Initialize the dimension label queries.
       dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
           ArrayDimensionLabelQueries,
+          resources_,
           storage_manager_,
           array_,
           subarray_,

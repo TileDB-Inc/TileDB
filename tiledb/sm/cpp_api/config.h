@@ -889,6 +889,13 @@ class Config {
    *    CAPNP traversal limit used in the deserialization of messages(bytes)
    * <br>
    *    **Default**: 536870912 (512MB)
+   * - `rest.custom_headers.*` <br>
+   *    (Optional) Prefix for custom headers on REST requests. For each custom
+   *    header, use "rest.custom_headers.header_key" = "header_value" <br>
+   *    **Optional. No Default**
+   * - `rest.payer_namespace` <br>
+   *    The namespace that should be charged for the request. <br>
+   *    **Default**: no default set
    * - `filestore.buffer_size` <br>
    *    Specifies the size in bytes of the internal buffers used in the
    *    filestore API. The size should be bigger than the minimum tile size

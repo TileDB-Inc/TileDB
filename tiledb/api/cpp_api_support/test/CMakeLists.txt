@@ -30,3 +30,7 @@ commence(unit_test cppapi_string)
     this_target_sources(unit_cppapi_string.cc)
     this_target_object_libraries(capi_string)
 conclude(unit_test)
+
+if(TILEDB_SANITIZER)
+    target_compile_definitions(unit_cppapi_string PRIVATE -DHAVE_SANITIZER)
+endif()
