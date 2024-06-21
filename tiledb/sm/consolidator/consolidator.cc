@@ -155,7 +155,7 @@ void Consolidator::array_consolidate(
     throw_if_not_ok(
         resources.rest_client()->post_consolidation_to_rest(array_uri, config));
   } else {
-      // Check if array exists
+    // Check if array exists
     if (object_type(resources, array_uri) != ObjectType::ARRAY) {
       throw ConsolidatorException(
           "Cannot consolidate array; Array does not exist");
@@ -217,7 +217,7 @@ void Consolidator::fragments_consolidate(
         storage_manager->resources().rest_client()->post_consolidation_to_rest(
             array_uri, config, &fragment_uris));
   } else {
-      // Check if array exists
+    // Check if array exists
     if (object_type(resources, array_uri) != ObjectType::ARRAY) {
       throw ConsolidatorException(
           "Cannot consolidate array; Array does not exist");
@@ -251,8 +251,8 @@ void Consolidator::fragments_consolidate(
     }
 
     // Consolidate
-    auto fragment_consolidator =
-        make_shared<FragmentConsolidator>(HERE(), config, storage_manager);
+    auto fragment_consolidator = make_shared<FragmentConsolidator>(
+        HERE(), resources, config, storage_manager);
     throw_if_not_ok(fragment_consolidator->consolidate_fragments(
         array_name,
         encryption_type,
