@@ -362,7 +362,7 @@ Status FragmentConsolidator::consolidate_fragments(
   NDRange union_non_empty_domains;
   std::unordered_set<std::string> to_consolidate_set;
   for (auto& uri : fragment_uris) {
-    to_consolidate_set.emplace(uri);
+    to_consolidate_set.emplace(URI(uri).last_path_part());
   }
 
   // Make sure all fragments to consolidate are present
@@ -384,7 +384,8 @@ Status FragmentConsolidator::consolidate_fragments(
 
   if (count != fragment_uris.size()) {
     throw FragmentConsolidatorException(
-        "Cannot consolidate; Not all fragments could be found");
+        "Cannot consolidate; Found " + std::to_string(count) + " of " +
+        std::to_string(fragment_uris.size()) + " required fragments.");
   }
 
   FragmentConsolidationWorkspace cw(consolidator_memory_tracker_);
