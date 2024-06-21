@@ -80,7 +80,7 @@ void array_consolidation_request_to_capnp(
   // Validate input arguments to be sure that what we are serializing make sense
   auto mode = Consolidator::mode_from_config(config);
   if (mode != ConsolidationMode::FRAGMENT &&
-      (fragment_uris != nullptr || !fragment_uris->empty())) {
+      (fragment_uris != nullptr && !fragment_uris->empty())) {
     throw ConsolidationSerializationException(
         "[array_consolidation_request_to_capnp] Error serializing "
         "consolidation request. A non-empty fragment list should only be "
