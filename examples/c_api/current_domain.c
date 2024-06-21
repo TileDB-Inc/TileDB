@@ -173,9 +173,9 @@ void expand_current_domain() {
   tiledb_array_schema_evolution_t* schema_evolution;
   tiledb_array_schema_evolution_alloc(ctx, &schema_evolution);
 
-  // Create current domain
-  tiledb_current_domain_t* current_domain;
-  tiledb_current_domain_create(ctx, &current_domain);
+  // Create the new current domain
+  tiledb_current_domain_t* new_current_domain;
+  tiledb_current_domain_create(ctx, &new_current_domain);
 
   // Create an n-dimensional rectangle
   tiledb_ndrectangle_t* ndrect;
@@ -191,18 +191,18 @@ void expand_current_domain() {
   tiledb_ndrectangle_set_range_for_name(ctx, ndrect, "d1", &range);
 
   // Set the rectangle to the current domain
-  tiledb_current_domain_set_ndrectangle(current_domain, ndrect);
+  tiledb_current_domain_set_ndrectangle(new_current_domain, ndrect);
 
   // Expand the current domain
   tiledb_array_schema_evolution_expand_current_domain(
-      ctx, schema_evolution, current_domain);
+      ctx, schema_evolution, new_current_domain);
 
   // Evolve the array
   tiledb_array_evolve(ctx, array_name, schema_evolution);
 
   // Clean up
   tiledb_ndrectangle_free(&ndrect);
-  tiledb_current_domain_free(&current_domain);
+  tiledb_current_domain_free(&new_current_domain);
   tiledb_array_schema_evolution_free(&schema_evolution);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);

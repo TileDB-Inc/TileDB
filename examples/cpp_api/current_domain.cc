@@ -125,8 +125,8 @@ void expand_current_domain(Context& ctx) {
   // Create an ArraySchemaEvolution object
   ArraySchemaEvolution schema_evolution(ctx);
 
-  // Create a CurrentDomain object
-  CurrentDomain current_domain(ctx);
+  // Create the new CurrentDomain object
+  CurrentDomain new_current_domain(ctx);
 
   // Create an NDRectangle object
   NDRectangle ndrect(ctx, domain);
@@ -135,10 +135,10 @@ void expand_current_domain(Context& ctx) {
   ndrect.set_range<int32_t>("d1", 1, 200);
 
   // Set the NDRectangle to the CurrentDomain
-  current_domain.set_ndrectangle(ndrect);
+  new_current_domain.set_ndrectangle(ndrect);
 
   // Set the current domain to the array schema evolution
-  schema_evolution.expand_current_domain(current_domain);
+  schema_evolution.expand_current_domain(new_current_domain);
 
   // Evolve the array
   schema_evolution.array_evolve(array_name);
