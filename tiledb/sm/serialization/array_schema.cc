@@ -68,6 +68,7 @@
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/current_domain.h"
 #include "tiledb/sm/serialization/enumeration.h"
 
 #include <cstring>
@@ -928,7 +929,9 @@ Status array_schema_to_capnp(
     }
   }
 
-  // TODO: to add actual wire CurrentDomain (ch48253)
+  auto crd = array_schema.get_current_domain();
+  auto current_domain_builder = array_schema_builder->initCurrentDomain();
+  current_domain_to_capnp(crd, &current_domain_builder);
 
   return Status::Ok();
 }
@@ -1150,6 +1153,13 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
     name = schema_reader.getName().cStr();
   }
 
+  auto crd = make_shared<CurrentDomain>(
+      memory_tracker, constants::current_domain_version);
+  if (schema_reader.hasCurrentDomain()) {
+    crd = current_domain_from_capnp(
+        schema_reader.getCurrentDomain(), domain, memory_tracker);
+  }
+
   return make_shared<ArraySchema>(
       HERE(),
       uri_deserialized,
@@ -1169,9 +1179,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
       cell_var_offsets_filters,
       cell_validity_filters,
       coords_filters,
-      // TODO: to be changed to actual wire CurrentDomain (ch48253)
-      make_shared<CurrentDomain>(
-          memory_tracker, constants::current_domain_version),
+      crd,
       memory_tracker);
 }
 

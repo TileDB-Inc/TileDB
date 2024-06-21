@@ -62,16 +62,14 @@ inline const std::string& current_domain_type_str(
 }
 
 /** Returns the current domain type given a string representation. */
-inline Status current_domain_type_enum(
-    const std::string& current_domain_type_str,
-    CurrentDomainType* current_domain_type) {
-  if (current_domain_type_str == constants::current_domain_ndrectangle_str)
-    *current_domain_type = CurrentDomainType::NDRECTANGLE;
-  else {
-    return Status_Error(
-        "Invalid CurrentDomain type " + current_domain_type_str);
+inline CurrentDomainType current_domain_type_enum(
+    const std::string& current_domain_type_str) {
+  if (current_domain_type_str == constants::current_domain_ndrectangle_str) {
+    return CurrentDomainType::NDRECTANGLE;
   }
-  return Status::Ok();
+
+  throw std::logic_error(
+      "Invalid CurrentDomain type " + current_domain_type_str);
 }
 
 }  // namespace sm

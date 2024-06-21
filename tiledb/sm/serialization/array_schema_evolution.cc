@@ -54,6 +54,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/current_domain.h"
 #include "tiledb/sm/serialization/enumeration.h"
 
 #include <set>
@@ -153,7 +154,10 @@ Status array_schema_evolution_to_capnp(
   timestamp_builder.set(0, timestamp_range.first);
   timestamp_builder.set(1, timestamp_range.second);
 
-  // TODO: to add actual wire CurrentDomain (ch48253)
+  auto crd = array_schema_evolution->current_domain_to_expand();
+  auto current_domain_builder =
+      array_schema_evolution_builder->initCurrentDomainToExpand();
+  current_domain_to_capnp(crd, &current_domain_builder);
 
   return Status::Ok();
 }
@@ -210,6 +214,20 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
     ts_range = std::make_pair(timestamp_range[0], timestamp_range[1]);
   }
 
+  shared_ptr<CurrentDomain> crd;
+  if (evolution_reader.hasCurrentDomainToExpand()) {
+    auto current_domain_reader = evolution_reader.getCurrentDomainToExpand();
+    // There is no available ArraySchema Domain here, so we'll construct
+    // the CurrentDomain with a nullptr Domain, and we'll set it properly
+    // during ArraySchema::expand_current_domain. Currently there is no
+    // room to play around with this dangling domain because these evolution
+    // deserialization APIs are only used on the REST server immediately before
+    // the schema is evolved on disk. This way we avoid serializing the domain
+    // along with the NDRectangle.
+    crd = current_domain_from_capnp(
+        current_domain_reader, nullptr, memory_tracker);
+  }
+
   return tdb_unique_ptr<ArraySchemaEvolution>(tdb_new(
       ArraySchemaEvolution,
       attrs_to_add,
@@ -218,8 +236,7 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       enmrs_to_extend,
       enmrs_to_drop,
       ts_range,
-      // TODO: to add actual wire CurrentDomain (ch48253)
-      nullptr,
+      crd,
       memory_tracker));
 }
 
