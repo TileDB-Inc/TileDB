@@ -96,6 +96,7 @@ const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
 const std::string Config::REST_USE_REFACTORED_QUERY_SUBMIT = "false";
+const std::string Config::REST_PAYER_NAMESPACE = "";
 const std::string Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES = "false";
 const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
@@ -270,6 +271,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "rest.use_refactored_array_open_and_query_submit",
         Config::REST_USE_REFACTORED_QUERY_SUBMIT),
+    std::make_pair("rest.payer_namespace", Config::REST_PAYER_NAMESPACE),
     std::make_pair(
         "config.env_var_prefix", Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX),
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
