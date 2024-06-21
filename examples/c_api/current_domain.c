@@ -27,8 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * When run, this program will create a simple 1D sparse array, print its
- * current domain, expand it and print it agaon.
+ * When run, this program will create a simple 1D sparse array with a current
+ * domain, print it, expand it with array schema evolution, and print it again.
  */
 
 #include <stdio.h>
@@ -56,6 +56,26 @@ void create_array() {
   tiledb_domain_alloc(ctx, &domain);
   tiledb_domain_add_dimension(ctx, domain, d1);
 
+  // Create current domain
+  tiledb_current_domain_t* current_domain;
+  tiledb_current_domain_create(ctx, &current_domain);
+
+  // Create an n-dimensional rectangle
+  tiledb_ndrectangle_t* ndrect;
+  tiledb_ndrectangle_alloc(ctx, domain, &ndrect);
+
+  // Assign the range [1, 100] to the rectangle's first dimension
+  int32_t expanded_current_domain[] = {1, 100};
+  tiledb_range_t range = {
+      &expanded_current_domain[0],
+      sizeof(expanded_current_domain[0]),
+      &expanded_current_domain[1],
+      sizeof(expanded_current_domain[1])};
+  tiledb_ndrectangle_set_range_for_name(ctx, ndrect, "d1", &range);
+
+  // Assign the rectangle to the current domain
+  tiledb_current_domain_set_ndrectangle(current_domain, ndrect);
+
   // Create a single attribute "a" so each cell can store an integer
   tiledb_attribute_t* a;
   tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
@@ -68,14 +88,19 @@ void create_array() {
   tiledb_array_schema_set_domain(ctx, array_schema, domain);
   tiledb_array_schema_add_attribute(ctx, array_schema, a);
 
+  // Assign the current domain to the array schema
+  tiledb_array_schema_set_current_domain(ctx, array_schema, current_domain);
+
   // Create array
   tiledb_array_create(ctx, array_name, array_schema);
 
   // Clean up
-  tiledb_attribute_free(&a);
-  tiledb_dimension_free(&d1);
-  tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
+  tiledb_attribute_free(&a);
+  tiledb_ndrectangle_free(&ndrect);
+  tiledb_current_domain_free(&current_domain);
+  tiledb_domain_free(&domain);
+  tiledb_dimension_free(&d1);
   tiledb_ctx_free(&ctx);
 }
 
@@ -156,7 +181,7 @@ void expand_current_domain() {
   tiledb_ndrectangle_t* ndrect;
   tiledb_ndrectangle_alloc(ctx, domain, &ndrect);
 
-  // Assign a range to the rectangle
+  // Assign the range [1, 200] to the rectangle's first dimension
   int32_t expanded_current_domain[] = {1, 200};
   tiledb_range_t range = {
       &expanded_current_domain[0],

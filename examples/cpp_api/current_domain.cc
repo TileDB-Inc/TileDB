@@ -27,8 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * When run, this program will create a simple 1D sparse array, print its
- * current domain, expand it and print it agaon.
+ * When run, this program will create a simple 1D sparse array with a current
+ * domain, print it, expand it with array schema evolution, and print it again.
  */
 
 #include <iostream>
@@ -49,7 +49,19 @@ void create_array(Context& ctx, const std::string& array_uri) {
   auto d1 = Dimension::create<int>(ctx, "d1", {{1, 1000}}, 50);
   domain.add_dimension(d1);
 
-  // Create and set a TileDB sparse array schema
+  // Create a CurrentDomain object
+  CurrentDomain current_domain(ctx);
+
+  // Create an NDRectangle object
+  NDRectangle ndrect(ctx, domain);
+
+  // Assign the range [1, 100] to the rectangle's first dimension
+  ndrect.set_range<int32_t>("d1", 1, 100);
+
+  // Assign the NDRectangle to the CurrentDomain
+  current_domain.set_ndrectangle(ndrect);
+
+  // Create a TileDB sparse array schema
   ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain)
       .set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}})
@@ -59,6 +71,9 @@ void create_array(Context& ctx, const std::string& array_uri) {
 
   // Create a single attribute
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
+
+  // Assign the current domain to the array schema
+  ArraySchemaExperimental::set_current_domain(ctx, schema, current_domain);
 
   // Create the (empty) array on disk
   Array::create(array_uri, schema);
@@ -116,7 +131,7 @@ void expand_current_domain(Context& ctx) {
   // Create an NDRectangle object
   NDRectangle ndrect(ctx, domain);
 
-  // Set the range of the NDRectangle's first dimension
+  // Assign the range [1, 200] to the rectangle's first dimension
   ndrect.set_range<int32_t>("d1", 1, 200);
 
   // Set the NDRectangle to the CurrentDomain
