@@ -233,9 +233,7 @@ class NDRectangle {
     std::string start_str(static_cast<const char*>(range.min), range.min_size);
     std::string end_str(static_cast<const char*>(range.max), range.max_size);
 
-    std::array<std::string, 2> ret = {
-        {std::move(start_str), std::move(end_str)}};
-    return ret;
+    return {std::move(start_str), std::move(end_str)};
   }
 
   /**
@@ -255,9 +253,7 @@ class NDRectangle {
     std::string start_str(static_cast<const char*>(range.min), range.min_size);
     std::string end_str(static_cast<const char*>(range.max), range.max_size);
 
-    std::array<std::string, 2> ret = {
-        {std::move(start_str), std::move(end_str)}};
-    return ret;
+    return {std::move(start_str), std::move(end_str)};
   }
 
   /**
@@ -275,8 +271,7 @@ class NDRectangle {
     ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
         ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
 
-    std::array<T, 2> ret = {{*(const T*)range.min, *(const T*)range.max}};
-    return ret;
+    return {*(const T*)range.min, *(const T*)range.max};
   }
 
   /**
@@ -294,8 +289,7 @@ class NDRectangle {
     ctx.handle_error(tiledb_ndrectangle_get_range(
         ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
 
-    std::array<T, 2> ret = {{*(const T*)range.min, *(const T*)range.max}};
-    return ret;
+    return {*(const T*)range.min, *(const T*)range.max};
   }
 
   /**
