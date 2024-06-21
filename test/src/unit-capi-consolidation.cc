@@ -7197,9 +7197,17 @@ TEST_CASE_METHOD(
   REQUIRE(err == nullptr);
 
   // Consolidate
-  const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
-  rc = tiledb_array_consolidate_fragments(
-      ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
+  SECTION("Relative URIs") {
+    const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
+  }
+
+  SECTION("Absolute URIs") {
+    const char* uris[2] = {uri, uri2};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
+  }
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
 
@@ -7273,9 +7281,17 @@ TEST_CASE_METHOD(
   REQUIRE(err == nullptr);
 
   // Consolidate
-  const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
-  rc = tiledb_array_consolidate_fragments(
-      ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  SECTION("Relative URIs") {
+    const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  }
+
+  SECTION("Absolute URIs") {
+    const char* uris[2] = {uri, uri2};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  }
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
 
