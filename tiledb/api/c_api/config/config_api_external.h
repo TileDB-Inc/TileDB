@@ -94,17 +94,23 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.allow_separate_attribute_writes` <br>
  *    **Experimental** <br>
  *    Allow separate attribute write queries.<br>
- *    **Default**: false
+ *    **Default**: false <br>
+ *    **Data type**: Boolean <br>
+ *    **Possible values**: true, false
  * - `sm.allow_updates_experimental` <br>
  *    **Experimental** <br>
  *    Allow update queries. Experimental for testing purposes, do not use.<br>
- *    **Default**: false
+ *    **Default**: false <br>
+ *    **Data type**: Boolean <br>
+ *    **Possible values**: true, false
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
  *    arbitrarily. Also note that this check means that it will take longer to
  *    perform the write operation. <br>
- *    **Default**: false
+ *    **Default**: false<br>
+ *    **Data type**: Boolean<br>
+ *    **Possible values**:true, false
  * - `sm.check_coord_dups` <br>
  *    This is applicable only if `sm.dedup_coords` is `false`.
  *    If `true`, an error will be thrown if there are cells with duplicate
@@ -112,16 +118,22 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    duplicates, the duplicates will be written without errors. Note that this
  *    check is much ligher weight than the coordinate deduplication check
  *    enabled by `sm.dedup_coords`. <br>
- *    **Default**: true
+ *    **Default**: true <br>
+ *    **Data type**: Boolean <br>
+ *    **Possible values**: true, false
  * - `sm.check_coord_oob` <br>
  *    If `true`, an error will be thrown if there are cells with coordinates
  *    lying outside the domain during sparse fragment writes.  <br>
- *    **Default**: true
+ *    **Default**: true <br>
+ *    **Data type**: Boolean <br>
+ *    **Possible values**: true, false
  * - `sm.read_range_oob` <br>
  *    If `error`, this will check ranges for read with out-of-bounds on the
  *    dimension domain's. If `warn`, the ranges will be capped at the
  *    dimension's domain and a warning logged. <br>
- *    **Default**: warn
+ *    **Default**: "warn" <br>
+ *    **Data type**: String <br>
+ *    **Possible values**: "error", "warn"
  * - `sm.check_global_order` <br>
  *    Checks if the coordinates obey the global array order. Applicable only
  *    to sparse writes in global order.
@@ -130,33 +142,45 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If `true`, merge overlapping Subarray ranges. Else, overlapping ranges
  *    will not be merged and multiplicities will be returned.
  *    Experimental for testing purposes, do not use.<br>
- *    **Default**: true
+ *    **Default**: true <br>
+ *    **Data type**: Boolean <br>
+ *    **Possible values**: true, false
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
- *    **Default**: true
+ *    **Default**: true <br>
+ *    **Data type**: Boolean <br>
+ *    **Possible values**: true, false
  * - `sm.compute_concurrency_level` <br>
  *    Upper-bound on number of threads to allocate for compute-bound tasks. <br>
- *    **Default*: # cores
+ *    **Default*: # cores <br>
+ *    **Data type**: Integer <br>
+ *    **Possible values**: Any integer between 1 and the number of cores on your
+ *    machine, inclusive
  * - `sm.io_concurrency_level` <br>
  *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
- *    **Default*: # cores
+ *    **Default*: # cores <br>
+ *    **Data type**: Integer <br>
+ *    **Possible values**: Any integer between 1 and the number of cores on your
+ *    machine, inclusive
  * - `sm.vacuum.mode` <br>
- *    The vacuuming mode, one of
- *    `commits` (remove only consolidated commit files),
- *    `fragments` (remove only consolidated fragments),
- *    `fragment_meta` (remove only consolidated fragment metadata),
- *    `array_meta` (remove only consolidated array metadata files), or
- *    `group_meta` (remove only consolidate group metadata only).
- *    <br>
- *    **Default**: fragments
+ *    The vacuuming mode. <br>
+ *    **Default**: "fragments" <br>
+ *    **Data type**: String <br>
+ *    **Possible values**: one of
+ *    `"commits"` (remove only consolidated commit files),
+ *    `"fragments"` (remove only consolidated fragments),
+ *    `"fragment_meta"` (remove only consolidated fragment metadata),
+ *    `"array_meta"` (remove only consolidated array metadata files), or
+ *    `"group_meta"` (remove only consolidate group metadata only).
  * - `sm.consolidation.mode` <br>
- *    The consolidation mode, one of
- *    `commits` (consolidate all commit files),
- *    `fragments` (consolidate all fragments),
- *    `fragment_meta` (consolidate only fragment metadata footers to a single
- *    file), `array_meta` (consolidate array metadata only), or `group_meta`
- *    (consolidate group metadata only). <br>
- *    **Default**: "fragments"
+ *    The consolidation mode. <br>
+ *    **Default**: "fragments" <br>
+ *    **Data type**: String <br>
+ *    **Possible values**: `"commits"` (consolidate all commit files),
+ *    `"fragments"` (consolidate all fragments),
+ *    `"fragment_meta"` (consolidate only fragment metadata footers to a single
+ *    file), `"array_meta"` (consolidate array metadata only), or `"group_meta"`
+ *    (consolidate group metadata only).
  * - `sm.consolidation.amplification` <br>
  *    The factor by which the size of the dense fragment resulting
  *    from consolidating a set of fragments (containing at least one
@@ -165,44 +189,68 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    consolidated have a lot of empty cells, which the consolidated
  *    fragment will have to fill with the special fill value
  *    (since the resulting fragment is dense). <br>
- *    **Default**: 1.0
+ *    **Default**: 1.0 <br>
+ *    **Data type**: Double <br>
+ *    **Possible values**: Any positive double
  * - `sm.consolidation.buffer_size` <br>
- *    **Deprecated**
+ *    **Deprecated** <br>
  *    The size (in bytes) of the attribute buffers used during
  *    consolidation. <br>
- *    **Default**: 50,000,000
+ *    **Default**: 50,000,000 <br>
+ *    **Data type**: Integer <br>
+ *    **Possible values**: Any integer between 1 and number of bytes of 
+ *    available RAM, inclusive
+ TODO verify this
  * - `sm.consolidation.max_fragment_size` <br>
  *    **Experimental** <br>
  *    The size (in bytes) of the maximum on-disk fragment size that will be
  *    created by consolidation. When it is reached, consolidation will continue
  *    the operation in a new fragment. The result will be a multiple fragments,
  *    but with seperate MBRs. <br>
+ *    **Default value**: UINT64_MAX <br>
+ *    **Data type**: Integer <br>
+ *    **Possible values**: Any unsigned, 64-bit integer
  * - `sm.consolidation.steps` <br>
  *    The number of consolidation steps to be performed when executing
  *    the consolidation algorithm.<br>
- *    **Default**: 1
+ *    **Default**: UINT32_MAX <br>
+ *    **Data type**: Integer <br>
+ *    **Possible values**: Any unsigned, 32-bit integer
  * - `sm.consolidation.purge_deleted_cells` <br>
  *    **Experimental** <br>
  *    Purge deleted cells from the consolidated fragment or not.<br>
- *    **Default**: false
+ *    **Default**: false <br>
+ *    **Data type**: Boolean <br>
+ *    **Possible values**: true, false
  * - `sm.consolidation.step_min_frags` <br>
  *    The minimum number of fragments to consolidate in a single step.<br>
- *    **Default**: UINT32_MAX
+ *    **Default**: UINT32_MAX <br>
+ *    **Data type**: Integer <br>
+ *    **Possible values**: Any unsigned, 32-bit integer
  * - `sm.consolidation.step_max_frags` <br>
  *    The maximum number of fragments to consolidate in a single step.<br>
- *    **Default**: UINT32_MAX
+ *    **Default**: UINT32_MAX <br>
+ *    **Data type**: Integer <br>
+ *    **Possible values**: Any unsigned, 32-bit integer
  * - `sm.consolidation.step_size_ratio` <br>
  *    The size ratio that two ("adjacent") fragments must satisfy to be
  *    considered for consolidation in a single step.<br>
- *    **Default**: 0.0
+ *    **Default**: 0.0 <br>
+ *    **Data type**: Float <br>
+ *    **Possible values**: Any number between 1 and the number of cores of
+ *    your machine, inclusive
  * - `sm.consolidation.timestamp_start` <br>
  *    **Experimental** <br>
+ *    The starting range of fragments or array metadata, represented in
+ *    milliseconds since the Unix epoch.
  *    When set, an array will be consolidated between this value and
  *    `sm.consolidation.timestamp_end` (inclusive). <br>
  *    Only for `fragments` and `array_meta` consolidation mode. <br>
  *    **Default**: 0
  * - `sm.consolidation.timestamp_end` <br>
  *    **Experimental** <br>
+ *    The ending range of fragments or array metadata, represented in
+ *    milliseconds since the Unix epoch.
  *    When set, an array will be consolidated between
  *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
  *    Only for `fragments` and `array_meta` consolidation mode. <br>
