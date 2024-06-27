@@ -2235,7 +2235,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "Test array serialization", "[array][serialization]") {
+    ArrayFx,
+    "Test array serialization",
+    "[array][serialization][array-schema-evolution]") {
 #ifdef TILEDB_SERIALIZATION
   SupportedFsLocal local_fs;
   std::string array_name =
@@ -2293,16 +2295,26 @@ TEST_CASE_METHOD(
   rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
-  // Get a reference value to check against after deserialization
-  auto all_arrays = array->array_->array_schemas_all();
-
   // Close array
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
+  // Evolve the array schema.
+  tiledb_array_schema_evolution_t* se;
+  tiledb_array_schema_evolution_alloc(ctx_, &se);
+  tiledb_attribute_t* attr;
+  tiledb_attribute_alloc(ctx_, "a2", TILEDB_FLOAT64, &attr);
+  tiledb_array_schema_evolution_add_attribute(ctx_, se, attr);
+  tiledb_array_evolve(ctx_, array_name.c_str(), se);
+  tiledb_array_schema_evolution_free(&se);
+  tiledb_attribute_free(&attr);
+
   // Open array to test serialization
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
+
+  // Get a reference value to check against after deserialization
+  auto all_arrays = array->array_->array_schemas_all();
 
   // Metadata and non empty domain are not loaded automatically
   // in array open v1 but with separate requests, so we simulate
@@ -2337,19 +2349,19 @@ TEST_CASE_METHOD(
   CHECK(tile_order == Layout::ROW_MAJOR);
 
   auto num_attributes = new_array_schema.attribute_num();
-  CHECK(num_attributes == 1);
+  CHECK(num_attributes == 2);
 
   auto ndim = new_array_schema.dim_num();
   CHECK(ndim == 1);
 
-  // Check all the retrieved arrays
+  // Check the same URIs exist for all array schema. Note: the
+  // schemas may be in a different order so we cannot use std::equal.
   auto all_arrays_new = new_array->array_->array_schemas_all();
   CHECK(all_arrays.size() == all_arrays_new.size());
-  CHECK(std::equal(
-      all_arrays.begin(),
-      all_arrays.end(),
-      all_arrays_new.begin(),
-      [](auto a, auto b) { return a.first == b.first; }));
+  for (auto& it : all_arrays) {
+    INFO("Original array schema URI: " << it.first);
+    CHECK(all_arrays_new.contains(it.first));
+  }
 
   // Check the retrieved non empty domain
   auto non_empty_domain = new_array->array_->loaded_non_empty_domain();
