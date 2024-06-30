@@ -41,9 +41,9 @@ list(APPEND OTHER_SOURCES
 commence(object_library capi_context_stub)
   this_target_sources(${SOURCES} ${OTHER_SOURCES})
   this_target_link_libraries(export)
-  this_target_link_libraries(storage_manager_stub)
   this_target_object_libraries(capi_config_stub)
-  this_target_object_libraries(vfs stats thread_pool)
+  this_target_object_libraries(storage_manager_stub)
+  this_target_object_libraries(rest_client stats thread_pool vfs)
 conclude(object_library)
 
 add_test_subdirectory()

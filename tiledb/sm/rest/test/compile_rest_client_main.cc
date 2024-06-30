@@ -1,5 +1,5 @@
 /**
- * @file compile_context_resources_main.cc
+ * @file tiledb/api/c_api/dimension/test/compile_capi_dimension_main.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,13 @@
  * THE SOFTWARE.
  */
 
-#include "../context_resources.h"
+#include "../rest_client.h"
 
 int main() {
-  tiledb::sm::Config config{};
-  tiledb::sm::ContextResources(config, nullptr, 0, 0, "");
+  /*
+   * Even though the factory has a default constructor, it's enough to pull
+   * in the object code for `class RestClient` itself.
+   */
+  tiledb::sm::RestClientFactory x{};
   return 0;
 }

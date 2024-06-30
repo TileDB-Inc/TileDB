@@ -178,6 +178,12 @@ macro(TileDB_Environment_object_library_end)
     foreach(Compile_Definition IN LISTS TileDB_Environment_object_library_end_Compile_Definitions)
         target_compile_definitions(${TileDB_Environment_object_library_end_Library} PUBLIC ${Compile_Definition})
     endforeach()
+    #
+    # All object libraries ought to depend upon the `configuration_definitions`
+    # library, but at present there's a substitute library. See the definition
+    # of the substitute for more details.
+    #
+    target_link_libraries(${TileDB_Environment_object_library_end_Library} PUBLIC object_library_substitute_configuration_definitions)
 
     # Compile test
     add_executable(${TileDB_Environment_object_library_end_Compile} EXCLUDE_FROM_ALL)
