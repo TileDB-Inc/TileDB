@@ -388,7 +388,7 @@ class RestClient {
       uint64_t,
       Array*,
       const std::vector<std::string>&,
-      shared_ptr<MemoryTracker> memory_tracker = nullptr) {
+      shared_ptr<MemoryTracker>) {
     throw RestClientDisabledException();
   }
 

@@ -297,7 +297,7 @@ class RestClientRemote : public RestClient {
       uint64_t timestamp_end,
       Array* array,
       const std::vector<std::string>& enumeration_names,
-      shared_ptr<MemoryTracker> memory_tracker = nullptr) override;
+      shared_ptr<MemoryTracker>) override;
 
   /**
    * Get the requested query plan from the REST server via POST request.
