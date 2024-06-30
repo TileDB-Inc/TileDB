@@ -33,6 +33,6 @@ int main() {
    * Even though the factory has a default constructor, it's enough to pull
    * in the object code for `class RestClient` itself.
    */
-  tiledb::sm::RestClientFactory x{};
+  [[maybe_unused]] tiledb::sm::RestClientFactory x{};
   return 0;
 }
