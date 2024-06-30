@@ -261,6 +261,8 @@ class RestClient {
  public:
   RestClient(const Config& config);
 
+  virtual ~RestClient() = default;
+
   /**
    * Add a header that will be attached to all requests.
    *
