@@ -2296,11 +2296,7 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         array_from_capnp(
-            query_reader.getArray(),
-            resources,
-            &array,
-            false,
-            memory_tracker);
+            query_reader.getArray(), resources, &array, false, memory_tracker);
         break;
       }
       case SerializationType::CAPNP: {
@@ -2328,11 +2324,7 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
         array_from_capnp(
-            query_reader.getArray(),
-            resources,
-            &array,
-            false,
-            memory_tracker);
+            query_reader.getArray(), resources, &array, false, memory_tracker);
         break;
       }
       default:
