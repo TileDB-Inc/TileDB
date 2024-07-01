@@ -395,7 +395,9 @@ void ArrayFx::write_fragment(tiledb_array_t* array, uint64_t timestamp) {
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Test getting array URI", "[capi][array][array-uri]") {
+    ArrayFx,
+    "C API: Test getting array URI",
+    "[capi][array][array-uri][rest]") {
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "array_uri";
