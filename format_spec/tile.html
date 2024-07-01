@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.555">
+<meta name="generator" content="quarto-1.4.557">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -939,7 +939,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td style="text-align: left;">AES Metadata Part 1</td>
-<td style="text-align: left;"><code>AESPartMD</code></td>
+<td style="text-align: left;"><code>AESPart</code></td>
 <td style="text-align: left;">Metadata part 1</td>
 </tr>
 <tr class="even">
@@ -949,7 +949,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td style="text-align: left;">AES Metadata Part N</td>
-<td style="text-align: left;"><code>AESPartMD</code></td>
+<td style="text-align: left;"><code>AESPart</code></td>
 <td style="text-align: left;">Metadata part N</td>
 </tr>
 <tr class="even">
@@ -966,123 +966,6 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">AES Data Part N</td>
 <td style="text-align: left;"><code>AESPart</code></td>
 <td style="text-align: left;">Data part N</td>
-</tr>
-</tbody>
-</table>
-<p>The <code>AESPartMD</code> field has the following on-disk format:</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;"><strong>Field</strong></th>
-<th style="text-align: left;"><strong>Type</strong></th>
-<th style="text-align: left;"><strong>Description</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">Num metadata parts</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of metadata parts</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Num data parts</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of data parts</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Plaintext length for metadata part 1</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of plaintext metadata part 1</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Ciphertext length for metadata part 1</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of ciphertext metadata part 1</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">IV bytes for metadata part 1</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of AES-256-GCM IV bytes for metadata part 1</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Tag bytes for metadata part 1</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of AES-256-GCM tag for metadata part 1</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">…</td>
-<td style="text-align: left;">…</td>
-<td style="text-align: left;">…</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Plaintext length for metadata part N</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of plaintext metadata part N</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Ciphertext length for metadata part N</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of ciphertext metadata part N</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">IV bytes for metadata part N</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of AES-256-GCM IV bytes for metadata part N</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Tag bytes for metadata part N</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of AES-256-GCM tag for metadata part N</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Plaintext length for data part 1</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of plaintext data part 1</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Ciphertext length for data part 1</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of ciphertext data part 1</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">IV bytes for data part 1</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of AES-256-GCM IV bytes for data part 1</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Tag bytes for data part 1</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of AES-256-GCM tag for data part 1</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">…</td>
-<td style="text-align: left;">…</td>
-<td style="text-align: left;">…</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Plaintext length for data part N</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of plaintext data part N</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Ciphertext length for data part N</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of ciphertext data part N</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">IV bytes for data part N</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of AES-256-GCM IV bytes for data part N</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Tag bytes for data part N</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes of AES-256-GCM tag for data part N</td>
 </tr>
 </tbody>
 </table>

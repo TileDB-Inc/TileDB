@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.555">
+<meta name="generator" content="quarto-1.4.557">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -262,6 +262,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#filter-options" id="toc-filter-options" class="nav-link" data-scroll-target="#filter-options">Filter Options</a>
   <ul class="collapse">
   <li><a href="#main-compressor-options" id="toc-main-compressor-options" class="nav-link" data-scroll-target="#main-compressor-options">Main Compressor Options</a></li>
+  <li><a href="#delta-compressor-options" id="toc-delta-compressor-options" class="nav-link" data-scroll-target="#delta-compressor-options">Delta Compressor Options</a></li>
   <li><a href="#bit-width-reduction-options" id="toc-bit-width-reduction-options" class="nav-link" data-scroll-target="#bit-width-reduction-options">Bit-width Reduction Options</a></li>
   <li><a href="#float-scale-filter-reduction-options" id="toc-float-scale-filter-reduction-options" class="nav-link" data-scroll-target="#float-scale-filter-reduction-options">Float Scale Filter Reduction Options</a></li>
   <li><a href="#positive-delta-options" id="toc-positive-delta-options" class="nav-link" data-scroll-target="#positive-delta-options">Positive Delta Options</a></li>
@@ -374,7 +375,7 @@ ul.task-list li input[type="checkbox"] {
 <p>The filter options are configuration parameters for the filters that do not change once the array schema has been created.</p>
 <section id="main-compressor-options" class="level3">
 <h3 class="anchored" data-anchor-id="main-compressor-options">Main Compressor Options</h3>
-<p>For the compression filters (any of the filter types <code>TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DELTA,DICTIONARY}</code>) the filter options have internal format:</p>
+<p>For the main compression filters (any of the filter types <code>TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DICTIONARY}</code>) the filter options have internal format:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -392,17 +393,47 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Compressor type</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">Type of compression (e.g.&nbsp;<code>TILEDB_BZIP2</code>)</td>
+<td style="text-align: left;">Type of compression (e.g.&nbsp;<code>TILEDB_FILTER_BZIP2</code>)</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Compression level</td>
 <td style="text-align: left;"><code>int32_t</code></td>
 <td style="text-align: left;">Compression level used (ignored by some compressors).</td>
 </tr>
+</tbody>
+</table>
+</section>
+<section id="delta-compressor-options" class="level3">
+<h3 class="anchored" data-anchor-id="delta-compressor-options">Delta Compressor Options</h3>
+<p>For the <code>TILEDB_FILTER_DELTA</code> and <code>TILEDB_FILTER_DOUBLE_DELTA</code> compression filters the filter options have internal format:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Compressor type</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Type of compression (e.g.&nbsp;<code>TILEDB_FILTER_DELTA</code>)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Compression level</td>
+<td style="text-align: left;"><code>int32_t</code></td>
+<td style="text-align: left;">Ignored</td>
+</tr>
 <tr class="odd">
 <td style="text-align: left;">Reinterpret datatype</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">Type to reinterpret data prior to compression. Used for DOUBLE_DELTA and DELTA only.</td>
+<td style="text-align: left;">Type to reinterpret data prior to compression.</td>
 </tr>
 </tbody>
 </table>
@@ -484,7 +515,7 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="other-filter-options" class="level3">
 <h3 class="anchored" data-anchor-id="other-filter-options">Other Filter Options</h3>
-<p>The remaining filters (<code>TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,XOR,DICTIONARY}</code>) do not serialize any options.</p>
+<p>The remaining filters (<code>TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,XOR}</code>) do not serialize any options.</p>
 
 
 </section>

@@ -53,6 +53,10 @@ if (NOT TILEDB_VCPKG)
   message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported. To disable automatically downloading vcpkg, enable the TILEDB_DISABLE_AUTO_VCPKG option, or set ENV{TILEDB_DISABLE_AUTO_VCPKG} to any value.")
 endif()
 
+if (TILEDB_HDFS)
+  message(DEPRECATION "The HDFS storage backend is deprecated and receiving build-only official validation. It will be removed in TileDB 2.28.")
+endif()
+
 # enable assertions by default for debug builds
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(TILEDB_ASSERTIONS TRUE)

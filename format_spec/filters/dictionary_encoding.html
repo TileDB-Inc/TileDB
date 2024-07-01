@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.555">
+<meta name="generator" content="quarto-1.4.557">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -145,7 +145,7 @@ ul.task-list li input[type="checkbox"] {
 
 
 <p>The Dictionary Encoding filter compresses losslessly string data by creating a set of unique strings (called the <code>dictionary</code>) from the input data and substituting the string data on disk with their position in the dictionary. As an example in pseudocode:</p>
-<pre><code>input_data = "HG543232", "HG543232", "HG543232", "HG54", "HG54", "A", "HG543232", "HG54"]
+<pre><code>input_data = ["HG543232", "HG543232", "HG543232", "HG54", "HG54", "A", "HG543232", "HG54"]
 # apply dictionary encoding -&gt;
 dictionary = ["HG543232", "HG54", "A"]
 output_data = [0, 0, 0, 1, 1, 2, 0, 1]</code></pre>
