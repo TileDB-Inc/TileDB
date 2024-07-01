@@ -525,7 +525,7 @@ TEST_CASE_METHOD(
   };
 
   for (auto& ts : test_timestamps) {
-    sm::ArrayDirectory array_dir(sm_->resources(), array_uri, ts[0], ts[1]);
+    sm::ArrayDirectory array_dir(resources_, array_uri, ts[0], ts[1]);
 
     // Check that only the first fragment is visible on an old array.
     auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
@@ -543,7 +543,7 @@ TEST_CASE_METHOD(
   };
 
   for (auto& ts : test_timestamps) {
-    sm::ArrayDirectory array_dir(sm_->resources(), array_uri, ts[0], ts[1]);
+    sm::ArrayDirectory array_dir(resources_, array_uri, ts[0], ts[1]);
 
     // Check that no fragment is visible
     auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
