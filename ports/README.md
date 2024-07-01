@@ -30,9 +30,8 @@ For ease of review when patching existing ports, you are recommended to make one
 
 ## List of port overlays
 
-| Port          | Reason                                                                                |
-|---------------|---------------------------------------------------------------------------------------|
-| `aws-sdk-cpp` | Patching to fix failures to find curl (https://github.com/aws/aws-sdk-cpp/pull/2974). |
-| `libmagic`    | Updating to the upstream port deferred due to failures.                               |
-| `openssl`     | Pinning to OpenSSL 1.1 until we can move to 3.0 in January 2024.                      |
-| `libfaketime` | Port does not yet exist upstream                                                      |
+| Port          | Reason                                                           |
+|---------------|------------------------------------------------------------------|
+| `libmagic`    | Updating to the upstream port deferred due to failures.          |
+| `openssl`     | Pinning to OpenSSL 1.1 until we can move to 3.0 in January 2024. |
+| `libfaketime` | Port does not yet exist upstream                                 |
