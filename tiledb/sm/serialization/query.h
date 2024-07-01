@@ -142,7 +142,7 @@ Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager,
+    ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker);
 
 /**
