@@ -122,7 +122,7 @@ TEST_CASE(
       cfg,
       tp,
       *tiledb::test::g_helper_logger().get(),
-      std::move(resources.create_memory_tracker()))};
+      resources.create_memory_tracker())};
   CHECK(rest_client->rest_server() == "http://localhost:8080");
 }
 
