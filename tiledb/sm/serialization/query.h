@@ -52,6 +52,7 @@ namespace tiledb::sm {
 class Array;
 class Buffer;
 class BufferList;
+class ContextResources;
 class Query;
 class GlobalOrderWriter;
 class UnorderedWriter;
