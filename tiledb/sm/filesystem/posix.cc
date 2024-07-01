@@ -52,6 +52,7 @@
 #include <iostream>
 #include <queue>
 #include <sstream>
+#include <algorithm>
 
 using namespace tiledb::common;
 using filesystem::directory_entry;
