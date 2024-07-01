@@ -1229,7 +1229,6 @@ URI ArrayDirectory::select_latest_array_schema_uri() {
   }
 
   optional<URI> latest_uri = nullopt;
-  uint64_t latest_ts = 0;
 
   for (auto& uri : array_schema_uris_) {
     FragmentID fragment_id{uri};
@@ -1239,9 +1238,8 @@ URI ArrayDirectory::select_latest_array_schema_uri() {
     }
 
     auto ts_range{fragment_id.timestamp_range()};
-    if (ts_range.second > latest_ts && ts_range.second <= timestamp_end_) {
+    if (ts_range.second <= timestamp_end_) {
       latest_uri = uri;
-      latest_ts = ts_range.second;
     }
   }
 
