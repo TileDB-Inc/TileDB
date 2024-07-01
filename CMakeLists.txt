@@ -408,15 +408,6 @@ if (TILEDB_S3)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
 
-#
-# All object libraries should depend upon the `configuration_definitions`
-# library, but they don't at this time.
-# - The vfs library does not have all the definitions for all of the
-#   various object stores yet. This is an issue with the maturity of
-#   this object library only; it can be changed locally.
-#
-add_library(object_library_substitute_configuration_definitions INTERFACE)
-
 ##################################
 # Local install
 ##################################
