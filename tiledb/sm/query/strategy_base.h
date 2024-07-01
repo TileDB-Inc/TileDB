@@ -65,6 +65,7 @@ class StrategyParams {
   /* ********************************* */
 
   StrategyParams(
+      ContextResources& resources,
       shared_ptr<MemoryTracker> array_memory_tracker,
       shared_ptr<MemoryTracker> query_memory_tracker,
       StorageManager* storage_manager,
@@ -78,7 +79,7 @@ class StrategyParams {
       std::optional<QueryCondition>& condition,
       DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization)
-      : resources_(storage_manager->resources())
+      : resources_(resources)
       , array_memory_tracker_(array_memory_tracker)
       , query_memory_tracker_(query_memory_tracker)
       , storage_manager_(storage_manager)
@@ -340,9 +341,9 @@ class StrategyBase {
   void get_dim_attr_stats() const;
 
   /**
-   * Throws an exception if the query is canceled.
+   * Throws an exception if the query is cancelled.
    */
-  void throw_if_cancellation_requested() const;
+  void throw_if_cancelled() const;
 };
 
 }  // namespace tiledb::sm

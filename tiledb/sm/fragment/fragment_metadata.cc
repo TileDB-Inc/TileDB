@@ -52,7 +52,6 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"

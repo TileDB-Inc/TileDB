@@ -43,7 +43,6 @@
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb;
@@ -52,10 +51,9 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
-class SparseUnorderedWithDupsReaderStatusException : public StatusException {
+class SparseUnorderedWithDupsReaderException : public StatusException {
  public:
-  explicit SparseUnorderedWithDupsReaderStatusException(
-      const std::string& message)
+  explicit SparseUnorderedWithDupsReaderException(const std::string& message)
       : StatusException("SparseUnorderedWithDupsReader", message) {
   }
 };
@@ -83,7 +81,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
                &partial_tile_offsets_loading_,
                &found)
            .ok()) {
-    throw SparseUnorderedWithDupsReaderStatusException("Cannot get setting");
+    throw SparseUnorderedWithDupsReaderException("Cannot get setting");
   }
   assert(found);
 }
@@ -262,7 +260,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
       // tile offsets data.
       uint64_t total_tile_offset_usage = tile_offsets_size(relevant_fragments);
       if (total_tile_offset_usage > available_memory) {
-        throw SparseUnorderedWithDupsReaderStatusException(
+        throw SparseUnorderedWithDupsReaderException(
             "Cannot load tile offsets, computed size (" +
             std::to_string(total_tile_offset_usage) +
             ") is larger than available memory (" +
@@ -312,7 +310,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
 
       // Make sure plan to load tile offsets for at least one fragment.
       if (tile_offsets_min_frag_idx_ == tile_offsets_max_frag_idx_) {
-        throw SparseUnorderedWithDupsReaderStatusException(
+        throw SparseUnorderedWithDupsReaderException(
             "Cannot load tile offsets for only one fragment. Offsets size for "
             "the fragment (" +
             std::to_string(
@@ -388,7 +386,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
 
       // Make sure we can add at least one tile.
       if (result_tiles.empty()) {
-        throw SparseUnorderedWithDupsReaderStatusException(
+        throw SparseUnorderedWithDupsReaderException(
             "Cannot load a single tile, increase memory budget");
       }
 
@@ -1512,7 +1510,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
       }));
 
   if (max_rt_idx == 0) {
-    throw SparseUnorderedWithDupsReaderStatusException(
+    throw SparseUnorderedWithDupsReaderException(
         "Unable to copy one tile with current budget/buffers");
   }
 
@@ -1696,7 +1694,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
       if (aggregates_.count(name) != 0) {
         for (auto& aggregates : aggregates_[name]) {
           if (aggregates->need_recompute_on_overflow()) {
-            throw SparseUnorderedWithDupsReaderStatusException(
+            throw SparseUnorderedWithDupsReaderException(
                 "Overflow happened after aggregate was computed, aggregate "
                 "recompute pass is not yet implemented");
           }

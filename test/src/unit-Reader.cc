@@ -170,6 +170,7 @@ TEST_CASE_METHOD(
   Subarray subarray(&array, &g_helper_stats, g_helper_logger());
   DefaultChannelAggregates default_channel_aggregates;
   auto params = StrategyParams(
+      context.resources(),
       array.memory_tracker(),
       tracker_,
       context.storage_manager(),

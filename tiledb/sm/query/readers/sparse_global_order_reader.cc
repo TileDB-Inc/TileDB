@@ -46,7 +46,6 @@
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb;
@@ -55,9 +54,9 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
-class SparseGlobalOrderReaderStatusException : public StatusException {
+class SparseGlobalOrderReaderException : public StatusException {
  public:
-  explicit SparseGlobalOrderReaderStatusException(const std::string& message)
+  explicit SparseGlobalOrderReaderException(const std::string& message)
       : StatusException("SparseGlobalOrderReader", message) {
   }
 };
@@ -249,7 +248,7 @@ void SparseGlobalOrderReader<BitmapType>::load_all_tile_offsets() {
         tile_offsets_size(subarray_.relevant_fragments());
     uint64_t available_memory = array_memory_tracker_->get_memory_available();
     if (total_tile_offset_usage > available_memory) {
-      throw SparseGlobalOrderReaderStatusException(
+      throw SparseGlobalOrderReaderException(
           "Cannot load tile offsets, computed size (" +
           std::to_string(total_tile_offset_usage) +
           ") is larger than available memory (" +
@@ -385,7 +384,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
 
                 if (result_tiles[f].empty()) {
                   auto tiles_size = get_coord_tiles_size(dim_num, f, t);
-                  throw SparseGlobalOrderReaderStatusException(
+                  throw SparseGlobalOrderReaderException(
                       "Cannot load a single tile for fragment, increase "
                       "memory "
                       "budget, tile size : " +
@@ -1711,7 +1710,7 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
       }));
 
   if (max_cs_idx == 0) {
-    throw SparseGlobalOrderReaderStatusException(
+    throw SparseGlobalOrderReaderException(
         "Unable to copy one slab with current budget/buffers");
   }
 
@@ -1948,7 +1947,7 @@ void SparseGlobalOrderReader<BitmapType>::process_slabs(
       if (aggregates_.count(name) != 0) {
         for (auto& aggregates : aggregates_[name]) {
           if (aggregates->need_recompute_on_overflow()) {
-            throw SparseGlobalOrderReaderStatusException(
+            throw SparseGlobalOrderReaderException(
                 "Overflow happened after aggregate was computed, aggregate "
                 "recompute pass is not yet implemented");
           }

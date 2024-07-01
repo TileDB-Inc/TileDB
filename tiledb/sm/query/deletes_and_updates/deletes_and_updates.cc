@@ -35,7 +35,6 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
@@ -45,9 +44,9 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
-class DeleteAndUpdateStatusException : public StatusException {
+class DeleteAndUpdateException : public StatusException {
  public:
-  explicit DeleteAndUpdateStatusException(const std::string& message)
+  explicit DeleteAndUpdateException(const std::string& message)
       : StatusException("Deletes", message) {
   }
 };
@@ -65,28 +64,23 @@ DeletesAndUpdates::DeletesAndUpdates(
     , condition_(params.condition())
     , update_values_(update_values) {
   // Sanity checks
-  if (storage_manager_ == nullptr) {
-    throw DeleteAndUpdateStatusException(
-        "Cannot initialize query; Storage manager not set");
-  }
-
   if (!buffers_.empty()) {
-    throw DeleteAndUpdateStatusException(
+    throw DeleteAndUpdateException(
         "Cannot initialize deletes; Buffers are set");
   }
 
   if (array_schema_.dense()) {
-    throw DeleteAndUpdateStatusException(
+    throw DeleteAndUpdateException(
         "Cannot initialize deletes; Only supported for sparse arrays");
   }
 
   if (subarray_.is_set()) {
-    throw DeleteAndUpdateStatusException(
+    throw DeleteAndUpdateException(
         "Cannot initialize deletes; Subarrays are not supported");
   }
 
   if (!params.skip_checks_serialization() && !condition_.has_value()) {
-    throw DeleteAndUpdateStatusException(
+    throw DeleteAndUpdateException(
         "Cannot initialize deletes; One condition is needed");
   }
 }
@@ -112,7 +106,7 @@ Status DeletesAndUpdates::dowork() {
   if (condition_.has_value()) {
     RETURN_NOT_OK(condition_->check(array_schema_));
   } else {
-    throw DeleteAndUpdateStatusException(
+    throw DeleteAndUpdateException(
         "Cannot process delete, no condition is set");
   }
 
@@ -137,7 +131,7 @@ Status DeletesAndUpdates::dowork() {
       auto fragment_timestamp_range{fragment_id.timestamp_range()};
       if (timestamp >= fragment_timestamp_range.first &&
           timestamp <= fragment_timestamp_range.second) {
-        throw DeleteAndUpdateStatusException(
+        throw DeleteAndUpdateException(
             "Cannot write a delete in the middle of a fragment consolidated "
             "without timestamps.");
       }
