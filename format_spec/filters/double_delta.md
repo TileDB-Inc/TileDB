@@ -12,7 +12,7 @@ The filter enum value for the double delta filter is `6` (`TILEDB_FILTER_DOUBLE_
 
 ### Input and Output Layout
 
-The input data layout will be an array of integer numbers. Their type (henceforth known as `input_t`) is inferred from the output type of the previous filter, or the tile's datatype if this is the first filter in the pipeline, but can be overriden by the [_Reinterpret datatype_ field](../filter_pipeline.md#delta-compressor-options) in the filter options.
+The input data layout will be an array of integer numbers (each known as `in_{n}`, with `n` starting from 0). Their type (henceforth known as `input_t`) is inferred from the output type of the previous filter, or the tile's datatype if this is the first filter in the pipeline, but can be overriden by the [_Reinterpret datatype_ field](../filter_pipeline.md#delta-compressor-options) in the filter options.
 
 The output data layout consists of the following fields:
 
