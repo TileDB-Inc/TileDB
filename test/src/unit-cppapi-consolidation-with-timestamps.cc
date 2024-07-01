@@ -51,7 +51,7 @@ struct ConsolidationWithTimestampsFx {
   // TileDB context.
   Context ctx_;
   VFS vfs_;
-  sm::StorageManager* sm_;
+  sm::ContextResources* resources_;
 
   // Constructors/destructors.
   ConsolidationWithTimestampsFx();
@@ -99,7 +99,7 @@ ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->storage_manager();
+  resources_ = &ctx_.ptr().get()->resources();
   vfs_ = VFS(ctx_);
 }
 
@@ -113,7 +113,7 @@ void ConsolidationWithTimestampsFx::set_legacy() {
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
 
   ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->storage_manager();
+  resources_ = &ctx_.ptr().get()->resources();
   vfs_ = VFS(ctx_);
 }
 
@@ -419,7 +419,7 @@ TEST_CASE_METHOD(
   };
 
   for (auto& ts : test_timestamps) {
-    sm::ArrayDirectory array_dir(sm_->resources(), array_uri, ts[0], ts[1]);
+    sm::ArrayDirectory array_dir(resources_, array_uri, ts[0], ts[1]);
 
     // Check that only the consolidated fragment is visible.
     auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
@@ -437,7 +437,7 @@ TEST_CASE_METHOD(
   };
 
   for (auto& ts : test_timestamps) {
-    sm::ArrayDirectory array_dir(sm_->resources(), array_uri, ts[0], ts[1]);
+    sm::ArrayDirectory array_dir(resources_, array_uri, ts[0], ts[1]);
 
     // Check that no fragment is visible
     auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
@@ -1274,7 +1274,7 @@ TEST_CASE_METHOD(
   cfg["sm.mem.consolidation.reader_weight"] = "5000";
   cfg["sm.mem.consolidation.writer_weight"] = "5000";
   ctx_ = Context(cfg);
-  sm_ = ctx_.ptr().get()->storage_manager();
+  resources_ = &ctx_.ptr().get()->resources();
   vfs_ = VFS(ctx_);
 
   // Write first fragment.
