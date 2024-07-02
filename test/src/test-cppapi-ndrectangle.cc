@@ -62,6 +62,9 @@ TEST_CASE_METHOD(
   // Check setting range in non-existent dim
   CHECK_THROWS(ndrect.set_range(2, range_two[0], range_two[1]));
 
+  // Check setting range with wrong order
+  CHECK_THROWS(ndrect.set_range(0, range_two[1], range_two[0]));
+
   // Get range
   auto range = ndrect.range<int>(0);
   CHECK(range[0] == 10);
