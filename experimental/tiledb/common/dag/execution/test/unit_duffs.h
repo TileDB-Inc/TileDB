@@ -31,4 +31,6 @@
 #ifndef TILEDB_UNIT_DUFFS_H
 #define TILEDB_UNIT_DUFFS_H
 #include <test/support/tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #endif  // TILEDB_UNIT_DUFFS_H

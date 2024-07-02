@@ -31,4 +31,5 @@
 #ifndef TILEDB_UNIT_PROOF_H
 #define TILEDB_UNIT_PROOF_H
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 #endif  // TILEDB_UNIT_PROOF_H

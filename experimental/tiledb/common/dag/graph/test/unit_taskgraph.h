@@ -31,4 +31,5 @@
 #ifndef TILEDB_DAG_UNIT_TASKGRAPH_H
 #define TILEDB_DAG_UNIT_TASKGRAPH_H
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 #endif  // TILEDB_DAG_UNIT_TASKGRAPH_H
