@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>directory</title>
+<title>Double Delta Filter</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -23,23 +23,23 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="../../../../site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="../../../../site_libs/quarto-nav/headroom.min.js"></script>
-<script src="../../../../site_libs/clipboard/clipboard.min.js"></script>
-<script src="../../../../site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="../../../../site_libs/quarto-search/fuse.min.js"></script>
-<script src="../../../../site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="../../../../">
-<link href="../../../../images/favicon.ico" rel="icon">
-<script src="../../../../site_libs/quarto-html/quarto.js"></script>
-<script src="../../../../site_libs/quarto-html/popper.min.js"></script>
-<script src="../../../../site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="../../../../site_libs/quarto-html/anchor.min.js"></script>
-<link href="../../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="../../../../site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="../../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../images/favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -69,7 +69,7 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 
 
-<link rel="stylesheet" href="../../../../quarto-materials/tiledb.css">
+<link rel="stylesheet" href="../../quarto-materials/tiledb.css">
 </head>
 
 <body class="nav-fixed">
@@ -79,8 +79,8 @@ ul.task-list li input[type="checkbox"] {
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a href="../../../../index.html" class="navbar-brand navbar-brand-logo">
-    <img src="../../../../quarto-materials/tiledb-logo.png" alt="" class="navbar-logo">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../../quarto-materials/tiledb-logo.png" alt="" class="navbar-logo">
     </a>
   </div>
             <div id="quarto-search" class="" title="Search"></div>
@@ -117,11 +117,10 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#storage-manager-stub" id="toc-storage-manager-stub" class="nav-link active" data-scroll-target="#storage-manager-stub">Storage Manager Stub</a>
+  <li><a href="#double-delta-filter" id="toc-double-delta-filter" class="nav-link active" data-scroll-target="#double-delta-filter">Double Delta Filter</a>
   <ul class="collapse">
-  <li><a href="#override-headers" id="toc-override-headers" class="nav-link" data-scroll-target="#override-headers">Override Headers</a></li>
-  <li><a href="#cmake-support" id="toc-cmake-support" class="nav-link" data-scroll-target="#cmake-support">CMake support</a></li>
-  <li><a href="#stub-definition" id="toc-stub-definition" class="nav-link" data-scroll-target="#stub-definition">Stub Definition</a></li>
+  <li><a href="#filter-enum-value" id="toc-filter-enum-value" class="nav-link" data-scroll-target="#filter-enum-value">Filter Enum Value</a></li>
+  <li><a href="#input-and-output-layout" id="toc-input-and-output-layout" class="nav-link" data-scroll-target="#input-and-output-layout">Input and Output Layout</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -129,23 +128,103 @@ ul.task-list li input[type="checkbox"] {
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Double Delta Filter</h1>
+</div>
 
 
 
-<section id="storage-manager-stub" class="level2">
-<h2 class="anchored" data-anchor-id="storage-manager-stub">Storage Manager Stub</h2>
-<p>The <code>class StorageManager</code> is too large and unwieldy to support unit testing, yet there’s member variable of that type in each <code>Context</code>. This directory defines a stub class for <code>StorageManager</code> that allows testing with <code>Context</code> in cases that don’t require anything but a stub.</p>
-<section id="override-headers" class="level3">
-<h3 class="anchored" data-anchor-id="override-headers">Override Headers</h3>
-<p>The name of the header may not change; they’re fixed in other headers. The file <code>storage_manager_override</code> declares the class <code>StorageManagerStub</code> and puts that declaration into <code>storage_manager.h</code>. The file <code>storage_manager_declaration_override.h</code> specializes a template that has the effect of assigning the alias <code>StorageManager</code> to StorageManagerStub`.</p>
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="double-delta-filter" class="level2">
+<h2 class="anchored" data-anchor-id="double-delta-filter">Double Delta Filter</h2>
+<p>The double delta filter compresses integer type data by first computing the delta between consecutive elements, then the delta between the deltas, and bit-packing the result.</p>
+<section id="filter-enum-value" class="level3">
+<h3 class="anchored" data-anchor-id="filter-enum-value">Filter Enum Value</h3>
+<p>The filter enum value for the double delta filter is <code>6</code> (<code>TILEDB_FILTER_DOUBLE_DELTA</code> enum).</p>
 </section>
-<section id="cmake-support" class="level3">
-<h3 class="anchored" data-anchor-id="cmake-support">CMake support</h3>
-<p>In order to activate the override, the directory path must be modified to reach this directory so that the override header will be found on the include path. The file <code>storage_manager_override.cmake</code> defines an object library that sets up the include path.</p>
-</section>
-<section id="stub-definition" class="level3">
-<h3 class="anchored" data-anchor-id="stub-definition">Stub Definition</h3>
-<p>The file <code>storage_manager_stub.cc</code> is empty, but is needed to define an object library for the overridden storage manager.</p>
+<section id="input-and-output-layout" class="level3">
+<h3 class="anchored" data-anchor-id="input-and-output-layout">Input and Output Layout</h3>
+<p>The input data layout will be an array of integer numbers (each known as <code>in_{n}</code>, with <code>n</code> starting from 0). Their type (henceforth known as <code>input_t</code>) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the <a href="../../format_spec/filter_pipeline.html#delta-compressor-options"><em>Reinterpret datatype</em> field</a> in the filter options.</p>
+<p>The output data layout consists of the following fields:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;"><code>bitsize</code></td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Minimum number of bits required to represent any <code>dd_n</code> value.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>n</code></td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">Number of values in the input data.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>in_0</code></td>
+<td style="text-align: left;"><code>input_t</code></td>
+<td style="text-align: left;">First input value.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>in_1</code></td>
+<td style="text-align: left;"><code>input_t</code></td>
+<td style="text-align: left;">Second input value.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>sign_2</code></td>
+<td style="text-align: left;"><code>bit</code></td>
+<td style="text-align: left;">Sign of <code>(in_2 - in_1) - (in_1 - in_0)</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>dd_2</code></td>
+<td style="text-align: left;"><code>bit[bitsize]</code></td>
+<td style="text-align: left;">Absolute value of <code>(in_2 - in_1) - (in_1 - in_0)</code>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+<td style="text-align: left;">…</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>sign_n</code></td>
+<td style="text-align: left;"><code>bit</code></td>
+<td style="text-align: left;">Sign of <code>(in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2})</code>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><code>dd_n</code></td>
+<td style="text-align: left;"><code>bit[bitsize]</code></td>
+<td style="text-align: left;">Absolute value of <code>(in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2})</code>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><code>pad</code></td>
+<td style="text-align: left;"><code>bit[((n - 2) * (bitsize + 1)) % 64]</code></td>
+<td style="text-align: left;">Padding to the next 64-bit boundary.</td>
+</tr>
+</tbody>
+</table>
+<p>If <code>bitsize</code> was computed as equal to <code>sizeof(input_t) * 8 - 1</code> (i.e.&nbsp;double delta compression would not have yielded any size savings), double delta compression is not applied and the input data will be added to the output stream unchanged, after <code>bitsize</code> and <code>n</code>, which are always written.</p>
 
 
 </section>
