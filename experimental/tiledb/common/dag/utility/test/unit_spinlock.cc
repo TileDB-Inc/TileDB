@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 #include <future>
 #include <mutex>
+#include <numeric>
 #include <vector>
 #include "../spinlock.h"
 

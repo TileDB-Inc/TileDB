@@ -32,6 +32,7 @@
 
 #include "experimental/tiledb/common/dag/utility/test/unit_bounded_buffer.h"
 #include <future>
+#include <numeric>
 #include <type_traits>
 #include <vector>
 #include "experimental/tiledb/common/dag/utility/bounded_buffer.h"
