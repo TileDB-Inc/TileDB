@@ -34,6 +34,8 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
+
 #include "test/support/src/vfs_helpers.h"
 
 using namespace tiledb::test;

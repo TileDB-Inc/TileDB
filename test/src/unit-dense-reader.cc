@@ -44,6 +44,7 @@
 #endif
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 
 using namespace tiledb::sm;
 using namespace tiledb::test;

@@ -38,6 +38,7 @@
 #include "tiledb/sm/misc/resource_pool.h"
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 using namespace tiledb::sm;
 using Catch::Matchers::StartsWith;

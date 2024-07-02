@@ -36,6 +36,8 @@
 #include "tiledb/sm/global_state/unit_test_config.h"
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+
 #include <iostream>
 
 using namespace tiledb::test;

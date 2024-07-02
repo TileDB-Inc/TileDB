@@ -34,8 +34,11 @@
 #include <ostream>
 #include <random>
 
-#include "test/support/src/ast_helpers.h"
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include "test/support/tdb_catch.h"
+
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"

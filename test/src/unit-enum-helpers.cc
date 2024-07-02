@@ -32,7 +32,9 @@
 
 #include <iostream>
 
+#include <catch2/generators/catch_generators.hpp>
 #include "test/support/tdb_catch.h"
+
 #include "tiledb/sm/enums/datatype.h"
 
 using namespace tiledb::sm;

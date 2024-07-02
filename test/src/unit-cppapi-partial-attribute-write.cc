@@ -31,6 +31,8 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers.hpp>
+
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/array/array_directory.h"

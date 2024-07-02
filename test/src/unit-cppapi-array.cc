@@ -30,8 +30,11 @@
  * Tests the C++ API for array related functions.
  */
 
-#include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
+#include <test/support/src/vfs_helpers.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"

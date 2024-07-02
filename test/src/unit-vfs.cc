@@ -31,6 +31,10 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
 #ifdef HAVE_AZURE

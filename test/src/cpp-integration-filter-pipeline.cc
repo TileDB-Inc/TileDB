@@ -38,6 +38,8 @@
 #include "tiledb/stdx/utility/to_underlying.h"
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+
 #include <functional>
 #include <random>
 

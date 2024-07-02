@@ -32,8 +32,10 @@
 
 #ifdef TILEDB_SERIALIZATION
 
-#include "test/support/src/mem_helpers.h"
+#include <catch2/generators/catch_generators.hpp>
 #include "test/support/tdb_catch.h"
+
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"

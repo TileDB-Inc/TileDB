@@ -33,6 +33,8 @@
 #include <fstream>
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"

@@ -39,6 +39,8 @@
 #endif
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
 #include "helpers.h"
 #include "serialization_wrappers.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"

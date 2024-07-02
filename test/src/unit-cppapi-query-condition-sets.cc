@@ -30,8 +30,10 @@
  * Tests the C++ API for query condition related functions.
  */
 
-#include "test/support/src/ast_helpers.h"
 #include "test/support/tdb_catch.h"
+#include <catch2/generators/catch_generators.hpp>
+
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"

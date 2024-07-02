@@ -52,10 +52,8 @@ TEST_CASE("C API: Test error and error message", "[capi][error]") {
   const char* errmsg;
   rc = tiledb_error_message(err, &errmsg);
   CHECK(rc == TILEDB_OK);
-  CHECK_THAT(
-      errmsg,
-      Catch::Matchers::Equals(
-          "C API: argument `group_uri` may not be nullptr"));
+  CHECK(
+      std::string(errmsg) == "C API: argument `group_uri` may not be nullptr");
 
   // Clean up
   tiledb_error_free(&err);

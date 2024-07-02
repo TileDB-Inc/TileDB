@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 
 // clang-format off
 #include "test/support/src/helpers.h"

@@ -30,11 +30,12 @@
  * Tests the ordered dimension label reader.
  */
 
+#include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 using namespace Catch::Matchers;
 
 #include <test/support/src/helpers.h>
-#include <test/support/tdb_catch.h>
 #include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"

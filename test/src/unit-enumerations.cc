@@ -32,8 +32,11 @@
 
 #include <sstream>
 
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
+
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"

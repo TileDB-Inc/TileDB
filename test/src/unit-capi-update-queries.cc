@@ -30,8 +30,10 @@
  * Tests of C API for updates.
  */
 
-#include "test/support/src/vfs_helpers.h"
+#include <catch2/generators/catch_generators.hpp>
 #include "test/support/tdb_catch.h"
+
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"

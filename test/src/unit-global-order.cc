@@ -32,6 +32,8 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>
