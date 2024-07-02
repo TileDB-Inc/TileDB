@@ -451,10 +451,9 @@ Status check_range_is_subset(const Range& superset, const Range& range) {
  *
  * @param range The range to check.
  */
-template <
-    typename T,
-    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+template <typename T>
 void check_range_is_valid(const Range& range) {
+  static_assert(std::is_arithmetic_v<T>, "T must be an arithmetic type");
   // Check has data.
   if (range.empty())
     throw std::invalid_argument("Range is empty");
@@ -469,6 +468,23 @@ void check_range_is_valid(const Range& range) {
     throw std::invalid_argument(
         "Lower range bound " + std::to_string(r[0]) +
         " cannot be larger than the higher bound " + std::to_string(r[1]));
+};
+
+/**
+ * Specialization of check_range_is_valid for string_view.
+ */
+template <>
+inline void check_range_is_valid<std::string_view>(const Range& range) {
+  // Check has data.
+  if (range.empty())
+    throw std::invalid_argument("Range is empty");
+  auto start = range.start_str();
+  auto end = range.end_str();
+  // Check range bounds
+  if (start > end)
+    throw std::invalid_argument(
+        "Lower range bound " + std::string(start) +
+        " cannot be larger than the higher bound " + std::string(end));
 };
 
 /**
@@ -494,6 +510,17 @@ void crop_range(const Range& bounds, Range& range) {
  * @param range The range to get a string representation of.
  */
 std::string range_str(const Range& range, const tiledb::sm::Datatype type);
+
+/**
+ * Validates that the range's elements are in the correct order.
+ *
+ * @param range The range to validate.
+ * @param type The datatype to view the range's elements as.
+ *
+ * @throws std::invalid_argument If the range's elements are not in the correct
+ * order.
+ */
+void check_range_is_valid(const Range& range, const tiledb::sm::Datatype type);
 
 }  // namespace tiledb::type
 
