@@ -90,7 +90,9 @@ jobs:
         os:
           - ${{ inputs.matrix_image }}
     runs-on: ${{matrix.os}}
-    container: ${{inputs.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || ''}}
+    # modified from above tag to add linux-headers
+    # container: ${{inputs.manylinux && 'quay.io/pypa/manylinux2014_x86_64:2022-11-06-7be974c' || ''}}
+    container: ${{inputs.manylinux && 'ghcr.io/ihnorton/tiledb-manylinux2014_x86_64:2023-04-02' || ''}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: ${{ inputs.timeout || 90 }}
@@ -120,12 +122,13 @@ jobs:
         run: ./scripts/ci/posix/prelim.sh
         shell: bash
 
-      - name: Install manylinux prerequisites
-        if: inputs.manylinux
-        run: |
-          set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7
-          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
+      # Not needed with the custom manylinux image.
+      # - name: Install manylinux prerequisites
+      #   if: inputs.manylinux
+      #   run: |
+      #     set -e pipefail
+      #     yum install -y redhat-lsb-core centos-release-scl devtoolset-7
+      #     echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
 
       # Need this for virtualenv and arrow tests if enabled
       - name: 'Install Python'
