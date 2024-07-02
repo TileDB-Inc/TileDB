@@ -33,6 +33,7 @@
 #include <capnp/message.h>
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"

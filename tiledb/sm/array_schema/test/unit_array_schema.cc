@@ -31,6 +31,7 @@
  */
 
 #include <tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "array_schema_test_support.h"
 #include "tiledb/sm/array_schema/dimension_label.h"

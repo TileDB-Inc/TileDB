@@ -31,6 +31,9 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
 #include "../range_subset.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/type/range/range.h"

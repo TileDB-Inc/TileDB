@@ -29,6 +29,8 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
 #include "../prng.h"
 #include "../random_label.h"
 #include "../seeder.h"

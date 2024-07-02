@@ -30,6 +30,9 @@
 
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
+
 #include "../vfs_api_internal.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_vfs.h"
 #include "tiledb/platform/platform.h"

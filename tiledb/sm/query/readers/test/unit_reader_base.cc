@@ -34,6 +34,7 @@
 #include "tiledb/sm/query/readers/reader_base.h"
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers.hpp>
 
 using namespace tiledb::sm;
 

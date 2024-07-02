@@ -1,6 +1,7 @@
 #include <tiledb/tiledb>
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers.hpp>
 
 #include <chrono>
 #include <thread>

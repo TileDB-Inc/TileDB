@@ -32,9 +32,13 @@
  *
  */
 
-#include <test/support/src/mem_helpers.h>
-#include <test/support/tdb_catch.h>
+#include <random>
 
+#include <test/support/tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
+#include <test/support/src/mem_helpers.h>
 #include "../bit_width_reduction_filter.h"
 #include "../bitshuffle_filter.h"
 #include "../byteshuffle_filter.h"

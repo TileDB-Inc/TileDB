@@ -32,6 +32,9 @@
 
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+
 #include "../../misc/parse_argument.h"
 #include "../config.h"
 

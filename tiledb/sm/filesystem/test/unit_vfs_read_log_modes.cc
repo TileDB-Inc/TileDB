@@ -31,6 +31,8 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+
 #include "tiledb/common/logger.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/vfs.h"

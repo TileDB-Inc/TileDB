@@ -6,6 +6,7 @@
 #include <tiledb/tiledb_experimental>
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 using namespace tiledb;
 

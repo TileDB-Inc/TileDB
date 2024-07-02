@@ -31,5 +31,6 @@
  */
 
 #include "tdb_catch_prng.h"
+#include <catch2/reporters/catch_reporter_registrars.hpp>
 
 CATCH_REGISTER_LISTENER(PRNGSeederFromCatch)

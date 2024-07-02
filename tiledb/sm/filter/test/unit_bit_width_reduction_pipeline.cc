@@ -32,6 +32,8 @@
  *
  */
 
+#include <random>
+
 #include <test/support/src/mem_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "../bit_width_reduction_filter.h"

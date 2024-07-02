@@ -31,6 +31,8 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+
 #include "tiledb/api/c_api/data_order/data_order_api_external.h"
 
 #include <string>

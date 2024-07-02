@@ -33,6 +33,8 @@
 #include "tiledb/storage_format/serialization/serializers.h"
 
 #include <tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
+
 #include <iostream>
 
 using namespace std;

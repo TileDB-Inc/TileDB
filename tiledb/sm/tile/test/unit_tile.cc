@@ -35,6 +35,8 @@
 #include "tiledb/sm/tile/tile.h"
 
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
 #include <iostream>
 
 using namespace tiledb::sm;

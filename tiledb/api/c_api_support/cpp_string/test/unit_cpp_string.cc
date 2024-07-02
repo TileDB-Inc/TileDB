@@ -31,6 +31,7 @@
 
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
+#include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "../cpp_string.h"
 

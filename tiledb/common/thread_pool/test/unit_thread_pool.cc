@@ -32,8 +32,10 @@
 
 #include "unit_thread_pool.h"
 
-#include <stdint.h>
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+
+#include <stdint.h>
 #include <atomic>
 #include <cstdio>
 #include <iostream>

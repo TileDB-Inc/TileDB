@@ -44,8 +44,8 @@ TEST_CASE("Status: Test ok", "[status]") {
 
 TEST_CASE("Status: Test to_string", "[status]") {
   Status ok = Status::Ok();
-  CHECK_THAT(ok.to_string(), Catch::Matchers::Equals("Ok"));
+  CHECK(ok.to_string() == "Ok");
 
   Status err = Status_Error("err msg");
-  CHECK_THAT(err.to_string(), Catch::Matchers::Equals("Error: err msg"));
+  CHECK(err.to_string() == "Error: err msg");
 }

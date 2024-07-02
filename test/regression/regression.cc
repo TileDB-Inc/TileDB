@@ -1,5 +1,5 @@
 #define CATCH_CONFIG_RUNNER
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_session.hpp>
 
 int main(const int argc, char** const argv) {
   Catch::Session session;

@@ -31,9 +31,11 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
 
 #include "../dict_compressor.h"
 
+#include <algorithm>
 #include <cstring>
 #include <iterator>
 #include <sstream>

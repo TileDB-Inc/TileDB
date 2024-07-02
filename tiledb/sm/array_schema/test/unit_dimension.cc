@@ -31,6 +31,8 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/catch_template_test_macros.hpp>
+
 #include "../dimension.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/enums/datatype.h"

@@ -36,5 +36,5 @@
  */
 TEST_CASE("tdbCatch: Validate set_seed hook", "[tdbCatch]") {
   tiledb::common::Seeder& seeder_ = tiledb::common::Seeder::get();
-  CHECK(seeder_.seed().value() == Catch::rngSeed());
+  CHECK(seeder_.seed().value() == Catch::getSeed());
 }

@@ -34,6 +34,8 @@
 #include <random>
 
 #include "test/support/tdb_catch.h"
+#include <catch2/generators/catch_generators.hpp>
+
 #include "tiledb/sm/misc/integral_type_casts.h"
 
 // These tests are for the safe_integral_cast and safe_itegral_cast_to_datatype

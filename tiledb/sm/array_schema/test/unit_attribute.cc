@@ -31,6 +31,7 @@
  */
 
 #include <tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "tiledb/sm/array_schema/attribute.h"
 

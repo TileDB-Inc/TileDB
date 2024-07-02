@@ -31,6 +31,9 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+
 #include <filesystem>
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"
