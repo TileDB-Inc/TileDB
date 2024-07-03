@@ -113,7 +113,7 @@ void testing_float_scaling_filter() {
             ->set_option(FilterOption::SCALE_FLOAT_OFFSET, &foffset)
             .ok());
 
-  CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+  pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
 
   // Check new size and number of chunks
   CHECK(tile->size() == 0);
@@ -177,7 +177,7 @@ void testing_xor_filter(Datatype t) {
   ThreadPool tp(4);
   pipeline.add_filter(XORFilter(t));
 
-  CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+  pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
 
   // Check new size and number of chunks
   CHECK(tile->size() == 0);
@@ -293,7 +293,7 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
   }
 
   ThreadPool tp(4);
-  REQUIRE(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+  pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
   CHECK(tile->size() == 0);
   CHECK(tile->filtered_buffer().size() != 0);
 

@@ -60,6 +60,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/constants.h"
@@ -147,6 +148,14 @@ Status RestClient::init(
   bool found = false;
   RETURN_NOT_OK(config_->get<bool>(
       "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
+
+  load_headers(*config_);
+
+  if (auto payer =
+          config_->get<std::string>("rest.payer_namespace", Config::must_find);
+      !payer.empty()) {
+    extra_headers_["X-Payer"] = std::move(payer);
+  }
 
   return Status::Ok();
 }
@@ -318,7 +327,7 @@ shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting array schema from REST; server returned no data.");
   }
 
@@ -676,7 +685,7 @@ RestClient::post_enumerations_from_rest(
     const std::vector<std::string>& enumeration_names,
     shared_ptr<MemoryTracker> memory_tracker) {
   if (array == nullptr) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting enumerations from REST; array is null.");
   }
 
@@ -721,7 +730,7 @@ RestClient::post_enumerations_from_rest(
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting enumerations from REST; server returned no data.");
   }
 
@@ -736,7 +745,8 @@ void RestClient::post_query_plan_from_rest(
   // Get array
   const Array* array = query.array();
   if (array == nullptr) {
-    throw Status_RestError("Error submitting query plan to REST; null array.");
+    throw RestClientException(
+        "Error submitting query plan to REST; null array.");
   }
 
   Buffer buff;
@@ -779,7 +789,7 @@ void RestClient::post_query_plan_from_rest(
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting query plan from REST; server returned no data.");
   }
 
@@ -1650,7 +1660,7 @@ RestClient::post_consolidation_plan_from_rest(
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting query plan from REST; server returned no data.");
   }
 
@@ -1658,6 +1668,17 @@ RestClient::post_consolidation_plan_from_rest(
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_consolidation_plan_response(
       serialization_type_, returned_data);
+}
+
+void RestClient::load_headers(const Config& cfg) {
+  for (auto iter = ConfigIter(cfg, constants::rest_header_prefix); !iter.end();
+       iter.next()) {
+    auto key = iter.param();
+    if (key.size() == 0) {
+      continue;
+    }
+    extra_headers_[key] = iter.value();
+  }
 }
 
 #else
@@ -1828,6 +1849,10 @@ Status RestClient::post_vacuum_to_rest(const URI&, const Config&) {
 std::vector<std::vector<std::string>>
 RestClient::post_consolidation_plan_from_rest(
     const URI&, const Config&, uint64_t) {
+  throw RestClientDisabledException();
+}
+
+void RestClient::load_headers(const Config&) {
   throw RestClientDisabledException();
 }
 

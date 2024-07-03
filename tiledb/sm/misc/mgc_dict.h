@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,49 +29,26 @@
 #include "magic.h"
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/misc/types.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm::magic_dict {
 
-using tiledb::common::Status;
+/**
+ * Have libmagic load data from our embedded version.
+ *
+ * @param magic - libmagic object obtained from magic_open()
+ * @return the value libmgaic returns from magic_load_buffers().
+ */
+int magic_mgc_embedded_load(magic_t magic);
 
-class magic_dict {
- public:
-  /** Default constructor */
-  magic_dict();
+/**
+ * Provides access to the internally expanded data.
+ *
+ * Data is stored in the library in a compressed form (approx. 270KB) and gets
+ * decompressed (approx. 7MB) on the first call to this function. Subsequent
+ * calls to this function will reuse the decompressed buffer.
+ *
+ * @return a span to the internal buffer holding the expanded data.
+ */
+span<const uint8_t> expanded_buffer();
 
-  /**
-   * Have libmagic load data from our embedded version.
-   *
-   * @param magic - libmagic object obtained from magic_open()
-   * @return the value libmgaic returns from magic_load_buffers().
-   */
-  static int magic_mgc_embedded_load(magic_t magic);
-
-  /**
-   * Provides access to the internally expanded data.
-   *
-   * @return a shared pointer to the internal ByteVecValue holding
-   * the expanded data.
-   */
-  static const shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer();
-
- private:
-  /**
-   * decompress and init data items
-   */
-  static void prepare_data();
-
-  /**
-   * raw pointer to expanded bytes for use with magic_load_buffers(),
-   * points to the data held within expanded_buffer_
-   */
-  static void* uncompressed_magic_dict_;
-
-  /** holds the expanded data until application exits. */
-  static shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer_;
-};
-
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::magic_dict

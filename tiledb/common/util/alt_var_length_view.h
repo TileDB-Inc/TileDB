@@ -351,4 +351,39 @@ alt_var_length_view(R, R, J, I, I, K)
 template <class R, class I, class J, class K, class L>
 alt_var_length_view(R, R, J, I, I, K, L)
     -> alt_var_length_view<std::ranges::subrange<R>, std::ranges::subrange<I>>;
+
+/**
+ * Actually reorder the data underlying an alt_var_length_view (un-virtualize
+ * the permutation).  Upon return, data will have the sorted data, offsets will
+ * have the SIZES of each subrange, and the subranges will be "in order"
+ * @tparam S Type of the subranges
+ * @tparam R Type of the data range
+ * @tparam I Type of the index / offset / size range
+ * @tparam B Type of the scratch buffer
+ * @param subranges The alt_var_length_view
+ * @param data The data range underlying the alt_var_length_view
+ * @param offsets The offsets range to be written to
+ * @param buffer Scratch space used for reordering, must have enough space to
+ * hold all of the data
+ * @return
+ *
+ * @todo Make this a member of alt_var_length_view
+ */
+template <
+    std::ranges::forward_range S,
+    std::ranges::forward_range R,
+    std::ranges::forward_range I,
+    std::ranges::random_access_range B>
+auto actualize(S& subranges, R& data, I& offsets, B& buffer) {
+  auto x = buffer.begin();
+  auto o = offsets.begin();
+  for (auto& s : subranges) {
+    std::ranges::copy(s.begin(), s.end(), x);
+    auto n = s.size();
+    s = std::ranges::subrange(x, x + n);
+    x += n;
+    *o++ = n;  // x - buffer.begin();
+  }
+  std::ranges::copy(buffer.begin(), buffer.begin() + data.size(), data.begin());
+}
 #endif  // TILEDB_ALT_VAR_LENGTH_VIEW_H

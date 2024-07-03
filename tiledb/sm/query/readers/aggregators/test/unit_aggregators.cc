@@ -481,17 +481,17 @@ void basic_aggregation_test(std::vector<double> expected_results) {
         10,
         10,
         &fixed_data[0],
-        sizeof(fixed_data[0]),
+        sizeof(typename fixed_data_type<T>::value_type),
         &fixed_data[0],
-        sizeof(fixed_data[0]),
+        sizeof(typename fixed_data_type<T>::value_type),
         zero.data());
     auto tile_metadata = TileMetadata(
         10,
         5,
         &fixed_data[0],
-        sizeof(fixed_data[0]),
+        sizeof(typename fixed_data_type<T>::value_type),
         &fixed_data[0],
-        sizeof(fixed_data[0]),
+        sizeof(typename fixed_data_type<T>::value_type),
         full_tile_sum.data());
     if (aggregator.has_value()) {
       // Regular attribute.

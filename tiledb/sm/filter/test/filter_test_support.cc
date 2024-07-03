@@ -68,13 +68,11 @@ void check_run_pipeline_full(
     const FilteredTileChecker& filtered_buffer_checker,
     shared_ptr<MemoryTracker> memory_tracker) {
   // Run the pipeline forward.
-  CHECK(pipeline
-            .run_forward(
-                &dummy_stats,
-                tile.get(),
-                offsets_tile.has_value() ? offsets_tile.value().get() : nullptr,
-                &tp)
-            .ok());
+  pipeline.run_forward(
+      &dummy_stats,
+      tile.get(),
+      offsets_tile.has_value() ? offsets_tile.value().get() : nullptr,
+      &tp);
 
   // Check the original unfiltered data was removed.
   CHECK(tile->size() == 0);
@@ -120,13 +118,11 @@ void check_run_pipeline_roundtrip(
     const TileDataGenerator* test_data,
     shared_ptr<MemoryTracker> memory_tracker) {
   // Run the pipeline forward.
-  CHECK(pipeline
-            .run_forward(
-                &dummy_stats,
-                tile.get(),
-                offsets_tile.has_value() ? offsets_tile.value().get() : nullptr,
-                &tp)
-            .ok());
+  pipeline.run_forward(
+      &dummy_stats,
+      tile.get(),
+      offsets_tile.has_value() ? offsets_tile.value().get() : nullptr,
+      &tp);
 
   // Check the original unfiltered data was removed.
   CHECK(tile->size() == 0);

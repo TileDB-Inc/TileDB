@@ -53,7 +53,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts, tracker);
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
 
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
@@ -101,7 +101,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
       pipeline.get_filter<PositiveDeltaFilter>()->set_max_window_size(
           window_size);
 
-      CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+      pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
       CHECK(tile->size() == 0);
       CHECK(tile->filtered_buffer().size() != 0);
 
@@ -123,7 +123,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
-    CHECK(!pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    CHECK_THROWS(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp));
   }
 }
 
@@ -174,10 +174,7 @@ TEST_CASE(
     auto offsets_tile = make_offsets_tile(offsets, tracker);
 
     WhiteboxWriterTile::set_max_tile_chunk_size(80);
-    CHECK(
-        pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-            .ok());
-
+    pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -249,10 +246,7 @@ TEST_CASE(
 
       pipeline.get_filter<PositiveDeltaFilter>()->set_max_window_size(
           window_size);
-
-      CHECK(pipeline
-                .run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-                .ok());
+      pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp);
       CHECK(tile->size() == 0);
       CHECK(tile->filtered_buffer().size() != 0);
 
@@ -277,9 +271,8 @@ TEST_CASE(
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
-    CHECK(
-        !pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-             .ok());
+    CHECK_THROWS(pipeline.run_forward(
+        &dummy_stats, tile.get(), offsets_tile.get(), &tp));
   }
 
   WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);

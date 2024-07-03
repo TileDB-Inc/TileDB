@@ -50,6 +50,12 @@ commence(unit_test proxy_sort)
 )
 conclude(unit_test)
 
+commence(unit_test sort_chunk)
+    this_target_sources(
+        unit_sort_chunk.cc
+)
+conclude(unit_test)
+
 commence(unit_test sort_zip)
     this_target_sources(
         unit_sort_zip.cc

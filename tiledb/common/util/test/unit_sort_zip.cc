@@ -1,5 +1,5 @@
 /**
- * @file   unit_sort_zip.cc
+ * @file   tiledb/common/util/test/unit_sort_zip.cc
  *
  * @section LICENSE
  *

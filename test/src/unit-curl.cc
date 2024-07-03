@@ -128,3 +128,29 @@ TEST_CASE(
               .ok());
   CHECK(rest_client.rest_server() == "http://localhost:8080");
 }
+
+TEST_CASE(
+    "RestClient: Ensure custom headers are set",
+    "[rest-client][custom-headers]") {
+  tiledb::sm::Config cfg;
+  REQUIRE(cfg.set("rest.custom_headers.abc", "def").ok());
+  REQUIRE(cfg.set("rest.custom_headers.ghi", "jkl").ok());
+
+  ContextResources resources(
+      cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
+  const auto& extra_headers = resources.rest_client()->extra_headers();
+  CHECK(extra_headers.at("abc") == "def");
+  CHECK(extra_headers.at("ghi") == "jkl");
+}
+
+TEST_CASE(
+    "RestClient: Ensure payer namespace is set",
+    "[rest-client][payer-namespace]") {
+  tiledb::sm::Config cfg;
+  REQUIRE(cfg.set("rest.payer_namespace", "foo").ok());
+
+  ContextResources resources(
+      cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
+  const auto& extra_headers = resources.rest_client()->extra_headers();
+  CHECK(extra_headers.at("X-Payer") == "foo");
+}

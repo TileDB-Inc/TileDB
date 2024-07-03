@@ -95,7 +95,7 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
   throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
   // Create the (empty) array on disk.
-  throw_if_not_ok(Array::create(resources_, uri, schema, key));
+  Array::create(resources_, uri, schema, key);
   tdb_unique_ptr<Array> array(new Array{resources_, uri});
 
   return array;
@@ -126,7 +126,7 @@ TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
   REQUIRE(st.ok());
 
   shared_ptr<Array> array_shared = std::move(array);
-  Query query(sm_.get(), array_shared);
+  Query query(resources_, sm_.get(), array_shared);
   REQUIRE(query.set_layout(Layout::ROW_MAJOR).ok());
 
   stats::Stats stats("foo");

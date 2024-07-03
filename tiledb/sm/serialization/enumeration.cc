@@ -48,6 +48,22 @@ using namespace tiledb::common;
 
 namespace tiledb::sm::serialization {
 
+class EnumerationSerializationException : public StatusException {
+ public:
+  explicit EnumerationSerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][Enumeration]", message) {
+  }
+};
+
+class EnumerationSerializationDisabledException
+    : public EnumerationSerializationException {
+ public:
+  explicit EnumerationSerializationDisabledException()
+      : EnumerationSerializationException(
+            "Cannot (de)serialize; serialization not enabled.") {
+  }
+};
+
 #ifdef TILEDB_SERIALIZATION
 
 void enumeration_to_capnp(
@@ -198,18 +214,18 @@ void serialize_load_enumerations_request(
         break;
       }
       default: {
-        throw Status_SerializationError(
+        throw EnumerationSerializationException(
             "Error serializing load enumerations request; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw EnumerationSerializationException(
         "Error serializing load enumerations request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw EnumerationSerializationException(
         "Error serializing load enumerations request; exception " +
         std::string(e.what()));
   }
@@ -239,17 +255,17 @@ std::vector<std::string> deserialize_load_enumerations_request(
         return load_enumerations_request_from_capnp(reader);
       }
       default: {
-        throw Status_SerializationError(
+        throw EnumerationSerializationException(
             "Error deserializing load enumerations request; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw EnumerationSerializationException(
         "Error deserializing load enumerations request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw EnumerationSerializationException(
         "Error deserializing load enumerations request; exception " +
         std::string(e.what()));
   }
@@ -289,18 +305,18 @@ void serialize_load_enumerations_response(
         break;
       }
       default: {
-        throw Status_SerializationError(
+        throw EnumerationSerializationException(
             "Error serializing load enumerations response; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw EnumerationSerializationException(
         "Error serializing load enumerations response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw EnumerationSerializationException(
         "Error serializing load enumerations response; exception " +
         std::string(e.what()));
   }
@@ -333,17 +349,17 @@ deserialize_load_enumerations_response(
         return load_enumerations_response_from_capnp(reader, memory_tracker);
       }
       default: {
-        throw Status_SerializationError(
+        throw EnumerationSerializationException(
             "Error deserializing load enumerations response; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw EnumerationSerializationException(
         "Error deserializing load enumerations response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw EnumerationSerializationException(
         "Error deserializing load enumerations response; exception " +
         std::string(e.what()));
   }
@@ -356,29 +372,25 @@ void serialize_load_enumerations_request(
     const std::vector<std::string>&,
     SerializationType,
     Buffer&) {
-  throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+  throw EnumerationSerializationDisabledException();
 }
 
 std::vector<std::string> deserialize_load_enumerations_request(
     SerializationType, const Buffer&) {
-  throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+  throw EnumerationSerializationDisabledException();
 }
 
 void serialize_load_enumerations_response(
     const std::vector<shared_ptr<const Enumeration>>&,
     SerializationType,
     Buffer&) {
-  throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+  throw EnumerationSerializationDisabledException();
 }
 
 std::vector<shared_ptr<const Enumeration>>
 deserialize_load_enumerations_response(
     SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
-  throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+  throw EnumerationSerializationDisabledException();
 }
 
 #endif  // TILEDB_SERIALIZATION

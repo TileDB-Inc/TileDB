@@ -187,8 +187,10 @@ void FragmentConsolidationWorkspace::resize_buffers(
 /* ****************************** */
 
 FragmentConsolidator::FragmentConsolidator(
-    const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    ContextResources& resources,
+    const Config& config,
+    StorageManager* storage_manager)
+    : Consolidator(resources, storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw FragmentConsolidatorException(st.message());
@@ -209,15 +211,14 @@ Status FragmentConsolidator::consolidate(
   check_array_uri(array_name);
 
   // Open array for reading
-  auto array_for_reads{make_shared<Array>(
-      HERE(), storage_manager_->resources(), URI(array_name))};
-  RETURN_NOT_OK(array_for_reads->open_without_fragments(
+  auto array_for_reads{make_shared<Array>(HERE(), resources_, URI(array_name))};
+  throw_if_not_ok(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
   // Open array for writing
-  auto array_for_writes{make_shared<Array>(
-      HERE(), storage_manager_->resources(), array_for_reads->array_uri())};
-  RETURN_NOT_OK(array_for_writes->open(
+  auto array_for_writes{
+      make_shared<Array>(HERE(), resources_, array_for_reads->array_uri())};
+  throw_if_not_ok(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Disable consolidation with timestamps on older arrays.
@@ -232,7 +233,7 @@ Status FragmentConsolidator::consolidate(
   // must be fetched (even before `config_.timestamp_start_`),
   // to compute the anterior ND range that can help determine
   // which dense fragments are consolidatable.
-  FragmentInfo fragment_info(URI(array_name), storage_manager_->resources());
+  FragmentInfo fragment_info(URI(array_name), resources_);
   auto st = fragment_info.load(
       array_for_reads->array_directory(),
       config_.timestamp_start_,
@@ -305,7 +306,7 @@ Status FragmentConsolidator::consolidate(
 
   RETURN_NOT_OK_ELSE(
       array_for_reads->close(), throw_if_not_ok(array_for_writes->close()));
-  RETURN_NOT_OK(array_for_writes->close());
+  throw_if_not_ok(array_for_writes->close());
 
   stats_->add_counter("consolidate_step_num", step);
 
@@ -321,15 +322,14 @@ Status FragmentConsolidator::consolidate_fragments(
   auto timer_se = stats_->start_timer("consolidate_frags");
 
   // Open array for reading
-  auto array_for_reads{make_shared<Array>(
-      HERE(), storage_manager_->resources(), URI(array_name))};
-  RETURN_NOT_OK(array_for_reads->open_without_fragments(
+  auto array_for_reads{make_shared<Array>(HERE(), resources_, URI(array_name))};
+  throw_if_not_ok(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
   // Open array for writing
-  auto array_for_writes{make_shared<Array>(
-      HERE(), storage_manager_->resources(), array_for_reads->array_uri())};
-  RETURN_NOT_OK(array_for_writes->open(
+  auto array_for_writes{
+      make_shared<Array>(HERE(), resources_, array_for_reads->array_uri())};
+  throw_if_not_ok(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Disable consolidation with timestamps on older arrays.
@@ -344,7 +344,7 @@ Status FragmentConsolidator::consolidate_fragments(
   }
 
   // Get all fragment info
-  FragmentInfo fragment_info(URI(array_name), storage_manager_->resources());
+  FragmentInfo fragment_info(URI(array_name), resources_);
   auto st = fragment_info.load(
       array_for_reads->array_directory(),
       0,
@@ -383,8 +383,8 @@ Status FragmentConsolidator::consolidate_fragments(
   }
 
   if (count != fragment_uris.size()) {
-    return logger_->status(Status_ConsolidatorError(
-        "Cannot consolidate; Not all fragments could be found"));
+    throw FragmentConsolidatorException(
+        "Cannot consolidate; Not all fragments could be found");
   }
 
   FragmentConsolidationWorkspace cw(consolidator_memory_tracker_);
@@ -429,7 +429,7 @@ void FragmentConsolidator::vacuum(const char* array_name) {
 
   // Get the fragment URIs and vacuum file URIs to be vacuumed
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
+      resources_,
       URI(array_name),
       0,
       std::numeric_limits<uint64_t>::max(),
@@ -583,8 +583,8 @@ Status FragmentConsolidator::consolidate_internal(
     vac_uri =
         array_for_reads->array_directory().get_vacuum_uri(*new_fragment_uri);
   } catch (std::exception& e) {
-    std::throw_with_nested(
-        std::logic_error("[FragmentConsolidator::consolidate_internal] "));
+    FragmentConsolidatorException(
+        "Internal consolidation failed with exception" + std::string(e.what()));
   }
 
   // Read from one array and write to the other
@@ -668,15 +668,20 @@ Status FragmentConsolidator::create_queries(
 
   // Create read query
   query_r = tdb_unique_ptr<Query>(tdb_new(
-      Query, storage_manager_, array_for_reads, nullopt, read_memory_budget));
-  RETURN_NOT_OK(query_r->set_layout(Layout::GLOBAL_ORDER));
+      Query,
+      resources_,
+      storage_manager_,
+      array_for_reads,
+      nullopt,
+      read_memory_budget));
+  throw_if_not_ok(query_r->set_layout(Layout::GLOBAL_ORDER));
 
   // Dense consolidation will do a tile aligned read.
   if (dense) {
     NDRange read_subarray = subarray;
     auto& domain{array_for_reads->array_schema_latest().domain()};
     domain.expand_to_tiles(&read_subarray);
-    RETURN_NOT_OK(query_r->set_subarray_unsafe(read_subarray));
+    throw_if_not_ok(query_r->set_subarray_unsafe(read_subarray));
   }
 
   // Enable consolidation with timestamps on the reader, if applicable.
@@ -695,15 +700,16 @@ Status FragmentConsolidator::create_queries(
   // Create write query
   query_w = tdb_unique_ptr<Query>(tdb_new(
       Query,
+      resources_,
       storage_manager_,
       array_for_writes,
       fragment_name,
       write_memory_budget));
-  RETURN_NOT_OK(query_w->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK(query_w->disable_checks_consolidation());
+  throw_if_not_ok(query_w->set_layout(Layout::GLOBAL_ORDER));
+  throw_if_not_ok(query_w->disable_checks_consolidation());
   query_w->set_fragment_size(config_.max_fragment_size_);
   if (array_for_reads->array_schema_latest().dense()) {
-    RETURN_NOT_OK(query_w->set_subarray_unsafe(subarray));
+    throw_if_not_ok(query_w->set_subarray_unsafe(subarray));
   }
 
   // Set the processed conditions on new fragment.
@@ -931,11 +937,11 @@ Status FragmentConsolidator::set_config(const Config& config) {
   merged_config.inherit(config);
   bool found = false;
   config_.amplification_ = 0.0f;
-  RETURN_NOT_OK(merged_config.get<float>(
+  throw_if_not_ok(merged_config.get<float>(
       "sm.consolidation.amplification", &config_.amplification_, &found));
   assert(found);
   config_.steps_ = 0;
-  RETURN_NOT_OK(merged_config.get<uint32_t>(
+  throw_if_not_ok(merged_config.get<uint32_t>(
       "sm.consolidation.steps", &config_.steps_, &found));
   assert(found);
   config_.buffer_size_ = 0;
@@ -946,54 +952,54 @@ Status FragmentConsolidator::set_config(const Config& config) {
         "The `sm.consolidation.buffer_size configuration setting has been "
         "deprecated. Set consolidation buffer sizes using the newer "
         "`sm.mem.consolidation.buffers_weight` setting.");
-    RETURN_NOT_OK(merged_config.get<uint64_t>(
+    throw_if_not_ok(merged_config.get<uint64_t>(
         "sm.consolidation.buffer_size", &config_.buffer_size_, &found));
     assert(found);
   }
   config_.total_budget_ = 0;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.mem.total_budget", &config_.total_budget_, &found));
   assert(found);
   config_.buffers_weight_ = 0;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.mem.consolidation.buffers_weight", &config_.buffers_weight_, &found));
   assert(found);
   config_.reader_weight_ = 0;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.mem.consolidation.reader_weight", &config_.reader_weight_, &found));
   assert(found);
   config_.writer_weight_ = 0;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.mem.consolidation.writer_weight", &config_.writer_weight_, &found));
   assert(found);
   config_.max_fragment_size_ = 0;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.max_fragment_size",
       &config_.max_fragment_size_,
       &found));
   assert(found);
   config_.size_ratio_ = 0.0f;
-  RETURN_NOT_OK(merged_config.get<float>(
+  throw_if_not_ok(merged_config.get<float>(
       "sm.consolidation.step_size_ratio", &config_.size_ratio_, &found));
   assert(found);
   config_.purge_deleted_cells_ = false;
-  RETURN_NOT_OK(merged_config.get<bool>(
+  throw_if_not_ok(merged_config.get<bool>(
       "sm.consolidation.purge_deleted_cells",
       &config_.purge_deleted_cells_,
       &found));
   assert(found);
   config_.min_frags_ = 0;
-  RETURN_NOT_OK(merged_config.get<uint32_t>(
+  throw_if_not_ok(merged_config.get<uint32_t>(
       "sm.consolidation.step_min_frags", &config_.min_frags_, &found));
   assert(found);
   config_.max_frags_ = 0;
-  RETURN_NOT_OK(merged_config.get<uint32_t>(
+  throw_if_not_ok(merged_config.get<uint32_t>(
       "sm.consolidation.step_max_frags", &config_.max_frags_, &found));
   assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
   assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
   std::string reader =
@@ -1005,17 +1011,17 @@ Status FragmentConsolidator::set_config(const Config& config) {
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
-    return logger_->status(Status_ConsolidatorError(
+    throw FragmentConsolidatorException(
         "Invalid configuration; Minimum fragments config parameter is larger "
-        "than the maximum"));
+        "than the maximum");
   if (config_.size_ratio_ > 1.0f || config_.size_ratio_ < 0.0f)
-    return logger_->status(Status_ConsolidatorError(
+    throw FragmentConsolidatorException(
         "Invalid configuration; Step size ratio config parameter must be in "
-        "[0.0, 1.0]"));
+        "[0.0, 1.0]");
   if (config_.amplification_ < 0)
-    return logger_->status(
-        Status_ConsolidatorError("Invalid configuration; Amplification config "
-                                 "parameter must be non-negative"));
+    throw FragmentConsolidatorException(
+        "Invalid configuration; Amplification config parameter must be "
+        "non-negative");
 
   return Status::Ok();
 }

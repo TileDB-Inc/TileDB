@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,9 +50,9 @@ class QueryBuffer;
 class Subarray;
 
 /** Class for dimension label query status exceptions. */
-class DimensionLabelQueryStatusException : public StatusException {
+class DimensionLabelQueryException : public StatusException {
  public:
-  explicit DimensionLabelQueryStatusException(const std::string& msg)
+  explicit DimensionLabelQueryException(const std::string& msg)
       : StatusException("DimensionLabelQuery", msg) {
   }
 };
@@ -66,6 +66,13 @@ class DimensionLabelQuery : public Query {
   /**
    * Constructor for queries to read or write label data.
    *
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Query class on StorageManager.
+   * For now, we still need to keep the storage_manager argument, but once the
+   * dependency is gone, the signature will be
+   * DimensionLabelQuery(ContextResources&, shared_ptr<Array>, ...).
+   *
+   * @param resources The context resources.
    * @param storage_manager Storage manager object.
    * @param dim_label Opened dimension label for the query.
    * @param dim_label_ref Description of the dimension label.
@@ -76,6 +83,7 @@ class DimensionLabelQuery : public Query {
    * @param fragment_name Name to use when writing the fragment.
    */
   DimensionLabelQuery(
+      ContextResources& resources,
       StorageManager* storage_manager,
       shared_ptr<Array> dim_label,
       const DimensionLabel& dim_label_ref,
@@ -87,12 +95,20 @@ class DimensionLabelQuery : public Query {
   /**
    * Constructor for range queries.
    *
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Query class on StorageManager.
+   * For now, we still need to keep the storage_manager argument, but once the
+   * dependency is gone, the signature will be
+   * DimensionLabelQuery(ContextResources&, shared_ptr<Array>, ...).
+   *
+   * @param resources The context resources.
    * @param storage_manager Storage manager object.
    * @param dim_label Opened dimension label for the query.
    * @param dim_label_ref Description of the dimension label.
    * @param label_ranges Label ranges to read index ranges from.
    */
   DimensionLabelQuery(
+      ContextResources& resources,
       StorageManager* storage_manager,
       shared_ptr<Array> dim_label,
       const DimensionLabel& dim_label_ref,

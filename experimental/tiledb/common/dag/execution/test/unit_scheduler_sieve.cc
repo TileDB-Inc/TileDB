@@ -548,6 +548,9 @@ int main(int argc, char* argv[]) {
   size_t stages = 2;
   size_t trips = 2;
 
+  // This is unused until we migrate to catch2.
+  bool durations = false;
+
   auto cli = Opt(block_size, "block_size")["-b"]["--block_size"]("Block size") |
              Opt(width, "width")["-w"]["--width"]("Width") |
              Opt(number, "number")["-n"]["--number"]("Number") |
@@ -556,7 +559,8 @@ int main(int argc, char* argv[]) {
              Opt(scheduler, "scheduler")["-s"]["--scheduler"](
                  "Scheduler (bountiful, duffs, throw_catch, or frugal") |
              Opt(stages, "stages")["-t"]["--stages"]("Stages (2 or 3)") |
-             Opt(trips, "trips")["-p"]["--trips"]("Trips");
+             Opt(trips, "trips")["-p"]["--trips"]("Trips") |
+             Opt(durations, "durations")["-d"]["--durations"]("Durations");
 
   auto result = cli.parse(Args(argc, argv));
   if (!result) {

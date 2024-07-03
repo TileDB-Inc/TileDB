@@ -85,3 +85,8 @@ add_test(
   COMMAND $<TARGET_FILE:tiledb_regression> --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+if (BUILD_SHARED_LIBS)
+  # Add the location of the tiledb shared library to PATH, to help Windows find it.
+  set_property(TEST tiledb_regression PROPERTY ENVIRONMENT_MODIFICATION "PATH=path_list_append:$<TARGET_FILE_DIR:tiledb>")
+endif()

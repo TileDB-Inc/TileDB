@@ -51,7 +51,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
   pipeline.add_filter(ByteshuffleFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -82,7 +82,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
       CHECK_NOTHROW(tile2->write(&i, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
-    CHECK(pipeline.run_forward(&dummy_stats, tile2.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile2.get(), nullptr, &tp);
     CHECK(tile2->size() == 0);
     CHECK(tile2->filtered_buffer().size() != 0);
 
@@ -142,9 +142,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
 
   SECTION("- Single stage") {
     WhiteboxWriterTile::set_max_tile_chunk_size(80);
-    CHECK(
-        pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-            .ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -176,9 +174,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
       CHECK_NOTHROW(tile2->write(&i, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
-    CHECK(
-        pipeline.run_forward(&dummy_stats, tile2.get(), offsets_tile.get(), &tp)
-            .ok());
+    pipeline.run_forward(&dummy_stats, tile2.get(), offsets_tile.get(), &tp);
     CHECK(tile2->size() == 0);
     CHECK(tile2->filtered_buffer().size() != 0);
 

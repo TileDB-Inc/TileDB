@@ -760,6 +760,9 @@ const void* fill_value(Datatype type);
 /** The redirection header key in REST response. */
 extern const std::string redirection_header_key;
 
+/** The REST custom headers config key prefix. */
+extern const std::string rest_header_prefix;
+
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;
 

@@ -61,6 +61,11 @@ on:
         description: 'CMake generator'
         required: false
         type: string
+      build_only:
+        default: false
+        description: 'Whether to only build TileDB and not run tests'
+        required: false
+        type: boolean
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -176,6 +181,7 @@ jobs:
 
       - name: 'Test libtiledb'
         id: test
+        if: ${{ !inputs.build_only }}
         shell: bash
         env:
           ASAN_OPTIONS: ${{ inputs.asan && 'detect_leaks=0' || '' }}
@@ -266,6 +272,7 @@ jobs:
             /cores/
 
       - name: 'Test status check'
+        if: ${{ !inputs.build_only }}
         run: |
           # tiledb_unit is configured to set a  variable TILEDB_CI_SUCCESS=1
           # following the test run. If this variable is not set, the build should fail.

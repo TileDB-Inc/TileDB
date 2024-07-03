@@ -52,6 +52,7 @@ namespace tiledb::sm {
 class Array;
 class Buffer;
 class BufferList;
+class ContextResources;
 class Query;
 class GlobalOrderWriter;
 class UnorderedWriter;
@@ -142,7 +143,7 @@ Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager,
+    ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker);
 
 /**

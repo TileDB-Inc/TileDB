@@ -4591,6 +4591,7 @@ TEST_CASE(
     offsets.push_back(curr_offset);
     curr_offset += elem.size();
   }
+  offsets.push_back(curr_offset);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(

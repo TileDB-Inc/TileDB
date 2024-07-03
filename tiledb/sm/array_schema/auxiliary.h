@@ -60,9 +60,8 @@ class EncryptionKey;
  * @param resources The context resources.
  * @param array_schema The array schema to be stored.
  * @param encryption_key The encryption key to use.
- * @return Status
  */
-Status store_array_schema(
+void store_array_schema(
     ContextResources& resources,
     const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key);

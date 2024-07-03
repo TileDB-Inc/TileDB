@@ -10,8 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Temporarily reverting to windows-2019 until https://github.com/actions/runner-images/issues/10004 gets fixed.
-        os: [macos-latest, ubuntu-latest, windows-2019]
+        os: [macos-latest, ubuntu-latest, windows-latest]
       fail-fast: false
     name: Build - ${{ matrix.os }}
     timeout-minutes: 90
@@ -53,11 +52,6 @@ jobs:
           printenv
         shell: bash
         if: ${{ !startsWith(matrix.os, 'windows-') }}
-
-      - name: 'Print env'
-        run: set
-        shell: cmd
-        if: ${{ startsWith(matrix.os, 'windows-') }}
 
       - name: 'Build standalone unit tests'
         run: |

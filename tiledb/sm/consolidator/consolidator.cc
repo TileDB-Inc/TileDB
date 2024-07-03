@@ -55,22 +55,26 @@ namespace tiledb::sm {
 
 /** Factory function to create the consolidator depending on mode. */
 shared_ptr<Consolidator> Consolidator::create(
+    ContextResources& resources,
     const ConsolidationMode mode,
     const Config& config,
     StorageManager* storage_manager) {
   switch (mode) {
     case ConsolidationMode::FRAGMENT_META:
-      return make_shared<FragmentMetaConsolidator>(HERE(), storage_manager);
+      return make_shared<FragmentMetaConsolidator>(
+          HERE(), resources, storage_manager);
     case ConsolidationMode::FRAGMENT:
-      return make_shared<FragmentConsolidator>(HERE(), config, storage_manager);
+      return make_shared<FragmentConsolidator>(
+          HERE(), resources, config, storage_manager);
     case ConsolidationMode::ARRAY_META:
       return make_shared<ArrayMetaConsolidator>(
-          HERE(), config, storage_manager);
+          HERE(), resources, config, storage_manager);
     case ConsolidationMode::COMMITS:
-      return make_shared<CommitsConsolidator>(HERE(), storage_manager);
+      return make_shared<CommitsConsolidator>(
+          HERE(), resources, storage_manager);
     case ConsolidationMode::GROUP_META:
       return make_shared<GroupMetaConsolidator>(
-          HERE(), config, storage_manager);
+          HERE(), resources, config, storage_manager);
     default:
       return nullptr;
   }
@@ -105,8 +109,9 @@ ConsolidationMode Consolidator::mode_from_config(
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Consolidator::Consolidator(StorageManager* storage_manager)
-    : resources_(storage_manager->resources())
+Consolidator::Consolidator(
+    ContextResources& resources, StorageManager* storage_manager)
+    : resources_(resources)
     , storage_manager_(storage_manager)
     , consolidator_memory_tracker_(resources_.create_memory_tracker())
     , stats_(resources_.stats().create_child("Consolidator"))
@@ -125,8 +130,7 @@ Status Consolidator::consolidate(
     [[maybe_unused]] EncryptionType encryption_type,
     [[maybe_unused]] const void* encryption_key,
     [[maybe_unused]] uint32_t key_length) {
-  return logger_->status(
-      Status_ConsolidatorError("Cannot consolidate; Invalid object"));
+  throw ConsolidatorException("Cannot consolidate; Invalid object");
 }
 
 void Consolidator::vacuum([[maybe_unused]] const char* array_name) {
@@ -134,6 +138,7 @@ void Consolidator::vacuum([[maybe_unused]] const char* array_name) {
 }
 
 void Consolidator::array_consolidate(
+    ContextResources& resources,
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -147,19 +152,14 @@ void Consolidator::array_consolidate(
   }
 
   // Check if array exists
-  ObjectType obj_type;
-  throw_if_not_ok(
-      object_type(storage_manager->resources(), array_uri, &obj_type));
-
-  if (obj_type != ObjectType::ARRAY) {
+  if (object_type(resources, array_uri) != ObjectType::ARRAY) {
     throw ConsolidatorException(
         "Cannot consolidate array; Array does not exist");
   }
 
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(
-        storage_manager->resources().rest_client()->post_consolidation_to_rest(
-            array_uri, config));
+        resources.rest_client()->post_consolidation_to_rest(array_uri, config));
   } else {
     // Get encryption key from config
     std::string encryption_key_from_cfg;
@@ -190,13 +190,15 @@ void Consolidator::array_consolidate(
 
     // Consolidate
     auto mode = Consolidator::mode_from_config(config);
-    auto consolidator = Consolidator::create(mode, config, storage_manager);
+    auto consolidator =
+        Consolidator::create(resources, mode, config, storage_manager);
     throw_if_not_ok(consolidator->consolidate(
         array_name, encryption_type, encryption_key, key_length));
   }
 }
 
 void Consolidator::fragments_consolidate(
+    ContextResources& resources,
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -211,11 +213,7 @@ void Consolidator::fragments_consolidate(
   }
 
   // Check if array exists
-  ObjectType obj_type;
-  throw_if_not_ok(
-      object_type(storage_manager->resources(), array_uri, &obj_type));
-
-  if (obj_type != ObjectType::ARRAY) {
+  if (object_type(resources, array_uri) != ObjectType::ARRAY) {
     throw ConsolidatorException(
         "Cannot consolidate array; Array does not exist");
   }
@@ -249,7 +247,7 @@ void Consolidator::fragments_consolidate(
 
   // Consolidate
   auto consolidator = Consolidator::create(
-      ConsolidationMode::FRAGMENT, config, storage_manager);
+      resources, ConsolidationMode::FRAGMENT, config, storage_manager);
   auto fragment_consolidator =
       dynamic_cast<FragmentConsolidator*>(consolidator.get());
   throw_if_not_ok(fragment_consolidator->consolidate_fragments(
@@ -315,19 +313,20 @@ void Consolidator::write_consolidated_commits_file(
 }
 
 void Consolidator::array_vacuum(
+    ContextResources& resources,
     const char* array_name,
     const Config& config,
     StorageManager* storage_manager) {
   URI array_uri(array_name);
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(
-        storage_manager->resources().rest_client()->post_vacuum_to_rest(
-            array_uri, config));
+        resources.rest_client()->post_vacuum_to_rest(array_uri, config));
     return;
   }
 
   auto mode = Consolidator::mode_from_config(config, true);
-  auto consolidator = Consolidator::create(mode, config, storage_manager);
+  auto consolidator =
+      Consolidator::create(resources, mode, config, storage_manager);
   consolidator->vacuum(array_name);
 }
 
