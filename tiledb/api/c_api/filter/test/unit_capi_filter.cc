@@ -30,7 +30,7 @@
 
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
-#include "../filter_api_internal.h"
+#include "../filter_api_external.h"
 
 TEST_CASE("C API: tiledb_filter_alloc argument validation", "[capi][filter]") {
   tiledb_ctx_t* ctx;
