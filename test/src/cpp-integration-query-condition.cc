@@ -1566,7 +1566,7 @@ TEST_CASE(
   subarray_w.add_range("d", range[0], range[1]);
   query_w.set_subarray(subarray_w);
   query_w.set_layout(TILEDB_ROW_MAJOR);
-  query_w.set_buffer("a", vals);
+  query_w.set_data_buffer("a", vals);
   REQUIRE(query_w.submit() == Query::Status::COMPLETE);
 
   // Write values from 3-6 as 7 in the array.
@@ -1577,7 +1577,7 @@ TEST_CASE(
   subarray_w2.add_range("d", range2[0], range2[1]);
   query_w2.set_subarray(subarray_w2);
   query_w2.set_layout(TILEDB_ROW_MAJOR);
-  query_w2.set_buffer("a", vals2);
+  query_w2.set_data_buffer("a", vals2);
   REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
 
   array.close();
@@ -1596,7 +1596,7 @@ TEST_CASE(
   subarray_r.add_range("d", range[0], range[1]);
   query_r.set_subarray(subarray_r);
   query_r.set_layout(TILEDB_ROW_MAJOR);
-  query_r.set_buffer("a", vals_read);
+  query_r.set_data_buffer("a", vals_read);
   query_r.set_condition(qc);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
@@ -1645,17 +1645,17 @@ TEST_CASE(
   // Write all values as 3 in the array.
   std::vector<int> vals = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
   Query query_w(ctx, array, TILEDB_WRITE);
-  query_w.set_buffer("d", dim_vals);
-  query_w.set_buffer("a", vals);
-  query_w.set_buffer("a2", vals);
+  query_w.set_data_buffer("d", dim_vals);
+  query_w.set_data_buffer("a", vals);
+  query_w.set_data_buffer("a2", vals);
   REQUIRE(query_w.submit() == Query::Status::COMPLETE);
 
   // Write values from 1-10 as 7 in the array.
   std::vector<int> vals2 = {7, 7, 7, 7, 7, 7, 7, 7, 7, 6};
   Query query_w2(ctx, array, TILEDB_WRITE);
-  query_w2.set_buffer("d", dim_vals);
-  query_w2.set_buffer("a", vals2);
-  query_w2.set_buffer("a2", vals);
+  query_w2.set_data_buffer("d", dim_vals);
+  query_w2.set_data_buffer("a", vals2);
+  query_w2.set_data_buffer("a2", vals);
   REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
 
   array.close();
@@ -1673,9 +1673,9 @@ TEST_CASE(
   std::vector<int> dim_vals_read(10);
   Query query_r(ctx, array_r, TILEDB_READ);
   query_r.set_layout(TILEDB_GLOBAL_ORDER);
-  query_r.set_buffer("a", vals_read);
-  query_r.set_buffer("a2", vals_read2);
-  query_r.set_buffer("d", dim_vals_read);
+  query_r.set_data_buffer("a", vals_read);
+  query_r.set_data_buffer("a2", vals_read2);
+  query_r.set_data_buffer("d", dim_vals_read);
   query_r.set_condition(qc);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 

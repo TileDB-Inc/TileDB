@@ -83,7 +83,7 @@ void set_query_coords(
   Subarray sub(ctx, *array);
   sub.set_subarray<T>(static_cast<T*>(subarray), 2 * ndim);
 
-  query->set_coordinates<T>(static_cast<T*>(*coordinates), ndim);
+  query->set_data_buffer<T>("__coords", static_cast<T*>(*coordinates), ndim);
   query->set_subarray(sub);
 
   std::free(subarray);
@@ -136,8 +136,9 @@ void set_query_var_dimension_buffer(
 
   memset(*offsets, 0, sizeof(uint64_t));
   memset(*buffer, 0, buffer_size);
-  query->set_buffer<T>(
-      dimension.name(), *offsets, 1, static_cast<T*>(*buffer), buffer_size);
+  query->set_data_buffer<T>(
+      dimension.name(), static_cast<T*>(*buffer), buffer_size);
+  query->set_offsets_buffer(dimension.name(), *offsets, 1);
   subarray->add_range(dim_idx, std::string("1"), std::string("1"));
 }
 
@@ -208,7 +209,7 @@ TEST_CASE(
   query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read)
-      .set_coordinates(coords_read);
+      .set_data_buffer("__coords", coords_read);
   query_r.submit();
 
   // Note: If you encounter a failure here, in particular with a_read[0] == 100
@@ -720,7 +721,7 @@ TEST_CASE(
     Query query_w(ctx, old_array);
     query_w.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a", a_write)
-        .set_coordinates(coords_write);
+        .set_data_buffer("__coords", coords_write);
     query_w.submit();
     old_array.close();
 
@@ -736,7 +737,7 @@ TEST_CASE(
     query_r.set_subarray(subarray_r)
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", a_read)
-        .set_coordinates(coords_read);
+        .set_data_buffer("__coords", coords_read);
     query_r.submit();
     array.close();
 

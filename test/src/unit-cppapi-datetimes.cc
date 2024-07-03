@@ -64,7 +64,7 @@ TEST_CASE("C++ API: Datetime attribute", "[cppapi][datetime]") {
   Query query_w(ctx, array_w);
   query_w.set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", data_w)
-      .set_coordinates(coords_w)
+      .set_data_buffer("__coords", coords_w)
       .submit();
   query_w.finalize();
   array_w.close();
@@ -76,7 +76,7 @@ TEST_CASE("C++ API: Datetime attribute", "[cppapi][datetime]") {
   Query query_r(ctx, array_r);
   query_r.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_r)
-      .set_coordinates(coords_r);
+      .set_data_buffer("__coords", coords_r);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
   auto result_num = query_r.result_buffer_elements()["a"].second;
@@ -118,7 +118,7 @@ TEST_CASE("C++ API: Datetime dimension", "[cppapi][datetime]") {
   Query query_w(ctx, array_w);
   query_w.set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", data_w)
-      .set_coordinates(coords_w)
+      .set_data_buffer("__coords", coords_w)
       .submit();
   query_w.finalize();
   array_w.close();

@@ -166,7 +166,9 @@ void allocate_query_buffers(tiledb::Query* const query) {
 
   bool has_ranges = false;
   for (uint64_t dim_idx = 0; dim_idx < schema.domain().ndim(); dim_idx++) {
-    if (query->range_num(dim_idx) > 0) {
+    Subarray subarray(query->ctx(), query->array());
+    query->update_subarray_from_query(&subarray);
+    if (subarray.range_num(dim_idx) > 0) {
       has_ranges = true;
       break;
     }
