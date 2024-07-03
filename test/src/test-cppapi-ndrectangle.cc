@@ -59,12 +59,6 @@ TEST_CASE_METHOD(
   int range_two[] = {30, 40};
   ndrect.set_range(1, range_two[0], range_two[1]);
 
-  // Check setting range in non-existent dim
-  CHECK_THROWS(ndrect.set_range(2, range_two[0], range_two[1]));
-
-  // Check setting range with wrong order
-  CHECK_THROWS(ndrect.set_range(0, range_two[1], range_two[0]));
-
   // Get range
   auto range = ndrect.range<int>(0);
   CHECK(range[0] == 10);
@@ -79,4 +73,27 @@ TEST_CASE_METHOD(
   range = ndrect.range<int>("y");
   CHECK(range[0] == 30);
   CHECK(range[1] == 40);
+}
+
+TEST_CASE("NDRectangle - Errors", "[cppapi][ArraySchema][NDRectangle]") {
+  tiledb::Context ctx;
+
+  // Create a domain
+  tiledb::Domain domain(ctx);
+  auto d1 = tiledb::Dimension::create<int32_t>(ctx, "d1", {{1, 10}}, 5);
+  auto d2 = tiledb::Dimension::create(
+      ctx, "d2", TILEDB_STRING_ASCII, nullptr, nullptr);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+
+  // Create an NDRectangle
+  tiledb::NDRectangle ndrect(ctx, domain);
+
+  // Set range with non-existent dimension
+  CHECK_THROWS(ndrect.set_range(2, 1, 2));
+  CHECK_THROWS(ndrect.set_range("d3", 1, 2));
+
+  // Set range out of order
+  CHECK_THROWS(ndrect.set_range(0, 2, 1));
+  CHECK_THROWS(ndrect.set_range("d2", "bbb", "aaa"));
 }
