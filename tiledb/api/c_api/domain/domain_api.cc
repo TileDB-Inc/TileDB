@@ -158,7 +158,7 @@ int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
 int32_t tiledb_domain_dump_str(
     const tiledb_domain_t* domain, tiledb_string_handle_t** out) {
   ensure_domain_is_valid(domain);
-  ensure_cstream_handle_is_valid(out);
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
   ss << *domain;

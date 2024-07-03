@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -149,9 +149,9 @@ int32_t tiledb_attribute_dump(
 }
 
 int32_t tiledb_attribute_dump_str(
-    const tiledb_attribute_handle_t* attr, tiledb_string_t** out) {
+    const tiledb_attribute_handle_t* attr, tiledb_string_handle_t** out) {
   ensure_attribute_is_valid(attr);
-  ensure_cstream_handle_is_valid(out);
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
   ss << *attr;
@@ -207,7 +207,7 @@ capi_return_t tiledb_attribute_set_enumeration_name(
 }
 
 capi_return_t tiledb_attribute_get_enumeration_name(
-    tiledb_attribute_t* attr, tiledb_string_t** name) {
+    tiledb_attribute_t* attr, tiledb_string_handle_t** name) {
   ensure_attribute_is_valid(attr);
   ensure_output_pointer_is_valid(name);
 
@@ -339,7 +339,7 @@ CAPI_INTERFACE(
     attribute_dump_str,
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
-    tiledb_string_t** out) {
+    tiledb_string_handle_t** out) {
   return api_entry_context<tiledb::api::tiledb_attribute_dump_str>(
       ctx, attr, out);
 }
@@ -401,7 +401,7 @@ CAPI_INTERFACE(
     attribute_get_enumeration_name,
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
-    tiledb_string_t** name) {
+    tiledb_string_handle_t** name) {
   return api_entry_context<tiledb::api::tiledb_attribute_get_enumeration_name>(
       ctx, attr, name);
 }

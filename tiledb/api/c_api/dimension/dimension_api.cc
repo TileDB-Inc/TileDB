@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,13 +33,14 @@
 #include "../../c_api_support/c_api_support.h"
 #include "../filter_list/filter_list_api_internal.h"
 #include "dimension_api_internal.h"
+#include "dimension_api_external.h"
 #include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
 #include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
 
 int32_t tiledb_dimension_alloc(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_handle_t* ctx,
     const char* name,
     tiledb_datatype_t type,
     const void* dim_domain,

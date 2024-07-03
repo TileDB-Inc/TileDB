@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -118,7 +118,7 @@ void tiledb_enumeration_free(tiledb_enumeration_t** enumeration) {
 }
 
 capi_return_t tiledb_enumeration_get_name(
-    tiledb_enumeration_t* enumeration, tiledb_string_t** name) {
+    tiledb_enumeration_t* enumeration, tiledb_string_handle_t** name) {
   ensure_enumeration_is_valid(enumeration);
   ensure_output_pointer_is_valid(name);
   *name = tiledb_string_handle_t::make_handle(enumeration->name());
@@ -189,9 +189,9 @@ capi_return_t tiledb_enumeration_dump(
 }
 
 capi_return_t tiledb_enumeration_dump_str(
-    tiledb_enumeration_t* enumeration, tiledb_string_t** out) {
+    tiledb_enumeration_t* enumeration, tiledb_string_handle_t** out) {
   ensure_enumeration_is_valid(enumeration);
-  ensure_cstream_handle_is_valid(out);
+  ensure_output_pointer_is_valid(out);
   std::stringstream ss;
   ss << *enumeration;
   *out = tiledb_string_handle_t::make_handle(ss.str());
@@ -264,7 +264,7 @@ CAPI_INTERFACE(
     enumeration_get_name,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    tiledb_string_t** name) {
+    tiledb_string_handle_t** name) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_name>(
       ctx, enumeration, name);
 }
