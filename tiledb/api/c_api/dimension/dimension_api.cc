@@ -32,8 +32,8 @@
 
 #include "../../c_api_support/c_api_support.h"
 #include "../filter_list/filter_list_api_internal.h"
-#include "dimension_api_internal.h"
 #include "dimension_api_external.h"
+#include "dimension_api_internal.h"
 #include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
 #include "tiledb/common/memory_tracker.h"
 
