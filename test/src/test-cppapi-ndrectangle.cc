@@ -39,12 +39,9 @@
 
 using namespace tiledb::test;
 
-TEST_CASE_METHOD(
-    TemporaryDirectoryFixture,
-    "NDRectangle - Basic",
-    "[cppapi][ArraySchema][NDRectangle]") {
+TEST_CASE("NDRectangle - Basic", "[cppapi][ArraySchema][NDRectangle]") {
   // Create the C++ context.
-  tiledb::Context ctx_{ctx, false};
+  tiledb::Context ctx_;
   tiledb::Domain domain(ctx_);
   auto d1 = tiledb::Dimension::create<int32_t>(ctx_, "x", {{0, 100}}, 10);
   auto d2 = tiledb::Dimension::create<int32_t>(ctx_, "y", {{0, 100}}, 10);
