@@ -30,6 +30,6 @@
 
 #ifndef TILEDB_UNIT_FSM_H
 #define TILEDB_UNIT_FSM_H
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 #endif  // TILEDB_UNIT_FSM_H

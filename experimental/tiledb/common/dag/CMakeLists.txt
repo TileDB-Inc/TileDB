@@ -69,7 +69,6 @@ macro (dag_add_header_only_unit_test TESTNAME)
     # Define sources for test
     #
     target_sources(unit_${TESTNAME} PUBLIC
-        main.cc
         unit_${TESTNAME}.cc
     )
     #

@@ -30,5 +30,5 @@
 
 #ifndef TILEDB_UNIT_POLICIES_H
 #define TILEDB_UNIT_POLICIES_H
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #endif  // TILEDB_UNIT_POLICIES_H
