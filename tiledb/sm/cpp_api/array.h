@@ -418,6 +418,22 @@ class Array {
    * See @ref Array::open(tiledb_query_type_t) "Array::open"
    */
   // clang-format on
+  void open(tiledb_query_type_t query_type, uint64_t timestamp) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+
+    ctx.handle_error(
+        tiledb_array_set_open_timestamp_end(c_ctx, array_.get(), timestamp));
+    open(query_type);
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Array::open(tiledb_query_type_t)
+   *
+   * See @ref Array::open(tiledb_query_type_t) "Array::open"
+   */
+  // clang-format on
   void open(
       tiledb_query_type_t query_type,
       tiledb_encryption_type_t encryption_type,
