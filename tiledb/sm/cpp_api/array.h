@@ -602,7 +602,7 @@ class Array {
    * @param ctx TileDB context
    * @param array_uri The URI of the TileDB array to be consolidated.
    * @param fragment_uris Fragment names of the fragments to consolidate. The
-   *     names can be recovered using tiledb_fragment_info_get_fragment_name.
+   *     names can be recovered using tiledb_fragment_info_get_fragment_name_v2.
    * @param num_fragments The number of fragments to consolidate.
    * @param config Configuration parameters for the consolidation.
    */
@@ -1120,13 +1120,6 @@ class Array {
     key->resize(key_len);
     std::memcpy((void*)key->data(), key_c, key_len);
   }
-
-/* ********************************* */
-/*           DEPRECATED API          */
-/* ********************************* */
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-#include "array_deprecated.h"
-#endif  // TILEDB_REMOVE_DEPRECATIONS
 
  private:
   /* ********************************* */

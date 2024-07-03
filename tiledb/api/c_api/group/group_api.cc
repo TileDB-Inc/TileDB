@@ -294,58 +294,6 @@ capi_return_t tiledb_group_get_member_count(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_group_get_member_by_index(
-    tiledb_group_handle_t* group,
-    uint64_t index,
-    char** uri,
-    tiledb_object_t* type,
-    char** name) {
-  ensure_group_is_valid(group);
-  ensure_output_pointer_is_valid(uri);
-  ensure_output_pointer_is_valid(type);
-  ensure_output_pointer_is_valid(name);
-
-  LOG_WARN(
-      "tiledb_group_get_member_by_index is deprecated. Please use "
-      "tiledb_group_get_member_by_index_v2 instead.");
-
-  char* tmp_uri = nullptr;
-  char* tmp_name = nullptr;
-
-  auto&& [uri_str, object_type, name_str] =
-      group->group().member_by_index(index);
-
-  tmp_uri = copy_string(uri_str);
-  if (tmp_uri == nullptr) {
-    goto error;
-  }
-
-  if (name_str.has_value()) {
-    tmp_name = copy_string(name_str.value());
-    if (tmp_name == nullptr) {
-      goto error;
-    }
-  }
-
-  *uri = tmp_uri;
-  *type = static_cast<tiledb_object_t>(object_type);
-  *name = tmp_name;
-
-  return TILEDB_OK;
-
-error:
-
-  if (tmp_uri != nullptr) {
-    std::free(tmp_uri);
-  }
-
-  if (tmp_name != nullptr) {
-    std::free(tmp_name);
-  }
-
-  return TILEDB_OK;
-}
-
 capi_return_t tiledb_group_get_member_by_index_v2(
     tiledb_group_handle_t* group,
     uint64_t index,
@@ -370,33 +318,6 @@ capi_return_t tiledb_group_get_member_by_index_v2(
     tiledb_string_handle_t::break_handle(*uri);
     throw;
   }
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_group_get_member_by_name(
-    tiledb_group_handle_t* group,
-    const char* name,
-    char** uri,
-    tiledb_object_t* type) {
-  ensure_group_is_valid(group);
-  ensure_name_argument_is_valid(name);
-  ensure_output_pointer_is_valid(uri);
-  ensure_output_pointer_is_valid(type);
-
-  LOG_WARN(
-      "tiledb_group_get_member_by_name is deprecated. Please use "
-      "tiledb_group_get_member_by_name_v2 instead.");
-
-  auto&& [uri_str, object_type, name_str, ignored_relative] =
-      group->group().member_by_name(name);
-
-  *uri = copy_string(uri_str);
-  if (*uri == nullptr) {
-    return TILEDB_ERR;
-  }
-
-  *type = static_cast<tiledb_object_t>(object_type);
 
   return TILEDB_OK;
 }
@@ -752,18 +673,6 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    group_get_member_by_index,
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    uint64_t index,
-    char** uri,
-    tiledb_object_t* type,
-    char** name) {
-  return api_entry_context<tiledb::api::tiledb_group_get_member_by_index>(
-      ctx, group, index, uri, type, name);
-}
-
-CAPI_INTERFACE(
     group_get_member_by_index_v2,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
@@ -773,17 +682,6 @@ CAPI_INTERFACE(
     tiledb_string_t** name) {
   return api_entry_context<tiledb::api::tiledb_group_get_member_by_index_v2>(
       ctx, group, index, uri, type, name);
-}
-
-CAPI_INTERFACE(
-    group_get_member_by_name,
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    const char* name,
-    char** uri,
-    tiledb_object_t* type) {
-  return api_entry_context<tiledb::api::tiledb_group_get_member_by_name>(
-      ctx, group, name, uri, type);
 }
 
 CAPI_INTERFACE(

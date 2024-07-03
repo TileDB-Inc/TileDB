@@ -79,11 +79,9 @@ if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb_experimental
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_deprecated.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_deprecated.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/as_built_experimental.h
@@ -113,7 +111,6 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_channel.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_deprecated.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/stats.h
