@@ -451,44 +451,42 @@ Status check_range_is_subset(const Range& superset, const Range& range) {
  *
  * @param range The range to check.
  */
-template <typename T>
+template <
+    typename T,
+    typename std::enable_if_t<
+        std::is_arithmetic_v<T> || std::is_same_v<T, std::string_view>>* =
+        nullptr>
 void check_range_is_valid(const Range& range) {
-  static_assert(std::is_arithmetic_v<T>, "T must be an arithmetic type");
   // Check has data.
   if (range.empty())
     throw std::invalid_argument("Range is empty");
-  if (range.size() != 2 * sizeof(T))
-    throw std::invalid_argument(
-        "Range size " + std::to_string(range.size()) +
-        " does not match the expected size " + std::to_string(2 * sizeof(T)));
-  auto r = (const T*)range.data();
-  // Check for NaN
-  if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(r[0]) || std::isnan(r[1]))
-      throw std::invalid_argument("Range contains NaN");
-  }
-  // Check range bounds
-  if (r[0] > r[1])
-    throw std::invalid_argument(
-        "Lower range bound " + std::to_string(r[0]) +
-        " cannot be larger than the higher bound " + std::to_string(r[1]));
-};
 
-/**
- * Specialization of check_range_is_valid for string_view.
- */
-template <>
-inline void check_range_is_valid<std::string_view>(const Range& range) {
-  // Check has data.
-  if (range.empty())
-    throw std::invalid_argument("Range is empty");
-  auto start = range.start_str();
-  auto end = range.end_str();
-  // Check range bounds
-  if (start > end)
-    throw std::invalid_argument(
-        "Lower range bound " + std::string(start) +
-        " cannot be larger than the higher bound " + std::string(end));
+  // Compare string views
+  if constexpr (std::is_same_v<T, std::string_view>) {
+    auto start = range.start_str();
+    auto end = range.end_str();
+    // Check range bounds
+    if (start > end)
+      throw std::invalid_argument(
+          "Lower range bound " + std::string(start) +
+          " cannot be larger than the higher bound " + std::string(end));
+  } else {
+    if (range.size() != 2 * sizeof(T))
+      throw std::invalid_argument(
+          "Range size " + std::to_string(range.size()) +
+          " does not match the expected size " + std::to_string(2 * sizeof(T)));
+    auto r = (const T*)range.data();
+    // Check for NaN
+    if constexpr (std::is_floating_point_v<T>) {
+      if (std::isnan(r[0]) || std::isnan(r[1]))
+        throw std::invalid_argument("Range contains NaN");
+    }
+    // Check range bounds
+    if (r[0] > r[1])
+      throw std::invalid_argument(
+          "Lower range bound " + std::to_string(r[0]) +
+          " cannot be larger than the higher bound " + std::to_string(r[1]));
+  }
 };
 
 /**
