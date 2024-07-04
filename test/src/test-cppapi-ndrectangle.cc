@@ -90,6 +90,10 @@ TEST_CASE("NDRectangle - Errors", "[cppapi][ArraySchema][NDRectangle]") {
   CHECK_THROWS(ndrect.set_range(2, 1, 2));
   CHECK_THROWS(ndrect.set_range("d3", 1, 2));
 
+  // Set too small range type
+  CHECK_THROWS(ndrect.set_range<uint8_t>(0, 1, 2));
+  CHECK_THROWS(ndrect.set_range<uint8_t>("d1", 1, 2));
+
   // Set range out of order
   CHECK_THROWS(ndrect.set_range(0, 2, 1));
   CHECK_THROWS(ndrect.set_range("d2", "bbb", "aaa"));

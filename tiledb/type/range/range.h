@@ -457,6 +457,10 @@ void check_range_is_valid(const Range& range) {
   // Check has data.
   if (range.empty())
     throw std::invalid_argument("Range is empty");
+  if (range.size() != 2 * sizeof(T))
+    throw std::invalid_argument(
+        "Range size " + std::to_string(range.size()) +
+        " does not match the expected size " + std::to_string(2 * sizeof(T)));
   auto r = (const T*)range.data();
   // Check for NaN
   if constexpr (std::is_floating_point_v<T>) {
