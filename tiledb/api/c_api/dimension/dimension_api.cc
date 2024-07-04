@@ -32,6 +32,7 @@
 
 #include "../../c_api_support/c_api_support.h"
 #include "../filter_list/filter_list_api_internal.h"
+#include "../string/string_api_internal.h"
 #include "dimension_api_external.h"
 #include "dimension_api_internal.h"
 #include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
@@ -151,6 +152,17 @@ int32_t tiledb_dimension_dump(const tiledb_dimension_t* dim, FILE* out) {
   return TILEDB_OK;
 }
 
+int32_t tiledb_dimension_dump_str(
+    const tiledb_dimension_t* dim, tiledb_string_handle_t** out) {
+  ensure_dimension_is_valid(dim);
+  ensure_output_pointer_is_valid(out);
+
+  std::stringstream ss;
+  ss << *dim;
+  *out = tiledb_string_handle_t::make_handle(ss.str());
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 std::ostream& operator<<(
@@ -256,4 +268,13 @@ CAPI_INTERFACE(
     const tiledb_dimension_t* dim,
     FILE* out) {
   return api_entry_context<tiledb::api::tiledb_dimension_dump>(ctx, dim, out);
+}
+
+CAPI_INTERFACE(
+    dimension_dump_str,
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dimension,
+    tiledb_string_handle_t** out) {
+  return api_entry_context<tiledb::api::tiledb_dimension_dump_str>(
+      ctx, dimension, out);
 }
