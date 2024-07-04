@@ -27,8 +27,8 @@ The filter has internal format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Filter type | `uint8_t` | Type of filter \(e.g. `TILEDB_FILTER_BZIP2`\) |
-| Filter metadata size | `uint32_t` | Number of bytes in filter metadata — may be 0. |
-| Filter metadata | [Filter Metadata](#filter-metadata) | Filter metadata, specific to each filter. E.g. compression level for compression filters. |
+| Filter options size | `uint32_t` | Number of bytes in filter options — may be 0. |
+| Filter options | [Filter Options](#filter-options) | Filter options, specific to each filter. E.g. compression level for compression filters. |
 
 TileDB supports the following filters:
 * [Float Scaling Filter](./filters/float_scale.md)
