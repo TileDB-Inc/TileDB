@@ -121,6 +121,7 @@ void NDRectangle::set_range(const Range& r, uint32_t idx) {
     throw std::logic_error(
         "Trying to set a range for an index out of bounds is not possible.");
   }
+  check_range_is_valid(r, domain_->dimension_ptr(idx)->type());
   range_data_[idx] = r;
 }
 

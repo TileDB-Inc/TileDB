@@ -39,12 +39,9 @@
 
 using namespace tiledb::test;
 
-TEST_CASE_METHOD(
-    TemporaryDirectoryFixture,
-    "NDRectangle - Basic",
-    "[cppapi][ArraySchema][NDRectangle]") {
+TEST_CASE("NDRectangle - Basic", "[cppapi][ArraySchema][NDRectangle]") {
   // Create the C++ context.
-  tiledb::Context ctx_{ctx, false};
+  tiledb::Context ctx_;
   tiledb::Domain domain(ctx_);
   auto d1 = tiledb::Dimension::create<int32_t>(ctx_, "x", {{0, 100}}, 10);
   auto d2 = tiledb::Dimension::create<int32_t>(ctx_, "y", {{0, 100}}, 10);
@@ -58,9 +55,6 @@ TEST_CASE_METHOD(
 
   int range_two[] = {30, 40};
   ndrect.set_range(1, range_two[0], range_two[1]);
-
-  // Check setting range in non-existent dim
-  CHECK_THROWS(ndrect.set_range(2, range_two[0], range_two[1]));
 
   // Get range
   auto range = ndrect.range<int>(0);
@@ -76,4 +70,31 @@ TEST_CASE_METHOD(
   range = ndrect.range<int>("y");
   CHECK(range[0] == 30);
   CHECK(range[1] == 40);
+}
+
+TEST_CASE("NDRectangle - Errors", "[cppapi][ArraySchema][NDRectangle]") {
+  tiledb::Context ctx;
+
+  // Create a domain
+  tiledb::Domain domain(ctx);
+  auto d1 = tiledb::Dimension::create<int32_t>(ctx, "d1", {{1, 10}}, 5);
+  auto d2 = tiledb::Dimension::create(
+      ctx, "d2", TILEDB_STRING_ASCII, nullptr, nullptr);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+
+  // Create an NDRectangle
+  tiledb::NDRectangle ndrect(ctx, domain);
+
+  // Set range with non-existent dimension
+  CHECK_THROWS(ndrect.set_range(2, 1, 2));
+  CHECK_THROWS(ndrect.set_range("d3", 1, 2));
+
+  // Set too small range type
+  CHECK_THROWS(ndrect.set_range<uint8_t>(0, 1, 2));
+  CHECK_THROWS(ndrect.set_range<uint8_t>("d1", 1, 2));
+
+  // Set range out of order
+  CHECK_THROWS(ndrect.set_range(0, 2, 1));
+  CHECK_THROWS(ndrect.set_range("d2", "bbb", "aaa"));
 }
