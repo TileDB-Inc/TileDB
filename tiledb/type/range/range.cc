@@ -137,6 +137,7 @@ void check_range_is_valid(const Range& range, const tiledb::sm::Datatype type) {
           "Validating a variable range is only supported for type " +
           datatype_str(sm::Datatype::STRING_ASCII) + ".");
     check_range_is_valid<std::string_view>(range);
+    return;
   }
 
   apply_with_type(
