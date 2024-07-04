@@ -52,8 +52,6 @@ class DeltaCompressorException : public StatusException {
   }
 };
 
-const uint64_t Delta::OVERHEAD = 17;
-
 /* ****************************** */
 /*               API              */
 /* ****************************** */
