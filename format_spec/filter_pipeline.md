@@ -44,8 +44,8 @@ TileDB supports the following filters. Each filter has a type, which also corres
 * [Bit Shuffle](./tile.md#byteshuffle-filter) – `TILEDB_FILTER_BITSHUFFLE` (8)
 * [Byte Shuffle](./tile.md#bitshuffle-filter) – `TILEDB_FILTER_BYTESHUFFLE` (9)
 * [Positive Delta](./tile.md#positive-delta-encoding-filter) – `TILEDB_FILTER_POSITIVE_DELTA` (10)
-* [Encryption](./tile.md#encryption-filters) – _not a publicly exposed and user-configurable filter_
-    * [AES-256-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode) (11)
+* [Encryption](./tile.md#encryption-filters)
+    * [AES-256-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode) – (11)
 * [Checksum](./tile.md#checksum-filters)
     * [MD5](https://en.wikipedia.org/wiki/MD5) – `TILEDB_FILTER_CHECKSUM_MD5` (12)
     * [SHA-256](https://en.wikipedia.org/wiki/SHA-2) – `TILEDB_FILTER_CHECKSUM_SHA256` (13)
@@ -53,6 +53,9 @@ TileDB supports the following filters. Each filter has a type, which also corres
 * [Float Scale](./filters/float_scale.md) – `TILEDB_FILTER_SCALE_FLOAT` (15)
 * [XOR](./filters/xor.md) – `TILEDB_FILTER_XOR` (16)
 * [WEBP](./filters/webp.md) – `TILEDB_FILTER_WEBP` (18)
+
+> [!NOTE]
+> Encryption is internally implemented as a filter at the end of the pipeline, but the encryption filter is not directly selectable by the user. The presence of the encryption filter in a pipeline is used to indicate that the data is encrypted.
 
 ## Filter Options
 
