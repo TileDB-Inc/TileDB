@@ -30,6 +30,7 @@
  * Tests the C++ API for schema evolution.
  */
 
+#include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -47,12 +48,11 @@
 
 TEST_CASE(
     "C++ API: SchemaEvolution, add and drop attributes",
-    "[cppapi][schema][evolution][add][drop]") {
+    "[cppapi][schema][evolution][add][drop][rest]") {
   using namespace tiledb;
-  Context ctx;
-  VFS vfs(ctx);
-
-  std::string array_uri = "test_schema_evolution_array";
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri("test_schema_evolution_array")};
 
   Domain domain(ctx);
   auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
@@ -70,10 +70,6 @@ TEST_CASE(
   schema.add_attribute(a2);
   schema.set_cell_order(TILEDB_ROW_MAJOR);
   schema.set_tile_order(TILEDB_COL_MAJOR);
-
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
-  }
 
   Array::create(array_uri, schema);
 
@@ -100,21 +96,15 @@ TEST_CASE(
   CHECK(attrs.count("a1") == 0);
   CHECK(attrs.count("a2") == 1);
   CHECK(attrs.count("a3") == 1);
-
-  // Clean up
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
-  }
 }
 
 TEST_CASE(
     "C++ API: SchemaEvolution, check error when dropping dimension",
-    "[cppapi][schema][evolution][drop]") {
+    "[cppapi][schema][evolution][drop][rest]") {
   using namespace tiledb;
-  Context ctx;
-  VFS vfs(ctx);
-
-  std::string array_uri = "test_schema_evolution_array";
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri("test_schema_evolution_array")};
 
   Domain domain(ctx);
   auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
@@ -131,10 +121,6 @@ TEST_CASE(
   schema.set_cell_order(TILEDB_ROW_MAJOR);
   schema.set_tile_order(TILEDB_COL_MAJOR);
 
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
-  }
-
   Array::create(array_uri, schema);
 
   auto evolution = ArraySchemaEvolution(ctx);
@@ -144,27 +130,22 @@ TEST_CASE(
 
   // check that an exception is thrown
   CHECK_THROWS(evolution.array_evolve(array_uri));
-
-  // Clean up
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
-  }
 }
 
 TEST_CASE(
     "C++ API: SchemaEvolution, add attributes and read",
-    "[cppapi][schema][evolution][add]") {
+    "[cppapi][schema][evolution][add][rest]") {
   using namespace tiledb;
-  Context ctx;
-  VFS vfs(ctx);
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+
   auto layout = GENERATE(
       TILEDB_ROW_MAJOR,
       TILEDB_COL_MAJOR,
       TILEDB_UNORDERED,
       TILEDB_GLOBAL_ORDER);
   bool duplicates = GENERATE(true, false);
-
-  std::string array_uri = "test_schema_evolution_array_read";
+  auto array_uri{vfs_test_setup.array_uri("test_schema_evolution_array")};
 
   // Create
   {
@@ -182,10 +163,6 @@ TEST_CASE(
     schema.add_attribute(a);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
-
-    if (vfs.is_dir(array_uri)) {
-      vfs.remove_dir(array_uri);
-    }
 
     Array::create(array_uri, schema);
   }
@@ -464,9 +441,11 @@ TEST_CASE(
   // test case.
   Config cfg;
   cfg["sm.merge_overlapping_ranges_experimental"] = "false";
+  vfs_test_setup.update_config(cfg.ptr().get());
   // + Global order does not support multi-range subarrays
   if (layout != TILEDB_GLOBAL_ORDER) {
-    ctx = Context(cfg);
+    ctx = vfs_test_setup.ctx();
+
     Array array(ctx, array_uri, TILEDB_READ);
 
     std::vector<int> a_data(8);
@@ -683,19 +662,14 @@ TEST_CASE(
               1, 1, 1, 1, 3, 3, 3, 3, 4, 4, 4, 4, 1, 1, 1, 1}));
     }
   }
-
-  // Clean up
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
-  }
 }
 
 TEST_CASE(
     "C++ API: SchemaEvolution, add and drop attributes",
-    "[cppapi][schema][evolution][add][query-condition]") {
+    "[cppapi][schema][evolution][add][query-condition][rest]") {
   using namespace tiledb;
-  Context ctx;
-  VFS vfs(ctx);
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
   auto layout = GENERATE(
       TILEDB_ROW_MAJOR,
       TILEDB_COL_MAJOR,
@@ -705,7 +679,8 @@ TEST_CASE(
 
   const char* out_str = nullptr;
   tiledb_layout_to_str(layout, &out_str);
-  std::string array_uri = "test_schema_evolution_query_condition";
+  auto array_uri{
+      vfs_test_setup.array_uri("test_schema_evolution_query_condition")};
 
   {
     Domain domain(ctx);
@@ -722,10 +697,6 @@ TEST_CASE(
     schema.add_attribute(a);
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
-
-    if (vfs.is_dir(array_uri)) {
-      vfs.remove_dir(array_uri);
-    }
 
     Array::create(array_uri, schema);
   }
@@ -832,11 +803,6 @@ TEST_CASE(
     CHECK_THAT(b_data, Catch::Matchers::Equals(std::vector<uint32_t>{4}));
     CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{4}));
     CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1}));
-  }
-
-  // Cleanup.
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
   }
 }
 
