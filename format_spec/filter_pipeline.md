@@ -26,15 +26,33 @@ The filter has internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
-| Filter type | `uint8_t` | Type of filter \(e.g. `TILEDB_FILTER_BZIP2`\) |
-| Filter options size | `uint32_t` | Number of bytes in filter options — may be 0. |
+| Filter type | `uint8_t` | Type of filter \(e.g. `TILEDB_FILTER_BZIP2`\) – see below for values |
+| Filter options size | `uint32_t` | Number of bytes in filter options – may be 0. |
 | Filter options | [Filter Options](#filter-options) | Filter options, specific to each filter. E.g. compression level for compression filters. |
 
-TileDB supports the following filters:
-* [Float Scaling Filter](./filters/float_scale.md)
-* [XOR Filter](./filters/xor.md)
-* [Dictionary Encoding Filter](./filters/dictionary_encoding.md)
-* [WEBP Filter](./filters/webp.md)
+TileDB supports the following filters. Each filter has a type, which also corresponds to a constant in the C API:
+* [Compression](./tile.md#compression-filters)
+    * [Gzip](https://www.gnu.org/software/gzip/) – `TILEDB_FILTER_GZIP` (1)
+    * [Zstandard](https://facebook.github.io/zstd/) – `TILEDB_FILTER_ZSTD` (2)
+    * [LZ4](https://lz4.org/) – `TILEDB_FILTER_LZ4` (3)
+    * Run-length encoding – `TILEDB_FILTER_RLE` (4)
+    * [BZip2](http://sourceware.org/bzip2/) – `TILEDB_FILTER_BZIP2` (5)
+    * [Double-delta](filters/double_delta.md) – `TILEDB_FILTER_DOUBLE_DELTA` (6)
+    * [Dictionary](filters/dictionary_encoding.md) – `TILEDB_FILTER_DICTIONARY` (14)
+    * [Delta](filters/delta.md) – `TILEDB_FILTER_DELTA` (19)
+* [Bit-width Reduction](./tile.md#bit-width-reduction-filter) – `TILEDB_FILTER_BIT_WIDTH_REDUCTION` (7)
+* [Bit Shuffle](./tile.md#byteshuffle-filter) – `TILEDB_FILTER_BITSHUFFLE` (8)
+* [Byte Shuffle](./tile.md#bitshuffle-filter) – `TILEDB_FILTER_BYTESHUFFLE` (9)
+* [Positive Delta](./tile.md#positive-delta-encoding-filter) – `TILEDB_FILTER_POSITIVE_DELTA` (10)
+* [Encryption](./tile.md#encryption-filters) – _not a publicly exposed and user-configurable filter_
+    * [AES-256-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode) (11)
+* [Checksum](./tile.md#checksum-filters)
+    * [MD5](https://en.wikipedia.org/wiki/MD5) – `TILEDB_FILTER_CHECKSUM_MD5` (12)
+    * [SHA-256](https://en.wikipedia.org/wiki/SHA-2) – `TILEDB_FILTER_CHECKSUM_SHA256` (13)
+* [Dictionary Encoding](./filters/dictionary_encoding.md) – `TILEDB_FILTER_DICTIONARY` (14)
+* [Float Scale](./filters/float_scale.md) – `TILEDB_FILTER_SCALE_FLOAT` (15)
+* [XOR](./filters/xor.md) – `TILEDB_FILTER_XOR` (16)
+* [WEBP](./filters/webp.md) – `TILEDB_FILTER_WEBP` (18)
 
 ## Filter Options
 
