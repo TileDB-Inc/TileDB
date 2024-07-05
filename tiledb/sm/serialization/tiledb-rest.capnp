@@ -1163,6 +1163,9 @@ struct FragmentMetadata {
 
   gtOffsets @28 :GenericTileOffsets;
   # the start offsets of the generic tiles stored in the metadata file
+
+  arraySchemaName @29 : Text;
+  # name of the array schema for this fragment metadata
 }
 
 struct MultiPartUploadState {

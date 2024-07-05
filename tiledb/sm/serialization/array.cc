@@ -310,8 +310,15 @@ void array_from_capnp(
           &resources,
           array->memory_tracker(),
           frag_meta_reader.getVersion());
-      throw_if_not_ok(fragment_metadata_from_capnp(
-          array->array_schema_latest_ptr(), frag_meta_reader, meta));
+      auto schema = array->array_schema_latest_ptr();
+      if (frag_meta_reader.hasArraySchemaName()) {
+        auto schemas = array->array_schemas_all();
+        auto real = schemas[frag_meta_reader.getArraySchemaName()];
+        schema = real;
+      }
+
+      throw_if_not_ok(
+          fragment_metadata_from_capnp(schema, frag_meta_reader, meta));
       if (client_side) {
         meta->loaded_metadata()->set_rtree_loaded();
       }

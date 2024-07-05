@@ -699,6 +699,8 @@ Status fragment_metadata_to_capnp(
   generic_tile_offsets_to_capnp(
       frag_meta.generic_tile_offsets(), gt_offsets_builder);
 
+  frag_meta_builder->setArraySchemaName(frag_meta.array_schema_name());
+
   return Status::Ok();
 }
 
