@@ -640,7 +640,7 @@ class FragmentMetadata {
   URI validity_uri(const std::string& name) const;
 
   /** Return the array schema name. */
-  const std::string& array_schema_name();
+  const std::string& array_schema_name() const;
 
   uint64_t footer_size() const;
 

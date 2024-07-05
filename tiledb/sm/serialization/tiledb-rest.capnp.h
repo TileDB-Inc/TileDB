@@ -1461,7 +1461,7 @@ struct FragmentMetadata {
   struct GenericTileOffsets;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(cde352fc27e7ca61, 4, 22)
+    CAPNP_DECLARE_STRUCT_HEADER(cde352fc27e7ca61, 4, 23)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -12858,6 +12858,9 @@ class FragmentMetadata::Reader {
       GenericTileOffsets::Reader
       getGtOffsets() const;
 
+  inline bool hasArraySchemaName() const;
+  inline ::capnp::Text::Reader getArraySchemaName() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -13356,6 +13359,13 @@ class FragmentMetadata::Builder {
   inline ::capnp::Orphan<
       ::tiledb::sm::serialization::capnp::FragmentMetadata::GenericTileOffsets>
   disownGtOffsets();
+
+  inline bool hasArraySchemaName();
+  inline ::capnp::Text::Builder getArraySchemaName();
+  inline void setArraySchemaName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initArraySchemaName(unsigned int size);
+  inline void adoptArraySchemaName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownArraySchemaName();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -31065,6 +31075,47 @@ FragmentMetadata::Builder::disownGtOffsets() {
                                         FragmentMetadata::GenericTileOffsets>::
       disown(
           _builder.getPointerField(::capnp::bounded<21>() * ::capnp::POINTERS));
+}
+
+inline bool FragmentMetadata::Reader::hasArraySchemaName() const {
+  return !_reader.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool FragmentMetadata::Builder::hasArraySchemaName() {
+  return !_builder.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader FragmentMetadata::Reader::getArraySchemaName()
+    const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder FragmentMetadata::Builder::getArraySchemaName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS));
+}
+inline void FragmentMetadata::Builder::setArraySchemaName(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder FragmentMetadata::Builder::initArraySchemaName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS),
+      size);
+}
+inline void FragmentMetadata::Builder::adoptArraySchemaName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+FragmentMetadata::Builder::disownArraySchemaName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<22>() * ::capnp::POINTERS));
 }
 
 inline ::uint64_t FragmentMetadata::GenericTileOffsets::Reader::getRtree()
