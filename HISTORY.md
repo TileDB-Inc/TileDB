@@ -1,3 +1,9 @@
+# TileDB v2.24.2 Release Notes
+
+## Defects removed
+
+* Fix serialization issue with schema evolution for query v3. [#5154](https://github.com/TileDB-Inc/TileDB/pull/5154)
+
 # TileDB v2.24.1 Release Notes
 
 ## Defects removed
