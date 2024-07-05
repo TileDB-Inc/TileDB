@@ -827,6 +827,10 @@ class FragmentMetadata {
     return loaded_metadata_ptr_;
   }
 
+  inline const std::string array_schema_name() const {
+    return array_schema_name_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

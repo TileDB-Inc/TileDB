@@ -311,8 +311,23 @@ void array_from_capnp(
           &resources,
           array->memory_tracker(),
           frag_meta_reader.getVersion());
+
+      // fetch first the name of the schema this fragment was written with
+      auto fragment_array_schema_name =
+          array_schema_name_for_fragment_from_capnp(frag_meta_reader);
+
+      // FIXME: in older implementations we weren't doing that properly : error
+      // out the right way
+      if (fragment_array_schema_name.empty()) {
+        throw ArraySerializationException(
+            "Error deserializing fragment_metadata;");
+      }
+
+      // pass the right schema to deserialize fragment metadata
       throw_if_not_ok(fragment_metadata_from_capnp(
-          array->array_schema_latest_ptr(), frag_meta_reader, meta));
+          array->array_schemas_all().at(fragment_array_schema_name),
+          frag_meta_reader,
+          meta));
       if (client_side) {
         meta->loaded_metadata()->set_rtree_loaded();
       }
