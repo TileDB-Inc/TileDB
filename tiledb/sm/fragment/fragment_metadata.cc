@@ -1349,7 +1349,7 @@ URI FragmentMetadata::validity_uri(const std::string& name) const {
       encoded_name + "_validity" + constants::file_suffix);
 }
 
-const std::string& FragmentMetadata::array_schema_name() {
+const std::string& FragmentMetadata::array_schema_name() const {
   return array_schema_name_;
 }
 
