@@ -6,6 +6,7 @@
 #include <tiledb/tiledb_experimental>
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/vfs_helpers.h"
 
 using namespace tiledb;
 
@@ -20,8 +21,9 @@ static void read_with_time_travel(const std::string& array_uri, uint64_t when);
 
 TEST_CASE(
     "Use the correct schema when time traveling",
-    "[time-traveling][array-schema][bug][sc35424]") {
-  std::string array_uri = "test_time_traveling_schema";
+    "[time-traveling][array-schema][bug][sc35424][rest]") {
+  test::VFSTestSetup vfs_test_setup;
+  auto array_uri{vfs_test_setup.array_uri("test_time_traveling_schema")};
 
   // Test setup
   create_array(array_uri);
@@ -36,7 +38,8 @@ TEST_CASE(
 }
 
 void create_array(const std::string& array_uri) {
-  Context ctx;
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
 
   auto obj = Object::object(ctx, array_uri);
   if (obj.type() != Object::Type::Invalid) {
@@ -62,7 +65,8 @@ void write_first_fragment(const std::string& array_uri) {
   std::vector<int32_t> d_data = {0, 1, 2, 3, 4};
   std::vector<int32_t> a_data = {5, 6, 7, 8, 9};
 
-  Context ctx;
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
   Array array(ctx, array_uri, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
@@ -86,7 +90,8 @@ uint64_t time_travel_destination() {
 }
 
 void add_attr_b(const std::string& array_uri) {
-  Context ctx;
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
   auto attr = Attribute::create<int32_t>(ctx, "b");
 
   ArraySchemaEvolution ase(ctx);
@@ -99,7 +104,8 @@ void write_second_fragment(const std::string& array_uri) {
   std::vector<int32_t> a_data = {10, 11, 12, 13, 14};
   std::vector<int32_t> b_data = {15, 16, 17, 18, 19};
 
-  Context ctx;
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
   Array array(ctx, array_uri, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
@@ -115,7 +121,8 @@ void read_without_time_travel(const std::string& array_uri) {
   std::vector<int32_t> a_data(10);
   std::vector<int32_t> b_data(10);
 
-  Context ctx;
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
   Array array(ctx, array_uri, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   query.set_data_buffer("d", d_data)
@@ -141,7 +148,8 @@ void read_with_time_travel(const std::string& array_uri, uint64_t when) {
   std::vector<int32_t> a_data(10, INT_MAX);
   std::vector<int32_t> b_data(10, INT_MAX);
 
-  Context ctx;
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
   Array array(ctx, array_uri, TILEDB_READ, TemporalPolicy(TimeTravel, when));
   Query query(ctx, array, TILEDB_READ);
   query.set_data_buffer("d", d_data).set_data_buffer("a", a_data);
