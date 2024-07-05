@@ -4,6 +4,8 @@ vcpkg_from_github(
     REF "v${VERSION}"
     SHA512 b5dc81635ce775c3783df2d4f6ccf0890b1e1669bddb1c10f6d200203684e84504ca87099cb88874010df28f98f658da5a4eacb9e4df0408d40d845f3d394f48
     HEAD_REF master
+    PATCHES
+        "fix-pointer-mismatch.patch"
 )
 
 vcpkg_cmake_configure(

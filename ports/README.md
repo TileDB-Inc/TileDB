@@ -32,6 +32,8 @@ For ease of review when patching existing ports, you are recommended to make one
 
 | Port          | Reason                                                           |
 |---------------|------------------------------------------------------------------|
+| `aws-c-io`    | Patching to fix MinGW build failures.                            |
+| `aws-sdk-cpp` | Patching to fix MinGW build failures.                            |
 | `libmagic`    | Updating to the upstream port deferred due to failures.          |
 | `openssl`     | Pinning to OpenSSL 1.1 until we can move to 3.0 in January 2024. |
 | `libfaketime` | Port does not yet exist upstream                                 |

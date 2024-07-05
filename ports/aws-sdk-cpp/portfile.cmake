@@ -10,6 +10,7 @@ vcpkg_from_github(
         lock-curl-http-and-tls-settings.patch
         fix_find_curl.patch
         find-dependency.patch
+        fix-winsock-headers.patch # In MinGW, mstcpip.h references types from headers it does not include itself.
 )
 
 string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "dynamic" FORCE_SHARED_CRT)
