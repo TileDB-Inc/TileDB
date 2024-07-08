@@ -2402,9 +2402,16 @@ TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_start(
 
 /**
  * Sets the ending timestamp to use when opening (and reopening) the array.
- * This is an inclusive bound. The UINT64_MAX timestamp is a reserved timestamp
- * that will be interpretted as the current timestamp when an array is opened.
- * The default value is `UINT64_MAX`.
+ * This is an inclusive bound. The default value is `UINT64_MAX`.
+ *
+ * When opening the array for reads, this value will be used to determine the
+ * ending timestamp of fragments to load. A value of `UINT64_MAX` will be
+ * translated to the current timestamp at which the array is opened.
+ *
+ * When opening the array for writes, this value will be used to determine the
+ * timestamp to write new fragments. A value of `UINT64_MAX` will use the
+ * current timestamp at which the array is opened. A value of 0 will use the
+ * current timestamp at which the fragment is written.
  *
  * **Example:**
  *
