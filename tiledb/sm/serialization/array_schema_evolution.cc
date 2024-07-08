@@ -155,9 +155,11 @@ Status array_schema_evolution_to_capnp(
   timestamp_builder.set(1, timestamp_range.second);
 
   auto crd = array_schema_evolution->current_domain_to_expand();
-  auto current_domain_builder =
-      array_schema_evolution_builder->initCurrentDomainToExpand();
-  current_domain_to_capnp(crd, &current_domain_builder);
+  if (crd != nullptr) {
+    auto current_domain_builder =
+        array_schema_evolution_builder->initCurrentDomainToExpand();
+    current_domain_to_capnp(crd, &current_domain_builder);
+  }
 
   return Status::Ok();
 }

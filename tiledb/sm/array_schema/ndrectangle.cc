@@ -87,7 +87,7 @@ shared_ptr<NDRectangle> NDRectangle::deserialize(
 
 void NDRectangle::serialize(Serializer& serializer) const {
   for (unsigned d = 0; d < range_data_.size(); ++d) {
-    auto dim{domain_->dimension_ptr(d)};
+    auto dim{domain()->dimension_ptr(d)};
     const auto& r = range_data_[d];
     if (!dim->var_size()) {  // Fixed-sized
       serializer.write(r.data(), r.size());
@@ -109,7 +109,7 @@ void NDRectangle::dump(FILE* out) const {
   std::stringstream ss;
   ss << " - NDRectangle ###" << std::endl;
   for (uint32_t i = 0; i < range_data_.size(); ++i) {
-    auto dtype = domain_->dimension_ptr(i)->type();
+    auto dtype = domain()->dimension_ptr(i)->type();
     ss << "  - " << range_str(range_data_[i], dtype) << std::endl;
   }
 
@@ -126,7 +126,7 @@ void NDRectangle::set_range(const Range& r, uint32_t idx) {
 }
 
 void NDRectangle::set_range_for_name(const Range& r, const std::string& name) {
-  auto idx = domain_->get_dimension_index(name);
+  auto idx = domain()->get_dimension_index(name);
   set_range(r, idx);
 }
 
@@ -139,7 +139,7 @@ const Range& NDRectangle::get_range(uint32_t idx) const {
 }
 
 const Range& NDRectangle::get_range_for_name(const std::string& name) const {
-  auto idx = domain_->get_dimension_index(name);
+  auto idx = domain()->get_dimension_index(name);
   return get_range(idx);
 }
 

@@ -77,7 +77,12 @@ void ndrectangle_to_capnp(
       // only one range per dimension
       range_buffers_to_capnp({ranges[i]}, range_builder);
     }
+    return;
   }
+
+  throw std::logic_error(
+      "NDRectangle serialization failed. The NDRectangle on the array current "
+      "domain has no ranges set");
 }
 
 shared_ptr<CurrentDomain> current_domain_from_capnp(

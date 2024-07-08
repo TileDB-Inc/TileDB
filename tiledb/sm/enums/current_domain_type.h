@@ -51,13 +51,13 @@ enum class CurrentDomainType : uint8_t {
 };
 
 /** Returns the string representation of the input current domain type. */
-inline const std::string& current_domain_type_str(
+inline const std::string current_domain_type_str(
     CurrentDomainType current_domain_type) {
   switch (current_domain_type) {
     case CurrentDomainType::NDRECTANGLE:
       return constants::current_domain_ndrectangle_str;
     default:
-      return constants::empty_str;
+      return std::to_string(static_cast<uint8_t>(current_domain_type));
   }
 }
 

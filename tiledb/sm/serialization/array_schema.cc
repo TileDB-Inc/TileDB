@@ -1153,11 +1153,13 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
     name = schema_reader.getName().cStr();
   }
 
-  auto crd = make_shared<CurrentDomain>(
-      memory_tracker, constants::current_domain_version);
+  std::shared_ptr<CurrentDomain> crd;
   if (schema_reader.hasCurrentDomain()) {
     crd = current_domain_from_capnp(
         schema_reader.getCurrentDomain(), domain, memory_tracker);
+  } else {
+    crd = make_shared<CurrentDomain>(
+        memory_tracker, constants::current_domain_version);
   }
 
   return make_shared<ArraySchema>(

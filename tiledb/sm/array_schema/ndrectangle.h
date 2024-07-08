@@ -135,6 +135,12 @@ class NDRectangle {
 
   /** domain accessor */
   shared_ptr<Domain> domain() const {
+    // Guards for a special cased behavior in REST array schema evolution, see
+    // domain_ declaration for a more detailed explanation
+    if (domain_ == nullptr) {
+      throw std::runtime_error(
+          "The Domain instance on this NDRectangle is nullptr");
+    }
     return domain_;
   }
 
@@ -187,7 +193,11 @@ class NDRectangle {
   /** Per dimension ranges of the rectangle */
   NDRange range_data_;
 
-  /** Array Schema domain  */
+  /**
+   * Array Schema domain. This can be nullptr during
+   * array schema evolution on REST when we construct with a nullptr domain_
+   * and set it later during ArraySchema::expand_current_domain to avoid
+   * serializing the domain on the evolution object */
   shared_ptr<Domain> domain_;
 };
 
