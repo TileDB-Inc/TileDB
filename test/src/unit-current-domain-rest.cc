@@ -66,11 +66,17 @@ void RestCurrentDomainFx::create_sparse_array(const std::string& array_name) {
       ctx_c_, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1);
   CHECK(rc == TILEDB_OK);
 
+  tiledb_dimension_t* d2;
+  rc = tiledb_dimension_alloc(ctx_c_, "d2", TILEDB_STRING_ASCII, 0, 0, &d2);
+  CHECK(rc == TILEDB_OK);
+
   // Create domain
   tiledb_domain_t* domain;
   rc = tiledb_domain_alloc(ctx_c_, &domain);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_domain_add_dimension(ctx_c_, domain, d1);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_c_, domain, d2);
   CHECK(rc == TILEDB_OK);
 
   // Create attributes
@@ -110,6 +116,18 @@ void RestCurrentDomainFx::create_sparse_array(const std::string& array_name) {
   REQUIRE(
       tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "d1", &range) ==
       TILEDB_OK);
+
+  tiledb_range_t range_var;
+  std::string min_var("ab");
+  std::string max_var("cd");
+  range_var.min = min_var.data();
+  range_var.min_size = 2;
+  range_var.max = max_var.data();
+  range_var.max_size = 2;
+  REQUIRE(
+      tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "d2", &range_var) ==
+      TILEDB_OK);
+
   REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
   REQUIRE(
       tiledb_array_schema_set_current_domain(ctx_c_, array_schema, crd) ==
@@ -153,6 +171,7 @@ TEST_CASE_METHOD(
 
   REQUIRE(tiledb_current_domain_get_ndrectangle(crd, &ndr) == TILEDB_OK);
   tiledb_range_t outrange;
+  tiledb_range_t outrange_var;
   REQUIRE(
       tiledb_ndrectangle_get_range_from_name(ctx_c_, ndr, "d1", &outrange) ==
       TILEDB_OK);
@@ -160,6 +179,14 @@ TEST_CASE_METHOD(
   CHECK(*(uint64_t*)outrange.max == 5);
   CHECK(outrange.min_size == sizeof(uint64_t));
   CHECK(outrange.max_size == sizeof(uint64_t));
+
+  REQUIRE(
+      tiledb_ndrectangle_get_range_from_name(
+          ctx_c_, ndr, "d2", &outrange_var) == TILEDB_OK);
+  CHECK(std::memcmp(outrange_var.min, "ab", 2) == 0);
+  CHECK(std::memcmp(outrange_var.max, "cd", 2) == 0);
+  CHECK(outrange_var.min_size == 2);
+  CHECK(outrange_var.max_size == 2);
 
   REQUIRE(tiledb_ndrectangle_free(&ndr) == TILEDB_OK);
   REQUIRE(tiledb_current_domain_free(&crd) == TILEDB_OK);
@@ -200,6 +227,18 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "d1", &range) ==
       TILEDB_OK);
+
+  tiledb_range_t range_var;
+  std::string min_var("aa");
+  std::string max_var("ce");
+  range_var.min = min_var.data();
+  range_var.min_size = 2;
+  range_var.max = max_var.data();
+  range_var.max_size = 2;
+  REQUIRE(
+      tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "d2", &range_var) ==
+      TILEDB_OK);
+
   REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
   REQUIRE(
       tiledb_array_schema_evolution_expand_current_domain(ctx_c_, evo, crd) ==
@@ -232,6 +271,15 @@ TEST_CASE_METHOD(
   CHECK(*(uint64_t*)outrange.max == 7);
   CHECK(outrange.min_size == sizeof(uint64_t));
   CHECK(outrange.max_size == sizeof(uint64_t));
+
+  tiledb_range_t outrange_var;
+  REQUIRE(
+      tiledb_ndrectangle_get_range_from_name(
+          ctx_c_, ndr, "d2", &outrange_var) == TILEDB_OK);
+  CHECK(std::memcmp(outrange_var.min, "aa", 2) == 0);
+  CHECK(std::memcmp(outrange_var.max, "ce", 2) == 0);
+  CHECK(outrange_var.min_size == 2);
+  CHECK(outrange_var.max_size == 2);
 
   REQUIRE(tiledb_ndrectangle_free(&ndr) == TILEDB_OK);
   REQUIRE(tiledb_current_domain_free(&crd) == TILEDB_OK);
