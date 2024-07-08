@@ -179,6 +179,15 @@ class CurrentDomain {
   bool covered(const NDRange& expanded_range) const;
 
   /**
+   * Checks if this current domain fully contains the non empty domain of a
+   * fragment.
+   *
+   * @param non_empty_domain The non empty domain to check
+   * @return True if the current domain includes the non empty domain
+   */
+  bool includes(const NDRange& non_empty_domain) const;
+
+  /**
    * Perform various checks to ensure the current domain is coherent with the
    * array schema
    *
