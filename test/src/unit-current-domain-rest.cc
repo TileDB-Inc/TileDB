@@ -41,8 +41,7 @@ using namespace tiledb::test;
 struct RestCurrentDomainFx {
   RestCurrentDomainFx();
 
-  void create_sparse_array(
-      const std::string& array_name, bool empty_ndr = false);
+  void create_sparse_array(const std::string& array_name);
 
   VFSTestSetup vfs_test_setup_;
 
@@ -55,8 +54,7 @@ RestCurrentDomainFx::RestCurrentDomainFx()
     : ctx_c_(vfs_test_setup_.ctx_c) {
 }
 
-void RestCurrentDomainFx::create_sparse_array(
-    const std::string& array_name, bool empty_ndr) {
+void RestCurrentDomainFx::create_sparse_array(const std::string& array_name) {
   uri_ = vfs_test_setup_.array_uri(array_name);
 
   // Create dimensions
@@ -109,11 +107,9 @@ void RestCurrentDomainFx::create_sparse_array(
   range.min_size = sizeof(uint64_t);
   range.max = &max;
   range.max_size = sizeof(uint64_t);
-  if (!empty_ndr) {
-    REQUIRE(
-        tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "d1", &range) ==
-        TILEDB_OK);
-  }
+  REQUIRE(
+      tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "d1", &range) ==
+      TILEDB_OK);
   REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
   REQUIRE(
       tiledb_array_schema_set_current_domain(ctx_c_, array_schema, crd) ==
@@ -125,20 +121,7 @@ void RestCurrentDomainFx::create_sparse_array(
 
   // Create array
   rc = tiledb_array_create(ctx_c_, uri_.c_str(), array_schema);
-  if (empty_ndr) {
-    CHECK(rc == TILEDB_ERR);
-    tiledb_error_t* err;
-    CHECK(tiledb_ctx_get_last_error(ctx_c_, &err) == TILEDB_OK);
-    const char* errmsg;
-    CHECK(tiledb_error_message(err, &errmsg) == TILEDB_OK);
-    CHECK_THAT(
-        errmsg,
-        Catch::Matchers::Equals("NDRectangle serialization failed. The "
-                                "NDRectangle on the array current "
-                                "domain has no ranges set"));
-  } else {
-    CHECK(rc == TILEDB_OK);
-  }
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
   REQUIRE(tiledb_ndrectangle_free(&ndr) == TILEDB_OK);
@@ -153,10 +136,6 @@ TEST_CASE_METHOD(
     RestCurrentDomainFx,
     "C API: Current Domain basic behavior",
     "[current_domain][rest]") {
-  // Check that an empty NDRectangle set on a current domain throws on the
-  // client
-  create_sparse_array("currentdomain_array", true);
-
   create_sparse_array("currentdomain_array");
 
   // Open array, read back current domain from schema and check

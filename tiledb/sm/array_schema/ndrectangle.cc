@@ -48,12 +48,23 @@ NDRectangle::NDRectangle(
     : memory_tracker_(memory_tracker)
     , range_data_(nd)
     , domain_(dom) {
+  if (dom->dim_num() == 0) {
+    throw std::logic_error(
+        "The TileDB domain used to create the NDRectangle has no dimensions.");
+  }
+  if (range_data_.empty()) {
+    throw std::logic_error("The passed ND ranges vector is empty.");
+  }
 }
 
 NDRectangle::NDRectangle(
     shared_ptr<MemoryTracker> memory_tracker, shared_ptr<Domain> dom)
     : memory_tracker_(memory_tracker)
     , domain_(dom) {
+  if (dom->dim_num() == 0) {
+    throw std::logic_error(
+        "The TileDB domain used to create the NDRectangle has no dimensions.");
+  }
   range_data_.resize(dom->dim_num());
 }
 

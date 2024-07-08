@@ -40,18 +40,18 @@ namespace tiledb::sm::serialization {
 
 void current_domain_to_capnp(
     shared_ptr<CurrentDomain> crd,
-    capnp::CurrentDomain::Builder* current_domain_builder) {
-  current_domain_builder->setVersion(crd->version());
+    capnp::CurrentDomain::Builder& current_domain_builder) {
+  current_domain_builder.setVersion(crd->version());
   if (crd->empty()) {
-    current_domain_builder->setEmptyCurrentDomain();
+    current_domain_builder.setEmptyCurrentDomain();
     return;
   }
 
   switch (crd->type()) {
     case CurrentDomainType::NDRECTANGLE: {
-      current_domain_builder->setType(current_domain_type_str(crd->type()));
-      auto ndr_builder = current_domain_builder->initNdRectangle();
-      ndrectangle_to_capnp(crd->ndrectangle(), &ndr_builder);
+      current_domain_builder.setType(current_domain_type_str(crd->type()));
+      auto ndr_builder = current_domain_builder.initNdRectangle();
+      ndrectangle_to_capnp(crd->ndrectangle(), ndr_builder);
       break;
     }
     default: {
@@ -64,10 +64,10 @@ void current_domain_to_capnp(
 
 void ndrectangle_to_capnp(
     shared_ptr<NDRectangle> ndr,
-    capnp::NDRectangle::Builder* ndrectangle_builder) {
+    capnp::NDRectangle::Builder& ndrectangle_builder) {
   auto& ranges = ndr->get_ndranges();
   if (!ranges.empty()) {
-    auto ranges_builder = ndrectangle_builder->initNdranges(ranges.size());
+    auto ranges_builder = ndrectangle_builder.initNdranges(ranges.size());
     for (uint32_t i = 0; i < ranges.size(); ++i) {
       auto range_builder = ranges_builder[i];
       auto dtype = ndr->domain()->dimension_ptr(i)->type();

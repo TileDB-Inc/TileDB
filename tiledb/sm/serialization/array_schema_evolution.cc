@@ -158,7 +158,7 @@ Status array_schema_evolution_to_capnp(
   if (crd != nullptr) {
     auto current_domain_builder =
         array_schema_evolution_builder->initCurrentDomainToExpand();
-    current_domain_to_capnp(crd, &current_domain_builder);
+    current_domain_to_capnp(crd, current_domain_builder);
   }
 
   return Status::Ok();

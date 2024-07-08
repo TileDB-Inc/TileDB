@@ -58,7 +58,7 @@ namespace serialization {
  */
 void current_domain_to_capnp(
     shared_ptr<CurrentDomain> crd,
-    capnp::CurrentDomain::Builder* current_domain_builder);
+    capnp::CurrentDomain::Builder& current_domain_builder);
 
 /**
  * Deserialize a CurrentDomain from Cap'n Proto message
@@ -81,7 +81,7 @@ shared_ptr<CurrentDomain> current_domain_from_capnp(
  */
 void ndrectangle_to_capnp(
     shared_ptr<NDRectangle> ndr,
-    capnp::NDRectangle::Builder* ndrectangle_builder);
+    capnp::NDRectangle::Builder& ndrectangle_builder);
 
 /**
  * Deserialize a NDRectangle from Cap'n Proto message

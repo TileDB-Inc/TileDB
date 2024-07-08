@@ -931,7 +931,7 @@ Status array_schema_to_capnp(
 
   auto crd = array_schema.get_current_domain();
   auto current_domain_builder = array_schema_builder->initCurrentDomain();
-  current_domain_to_capnp(crd, &current_domain_builder);
+  current_domain_to_capnp(crd, current_domain_builder);
 
   return Status::Ok();
 }
