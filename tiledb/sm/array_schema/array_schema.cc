@@ -1830,11 +1830,10 @@ void ArraySchema::expand_current_domain(
         "your new current domain object.");
   }
 
+  new_current_domain->ndrectangle()->set_domain(this->shared_domain());
   new_current_domain->check_schema_sanity(this->shared_domain());
 
   current_domain_ = new_current_domain;
-
-  current_domain_->ndrectangle()->set_domain(this->shared_domain());
 }
 
 shared_ptr<CurrentDomain> ArraySchema::get_current_domain() const {
