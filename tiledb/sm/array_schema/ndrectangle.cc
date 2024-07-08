@@ -48,13 +48,16 @@ NDRectangle::NDRectangle(
     : memory_tracker_(memory_tracker)
     , range_data_(nd)
     , domain_(dom) {
-  if (dom->dim_num() == 0) {
-    throw std::logic_error(
-        "The TileDB domain used to create the NDRectangle has no dimensions.");
-  }
   if (range_data_.empty()) {
     throw std::logic_error("The passed ND ranges vector is empty.");
   }
+  if (dom != nullptr &&
+      dom->dim_num() != static_cast<Domain::dimension_size_type>(nd.size()))
+    if (range_data_.empty()) {
+      throw std::logic_error(
+          "The array current domain and the array schema have a non-equal "
+          "number of dimensions");
+    }
 }
 
 NDRectangle::NDRectangle(
@@ -125,6 +128,16 @@ void NDRectangle::dump(FILE* out) const {
   }
 
   fprintf(out, "%s", ss.str().c_str());
+}
+
+void NDRectangle::set_domain(shared_ptr<Domain> domain) {
+  if (domain->dim_num() !=
+      static_cast<Domain::dimension_size_type>(range_data_.size())) {
+    throw std::logic_error(
+        "The array current domain and the array schema have a non-equal "
+        "number of dimensions");
+  }
+  domain_ = domain;
 }
 
 void NDRectangle::set_range(const Range& r, uint32_t idx) {

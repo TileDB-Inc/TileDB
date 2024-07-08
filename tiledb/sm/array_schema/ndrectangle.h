@@ -148,9 +148,7 @@ class NDRectangle {
    * Used in REST array schema evolution to set a domain during evolution time
    * because one isn't available during deserialization.
    */
-  void set_domain(shared_ptr<Domain> domain) {
-    domain_ = domain;
-  }
+  void set_domain(shared_ptr<Domain> domain);
 
   /**
    * Set a range for the dimension at idx
