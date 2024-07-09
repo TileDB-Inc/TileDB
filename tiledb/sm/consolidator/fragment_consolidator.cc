@@ -362,7 +362,31 @@ Status FragmentConsolidator::consolidate_fragments(
   NDRange union_non_empty_domains;
   std::unordered_set<std::string> to_consolidate_set;
   for (auto& uri : fragment_uris) {
-    to_consolidate_set.emplace(URI(uri).last_path_part());
+    if (uri.find('/') == std::string::npos) {
+      // The fragment URI is relative and does not contain the array URI.
+      to_consolidate_set.emplace(uri);
+    } else {
+      // The fragment URI is absolute and should contain the correct array URI.
+      URI fragment_uri(uri);
+      FragmentID frag_id(fragment_uri);
+      std::string fragment = fragment_uri.last_path_part();
+
+      // Check for valid URI based on array format version.
+      if (frag_id.array_format_version() <= 11 &&
+          !fragment_uri.contains(std::string(array_name) + "/" + fragment)) {
+        throw FragmentConsolidatorException(
+            "Failed request to consolidate an invalid fragment URI ('" +
+            fragment_uri.to_string() + "')");
+      } else if (
+          frag_id.array_format_version() > 11 &&
+          !fragment_uri.contains(
+              std::string(array_name) + "/__fragments/" + fragment)) {
+        throw FragmentConsolidatorException(
+            "Failed request to consolidate an invalid fragment URI ('" +
+            fragment_uri.to_string() + "')");
+      }
+      to_consolidate_set.emplace(fragment);
+    }
   }
 
   // Make sure all fragments to consolidate are present
