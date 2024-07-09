@@ -186,6 +186,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-Reader.cc
   src/unit-request-handlers.cc
   src/unit-resource-pool.cc
+  src/unit-rest-array-schema-load.cc
   src/unit-rest-enumerations.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
@@ -256,13 +257,6 @@ if (TILEDB_SERIALIZATION)
     src/unit-capi-serialized_queries.cc
     src/unit-QueryCondition-serialization.cc
     src/unit-curl.cc
-  )
-endif()
-
-if (TILEDB_TESTS_ENABLE_REST)
-  list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/unit-capi-rest-dense_array.cc
-    src/unit-rest-array-schema-load.cc
   )
 endif()
 

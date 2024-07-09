@@ -481,9 +481,6 @@ int32_t tiledb_array_schema_load(
     const char* array_uri,
     int include_enumerations,
     tiledb_array_schema_t** array_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
   bool incl_enmrs = (include_enumerations != 0);
 
   // Create array schema
@@ -507,9 +504,9 @@ int32_t tiledb_array_schema_load(
   if (uri.is_tiledb()) {
     auto& rest_client = ctx->context().rest_client();
     try {
-    auto array_schema_rest =
-        rest_client.post_array_schema_from_rest(ctx->resources().config(), uri, 0, UINT64_MAX, incl_enmrs);
-        (*array_schema)->array_schema_ = array_schema_rest;
+      auto array_schema_rest = rest_client.post_array_schema_from_rest(
+          ctx->resources().config(), uri, 0, UINT64_MAX, incl_enmrs);
+      (*array_schema)->array_schema_ = array_schema_rest;
     } catch (...) {
       delete *array_schema;
       throw;
@@ -553,7 +550,8 @@ int32_t tiledb_array_schema_load(
         }
       }
 
-      auto enmrs_loaded = array_dir.load_enumerations_from_paths(enmr_paths_to_load, key);
+      auto enmrs_loaded = array_dir->load_enumerations_from_paths(
+          enmr_paths_to_load, key, tracker);
       for (auto& enmr : enmrs_loaded) {
         array_schema_latest->store_enumeration(enmr);
       }

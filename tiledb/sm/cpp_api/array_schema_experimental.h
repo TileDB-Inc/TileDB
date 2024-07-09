@@ -221,7 +221,8 @@ class ArraySchemaExperimental {
     // The schema knows this enumeration, but it is not loaded.
     if (enmr == nullptr) {
       throw TileDBError(
-        "[TileDB::C++API] Error: Enumeration '" + enmr_name + "' is not loaded.");
+          "[TileDB::C++API] Error: Enumeration '" + enmr_name +
+          "' is not loaded.");
     }
 
     return Enumeration(ctx, enmr);

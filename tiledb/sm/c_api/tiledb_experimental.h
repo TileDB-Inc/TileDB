@@ -421,6 +421,11 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
     const char* enumeration_name,
     tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
 
+TILEDB_EXPORT int32_t tiledb_array_schema_load_with_enumerations(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
+
 /**
  * Retrieves the schema of an array with all of its enumerations from disk,
  * creating an array schema struct. Options are read from the provided
@@ -434,7 +439,10 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
  *
  * @code{.c}
  * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_load_with_enumerations(ctx, "s3://tiledb_bucket/my_array", &array_schema);
+ * tiledb_array_schema_load_with_enumerations(
+ *     ctx,
+ *     "s3://tiledb_bucket/my_array",
+ *     &array_schema);
  * // Make sure to free the array schema in the end
  * @endcode
  *
@@ -445,13 +453,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_load_with_options(
     tiledb_ctx_t* ctx,
-    tiledb_ctx_t* config,
+    tiledb_config_t* config,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*               ARRAY               */
-/* ********************************* */
 
 /**
  * Sets the current domain on the array schema
