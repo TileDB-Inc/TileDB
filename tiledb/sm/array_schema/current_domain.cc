@@ -202,19 +202,29 @@ bool CurrentDomain::covered(const NDRange& ndranges) const {
 }
 
 bool CurrentDomain::includes(const NDRange& non_empty_domain) const {
+  for (dimension_size_type d = 0; d < non_empty_domain.size(); ++d) {
+    if (!includes(d, non_empty_domain[d])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool CurrentDomain::includes(
+    const dimension_size_type d, const Range& range) const {
   switch (type_) {
     case CurrentDomainType::NDRECTANGLE: {
-      for (unsigned d = 0; d < non_empty_domain.size(); ++d) {
-        auto dim = ndrectangle_->domain()->dimension_ptr(d);
-        if (!dim->covered(non_empty_domain[d], ndrectangle_->get_range(d))) {
-          return false;
-        }
+      auto dim = ndrectangle_->domain()->dimension_ptr(d);
+      if (!dim->covered(range, ndrectangle_->get_range(d))) {
+        return false;
       }
       return true;
     }
     default: {
       throw std::runtime_error(
-          "Unable to execute this current domain operation because one of the "
+          "Unable to execute this current domain operation because one of "
+          "the "
           "current domains passed has an unsupported type " +
           current_domain_type_str(type_));
     }
