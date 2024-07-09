@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,19 +42,25 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status ZStd::compress(
+class ZStdException : public StatusException {
+ public:
+  explicit ZStdException(const std::string& message)
+      : StatusException("ZStdException", message) {
+  }
+};
+
+void ZStd::compress(
     int level,
     shared_ptr<BlockingResourcePool<ZSTD_Compress_Context>> compress_ctx_pool,
     ConstBuffer* input_buffer,
     Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status_CompressionError(
-        "Failed compressing with ZStd; invalid buffer format"));
+    throw ZStdException("Failed compressing with ZStd; invalid buffer format");
 
   if (compress_ctx_pool == nullptr) {
-    return LOG_STATUS(Status_CompressionError(
-        "Failed compressing with ZStd; Resource pool not initialized"));
+    throw ZStdException(
+        "Failed compressing with ZStd; Resource pool not initialized");
   }
 
   ResourceGuard context_guard(*compress_ctx_pool);
@@ -72,54 +78,56 @@ Status ZStd::compress(
   // Handle error
   if (ZSTD_isError(zstd_ret) != 0) {
     const char* msg = ZSTD_getErrorName(zstd_ret);
-    return LOG_STATUS(Status_CompressionError(
-        std::string("ZStd compression failed: ") + msg));
+    throw ZStdException(std::string("ZStd compression failed: ") + msg);
   }
 
   // Set size of compressed data
   output_buffer->advance_size(zstd_ret);
   output_buffer->advance_offset(zstd_ret);
-
-  return Status::Ok();
 }
 
-Status ZStd::decompress(
+void ZStd::decompress(
     shared_ptr<BlockingResourcePool<ZSTD_Decompress_Context>>
         decompress_ctx_pool,
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {
   // Sanity check
-  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status_CompressionError(
-        "Failed decompressing with ZStd; invalid buffer format"));
-
   if (decompress_ctx_pool == nullptr) {
-    return LOG_STATUS(Status_CompressionError(
-        "Failed decompressing with ZStd; Resource pool not initialized"));
+    throw ZStdException(
+        "Failed decompressing with ZStd; Resource pool not initialized");
   }
 
   ResourceGuard context_guard(*decompress_ctx_pool);
   auto& context = context_guard.get();
 
+  decompress(context, *input_buffer, *output_buffer);
+}
+
+void ZStd::decompress(
+    ZSTD_Decompress_Context& decompress_ctx,
+    ConstBuffer& input_buffer,
+    PreallocatedBuffer& output_buffer) {
+  // Sanity check
+  if (input_buffer.data() == nullptr || output_buffer.data() == nullptr)
+    throw ZStdException(
+        "Failed decompressing with ZStd; invalid buffer format");
+
   // Decompress
   uint64_t zstd_ret = ZSTD_decompressDCtx(
-      context.ptr(),
-      output_buffer->cur_data(),
-      output_buffer->free_space(),
-      input_buffer->data(),
-      input_buffer->size());
+      decompress_ctx.ptr(),
+      output_buffer.cur_data(),
+      output_buffer.free_space(),
+      input_buffer.data(),
+      input_buffer.size());
 
   // Check error
   if (ZSTD_isError(zstd_ret) != 0) {
     const char* msg = ZSTD_getErrorName(zstd_ret);
-    return LOG_STATUS(Status_CompressionError(
-        std::string("ZStd decompression failed: ") + msg));
+    throw ZStdException(std::string("ZStd decompression failed: ") + msg);
   }
 
   // Set size decompressed data
-  output_buffer->advance_offset(zstd_ret);
-
-  return Status::Ok();
+  output_buffer.advance_offset(zstd_ret);
 }
 
 uint64_t ZStd::overhead(uint64_t nbytes) {

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,48 +49,17 @@ class Config;
 class VFS;
 
 class StorageManagerStub {
-  ContextResources& resources_;
   Config config_;
 
  public:
   static constexpr bool is_overriding_class = true;
   StorageManagerStub(
-      ContextResources& resources,
-      std::shared_ptr<common::Logger>,
-      const Config& config)
-      : resources_(resources)
-      , config_(config) {
+      ContextResources&, std::shared_ptr<common::Logger>, const Config& config)
+      : config_(config) {
   }
 
-  inline common::ThreadPool* compute_tp() {
-    return &resources_.compute_tp();
-  }
-  inline common::ThreadPool* io_tp() {
-    return &resources_.io_tp();
-  }
-  inline stats::Stats* stats() {
-    return &resources_.stats();
-  }
-  const Config& config() {
-    return config_;
-  }
-  inline VFS* vfs() {
-    throw std::logic_error("StorageManagerStub does not instantiate a VFS");
-  }
   inline Status cancel_all_tasks() {
     return Status{};
-  };
-  inline Status group_create(const std::string&) {
-    throw std::logic_error(
-        "StorageManagerStub does not support group creation");
-  }
-  inline Status group_metadata_consolidate(const char*, const Config&) {
-    throw std::logic_error(
-        "StorageManagerStub does not support group metadata consolidation");
-  }
-  inline Status group_metadata_vacuum(const char*, const Config&) {
-    throw std::logic_error(
-        "StorageManagerStub does not support group metadata vacuum");
   }
   inline Status set_tag(const std::string&, const std::string&) {
     return Status{};

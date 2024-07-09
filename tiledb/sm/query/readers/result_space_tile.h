@@ -47,6 +47,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class MemoryTracker;
+
 /** Fragment domain structure (fragment id, fragment domain). */
 struct FragmentDomain {
  public:
@@ -81,8 +83,12 @@ struct FragmentDomain {
 template <class T>
 class ResultSpaceTile {
  public:
-  /** Default constructor. */
-  ResultSpaceTile() = default;
+  /** No default constructor. */
+  ResultSpaceTile() = delete;
+
+  ResultSpaceTile(shared_ptr<MemoryTracker> memory_tracker)
+      : memory_tracker_(memory_tracker) {
+  }
 
   /** Default destructor. */
   ~ResultSpaceTile() = default;
@@ -126,9 +132,13 @@ class ResultSpaceTile {
   }
 
   /** Sets the input result tile for the given fragment. */
-  void set_result_tile(unsigned frag_idx, ResultTile& result_tile) {
+  void set_result_tile(
+      unsigned frag_idx, uint64_t tile_idx, FragmentMetadata& frag_md) {
     assert(result_tiles_.count(frag_idx) == 0);
-    result_tiles_[frag_idx] = std::move(result_tile);
+    result_tiles_.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(frag_idx),
+        std::forward_as_tuple(frag_idx, tile_idx, frag_md, memory_tracker_));
   }
 
   /** Returns the result tile for the input fragment. */
@@ -152,7 +162,42 @@ class ResultSpaceTile {
            result_tiles_ == rst.result_tiles_;
   }
 
+  /** The query condition filtered a result for this tile. */
+  inline void set_qc_filtered_results() {
+    qc_filtered_results_ = true;
+  }
+
+  /**
+   * Returns if the query condition filtered any results for this tile or not.
+   */
+  inline bool qc_filtered_results() const {
+    return qc_filtered_results_;
+  }
+
+  /**
+   * Returns the only result tile in this space tile or throws if there are more
+   * than one.
+   */
+  inline ResultTile& single_result_tile() {
+    if (result_tiles_.size() != 1) {
+      throw std::runtime_error(
+          "Shouldn't call single_result_tile on tiles with more than one "
+          "fragment domain.");
+    }
+
+    auto iter = result_tiles_.find(frag_domains_[0].fid());
+    if (iter == result_tiles_.end()) {
+      throw std::runtime_error(
+          "Invalid call to single_result_tile with unknown tile.");
+    }
+
+    return iter->second;
+  }
+
  private:
+  /** The memory tracker to use. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The (global) coordinates of the first cell in the space tile. */
   std::vector<T> start_coords_;
 
@@ -168,6 +213,9 @@ class ResultSpaceTile {
    * `(fragment id) -> (result tile)`.
    */
   std::map<unsigned, ResultTile> result_tiles_;
+
+  /** Did the query condition filter any result for this space tile. */
+  bool qc_filtered_results_ = false;
 };
 
 }  // namespace sm

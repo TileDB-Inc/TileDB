@@ -82,6 +82,9 @@
     TILEDB_QUERY_STATUS_DETAILS_ENUM(REASON_MEMORY_BUDGET) = 2,
 #endif
 
+// This enumeration is special in that if you add enumeration entries here
+// you have to manually add the new values in tiledb.h. This is to avoid
+// exposing `TILEDB_ALWAYS_TRUE` and `TILEDB_ALWAYS_FALSE` in the public API.
 #ifdef TILEDB_QUERY_CONDITION_OP_ENUM
     /** Less-than operator */
     TILEDB_QUERY_CONDITION_OP_ENUM(LT) = 0,
@@ -99,6 +102,10 @@
     TILEDB_QUERY_CONDITION_OP_ENUM(IN) = 6,
     /** NOT IN set membership operator. */
     TILEDB_QUERY_CONDITION_OP_ENUM(NOT_IN) = 7,
+    /** ALWAYS TRUE operator. */
+    TILEDB_QUERY_CONDITION_OP_ENUM(ALWAYS_TRUE) = 253,
+    /** ALWAYS TRUE operator. */
+    TILEDB_QUERY_CONDITION_OP_ENUM(ALWAYS_FALSE) = 254,
 #endif
 
 #ifdef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM

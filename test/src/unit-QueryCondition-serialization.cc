@@ -51,7 +51,6 @@ TEST_CASE(
     "QueryCondition serialization: Test serialization",
     "[QueryCondition][serialization]") {
   QueryCondition query_condition;
-  QueryCondition query_condition_clone;
 
   SECTION("Test serialization, basic") {
     std::string field_name = "x";
@@ -271,9 +270,8 @@ TEST_CASE(
   REQUIRE(tiledb::sm::serialization::condition_to_capnp(
               query_condition, &condition_builder)
               .ok());
-  REQUIRE(tiledb::sm::serialization::condition_from_capnp(
-              condition_builder, &query_condition_clone)
-              .ok());
+  auto query_condition_clone =
+      tiledb::sm::serialization::condition_from_capnp(condition_builder);
   REQUIRE(tiledb::test::ast_equal(
       query_condition.ast(), query_condition_clone.ast()));
 }

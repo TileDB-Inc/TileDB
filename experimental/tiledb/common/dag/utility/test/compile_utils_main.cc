@@ -26,12 +26,12 @@
  * THE SOFTWARE.
  */
 
-#include "../arrow_proxy.hpp"
 #include "../bounded_buffer.h"
 #include "../print_types.h"
 #include "../range_join.h"
 #include "../spinlock.h"
 #include "../traits.h"
+#include "tiledb/common/util/detail/arrow_proxy.h"
 
 int main() {
 }

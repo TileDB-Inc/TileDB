@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,32 +37,6 @@
 #include "tiledb/sm/filesystem/uri.h"
 
 namespace tiledb::sm::utils::parse {
-
-/**
- * Retrieves the timestamp range from the input
- * URI. For format version <= 2, only the range start is valid
- * (the range end is ignored).
- */
-Status get_timestamp_range(
-    const URI& uri, std::pair<uint64_t, uint64_t>* timestamp_range);
-
-/**
- * Retrieves the fragment name version.
- *  - Version 1 corresponds to format versions 1 and 2
- *      * __uuid_<t1>{_t2}
- *  - Version 2 corresponds to version 3 and 4
- *      * __t1_t2_uuid
- *  - Version 3 corresponds to version 5 or higher
- *      * __t1_t2_uuid_version
- */
-Status get_fragment_name_version(const std::string& name, uint32_t* version);
-
-/**
- * Retrieves the fragment version. This will work only for
- * name versions > 2, otherwise the function sets `version`
- * to UINT32_MAX.
- */
-Status get_fragment_version(const std::string& name, uint32_t* version);
 
 /**
  * Returns true if the given URIs have the same "prefix" and could

@@ -35,7 +35,6 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -60,20 +59,16 @@ class GroupDetailsV2 : public GroupDetails {
   /** Destructor. */
   ~GroupDetailsV2() override = default;
 
-  /**
-   * Serializes the object members into a binary buffer.
-   *
-   * @param buff The buffer to serialize the data into.
-   * @return Status
-   */
-  void serialize(Serializer& serializer) override;
+  void serialize(
+      const std::vector<std::shared_ptr<GroupMember>>& members,
+      Serializer& serializer) const override;
 
   /**
    * Returns a Group object from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group detail
    */
   static shared_ptr<GroupDetails> deserialize(
       Deserializer& deserializer, const URI& group_uri);
@@ -83,21 +78,14 @@ class GroupDetailsV2 : public GroupDetails {
    *
    * @param buff The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group detail
    */
   static shared_ptr<GroupDetails> deserialize(
       const std::vector<shared_ptr<Deserializer>>& deserializer,
       const URI& group_uri);
 
- protected:
-  /**
-   * Apply any pending member additions or removals
-   *
-   * mutates members_ and clears members_to_modify_
-   *
-   * @return Status
-   */
-  Status apply_pending_changes() override;
+  std::vector<std::shared_ptr<GroupMember>> members_to_serialize()
+      const override;
 
  private:
   /* Format version for class. */

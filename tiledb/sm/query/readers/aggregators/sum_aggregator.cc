@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class SumAggregatorStatusException : public StatusException {
  public:
@@ -45,174 +44,70 @@ class SumAggregatorStatusException : public StatusException {
   }
 };
 
-/** Specialization of safe_sum for int64_t sums. */
-template <>
-void safe_sum<int64_t>(int64_t value, int64_t& sum) {
-  if (sum > 0 && value > 0 &&
-      (sum > (std::numeric_limits<int64_t>::max() - value))) {
-    sum = std::numeric_limits<int64_t>::max();
-    throw std::overflow_error("overflow on sum");
-  }
-
-  if (sum < 0 && value < 0 &&
-      (sum < (std::numeric_limits<int64_t>::min() - value))) {
-    sum = std::numeric_limits<int64_t>::min();
-    throw std::overflow_error("overflow on sum");
-  }
-
-  sum += value;
-}
-
-/** Specialization of safe_sum for uint64_t sums. */
-template <>
-void safe_sum<uint64_t>(uint64_t value, uint64_t& sum) {
-  if (sum > (std::numeric_limits<uint64_t>::max() - value)) {
-    sum = std::numeric_limits<uint64_t>::max();
-    throw std::overflow_error("overflow on sum");
-  }
-
-  sum += value;
-}
-
-/** Specialization of safe_sum for double sums. */
-template <>
-void safe_sum<double>(double value, double& sum) {
-  if ((sum < 0.0) == (value < 0.0) &&
-      (std::abs(sum) >
-       (std::numeric_limits<double>::max() - std::abs(value)))) {
-    sum = sum < 0.0 ? std::numeric_limits<double>::lowest() :
-                      std::numeric_limits<double>::max();
-    throw std::overflow_error("overflow on sum");
-  }
-
-  sum += value;
-}
-
 template <typename T>
-SumAggregator<T>::SumAggregator(const FieldInfo field_info)
-    : field_info_(field_info)
+SumWithCountAggregator<T>::SumWithCountAggregator(const FieldInfo field_info)
+    : OutputBufferValidator(field_info)
+    , field_info_(field_info)
+    , aggregate_with_count_(field_info)
     , sum_(0)
     , validity_value_(
           field_info_.is_nullable_ ? std::make_optional(0) : nullopt)
     , sum_overflowed_(false) {
-  if (field_info_.var_sized_) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates must not be requested for var sized attributes.");
-  }
-
-  if (field_info_.cell_val_num_ != 1) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates must not be requested for attributes with more than "
-        "one value.");
-  }
+  ensure_field_numeric(field_info_);
 }
 
 template <typename T>
-void SumAggregator<T>::validate_output_buffer(
+void SumWithCountAggregator<T>::validate_output_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   if (buffers.count(output_field_name) == 0) {
     throw SumAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  auto& result_buffer = buffers[output_field_name];
-  if (result_buffer.buffer_ == nullptr) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates must have a fixed size buffer.");
-  }
-
-  if (result_buffer.buffer_var_ != nullptr) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates must not have a var buffer.");
-  }
-
-  if (result_buffer.original_buffer_size_ != 8) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates fixed size buffer should be for one element only.");
-  }
-
-  bool exists_validity = result_buffer.validity_vector_.buffer();
-  if (field_info_.is_nullable_) {
-    if (!exists_validity) {
-      throw SumAggregatorStatusException(
-          "Sum aggregates for nullable attributes must have a validity "
-          "buffer.");
-    }
-
-    if (*result_buffer.validity_vector_.buffer_size() != 1) {
-      throw SumAggregatorStatusException(
-          "Sum aggregates validity vector should be for one element only.");
-    }
-  } else {
-    if (exists_validity) {
-      throw SumAggregatorStatusException(
-          "Sum aggregates for non nullable attributes must not have a validity "
-          "buffer.");
-    }
-  }
+  ensure_output_buffer_arithmetic(buffers[output_field_name]);
 }
 
 template <typename T>
-void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
-  tuple<typename sum_type_data<T>::sum_type, optional<uint8_t>> res{0, nullopt};
+void SumWithCountAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
+  // Return if a previous aggregation has overflowed.
+  if (sum_overflowed_) {
+    return;
+  }
 
-  bool overflow = false;
+  tuple<typename sum_type_data<T>::sum_type, uint64_t> res;
   try {
     if (input_data.is_count_bitmap()) {
-      res = sum<typename sum_type_data<T>::sum_type, uint64_t>(input_data);
+      res = aggregate_with_count_.template aggregate<uint64_t>(input_data);
     } else {
-      res = sum<typename sum_type_data<T>::sum_type, uint8_t>(input_data);
+      res = aggregate_with_count_.template aggregate<uint8_t>(input_data);
     }
-  } catch (std::overflow_error&) {
-    overflow = true;
+  } catch (std::overflow_error& e) {
+    sum_overflowed_ = true;
   }
 
-  {
-    // This might be called on multiple threads, the final result stored in sum_
-    // should be computed in a thread safe manner. The mutex also protects
-    // sum_overflowed_ which indicates when the sum has overflowed.
-    std::unique_lock lock(sum_mtx_);
-
-    // A previous operation already overflowed the sum, return.
-    if (sum_overflowed_) {
-      return;
-    }
-
-    // If we have an overflow, signal it, else it's business as usual.
-    if (overflow) {
-      sum_overflowed_ = true;
-      sum_ = std::get<0>(res);
-      return;
-    } else {
-      // This sum might overflow as well.
-      try {
-        safe_sum(std::get<0>(res), sum_);
-      } catch (std::overflow_error&) {
-        sum_overflowed_ = true;
-      }
-    }
-  }
-
-  if (field_info_.is_nullable_ && std::get<1>(res).value() == 1) {
-    validity_value_ = 1;
-  }
+  const auto sum = std::get<0>(res);
+  const auto count = std::get<1>(res);
+  update_sum(sum, count);
 }
 
 template <typename T>
-void SumAggregator<T>::copy_to_user_buffer(
-    std::string output_field_name,
-    std::unordered_map<std::string, QueryBuffer>& buffers) {
-  auto& result_buffer = buffers[output_field_name];
-  *static_cast<typename sum_type_data<T>::sum_type*>(result_buffer.buffer_) =
-      sum_;
+void SumWithCountAggregator<T>::aggregate_tile_with_frag_md(
+    TileMetadata& tile_metadata) {
+  const auto sum = tile_metadata.sum_as<SUM_T>();
+  const auto count = tile_metadata.count() - tile_metadata.null_count();
+  update_sum(sum, count);
+}
 
-  if (result_buffer.buffer_size_) {
-    *result_buffer.buffer_size_ = sizeof(typename sum_type_data<T>::sum_type);
-  }
-
+template <typename T>
+void SumWithCountAggregator<T>::copy_validity_value_to_user_buffers(
+    QueryBuffer& result_buffer) {
   if (field_info_.is_nullable_) {
-    *static_cast<uint8_t*>(result_buffer.validity_vector_.buffer()) =
-        validity_value_.value();
+    auto v = static_cast<uint8_t*>(result_buffer.validity_vector_.buffer());
+    if (sum_overflowed_) {
+      *v = 0;
+    } else {
+      *v = validity_value_.value();
+    }
 
     if (result_buffer.validity_vector_.buffer_size()) {
       *result_buffer.validity_vector_.buffer_size() = 1;
@@ -221,71 +116,83 @@ void SumAggregator<T>::copy_to_user_buffer(
 }
 
 template <typename T>
-template <typename SUM_T, typename BITMAP_T>
-tuple<SUM_T, optional<uint8_t>> SumAggregator<T>::sum(
-    AggregateBuffer& input_data) {
-  SUM_T sum{0};
-  optional<uint8_t> validity{nullopt};
-  auto values = input_data.fixed_data_as<T>();
+void SumWithCountAggregator<T>::update_sum(SUM_T sum, uint64_t count) {
+  try {
+    SafeSum().safe_sum(sum, sum_);
+    count_ += count;
 
-  // Run different loops for bitmap versus no bitmap and nullable versus non
-  // nullable. The bitmap tells us which cells was already filtered out by
-  // ranges or query conditions.
-  if (input_data.has_bitmap()) {
-    auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
-
-    if (field_info_.is_nullable_) {
-      validity = 0;
-      auto validity_values = input_data.validity_data();
-
-      // Process for nullable sums with bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        if (validity_values[c] != 0 && bitmap_values[c] != 0) {
-          validity = 1;
-
-          auto value = static_cast<SUM_T>(values[c]);
-          for (BITMAP_T i = 0; i < bitmap_values[c]; i++) {
-            safe_sum(value, sum);
-          }
-        }
-      }
-    } else {
-      // Process for non nullable sums with bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        auto value = static_cast<SUM_T>(values[c]);
-
-        for (BITMAP_T i = 0; i < bitmap_values[c]; i++) {
-          safe_sum(value, sum);
-        }
-      }
+    // Here we know that if the count is greater than 0, it means at least one
+    // valid item was found, which means the result is valid.
+    if (field_info_.is_nullable_ && count) {
+      validity_value_ = 1;
     }
+  } catch (std::overflow_error& e) {
+    sum_overflowed_ = true;
+  }
+}
+
+template <typename T>
+void SumAggregator<T>::copy_to_user_buffer(
+    std::string output_field_name,
+    std::unordered_map<std::string, QueryBuffer>& buffers) {
+  auto& result_buffer = buffers[output_field_name];
+  auto s =
+      static_cast<typename sum_type_data<T>::sum_type*>(result_buffer.buffer_);
+  if (SumWithCountAggregator<T>::sum_overflowed_) {
+    *s = std::numeric_limits<typename sum_type_data<T>::sum_type>::max();
   } else {
-    if (field_info_.is_nullable_) {
-      validity = 0;
-      auto validity_values = input_data.validity_data();
-
-      // Process for nullable sums with no bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        if (validity_values[c] != 0) {
-          validity = 1;
-
-          auto value = static_cast<SUM_T>(values[c]);
-          safe_sum(value, sum);
-        }
-      }
-    } else {
-      // Process for non nullable sums with no bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        auto value = static_cast<SUM_T>(values[c]);
-        safe_sum(value, sum);
-      }
-    }
+    *s = SumWithCountAggregator<T>::sum_;
   }
 
-  return {sum, validity};
+  if (result_buffer.buffer_size_) {
+    *result_buffer.buffer_size_ = sizeof(typename sum_type_data<T>::sum_type);
+  }
+
+  SumWithCountAggregator<T>::copy_validity_value_to_user_buffers(result_buffer);
+}
+
+template <typename T>
+void MeanAggregator<T>::copy_to_user_buffer(
+    std::string output_field_name,
+    std::unordered_map<std::string, QueryBuffer>& buffers) {
+  auto& result_buffer = buffers[output_field_name];
+  auto s = static_cast<double*>(result_buffer.buffer_);
+
+  if (SumWithCountAggregator<T>::sum_overflowed_) {
+    *s = std::numeric_limits<double>::max();
+  } else {
+    *s = static_cast<double>(SumWithCountAggregator<T>::sum_) /
+         SumWithCountAggregator<T>::count_;
+  }
+
+  if (result_buffer.buffer_size_) {
+    *result_buffer.buffer_size_ = sizeof(double);
+  }
+
+  SumWithCountAggregator<T>::copy_validity_value_to_user_buffers(result_buffer);
 }
 
 // Explicit template instantiations
+template SumWithCountAggregator<int8_t>::SumWithCountAggregator(
+    const FieldInfo);
+template SumWithCountAggregator<int16_t>::SumWithCountAggregator(
+    const FieldInfo);
+template SumWithCountAggregator<int32_t>::SumWithCountAggregator(
+    const FieldInfo);
+template SumWithCountAggregator<int64_t>::SumWithCountAggregator(
+    const FieldInfo);
+template SumWithCountAggregator<uint8_t>::SumWithCountAggregator(
+    const FieldInfo);
+template SumWithCountAggregator<uint16_t>::SumWithCountAggregator(
+    const FieldInfo);
+template SumWithCountAggregator<uint32_t>::SumWithCountAggregator(
+    const FieldInfo);
+template SumWithCountAggregator<uint64_t>::SumWithCountAggregator(
+    const FieldInfo);
+template SumWithCountAggregator<float>::SumWithCountAggregator(const FieldInfo);
+template SumWithCountAggregator<double>::SumWithCountAggregator(
+    const FieldInfo);
+
 template SumAggregator<int8_t>::SumAggregator(const FieldInfo);
 template SumAggregator<int16_t>::SumAggregator(const FieldInfo);
 template SumAggregator<int32_t>::SumAggregator(const FieldInfo);
@@ -297,5 +204,15 @@ template SumAggregator<uint64_t>::SumAggregator(const FieldInfo);
 template SumAggregator<float>::SumAggregator(const FieldInfo);
 template SumAggregator<double>::SumAggregator(const FieldInfo);
 
-}  // namespace sm
-}  // namespace tiledb
+template MeanAggregator<int8_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<int16_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<int32_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<int64_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<uint8_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<uint16_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<uint32_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<uint64_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<float>::MeanAggregator(const FieldInfo);
+template MeanAggregator<double>::MeanAggregator(const FieldInfo);
+
+}  // namespace tiledb::sm

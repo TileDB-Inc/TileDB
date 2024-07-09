@@ -54,7 +54,7 @@ using namespace tiledb::common;
 /**
  * Attach an `Edge` to a `Source` and a `Sink`, two stage
  */
-TEST_CASE("Edge: Attach a Source and Sink with a two stage Edge", "[edge") {
+TEST_CASE("Edge: Attach a Source and Sink with a two stage Edge", "[edge]") {
   Source<NullMover2, size_t> left;
   Sink<NullMover2, size_t> right;
   Edge mid(left, right);
@@ -63,7 +63,7 @@ TEST_CASE("Edge: Attach a Source and Sink with a two stage Edge", "[edge") {
 /**
  * Attach an `Edge` to a `Source` and a `Sink`
  */
-TEST_CASE("Edge: Attach a Source and Sink with an Edge", "[edge") {
+TEST_CASE("Edge: Attach a Source and Sink with an Edge", "[edge]") {
   Source<NullMover3, size_t> left;
   Sink<NullMover3, size_t> right;
   Edge<NullMover3, size_t> mid(left, right);
@@ -72,7 +72,7 @@ TEST_CASE("Edge: Attach a Source and Sink with an Edge", "[edge") {
 /**
  * Attach an `Edge` to a `Source` and a `Sink, using CTAD`
  */
-TEST_CASE("Edge: Attach a Source and Sink with an Edge, using CTAD", "[edge") {
+TEST_CASE("Edge: Attach a Source and Sink with an Edge, using CTAD", "[edge]") {
   Source<NullMover3, size_t> left;
   Sink<NullMover3, size_t> right;
   Edge mid(left, right);
@@ -589,7 +589,7 @@ TEST_CASE("Edge: Async pass n integers", "[edge]") {
 /**
  * Attach an `Edge` to a `ProducerNode` and a `ConsumerNode`
  */
-TEST_CASE("Edge: Attach a Producer and Consumer with an Edge", "[edge") {
+TEST_CASE("Edge: Attach a Producer and Consumer with an Edge", "[edge]") {
   ProducerNode<NullMover3, size_t> left([]() { return 0UL; });
   ConsumerNode<NullMover3, size_t> right([](size_t) {});
 
@@ -600,7 +600,7 @@ TEST_CASE("Edge: Attach a Producer and Consumer with an Edge", "[edge") {
  * Attach an `Edge` to a `ProducerNode` and a `ConsumerNode, using CTAD`
  */
 TEST_CASE(
-    "Edge: Attach a Producer and Consumer with an Edge, using CTAD", "[edge") {
+    "Edge: Attach a Producer and Consumer with an Edge, using CTAD", "[edge]") {
   ProducerNode<NullMover3, size_t> left([]() { return 0UL; });
   ConsumerNode<NullMover3, size_t> right([](size_t) {});
 

@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class CountAggregatorStatusException : public StatusException {
  public:
@@ -45,67 +44,53 @@ class CountAggregatorStatusException : public StatusException {
   }
 };
 
-CountAggregator::CountAggregator()
-    : count_(0) {
+template <class ValidityPolicy>
+CountAggregatorBase<ValidityPolicy>::CountAggregatorBase(FieldInfo field_info)
+    : OutputBufferValidator(field_info)
+    , aggregate_with_count_(field_info)
+    , count_(0) {
 }
 
-void CountAggregator::validate_output_buffer(
+template <class ValidityPolicy>
+void CountAggregatorBase<ValidityPolicy>::validate_output_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   if (buffers.count(output_field_name) == 0) {
     throw CountAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  auto& result_buffer = buffers[output_field_name];
-  if (result_buffer.buffer_ == nullptr) {
-    throw CountAggregatorStatusException(
-        "Count aggregates must have a fixed size buffer.");
-  }
-
-  if (result_buffer.buffer_var_ != nullptr) {
-    throw CountAggregatorStatusException(
-        "Count aggregates must not have a var buffer.");
-  }
-
-  if (result_buffer.original_buffer_size_ != 8) {
-    throw CountAggregatorStatusException(
-        "Count aggregates fixed size buffer should be for one element only.");
-  }
-
-  bool exists_validity = result_buffer.validity_vector_.buffer();
-  if (exists_validity) {
-    throw CountAggregatorStatusException(
-        "Count aggregates must not have a validity buffer.");
-  }
+  ensure_output_buffer_count(buffers[output_field_name]);
 }
 
-template <class BitmapType>
-uint64_t count_cells(AggregateBuffer& input_data) {
-  uint64_t ret = 0;
+template <class ValidityPolicy>
+void CountAggregatorBase<ValidityPolicy>::aggregate_data(
+    AggregateBuffer& input_data) {
+  tuple<uint8_t, uint64_t> res;
 
-  auto bitmap_data = input_data.bitmap_data_as<BitmapType>();
-  for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-    ret += bitmap_data[c];
-  }
-
-  return ret;
-}
-
-void CountAggregator::aggregate_data(AggregateBuffer& input_data) {
-  // Run different loops for bitmap versus no bitmap. The bitmap tells us which
-  // cells was already filtered out by ranges or query conditions.
-  if (input_data.has_bitmap()) {
-    if (input_data.is_count_bitmap()) {
-      count_ += count_cells<uint64_t>(input_data);
-    } else {
-      count_ += count_cells<uint8_t>(input_data);
-    }
+  if (input_data.is_count_bitmap()) {
+    res = aggregate_with_count_.template aggregate<uint64_t>(input_data);
   } else {
-    count_ += input_data.max_cell() - input_data.min_cell();
+    res = aggregate_with_count_.template aggregate<uint8_t>(input_data);
   }
+
+  count_ += std::get<1>(res);
 }
 
-void CountAggregator::copy_to_user_buffer(
+template <class ValidityPolicy>
+void CountAggregatorBase<ValidityPolicy>::aggregate_tile_with_frag_md(
+    TileMetadata& tile_metadata) {
+  uint64_t count;
+  if constexpr (std::is_same<ValidityPolicy, NonNull>::value) {
+    count = tile_metadata.count();
+  } else {
+    count = tile_metadata.null_count();
+  }
+
+  count_ += count;
+}
+
+template <class ValidityPolicy>
+void CountAggregatorBase<ValidityPolicy>::copy_to_user_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   auto& result_buffer = buffers[output_field_name];
@@ -116,5 +101,14 @@ void CountAggregator::copy_to_user_buffer(
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+NullCountAggregator::NullCountAggregator(FieldInfo field_info)
+    : CountAggregatorBase(field_info)
+    , field_info_(field_info) {
+  ensure_field_nullable(field_info);
+}
+
+// Explicit template instantiations
+template CountAggregatorBase<Null>::CountAggregatorBase(FieldInfo);
+template CountAggregatorBase<NonNull>::CountAggregatorBase(FieldInfo);
+
+}  // namespace tiledb::sm

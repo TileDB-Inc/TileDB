@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/indexed_list.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/iquery_strategy.h"
@@ -45,13 +45,11 @@
 #include "tiledb/sm/query/readers/reader_base.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_coords.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 class Tile;
@@ -67,16 +65,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   Reader(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates,
-      bool skip_checks_serialization = false,
+      StrategyParams& params,
       bool remote_query = false);
 
   /** Destructor. */
@@ -84,6 +73,35 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   DISABLE_COPY_AND_COPY_ASSIGN(Reader);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Reader);
+
+  /**
+   * Computes a mapping (tile coordinates) -> (result space tile).
+   * The produced result space tiles will contain information only
+   * about fragments that will contribute results. Specifically, if
+   * a fragment is completely covered by a more recent fragment
+   * in a particular space tile, then it will certainly not contribute
+   * results and, thus, no information about that fragment is included
+   * in the space tile.
+   *
+   * @tparam T The datatype of the tile domains.
+   * @param domain The array domain
+   * @param tile_coords The unique coordinates of the tiles that intersect
+   *     a subarray.
+   * @param array_tile_domain The array tile domain.
+   * @param frag_tile_domains The tile domains of each fragment. These
+   *     are assumed to be ordered from the most recent to the oldest
+   *     fragment.
+   * @param result_space_tiles The result space tiles to be produced
+   *     by the function.
+   */
+  template <class T>
+  static void compute_result_space_tiles(
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::vector<uint8_t>>& tile_coords,
+      const TileDomain<T>& array_tile_domain,
+      const std::vector<TileDomain<T>>& frag_tile_domains,
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /* ********************************* */
   /*                 API               */
@@ -119,6 +137,20 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   /** Returns the name of the strategy */
   std::string name();
+
+  /**
+   * Computes the result space tiles based on the current partition.
+   *
+   * @tparam T The domain datatype.
+   * @param subarray The input subarray.
+   * @param partitioner_subarray The partitioner subarray.
+   * @param result_space_tiles The result space tiles to be computed.
+   */
+  template <class T>
+  void compute_result_space_tiles(
+      const Subarray& subarray,
+      const Subarray& partitioner_subarray,
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const;
 
   /**
    * Computes the result cell slabs for the input subarray, given the
@@ -314,7 +346,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       const std::vector<bool>& single_fragment,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::vector<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::vector<std::vector<ResultCoords>>& range_result_coords);
 
   /**
@@ -334,7 +366,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       uint64_t range_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::vector<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::vector<ResultCoords>& range_result_coords);
 
   /**
@@ -356,7 +388,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       uint64_t range_idx,
       uint32_t fragment_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::vector<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::vector<ResultCoords>& range_result_coords);
 
   /**
@@ -391,7 +423,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return Status
    */
   Status compute_sparse_result_tiles(
-      std::vector<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
       std::vector<bool>* single_fragment);
 
@@ -583,7 +615,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @param result_coords This will store the result coordinates.
    */
   Status compute_result_coords(
-      std::vector<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::vector<ResultCoords>& result_coords);
 
   /**
@@ -660,7 +692,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * Erases the coordinate tiles (zipped or separate) from the input result
    * tiles.
    */
-  void erase_coord_tiles(std::vector<ResultTile>& result_tiles) const;
+  void erase_coord_tiles(IndexedList<ResultTile>& result_tiles) const;
 
   /** Gets statistics about the result cells. */
   void get_result_cell_stats(
@@ -835,7 +867,6 @@ class Reader : public ReaderBase, public IQueryStrategy {
       std::vector<uint64_t>& offsets) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_READER_H

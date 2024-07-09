@@ -55,6 +55,8 @@ class QueryConditionExperimental {
    * @param ctx The TileDB context.
    * @param field_name The field name.
    * @param values The set membership values to use.
+   * @param op The query condition operator to use. Currently limited to
+   *        TILEDB_IN and TILEDB_NOT_IN.
    */
   template <typename T, impl::enable_trivial<T>* = nullptr>
   static QueryCondition create(
@@ -95,13 +97,15 @@ class QueryConditionExperimental {
    * @param ctx The TileDB context.
    * @param field_name The field name.
    * @param values The set membership values to use.
+   * @param op The query condition operator to use. Currently limited to
+   *        TILEDB_IN and TILEDB_NOT_IN.
    */
   template <typename T, impl::enable_trivial<T>* = nullptr>
   static QueryCondition create(
       const Context& ctx,
       const std::string& field_name,
       const std::vector<std::basic_string<T>>& values,
-      tiledb_query_condition_op_t op = TILEDB_IN) {
+      tiledb_query_condition_op_t op) {
     std::vector<uint8_t> data;
     std::vector<uint64_t> offsets;
 

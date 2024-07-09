@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,6 @@
 #define TILEDB_ZSTD_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/status.h"
 
 #include "tiledb/sm/misc/resource_pool.h"
 
@@ -91,9 +90,8 @@ class ZStd {
    * @param compress_ctx_pool Resource pool to manage compression context reuse
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
-   * @return Status
    */
-  static Status compress(
+  static void compress(
       int level,
       shared_ptr<BlockingResourcePool<ZSTD_Compress_Context>> compress_ctx_pool,
       ConstBuffer* input_buffer,
@@ -104,9 +102,8 @@ class ZStd {
    *
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
-   * @return Status
    */
-  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static void compress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
@@ -115,13 +112,24 @@ class ZStd {
    * reuse
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
-   * @return Status
    */
-  static Status decompress(
+  static void decompress(
       shared_ptr<BlockingResourcePool<ZSTD_Decompress_Context>>
           decompress_ctx_pool,
       ConstBuffer* input_buffer,
       PreallocatedBuffer* output_buffer);
+
+  /**
+   * Decompression function.
+   *
+   * @param decompress_ctx_pool decompression context
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write the decompressed data to.
+   */
+  static void decompress(
+      ZSTD_Decompress_Context& decompress_ctx,
+      ConstBuffer& input_buffer,
+      PreallocatedBuffer& output_buffer);
 
   /** Returns the default compression level. */
   static int default_level() {

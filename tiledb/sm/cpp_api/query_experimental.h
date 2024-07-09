@@ -36,6 +36,7 @@
 #include "array_schema_experimental.h"
 #include "context.h"
 #include "dimension_label_experimental.h"
+#include "query_channel.h"
 #include "tiledb.h"
 
 namespace tiledb {
@@ -349,6 +350,69 @@ class QueryExperimental {
                                     std::get<2>(size_tuple) / sizeof(uint8_t));
     }
     return elements;
+  }
+
+  /**
+   * Get a `QueryChannel` instance that represents the default channel
+   * of the query passed as argument
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto array = Array(ctx, uri, TILEDB_READ);
+   * Query query(ctx, array);
+   * QueryChannel default_channel =
+   *    QueryExperimental::get_default_channel(query);
+   * default_channel.apply_aggregate("Count", CountOperation{});
+   *
+   * uint64_t count = 0;
+   * uint64_t size = 1;
+   * query.set_data_buffer("Count", &count, size);
+   * query.submit();
+   * @endcode
+   *
+   * @param query Query object.
+   * @return The default query channel.
+   */
+  static QueryChannel get_default_channel(const Query& query) {
+    return QueryChannel::create_default_channel(query);
+  }
+
+  /**
+   * Create an aggregate operation that operates on a single input field
+   * and produces a single output
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto array = Array(ctx, uri, TILEDB_READ);
+   * Query query(ctx, array);
+   * Subarray subarray(ctx, array);
+   * subarray.add_range("dim", 1, 5);
+   * query.set_subarray(subarray);
+   * QueryChannel default_channel =
+   *    QueryExperimental::get_default_channel(query);
+   * ChannelOperation operation =
+   *    QueryExperimental::create_unary_aggregate<SumOperator>(query, "a");
+   * default_channel.apply_aggregate("Sum", operation);
+   *
+   * double sum = 0;
+   * uint64_t size = 1;
+   * query.set_data_buffer("Sum", &sum, size);
+   * query.submit();
+   * @endcode
+   *
+   * @tparam Op The channel operator type
+   * @param query Query object.
+   * @param input_field The attribute name as input for the aggregate
+   * @return The aggregate operation
+   */
+  template <
+      class Op,
+      std::enable_if_t<std::is_base_of_v<ChannelOperator, Op>, bool> = true>
+  static ChannelOperation create_unary_aggregate(
+      const Query& query, const std::string& input_field) {
+    return ChannelOperation::create<Op>(query, input_field);
   }
 };
 }  // namespace tiledb

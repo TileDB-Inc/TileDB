@@ -23,28 +23,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
-  datatype_api.cc
+    datatype_api.cc
 )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_datatype OBJECT ${SOURCES})
-target_link_libraries(capi_datatype PUBLIC export)
-target_link_libraries(capi_datatype PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(capi_datatype PUBLIC constants $<TARGET_OBJECTS:constants>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_datatype EXCLUDE_FROM_ALL)
-target_sources(compile_capi_datatype PRIVATE test/compile_capi_datatype_main.cc)
-target_link_libraries(compile_capi_datatype PRIVATE capi_datatype)
-add_dependencies(all_link_complete compile_capi_datatype)
+commence(object_library capi_datatype)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline constants capi_enumeration_stub)
+conclude(object_library)
 
 add_test_subdirectory()

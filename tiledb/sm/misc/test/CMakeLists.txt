@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@
 include(unit_test)
 
 commence(unit_test misc)
-    this_target_object_libraries(math uuid)
+    this_target_object_libraries(math)
     this_target_link_libraries(tiledb_test_support_lib)
     # change to `this_target_include_directories` when available
     target_include_directories(unit_misc PRIVATE "${CMAKE_SOURCE_DIR}")
@@ -36,6 +36,13 @@ commence(unit_test misc)
         unit_hilbert.cc
         unit_integral_type_casts.cc
         unit_math.cc
-        unit_uuid.cc
+    )
+conclude(unit_test)
+
+commence(unit_test mgc_dict)
+    this_target_object_libraries(mgc_dict)
+    this_target_compile_definitions(TILEDB_PATH_TO_MAGIC_MGC=\"${libmagic_DICTIONARY}\")
+    this_target_sources(
+        unit_mgc_dict.cc
     )
 conclude(unit_test)

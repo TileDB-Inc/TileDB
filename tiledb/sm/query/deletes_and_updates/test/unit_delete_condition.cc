@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/ast_helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/context.h"
 
@@ -46,9 +47,10 @@ using namespace tiledb::sm::deletes_and_updates::serialization;
  * @param query_condition Condition to check.
  */
 void serialize_deserialize_check(QueryCondition& query_condition) {
-  auto serialized = serialize_condition(query_condition);
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  auto serialized = serialize_condition(query_condition, tracker);
   auto deserialized =
-      deserialize_condition(0, "", serialized.data(), serialized.size());
+      deserialize_condition(0, "", serialized->data(), serialized->size());
 
   CHECK(tiledb::test::ast_equal(query_condition.ast(), deserialized.ast()));
 }

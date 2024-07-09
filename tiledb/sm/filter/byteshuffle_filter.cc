@@ -58,7 +58,7 @@ void ByteshuffleFilter::dump(FILE* out) const {
   fprintf(out, "ByteShuffle");
 }
 
-Status ByteshuffleFilter::run_forward(
+void ByteshuffleFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -66,7 +66,7 @@ Status ByteshuffleFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // Output size does not change with this filter.
-  RETURN_NOT_OK(output->prepend_buffer(input->size()));
+  throw_if_not_ok(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
 
@@ -74,23 +74,21 @@ Status ByteshuffleFilter::run_forward(
   auto parts = input->buffers();
   auto num_parts = (uint32_t)parts.size();
   uint32_t metadata_size = sizeof(uint32_t) + num_parts * sizeof(uint32_t);
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
   // Shuffle all parts
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
-    RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
+    throw_if_not_ok(output_metadata->write(&part_size, sizeof(uint32_t)));
 
-    RETURN_NOT_OK(shuffle_part(tile, &part, output_buf));
+    throw_if_not_ok(shuffle_part(tile, &part, output_buf));
 
     if (output_buf->owns_data())
       output_buf->advance_size(part.size());
     output_buf->advance_offset(part.size());
   }
-
-  return Status::Ok();
 }
 
 Status ByteshuffleFilter::shuffle_part(
@@ -113,9 +111,7 @@ Status ByteshuffleFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
-
+    const Config&) const {
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));

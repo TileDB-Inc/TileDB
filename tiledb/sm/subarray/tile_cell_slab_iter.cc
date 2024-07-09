@@ -58,7 +58,7 @@ TileCellSlabIter<T>::TileCellSlabIter(
     const uint64_t range_thread_idx,
     const uint64_t num_range_threads,
     const Subarray& root_subarray,
-    const Subarray& subarray,
+    const DenseTileSubarray<T>& subarray,
     const std::vector<T>& tile_extents,
     const std::vector<T>& start_coords,
     const std::vector<RangeInfo<T>>& range_info,
@@ -66,8 +66,11 @@ TileCellSlabIter<T>::TileCellSlabIter(
     : num_ranges_(root_subarray.range_num())
     , original_range_idx_(subarray.original_range_idx())
     , range_info_(range_info)
-    , layout_(subarray.layout())
-    , dim_num_(subarray.dim_num())
+    , layout_(
+          root_subarray.layout() == Layout::GLOBAL_ORDER ?
+              cell_order :
+              root_subarray.layout())
+    , dim_num_(root_subarray.dim_num())
     , global_offset_(0)
     , pos_in_tile_(0)
     , dest_offset_row_col_(0)
@@ -75,13 +78,9 @@ TileCellSlabIter<T>::TileCellSlabIter(
     , end_(false)
     , last_(true)
     , global_order_(root_subarray.layout() == Layout::GLOBAL_ORDER)
-    , mult_extents_(subarray.dim_num())
+    , ranges_(subarray.ranges())
+    , mult_extents_(root_subarray.dim_num())
     , start_coords_(start_coords) {
-  if (!init_ranges(subarray).ok()) {
-    throw std::logic_error(
-        "Could not initialize TileCellSlabIter in constructor");
-  }
-
   init_coords();
   init_cell_slab_lengths();
 
@@ -285,27 +284,6 @@ void TileCellSlabIter<T>::init_coords() {
     range_coords_[i] = 0;
     cell_slab_coords_[i] = ranges_[i][0].start_;
   }
-}
-
-template <class T>
-Status TileCellSlabIter<T>::init_ranges(const Subarray& subarray) {
-  // For easy reference
-  const auto& array_schema = subarray.array()->array_schema_latest();
-  auto array_domain = array_schema.domain().domain();
-  uint64_t range_num;
-  const tiledb::type::Range* r;
-  ranges_.resize(dim_num_);
-  for (int d = 0; d < dim_num_; ++d) {
-    RETURN_NOT_OK(subarray.get_range_num(d, &range_num));
-    ranges_[d].reserve(range_num);
-    for (uint64_t j = 0; j < range_num; ++j) {
-      RETURN_NOT_OK(subarray.get_range(d, j, &r));
-      auto range = (const T*)(*r).data();
-      ranges_[d].emplace_back(range[0], range[1]);
-    }
-  }
-
-  return Status::Ok();
 }
 
 template <class T>

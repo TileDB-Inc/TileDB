@@ -4,7 +4,7 @@ title: Fragment
 
 ## Main Structure
 
-A fragment metadata folder is called `<timestamped_name>` and located here:
+A fragment metadata folder is called [`<timestamped_name>`](./timestamped_name.md)` and located here:
 
 ```
 my_array                                    # array folder
@@ -31,11 +31,6 @@ my_array                                    # array folder
         |_ ...  
 ```
 
-`<timestamped_name>` has format `__t1_t2_uuid_v`, where:
-* `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-* `v` is the format version
-
 There can be any number of fragments in an array. The fragment folder contains:
 
 * A single [fragment metadata file](#fragment-metadata-file) named `__fragment_metadata.tdb`. 
@@ -52,18 +47,18 @@ The fragment metadata file has the following on-disk format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | R-Tree | [R-Tree](#r-tree) | The serialized R-Tree |
-| Tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized tile offsets for attribute/dimension 1 |
+| Tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ tile offsets for attribute/dimension 1 |
 | … | … | … |
-| Tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized tile offsets for attribute/dimension N |
-| Variable tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized variable tile offsets for attribute/dimension 1 |
+| Tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ tile offsets for attribute/dimension N |
+| Variable tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ variable tile offsets for attribute/dimension 1 |
 | … | … | … |
-| Variable tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized variable tile offsets for attribute/dimension N |
-| Variable tile sizes for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension 1 |
+| Variable tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ variable tile offsets for attribute/dimension N |
+| Variable tile sizes for attribute/dimension 1 | [Tile Sizes](#tile-sizes) | The serialized _in-memory_ variable tile sizes for attribute/dimension 1 |
 | … | … | … |
-| Variable tile sizes for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension N |
-| Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension 1 |
+| Variable tile sizes for attribute/dimension N | [Tile Sizes](#tile-sizes) | The serialized _in-memory_ variable tile sizes for attribute/dimension N |
+| Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ validity tile offsets for attribute/dimension 1 |
 | … | … | … |
-| Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension N |
+| Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ validity tile offsets for attribute/dimension N |
 | Tile mins for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized mins for attribute/dimension 1 |
 | … | … | … |
 | Variable mins for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized mins for attribute/dimension N |
@@ -75,9 +70,9 @@ The fragment metadata file has the following on-disk format:
 | Variable sums for attribute/dimension N | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension N |
 | Tile null counts for attribute/dimension 1 | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension 1 |
 | … | … | … |
-| Variable maxes for attribute/dimension N | [[Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
-| Fragment min, max, sum, null count | [[Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | The serialized fragment min max sum null count |
-| Processed conditions | [[Tile Processed Conditions](#tile-processed-conditions) | The serialized processed conditions |
+| Variable maxes for attribute/dimension N | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
+| Fragment min, max, sum, null count | [Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | The serialized fragment min max sum null count |
+| Processed conditions | [Tile Processed Conditions](#tile-processed-conditions) | The serialized processed conditions |
 | Metadata footer | [Footer](#footer) | Basic metadata gathered in the footer |
 
 ### R-Tree
@@ -126,7 +121,8 @@ For *var-sized dimensions*, the `1DRange` format is:
 
 ### Tile Offsets
 
-The tile offsets is a [generic tile](./generic_tile.md) with the following internal format:
+Tile offsets refer to each _on-disk_ data tile's starting byte offset. \
+Tile offsets is a [generic tile](./generic_tile.md) with the following internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
@@ -137,7 +133,8 @@ The tile offsets is a [generic tile](./generic_tile.md) with the following inter
 
 ### Tile Sizes
 
-The tile sizes is a [generic tile](./generic_tile.md) with the following internal format:
+The tile size refers to the _in-memory_ size. \
+It is a [generic tile](./generic_tile.md) with the following internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

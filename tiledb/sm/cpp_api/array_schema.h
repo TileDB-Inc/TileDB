@@ -134,65 +134,6 @@ class ArraySchema : public Schema {
   }
 
   /**
-   * Loads the schema of an existing encrypted array.
-   *
-   * **Example:**
-   * @code{.cpp}
-   * // Load AES-256 key from disk, environment variable, etc.
-   * uint8_t key[32] = ...;
-   * tiledb::Context ctx;
-   * tiledb::ArraySchema schema(ctx, "s3://bucket-name/array-name",
-   *    TILEDB_AES_256_GCM, key, sizeof(key));
-   * @endcode
-   *
-   * @param ctx TileDB context
-   * @param uri URI of array
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   * @param key_length Length in bytes of the encryption key.
-   */
-  TILEDB_DEPRECATED
-  ArraySchema(
-      const Context& ctx,
-      const std::string& uri,
-      tiledb_encryption_type_t encryption_type,
-      const void* encryption_key,
-      uint32_t key_length)
-      : Schema(ctx) {
-    tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    tiledb_array_schema_t* schema;
-    ctx.handle_error(tiledb_array_schema_load_with_key(
-        c_ctx,
-        uri.c_str(),
-        encryption_type,
-        encryption_key,
-        key_length,
-        &schema));
-    schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
-  }
-
-  /**
-   * Loads the schema of an existing encrypted array.
-   *
-   * @param ctx TileDB context
-   * @param uri URI of array
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   */
-  ArraySchema(
-      const Context& ctx,
-      const std::string& uri,
-      tiledb_encryption_type_t encryption_type,
-      const std::string& encryption_key)
-      : ArraySchema(
-            ctx,
-            uri,
-            encryption_type,
-            encryption_key.data(),
-            (uint32_t)encryption_key.size()) {
-  }
-
-  /**
    * Loads the schema of an existing array with the input C array
    * schema object.
    *
@@ -670,6 +611,13 @@ class ArraySchema : public Schema {
     }
     return "";
   }
+
+/* ********************************* */
+/*           DEPRECATED API          */
+/* ********************************* */
+#ifndef TILEDB_REMOVE_DEPRECATIONS
+#include "array_schema_deprecated.h"
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
  private:
   /* ********************************* */

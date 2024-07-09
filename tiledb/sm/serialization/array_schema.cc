@@ -37,8 +37,10 @@
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -75,6 +77,21 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm::serialization {
+class ArraySchemaSerializationException : public StatusException {
+ public:
+  explicit ArraySchemaSerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][ArraySchema]", message) {
+  }
+};
+
+class ArraySchemaSerializationDisabledException
+    : public ArraySchemaSerializationException {
+ public:
+  explicit ArraySchemaSerializationDisabledException()
+      : ArraySchemaSerializationException(
+            "Cannot (de)serialize; serialization not enabled.") {
+  }
+};
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -355,7 +372,7 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
 void attribute_to_capnp(
     const Attribute* attribute, capnp::Attribute::Builder* attribute_builder) {
   if (attribute == nullptr) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error serializing attribute; attribute is null.");
   }
 
@@ -400,8 +417,7 @@ void attribute_to_capnp(
 shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader) {
   // Get datatype
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(attribute_reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(attribute_reader.getType());
 
   // Set nullable
   const bool nullable = attribute_reader.getNullable();
@@ -610,12 +626,12 @@ Range range_from_capnp(
 
 /** Deserialize a dimension from a cap'n proto object. */
 shared_ptr<Dimension> dimension_from_capnp(
-    const capnp::Dimension::Reader& dimension_reader) {
+    const capnp::Dimension::Reader& dimension_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
 
   // Deserialize datatype
-  Datatype dim_type;
-  st = datatype_enum(dimension_reader.getType().cStr(), &dim_type);
+  Datatype dim_type = datatype_enum(dimension_reader.getType().cStr());
   if (!st.ok()) {
     throw std::runtime_error(
         "[Deserialization::dimension_from_capnp] " +
@@ -678,7 +694,8 @@ shared_ptr<Dimension> dimension_from_capnp(
       cell_val_num,
       domain,
       *(filters.get()),
-      tile_extent);
+      tile_extent,
+      memory_tracker);
 }
 
 Status domain_to_capnp(
@@ -705,7 +722,8 @@ Status domain_to_capnp(
 
 /* Deserialize a domain from a cap'n proto object. */
 shared_ptr<Domain> domain_from_capnp(
-    const capnp::Domain::Reader& domain_reader) {
+    const capnp::Domain::Reader& domain_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
 
   // Deserialize and validate cell order
@@ -745,10 +763,11 @@ shared_ptr<Domain> domain_from_capnp(
   std::vector<shared_ptr<Dimension>> dims;
   auto dimensions = domain_reader.getDimensions();
   for (auto dimension : dimensions) {
-    dims.emplace_back(dimension_from_capnp(dimension));
+    dims.emplace_back(dimension_from_capnp(dimension, memory_tracker));
   }
 
-  return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
+  return make_shared<Domain>(
+      HERE(), cell_order, dims, tile_order, memory_tracker);
 }
 
 void dimension_label_to_capnp(
@@ -766,7 +785,7 @@ void dimension_label_to_capnp(
   if (dimension_label.uri_is_relative()) {
     dim_label_builder->setUri(dimension_label.uri().to_string());
   } else {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "[Serialization::dimension_label_to_capnp] Serialization of absolute "
         "dimension label URIs not yet implemented.");
   }
@@ -780,21 +799,20 @@ void dimension_label_to_capnp(
 }
 
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
-    const capnp::DimensionLabel::Reader& dim_label_reader) {
+    const capnp::DimensionLabel::Reader& dim_label_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Get datatype
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(dim_label_reader.getType());
 
   shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
-    schema = make_shared<ArraySchema>(
-        HERE(), array_schema_from_capnp(schema_reader, URI()));
+    schema = array_schema_from_capnp(schema_reader, URI(), memory_tracker);
   }
 
   auto is_relative = dim_label_reader.getRelative();
   if (!is_relative) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "[Deserialization::dimension_label_from_capnp] Deserialization of "
         "absolute dimension label URIs not yet implemented.");
   }
@@ -910,12 +928,16 @@ Status array_schema_to_capnp(
     }
   }
 
+  // TODO: to add actual wire CurrentDomain (ch48253)
+
   return Status::Ok();
 }
 
 // #TODO Add security validation on incoming URI
-ArraySchema array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
+shared_ptr<ArraySchema> array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader,
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
   Status st = array_type_enum(schema_reader.getArrayType(), &array_type);
@@ -996,7 +1018,7 @@ ArraySchema array_schema_from_capnp(
   // Deserialize domain
   // Note: Security validation delegated to invoked API
   auto domain_reader = schema_reader.getDomain();
-  auto domain{domain_from_capnp(domain_reader)};
+  auto domain{domain_from_capnp(domain_reader, memory_tracker)};
 
   // Set coords filter pipelines
   // Note: Security validation delegated to invoked API
@@ -1069,7 +1091,7 @@ ArraySchema array_schema_from_capnp(
     try {
       for (auto dim_label_reader : dim_labels_reader) {
         dimension_labels.emplace_back(
-            dimension_label_from_capnp(dim_label_reader));
+            dimension_label_from_capnp(dim_label_reader, memory_tracker));
       }
     } catch (const std::exception& e) {
       std::throw_with_nested(std::runtime_error(
@@ -1085,7 +1107,8 @@ ArraySchema array_schema_from_capnp(
     enumerations.reserve(enmr_readers.size());
     try {
       for (auto&& enmr_reader : enmr_readers) {
-        enumerations.emplace_back(enumeration_from_capnp(enmr_reader));
+        enumerations.emplace_back(
+            enumeration_from_capnp(enmr_reader, memory_tracker));
       }
     } catch (const std::exception& e) {
       std::throw_with_nested(std::runtime_error(
@@ -1127,7 +1150,8 @@ ArraySchema array_schema_from_capnp(
     name = schema_reader.getName().cStr();
   }
 
-  return ArraySchema(
+  return make_shared<ArraySchema>(
+      HERE(),
       uri_deserialized,
       version,
       timestamp_range,
@@ -1144,7 +1168,11 @@ ArraySchema array_schema_from_capnp(
       enmr_path_map,
       cell_var_offsets_filters,
       cell_validity_filters,
-      coords_filters);
+      coords_filters,
+      // TODO: to be changed to actual wire CurrentDomain (ch48253)
+      make_shared<CurrentDomain>(
+          memory_tracker, constants::current_domain_version),
+      memory_tracker);
 }
 
 Status array_schema_serialize(
@@ -1201,8 +1229,10 @@ Status array_schema_serialize(
   return Status::Ok();
 }
 
-ArraySchema array_schema_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer) {
+shared_ptr<ArraySchema> array_schema_deserialize(
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
 
@@ -1216,7 +1246,8 @@ ArraySchema array_schema_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
-        return array_schema_from_capnp(array_schema_reader, URI());
+        return array_schema_from_capnp(
+            array_schema_reader, URI(), memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -1225,7 +1256,8 @@ ArraySchema array_schema_deserialize(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
         array_schema_reader = reader.getRoot<capnp::ArraySchema>();
-        return array_schema_from_capnp(array_schema_reader, URI());
+        return array_schema_from_capnp(
+            array_schema_reader, URI(), memory_tracker);
       }
       default: {
         throw StatusException(Status_SerializationError(
@@ -1845,18 +1877,18 @@ void serialize_load_array_schema_request(
         break;
       }
       default: {
-        throw Status_SerializationError(
+        throw ArraySchemaSerializationException(
             "Error serializing load array schema request; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw ArraySchemaSerializationException(
         "Error serializing load array schema request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw ArraySchemaSerializationException(
         "Error serializing load array schema request; exception " +
         std::string(e.what()));
   }
@@ -1890,17 +1922,17 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
         return load_array_schema_request_from_capnp(reader);
       }
       default: {
-        throw Status_SerializationError(
+        throw ArraySchemaSerializationException(
             "Error deserializing load array schema request; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw ArraySchemaSerializationException(
         "Error deserializing load array schema request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw ArraySchemaSerializationException(
         "Error deserializing load array schema request; exception " +
         std::string(e.what()));
   }
@@ -1946,31 +1978,34 @@ void serialize_load_array_schema_response(
         break;
       }
       default: {
-        throw Status_SerializationError(
+        throw ArraySchemaSerializationException(
             "Error serializing load array schema response; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw ArraySchemaSerializationException(
         "Error serializing load array schema response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw ArraySchemaSerializationException(
         "Error serializing load array schema response; exception " +
         std::string(e.what()));
   }
 }
 
-ArraySchema load_array_schema_response_from_capnp(
-    capnp::LoadArraySchemaResponse::Reader& reader) {
+shared_ptr<ArraySchema> load_array_schema_response_from_capnp(
+    capnp::LoadArraySchemaResponse::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto schema_reader = reader.getSchema();
-  return array_schema_from_capnp(schema_reader, URI());
+  return array_schema_from_capnp(schema_reader, URI(), memory_tracker);
 }
 
-ArraySchema deserialize_load_array_schema_response(
-    SerializationType serialization_type, const Buffer& data) {
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+    SerializationType serialization_type,
+    const Buffer& data,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -1981,7 +2016,7 @@ ArraySchema deserialize_load_array_schema_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(data.data())), builder);
         auto reader = builder.asReader();
-        return load_array_schema_response_from_capnp(reader);
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
@@ -1989,20 +2024,20 @@ ArraySchema deserialize_load_array_schema_response(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             data.size() / sizeof(::capnp::word)));
         auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
-        return load_array_schema_response_from_capnp(reader);
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       default: {
-        throw Status_SerializationError(
+        throw ArraySchemaSerializationException(
             "Error deserializing load array schema response; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw ArraySchemaSerializationException(
         "Error deserializing load array schema response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw ArraySchemaSerializationException(
         "Error deserializing load array schema response; exception " +
         std::string(e.what()));
   }
@@ -2016,7 +2051,8 @@ Status array_schema_serialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-ArraySchema array_schema_deserialize(SerializationType, const Buffer&) {
+shared_ptr<ArraySchema> array_schema_deserialize(
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2059,32 +2095,23 @@ Status max_buffer_sizes_deserialize(
 }
 
 void serialize_load_array_schema_request(
-    const Config& config,
-    const LoadAraySchemaRequest& req,
-    SerializationType serialization_type,
-    Buffer& request) {
-  throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+    const Config&, const LoadArraySchemaRequest&, SerializationType, Buffer&) {
+  throw ArraySchemaSerializationDisabledException();
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
-    SerializationType serialization_type, const Buffer& request) {
-  throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+    SerializationType, const Buffer&) {
+  throw ArraySchemaSerializationDisabledException();
 }
 
 void serialize_load_array_schema_response(
-    const ArraySchema& schema,
-    SerializationType serialization_type,
-    Buffer& response) {
-  throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+    const ArraySchema&, SerializationType, Buffer&) {
+  throw ArraySchemaSerializationDisabledException();
 }
 
-ArraySchema deserialize_load_array_schema_response(
-    SerializationType serialization_type, const Buffer& response) {
-  throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+  throw ArraySchemaSerializationDisabledException();
 }
 
 #endif  // TILEDB_SERIALIZATION

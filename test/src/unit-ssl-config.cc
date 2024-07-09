@@ -266,10 +266,10 @@ void check_failure(Filesystem fs, Config& cfg) {
   URI bucket_uri = URI(scheme + "://" + bucket_name);
 
   Status st;
-  bool is_bucket;
+  std::vector<URI> uris;
 
   try {
-    st = vfs.is_bucket(bucket_uri, &is_bucket);
+    st = vfs.ls(bucket_uri, &uris);
   } catch (...) {
     // Some backends throw exceptions to signal SSL error conditions
     // so we pass the test by returning early here.

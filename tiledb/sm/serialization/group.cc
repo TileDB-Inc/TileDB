@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,19 +58,19 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
 Status group_metadata_to_capnp(
-    const Group* group, capnp::GroupMetadata::Builder* group_metadata_builder) {
+    Group* group,
+    capnp::GroupMetadata::Builder* group_metadata_builder,
+    bool load) {
   // Set config
   auto config_builder = group_metadata_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
-  const Metadata* metadata = group->metadata();
+  Metadata* metadata = load ? group->metadata() : group->unsafe_metadata();
   if (metadata->num()) {
     auto metadata_builder = group_metadata_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &metadata_builder));
@@ -135,13 +135,12 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
 }
 
 Status group_details_to_capnp(
-    const Group* group,
-    capnp::Group::GroupDetails::Builder* group_details_builder) {
+    Group* group, capnp::Group::GroupDetails::Builder* group_details_builder) {
   if (group == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
 
-  auto& group_details = group->group_details();
+  auto group_details = group->group_details();
 
   if (group_details != nullptr) {
     const auto& group_members = group->members();
@@ -158,7 +157,9 @@ Status group_details_to_capnp(
     }
   }
 
-  const Metadata* metadata = group->metadata();
+  Metadata* metadata = group->group_uri().is_tiledb() ?
+                           group->unsafe_metadata() :
+                           group->metadata();
   if (metadata->num()) {
     auto group_metadata_builder = group_details_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &group_metadata_builder));
@@ -184,13 +185,12 @@ Status group_details_from_capnp(
     group->set_metadata_loaded(true);
   }
 
-  group->set_changes_applied(true);
+  group->group_details()->set_modified();
 
   return Status::Ok();
 }
 
-Status group_to_capnp(
-    const Group* group, capnp::Group::Builder* group_builder) {
+Status group_to_capnp(Group* group, capnp::Group::Builder* group_builder) {
   if (group == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
@@ -214,7 +214,7 @@ Status group_from_capnp(
   }
 
   if (group_reader.hasGroup()) {
-    throw_if_not_ok(group->clear());
+    group->clear();
     RETURN_NOT_OK(group_details_from_capnp(group_reader.getGroup(), group));
   }
 
@@ -282,7 +282,7 @@ Status group_update_from_capnp(
 
   if (group_update_details_reader.hasMembersToRemove()) {
     for (auto uri : group_update_details_reader.getMembersToRemove()) {
-      throw_if_not_ok(group->mark_member_for_removal(uri.cStr()));
+      group->mark_member_for_removal(uri.cStr());
     }
   }
 
@@ -364,9 +364,7 @@ Status group_create_to_capnp(
 }
 
 Status group_serialize(
-    const Group* group,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Group* group, SerializationType serialize_type, Buffer* serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Group::Builder groupBuilder = message.initRoot<capnp::Group>();
@@ -435,11 +433,20 @@ Status group_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            group->config().get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         capnp::Group::Reader group_reader = reader.getRoot<capnp::Group>();
         RETURN_NOT_OK(group_from_capnp(group_reader, group));
         break;
@@ -464,9 +471,7 @@ Status group_deserialize(
 }
 
 Status group_details_serialize(
-    const Group* group,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Group* group, SerializationType serialize_type, Buffer* serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Group::GroupDetails::Builder groupDetailsBuilder =
@@ -537,11 +542,20 @@ Status group_details_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            group->config().get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         capnp::Group::GroupDetails::Reader group_details_reader =
             reader.getRoot<capnp::Group::GroupDetails>();
         RETURN_NOT_OK(group_details_from_capnp(group_details_reader, group));
@@ -641,11 +655,20 @@ Status group_update_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            group->config().get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         capnp::Group::Reader group_reader = reader.getRoot<capnp::Group>();
         RETURN_NOT_OK(group_from_capnp(group_reader, group));
         break;
@@ -724,14 +747,16 @@ Status group_create_serialize(
 }
 
 Status group_metadata_serialize(
-    const Group* group,
+    Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Buffer* serialized_buffer,
+    bool load) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::GroupMetadata::Builder group_metadata_builder =
         message.initRoot<capnp::GroupMetadata>();
-    RETURN_NOT_OK(group_metadata_to_capnp(group, &group_metadata_builder));
+    RETURN_NOT_OK(
+        group_metadata_to_capnp(group, &group_metadata_builder, load));
 
     serialized_buffer->reset_size();
     serialized_buffer->reset_offset();
@@ -779,7 +804,7 @@ Status group_metadata_serialize(
 
 #else
 
-Status group_serialize(const Group*, SerializationType, Buffer*) {
+Status group_serialize(Group*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -789,7 +814,7 @@ Status group_deserialize(Group*, SerializationType, const Buffer&) {
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status group_details_serialize(const Group*, SerializationType, Buffer*) {
+Status group_details_serialize(Group*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -814,13 +839,11 @@ Status group_create_serialize(const Group*, SerializationType, Buffer*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_metadata_serialize(const Group*, SerializationType, Buffer*) {
+Status group_metadata_serialize(Group*, SerializationType, Buffer*, bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

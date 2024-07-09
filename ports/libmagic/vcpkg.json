@@ -19,7 +19,7 @@
     },
     {
       "name": "getopt",
-      "platform": "windows"
+      "platform": "windows & !mingw"
     },
     "pcre2"
   ]

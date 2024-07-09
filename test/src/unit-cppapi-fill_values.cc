@@ -98,7 +98,7 @@ void create_array_1d(
   schema.set_domain(domain);
   schema.add_attributes(a1, a2, a3);
 
-  CHECK_NOTHROW(Array::create(array_name, schema));
+  Array::create(array_name, schema);
 }
 
 void write_array_1d_partial(
@@ -587,8 +587,10 @@ TEST_CASE(
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.add_range<int32_t>(0, 2, 3);
-    query.add_range<int32_t>(0, 9, 10);
+    Subarray subarray(ctx, array);
+    subarray.add_range<int32_t>(0, 2, 3);
+    subarray.add_range<int32_t>(0, 9, 10);
+    query.set_subarray(subarray);
     auto est_a1 = query.est_result_size("a1");
     auto est_a2 = query.est_result_size_var("a2");
     auto est_a3 = query.est_result_size("a3");
@@ -655,8 +657,10 @@ TEST_CASE(
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.add_range<int32_t>(0, 2, 3);
-    query.add_range<int32_t>(0, 9, 10);
+    Subarray subarray(ctx, array);
+    subarray.add_range<int32_t>(0, 2, 3);
+    subarray.add_range<int32_t>(0, 9, 10);
+    query.set_subarray(subarray);
     auto est_a1 = query.est_result_size("a1");
     auto est_a2 = query.est_result_size_var("a2");
     auto est_a3 = query.est_result_size("a3");
@@ -754,8 +758,10 @@ TEST_CASE(
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.add_range<int32_t>(0, 2, 3);
-    query.add_range<int32_t>(0, 9, 10);
+    Subarray subarray(ctx, array);
+    subarray.add_range<int32_t>(0, 2, 3);
+    subarray.add_range<int32_t>(0, 9, 10);
+    query.set_subarray(subarray);
     auto est_a1 = query.est_result_size_nullable("a1");
     auto est_a2 = query.est_result_size_var_nullable("a2");
     auto est_a3 = query.est_result_size_nullable("a3");

@@ -14,7 +14,7 @@ include(GNUInstallDirs)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 set(targets)
 find_package(PCRE2 CONFIG REQUIRED COMPONENTS 8BIT)
-if(WIN32)
+if(WIN32 AND NOT MINGW)
   find_package(unofficial-getopt-win32 CONFIG REQUIRED)
 endif()
 
@@ -91,6 +91,10 @@ set(targets ${targets} libmagic)
 
 target_link_libraries(libmagic PRIVATE PCRE2::POSIX)
 
+if(WIN32)
+  target_link_libraries(libmagic PRIVATE shlwapi)
+endif()
+
 target_include_directories(libmagic
   PUBLIC
     "$<BUILD_INTERFACE:${LIBMAGIC_SOURCE_DIR}>"
@@ -102,7 +106,10 @@ add_executable(file ${LIBMAGIC_SOURCE_DIR}/file.c)
 set(targets ${targets} file)
 target_link_libraries(file PRIVATE PCRE2::POSIX libmagic)
 if (WIN32)
-  target_link_libraries(file PRIVATE shlwapi unofficial::getopt-win32::getopt)
+  if (NOT MINGW)
+    target_link_libraries(file PRIVATE unofficial::getopt-win32::getopt)
+  endif()
+  target_link_libraries(file PRIVATE shlwapi)
 endif()
 
 if(MSVC)

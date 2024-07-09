@@ -53,6 +53,13 @@ enum class FilterOption : uint8_t;
 enum class FilterType : uint8_t;
 enum class Datatype : uint8_t;
 
+class FilterStatusException : public StatusException {
+ public:
+  explicit FilterStatusException(const std::string& msg)
+      : StatusException("Filter", msg) {
+  }
+};
+
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or
  * producing output in new buffers.
@@ -77,6 +84,14 @@ class Filter {
    * to any pipeline. Caller is responsible for deletion of the clone.
    */
   Filter* clone() const;
+
+  /**
+   * Returns a newly allocated clone of this Filter. The clone does not belong
+   * to any pipeline. Caller is responsible for deletion of the clone.
+   *
+   * @param data_type Data type for the new filter.
+   */
+  Filter* clone(Datatype data_type) const;
 
   /** Dumps the filter details in ASCII format in the selected output. */
   virtual void dump(FILE* out) const = 0;
@@ -129,9 +144,8 @@ class Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return
    */
-  virtual Status run_forward(
+  virtual void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,

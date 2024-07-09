@@ -1,20 +1,28 @@
 #!/bin/bash
 
+SourceDir="$(dirname $0)/.."
 BaseDir="$(pwd)"
+
 TestAppDir="$(pwd)/tiledb/examples/c_api"
 TestAppDataDir="$(pwd)/tiledb/examples/c_api/test_app_data"
-for exampleexe in $(ls ${TestAppDir}/*_c) ;
+for example in $(ls ${SourceDir}/examples/c_api/*.c) ;
 do
   cd ${TestAppDir}
   rm -rf ${TestAppDataDir}
   mkdir ${TestAppDataDir}
   cd ${TestAppDataDir}
-  echo $exampleexe
-  $exampleexe;
+  exampleexe=${example%.c}_c
+  exampleexe=${exampleexe##*/}
+  cmake --build ${BaseDir}/tiledb --target ${exampleexe}
+  echo $TestAppDir/$exampleexe
+  $TestAppDir/$exampleexe;
   status=$?
+  # Remove the executable after running it to prevent disk
+  # space exhaustion when statically linking to tiledb.
+  rm $TestAppDir/$exampleexe
   if (($status != 0)); then
     echo "FAILED: $exampleexe exited with $status"
-    echo "::set-output name=TILEDB_CI_SUCCESS::0"
+    echo "TILEDB_CI_SUCCESS=0" >> $GITHUB_OUTPUT
   fi
 done
 cd ${TestAppDir}
@@ -23,10 +31,10 @@ rm -rf ${TestAppDataDir}
 cd ${BaseDir}
 TestAppDir="$(pwd)/tiledb/examples/cpp_api"
 TestAppDataDir="$(pwd)/tiledb/examples/cpp_api/test_app_data"
-for exampleexe in $(ls ${TestAppDir}/*_cpp) ;
+for example in $(ls ${SourceDir}/examples/cpp_api/*.cc) ;
 do
   # Skip running WebP example with no input
-  if [ "${exampleexe##*/}" == png_ingestion_webp_cpp ]; then
+  if [ "${example##*/}" == png_ingestion_webp.cc ]; then
     continue
   fi;
 
@@ -34,12 +42,16 @@ do
   rm -rf ${TestAppDataDir}
   mkdir ${TestAppDataDir}
   cd ${TestAppDataDir}
-  echo $exampleexe
-  $exampleexe;
+  exampleexe=${example%.cc}_cpp
+  exampleexe=${exampleexe##*/}
+  cmake --build ${BaseDir}/tiledb --target ${exampleexe}
+  echo $TestAppDir/$exampleexe
+  $TestAppDir/$exampleexe;
   status=$?
+  rm $TestAppDir/$exampleexe
   if (($status != 0)); then
     echo "FAILED: $exampleexe exited with $status"
-    echo "::set-output name=TILEDB_CI_SUCCESS::0"
+    echo "TILEDB_CI_SUCCESS=0" >> $GITHUB_OUTPUT
   fi
 done
 cd ${TestAppDir}

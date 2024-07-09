@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "../range_subset.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb;
@@ -644,6 +644,30 @@ TEST_CASE(
       check_subset_range_strings(range_subset, 1, "b", "d");
       check_subset_range_strings(range_subset, 2, "e", "f");
       check_subset_range_strings(range_subset, 3, "h", "j");
+    }
+  }
+
+  SECTION("Same first letter") {
+    std::vector<Range> ranges = {
+        Range("G1", "G1"), Range("G2", "G2"), Range("G59", "G59")};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 3);
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 3);
+      check_subset_range_strings(range_subset, 0, "G1", "G1");
+      check_subset_range_strings(range_subset, 1, "G2", "G2");
+      check_subset_range_strings(range_subset, 2, "G59", "G59");
+    } else {
+      CHECK(range_subset.num_ranges() == 3);
+      check_subset_range_strings(range_subset, 0, "G1", "G1");
+      check_subset_range_strings(range_subset, 1, "G2", "G2");
+      check_subset_range_strings(range_subset, 2, "G59", "G59");
     }
   }
 }

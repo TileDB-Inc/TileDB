@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,19 +36,16 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/reader_base.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 
@@ -252,17 +249,8 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   OrderedDimLabelReader(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates,
-      bool increasing_order,
-      bool skip_checks_serialization);
+      StrategyParams& params,
+      bool increasing_order);
 
   /** Destructor. */
   ~OrderedDimLabelReader() = default;
@@ -523,9 +511,8 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    */
   template <typename IndexType>
   void compute_and_copy_range_indexes(uint64_t buffer_offset, uint64_t r);
-};  // namespace sm
+};
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ORDERED_DIM_LABEL_READER

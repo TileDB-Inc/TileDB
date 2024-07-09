@@ -45,6 +45,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
+#include "webp_filter.h"
 
 using namespace tiledb::common;
 
@@ -74,6 +75,16 @@ FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   max_chunk_size_ = other.max_chunk_size_;
 }
 
+FilterPipeline::FilterPipeline(
+    const FilterPipeline& other, const Datatype on_disk_type) {
+  auto current_type = on_disk_type;
+  for (auto& filter : other.filters_) {
+    add_filter(*filter, current_type);
+    current_type = filters_.back()->output_datatype(current_type);
+  }
+  max_chunk_size_ = other.max_chunk_size_;
+}
+
 FilterPipeline::FilterPipeline(FilterPipeline&& other) {
   swap(other);
 }
@@ -93,6 +104,11 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
 
 void FilterPipeline::add_filter(const Filter& filter) {
   shared_ptr<Filter> copy(filter.clone());
+  filters_.push_back(std::move(copy));
+}
+
+void FilterPipeline::add_filter(const Filter& filter, const Datatype new_type) {
+  shared_ptr<Filter> copy(filter.clone(new_type));
   filters_.push_back(std::move(copy));
 }
 
@@ -142,9 +158,8 @@ FilterPipeline::get_var_chunk_sizes(
     WriterTile* const offsets_tile) const {
   std::vector<uint64_t> chunk_offsets;
   if (offsets_tile != nullptr) {
-    uint64_t num_offsets =
-        offsets_tile->size() / constants::cell_var_offset_size;
-    auto offsets = (uint64_t*)offsets_tile->data();
+    uint64_t num_offsets = offsets_tile->size_as<offsets_t>();
+    auto offsets = offsets_tile->data_as<offsets_t>();
 
     uint64_t current_size = 0;
     uint64_t min_size = chunk_size / 2;
@@ -232,7 +247,7 @@ Status FilterPipeline::filter_chunks_forward(
 
     // First filter's input is the original chunk.
     uint64_t offset = var_sizes ? chunk_offsets[i] : i * chunk_size;
-    void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
+    void* chunk_buffer = tile.data_as<char>() + offset;
     uint32_t chunk_buffer_size =
         i == nchunks - 1 ? last_buffer_size :
         var_sizes        ? chunk_offsets[i + 1] - chunk_offsets[i] :
@@ -254,13 +269,13 @@ Status FilterPipeline::filter_chunks_forward(
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
-      RETURN_NOT_OK(f->run_forward(
+      f->run_forward(
           tile,
           offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
-          &output_data));
+          &output_data);
 
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
@@ -343,11 +358,11 @@ Status FilterPipeline::filter_chunks_forward(
     std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
     dest_offset += sizeof(uint32_t);
     // Write the chunk metadata
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         final_stage_output_metadata.copy_to((char*)dest + dest_offset));
     dest_offset += metadata_size;
     // Write the chunk data
-    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
+    throw_if_not_ok(final_stage_output_data.copy_to((char*)dest + dest_offset));
     return Status::Ok();
   });
 
@@ -367,13 +382,13 @@ uint32_t FilterPipeline::max_chunk_size() const {
   return max_chunk_size_;
 }
 
-Status FilterPipeline::run_forward(
+void FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     WriterTile* const tile,
     WriterTile* const offsets_tile,
     ThreadPool* const compute_tp,
     bool use_chunking) const {
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
 
   writer_stats->add_counter("write_filtered_byte_num", tile->size());
@@ -389,25 +404,28 @@ Status FilterPipeline::run_forward(
   // Get the chunk sizes for var size attributes.
   auto&& [st, chunk_offsets] =
       get_var_chunk_sizes(chunk_size, tile, offsets_tile);
-  RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
+  if (!st.ok()) {
+    tile->filtered_buffer().clear();
+    throw_if_not_ok(st);
+  }
 
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer'.
-  RETURN_NOT_OK_ELSE(
-      filter_chunks_forward(
-          *tile,
-          offsets_tile,
-          chunk_size,
-          *chunk_offsets,
-          tile->filtered_buffer(),
-          compute_tp),
-      tile->filtered_buffer().clear());
+  st = filter_chunks_forward(
+      *tile,
+      offsets_tile,
+      chunk_size,
+      *chunk_offsets,
+      tile->filtered_buffer(),
+      compute_tp);
+  if (!st.ok()) {
+    tile->filtered_buffer().clear();
+    throw_if_not_ok(st);
+  }
 
   // The contents of 'buffer' have been filtered and stored
   // in 'filtered_buffer'. We can safely free 'buffer'.
   tile->clear_data();
-
-  return Status::Ok();
 }
 
 void FilterPipeline::run_reverse_generic_tile(
@@ -446,7 +464,7 @@ Status FilterPipeline::run_reverse(
     // If the pipeline is empty, just copy input to output.
     if (filters_.empty()) {
       void* output_chunk_buffer =
-          static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
+          tile->data_as<char>() + chunk_data.chunk_offsets_[i];
       RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
       continue;
     }
@@ -469,7 +487,7 @@ Status FilterPipeline::run_reverse(
       bool last_filter = filter_idx == 0;
       if (last_filter) {
         void* output_chunk_buffer =
-            static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
+            tile->data_as<char>() + chunk_data.chunk_offsets_[i];
         RETURN_NOT_OK(output_data.set_fixed_allocation(
             output_chunk_buffer, chunk.unfiltered_data_size_));
         reader_stats->add_counter(
@@ -630,6 +648,8 @@ bool FilterPipeline::use_tile_chunking(
     } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
+  } else if (has_filter(FilterType::FILTER_WEBP)) {
+    return false;
   }
 
   return true;

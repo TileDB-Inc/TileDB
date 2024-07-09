@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -99,6 +100,50 @@ TEST_CASE(
   CHECK(attrs.count("a1") == 0);
   CHECK(attrs.count("a2") == 1);
   CHECK(attrs.count("a3") == 1);
+
+  // Clean up
+  if (vfs.is_dir(array_uri)) {
+    vfs.remove_dir(array_uri);
+  }
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution, check error when dropping dimension",
+    "[cppapi][schema][evolution][drop]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+
+  std::string array_uri = "test_schema_evolution_array";
+
+  Domain domain(ctx);
+  auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  auto id2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
+  domain.add_dimension(id1).add_dimension(id2);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+  auto a2 = Attribute::create<int>(ctx, "a2");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+  schema.add_attribute(a2);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_tile_order(TILEDB_COL_MAJOR);
+
+  if (vfs.is_dir(array_uri)) {
+    vfs.remove_dir(array_uri);
+  }
+
+  Array::create(array_uri, schema);
+
+  auto evolution = ArraySchemaEvolution(ctx);
+
+  // try to drop dimension d1
+  evolution.drop_attribute("d1");
+
+  // check that an exception is thrown
+  CHECK_THROWS(evolution.array_evolve(array_uri));
 
   // Clean up
   if (vfs.is_dir(array_uri)) {
@@ -179,8 +224,9 @@ TEST_CASE(
 
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, 1, 4)
-        .add_range(1, 1, 4)
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, 1, 4).add_range(1, 1, 4);
+    query.set_subarray(subarray)
         .set_layout(layout)
         .set_data_buffer("a", data)
         .set_data_buffer("d1", d1_data)
@@ -300,8 +346,9 @@ TEST_CASE(
 
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, 1, 4)
-        .add_range(1, 1, 4)
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, 1, 4).add_range(1, 1, 4);
+    query.set_subarray(subarray)
         .set_layout(layout)
         .set_data_buffer("a", a_data)
         .set_data_buffer("b", b_data)
@@ -451,10 +498,10 @@ TEST_CASE(
 
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, 1, 4)
-        .add_range(0, 1, 4)
-        .add_range(1, 1, 4)
-        .add_range(1, 1, 4)
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, 1, 4).add_range(0, 1, 4).add_range(1, 1, 4).add_range(
+        1, 1, 4);
+    query.set_subarray(subarray)
         .set_layout(layout)
         .set_data_buffer("a", a_data)
         .set_data_buffer("b", b_data)
@@ -796,7 +843,8 @@ TEST_CASE(
 TEST_CASE(
     "SchemaEvolution Error Handling Tests",
     "[cppapi][schema][evolution][errors]") {
-  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(
+      HERE(), tiledb::test::create_test_memory_tracker());
   REQUIRE_THROWS(ase->evolve_schema(nullptr));
   REQUIRE_THROWS(ase->add_attribute(nullptr));
 
@@ -808,13 +856,19 @@ TEST_CASE(
   ase->set_timestamp_range(std::make_pair(1, 1));
 
   auto schema = make_shared<tiledb::sm::ArraySchema>(
-      HERE(), tiledb::sm::ArrayType::SPARSE);
+      HERE(),
+      tiledb::sm::ArrayType::SPARSE,
+      tiledb::test::create_test_memory_tracker());
   auto dim = make_shared<tiledb::sm::Dimension>(
-      HERE(), "dim1", tiledb::sm::Datatype::INT32);
+      HERE(),
+      "dim1",
+      tiledb::sm::Datatype::INT32,
+      tiledb::test::get_test_memory_tracker());
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
-  auto dom = make_shared<tiledb::sm::Domain>(HERE());
+  auto dom = make_shared<tiledb::sm::Domain>(
+      HERE(), tiledb::test::get_test_memory_tracker());
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(schema->set_domain(dom));
 

@@ -41,12 +41,6 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-class FilterStatusException : public StatusException {
- public:
-  explicit FilterStatusException(const std::string& msg)
-      : StatusException("Filter", msg) {
-  }
-};
 
 Filter::Filter(FilterType type, Datatype filter_data_type) {
   type_ = type;
@@ -57,6 +51,13 @@ Filter* Filter::clone() const {
   // Call subclass-specific clone function
   auto clone = clone_impl();
   clone->filter_data_type_ = filter_data_type_;
+  return clone;
+}
+
+Filter* Filter::clone(const Datatype data_type) const {
+  // Call subclass-specific clone function
+  auto clone = clone_impl();
+  clone->filter_data_type_ = data_type;
   return clone;
 }
 
@@ -110,15 +111,11 @@ void Filter::serialize(Serializer& serializer) const {
   serialize_impl(serializer);
 }
 
-Status Filter::get_option_impl(FilterOption option, void* value) const {
-  (void)option;
-  (void)value;
+Status Filter::get_option_impl(FilterOption, void*) const {
   return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
-Status Filter::set_option_impl(FilterOption option, const void* value) {
-  (void)option;
-  (void)value;
+Status Filter::set_option_impl(FilterOption, const void*) {
   return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
@@ -129,12 +126,10 @@ FilterType Filter::type() const {
   return type_;
 }
 
-void Filter::init_compression_resource_pool(uint64_t size) {
-  (void)size;
+void Filter::init_compression_resource_pool(uint64_t) {
 }
 
-void Filter::init_decompression_resource_pool(uint64_t size) {
-  (void)size;
+void Filter::init_decompression_resource_pool(uint64_t) {
 }
 
 }  // namespace sm

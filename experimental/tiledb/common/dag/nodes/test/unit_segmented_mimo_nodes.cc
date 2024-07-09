@@ -28,10 +28,13 @@
  * @section DESCRIPTION
  *
  * Tests the segmented mimo node class
+ *
+ * @todo: Need to get better syntax for Edge with shared_ptr
  */
 
 #include "unit_segmented_mimo_nodes.h"
 
+#include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"
 
@@ -39,6 +42,10 @@
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 #include "experimental/tiledb/common/dag/nodes/detail/segmented/mimo.h"
+#include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
+
+#include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 using namespace tiledb::common;
 
@@ -49,48 +56,69 @@ TEST_CASE("mimo_node: Verify various API approaches", "[segmented_mimo]") {
       AsyncMover3,
       std::tuple<size_t, double>>
       x{};
+  CHECK(x->num_inputs() == 2);
+  CHECK(x->num_outputs() == 2);
   [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<int>,
       AsyncMover3,
       std::tuple<size_t, double>>
       y{};
+  CHECK(y->num_inputs() == 1);
+  CHECK(y->num_outputs() == 2);
   [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<char*>,
       AsyncMover3,
       std::tuple<size_t, std::tuple<int, float>>>
       z{};
+  CHECK(z->num_inputs() == 1);
+  CHECK(z->num_outputs() == 2);
   [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<int, char, double, double, double>,
       AsyncMover3,
       std::tuple<int>>
       a{};
+  CHECK(a->num_inputs() == 5);
+  CHECK(a->num_outputs() == 1);
 }
 
 TEST_CASE(
     "mimo_node: Verify construction with simple function", "[segmented_mimo]") {
   [[maybe_unused]] mimo_node<
       AsyncMover2,
-      std::tuple<size_t>,
+      std::tuple<size_t, size_t>,
       AsyncMover3,
-      std::tuple<size_t>>
-      x{[](std::tuple<size_t>, std::tuple<size_t>) {}};
+      std::tuple<size_t, char*>>
+      x{[](const std::tuple<size_t, size_t>&) {
+        return std::tuple<size_t, char*>{};
+      }};
 }
 
-#if 0
-
-
-
 TEST_CASE(
-    "mimo_node: Verify construction with compound function", "[segmented_mimo]") {
+    "mimo_node: Verify construction with compound function",
+    "[segmented_mimo]") {
   [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<size_t, int>,
       AsyncMover3,
-      std::tuple<size_t, double>>
-      x{[](std::tuple<size_t, int>, std::tuple<size_t, double>) {}};
+      std::tuple<size_t, double, float>>
+      x{[](std::tuple<size_t, int>) {
+        return std::tuple<size_t, double, float>{};
+      }};
+  CHECK(x->num_inputs() == 2);
+  CHECK(x->num_outputs() == 3);
+}
+
+template <class... R, class... T>
+auto mimo(std::function<void(std::tuple<R...>, std::tuple<T...>)>&& f) {
+  auto tmp = mimo_node<
+      AsyncMover3,
+      std::remove_cv_t<std::remove_reference_t<T>>...,
+      AsyncMover3,
+      R...>{f};
+  return tmp;
 }
 
 template <class T>
@@ -98,6 +126,17 @@ struct foo {
   void operator()() {
   }
 };
+
+TEST_CASE(
+    "mimo_node: Verify use of (void) template arguments for producer",
+    "[segmented_mimo]") {
+  mimo_node<foo, std::tuple<>, AsyncMover3, std::tuple<size_t, double>> x{
+      [](std::stop_source) { return std::tuple<size_t, double>{}; }};
+  mimo_node<AsyncMover3, std::tuple<size_t, double>, foo, std::tuple<>> y{
+      [](std::tuple<size_t, double>) {}};
+  mimo_node<AsyncMover3, std::tuple<char*>, foo, std::tuple<>> z{
+      [](std::tuple<char*>) {}};
+}
 
 /*
  * @note Cannot use void for SinkMover_T nor SourceMover_T, because that must be
@@ -121,19 +160,20 @@ TEST_CASE(
     "mimo_node: Verify use of (void) template arguments for "
     "producer/consumer [general]") {
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
-      [](std::tuple<size_t, double>) {}};
+      [](std::stop_source) { return std::tuple<size_t, double>{}; }};
   GeneralConsumerNode<AsyncMover3, std::tuple<size_t, double>> y{
       [](std::tuple<size_t, double>) {}};
 }
 
-TEST_CASE("mimo_node: Connect void-created Producer and Consumer [segmented_mimo]") {
+TEST_CASE(
+    "mimo_node: Connect void-created Producer and Consumer [segmented_mimo]") {
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
-      [](std::tuple<size_t, double>) {}};
+      [](std::stop_source) { return std::tuple<size_t, double>{}; }};
   GeneralConsumerNode<AsyncMover3, std::tuple<double, size_t>> y{
       [](std::tuple<double, size_t>) {}};
 
-  Edge g{std::get<0>(x.outputs_), std::get<1>(y.inputs_)};
-  Edge h{std::get<1>(x.outputs_), std::get<0>(y.inputs_)};
+  Edge g{std::get<0>(x->outputs_), std::get<1>(y->inputs_)};
+  Edge h{std::get<1>(x->outputs_), std::get<0>(y->inputs_)};
 }
 
 TEST_CASE(
@@ -143,18 +183,27 @@ TEST_CASE(
   size_t ext2{0};
 
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
-      [](std::tuple<size_t, double>& a) { a = std::make_tuple(5UL, 3.14159); }};
+      [](std::stop_source) {
+        auto a = std::make_tuple(5UL, 3.14159);
+        return a;
+      }};
   GeneralConsumerNode<AsyncMover3, std::tuple<double, size_t>> y{
       [&ext1, &ext2](const std::tuple<double, size_t>& b) {
         ext1 = std::get<0>(b);
         ext2 = std::get<1>(b);
       }};
 
-  Edge g{std::get<0>(x.outputs_), std::get<1>(y.inputs_)};
-  Edge h{std::get<1>(x.outputs_), std::get<0>(y.inputs_)};
+  Edge g{std::get<0>(x->outputs_), std::get<1>(y->inputs_)};
+  Edge h{std::get<1>(x->outputs_), std::get<0>(y->inputs_)};
 
-  x.resume();
-  y.resume();
+  [[maybe_unused]] auto foo = x->resume();
+  [[maybe_unused]] auto bar = y->resume();
+  foo = x->resume();
+  bar = y->resume();
+  foo = x->resume();
+  bar = y->resume();
+  foo = x->resume();
+  bar = y->resume();
 
   CHECK(ext1 == 3.14159);
   CHECK(ext2 == 5);
@@ -164,20 +213,27 @@ TEST_CASE(
  * Some dummy functions and classes to test node constructors
  * with.
  */
-size_t dummy_source() {
+size_t dummy_source(std::stop_source&) {
   return size_t{};
 }
 
-void dummy_function(const std::tuple<size_t>& in, std::tuple<size_t>& out) {
-  out = in;
+auto dummy_general_source(std::stop_source) {
+  return std::tuple<size_t>{};
+}
+
+auto dummy_function(const std::tuple<size_t>& in) {
+  return in;
 }
 
 void dummy_sink(size_t) {
 }
 
+void dummy_general_sink(const std::tuple<size_t>&) {
+}
+
 class dummy_source_class {
  public:
-  size_t operator()() {
+  size_t operator()(std::stop_source&) {
     return size_t{};
   }
 };
@@ -187,8 +243,8 @@ class dummy_function_class {
   size_t operator()(const size_t&) {
     return size_t{};
   }
-  void operator()(const std::tuple<size_t>& in, std::tuple<size_t>& out) {
-    out = in;
+  auto operator()(const std::tuple<size_t>& in) {
+    return in;
   }
 };
 
@@ -198,13 +254,12 @@ class dummy_sink_class {
   }
 };
 
-size_t dummy_bind_source(double) {
+size_t dummy_bind_source(std::stop_source&, double) {
   return size_t{};
 }
 
-void dummy_bind_function(
-    double, float, const std::tuple<size_t>& in, std::tuple<size_t>& out) {
-  out = in;
+auto dummy_bind_function(double, float, const std::tuple<size_t>& in) {
+  return in;
 }
 
 void dummy_bind_sink(size_t, float, const int&) {
@@ -212,70 +267,75 @@ void dummy_bind_sink(size_t, float, const int&) {
 
 TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
   SECTION("function") {
-    ProducerNode<AsyncMover3, size_t> a{dummy_source};
+    GeneralProducerNode<AsyncMover3, std::tuple<size_t>> a{
+        dummy_general_source};
 
-    mimo_node<
-        AsyncMover3,
-        std::tuple<size_t>,
-        AsyncMover3,
-        std::tuple<size_t>>
+    mimo_node<AsyncMover3, std::tuple<size_t>, AsyncMover3, std::tuple<size_t>>
         b{dummy_function};
-    ConsumerNode<AsyncMover3, size_t> c{dummy_sink};
+    GeneralConsumerNode<AsyncMover3, std::tuple<size_t>> c{dummy_general_sink};
 
-    ProducerNode<AsyncMover2, size_t> d{dummy_source};
+    producer_node<AsyncMover2, size_t> d{dummy_source};
     mimo_node<AsyncMover2, std::tuple<size_t>> e{dummy_function};
-    ConsumerNode<AsyncMover2, size_t> f{dummy_sink};
+    consumer_node<AsyncMover2, size_t> f{dummy_sink};
 
-    Edge g{a, std::get<0>(b.inputs_)};
-    Edge h{std::get<0>(b.outputs_), c};
+    Edge g{std::get<0>(a->outputs_), std::get<0>(b->inputs_)};
+    Edge h{std::get<0>(b->outputs_), std::get<0>(c->inputs_)};
 
-    Edge i{d, std::get<0>(e.inputs_)};
-    Edge j{std::get<0>(e.outputs_), f};
+    // @todo: Why were we trying this?
+    Edge<AsyncMover2, size_t> i{*d, std::get<0>(e->inputs_)};
+    Edge j{std::get<0>(e->outputs_), f};
+
+    {
+      producer_node_impl<AsyncMover2, size_t> x{dummy_source};
+      consumer_node_impl<AsyncMover2, size_t> y{dummy_sink};
+      // Edge<AsyncMover2, size_t> bb{x, y};
+      Edge cc{x, y};
+
+      auto foo = std::make_shared<producer_node_impl<AsyncMover2, size_t>>(
+          dummy_source);
+      auto bar =
+          std::make_shared<consumer_node_impl<AsyncMover2, size_t>>(dummy_sink);
+
+      // Edge<AsyncMover2, size_t> dd{foo, bar};
+      Edge dd{foo, bar};
+    }
   }
 
   SECTION("lambda") {
-    auto dummy_source_lambda = []() { return 0UL; };
-    auto dummy_function_lambda = [](const std::tuple<size_t>& in,
-                                    std::tuple<size_t>& out) { out = in; };
+    auto dummy_source_lambda = [](std::stop_source&) { return 0UL; };
+    auto dummy_function_lambda = [](const std::tuple<size_t>& in) {
+      return in;
+    };
     auto dummy_sink_lambda = [](size_t) {};
 
-    ProducerNode<AsyncMover3, size_t> a{dummy_source_lambda};
-    mimo_node<AsyncMover3, std::tuple<size_t>> b{
-        dummy_function_lambda};
-    ConsumerNode<AsyncMover3, size_t> c{dummy_sink_lambda};
+    producer_node<AsyncMover3, size_t> a{dummy_source_lambda};
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{dummy_function_lambda};
+    consumer_node<AsyncMover3, size_t> c{dummy_sink_lambda};
 
-    ProducerNode<AsyncMover2, size_t> d{dummy_source_lambda};
-    mimo_node<AsyncMover2, std::tuple<size_t>> e{
-        dummy_function_lambda};
-    ConsumerNode<AsyncMover2, size_t> f{dummy_sink_lambda};
+    producer_node<AsyncMover2, size_t> d{dummy_source_lambda};
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{dummy_function_lambda};
+    consumer_node<AsyncMover2, size_t> f{dummy_sink_lambda};
 
-    Edge g{a, std::get<0>(b.inputs_)};
-    Edge h{std::get<0>(b.outputs_), c};
-
-    Edge i{d, std::get<0>(e.inputs_)};
-    Edge j{std::get<0>(e.outputs_), f};
+    Edge g{a, std::get<0>(b->inputs_)};
+    Edge h{std::get<0>(b->outputs_), c};
   }
 
   SECTION("inline lambda") {
-    ProducerNode<AsyncMover3, size_t> a([]() { return 0UL; });
+    producer_node<AsyncMover3, size_t> a([](std::stop_source&) { return 0UL; });
     mimo_node<AsyncMover3, std::tuple<size_t>> b(
-        [](const std::tuple<size_t>& in, std::tuple<size_t>& out) {
-          out = in;
-        });
-    ConsumerNode<AsyncMover3, size_t> c([](size_t) {});
+        [](const std::tuple<size_t>& in) { return in; });
+    consumer_node<AsyncMover3, size_t> c([](size_t) {});
 
-    ProducerNode<AsyncMover2, size_t> d([]() { return 0UL; });
+    producer_node<AsyncMover2, size_t> d([](std::stop_source&) { return 0UL; });
     mimo_node<AsyncMover2, std::tuple<size_t>> e(
-        [](const std::tuple<size_t>& in, std::tuple<size_t>& out) {
-          out = in;
-        });
-    ConsumerNode<AsyncMover2, size_t> f([](size_t) {});
+        [](const std::tuple<size_t>& in) { return in; });
+    consumer_node<AsyncMover2, size_t> f([](size_t) {});
 
-    Edge g{a, std::get<0>(b.inputs_)};
-    Edge h{std::get<0>(b.outputs_), c};
+    Edge g{a, std::get<0>(b->inputs_)};
+    Edge h{std::get<0>(b->outputs_), c};
 
-    Edge i{d, std::get<0>(e.inputs_)};
-    Edge j{std::get<0>(e.outputs_), f};
+    Edge i{d, std::get<0>(e->inputs_)};
+    Edge j{std::get<0>(e->outputs_), f};
   }
 
   SECTION("function object") {
@@ -283,66 +343,59 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     dummy_function_class fc{};
     dummy_sink_class dc{};
 
-    ProducerNode<AsyncMover3, size_t> a{ac};
+    producer_node<AsyncMover3, size_t> a{ac};
     mimo_node<AsyncMover3, std::tuple<size_t>> b{fc};
-    ConsumerNode<AsyncMover3, size_t> c{dc};
+    consumer_node<AsyncMover3, size_t> c{dc};
 
-    ProducerNode<AsyncMover2, size_t> d{ac};
+    producer_node<AsyncMover2, size_t> d{ac};
     mimo_node<AsyncMover2, std::tuple<size_t>> e{fc};
-    ConsumerNode<AsyncMover2, size_t> f{dc};
+    consumer_node<AsyncMover2, size_t> f{dc};
 
-    Edge g{a, std::get<0>(b.inputs_)};
-    Edge h{std::get<0>(b.outputs_), c};
+    Edge g{a, std::get<0>(b->inputs_)};
+    Edge h{std::get<0>(b->outputs_), c};
 
-    Edge i{d, std::get<0>(e.inputs_)};
-    Edge j{std::get<0>(e.outputs_), f};
+    Edge i{d, std::get<0>(e->inputs_)};
+    Edge j{std::get<0>(e->outputs_), f};
   }
 
   SECTION("inline function object") {
-    ProducerNode<AsyncMover3, size_t> a{dummy_source_class{}};
-    mimo_node<AsyncMover3, std::tuple<size_t>> b{
-        dummy_function_class{}};
-    ConsumerNode<AsyncMover3, size_t> c{dummy_sink_class{}};
+    producer_node<AsyncMover3, size_t> a{dummy_source_class{}};
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{dummy_function_class{}};
+    consumer_node<AsyncMover3, size_t> c{dummy_sink_class{}};
 
-    ProducerNode<AsyncMover2, size_t> d{dummy_source_class{}};
-    mimo_node<AsyncMover2, std::tuple<size_t>> e{
-        dummy_function_class{}};
-    ConsumerNode<AsyncMover2, size_t> f{dummy_sink_class{}};
+    producer_node<AsyncMover2, size_t> d{dummy_source_class{}};
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{dummy_function_class{}};
+    consumer_node<AsyncMover2, size_t> f{dummy_sink_class{}};
 
-    Edge g{a, std::get<0>(b.inputs_)};
-    Edge h{std::get<0>(b.outputs_), c};
+    Edge g{a, std::get<0>(b->inputs_)};
+    Edge h{std::get<0>(b->outputs_), c};
 
-    Edge i{d, std::get<0>(e.inputs_)};
-    Edge j{std::get<0>(e.outputs_), f};
+    Edge i{d, std::get<0>(e->inputs_)};
+    Edge j{std::get<0>(e->outputs_), f};
   }
-
+#if 1
   SECTION("bind") {
     double x = 0.01;
     float y = -0.001;
     int z = 8675309;
 
-    auto ac = std::bind(dummy_bind_source, x);
+    auto ac = std::bind(dummy_bind_source, std::placeholders::_1, x);
     auto dc = std::bind(dummy_bind_sink, y, std::placeholders::_1, z);
-    auto fc = std::bind(
-        dummy_bind_function,
-        x,
-        y,
-        std::placeholders::_1,
-        std::placeholders::_2);
+    auto fc = std::bind(dummy_bind_function, x, y, std::placeholders::_1);
 
-    ProducerNode<AsyncMover3, size_t> a{ac};
+    producer_node<AsyncMover3, size_t> a{ac};
     mimo_node<AsyncMover3, std::tuple<size_t>> b{fc};
-    ConsumerNode<AsyncMover3, size_t> c{dc};
+    consumer_node<AsyncMover3, size_t> c{dc};
 
-    ProducerNode<AsyncMover2, size_t> d{ac};
+    producer_node<AsyncMover2, size_t> d{ac};
     mimo_node<AsyncMover2, std::tuple<size_t>> e{fc};
-    ConsumerNode<AsyncMover2, size_t> f{dc};
+    consumer_node<AsyncMover2, size_t> f{dc};
 
-    Edge g{a, std::get<0>(b.inputs_)};
-    Edge h{std::get<0>(b.outputs_), c};
+    Edge g{a, std::get<0>(b->inputs_)};
+    Edge h{std::get<0>(b->outputs_), c};
 
-    Edge i{d, std::get<0>(e.inputs_)};
-    Edge j{std::get<0>(e.outputs_), f};
+    Edge i{d, std::get<0>(e->inputs_)};
+    Edge j{std::get<0>(e->outputs_), f};
   }
 
   SECTION("inline bind") {
@@ -350,31 +403,25 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     float y = -0.001;
     int z = 8675309;
 
-    ProducerNode<AsyncMover3, size_t> a{std::bind(dummy_bind_source, x)};
-    mimo_node<AsyncMover3, std::tuple<size_t>> b{std::bind(
-        dummy_bind_function,
-        x,
-        y,
-        std::placeholders::_1,
-        std::placeholders::_2)};
-    ConsumerNode<AsyncMover3, size_t> c{
+    producer_node<AsyncMover3, size_t> a{
+        std::bind(dummy_bind_source, std::placeholders::_1, x)};
+    mimo_node<AsyncMover3, std::tuple<size_t>> b{
+        std::bind(dummy_bind_function, x, y, std::placeholders::_1)};
+    consumer_node<AsyncMover3, size_t> c{
         std::bind(dummy_bind_sink, y, std::placeholders::_1, z)};
 
-    ProducerNode<AsyncMover2, size_t> d{std::bind(dummy_bind_source, x)};
-    mimo_node<AsyncMover2, std::tuple<size_t>> e{std::bind(
-        dummy_bind_function,
-        x,
-        y,
-        std::placeholders::_1,
-        std::placeholders::_2)};
-    ConsumerNode<AsyncMover2, size_t> f{
+    producer_node<AsyncMover2, size_t> d{
+        std::bind(dummy_bind_source, std::placeholders::_1, x)};
+    mimo_node<AsyncMover2, std::tuple<size_t>> e{
+        std::bind(dummy_bind_function, x, y, std::placeholders::_1)};
+    consumer_node<AsyncMover2, size_t> f{
         std::bind(dummy_bind_sink, y, std::placeholders::_1, z)};
 
-    Edge g{a, std::get<0>(b.inputs_)};
-    Edge h{std::get<0>(b.outputs_), c};
+    Edge g{a, std::get<0>(b->inputs_)};
+    Edge h{std::get<0>(b->outputs_), c};
 
-    Edge i{d, std::get<0>(e.inputs_)};
-    Edge j{std::get<0>(e.outputs_), f};
+    Edge i{d, std::get<0>(e->inputs_)};
+    Edge j{std::get<0>(e->outputs_), f};
   }
 
   SECTION("bind with move") {
@@ -382,59 +429,58 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     float y = -0.001;
     int z = 8675309;
 
-    auto ac = std::bind(dummy_bind_source, std::move(x));
+    auto ac = std::bind(dummy_bind_source, std::placeholders::_1, std::move(x));
     auto dc = std::bind(
         dummy_bind_sink, std::move(y), std::placeholders::_1, std::move(z));
     auto fc = std::bind(
-        dummy_bind_function,
-        std::move(x),
-        std::move(y),
-        std::placeholders::_1,
-        std::placeholders::_2);
+        dummy_bind_function, std::move(x), std::move(y), std::placeholders::_1);
 
-    ProducerNode<AsyncMover3, size_t> a{std::move(ac)};
+    producer_node<AsyncMover3, size_t> a{std::move(ac)};
     mimo_node<AsyncMover3, std::tuple<size_t>> b{std::move(fc)};
-    ConsumerNode<AsyncMover3, size_t> c{std::move(dc)};
+    consumer_node<AsyncMover3, size_t> c{std::move(dc)};
 
-    ProducerNode<AsyncMover2, size_t> d{std::move(ac)};
+    producer_node<AsyncMover2, size_t> d{std::move(ac)};
     mimo_node<AsyncMover2, std::tuple<size_t>> e{std::move(fc)};
-    ConsumerNode<AsyncMover2, size_t> f{std::move(dc)};
+    consumer_node<AsyncMover2, size_t> f{std::move(dc)};
 
-    Edge g{a, std::get<0>(b.inputs_)};
-    Edge h{std::get<0>(b.outputs_), c};
+    Edge g{a, std::get<0>(b->inputs_)};
+    Edge h{std::get<0>(b->outputs_), c};
 
-    Edge i{d, std::get<0>(e.inputs_)};
-    Edge j{std::get<0>(e.outputs_), f};
+    Edge i{d, std::get<0>(e->inputs_)};
+    Edge j{std::get<0>(e->outputs_), f};
   }
+#endif
 }
 
 TEST_CASE("mimo_node: Verify compound connections", "[segmented_mimo]") {
   SECTION("inline lambda") {
-    ProducerNode<AsyncMover3, size_t> a1([]() { return 0UL; });
-    ProducerNode<AsyncMover3, double> a2([]() { return 0.0; });
+    producer_node<AsyncMover3, size_t> a1(
+        [](std::stop_source&) { return 0UL; });
+    producer_node<AsyncMover3, double> a2(
+        [](std::stop_source&) { return 0.0; });
     mimo_node<AsyncMover3, std::tuple<size_t, double>> b(
-        [](const std::tuple<size_t, double>& in,
-           std::tuple<size_t, double>& out) { out = in; });
-    ConsumerNode<AsyncMover3, size_t> c1([](size_t) {});
-    ConsumerNode<AsyncMover3, double> c2([](double) {});
+        [](const std::tuple<size_t, double>& in) { return in; });
+    consumer_node<AsyncMover3, size_t> c1([](size_t) {});
+    consumer_node<AsyncMover3, double> c2([](double) {});
 
-    ProducerNode<AsyncMover2, size_t> d1([]() { return 0UL; });
-    ProducerNode<AsyncMover2, double> d2([]() { return 0.0; });
+    producer_node<AsyncMover2, size_t> d1(
+        [](std::stop_source&) { return 0UL; });
+    producer_node<AsyncMover2, double> d2(
+        [](std::stop_source&) { return 0.0; });
     mimo_node<AsyncMover2, std::tuple<size_t, double>> e(
-        [](const std::tuple<size_t, double>& in,
-           std::tuple<size_t, double>& out) { out = in; });
-    ConsumerNode<AsyncMover2, size_t> f1([](size_t) {});
-    ConsumerNode<AsyncMover2, double> f2([](double) {});
+        [](const std::tuple<size_t, double>& in) { return in; });
+    consumer_node<AsyncMover2, size_t> f1([](size_t) {});
+    consumer_node<AsyncMover2, double> f2([](double) {});
 
-    Edge g1{a1, std::get<0>(b.inputs_)};
-    Edge g2{a2, std::get<1>(b.inputs_)};
-    Edge h1{std::get<0>(b.outputs_), c1};
-    Edge h2{std::get<1>(b.outputs_), c2};
+    Edge g1{a1, std::get<0>(b->inputs_)};
+    Edge g2{a2, std::get<1>(b->inputs_)};
+    Edge h1{std::get<0>(b->outputs_), c1};
+    Edge h2{std::get<1>(b->outputs_), c2};
 
-    Edge i1{d1, std::get<0>(e.inputs_)};
-    Edge i2{d2, std::get<1>(e.inputs_)};
-    Edge j1{std::get<0>(e.outputs_), f1};
-    Edge j2{std::get<1>(e.outputs_), f2};
+    Edge i1{d1, std::get<0>(e->inputs_)};
+    Edge i2{d2, std::get<1>(e->inputs_)};
+    Edge j1{std::get<0>(e->outputs_), f1};
+    Edge j2{std::get<1>(e->outputs_), f2};
   }
 }
 
@@ -446,36 +492,66 @@ TEST_CASE(
     "Nodes: Manually pass some data in a chain with a one component general "
     "function node [segmented_mimo]") {
   size_t i{0UL};
-  ProducerNode<AsyncMover2, size_t> q([&]() { return i++; });
+  producer_node<AsyncMover2, size_t> q([&](std::stop_source) { return i++; });
 
   mimo_node<AsyncMover2, std::tuple<size_t>> r(
-      [&](const std::tuple<std::size_t>& in, std::tuple<std::size_t>& out) {
-        std::get<0>(out) = 2 * std::get<0>(in);
+      [&](const std::tuple<std::size_t>& in) {
+        return std::make_tuple(2 * std::get<0>(in));
       });
 
   std::vector<size_t> v;
-  ConsumerNode<AsyncMover2, size_t> s([&](size_t i) { v.push_back(i); });
+  consumer_node<AsyncMover2, size_t> s([&](size_t i) { v.push_back(i); });
 
-  Edge g{q, std::get<0>(r.inputs_)};
-  Edge h{std::get<0>(r.outputs_), s};
+  Edge g{q, std::get<0>(r->inputs_)};
+  Edge h{std::get<0>(r->outputs_), s};
+  connect(q, r);
+  connect(r, s);
 
-  q.resume();
-  r.resume();
-  s.resume();
+  q->resume();  // fill  10 / 00
+  q->resume();  // push  01 / 00
+  q->resume();  // yield 01 / 00
+  q->resume();  // fill  11
+
+  r->resume();  // pull   11 / 00
+  r->resume();  // drain  10 / 00
+  r->resume();  // fill   10 / 10
+  r->resume();  // push   10 / 01
+  r->resume();  // yield  10 / 01
+  r->resume();  // pull   01 / 01
+  r->resume();  // drain  00 / 01
+  r->resume();  // fill   00 / 11
+
+  s->resume();  // pull    00 / 11
+  s->resume();  // drain   00 / 10
+  s->resume();  // yield
 
   CHECK(v.size() == 1);
 
-  q.resume();
-  r.reset();
-  r.resume();
-  s.resume();
+  q->resume();  // push  00 / 01
+  r->resume();  // push  00 / 01
+  s->resume();  // pull  00 / 01
+  s->resume();  // drain 00 / 00
+  s->resume();  // yield
 
   CHECK(v.size() == 2);
 
-  q.resume();
-  r.reset();
-  r.resume();
-  s.resume();
+  q->resume();  // yield 00 / 00
+  r->resume();  // yield 00 / 00
+
+  q->resume();  // fill  10 / 00
+  q->resume();  // push  01 / 00
+  q->resume();  // yield 01 / 00
+
+  r->resume();  // pull  01 / 00
+  r->resume();  // drain 00 / 00
+  r->resume();  // fill  00 / 10
+
+  s->resume();  // pull  00 / 01
+  s->resume();  // drain 00 / 00
+
+  CHECK(v.size() == 2);
+
+  s->resume();  // yield
 
   CHECK(v.size() == 3);
 
@@ -489,69 +565,129 @@ TEST_CASE(
  * compound general function node and then to consumer.
  */
 TEST_CASE(
-    "Nodes: Manually pass some data in a chain with a multi component segmented_mimo "
+    "Nodes: Manually pass some data in a chain with a multi component "
+    "segmented_mimo "
     "function node [segmented_mimo]") {
   size_t i{0UL};
   double j{0.0};
-  ProducerNode<AsyncMover2, size_t> q1([&]() { return i++; });
-  ProducerNode<AsyncMover2, double> q2([&]() { return j++; });
+  producer_node<AsyncMover2, size_t> q1([&](std::stop_source&) { return i++; });
+  producer_node<AsyncMover2, double> q2([&](std::stop_source&) { return j++; });
 
   mimo_node<
       AsyncMover2,
       std::tuple<size_t, double>,
       AsyncMover2,
       std::tuple<double, size_t>>
-      r([&](const std::tuple<size_t, double>& in,
-            std::tuple<double, std::size_t>& out) {
-        std::get<1>(out) = 2 * std::get<0>(in);
-        std::get<0>(out) = 3.0 * std::get<1>(in);
+      r([&](const std::tuple<size_t, double>& in) {
+        return std::make_tuple(2 * std::get<0>(in), 3.0 * std::get<1>(in));
       });
 
   std::vector<double> v;
   std::vector<size_t> w;
-  ConsumerNode<AsyncMover2, double> s1([&](size_t i) { v.push_back(i); });
-  ConsumerNode<AsyncMover2, size_t> s2([&](size_t i) { w.push_back(i); });
+  consumer_node<AsyncMover2, double> s1([&](double i) { v.push_back(i); });
+  consumer_node<AsyncMover2, size_t> s2([&](size_t i) { w.push_back(i); });
 
-  Edge g1{q1, std::get<0>(r.inputs_)};
-  Edge g2{q2, std::get<1>(r.inputs_)};
-  Edge h1{std::get<0>(r.outputs_), s1};
-  Edge h2{std::get<1>(r.outputs_), s2};
+  Edge g1{q1, std::get<0>(r->inputs_)};
+  Edge g2{q2, std::get<1>(r->inputs_)};
 
-  q1.resume();
-  q2.resume();
-  r.resume();
-  s1.resume();
-  s2.resume();
+  Edge h1{std::get<0>(r->outputs_), s1};
+  Edge h2{std::get<1>(r->outputs_), s2};
+  connect(q1, r);
+  connect(q2, r);
+  connect(r, s1);
+  connect(r, s2);
+
+  q1->resume();  // fill  10 / 00
+  q2->resume();  // fill  10 : 10 / 00 : 00
+  r->resume();   // pull  01 : 01 / 00 : 00
+  r->resume();   // drain 00 : 00 / 00 : 00
+  r->resume();   // fill  00 : 00 / 10 : 10
+
+  s1->resume();  // pull  00 : 00 / 01 : 10
+  s2->resume();  // pull  00 : 00 / 01 : 01
+  s1->resume();  // drain 00 : 00 / 00 : 01
+  s1->resume();  // yield 00 : 00 / 00 : 01
+
+  CHECK(v.size() == 1);
+  CHECK(w.size() == 0);
+
+  s2->resume();  // drain 00 : 00 / 00 : 00
+  s2->resume();  // yield 00 : 00 / 00 : 00
 
   CHECK(v.size() == 1);
   CHECK(w.size() == 1);
 
-  q1.resume();
-  q2.resume();
-  r.reset();
-  r.resume();
-  s1.resume();
-  s2.resume();
+  q1->resume();  // push  00 : 00 / 00 : 00
+  q1->resume();  // yield 00 : 00 / 00 : 00
+  q1->resume();  // fill  10 : 00 / 00 : 00
+  q1->resume();  // push  01 : 00 / 00 : 00
+  q1->resume();  // yield 01 : 00 / 00 : 00
+
+  q2->resume();  // push  01 : 00 / 00 : 00
+  q2->resume();  // yield 01 : 00 / 00 : 00
+  q2->resume();  // fill  01 : 10 / 00 : 00
+
+  r->resume();   // push  01 : 10 / 00 : 00
+  r->resume();   // yield 01 : 10 / 00 : 00
+  r->resume();   // pull  01 : 01 / 00 : 00
+  r->resume();   // drain 00 : 00 / 00 : 00
+  r->resume();   // fill  00 : 00 / 10 : 10
+  s1->resume();  // pull  00 : 00 / 01 : 10
+  r->resume();   // push  00 : 00 / 01 : 01
+  r->resume();   // yield 00 : 00 / 01 : 01
+
+  CHECK(v.size() == 1);
+  CHECK(w.size() == 1);
+
+  s2->resume();  // pull  00 : 00 / 01 : 01
+  s2->resume();  // drain 00 : 00 / 01 : 00
+  s2->resume();  // yield 00 : 00 / 01 : 00
+  s1->resume();  // drain 00 : 00 / 00 : 00
+  s1->resume();  // yield 00 : 00 / 00 : 00
 
   CHECK(v.size() == 2);
   CHECK(w.size() == 2);
 
-  q1.resume();
-  q2.resume();
-  r.reset();
-  r.resume();
-  s1.resume();
-  s2.resume();
+  q1->resume();  // fill  10 : 00 / 00 : 00
+  q2->resume();  // push  10 : 00 / 00 : 00
+  q2->resume();  // yield 10 : 00 / 00 : 00
+  q2->resume();  // fill  10 : 10 / 00 : 00
+  r->resume();   // pull  01 : 01 / 00 : 00
+  r->resume();   // drain 00 : 00 / 00 : 00
+  r->resume();   // fill  00 : 00 / 10 : 10
+
+  s1->resume();  // pull  00 : 00 / 01 : 10
+  s2->resume();  // pull  00 : 00 / 01 : 01
+  s1->resume();  // drain 00 : 00 / 00 : 01
+  s1->resume();  // yield 00 : 00 / 00 : 01
+
+  CHECK(v.size() == 3);
+  CHECK(w.size() == 2);
+
+  s2->resume();  // drain 00 : 00 / 00 : 00
+  s2->resume();  // yield 00 : 00 / 00 : 00
 
   CHECK(v.size() == 3);
   CHECK(w.size() == 3);
 
   CHECK(w[0] == 0);
-  CHECK(w[1] == 2);
-  CHECK(w[2] == 4);
+  CHECK(w[1] == 3);
+  CHECK(w[2] == 6);
   CHECK(v[0] == 0.0);
-  CHECK(v[1] == 3.0);
-  CHECK(v[2] == 6.0);
+  CHECK(v[1] == 2.0);
+  CHECK(v[2] == 4.0);
+}
+
+template <class Node>
+auto run_for(Node& node, size_t rounds) {
+  return [&node, rounds]() {
+    size_t N = rounds;
+    while (N) {
+      auto code = node->resume();
+      if (code == SchedulerAction::yield)
+        --N;
+    }
+  };
 }
 
 /**
@@ -577,14 +713,14 @@ void asynchronous_with_function_node(
   std::vector<size_t> w;
   size_t i{0};
 
-  ProducerNode<AsyncMover2, size_t> q1([&]() {
+  producer_node<AsyncMover2, size_t> q1([&](std::stop_source&) {
     if constexpr (delay) {
       std::this_thread::sleep_for(std::chrono::microseconds(
           static_cast<size_t>(qwt * random_us(1234))));
     }
     return i++;
   });
-  ProducerNode<AsyncMover2, double> q2([&]() {
+  producer_node<AsyncMover2, double> q2([&](std::stop_source&) {
     if constexpr (delay) {
       std::this_thread::sleep_for(std::chrono::microseconds(
           static_cast<size_t>(qwt * random_us(1234))));
@@ -597,24 +733,22 @@ void asynchronous_with_function_node(
       std::tuple<size_t, double>,
       AsyncMover2,
       std::tuple<double, size_t>>
-      r([&](const std::tuple<size_t, double>& in,
-            std::tuple<double, size_t>& out) {
+      r([&](const std::tuple<size_t, double>& in) {
         if constexpr (delay) {
           std::this_thread::sleep_for(std::chrono::microseconds(
               static_cast<size_t>(rwt * random_us(1234))));
         }
-        std::get<0>(out) = 3 * std::get<1>(in);
-        std::get<1>(out) = 5.0 * std::get<0>(in);
+        return std::make_tuple(3 * std::get<1>(in), 5.0 * std::get<0>(in));
       });
 
-  ConsumerNode<AsyncMover2, size_t> s1([&](size_t i) {
+  consumer_node<AsyncMover2, size_t> s1([&](size_t i) {
     v.push_back(i);
     if constexpr (delay) {
       std::this_thread::sleep_for(std::chrono::microseconds(
           static_cast<size_t>(swt * random_us(1234))));
     }
   });
-  ConsumerNode<AsyncMover2, double> s2([&](double i) {
+  consumer_node<AsyncMover2, double> s2([&](double i) {
     w.push_back(i);
     if constexpr (delay) {
       std::this_thread::sleep_for(std::chrono::microseconds(
@@ -622,45 +756,20 @@ void asynchronous_with_function_node(
     }
   });
 
-  Edge g1{q1, std::get<0>(r.inputs_)};
-  Edge g2{q2, std::get<1>(r.inputs_)};
-  Edge h1{std::get<1>(r.outputs_), s1};
-  Edge h2{std::get<0>(r.outputs_), s2};
+  Edge g1{q1, std::get<0>(r->inputs_)};
+  Edge g2{q2, std::get<1>(r->inputs_)};
+  Edge h1{std::get<1>(r->outputs_), s1};
+  Edge h2{std::get<0>(r->outputs_), s2};
+  connect(q1, r);
+  connect(q2, r);
+  connect(r, s1);
+  connect(r, s2);
 
-  auto fun_a1 = [&]() {
-    size_t N = rounds;
-    while (N--) {
-      q1.resume();
-    }
-  };
-  auto fun_a2 = [&]() {
-    size_t N = rounds;
-    while (N--) {
-      q2.resume();
-    }
-  };
-
-  auto fun_b = [&]() {
-    size_t N = rounds;
-    while (N--) {
-      r.resume();
-      r.reset();
-    }
-  };
-
-  auto fun_c1 = [&]() {
-    size_t N = rounds;
-    while (N--) {
-      s1.resume();
-    }
-  };
-
-  auto fun_c2 = [&]() {
-    size_t N = rounds;
-    while (N--) {
-      s2.resume();
-    }
-  };
+  auto fun_a1 = run_for(q1, rounds);
+  auto fun_a2 = run_for(q2, rounds);
+  auto fun_b = run_for(r, rounds);
+  auto fun_c1 = run_for(s1, rounds);
+  auto fun_c2 = run_for(s2, rounds);
 
   CHECK(v.size() == 0);
   CHECK(w.size() == 0);
@@ -756,12 +865,35 @@ TEST_CASE("Nodes: Asynchronous with function node and delay", "[nodes]") {
  * Test that we can correctly pass a sequence of integers from producer node to
  * consumer node.
  */
-TEST_CASE(
+class zero {};
+class one {};
+class two {};
+class three {};
+
+TEMPLATE_TEST_CASE(
     "Nodes: Async pass n integers, three nodes, "
     "three stage",
-    "[nodes]") {
+    "[nodes]",
+    (std::tuple<
+        producer_node<AsyncMover3, size_t>,
+        producer_node<AsyncMover3, double>,
+        consumer_node<AsyncMover3, double>,
+        consumer_node<AsyncMover3, size_t>,
+        zero>),
+    (std::tuple<
+        producer_node<AsyncMover3, size_t>,
+        producer_node<AsyncMover3, double>,
+        consumer_node<AsyncMover3, double>,
+        consumer_node<AsyncMover3, size_t>,
+        one>)) {
   size_t rounds = GENERATE(0, 1, 2, 5, 3379);
   size_t offset = GENERATE(0, 1, 2, 5);
+
+  using P1 = std::tuple_element_t<0, TestType>;
+  using P2 = std::tuple_element_t<1, TestType>;
+  using C1 = std::tuple_element_t<2, TestType>;
+  using C2 = std::tuple_element_t<3, TestType>;
+  using NO = std::tuple_element_t<4, TestType>;
 
   [[maybe_unused]] constexpr bool debug = false;
 
@@ -789,35 +921,45 @@ TEST_CASE(
     CHECK(std::equal(input2.begin(), input2.end(), output2.begin()) == false);
   }
 
-  ProducerNode<AsyncMover3, size_t> source_node1(generators{19});
-  ProducerNode<AsyncMover3, double> source_node2(generators{337});
+  // Can't do this because generator returns its result,
+  // whereas the mimo node takes the result by reference.
+  P1 source_node1(generators{19});
+  P2 source_node2(generators{337});
 
   mimo_node<
       AsyncMover3,
       std::tuple<size_t, double>,
       AsyncMover3,
       std::tuple<double, size_t>>
-      mid_node([](const std::tuple<size_t, double>& in,
-                  std::tuple<double, size_t>& out) {
-        std::get<0>(out) = std::get<1>(in);
-        std::get<1>(out) = std::get<0>(in);
+      mid_node([](const std::tuple<size_t, double>& in) {
+        return std::make_tuple(std::get<1>(in), std::get<0>(in));
       });
 
-  ConsumerNode<AsyncMover3, double> sink_node1(
-      terminal<decltype(j1), double>{j1});
-  ConsumerNode<AsyncMover3, size_t> sink_node2(
-      terminal<decltype(j2), size_t>{j2});
+  C1 sink_node1(terminal<decltype(j1), double>{j1});
+  C2 sink_node2(terminal<decltype(j2), size_t>{j2});
 
-  Edge(source_node1, std::get<0>(mid_node.inputs_));
-  Edge(source_node2, std::get<1>(mid_node.inputs_));
-  Edge(std::get<0>(mid_node.outputs_), sink_node1);
-  Edge(std::get<1>(mid_node.outputs_), sink_node2);
+  auto source1 = run_for(source_node1, rounds);
+  auto source2 = run_for(source_node2, rounds);
+  auto mid = run_for(mid_node, rounds);
+  auto sink1 = run_for(sink_node1, rounds);
+  auto sink2 = run_for(sink_node2, rounds);
 
-  auto source1 = [&]() { source_node1.run_for(rounds); };
-  auto source2 = [&]() { source_node2.run_for(rounds); };
-  auto mid = [&]() { mid_node.run_for(rounds + offset); };
-  auto sink1 = [&]() { sink_node1.run_for(rounds); };
-  auto sink2 = [&]() { sink_node2.run_for(rounds); };
+  if constexpr (std::is_same_v<NO, zero> || std::is_same_v<NO, one>) {
+    Edge(source_node1, std::get<0>(mid_node->inputs_));
+    Edge(source_node2, std::get<1>(mid_node->inputs_));
+    Edge(std::get<0>(mid_node->outputs_), sink_node1);
+    Edge(std::get<1>(mid_node->outputs_), sink_node2);
+  } else {
+    Edge(std::get<0>(source_node1->outputs_), std::get<0>(mid_node->inputs_));
+    Edge(std::get<0>(source_node2->outputs_), std::get<1>(mid_node->inputs_));
+    Edge(std::get<0>(mid_node->outputs_), std::get<0>(sink_node1->inputs_));
+    Edge(std::get<1>(mid_node->outputs_), std::get<0>(sink_node2->inputs_));
+  }
+
+  connect(source_node1, mid_node);
+  connect(source_node2, mid_node);
+  connect(mid_node, sink_node1);
+  connect(mid_node, sink_node2);
 
   SECTION(
       "test source launch, sink launch, source "
@@ -948,4 +1090,17 @@ TEST_CASE(
   CHECK(std::equal(input1.begin(), i1, output2.begin()));
   CHECK(std::equal(input2.begin(), i2, output1.begin()));
 }
+
+#if 0
+// Repeat one of the tests above but with one-sided mimo nodes
+// Annoying -- required different interface than special-purpose nodes
+// @todo: fix this
+// Best solution is probably to give mimo nodes the same
+// interface as special-purpose nodes
+
+// Repeat one of the tests above but with mimo connected to mimo and
+// with differen cardinalities on input and output
+
+// Repeat one of the tests above but with stop token
+
 #endif

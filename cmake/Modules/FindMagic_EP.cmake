@@ -35,12 +35,35 @@
 include(TileDBCommon)
 
 if(TILEDB_VCPKG)
-  find_package(unofficial-libmagic CONFIG REQUIRED)
-  set(libmagic_DICTIONARY ${unofficial-libmagic_DICTIONARY})
+  find_package(unofficial-libmagic CONFIG)
+  if (unofficial-libmagic_FOUND)
+    set(libmagic_DICTIONARY ${unofficial-libmagic_DICTIONARY})
+  else()
+    find_path(libmagic_INCLUDE_DIR NAMES magic.h)
+    find_library(libmagic_LIBRARIES magic)
+    find_file(libmagic_DICTIONARY magic.mgc
+      PATH_SUFFIXES share/libmagic/misc share/misc
+    )
+
+    include(FindPackageHandleStandardArgs)
+    FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
+      REQUIRED_VARS
+        libmagic_INCLUDE_DIR
+        libmagic_LIBRARIES
+        libmagic_DICTIONARY
+    )
+
+    if(NOT libmagic_FOUND)
+      message(FATAL_ERROR "Error finding libmagic")
+    endif()
+
+    add_library(unofficial::libmagic::libmagic UNKNOWN IMPORTED)
+    set_target_properties(unofficial::libmagic::libmagic PROPERTIES
+      IMPORTED_LOCATION "${libmagic_LIBRARIES}"
+      INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
+    )
+  endif()
   add_library(libmagic ALIAS unofficial::libmagic::libmagic)
-  install_target_libs(unofficial::libmagic::libmagic)
-  install_target_libs(PCRE2::8BIT)
-  install_target_libs(PCRE2::POSIX)
   return()
 endif()
 
@@ -142,11 +165,4 @@ if (libmagic_FOUND AND NOT TARGET libmagic)
     IMPORTED_LOCATION "${libmagic_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
   )
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_LIBMAGIC_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(libmagic)
-  install_target_libs(pcre2-posix)
-  install_target_libs(pcre2-8)
 endif()

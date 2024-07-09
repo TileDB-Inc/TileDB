@@ -41,6 +41,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
@@ -105,13 +106,13 @@ Status array_schema_evolution_to_capnp(
     attribute_to_capnp(attr_to_add, &attribute_builder);
   }
 
+  // Enumerations to add
   auto enmr_names_to_add = array_schema_evolution->enumeration_names_to_add();
-  auto num_enmrs = enmr_names_to_add.size();
-
-  if (num_enmrs > 0) {
+  if (enmr_names_to_add.size() > 0) {
     auto enmrs_to_add_builder =
-        array_schema_evolution_builder->initEnumerationsToAdd(num_enmrs);
-    for (size_t i = 0; i < num_enmrs; i++) {
+        array_schema_evolution_builder->initEnumerationsToAdd(
+            enmr_names_to_add.size());
+    for (size_t i = 0; i < enmr_names_to_add.size(); i++) {
       auto enmr =
           array_schema_evolution->enumeration_to_add(enmr_names_to_add[i]);
       auto builder = enmrs_to_add_builder[i];
@@ -119,16 +120,31 @@ Status array_schema_evolution_to_capnp(
     }
   }
 
+  // Enumerations to extend
+  auto enmr_names_to_extend =
+      array_schema_evolution->enumeration_names_to_extend();
+  if (enmr_names_to_extend.size() > 0) {
+    auto enmrs_to_extend_builder =
+        array_schema_evolution_builder->initEnumerationsToExtend(
+            enmr_names_to_extend.size());
+    for (size_t i = 0; i < enmr_names_to_extend.size(); i++) {
+      auto enmr = array_schema_evolution->enumeration_to_extend(
+          enmr_names_to_extend[i]);
+      auto builder = enmrs_to_extend_builder[i];
+      enumeration_to_capnp(enmr, builder);
+    }
+  }
+
   // Enumerations to drop
-  std::vector<std::string> enmr_names_to_drop =
-      array_schema_evolution->enumeration_names_to_drop();
+  auto enmr_names_to_drop = array_schema_evolution->enumeration_names_to_drop();
+  if (enmr_names_to_drop.size() > 0) {
+    auto enumerations_to_drop_builder =
+        array_schema_evolution_builder->initEnumerationsToDrop(
+            enmr_names_to_drop.size());
 
-  auto enumerations_to_drop_builder =
-      array_schema_evolution_builder->initEnumerationsToDrop(
-          enmr_names_to_drop.size());
-
-  for (size_t i = 0; i < enmr_names_to_drop.size(); i++) {
-    enumerations_to_drop_builder.set(i, enmr_names_to_drop[i]);
+    for (size_t i = 0; i < enmr_names_to_drop.size(); i++) {
+      enumerations_to_drop_builder.set(i, enmr_names_to_drop[i]);
+    }
   }
 
   auto timestamp_builder =
@@ -137,11 +153,14 @@ Status array_schema_evolution_to_capnp(
   timestamp_builder.set(0, timestamp_range.first);
   timestamp_builder.set(1, timestamp_range.second);
 
+  // TODO: to add actual wire CurrentDomain (ch48253)
+
   return Status::Ok();
 }
 
 tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
-    const capnp::ArraySchemaEvolution::Reader& evolution_reader) {
+    const capnp::ArraySchemaEvolution::Reader& evolution_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Create attributes to add
   std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add;
   auto attrs_to_add_reader = evolution_reader.getAttributesToAdd();
@@ -162,8 +181,17 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
   std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add;
   auto enmrs_to_add_reader = evolution_reader.getEnumerationsToAdd();
   for (auto enmr_reader : enmrs_to_add_reader) {
-    auto enmr = enumeration_from_capnp(enmr_reader);
+    auto enmr = enumeration_from_capnp(enmr_reader, memory_tracker);
     enmrs_to_add[enmr->name()] = enmr;
+  }
+
+  // Create enumerations to extend
+  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+      enmrs_to_extend;
+  auto enmrs_to_extend_reader = evolution_reader.getEnumerationsToExtend();
+  for (auto enmr_reader : enmrs_to_extend_reader) {
+    auto enmr = enumeration_from_capnp(enmr_reader, memory_tracker);
+    enmrs_to_extend[enmr->name()] = enmr;
   }
 
   // Create enumerations to drop
@@ -187,8 +215,12 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       attrs_to_add,
       attrs_to_drop,
       enmrs_to_add,
+      enmrs_to_extend,
       enmrs_to_drop,
-      ts_range));
+      ts_range,
+      // TODO: to add actual wire CurrentDomain (ch48253)
+      nullptr,
+      memory_tracker));
 }
 
 Status array_schema_evolution_serialize(
@@ -250,7 +282,8 @@ Status array_schema_evolution_serialize(
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution** array_schema_evolution,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     tdb_unique_ptr<ArraySchemaEvolution> decoded_array_schema_evolution =
         nullptr;
@@ -266,8 +299,8 @@ Status array_schema_evolution_deserialize(
             array_schema_evolution_builder);
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             array_schema_evolution_builder.asReader();
-        decoded_array_schema_evolution =
-            array_schema_evolution_from_capnp(array_schema_evolution_reader);
+        decoded_array_schema_evolution = array_schema_evolution_from_capnp(
+            array_schema_evolution_reader, memory_tracker);
         break;
       }
       case SerializationType::CAPNP: {
@@ -278,8 +311,8 @@ Status array_schema_evolution_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             reader.getRoot<capnp::ArraySchemaEvolution>();
-        decoded_array_schema_evolution =
-            array_schema_evolution_from_capnp(array_schema_evolution_reader);
+        decoded_array_schema_evolution = array_schema_evolution_from_capnp(
+            array_schema_evolution_reader, memory_tracker);
         break;
       }
       default: {
@@ -318,7 +351,10 @@ Status array_schema_evolution_serialize(
 }
 
 Status array_schema_evolution_deserialize(
-    ArraySchemaEvolution**, SerializationType, const Buffer&) {
+    ArraySchemaEvolution**,
+    SerializationType,
+    const Buffer&,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

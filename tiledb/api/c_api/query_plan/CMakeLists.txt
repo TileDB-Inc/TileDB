@@ -31,18 +31,15 @@ list(APPEND SOURCES
 gather_sources(${SOURCES})
 
 #
-# Object library for other units to depend upon
+# Object library for C API query plan
+#
+# Maturity:
+#   This object library cannot link standalone because `query_plan` cannot link
+#   standalone.
 #
 add_library(capi_query_plan OBJECT ${SOURCES})
 target_link_libraries(capi_query_plan PUBLIC export)
 target_link_libraries(capi_query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(capi_query_plan PUBLIC query_plan $<TARGET_OBJECTS:query_plan>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_query_plan EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_query_plan PRIVATE capi_query_plan)
-target_sources(compile_capi_query_plan PRIVATE test/compile_capi_query_plan_main.cc)
 
 add_test_subdirectory()

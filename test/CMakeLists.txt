@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2022 TileDB, Inc.
+# Copyright (c) 2017-2024 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -119,14 +119,12 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-cppapi-aggregates.cc
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
-  src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-as_built.cc
   src/unit-capi-array.cc
   src/unit-capi-array_schema.cc
-  src/unit-capi-async.cc
   src/unit-capi-attributes.cc
   src/unit-capi-config.cc
   src/unit-capi-context.cc
@@ -151,6 +149,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-partial-attribute-write.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
+  src/unit-capi-rest-dense_array.cc
   src/unit-capi-smoke-test.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_heter.cc
@@ -178,20 +177,18 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-enumerations.cc
   src/unit-enum-helpers.cc
   src/unit-filter-buffer.cc
-  src/unit-filter-pipeline.cc
   src/unit-global-order.cc
-  src/unit-gcs.cc
-  src/unit-gs.cc
-  src/unit-hdfs-filesystem.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
+  src/unit-query-plan.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
+  src/unit-request-handlers.cc
   src/unit-resource-pool.cc
+  src/unit-rest-enumerations.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
-  src/unit-s3-no-multipart.cc
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
@@ -202,12 +199,16 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
+  "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/test/unit_capi_ls_recursive.cc"
   )
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/cpp-integration-filter-pipeline.cc
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
+    src/test-cppapi-ndrectangle.cc
+    src/test-cppapi-current-domain.cc
     src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc
@@ -232,6 +233,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-partial-attribute-write.cc
     src/unit-cppapi-query.cc
+    src/unit-cppapi-query-condition-enumerations.cc
     src/unit-cppapi-query-condition-sets.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
@@ -252,7 +254,6 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
-    src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-QueryCondition-serialization.cc
     src/unit-curl.cc
   )
@@ -287,6 +288,8 @@ add_executable(
 
 add_dependencies(tiledb_unit tiledb_test_support_lib)
 
+target_compile_options(tiledb_unit PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
 if (NOT MSVC)
@@ -302,6 +305,7 @@ target_include_directories(
 target_link_libraries(tiledb_unit
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
+    TILEDB_CORE_OBJECTS
     Catch2::Catch2
     tiledb_test_support_lib
 )
@@ -325,10 +329,6 @@ endif()
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
-endif()
-
-if (TILEDB_TESTS_ENABLE_REST)
-  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_ENABLE_REST)
 endif()
 
 if (TILEDB_SERIALIZATION)
@@ -356,7 +356,7 @@ endif()
 
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
-target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(tiledb_unit PRIVATE -Dtiledb_EXPORTS)
 
 target_compile_definitions(tiledb_unit PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
@@ -367,6 +367,22 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU
     set_target_properties(tiledb_unit PROPERTIES
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )
+endif()
+
+# Only produce timing tests for UNIX based systems (faketime constraint)
+find_library(
+        LIBFAKETIME
+        NAMES faketime
+)
+
+if (LIBFAKETIME)
+    add_test(
+            NAME "tiledb_timing_unit"
+            COMMAND tiledb_unit --durations=yes [sub-millisecond]
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=set:${LIBFAKETIME}")
 endif()
 
 add_test(
@@ -390,18 +406,16 @@ if(TILEDB_HDFS)
   endif()
 endif()
 
-# Add custom target 'check'
-add_custom_target(check
-  COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
-  DEPENDS tests
-  USES_TERMINAL
-)
-
 # CI tests
 add_subdirectory(ci)
 if(WIN32)
   add_subdirectory(performance)
 endif()
 
-#add tests related to external items
-add_subdirectory(external)
+add_custom_target(
+  check-package
+  COMMAND ${CMAKE_COMMAND}
+    -DCMAKE_PREFIX_PATH="${CMAKE_INSTALL_PREFIX}$<SEMICOLON>${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}"
+    -B ${CMAKE_CURRENT_BINARY_DIR}/check-package-build
+    ${CMAKE_CURRENT_SOURCE_DIR}/packaging
+)

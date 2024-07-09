@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,8 +51,8 @@ struct tiledb_group_handle_t
   tiledb_group_handle_t() = delete;
 
   explicit tiledb_group_handle_t(
-      const tiledb::sm::URI& uri, tiledb::sm::StorageManager* sm)
-      : group_(uri, sm) {
+      tiledb::sm::ContextResources& resources, const tiledb::sm::URI& uri)
+      : group_(resources, uri) {
   }
 
   [[nodiscard]] inline tiledb::sm::Group& group() {

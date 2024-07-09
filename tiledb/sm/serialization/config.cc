@@ -61,9 +61,10 @@ namespace serialization {
 
 Status config_to_capnp(
     const Config& config, capnp::Config::Builder* config_builder) {
-  auto entries = config_builder->initEntries(config.param_values().size());
+  auto config_params = config.get_all_params_from_config_or_env();
+  auto entries = config_builder->initEntries(config_params.size());
   uint64_t i = 0;
-  for (const auto& kv : config.param_values()) {
+  for (const auto& kv : config_params) {
     entries[i].setKey(kv.first);
     entries[i].setValue(kv.second);
     ++i;
@@ -108,9 +109,7 @@ Status config_serialize(
     const Config& config,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
-    const bool client_side) {
-  // Currently client_side is unused
-  (void)client_side;
+    const bool) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Config::Builder configBuilder = message.initRoot<capnp::Config>();

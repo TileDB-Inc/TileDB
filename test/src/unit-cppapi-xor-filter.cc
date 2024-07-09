@@ -103,10 +103,12 @@ void xor_filter_api_test(Context& ctx, tiledb_array_type_t array_type) {
   Query query_r(ctx, array_r);
   query_r.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_data_read);
 
+  Subarray subarray_r(ctx, array_r);
   if (array_type == TILEDB_DENSE) {
     int range[] = {1, xor_dim_hi};
-    query_r.add_range("rows", range[0], range[1])
+    subarray_r.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query_r.set_subarray(subarray_r);
   }
 
   query_r.submit();

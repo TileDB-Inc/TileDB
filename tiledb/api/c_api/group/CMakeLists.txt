@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,19 +34,9 @@ gather_sources(${SOURCES})
 #
 # Object library for other units to depend upon
 #
+# Maturity Note: We can't make a proper group unit library until we've
+# removed its dependence on StorageManager.
+#
 add_library(capi_group OBJECT ${SOURCES})
 target_link_libraries(capi_group PUBLIC export)
 target_link_libraries(capi_group PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-# Note: We can't make a proper group unit library until we've
-# removed its dependence on StorageManager.
-#
-# add_executable(compile_capi_group EXCLUDE_FROM_ALL)
-# target_link_libraries(compile_capi_group PRIVATE capi_group)
-# target_sources(compile_capi_group PRIVATE test/compile_capi_group_main.cc)
-# add_dependencies(all_link_complete compile_capi_group)
-
-#add_test_subdirectory()

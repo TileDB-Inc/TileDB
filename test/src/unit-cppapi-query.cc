@@ -206,7 +206,9 @@ TEST_CASE(
   Array array1(ctx, array_name, TILEDB_READ);
   Query query1(ctx, array1);
   int range[] = {1, 2};
-  query1.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
+  Subarray subarray1(ctx, array1);
+  subarray1.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
+  query1.set_subarray(subarray1);
   auto est_size = query1.est_result_size("a");
   std::vector<int> data(est_size);
   query1.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
@@ -266,21 +268,22 @@ TEST_CASE(
   // Add 1 range per dimension
   std::string s1("a", 1);
   std::string s2("cc", 2);
-  CHECK_NOTHROW(query.add_range("d1", s1, s2));
+  Subarray subarray(ctx, array);
+  CHECK_NOTHROW(subarray.add_range("d1", s1, s2));
   int range[] = {1, 2};
-  CHECK_NOTHROW(query.add_range("d2", range[0], range[1]));
+  CHECK_NOTHROW(subarray.add_range("d2", range[0], range[1]));
 
   // Check number of ranges on each dimension
-  int range_num = query.range_num("d1");
+  int range_num = subarray.range_num("d1");
   CHECK(range_num == 1);
-  range_num = query.range_num("d2");
+  range_num = subarray.range_num("d2");
   CHECK(range_num == 1);
 
   // Check ranges
-  std::array<std::string, 2> range1 = query.range("d1", 0);
+  std::array<std::string, 2> range1 = subarray.range("d1", 0);
   CHECK(range1[0] == s1);
   CHECK(range1[1] == s2);
-  std::array<int, 3> range2 = query.range<int>("d2", 0);
+  std::array<int, 3> range2 = subarray.range<int>("d2", 0);
   CHECK(range2[0] == 1);
   CHECK(range2[1] == 2);
   CHECK(range2[2] == 0);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,9 @@
 
 #include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/vfs_experimental.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
@@ -61,6 +63,7 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   std::string file2 = dir + "/file2";
   std::string subdir = dir + "/subdir";
   std::string subdir2 = dir + "/subdir2";
+  std::string subdir_empty = dir + "/subdir_empty";
   std::string subdir_file = subdir + "/file";
   std::string subdir_file2 = subdir2 + "/file2";
 
@@ -69,6 +72,7 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   vfs.create_dir(dir);
   vfs.create_dir(subdir);
   vfs.create_dir(subdir2);
+  vfs.create_dir(subdir_empty);
   vfs.touch(file);
   vfs.touch(file2);
   vfs.touch(subdir_file);
@@ -83,15 +87,17 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   file2 = tiledb::sm::path_win::uri_from_path(file2);
   subdir = tiledb::sm::path_win::uri_from_path(subdir);
   subdir2 = tiledb::sm::path_win::uri_from_path(subdir2);
+  subdir_empty = tiledb::sm::path_win::uri_from_path(subdir_empty);
 #endif
 
   // Check results
   std::sort(children.begin(), children.end());
-  REQUIRE(children.size() == 4);
+  REQUIRE(children.size() == 5);
   CHECK(children[0] == file);
   CHECK(children[1] == file2);
   CHECK(children[2] == subdir);
   CHECK(children[3] == subdir2);
+  CHECK(children[4] == subdir_empty);
 
   // Clean up
   vfs.remove_dir(path);
@@ -479,8 +485,7 @@ TEST_CASE(
       tiledb_ctx_is_supported_fs(ctx.ptr().get(), TILEDB_S3, &s3) == TILEDB_OK);
   if (s3) {
     tiledb::VFS vfs(ctx);
-    std::string bucket_name =
-        "s3://" + tiledb::test::random_name("tiledb") + "/";
+    std::string bucket_name = "s3://tiledb-" + random_label() + "/";
     if (vfs.is_bucket(bucket_name)) {
       REQUIRE_NOTHROW(vfs.remove_bucket(bucket_name));
     }
@@ -499,5 +504,192 @@ TEST_CASE(
     if (vfs.is_bucket(bucket_name)) {
       REQUIRE_NOTHROW(vfs.remove_bucket(bucket_name));
     }
+  }
+}
+
+using ls_recursive_test_types = std::tuple<
+    tiledb::test::LocalFsTest,
+    tiledb::test::S3Test,
+    tiledb::test::AzureTest,
+    tiledb::test::GCSTest>;
+TEMPLATE_LIST_TEST_CASE(
+    "CPP API: VFS ls_recursive filter",
+    "[cppapi][vfs][ls-recursive]",
+    ls_recursive_test_types) {
+  using namespace tiledb::test;
+  TestType test({10, 100, 0});
+  if (!test.is_supported()) {
+    return;
+  }
+  auto expected_results = test.expected_results();
+
+  vfs_config cfg;
+  tiledb::Context ctx(tiledb::Config(&cfg.config));
+  tiledb::VFS vfs(ctx);
+
+  tiledb::VFSExperimental::LsObjects ls_objects;
+  // Predicate filter to apply to ls_recursive.
+  tiledb::VFSExperimental::LsInclude include;
+  // Callback to populate ls_objects vector using a filter.
+  tiledb::VFSExperimental::LsCallback cb = [&](std::string_view path,
+                                               uint64_t size) {
+    if (include(path, size)) {
+      ls_objects.emplace_back(path, size);
+    }
+    return true;
+  };
+
+  SECTION("Default filter (include all)") {
+    include = [](std::string_view, uint64_t) { return true; };
+  }
+  SECTION("Custom filter (include none)") {
+    include = [](std::string_view, uint64_t) { return false; };
+  }
+
+  SECTION("Custom filter (search for test_file_50)") {
+    include = [](std::string_view object_name, uint64_t) {
+      return object_name.find("test_file_50") != std::string::npos;
+    };
+  }
+  SECTION("Custom filter (search for test_file_1*)") {
+    include = [](std::string_view object_name, uint64_t) {
+      return object_name.find("test_file_1") != std::string::npos;
+    };
+  }
+  SECTION("Custom filter (reject files over 50 bytes)") {
+    include = []([[maybe_unused]] std::string_view entry, uint64_t size) {
+      return size <= 50;
+    };
+  }
+
+  // Test collecting results with LsInclude predicate.
+  auto results = tiledb::VFSExperimental::ls_recursive_filter(
+      ctx, vfs, test.temp_dir_.to_string(), include);
+  std::erase_if(expected_results, [&include](const auto& object) {
+    return !include(object.first, object.second);
+  });
+  std::sort(results.begin(), results.end());
+  CHECK(results.size() == expected_results.size());
+  CHECK(expected_results == results);
+
+  // Test collecting results with LsCallback, writing data into ls_objects.
+  tiledb::VFSExperimental::ls_recursive(
+      ctx, vfs, test.temp_dir_.to_string(), cb);
+  std::sort(ls_objects.begin(), ls_objects.end());
+  CHECK(ls_objects.size() == expected_results.size());
+  CHECK(expected_results == ls_objects);
+}
+
+TEST_CASE("CPP API: Callback stops traversal", "[cppapi][vfs][ls-recursive]") {
+  using namespace tiledb::test;
+  S3Test s3_test({10, 50, 15});
+  if (!s3_test.is_supported()) {
+    return;
+  }
+  auto expected_results = s3_test.expected_results();
+
+  vfs_config cfg;
+  tiledb::Context ctx(tiledb::Config(&cfg.config));
+  tiledb::VFS vfs(ctx);
+
+  tiledb::VFSExperimental::LsObjects ls_objects;
+  size_t cb_count = GENERATE(1, 10, 11, 50);
+  auto cb = [&](std::string_view path, uint64_t size) {
+    // Always emplace to check the callback is not invoked more than `cb_count`.
+    ls_objects.emplace_back(path, size);
+    // Signal to stop traversal when we have seen `cb_count` objects.
+    if (ls_objects.size() == cb_count) {
+      return false;
+    }
+    return true;
+  };
+  tiledb::VFSExperimental::ls_recursive(
+      ctx, vfs, s3_test.temp_dir_.to_string(), cb);
+  expected_results.resize(cb_count);
+  CHECK(ls_objects.size() == cb_count);
+  CHECK(ls_objects == expected_results);
+}
+
+TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls-recursive]") {
+  using namespace tiledb::test;
+  S3Test s3_test({0});
+  if (!s3_test.is_supported()) {
+    return;
+  }
+
+  vfs_config cfg;
+  tiledb::Context ctx(tiledb::Config(&cfg.config));
+  tiledb::VFS vfs(ctx);
+
+  tiledb::VFSExperimental::LsInclude filter = [](std::string_view,
+                                                 uint64_t) -> bool {
+    throw std::runtime_error("Throwing filter");
+  };
+  auto path = s3_test.temp_dir_.to_string();
+
+  // If the test directory is empty the filter should not throw.
+  SECTION("Throwing filter with 0 objects should not throw") {
+    CHECK_NOTHROW(
+        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter));
+    CHECK_NOTHROW(
+        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter));
+  }
+  SECTION("Throwing filter with N objects should throw") {
+    vfs.touch(s3_test.temp_dir_.join_path("test_file").to_string());
+    CHECK_THROWS_AS(
+        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
+        std::runtime_error);
+    CHECK_THROWS_WITH(
+        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
+        Catch::Matchers::ContainsSubstring("Throwing filter"));
+    CHECK_THROWS_AS(
+        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter),
+        std::runtime_error);
+    CHECK_THROWS_WITH(
+        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter),
+        Catch::Matchers::ContainsSubstring("Throwing filter"));
+  }
+}
+
+TEST_CASE(
+    "CPP API: CallbackWrapperCPP construction validation",
+    "[ls-recursive][callback][wrapper]") {
+  tiledb::VFSExperimental::LsObjects data;
+  auto cb = [&](std::string_view, uint64_t) -> bool { return true; };
+  SECTION("Null callback") {
+    CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(nullptr));
+  }
+  SECTION("Valid callback") {
+    CHECK_NOTHROW(tiledb::VFSExperimental::CallbackWrapperCPP(cb));
+  }
+}
+
+TEST_CASE(
+    "CPP API: CallbackWrapperCPP operator() validation",
+    "[ls-recursive][callback][wrapper]") {
+  tiledb::VFSExperimental::LsObjects data;
+  auto cb = [&](std::string_view path, uint64_t object_size) -> bool {
+    if (object_size > 100) {
+      // Throw if object size is greater than 100 bytes.
+      throw std::runtime_error("Throwing callback");
+    } else if (!path.ends_with(".txt")) {
+      // Reject non-txt files.
+      return false;
+    }
+    data.emplace_back(path, object_size);
+    return true;
+  };
+  tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
+
+  SECTION("Callback return true accepts object") {
+    CHECK(wrapper("file.txt", 10) == true);
+    CHECK(data.size() == 1);
+  }
+  SECTION("Callback return false rejects object") {
+    CHECK(wrapper("some/dir/", 0) == false);
+    CHECK(data.empty());
+  }
+  SECTION("Callback exception is propagated") {
+    CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing callback");
   }
 }

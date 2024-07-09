@@ -41,7 +41,6 @@
 #include <vector>
 
 #include "constants.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 
 namespace tiledb {
@@ -103,11 +102,8 @@ uint64_t cell_num(const T* rect, unsigned dim_num) {
 template <
     class T,
     typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
-uint64_t cell_num(const T* rect, unsigned dim_num) {
-  assert(false);
-  (void)rect;
-  (void)dim_num;
-  return 0;
+uint64_t cell_num(const T*, unsigned) {
+  throw std::logic_error("Invalid call to `cell_num` for non-integral type");
 }
 
 /**

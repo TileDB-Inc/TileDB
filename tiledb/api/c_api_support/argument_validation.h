@@ -38,12 +38,14 @@
 
 namespace tiledb::api {
 
-class CAPIStatusException : public common::StatusException {
+class CAPIException : public common::StatusException {
  public:
-  explicit CAPIStatusException(const std::string& message)
+  explicit CAPIException(const std::string& message)
       : StatusException("C API", message) {
   }
 };
+// Legacy alias to forestall massive sudden code change
+using CAPIStatusException = CAPIException;
 
 /*
  * Validation functions
@@ -67,7 +69,22 @@ class CAPIStatusException : public common::StatusException {
  */
 inline void ensure_output_pointer_is_valid(void* p) {
   if (p == nullptr) {
-    throw CAPIStatusException("Invalid output pointer for object");
+    throw CAPIException("Invalid output pointer for object");
+  }
+}
+
+/**
+ * Ensure that the output pointer for a stride argument is null.
+ *
+ * The C API has arguments for the "stride" of a range, but does not support
+ * such arguments at the present time. This validation ensures that the argument
+ * is null.
+ *
+ * @param p The value of a `stride` argument to a C API function
+ */
+inline void ensure_unsupported_stride_is_null(const void* p) {
+  if (p != nullptr) {
+    throw CAPIException("Stride is currently unsupported");
   }
 }
 

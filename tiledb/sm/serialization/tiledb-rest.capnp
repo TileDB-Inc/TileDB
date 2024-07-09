@@ -71,6 +71,7 @@ struct Array {
 struct ArrayOpen {
   config @0 :Config;
   # Config
+
   queryType @1 :Text;
   # Query type to open the array for
 }
@@ -179,6 +180,9 @@ struct ArraySchemaEvolution {
 
     enumerationsToDrop @4 :List(Text);
     # Enumeration names to be dropped
+
+    enumerationsToExtend @5 :List(Enumeration);
+    # Enumerations to be extended.
 }
 
 struct Attribute {
@@ -772,6 +776,10 @@ struct Query {
 
     orderedDimLabelReader @20 :QueryReader;
     # orderedDimLabelReader contains data needed for dense dimension label reads.
+
+    channels @21 :List(QueryChannel);
+    # channels contains the list of channels (streams of data) within a read
+    # query. It always contains at least one element, the default channel.
 }
 
 struct NonEmptyDomain {
@@ -1199,9 +1207,31 @@ struct BufferedChunk {
   # the size in bytes of the intermediate chunk
 }
 
+struct ArrayDeleteFragmentsListRequest {
+  config @0 :Config;
+  # Config
+
+  entries @1 :List(Text);
+  # Fragment list to delete
+}
+
+struct ArrayDeleteFragmentsTimestampsRequest {
+  config @0 :Config;
+  # Config
+
+  startTimestamp @1 :UInt64;
+  # Start timestamp for the delete
+
+  endTimestamp @2 :UInt64;
+  # End timestamp for the delete
+}
+
 struct ArrayConsolidationRequest {
   config @0 :Config;
   # Config
+
+  fragments @1 :List(Text);
+  # Fragment list to consolidate
 }
 
 struct ArrayVacuumRequest {
@@ -1233,4 +1263,69 @@ struct LoadArraySchemaRequest {
 struct LoadArraySchemaResponse {
   schema @0 :ArraySchema;
   # The loaded ArraySchema
+}
+
+struct QueryPlanRequest {
+  config @0 :Config;
+  # Config
+
+  query @1 :Query;
+  # the query for which we request the plan
+}
+
+struct QueryPlanResponse {
+  queryLayout @0 :Text;
+  # query layout
+
+  strategyName @1 :Text;
+  # name of strategy used by the query
+
+  arrayType @2 :Text;
+  # type of array
+
+  attributeNames @3 :List(Text);
+  # names of attributes in the query
+
+  dimensionNames @4 :List(Text);
+  # names of dimensions in the query
+}
+
+struct ConsolidationPlanRequest {
+  config @0 :Config;
+  # Config
+
+  fragmentSize @1 :UInt64;
+  # Maximum fragment size
+}
+
+struct ConsolidationPlanResponse {
+  fragmentUrisPerNode @0 :List(List(Text));
+  # The uris for each node of the consolidation plan
+}
+
+struct QueryChannel {
+  # structure representing a query channel, that is a stream of data within
+  # a TileDB query. Such channels can be generated for the purpose of avoiding
+  # processing result items multiple times in more complex queries such as e.g.
+  # grouping queries.
+
+  default @0 :Bool;
+  # True if a channel is the default query channel
+
+  aggregates @1 :List(Aggregate);
+  # a list of the aggregate operations applied on this channel
+}
+
+struct Aggregate {
+  # structure representing a query aggregate operation
+
+  outputFieldName @0 :Text;
+  # name of the result query buffers
+
+  inputFieldName @1 :Text;
+  # name of the input field the aggregate is applied on
+
+  name @2 :Text;
+  # the name of aggregate, e.g. COUNT, MEAN, SUM used for constructing the
+  # correct object during deserialization
 }
