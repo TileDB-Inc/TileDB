@@ -168,3 +168,13 @@ const Range& NDRectangle::get_range_for_name(const std::string& name) const {
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::NDRectangle& ndr) {
+  os << " - NDRectangle ###" << std::endl;
+  for (uint32_t i = 0; i < ndr.get_ndranges().size(); ++i) {
+    auto dtype = ndr.domain()->dimension_ptr(i)->type();
+    os << "  - " << range_str(ndr.get_range(i), dtype) << std::endl;
+  }
+
+  return os;
+}

@@ -117,9 +117,8 @@ struct tiledb_domain_handle_t
     return b;
   }
 
-  void dump(FILE* out) const {
-    domain_->dump(out);
-  }
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_domain_handle_t& domain);
 };
 
 /**

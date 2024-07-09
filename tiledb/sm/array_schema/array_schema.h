@@ -214,7 +214,10 @@ class ArraySchema {
   }
 
   /** Returns the attributes. */
-  const tdb::pmr::vector<shared_ptr<const Attribute>>& attributes() const;
+  inline const tdb::pmr::vector<shared_ptr<const Attribute>>& attributes()
+      const {
+    return attributes_;
+  }
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -298,9 +301,6 @@ class ArraySchema {
 
   /** Returns the number of dimensions. */
   dimension_size_type dim_num() const;
-
-  /** Dumps the array schema in ASCII format in the selected output. */
-  void dump(FILE* out) const;
 
   /**
    * Checks if the array schema has a attribute of the given name.
@@ -588,6 +588,19 @@ class ArraySchema {
       std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
           std::nullopt);
 
+  /** Returns the enumeration map. */
+  inline const tdb::pmr::
+      unordered_map<std::string, shared_ptr<const Enumeration>>&
+      enumeration_map() const {
+    return enumeration_map_;
+  }
+
+  /** Returns the dimension labels. */
+  inline const tdb::pmr::vector<shared_ptr<const DimensionLabel>>&
+  dimension_labels() const {
+    return dimension_labels_;
+  }
+
   /**
    * Expand the array current domain
    *
@@ -767,5 +780,9 @@ class ArraySchema {
 };
 
 }  // namespace tiledb::sm
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::ArraySchema& schema);
 
 #endif  // TILEDB_ARRAY_SCHEMA_H

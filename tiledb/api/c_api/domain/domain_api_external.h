@@ -32,6 +32,7 @@
 #include "../context/context_api_external.h"
 #include "../datatype/datatype_api_external.h"
 #include "../dimension/dimension_api_external.h"
+#include "../string/string_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -226,6 +227,30 @@ TILEDB_EXPORT int32_t tiledb_domain_dump(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
     FILE* out) TILEDB_NOEXCEPT;
+
+/**
+ * Dumps the contents of a domain in ASCII form to the selected string output.
+ *
+ * The output string handle must be freed by the user after use.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_domain_dump_str(ctx, domain, &tdb_string);
+ * // Use the string
+ * tiledb_string_free(&tdb_string);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param domain The domain.
+ * @param out The output string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_domain_dump_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    tiledb_string_t** out) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

@@ -559,16 +559,6 @@ FilterPipeline FilterPipeline::deserialize(
   return FilterPipeline(max_chunk_size, filters);
 }
 
-void FilterPipeline::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  for (const auto& filter : filters_) {
-    fprintf(out, "\n  > ");
-    filter->dump(out);
-  }
-}
-
 void FilterPipeline::ensure_compatible(
     const Filter& first, const Filter& second, Datatype first_input_type) {
   auto first_output_type = first.output_datatype(first_input_type);
@@ -586,6 +576,10 @@ bool FilterPipeline::has_filter(const FilterType& filter_type) const {
       return true;
   }
   return false;
+}
+
+std::vector<shared_ptr<Filter>> FilterPipeline::filters() const {
+  return filters_;
 }
 
 void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
@@ -657,3 +651,12 @@ bool FilterPipeline::use_tile_chunking(
 
 }  // namespace sm
 }  // namespace tiledb
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FilterPipeline& fp) {
+  for (const auto& filter : fp.filters()) {
+    os << std::endl << "  > ";
+    os << *filter;
+  }
+  return os;
+}

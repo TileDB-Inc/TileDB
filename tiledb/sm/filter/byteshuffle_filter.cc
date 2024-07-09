@@ -51,11 +51,9 @@ ByteshuffleFilter* ByteshuffleFilter::clone_impl() const {
   return tdb_new(ByteshuffleFilter, filter_data_type_);
 }
 
-void ByteshuffleFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "ByteShuffle");
+std::ostream& ByteshuffleFilter::output(std::ostream& os) const {
+  os << "ByteShuffle";
+  return os;
 }
 
 void ByteshuffleFilter::run_forward(

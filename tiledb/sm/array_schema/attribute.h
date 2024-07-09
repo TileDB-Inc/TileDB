@@ -239,9 +239,6 @@ class Attribute {
    */
   static Attribute deserialize(Deserializer& deserializer, uint32_t version);
 
-  /** Dumps the attribute contents in ASCII form in the selected output. */
-  void dump(FILE* out) const;
-
   /**
    * Serializes the object members into a binary buffer.
    *
@@ -329,12 +326,12 @@ class Attribute {
 
   /** Sets the default fill value. */
   void set_default_fill_value();
-
-  /** Returns the fill value in string form. */
-  std::string fill_value_str() const;
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
 #endif  // TILEDB_ATTRIBUTE_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a);

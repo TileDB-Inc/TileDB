@@ -149,13 +149,6 @@ class CurrentDomain {
   }
 
   /**
-   * Dump a textual representation of the CurrentDomain to the FILE
-   *
-   * @param out A file pointer to write to. If out is nullptr, use stdout
-   */
-  void dump(FILE* out) const;
-
-  /**
    * Sets a NDRectangle to this current domain and adjusts its type to reflect
    * that. Throws if the current domain is not empty.
    *
@@ -238,5 +231,8 @@ class CurrentDomain {
 };
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::CurrentDomain& current_domain);
 
 #endif  // TILEDB_CURRENT_DOMAIN_H

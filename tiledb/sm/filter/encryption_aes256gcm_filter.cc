@@ -63,11 +63,14 @@ EncryptionAES256GCMFilter* EncryptionAES256GCMFilter::clone_impl() const {
   return clone;
 }
 
-void EncryptionAES256GCMFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
+std::ostream& EncryptionAES256GCMFilter::output(std::ostream& os) const {
+  os << "EncryptionAES256GCM";
+  return os;
+}
 
-  fprintf(out, "EncryptionAES256GCM");
+Datatype EncryptionAES256GCMFilter::output_datatype(Datatype) const {
+  /* encryption gives us meaningless bits with overwhelming probability */
+  return Datatype::BLOB;
 }
 
 void EncryptionAES256GCMFilter::run_forward(

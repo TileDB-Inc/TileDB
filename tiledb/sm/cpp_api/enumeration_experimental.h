@@ -199,6 +199,14 @@ class Enumeration {
   }
 
   /**
+   * Get the context of the enumeration
+   * @return Context The context of the enumeration.
+   */
+  Context context() const {
+    return ctx_;
+  }
+
+  /**
    * Get the type of the enumeration
    *
    * @return tiledb_datatype_t The datatype of the enumeration values.
@@ -304,16 +312,6 @@ class Enumeration {
     }
 
     return ret;
-  }
-
-  /**
-   * Dump a string representation of the Enumeration to the given FILE pointer.
-   *
-   * @param out A FILE pointer to write to. stdout is used if nullptr is passed.
-   */
-  void dump(FILE* out = nullptr) const {
-    ctx_.get().handle_error(tiledb_enumeration_dump(
-        ctx_.get().ptr().get(), enumeration_.get(), out));
   }
 
   /* ********************************* */
@@ -497,6 +495,24 @@ class Enumeration {
   /** Pointer to the TileDB C Enumeration object. */
   std::shared_ptr<tiledb_enumeration_t> enumeration_;
 };
+
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+/** Converts the array schema into a string representation. */
+inline std::ostream& operator<<(
+    std::ostream& os, const Enumeration& enumeration) {
+  const auto& ctx = enumeration.context();
+  tiledb_string_t* tdb_string;
+
+  ctx.handle_error(tiledb_enumeration_dump_str(
+      ctx.ptr().get(), enumeration.ptr().get(), &tdb_string));
+
+  os << impl::convert_to_string(&tdb_string).value();
+
+  return os;
+}
 
 }  // namespace tiledb
 
