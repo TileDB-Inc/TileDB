@@ -37,6 +37,7 @@
 #include "tiledb/common/memory.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -833,6 +834,37 @@ Status Query::process() {
         }));
 
     condition_->rewrite_enumeration_conditions(array_schema());
+  }
+
+  if (type_ == QueryType::READ) {
+    auto cd = array_schema_->get_current_domain();
+    if (!cd->empty()) {
+      // See if any data was written outside of the current domain.
+      bool all_ned_contained_in_current_domain = true;
+      for (auto& meta : fragment_metadata_) {
+        if (!cd->includes(meta->non_empty_domain())) {
+          all_ned_contained_in_current_domain = false;
+        }
+      }
+
+      for (Domain::dimension_size_type d = 0; d < array_schema_->dim_num();
+           d++) {
+        if (subarray_.is_set(d)) {
+          // Make sure all ranges are contained in the current domain.
+          for (auto& range : subarray_.ranges_for_dim(d)) {
+            if (!cd->includes(d, range)) {
+              throw QueryException(
+                  "A range was set outside of the current domain.");
+            }
+          }
+        } else if (!all_ned_contained_in_current_domain) {
+          // Add ranges to make sure all data read is contained in the current
+          // domain.
+          auto range_copy = cd->ndrectangle()->get_range(d);
+          subarray_.add_range(d, std::move(range_copy));
+        }
+      }
+    }
   }
 
   // Update query status.

@@ -50,6 +50,15 @@ class Domain;
 /** Defines an array current domain */
 class CurrentDomain {
  public:
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -186,6 +195,16 @@ class CurrentDomain {
    * @return True if the current domain includes the non empty domain
    */
   bool includes(const NDRange& non_empty_domain) const;
+
+  /**
+   * Checks if this current domain fully contains the range for a specific
+   * dimension.
+   *
+   * @param d Dimension index to check for.
+   * @param range Range to validate.
+   * @return True if the range is included for the specific dimension
+   */
+  bool includes(const dimension_size_type d, const Range& range) const;
 
   /**
    * Perform various checks to ensure the current domain is coherent with the
