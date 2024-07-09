@@ -72,7 +72,7 @@ class CurrentDomainFx {
   shared_ptr<WriterTile> serialize_to_tile(
       shared_ptr<CurrentDomain> current_domain);
 
-  shared_ptr<ArraySchema> create_schema();
+  shared_ptr<ArraySchema> create_schema(bool dense = false);
 
   shared_ptr<ArraySchema> create_schema_var();
 
@@ -212,9 +212,12 @@ shared_ptr<WriterTile> CurrentDomainFx<T>::serialize_to_tile(
 }
 
 template <class T>
-shared_ptr<ArraySchema> CurrentDomainFx<T>::create_schema() {
-  auto schema =
-      make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
+shared_ptr<ArraySchema> CurrentDomainFx<T>::create_schema(bool dense) {
+  auto type = ArrayType::SPARSE;
+  if (dense) {
+    type = ArrayType::DENSE;
+  }
+  auto schema = make_shared<ArraySchema>(HERE(), type, memory_tracker_);
 
   auto dom = make_shared<Domain>(HERE(), memory_tracker_);
 
@@ -281,6 +284,31 @@ template <class T>
 shared_ptr<ArraySchema> CurrentDomainFx<T>::get_array_schema_latest() {
   auto array_dir = get_array_directory();
   return array_dir->load_array_schema_latest(enc_key_, memory_tracker_);
+}
+
+TEST_CASE_METHOD(
+    CurrentDomainFx<int32_t>,
+    "Setting CurrentDomain not allowed on Dense",
+    "[current_domain][dense]") {
+  auto schema = create_schema(true);
+  auto current_domain = create_current_domain({}, schema, nullptr, true);
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Setting a current domain on a TileDB dense array is not supported.");
+
+  REQUIRE_THROWS_WITH(schema->set_current_domain(current_domain), matcher);
+
+  Range r;
+  std::vector<int32_t> rdata = {1, 1000};
+  r = Range(rdata.data(), 2 * sizeof(int32_t));
+  current_domain = create_current_domain({r, r}, schema, nullptr, false);
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
+  ase->expand_current_domain(current_domain);
+
+  auto matcher2 = Catch::Matchers::ContainsSubstring(
+      "Expanding the current domain on a TileDB dense array is not supported.");
+
+  REQUIRE_THROWS_WITH(ase->evolve_schema(schema), matcher2);
 }
 
 TEST_CASE_METHOD(
