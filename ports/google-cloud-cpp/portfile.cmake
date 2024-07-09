@@ -8,6 +8,7 @@ vcpkg_from_github(
     HEAD_REF main
     PATCHES
         support_absl_cxx17.patch
+        remove_gmock.patch
 )
 
 if ("grpc-common" IN_LIST FEATURES)
