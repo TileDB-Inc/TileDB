@@ -51,27 +51,25 @@ enum class CurrentDomainType : uint8_t {
 };
 
 /** Returns the string representation of the input current domain type. */
-inline const std::string& current_domain_type_str(
+inline const std::string current_domain_type_str(
     CurrentDomainType current_domain_type) {
   switch (current_domain_type) {
     case CurrentDomainType::NDRECTANGLE:
       return constants::current_domain_ndrectangle_str;
     default:
-      return constants::empty_str;
+      return std::to_string(static_cast<uint8_t>(current_domain_type));
   }
 }
 
 /** Returns the current domain type given a string representation. */
-inline Status current_domain_type_enum(
-    const std::string& current_domain_type_str,
-    CurrentDomainType* current_domain_type) {
-  if (current_domain_type_str == constants::current_domain_ndrectangle_str)
-    *current_domain_type = CurrentDomainType::NDRECTANGLE;
-  else {
-    return Status_Error(
-        "Invalid CurrentDomain type " + current_domain_type_str);
+inline CurrentDomainType current_domain_type_enum(
+    const std::string& current_domain_type_str) {
+  if (current_domain_type_str == constants::current_domain_ndrectangle_str) {
+    return CurrentDomainType::NDRECTANGLE;
   }
-  return Status::Ok();
+
+  throw std::logic_error(
+      "Invalid CurrentDomain type " + current_domain_type_str);
 }
 
 }  // namespace sm
