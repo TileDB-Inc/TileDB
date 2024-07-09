@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,12 +45,10 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_coords.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 
@@ -628,7 +626,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   void end_iteration(std::vector<ResultTilesList>& result_tiles);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SPARSE_GLOBAL_ORDER_READER

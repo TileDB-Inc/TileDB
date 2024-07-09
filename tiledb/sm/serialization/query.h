@@ -52,6 +52,7 @@ namespace tiledb::sm {
 class Array;
 class Buffer;
 class BufferList;
+class ContextResources;
 class Query;
 class GlobalOrderWriter;
 class UnorderedWriter;
@@ -142,7 +143,7 @@ Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager,
+    ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker);
 
 /**
@@ -277,6 +278,25 @@ Status query_from_capnp(
     Query* const query,
     ThreadPool* compute_tp,
     const bool allocate_buffers);
+
+/**
+ * Convert a list of Range objects (one dimension) into capnp message
+ *
+ * @param ranges List of ranges per dimension
+ * @param range_builder capnp builder
+ */
+void range_buffers_to_capnp(
+    const std::vector<Range>& ranges,
+    capnp::SubarrayRanges::Builder& range_builder);
+
+/**
+ * Deserialize a list of Range objects (one dimension) from capnp message
+ *
+ * @param range_reader capnp reader
+ * @return The list of ranges
+ */
+std::vector<Range> range_buffers_from_capnp(
+    capnp::SubarrayRanges::Reader& range_reader);
 
 #endif
 

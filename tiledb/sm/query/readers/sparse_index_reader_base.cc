@@ -51,9 +51,9 @@
 
 namespace tiledb::sm {
 
-class SparseIndexReaderBaseStatusException : public StatusException {
+class SparseIndexReaderBaseException : public StatusException {
  public:
-  explicit SparseIndexReaderBaseStatusException(const std::string& message)
+  explicit SparseIndexReaderBaseException(const std::string& message)
       : StatusException("SparseIndexReaderBase", message) {
   }
 };
@@ -78,14 +78,9 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           buffers_.count(constants::delete_timestamps) != 0)
     , partial_tile_offsets_loading_(false) {
   // Sanity checks
-  if (storage_manager_ == nullptr) {
-    throw SparseIndexReaderBaseStatusException(
-        "Cannot initialize reader; Storage manager not set");
-  }
-
   if (!params.skip_checks_serialization() && buffers_.empty() &&
       aggregate_buffers_.empty()) {
-    throw SparseIndexReaderBaseStatusException(
+    throw SparseIndexReaderBaseException(
         "Cannot initialize reader; Buffers not set");
   }
 
@@ -96,7 +91,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
   offsets_format_mode_ =
       config_.get<std::string>("sm.var_offsets.mode", Config::must_find);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    throw SparseIndexReaderBaseStatusException(
+    throw SparseIndexReaderBaseException(
         "Cannot initialize reader; Unsupported offsets format in "
         "configuration");
   }
@@ -108,7 +103,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
   offsets_bitsize_ =
       config_.get<uint32_t>("sm.var_offsets.bitsize", Config::must_find);
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    throw SparseIndexReaderBaseStatusException(
+    throw SparseIndexReaderBaseException(
         "Cannot initialize reader; Unsupported offsets bitsize in "
         "configuration");
   }
@@ -389,7 +384,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   if (subarray_.is_set()) {
     // At this point, full memory budget is available.
     if (!array_memory_tracker_->set_budget(memory_budget_.total_budget())) {
-      throw SparseIndexReaderBaseStatusException(
+      throw SparseIndexReaderBaseException(
           "Cannot set array memory budget, already over limit.");
     }
 
@@ -454,7 +449,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   // Set a limit to the array memory.
   if (!array_memory_tracker_->set_budget(
           memory_budget_.total_budget() * memory_budget_.ratio_array_data())) {
-    throw SparseIndexReaderBaseStatusException(
+    throw SparseIndexReaderBaseException(
         "Cannot set array memory budget, already over limit.");
   }
 

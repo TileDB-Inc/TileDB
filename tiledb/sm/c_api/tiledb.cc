@@ -3803,7 +3803,7 @@ int32_t tiledb_deserialize_query_and_array(
       buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       *(*array)->array_,
-      ctx->storage_manager(),
+      ctx->resources(),
       memory_tracker));
 
   // Create query struct

@@ -2280,7 +2280,7 @@ Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager,
+    ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
@@ -2296,11 +2296,7 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         array_from_capnp(
-            query_reader.getArray(),
-            storage_manager->resources(),
-            &array,
-            false,
-            memory_tracker);
+            query_reader.getArray(), resources, &array, false, memory_tracker);
         break;
       }
       case SerializationType::CAPNP: {
@@ -2310,8 +2306,7 @@ Status array_from_query_deserialize(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
         // Set traversal limit from config
-        uint64_t limit = storage_manager->resources()
-                             .config()
+        uint64_t limit = resources.config()
                              .get<uint64_t>("rest.capnp_traversal_limit")
                              .value();
         ::capnp::ReaderOptions readerOptions;
@@ -2329,11 +2324,7 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
         array_from_capnp(
-            query_reader.getArray(),
-            storage_manager->resources(),
-            &array,
-            false,
-            memory_tracker);
+            query_reader.getArray(), resources, &array, false, memory_tracker);
         break;
       }
       default:
@@ -3198,7 +3189,7 @@ Status array_from_query_deserialize(
     const Buffer&,
     SerializationType,
     Array&,
-    StorageManager*,
+    ContextResources&,
     shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));

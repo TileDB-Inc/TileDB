@@ -102,7 +102,7 @@ void StrategyBase::get_dim_attr_stats() const {
   }
 }
 
-void StrategyBase::throw_if_cancellation_requested() const {
+void StrategyBase::throw_if_cancelled() const {
   if (storage_manager_->cancellation_in_progress()) {
     throw QueryException("Query was cancelled");
   }

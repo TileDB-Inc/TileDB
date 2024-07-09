@@ -169,6 +169,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
+  src/unit-current-domain-rest.cc
   src/unit-dense-reader.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
@@ -207,6 +208,8 @@ if (TILEDB_CPP_API)
     src/cpp-integration-filter-pipeline.cc
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
+    src/test-cppapi-ndrectangle.cc
+    src/test-cppapi-current-domain.cc
     src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc

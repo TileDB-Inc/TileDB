@@ -38,6 +38,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/ndrectangle.h"
@@ -52,7 +53,6 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
@@ -844,6 +844,15 @@ void FragmentMetadata::load(
 void FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto timer_se = resources_->stats().start_timer("write_store_frag_meta");
 
+  // Make sure the data fits in the current domain before we commit to disk.
+  auto cd = array_schema_->get_current_domain();
+  if (!cd->empty()) {
+    if (!cd->includes(non_empty_domain_)) {
+      throw FragmentMetadataStatusException(
+          "Cells are written outside of the defined current domain.");
+    }
+  }
+
   if (version_ < 7) {
     auto fragment_metadata_uri =
         fragment_uri_.join_path(constants::fragment_metadata_filename);
@@ -1350,7 +1359,7 @@ URI FragmentMetadata::validity_uri(const std::string& name) const {
       encoded_name + "_validity" + constants::file_suffix);
 }
 
-const std::string& FragmentMetadata::array_schema_name() {
+const std::string& FragmentMetadata::array_schema_name() const {
   return array_schema_name_;
 }
 

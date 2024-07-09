@@ -6,7 +6,7 @@ The Dictionary Encoding filter compresses losslessly string data by creating a s
 As an example in pseudocode:
 
   ```
-  input_data = "HG543232", "HG543232", "HG543232", "HG54", "HG54", "A", "HG543232", "HG54"]
+  input_data = ["HG543232", "HG543232", "HG543232", "HG54", "HG54", "A", "HG543232", "HG54"]
   # apply dictionary encoding ->
   dictionary = ["HG543232", "HG54", "A"]
   output_data = [0, 0, 0, 1, 1, 2, 0, 1]

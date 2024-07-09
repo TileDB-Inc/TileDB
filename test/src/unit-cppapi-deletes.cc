@@ -59,7 +59,6 @@ struct DeletesFx {
   VFSTestSetup vfs_test_setup_;
   Context ctx_;
   VFS vfs_;
-  sm::StorageManager* sm_;
 
   const std::string array_name_;
   // to be used for direct VFS operations in [rest] testcases where array_name_
@@ -126,7 +125,6 @@ DeletesFx::DeletesFx()
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
   vfs_ = VFS(ctx_);
-  sm_ = ctx_.ptr().get()->storage_manager();
 }
 
 void DeletesFx::set_purge_deleted_cells() {
@@ -136,7 +134,6 @@ void DeletesFx::set_purge_deleted_cells() {
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
   vfs_ = VFS(ctx_);
-  sm_ = ctx_.ptr().get()->storage_manager();
 }
 
 void DeletesFx::set_legacy() {
@@ -147,7 +144,6 @@ void DeletesFx::set_legacy() {
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
   vfs_ = VFS(ctx_);
-  sm_ = ctx_.ptr().get()->storage_manager();
 }
 
 void DeletesFx::create_dir(const std::string& path) {
@@ -184,7 +180,6 @@ void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
   vfs_ = VFS(ctx_);
-  sm_ = ctx_.ptr().get()->storage_manager();
 
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);

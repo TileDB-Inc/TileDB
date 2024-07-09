@@ -44,7 +44,6 @@
 #include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/apply_with_type.h"
 
@@ -56,9 +55,9 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
-class DenseReaderStatusException : public StatusException {
+class DenseReaderException : public StatusException {
  public:
-  explicit DenseReaderStatusException(const std::string& message)
+  explicit DenseReaderException(const std::string& message)
       : StatusException("DenseReader", message) {
   }
 };
@@ -78,19 +77,14 @@ DenseReader::DenseReader(
   elements_mode_ = false;
 
   // Sanity checks.
-  if (storage_manager_ == nullptr) {
-    throw DenseReaderStatusException(
-        "Cannot initialize dense reader; Storage manager not set");
-  }
-
   if (!params.skip_checks_serialization() && buffers_.empty() &&
       aggregate_buffers_.empty()) {
-    throw DenseReaderStatusException(
+    throw DenseReaderException(
         "Cannot initialize dense reader; Buffers not set");
   }
 
   if (!params.skip_checks_serialization() && !subarray_.is_set()) {
-    throw DenseReaderStatusException(
+    throw DenseReaderException(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
 
@@ -134,8 +128,7 @@ void DenseReader::refresh_config() {
 
   // Set the memory budget for the array
   if (!array_memory_tracker_->set_budget(memory_budget_)) {
-    throw DenseReaderStatusException(
-        "Memory budget is too small to open array");
+    throw DenseReaderException("Memory budget is too small to open array");
   }
 }
 
@@ -584,7 +577,7 @@ void DenseReader::init_read_state() {
   // Check subarray.
   if (subarray_.layout() == Layout::GLOBAL_ORDER &&
       subarray_.range_num() != 1) {
-    throw DenseReaderStatusException(
+    throw DenseReaderException(
         "Cannot initialize read state; Multi-range subarrays do not support "
         "global order");
   }
@@ -594,7 +587,7 @@ void DenseReader::init_read_state() {
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    throw DenseReaderStatusException(
+    throw DenseReaderException(
         "Cannot initialize reader; Unsupported offsets format in "
         "configuration");
   }
@@ -604,17 +597,17 @@ void DenseReader::init_read_state() {
            .get<bool>(
                "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
            .ok()) {
-    throw DenseReaderStatusException("Cannot get setting");
+    throw DenseReaderException("Cannot get setting");
   }
   assert(found);
 
   if (!config_
            .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
            .ok()) {
-    throw DenseReaderStatusException("Cannot get setting");
+    throw DenseReaderException("Cannot get setting");
   }
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    throw DenseReaderStatusException(
+    throw DenseReaderException(
         "Cannot initialize reader; Unsupported offsets bitsize in "
         "configuration");
   }
@@ -623,12 +616,12 @@ void DenseReader::init_read_state() {
   if (!config_
            .get<bool>("sm.query.dense.qc_coords_mode", &qc_coords_mode_, &found)
            .ok()) {
-    throw DenseReaderStatusException("Cannot get setting");
+    throw DenseReaderException("Cannot get setting");
   }
   assert(found);
 
   if (qc_coords_mode_ && !condition_.has_value()) {
-    throw DenseReaderStatusException(
+    throw DenseReaderException(
         "sm.query.dense.qc_coords_mode requires a query condition");
   }
 
@@ -656,14 +649,14 @@ void DenseReader::init_read_state() {
         if (!read_state_.partitioner_
                  .set_result_budget(attr_name.c_str(), *buffer_size)
                  .ok()) {
-          throw DenseReaderStatusException("Cannot set result budget");
+          throw DenseReaderException("Cannot set result budget");
         }
       } else {
         if (!read_state_.partitioner_
                  .set_result_budget_nullable(
                      attr_name.c_str(), *buffer_size, *buffer_validity_size)
                  .ok()) {
-          throw DenseReaderStatusException("Cannot set result budget");
+          throw DenseReaderException("Cannot set result budget");
         }
       }
     } else {
@@ -672,7 +665,7 @@ void DenseReader::init_read_state() {
                  .set_result_budget(
                      attr_name.c_str(), *buffer_size, *buffer_var_size)
                  .ok()) {
-          throw DenseReaderStatusException("Cannot set result budget");
+          throw DenseReaderException("Cannot set result budget");
         }
       } else {
         if (!read_state_.partitioner_
@@ -682,7 +675,7 @@ void DenseReader::init_read_state() {
                      *buffer_var_size,
                      *buffer_validity_size)
                  .ok()) {
-          throw DenseReaderStatusException("Cannot set result budget");
+          throw DenseReaderException("Cannot set result budget");
         }
       }
     }
@@ -943,7 +936,7 @@ DenseReader::compute_result_space_tiles(
 
       // If a single tile doesn't fit in the available memory, we can't proceed.
       if (total_memory > available_memory) {
-        throw DenseReaderStatusException(
+        throw DenseReaderException(
             "Cannot process a single tile, increase memory budget");
       }
     }
@@ -960,7 +953,7 @@ DenseReader::compute_result_space_tiles(
 
     // If a single tile doesn't fit in the available memory, we can't proceed.
     if (total_memory_condition > available_memory) {
-      throw DenseReaderStatusException(
+      throw DenseReaderException(
           "Cannot process a single tile because of query condition, increase "
           "memory budget");
     }
@@ -2282,7 +2275,7 @@ void DenseReader::fill_dense_coords_row_col(
   // Iterate over all coordinates, retrieved in cell slabs.
   CellSlabIter<T> iter(&subarray);
   if (!iter.begin().ok()) {
-    throw DenseReaderStatusException("Cannot begin iteration");
+    throw DenseReaderException("Cannot begin iteration");
   }
   while (!iter.end()) {
     auto cell_slab = iter.cell_slab();
