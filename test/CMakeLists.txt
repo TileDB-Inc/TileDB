@@ -206,6 +206,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/cpp-integration-filter-pipeline.cc
+    src/cpp-integration-rest-schema-evolution.cc
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
     src/test-cppapi-ndrectangle.cc
