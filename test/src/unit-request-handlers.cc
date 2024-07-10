@@ -75,7 +75,11 @@ struct HandleLoadArraySchemaRequestFx : RequestHandlerFx {
   }
 
   virtual shared_ptr<ArraySchema> create_schema() override;
-  shared_ptr<ArraySchema> call_handler(
+
+  std::tuple<
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+  call_handler(
       serialization::LoadArraySchemaRequest req, SerializationType stype);
 
   shared_ptr<const Enumeration> create_string_enumeration(
@@ -121,8 +125,9 @@ TEST_CASE_METHOD(
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
-  auto schema =
+  auto schema_response =
       call_handler(serialization::LoadArraySchemaRequest(false), stype);
+  auto schema = std::get<0>(schema_response);
   REQUIRE(schema->has_enumeration("enmr"));
   REQUIRE(schema->get_loaded_enumeration_names().size() == 0);
 }
@@ -134,8 +139,9 @@ TEST_CASE_METHOD(
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
-  auto schema =
+  auto schema_response =
       call_handler(serialization::LoadArraySchemaRequest(true), stype);
+  auto schema = std::get<0>(schema_response);
   REQUIRE(schema->has_enumeration("enmr"));
   REQUIRE(schema->get_loaded_enumeration_names().size() == 1);
   REQUIRE(schema->get_loaded_enumeration_names()[0] == "enmr");
@@ -429,7 +435,10 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   return schema;
 }
 
-shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::call_handler(
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+HandleLoadArraySchemaRequestFx::call_handler(
     serialization::LoadArraySchemaRequest req, SerializationType stype) {
   // If this looks weird, its because we're using the public C++ API to create
   // these objets instead of the internal APIs elsewhere in this test suite.

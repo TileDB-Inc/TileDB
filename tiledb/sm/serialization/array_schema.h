@@ -208,11 +208,12 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType serialization_type, const Buffer& data);
 
 void serialize_load_array_schema_response(
-    const ArraySchema& schema,
-    SerializationType serialization_type,
-    Buffer& data);
+    const Array& schema, SerializationType serialization_type, Buffer& data);
 
-shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+deserialize_load_array_schema_response(
     SerializationType serialization_type,
     const Buffer& data,
     shared_ptr<MemoryTracker> memory_tracker);

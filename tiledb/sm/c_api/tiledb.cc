@@ -504,9 +504,9 @@ int32_t tiledb_array_schema_load(
   if (uri.is_tiledb()) {
     auto& rest_client = ctx->context().rest_client();
     try {
-      auto array_schema_rest = rest_client.post_array_schema_from_rest(
+      auto array_schema_response = rest_client.post_array_schema_from_rest(
           ctx->resources().config(), uri, 0, UINT64_MAX, incl_enmrs);
-      (*array_schema)->array_schema_ = array_schema_rest;
+      (*array_schema)->array_schema_ = std::get<0>(array_schema_response);
     } catch (...) {
       delete *array_schema;
       throw;
@@ -4369,7 +4369,7 @@ capi_return_t tiledb_handle_load_array_schema_request(
   }
 
   tiledb::sm::serialization::serialize_load_array_schema_response(
-      array->array_->array_schema_latest(),
+      *array->array_,
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       response->buffer());
 

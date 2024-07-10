@@ -289,7 +289,10 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
           serialization_type_, returned_data, memory_tracker_)};
 }
 
-shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+RestClient::post_array_schema_from_rest(
     const Config& config,
     const URI& uri,
     uint64_t timestamp_start,

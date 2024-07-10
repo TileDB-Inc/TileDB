@@ -552,10 +552,14 @@ Status Array::open(
             "Cannot open array; remote array with no REST client.");
       }
       if (!use_refactored_array_open()) {
-        auto&& [st, array_schema_latest] =
-            rest_client->get_array_schema_from_rest(array_uri_);
+        auto array_schema_response = rest_client->post_array_schema_from_rest(
+            config_,
+            array_uri_,
+            this->timestamp_start(),
+            timestamp_end_opened_at());
         throw_if_not_ok(st);
-        set_array_schema_latest(array_schema_latest.value());
+        set_array_schema_latest(std::get<0>(array_schema_response));
+        set_array_schemas_all(std::move(std::get<1>(array_schema_response)));
       } else {
         rest_client->post_array_from_rest(array_uri_, resources_, this);
       }

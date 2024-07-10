@@ -17,8 +17,9 @@ TEST_CASE(
   auto array_uri = vfs_test_setup.array_uri("schema_evolution_array");
 
   auto config = vfs_test_setup.ctx().config();
-  std::string qv3 = GENERATE("false"); // TODO: Add true.
+  std::string qv3 = GENERATE("true", "false");
   config.set("rest.use_refactored_array_open_and_query_submit", qv3);
+  INFO("Using rest.use_refactored_array_open_and_query_submit: " << qv3);
   vfs_test_setup.update_config(config.ptr().get());
   auto ctx = vfs_test_setup.ctx();
 

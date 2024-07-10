@@ -1263,6 +1263,9 @@ struct LoadArraySchemaRequest {
 struct LoadArraySchemaResponse {
   schema @0 :ArraySchema;
   # The loaded ArraySchema
+
+  arraySchemasAll @1 :Map(Text, ArraySchema);
+  # map of all Array Schemas
 }
 
 struct QueryPlanRequest {

@@ -118,7 +118,10 @@ class RestClient {
    * @param uri The Array URI to load the schema from.
    * @return shared_ptr<ArraySchema> The loaded array schema.
    */
-  shared_ptr<ArraySchema> post_array_schema_from_rest(
+  std::tuple<
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+  post_array_schema_from_rest(
       const Config& config,
       const URI& uri,
       uint64_t timestamp_start,
