@@ -387,7 +387,10 @@ Status Array::open_without_fragments(
       }
       if (!use_refactored_array_open()) {
         auto array_schema_response = rest_client->post_array_schema_from_rest(
-            config_, array_uri_, timestamp_start(), timestamp_end_opened_at());
+            config_,
+            array_uri_,
+            array_dir_timestamp_start_,
+            array_dir_timestamp_end_);
         set_array_schema_latest(std::get<0>(array_schema_response));
         set_array_schemas_all(std::move(std::get<1>(array_schema_response)));
       } else {
@@ -550,9 +553,8 @@ Status Array::open(
         auto array_schema_response = rest_client->post_array_schema_from_rest(
             config_,
             array_uri_,
-            this->timestamp_start(),
-            timestamp_end_opened_at());
-        throw_if_not_ok(st);
+            array_dir_timestamp_start_,
+            array_dir_timestamp_end_);
         set_array_schema_latest(std::get<0>(array_schema_response));
         set_array_schemas_all(std::move(std::get<1>(array_schema_response)));
       } else {
