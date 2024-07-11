@@ -34,6 +34,7 @@
 #include "../../../c_api_test_support/testsupport_capi_datatype.h"
 #include "../../filter_list/filter_list_api_internal.h"
 #include "../dimension_api_internal.h"
+
 using namespace tiledb::api::test_support;
 
 TEST_CASE(
@@ -344,14 +345,12 @@ TEST_CASE(
     tiledb_string_t* tdb_string;
     capi_return_t rc =
         tiledb_dimension_dump_str(nullptr, dim.dimension, &tdb_string);
-    tiledb_string_free(&tdb_string);
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null dimension") {
     tiledb_string_t* tdb_string;
     capi_return_t rc =
         tiledb_dimension_dump_str(dim.ctx.context, nullptr, &tdb_string);
-    tiledb_string_free(&tdb_string);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   // SECTION("null file pointer") `nullptr` is allowed; it's mapped to `stdout`

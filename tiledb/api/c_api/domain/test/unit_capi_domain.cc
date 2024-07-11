@@ -29,7 +29,6 @@
  */
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
-
 #include "../../../c_api_test_support/testsupport_capi_context.h"
 #include "../domain_api_external.h"
 #include "../domain_api_internal.h"
@@ -249,13 +248,11 @@ TEST_CASE("C API: tiledb_domain_dump argument validation", "[capi][domain]") {
   SECTION("null context") {
     tiledb_string_t* tdb_string;
     auto rc{tiledb_domain_dump_str(nullptr, dom.domain, &tdb_string)};
-    tiledb_string_free(&tdb_string);
     CHECK(rc == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null domain") {
     tiledb_string_t* tdb_string;
     auto rc{tiledb_domain_dump_str(ctx, nullptr, &tdb_string)};
-    tiledb_string_free(&tdb_string);
     CHECK(rc == TILEDB_ERR);
   }
   // SECTION("null FILE") is omitted. Null FILE* defaults to stderr
