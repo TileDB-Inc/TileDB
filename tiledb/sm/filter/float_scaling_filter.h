@@ -95,9 +95,6 @@ class FloatScalingFilter : public Filter {
       , byte_width_(byte_width) {
   }
 
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
-
   /** Serializes this filter's metadata to the given buffer. */
   void serialize_impl(Serializer& serializer) const override;
 
@@ -149,6 +146,10 @@ class FloatScalingFilter : public Filter {
    * based on byte width of input type.
    */
   Datatype output_datatype(Datatype input_type) const override;
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** The scale factor. */

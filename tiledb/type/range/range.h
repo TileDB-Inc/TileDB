@@ -453,22 +453,40 @@ Status check_range_is_subset(const Range& superset, const Range& range) {
  */
 template <
     typename T,
-    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+    typename std::enable_if_t<
+        std::is_arithmetic_v<T> || std::is_same_v<T, std::string_view>>* =
+        nullptr>
 void check_range_is_valid(const Range& range) {
   // Check has data.
   if (range.empty())
     throw std::invalid_argument("Range is empty");
-  auto r = (const T*)range.data();
-  // Check for NaN
-  if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(r[0]) || std::isnan(r[1]))
-      throw std::invalid_argument("Range contains NaN");
+
+  // Compare string views
+  if constexpr (std::is_same_v<T, std::string_view>) {
+    auto start = range.start_str();
+    auto end = range.end_str();
+    // Check range bounds
+    if (start > end)
+      throw std::invalid_argument(
+          "Lower range bound " + std::string(start) +
+          " cannot be larger than the higher bound " + std::string(end));
+  } else {
+    if (range.size() != 2 * sizeof(T))
+      throw std::invalid_argument(
+          "Range size " + std::to_string(range.size()) +
+          " does not match the expected size " + std::to_string(2 * sizeof(T)));
+    auto r = (const T*)range.data();
+    // Check for NaN
+    if constexpr (std::is_floating_point_v<T>) {
+      if (std::isnan(r[0]) || std::isnan(r[1]))
+        throw std::invalid_argument("Range contains NaN");
+    }
+    // Check range bounds
+    if (r[0] > r[1])
+      throw std::invalid_argument(
+          "Lower range bound " + std::to_string(r[0]) +
+          " cannot be larger than the higher bound " + std::to_string(r[1]));
   }
-  // Check range bounds
-  if (r[0] > r[1])
-    throw std::invalid_argument(
-        "Lower range bound " + std::to_string(r[0]) +
-        " cannot be larger than the higher bound " + std::to_string(r[1]));
 };
 
 /**
@@ -494,6 +512,17 @@ void crop_range(const Range& bounds, Range& range) {
  * @param range The range to get a string representation of.
  */
 std::string range_str(const Range& range, const tiledb::sm::Datatype type);
+
+/**
+ * Validates that the range's elements are in the correct order.
+ *
+ * @param range The range to validate.
+ * @param type The datatype to view the range's elements as.
+ *
+ * @throws std::invalid_argument If the range's elements are not in the correct
+ * order.
+ */
+void check_range_is_valid(const Range& range, const tiledb::sm::Datatype type);
 
 }  // namespace tiledb::type
 

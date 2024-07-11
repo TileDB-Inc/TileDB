@@ -48,11 +48,9 @@ NoopFilter* NoopFilter::clone_impl() const {
   return tdb_new(NoopFilter, filter_data_type_);
 }
 
-void NoopFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "NoOp");
+std::ostream& NoopFilter::output(std::ostream& os) const {
+  os << "NoOp";
+  return os;
 }
 
 void NoopFilter::run_forward(

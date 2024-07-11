@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,6 @@
 #ifndef TILEDB_CAPI_ATTRIBUTE_INTERNAL_H
 #define TILEDB_CAPI_ATTRIBUTE_INTERNAL_H
 
-#include "attribute_api_external.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -90,7 +89,7 @@ struct tiledb_attribute_handle_t
   /**
    * Copy the underlying attribute object.
    */
-  [[nodiscard]] attribute_type copy_attribute() {
+  [[nodiscard]] attribute_type copy_attribute() const {
     return attr_;
   }
 
@@ -190,13 +189,11 @@ struct tiledb_attribute_handle_t
   [[nodiscard]] std::optional<std::string> get_enumeration_name() const {
     return attr_->get_enumeration_name();
   };
-
   /**
    * Facade for `Attribute` function
    */
-  void dump(FILE* out) const {
-    attr_->dump(out);
-  }
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_attribute_handle_t& attr);
 };
 
 namespace tiledb::api {

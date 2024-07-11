@@ -73,9 +73,6 @@ class ByteshuffleFilter : public Filter {
    */
   ByteshuffleFilter(Datatype filter_data_type);
 
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
-
   /**
    * Shuffle the bytes of the input data into the output data buffer.
    */
@@ -98,6 +95,10 @@ class ByteshuffleFilter : public Filter {
       FilterBuffer* output_metadata,
       FilterBuffer* output,
       const Config& config) const override;
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** Returns a new clone of this filter. */

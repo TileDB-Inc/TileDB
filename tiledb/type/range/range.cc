@@ -29,6 +29,7 @@
 #include "tiledb/type/range/range.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb::common;
 
@@ -124,6 +125,23 @@ std::string range_str(const Range& range, const tiledb::sm::Datatype type) {
           datatype_str(type) + ".");
   }
   return ss.str();
+}
+
+void check_range_is_valid(const Range& range, const tiledb::sm::Datatype type) {
+  if (range.empty())
+    throw std::invalid_argument("Range is empty");
+
+  if (range.var_size()) {
+    if (type != sm::Datatype::STRING_ASCII)
+      throw std::invalid_argument(
+          "Validating a variable range is only supported for type " +
+          datatype_str(sm::Datatype::STRING_ASCII) + ".");
+    check_range_is_valid<std::string_view>(range);
+    return;
+  }
+
+  apply_with_type(
+      [&](const auto T) { check_range_is_valid<decltype(T)>(range); }, type);
 }
 
 }  // namespace tiledb::type

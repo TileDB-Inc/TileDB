@@ -129,6 +129,9 @@ struct ArraySchema {
 
     enumerationPathMap @16: List(KV);
     # Enumeration name to path map
+
+    currentDomain @17 :CurrentDomain;
+    # The current domain set on the schema
 }
 
 struct DimensionLabel {
@@ -183,6 +186,9 @@ struct ArraySchemaEvolution {
 
     enumerationsToExtend @5 :List(Enumeration);
     # Enumerations to be extended.
+
+    currentDomainToExpand @6 : CurrentDomain;
+    # A CurrentDomain that we want to expand to.
 }
 
 struct Attribute {
@@ -1163,6 +1169,9 @@ struct FragmentMetadata {
 
   gtOffsets @28 :GenericTileOffsets;
   # the start offsets of the generic tiles stored in the metadata file
+
+  arraySchemaName @29 :Text;
+  # array schema name
 }
 
 struct MultiPartUploadState {
@@ -1331,4 +1340,32 @@ struct Aggregate {
   name @2 :Text;
   # the name of aggregate, e.g. COUNT, MEAN, SUM used for constructing the
   # correct object during deserialization
+}
+
+struct CurrentDomain {
+  # This struct represents the current domain of an array.
+  # It is set on the schema at array creation time and can be
+  # be evolved using ArraySchemaEvolution APIs by providing an expansion
+  # of the current domain that is already set on the array schema.
+
+  version @0 :UInt32;
+  # The format version of this feature
+
+  type @1 :Text;
+  # The type of CurrentDomain (e.g. NDRECTANGLE)
+
+  union {
+    emptyCurrentDomain @2: Void;
+    # This is an empty CurrentDomain
+
+    ndRectangle @3 :NDRectangle;
+    # This CurrentDomain is an n-dimensional rectangle
+  }
+}
+
+struct NDRectangle {
+  ndranges @0 :List(SubarrayRanges);
+  # List of 1D ranges, one per dimension
+  # SubarrayRanges is designed to hold multiple ranges per dimension,
+  # For CurrentDomain's NDRectangle we only need one range per dimension.
 }

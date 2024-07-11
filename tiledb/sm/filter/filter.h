@@ -33,12 +33,27 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
+#include <ostream>
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
+
+// Forward declarations
+namespace tiledb::sm {
+class Filter;
+}
+
+/**
+ * Converts the filter into a string representation.
+ *
+ * @param os Output stream
+ * @param filter Filter to represent as a string
+ * @return the output stream argument
+ */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Filter& filter);
 
 namespace tiledb {
 namespace sm {
@@ -68,6 +83,8 @@ class FilterStatusException : public StatusException {
  * and a reverse direction (for reads).
  */
 class Filter {
+  friend std::ostream& ::operator<<(std::ostream&, const tiledb::sm::Filter&);
+
  public:
   /**
    * Constructor.
@@ -92,9 +109,6 @@ class Filter {
    * @param data_type Data type for the new filter.
    */
   Filter* clone(Datatype data_type) const;
-
-  /** Dumps the filter details in ASCII format in the selected output. */
-  virtual void dump(FILE* out) const = 0;
 
   /**
    * Returns the filter output type
@@ -247,6 +261,9 @@ class Filter {
    * @param buff The buffer to serialize the data into.
    */
   virtual void serialize_impl(Serializer& serializer) const;
+
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  virtual std::ostream& output(std::ostream& os) const = 0;
 };
 
 }  // namespace sm

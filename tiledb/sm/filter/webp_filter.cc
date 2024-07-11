@@ -35,10 +35,9 @@
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb::sm {
-void WebpFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-  fprintf(out, "WebpFilter");
+std::ostream& WebpFilter::output(std::ostream& os) const {
+  os << "WebpFilter";
+  return os;
 }
 
 bool WebpFilter::accepts_input_datatype(Datatype datatype) const {

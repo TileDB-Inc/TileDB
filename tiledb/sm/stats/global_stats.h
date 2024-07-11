@@ -164,16 +164,16 @@ class GlobalStats {
    */
   void register_stats(const shared_ptr<Stats>& stats);
 
-  /** Dump the current stats to the given file. */
+  /** Dumps the current stats to the given file. */
   void dump(FILE* out) const;
 
-  /** Dump the current stats to the given string. */
+  /** Dumps the current stats to the given string. */
   void dump(std::string* out) const;
 
-  /** Dump the current raw stats to the given file as a JSON. */
+  /** Dumps the current raw stats to the given file as a JSON. */
   void raw_dump(FILE* out) const;
 
-  /** Dump the current raw stats to the given string as a JSON. */
+  /** Dumps the current raw stats to the given string as a JSON. */
   void raw_dump(std::string* out) const;
 
  private:
@@ -206,7 +206,7 @@ class GlobalStats {
   /*       PRIVATE FUNCTIONS        */
   /* ****************************** */
 
-  /** Dump the current registered stats. */
+  /** Dumps the current registered stats in ASCII format. */
   std::string dump_registered_stats() const;
 
   /** iterate over raw stats calling f() */

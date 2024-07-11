@@ -119,36 +119,6 @@ void CurrentDomain::serialize(Serializer& serializer) const {
   }
 }
 
-void CurrentDomain::dump(FILE* out) const {
-  if (out == nullptr) {
-    out = stdout;
-  }
-  std::stringstream ss;
-  ss << "### Current domain ###" << std::endl;
-  ss << "- Version: " << version_ << std::endl;
-  ss << "- Empty: " << empty_ << std::endl;
-  if (empty_) {
-    fprintf(out, "%s", ss.str().c_str());
-    return;
-  }
-
-  ss << "- Type: " << current_domain_type_str(type_) << std::endl;
-
-  fprintf(out, "%s", ss.str().c_str());
-
-  switch (type_) {
-    case CurrentDomainType::NDRECTANGLE: {
-      ndrectangle_->dump(out);
-      break;
-    }
-    default: {
-      throw std::runtime_error(
-          "The current domain to dump as string has an unsupported type " +
-          current_domain_type_str(type_));
-    }
-  }
-}
-
 void CurrentDomain::set_ndrectangle(std::shared_ptr<NDRectangle> ndr) {
   if (!empty_) {
     throw std::logic_error(
@@ -201,6 +171,36 @@ bool CurrentDomain::covered(const NDRange& ndranges) const {
   }
 }
 
+bool CurrentDomain::includes(const NDRange& non_empty_domain) const {
+  for (dimension_size_type d = 0; d < non_empty_domain.size(); ++d) {
+    if (!includes(d, non_empty_domain[d])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool CurrentDomain::includes(
+    const dimension_size_type d, const Range& range) const {
+  switch (type_) {
+    case CurrentDomainType::NDRECTANGLE: {
+      auto dim = ndrectangle_->domain()->dimension_ptr(d);
+      if (!dim->covered(range, ndrectangle_->get_range(d))) {
+        return false;
+      }
+      return true;
+    }
+    default: {
+      throw std::runtime_error(
+          "Unable to execute this current domain operation because one of "
+          "the "
+          "current domains passed has an unsupported type " +
+          current_domain_type_str(type_));
+    }
+  }
+}
+
 void CurrentDomain::check_schema_sanity(
     shared_ptr<Domain> schema_domain) const {
   switch (type_) {
@@ -241,3 +241,29 @@ void CurrentDomain::check_schema_sanity(
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::CurrentDomain& current_domain) {
+  os << "### Current domain ###" << std::endl;
+  os << "- Version: " << current_domain.version() << std::endl;
+  os << "- Empty: " << current_domain.empty() << std::endl;
+  if (current_domain.empty())
+    return os;
+
+  os << "- Type: " << tiledb::sm::current_domain_type_str(current_domain.type())
+     << std::endl;
+
+  switch (current_domain.type()) {
+    case tiledb::sm::CurrentDomainType::NDRECTANGLE: {
+      os << current_domain.ndrectangle();
+      break;
+    }
+    default: {
+      throw std::runtime_error(
+          "The current domain to dump as string has an unsupported type " +
+          tiledb::sm::current_domain_type_str(current_domain.type()));
+    }
+  }
+
+  return os;
+}

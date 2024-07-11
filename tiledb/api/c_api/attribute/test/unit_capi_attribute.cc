@@ -33,7 +33,7 @@
 #include "../../../c_api_test_support/testsupport_capi_context.h"
 #include "../../../c_api_test_support/testsupport_capi_datatype.h"
 #include "../../filter_list/filter_list_api_internal.h"
-#include "../attribute_api_internal.h"
+#include "../attribute_api_external.h"
 using namespace tiledb::api::test_support;
 
 TEST_CASE(

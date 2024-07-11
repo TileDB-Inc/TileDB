@@ -48,12 +48,26 @@ NDRectangle::NDRectangle(
     : memory_tracker_(memory_tracker)
     , range_data_(nd)
     , domain_(dom) {
+  if (range_data_.empty()) {
+    throw std::logic_error("The passed ND ranges vector is empty.");
+  }
+  if (dom != nullptr &&
+      dom->dim_num() != static_cast<Domain::dimension_size_type>(nd.size()))
+    if (range_data_.empty()) {
+      throw std::logic_error(
+          "The array current domain and the array schema have a non-equal "
+          "number of dimensions");
+    }
 }
 
 NDRectangle::NDRectangle(
     shared_ptr<MemoryTracker> memory_tracker, shared_ptr<Domain> dom)
     : memory_tracker_(memory_tracker)
     , domain_(dom) {
+  if (dom->dim_num() == 0) {
+    throw std::logic_error(
+        "The TileDB domain used to create the NDRectangle has no dimensions.");
+  }
   range_data_.resize(dom->dim_num());
 }
 
@@ -87,7 +101,7 @@ shared_ptr<NDRectangle> NDRectangle::deserialize(
 
 void NDRectangle::serialize(Serializer& serializer) const {
   for (unsigned d = 0; d < range_data_.size(); ++d) {
-    auto dim{domain_->dimension_ptr(d)};
+    auto dim{domain()->dimension_ptr(d)};
     const auto& r = range_data_[d];
     if (!dim->var_size()) {  // Fixed-sized
       serializer.write(r.data(), r.size());
@@ -109,11 +123,21 @@ void NDRectangle::dump(FILE* out) const {
   std::stringstream ss;
   ss << " - NDRectangle ###" << std::endl;
   for (uint32_t i = 0; i < range_data_.size(); ++i) {
-    auto dtype = domain_->dimension_ptr(i)->type();
+    auto dtype = domain()->dimension_ptr(i)->type();
     ss << "  - " << range_str(range_data_[i], dtype) << std::endl;
   }
 
   fprintf(out, "%s", ss.str().c_str());
+}
+
+void NDRectangle::set_domain(shared_ptr<Domain> domain) {
+  if (domain->dim_num() !=
+      static_cast<Domain::dimension_size_type>(range_data_.size())) {
+    throw std::logic_error(
+        "The array current domain and the array schema have a non-equal "
+        "number of dimensions");
+  }
+  domain_ = domain;
 }
 
 void NDRectangle::set_range(const Range& r, uint32_t idx) {
@@ -121,11 +145,12 @@ void NDRectangle::set_range(const Range& r, uint32_t idx) {
     throw std::logic_error(
         "Trying to set a range for an index out of bounds is not possible.");
   }
+  check_range_is_valid(r, domain_->dimension_ptr(idx)->type());
   range_data_[idx] = r;
 }
 
 void NDRectangle::set_range_for_name(const Range& r, const std::string& name) {
-  auto idx = domain_->get_dimension_index(name);
+  auto idx = domain()->get_dimension_index(name);
   set_range(r, idx);
 }
 
@@ -138,8 +163,18 @@ const Range& NDRectangle::get_range(uint32_t idx) const {
 }
 
 const Range& NDRectangle::get_range_for_name(const std::string& name) const {
-  auto idx = domain_->get_dimension_index(name);
+  auto idx = domain()->get_dimension_index(name);
   return get_range(idx);
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::NDRectangle& ndr) {
+  os << " - NDRectangle ###" << std::endl;
+  for (uint32_t i = 0; i < ndr.get_ndranges().size(); ++i) {
+    auto dtype = ndr.domain()->dimension_ptr(i)->type();
+    os << "  - " << range_str(ndr.get_range(i), dtype) << std::endl;
+  }
+
+  return os;
+}
