@@ -341,11 +341,17 @@ TEST_CASE(
   ordinary_dimension_1 dim;
   // SECTION("success") omitted to avoid log noise
   SECTION("null context") {
-    capi_return_t rc = tiledb_dimension_dump(nullptr, dim.dimension, stderr);
+    tiledb_string_t* tdb_string;
+    capi_return_t rc =
+        tiledb_dimension_dump_str(nullptr, dim.dimension, &tdb_string);
+    tiledb_string_free(&tdb_string);
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null dimension") {
-    capi_return_t rc = tiledb_dimension_dump(dim.ctx.context, nullptr, stderr);
+    tiledb_string_t* tdb_string;
+    capi_return_t rc =
+        tiledb_dimension_dump_str(dim.ctx.context, nullptr, &tdb_string);
+    tiledb_string_free(&tdb_string);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   // SECTION("null file pointer") `nullptr` is allowed; it's mapped to `stdout`

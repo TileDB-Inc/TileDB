@@ -363,11 +363,17 @@ TEST_CASE(
   ordinary_attribute_1 attr{};
   // SECTION("success") omitted to avoid log noise
   SECTION("null context") {
-    capi_return_t rc = tiledb_attribute_dump(nullptr, attr.attribute, stderr);
+    tiledb_string_t* tdb_string;
+    capi_return_t rc =
+        tiledb_attribute_dump_str(nullptr, attr.attribute, &tdb_string);
+    tiledb_string_free(&tdb_string);
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null dimension") {
-    capi_return_t rc = tiledb_attribute_dump(attr.context(), nullptr, stderr);
+    tiledb_string_t* tdb_string;
+    capi_return_t rc =
+        tiledb_attribute_dump_str(attr.context(), nullptr, &tdb_string);
+    tiledb_string_free(&tdb_string);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   // SECTION("null file pointer") `nullptr` is allowed; it's mapped to `stdout`
