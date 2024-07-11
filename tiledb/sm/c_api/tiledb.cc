@@ -479,9 +479,75 @@ int32_t tiledb_array_schema_check(
 int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    int include_enumerations,
     tiledb_array_schema_t** array_schema) {
-  bool incl_enmrs = (include_enumerations != 0);
+  // Create array schema
+  *array_schema = new (std::nothrow) tiledb_array_schema_t;
+  if (*array_schema == nullptr) {
+    auto st = Status_Error("Failed to allocate TileDB array schema object");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_OOM;
+  }
+
+  // Check array name
+  tiledb::sm::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    auto st = Status_Error("Failed to load array schema; Invalid array URI");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
+  if (uri.is_tiledb()) {
+    auto& rest_client = ctx->context().rest_client();
+    try {
+      auto array_schema_response = rest_client.post_array_schema_from_rest(
+          ctx->resources().config(), uri, 0, UINT64_MAX, false);
+      (*array_schema)->array_schema_ = std::get<0>(array_schema_response);
+    } catch (...) {
+      delete *array_schema;
+      throw;
+    }
+  } else {
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    throw_if_not_ok(
+        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
+
+    // Load URIs from the array directory
+    optional<tiledb::sm::ArrayDirectory> array_dir;
+    try {
+      array_dir.emplace(
+          ctx->resources(),
+          uri,
+          0,
+          UINT64_MAX,
+          tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+    } catch (const std::logic_error& le) {
+      auto st = Status_ArrayDirectoryError(le.what());
+      LOG_STATUS_NO_RETURN_VALUE(st);
+      save_error(ctx, st);
+      delete *array_schema;
+      return TILEDB_ERR;
+    }
+
+    auto tracker = ctx->resources().ephemeral_memory_tracker();
+    // Load latest array schema
+    auto array_schema_latest =
+        array_dir->load_array_schema_latest(key, tracker);
+
+    (*array_schema)->array_schema_ = array_schema_latest;
+  }
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_load_with_options(
+    tiledb_ctx_t* ctx,
+    tiledb_config_t* config,
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) {
+  bool incl_enmrs = config->config().get<bool>(
+      "sm.array_schema.load_with_enumerations", sm::Config::must_find);
 
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
@@ -5503,16 +5569,17 @@ CAPI_INTERFACE(
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
   return api_entry<tiledb::api::tiledb_array_schema_load>(
-      ctx, array_uri, 0, array_schema);
+      ctx, array_uri, array_schema);
 }
 
 CAPI_INTERFACE(
-    array_schema_load_with_enumerations,
+    array_schema_load_with_options,
     tiledb_ctx_t* ctx,
+    tiledb_config_t* config,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
-  return api_entry<tiledb::api::tiledb_array_schema_load>(
-      ctx, array_uri, 1, array_schema);
+  return api_entry<tiledb::api::tiledb_array_schema_load_with_options>(
+      ctx, config, array_uri, array_schema);
 }
 
 CAPI_INTERFACE(

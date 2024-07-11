@@ -85,8 +85,10 @@ class ArrayExperimental {
   static ArraySchema load_schema_with_enumerations(
       const Context& ctx, const std::string& uri) {
     tiledb_array_schema_t* schema;
-    ctx.handle_error(tiledb_array_schema_load_with_enumerations(
-        ctx.ptr().get(), uri.c_str(), &schema));
+    Config config = ctx.config();
+    config["sm.array_schema.load_with_enumerations"] = "true";
+    ctx.handle_error(tiledb_array_schema_load_with_options(
+        ctx.ptr().get(), config.ptr().get(), uri.c_str(), &schema));
     return ArraySchema(ctx, schema);
   }
 };
