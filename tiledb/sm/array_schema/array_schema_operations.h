@@ -1,5 +1,5 @@
 /**
- * @file   auxiliary.h
+ * @file   array_schema_operations.h
  *
  * @section LICENSE
  *
@@ -27,18 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines auxiliary functions to support class ArraySchema.
- *
- * This file exists solely as an intermediary solution to resolve build issues
- * with `capi_context_stub` when migrating `store_array_schema` out of
- * `StorageManagerCanonical`. At present, there is an interdependency chain
- * with `generic_tile_io` which must be resolved before this function can be
- * placed into `class ArraySchema`. As such, this file is _intentionally_ left
- * out of the `array_schema` object library and _must_ remain that way.
+ * This file defines I/O operations which support class ArraySchema.
  */
 
-#ifndef TILEDB_AUXILIARY_ARRAY_SCHEMA_H
-#define TILEDB_AUXILIARY_ARRAY_SCHEMA_H
+#ifndef TILEDB_ARRAY_SCHEMA_OPERATIONS_H
+#define TILEDB_ARRAY_SCHEMA_OPERATIONS_H
 
 #include "tiledb/common/common.h"
 
@@ -68,4 +61,4 @@ void store_array_schema(
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_AUXILIARY_ARRAY_SCHEMA_H
+#endif  // TILEDB_ARRAY_SCHEMA_OPERATIONS_H

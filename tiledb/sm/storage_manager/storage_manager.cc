@@ -45,7 +45,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
-#include "tiledb/sm/array_schema/auxiliary.h"
+#include "tiledb/sm/array_schema/array_schema_operations.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
