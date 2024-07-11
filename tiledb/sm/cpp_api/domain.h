@@ -35,6 +35,7 @@
 #ifndef TILEDB_CPP_API_DOMAIN_H
 #define TILEDB_CPP_API_DOMAIN_H
 
+#include "capi_string.h"
 #include "context.h"
 #include "deleter.h"
 #include "dimension.h"
@@ -110,6 +111,11 @@ class Domain {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /** Returns the context that the attribute belongs to. */
+  const Context& context() const {
+    return ctx_;
+  }
 
   /**
    * Returns the total number of cells in the domain. Throws an exception
@@ -316,12 +322,14 @@ class Domain {
 /* ********************************* */
 
 /** Get a string representation of the domain for an output stream. */
-inline std::ostream& operator<<(std::ostream& os, const Domain& d) {
-  os << "Domain<";
-  for (const auto& dimension : d.dimensions()) {
-    os << " " << dimension;
-  }
-  os << '>';
+inline std::ostream& operator<<(std::ostream& os, const Domain& dom) {
+  auto& ctx = dom.context();
+  tiledb_string_t* tdb_string;
+  ctx.handle_error(
+      tiledb_domain_dump_str(ctx.ptr().get(), dom.ptr().get(), &tdb_string));
+
+  os << impl::convert_to_string(&tdb_string).value();
+
   return os;
 }
 
