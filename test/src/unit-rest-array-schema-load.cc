@@ -42,23 +42,20 @@ using namespace tiledb;
 
 struct RESTArraySchemaLoadFx {
   RESTArraySchemaLoadFx();
-  ~RESTArraySchemaLoadFx();
+  ~RESTArraySchemaLoadFx() = default;
 
-  void create_array(const std::string& array_name);
-  void rm_array();
+  void create_array();
 
-  std::string bucket_;
+  test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
-  Config cfg_;
   Context ctx_;
-  VFS vfs_;
 };
 
 TEST_CASE_METHOD(
     RESTArraySchemaLoadFx,
     "Simple schema load test",
     "[rest][array-schema][simple-load]") {
-  create_array("simple-load");
+  create_array();
 
   ArraySchema schema = Array::load_schema(ctx_, uri_);
   auto matcher = Catch::Matchers::ContainsSubstring(
@@ -72,7 +69,7 @@ TEST_CASE_METHOD(
     RESTArraySchemaLoadFx,
     "Simple schema load with enumerations test",
     "[rest][array-schema][simple-load-with-enumerations]") {
-  create_array("simple-load-with-enumerations");
+  create_array();
 
   ArraySchema schema =
       ArrayExperimental::load_schema_with_enumerations(ctx_, uri_);
@@ -80,36 +77,13 @@ TEST_CASE_METHOD(
       ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"));
 }
 
-Config& setup_config(Config& cfg) {
-  cfg["vfs.s3.endpoint_override"] = "localhost:9999";
-  cfg["vfs.s3.scheme"] = "https";
-  cfg["vfs.s3.use_virtual_addressing"] = "false";
-  cfg["ssl.verify"] = "false";
-  return cfg;
-}
-
 RESTArraySchemaLoadFx::RESTArraySchemaLoadFx()
-    : bucket_("s3://array-schema-load-tests")
-    , ctx_(setup_config(cfg_))
-    , vfs_(ctx_) {
-  if (!vfs_.is_bucket(bucket_)) {
-    vfs_.create_bucket(bucket_);
-  }
+    : vfs_test_setup_()
+    , uri_(vfs_test_setup_.array_uri("array-schema-load-tests"))
+    , ctx_(vfs_test_setup_.ctx()) {
 }
 
-RESTArraySchemaLoadFx::~RESTArraySchemaLoadFx() {
-  rm_array();
-  if (vfs_.is_bucket(bucket_)) {
-    vfs_.remove_bucket(bucket_);
-  }
-}
-
-void RESTArraySchemaLoadFx::create_array(const std::string& array_name) {
-  uri_ = "tiledb://unit/" + bucket_ + "/" + array_name;
-
-  // Ensure that no array exists at uri_
-  rm_array();
-
+void RESTArraySchemaLoadFx::create_array() {
   // Create a simple array for testing. This ends up with just five elements in
   // the array. dim is an int32_t dimension, attr1 is an enumeration with string
   // values and int32_t attribute values. attr2 is a float attribute.
@@ -140,11 +114,4 @@ void RESTArraySchemaLoadFx::create_array(const std::string& array_name) {
   schema.add_attribute(attr2);
 
   Array::create(uri_, schema);
-}
-
-void RESTArraySchemaLoadFx::rm_array() {
-  auto obj = Object::object(ctx_, uri_);
-  if (obj.type() == Object::Type::Array) {
-    Array::delete_array(ctx_, uri_);
-  }
 }
