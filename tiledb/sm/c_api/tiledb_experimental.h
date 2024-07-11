@@ -443,6 +443,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
  * @endcode
  *
  * @param ctx The TileDB context.
+ * @param config The TileDB config.
  * @param array_uri The array whose schema will be retrieved.
  * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.

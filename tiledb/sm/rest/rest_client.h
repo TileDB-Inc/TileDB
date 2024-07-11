@@ -102,21 +102,15 @@ class RestClient {
       const URI& uri);
 
   /**
-   * Get a data encoded array schema from rest server.
+   * Get an array schema from the rest server.
    *
-   * @param uri of array being loaded
-   * @return Status and new ArraySchema shared pointer.
-   */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema_from_rest(
-      const URI& uri);
-
-  /**
-   * Get an array schema from the rest server. This will eventually replace the
-   * get_array_schema_from_rest after TileDB-Cloud-REST merges support for the
-   * POST endpoint.
-   *
+   * @param config The TileDB config.
    * @param uri The Array URI to load the schema from.
-   * @return shared_ptr<ArraySchema> The loaded array schema.
+   * @param timestamp_start The starting timestamp used to open the array.
+   * @param timestamp_end The ending timestamp used to open the array.
+   * @param include_enumerations If true the schema will load enumerations.
+   * @return Tuple containing the latest array schema, and all array schemas for
+   *    the array opened with provided timestamps.
    */
   std::tuple<
       shared_ptr<ArraySchema>,

@@ -255,40 +255,6 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
   return {Status::Ok(), false};
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>>
-RestClient::get_array_schema_from_rest(const URI& uri) {
-  // Init curl and form the URL
-  Curl curlc(logger_);
-  std::string array_ns, array_uri;
-  RETURN_NOT_OK_TUPLE(uri.get_rest_components(&array_ns, &array_uri), nullopt);
-  const std::string cache_key = array_ns + ":" + array_uri;
-  RETURN_NOT_OK_TUPLE(
-      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
-      nullopt);
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri);
-
-  // Get the data
-  Buffer returned_data;
-  RETURN_NOT_OK_TUPLE(
-      curlc.get_data(
-          stats_, url, serialization_type_, &returned_data, cache_key),
-      nullopt);
-  if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return {
-        LOG_STATUS(Status_RestError(
-            "Error getting array schema from REST; server returned no data.")),
-        nullopt};
-
-  // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK_TUPLE(
-      ensure_json_null_delimited_string(&returned_data), nullopt);
-  return {
-      Status::Ok(),
-      serialization::array_schema_deserialize(
-          serialization_type_, returned_data, memory_tracker_)};
-}
-
 std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
@@ -1703,14 +1669,6 @@ Status RestClient::init(
 
 Status RestClient::set_header(const std::string&, const std::string&) {
   throw RestClientDisabledException();
-}
-
-tuple<Status, optional<shared_ptr<ArraySchema>>>
-RestClient::get_array_schema_from_rest(const URI&) {
-  return {
-      LOG_STATUS(Status_RestError(
-          "Cannot use rest client; serialization not enabled.")),
-      nullopt};
 }
 
 Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema&) {

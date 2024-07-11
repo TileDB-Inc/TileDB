@@ -603,7 +603,7 @@ int32_t tiledb_array_schema_load_with_options(
     auto tracker = ctx->resources().ephemeral_memory_tracker();
 
     // Load latest array schema
-    auto array_schema_latest =
+    auto&& array_schema_latest =
         array_dir->load_array_schema_latest(key, tracker);
 
     if (incl_enmrs) {
