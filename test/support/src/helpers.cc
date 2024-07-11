@@ -1539,8 +1539,8 @@ void write_sparse_v11(
   // Close array.
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
 
-  tiledb_free(array);
-  tiledb_free(query);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 }
 
 void read_sparse_v11(

@@ -7334,10 +7334,18 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 
+#ifndef _WIN32
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation v11 array, split fragments",
     "[capi][consolidation][split-fragments][non-rest]") {
+  // vfs_copy_dir is only supported on Posix and S3.
+  // Experimental builds throw when attempting to write to an array with
+  // previous format version.
+  if (!vfs_test_setup_.is_local() || is_experimental_build) {
+    return;
+  }
+
   remove_sparse_array();
   create_sparse_array_v11(ctx_, sparse_array_uri_);
   write_sparse_v11(ctx_, sparse_array_uri_, 0);
@@ -7429,6 +7437,7 @@ TEST_CASE_METHOD(
   // Clean up
   remove_sparse_array();
 }
+#endif
 
 TEST_CASE_METHOD(
     ConsolidationFx,
