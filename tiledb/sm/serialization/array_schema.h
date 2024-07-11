@@ -208,7 +208,7 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType serialization_type, const Buffer& data);
 
 void serialize_load_array_schema_response(
-    const Array& schema, SerializationType serialization_type, Buffer& data);
+    const Array& array, SerializationType serialization_type, Buffer& data);
 
 std::tuple<
     shared_ptr<ArraySchema>,

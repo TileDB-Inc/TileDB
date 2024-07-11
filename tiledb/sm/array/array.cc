@@ -346,7 +346,6 @@ Status Array::open_without_fragments(
     const void* encryption_key,
     uint32_t key_length) {
   auto timer = resources_.stats().start_timer("array_open_without_fragments");
-  Status st;
   // Checks
   if (is_open()) {
     return LOG_STATUS(Status_ArrayError(
@@ -386,15 +385,11 @@ Status Array::open_without_fragments(
         throw ArrayException(
             "Cannot open array; remote array with no REST client.");
       }
-      /* #TODO Change get_array_schema_from_rest function signature to
-        throw instead of return Status */
       if (!use_refactored_array_open()) {
-        auto&& [st, array_schema_latest] =
-            rest_client->get_array_schema_from_rest(array_uri_);
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
-        set_array_schema_latest(array_schema_latest.value());
+        auto array_schema_response = rest_client->post_array_schema_from_rest(
+            config_, array_uri_, timestamp_start(), timestamp_end_opened_at());
+        set_array_schema_latest(std::get<0>(array_schema_response));
+        set_array_schemas_all(std::move(std::get<1>(array_schema_response)));
       } else {
         rest_client->post_array_from_rest(array_uri_, resources_, this);
       }

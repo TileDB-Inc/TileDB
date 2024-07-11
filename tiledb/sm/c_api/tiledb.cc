@@ -591,16 +591,9 @@ int32_t tiledb_array_schema_load_with_key(
 
   if (uri.is_tiledb()) {
     auto& rest_client = ctx->context().rest_client();
-    auto&& [st, array_schema_rest] =
-        rest_client.get_array_schema_from_rest(uri);
-    if (!st.ok()) {
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      delete *array_schema;
-      *array_schema = nullptr;
-      return TILEDB_ERR;
-    }
-    (*array_schema)->array_schema_ = array_schema_rest.value();
+    auto array_schema_response = rest_client.post_array_schema_from_rest(
+        ctx->config(), uri, 0, UINT64_MAX, false);
+    (*array_schema)->array_schema_ = std::get<0>(array_schema_response);
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;

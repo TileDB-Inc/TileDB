@@ -399,7 +399,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
     tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
 
 /**
- * Adds an enumeration to an array schema.
+ * Gets an enumeration from an array schema.
  *
  * **Example:**
  *
@@ -439,8 +439,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load_with_enumerations(
  *
  * @code{.c}
  * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_load_with_enumerations(
+ * tiledb_array_schema_load_with_options(
  *     ctx,
+ *     config,
  *     "s3://tiledb_bucket/my_array",
  *     &array_schema);
  * // Make sure to free the array schema in the end
