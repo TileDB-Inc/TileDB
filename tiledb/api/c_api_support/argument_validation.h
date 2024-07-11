@@ -74,16 +74,6 @@ inline void ensure_output_pointer_is_valid(void* p) {
 }
 
 /**
- * Ensure that a C API stream handle is valid.
- * @param stream The stream handle to validate
- */
-inline void ensure_cstream_handle_is_valid(const void* stream) {
-  if (stream == nullptr) {
-    throw CAPIException("Invalid stream handle; must be non-null");
-  }
-}
-
-/**
  * Ensure that the output pointer for a stride argument is null.
  *
  * The C API has arguments for the "stride" of a range, but does not support

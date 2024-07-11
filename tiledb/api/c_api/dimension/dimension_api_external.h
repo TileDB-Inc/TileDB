@@ -288,7 +288,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_dimension_dump(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_dimension_dump(
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     FILE* out) TILEDB_NOEXCEPT;

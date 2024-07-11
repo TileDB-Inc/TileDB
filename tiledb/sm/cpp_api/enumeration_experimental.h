@@ -314,6 +314,17 @@ class Enumeration {
     return ret;
   }
 
+  /**
+   * Dump a string representation of the Enumeration to the given FILE pointer.
+   *
+   * @param out A FILE pointer to write to. Defaults to `stdout`.
+   */
+  TILEDB_DEPRECATED
+  void dump(FILE* out = stdout) const {
+    ctx_.get().handle_error(tiledb_enumeration_dump(
+        ctx_.get().ptr().get(), enumeration_.get(), out));
+  }
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */

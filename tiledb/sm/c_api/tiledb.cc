@@ -706,8 +706,6 @@ int32_t tiledb_array_schema_dump(
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  ensure_cstream_handle_is_valid(out);
-
   std::stringstream ss;
 
   ss << *array_schema->array_schema_;

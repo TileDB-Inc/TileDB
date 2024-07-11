@@ -223,7 +223,7 @@ TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_domain_dump(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_domain_dump(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
     FILE* out) TILEDB_NOEXCEPT;

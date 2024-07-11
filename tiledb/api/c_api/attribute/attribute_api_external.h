@@ -305,7 +305,7 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
  */
-TILEDB_EXPORT int32_t tiledb_attribute_dump(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_attribute_dump(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_t* attr,
     FILE* out) TILEDB_NOEXCEPT;

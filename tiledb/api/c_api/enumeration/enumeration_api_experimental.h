@@ -310,7 +310,7 @@ TILEDB_EXPORT capi_return_t tiledb_enumeration_get_offsets(
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
  */
-TILEDB_EXPORT capi_return_t tiledb_enumeration_dump(
+TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_enumeration_dump(
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
     FILE* out) TILEDB_NOEXCEPT;

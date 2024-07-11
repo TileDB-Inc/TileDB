@@ -143,7 +143,6 @@ int32_t tiledb_domain_has_dimension(
 
 int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
   ensure_domain_is_valid(domain);
-  ensure_cstream_handle_is_valid(out);
 
   std::stringstream ss;
   ss << *domain;
