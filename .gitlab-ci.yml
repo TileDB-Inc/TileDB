@@ -16,6 +16,7 @@ trigger_pipeline:
 
   variables:
     TILEDB_REF: ${CI_COMMIT_REF_NAME}
+    TILEDB_CLOUD_REST_REF: pd/sc-32991/wrap-handle-load-array-schema-request
   trigger:
     project: tiledb-inc/tiledb-internal
     strategy: depend    
