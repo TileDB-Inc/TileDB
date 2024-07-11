@@ -1617,8 +1617,8 @@ void read_sparse_v11(
       buffer_coords_dim2_read,
       sizeof(buffer_coords_dim2_read)));
 
-  tiledb_free(array);
-  tiledb_free(query);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 }
 
 template void check_subarray<int8_t>(

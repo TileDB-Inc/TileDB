@@ -375,15 +375,17 @@ Status FragmentConsolidator::consolidate_fragments(
       if (frag_id.array_format_version() <= 11 &&
           !fragment_uri.contains(std::string(array_name) + "/" + fragment)) {
         throw FragmentConsolidatorException(
-            "Failed request to consolidate an invalid fragment URI ('" +
-            fragment_uri.to_string() + "')");
+            "Failed request to consolidate an invalid fragment URI '" +
+            fragment_uri.to_string() + "' for array at '" +
+            std::string(array_name) + "'");
       } else if (
           frag_id.array_format_version() > 11 &&
           !fragment_uri.contains(
               std::string(array_name) + "/__fragments/" + fragment)) {
         throw FragmentConsolidatorException(
-            "Failed request to consolidate an invalid fragment URI ('" +
-            fragment_uri.to_string() + "')");
+            "Failed request to consolidate an invalid fragment URI '" +
+            fragment_uri.to_string() + "' for array at '" +
+            std::string(array_name) + "'");
       }
       to_consolidate_set.emplace(fragment);
     }
