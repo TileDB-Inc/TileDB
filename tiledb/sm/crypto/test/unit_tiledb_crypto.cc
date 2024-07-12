@@ -531,9 +531,9 @@ static std::string from_hex(const std::string_view& str) {
   return output;
 }
 
-static std::string to_hex(const uint8_t* data, uint64_t length) {
+static std::string to_hex(span<const uint8_t> data) {
   std::stringstream ss;
-  for (uint64_t i = 0; i < length; i++) {
+  for (size_t i = 0; i < data.size(); i++) {
     ss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
   }
   return ss.str();
@@ -559,8 +559,9 @@ static void test_expected_hash_value(
 
   // Compare the strings for a better error message in case of failure.
   CHECK(
-      to_hex((uint8_t*)hash_buf.data(), hash_buf.alloced_size()) ==
-      expected_value);
+      to_hex(
+          {(uint8_t*)hash_buf.data(),
+           static_cast<size_t>(hash_buf.alloced_size())}) == expected_value);
 }
 
 TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
