@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -77,7 +78,7 @@ struct CSparseGlobalOrderFx {
   void write_delete_condition(char* value_to_delete, uint64_t value_size);
   int32_t read(
       bool set_subarray,
-      bool set_qc,
+      int qc_idx,
       int* coords,
       uint64_t* coords_size,
       int* data,
@@ -342,7 +343,7 @@ void CSparseGlobalOrderFx::write_delete_condition(
 
 int32_t CSparseGlobalOrderFx::read(
     bool set_subarray,
-    bool set_qc,
+    int qc_idx,
     int* coords,
     uint64_t* coords_size,
     int* data,
@@ -364,18 +365,40 @@ int32_t CSparseGlobalOrderFx::read(
 
   if (set_subarray) {
     // Set subarray.
-    rc = tiledb_query_set_subarray(ctx_, query, subarray.data());
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
-  if (set_qc) {
+  if (qc_idx != 0) {
     tiledb_query_condition_t* query_condition = nullptr;
     rc = tiledb_query_condition_alloc(ctx_, &query_condition);
     CHECK(rc == TILEDB_OK);
-    int32_t val = 11;
-    rc = tiledb_query_condition_init(
-        ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
-    CHECK(rc == TILEDB_OK);
+
+    if (qc_idx == 1) {
+      int32_t val = 11;
+      rc = tiledb_query_condition_init(
+          ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
+      CHECK(rc == TILEDB_OK);
+    } else if (qc_idx == 2) {
+      // Negated query condition should produce the same results.
+      int32_t val = 11;
+      tiledb_query_condition_t* qc;
+      rc = tiledb_query_condition_alloc(ctx_, &qc);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_condition_init(
+          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_GE);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_condition_negate(ctx_, qc, &query_condition);
+      CHECK(rc == TILEDB_OK);
+
+      tiledb_query_condition_free(&qc);
+    }
 
     rc = tiledb_query_set_condition(ctx_, query, query_condition);
     CHECK(rc == TILEDB_OK);
@@ -431,8 +454,14 @@ int32_t CSparseGlobalOrderFx::read_strings(
 
   if (set_subarray) {
     // Set subarray.
-    rc = tiledb_query_set_subarray(ctx_, query, subarray.data());
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
@@ -490,7 +519,7 @@ TEST_CASE_METHOD(
   int data_r[5];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(true, false, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(true, 0, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_ERR);
 
   // Check we hit the correct error.
@@ -551,7 +580,7 @@ TEST_CASE_METHOD(
   tiledb_query_status_t status;
   rc = read(
       true,
-      false,
+      0,
       coords_r,
       &coords_r_size,
       data_r,
@@ -640,7 +669,7 @@ TEST_CASE_METHOD(
   tiledb_query_status_t status;
   rc = read(
       true,
-      false,
+      0,
       coords_r,
       &coords_r_size,
       data_r,
@@ -705,7 +734,7 @@ TEST_CASE_METHOD(
   int data_r[5];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(true, false, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(true, 0, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_ERR);
 
   // Check we hit the correct error.
@@ -759,10 +788,10 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
+  // Two result tile (2 * (~3000 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "10000";
-  ratio_coords_ = "0.30";
+  total_budget_ = "35000";
+  ratio_coords_ = "0.11";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -777,7 +806,7 @@ TEST_CASE_METHOD(
   uint64_t data_r_size = sizeof(data_r);
   rc = read(
       use_subarray,
-      false,
+      0,
       coords_r,
       &coords_r_size,
       data_r,
@@ -794,7 +823,7 @@ TEST_CASE_METHOD(
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
   auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.loop_num");
+      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
   CHECK(5 == loop_num->second);
 
   // Check incomplete query status.
@@ -841,7 +870,7 @@ TEST_CASE_METHOD(
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
   // One result tile (8 + ~440) will be bigger than the budget (400).
-  total_budget_ = "10000";
+  total_budget_ = "19000";
   ratio_coords_ = "0.04";
   update_config();
 
@@ -851,7 +880,7 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
   auto rc =
-      read(use_subarray, false, coords_r, &coords_r_size, data_r, &data_r_size);
+      read(use_subarray, 0, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_ERR);
 
   // Check we hit the correct error.
@@ -877,6 +906,7 @@ TEST_CASE_METHOD(
 
   bool use_subarray = false;
   int tile_idx = 0;
+  int qc_idx = GENERATE(1, 2);
   SECTION("- No subarray") {
     use_subarray = false;
     SECTION("- First tile") {
@@ -941,8 +971,8 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(
+      use_subarray, qc_idx, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Should read two tile (6 values).
@@ -966,6 +996,7 @@ TEST_CASE_METHOD(
   bool use_subarray = GENERATE(true, false);
   bool dups = GENERATE(false, true);
   bool extra_fragment = GENERATE(true, false);
+  int qc_idx = GENERATE(1, 2);
 
   create_default_array_1d(dups);
 
@@ -990,8 +1021,8 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(
+      use_subarray, qc_idx, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
   if (dups) {
@@ -1018,6 +1049,7 @@ TEST_CASE_METHOD(
   reset_config();
   create_default_array_1d();
 
+  int qc_idx = GENERATE(1, 2);
   bool use_subarray = false;
   SECTION("- No subarray") {
     use_subarray = false;
@@ -1043,8 +1075,8 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(
+      use_subarray, qc_idx, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
   // One value.
@@ -1066,6 +1098,7 @@ TEST_CASE_METHOD(
   create_default_array_1d(true);
 
   bool use_subarray = false;
+  int qc_idx = GENERATE(1, 2);
 
   int coords_1[] = {8, 9, 10, 11, 12, 13};
   int data_1[] = {8, 9, 10, 11, 12, 13};
@@ -1086,8 +1119,8 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(
+      use_subarray, qc_idx, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Should read (6 values).
@@ -1102,22 +1135,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE(
     "Sparse global order reader: user buffer cannot fit single cell",
-    "[sparse-global-order][user-buffer][too-small]") {
-  bool serialized = false, refactored_query_v2 = false;
-#ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-
-  std::string array_name = "test_sparse_global_order";
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+    "[sparse-global-order][user-buffer][too-small][rest]") {
+  VFSTestSetup vfs_test_setup;
+  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -1151,15 +1172,7 @@ TEST_CASE(
   query.set_offsets_buffer("a", a1_offsets);
 
   // Submit query
-  ServerQueryBuffers server_buffers_;
-  auto rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit_and_finalize();
 
   // Read using a buffer that can't fit a single result
   Array array2(ctx, array_name, TILEDB_READ);
@@ -1178,48 +1191,26 @@ TEST_CASE(
 
   // The user buffer cannot fit a single result so it should return Incomplete
   // with the right reason
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query2,
-      server_buffers_,
-      serialized,
-      refactored_query_v2,
-      false);
-  REQUIRE(rc == TILEDB_OK);
+  query2.submit();
   REQUIRE(query2.query_status() == Query::Status::INCOMPLETE);
 
-  // For remote arrays the reason is always TILEDB_REASON_USER_BUFFER_SIZE,
-  // but we can't test it here since we simulate "remote" arrays by using a
-  // local URI so the array->is_remote() check will fail, and we won't get the
-  // correct result.
-  if (!serialized) {
-    tiledb_query_status_details_t details;
-    rc = tiledb_query_get_status_details(
-        ctx.ptr().get(), query2.ptr().get(), &details);
-    CHECK(rc == TILEDB_OK);
-    CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
-  }
+  tiledb_query_status_details_t details;
+  auto rc = tiledb_query_get_status_details(
+      ctx.ptr().get(), query2.ptr().get(), &details);
+  CHECK(rc == TILEDB_OK);
+  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
 
   array2.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE(
     "Sparse global order reader: attribute copy memory limit",
-    "[sparse-global-order][attribute-copy][memory-limit]") {
-  std::string array_name = "test_sparse_global_order";
+    "[sparse-global-order][attribute-copy][memory-limit][rest]") {
   Config config;
-  config["sm.mem.total_budget"] = "10000";
-  Context ctx(config);
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  config["sm.mem.total_budget"] = "20000";
+  VFSTestSetup vfs_test_setup(config.ptr().get());
+  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -1254,8 +1245,7 @@ TEST_CASE(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
-  CHECK_NOTHROW(query.submit());
-  CHECK_NOTHROW(query.finalize());
+  CHECK_NOTHROW(query.submit_and_finalize());
 
   // Read using a budget that can only fit one of the var size tiles.
   Array array2(ctx, array_name, TILEDB_READ);
@@ -1284,10 +1274,6 @@ TEST_CASE(
   CHECK(result_num == 4);
 
   array2.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE_METHOD(
@@ -1326,10 +1312,10 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
+  // Two result tile (2 * (~4000 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "10000";
-  ratio_coords_ = "0.30";
+  total_budget_ = "40000";
+  ratio_coords_ = "0.22";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -1343,7 +1329,7 @@ TEST_CASE_METHOD(
   tiledb_query_status_t status;
   uint32_t rc = read(
       use_subarray,
-      false,
+      0,
       coords_r,
       &coords_r_size,
       data_r,
@@ -1412,14 +1398,7 @@ TEST_CASE_METHOD(
   int rc;
   tiledb_query_status_t status;
   rc = read(
-      true,
-      false,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
+      true, 0, coords_r, &coords_r_size, data_r, &data_r_size, &query, &array);
   CHECK(rc == TILEDB_OK);
 
   CHECK(coords_r[0] == 1);

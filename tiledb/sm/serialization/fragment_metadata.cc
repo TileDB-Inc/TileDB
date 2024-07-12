@@ -117,45 +117,36 @@ void generic_tile_offsets_from_capnp(
 }
 
 Status fragment_metadata_from_capnp(
-    const shared_ptr<const ArraySchema>& array_schema,
+    const shared_ptr<const ArraySchema>& fragment_array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
-    shared_ptr<FragmentMetadata> frag_meta,
-    StorageManager* storage_manager,
-    MemoryTracker* memory_tracker) {
-  // TODO: consider a new constructor for fragment meta or using the
-  // existing one
-  if (storage_manager) {
-    frag_meta->set_storage_manager(storage_manager);
-  }
-  if (memory_tracker) {
-    frag_meta->set_memory_tracker(memory_tracker);
-  }
+    shared_ptr<FragmentMetadata> frag_meta) {
   if (frag_meta_reader.hasFileSizes()) {
-    frag_meta->file_sizes().reserve(frag_meta_reader.getFileSizes().size());
-    for (const auto& file_size : frag_meta_reader.getFileSizes()) {
+    auto filesizes_reader = frag_meta_reader.getFileSizes();
+    frag_meta->file_sizes().reserve(filesizes_reader.size());
+    for (const auto& file_size : filesizes_reader) {
       frag_meta->file_sizes().emplace_back(file_size);
     }
   }
   if (frag_meta_reader.hasFileVarSizes()) {
-    frag_meta->file_var_sizes().reserve(
-        frag_meta_reader.getFileVarSizes().size());
-    for (const auto& file_var_size : frag_meta_reader.getFileVarSizes()) {
+    auto filevarsizes_reader = frag_meta_reader.getFileVarSizes();
+    frag_meta->file_var_sizes().reserve(filevarsizes_reader.size());
+    for (const auto& file_var_size : filevarsizes_reader) {
       frag_meta->file_var_sizes().emplace_back(file_var_size);
     }
   }
   if (frag_meta_reader.hasFileValiditySizes()) {
-    frag_meta->file_validity_sizes().reserve(
-        frag_meta_reader.getFileValiditySizes().size());
+    auto filevaliditysizes_reader = frag_meta_reader.getFileValiditySizes();
+    frag_meta->file_validity_sizes().reserve(filevaliditysizes_reader.size());
 
-    for (const auto& file_validity_size :
-         frag_meta_reader.getFileValiditySizes()) {
+    for (const auto& file_validity_size : filevaliditysizes_reader) {
       frag_meta->file_validity_sizes().emplace_back(file_validity_size);
     }
   }
   if (frag_meta_reader.hasFragmentUri()) {
     // Reconstruct the fragment uri out of the received fragment name
     frag_meta->fragment_uri() = deserialize_array_uri_to_absolute(
-        frag_meta_reader.getFragmentUri().cStr(), array_schema->array_uri());
+        frag_meta_reader.getFragmentUri().cStr(),
+        fragment_array_schema->array_uri());
   }
   frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
   frag_meta->has_delete_meta() = frag_meta_reader.getHasDeleteMeta();
@@ -165,71 +156,119 @@ Status fragment_metadata_from_capnp(
   frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
   frag_meta->version() = frag_meta_reader.getVersion();
 
-  FragmentMetadata::LoadedMetadata loaded_metadata;
+  // Set the array schema and most importantly retrigger the build
+  // of the internal idx_map.
+  frag_meta->set_array_schema(fragment_array_schema);
+  frag_meta->set_dense(fragment_array_schema->dense());
+
+  if (frag_meta_reader.hasArraySchemaName()) {
+    frag_meta->set_schema_name(frag_meta_reader.getArraySchemaName().cStr());
+  }
+
+  LoadedFragmentMetadata::LoadedMetadata loaded_metadata;
+
+  // num_dims_and_attrs() requires a set array schema, so it's important
+  // schema is set above on the fragment metadata object.
+  uint64_t num_dims_and_attrs = frag_meta->num_dims_and_attrs();
+
+  // The tile offsets field may not be present here in some usecases such as
+  // refactored query, but readers on the server side require these vectors to
+  // have the first dimension properly allocated when loading their data on
+  // demand.
+  frag_meta->loaded_metadata()->resize_tile_offsets_vectors(num_dims_and_attrs);
+  loaded_metadata.tile_offsets_.resize(num_dims_and_attrs, false);
+
   // There is a difference in the metadata loaded for versions >= 2
   auto loaded = frag_meta->version() <= 2 ? true : false;
+
   if (frag_meta_reader.hasTileOffsets()) {
-    for (const auto& t : frag_meta_reader.getTileOffsets()) {
-      auto& last = frag_meta->tile_offsets().emplace_back();
+    auto tileoffsets_reader = frag_meta_reader.getTileOffsets();
+    uint64_t i = 0;
+    for (const auto& t : tileoffsets_reader) {
+      auto& last = frag_meta->loaded_metadata()->tile_offsets()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
+      loaded_metadata.tile_offsets_[i++] = loaded;
     }
-    frag_meta->tile_offsets_mtx().resize(
-        frag_meta_reader.getTileOffsets().size());
-    loaded_metadata.tile_offsets_.resize(
-        frag_meta_reader.getTileOffsets().size(), loaded);
   }
+
+  // The tile var offsets field may not be present here in some usecases such as
+  // refactored query, but readers on the server side require these vectors to
+  // have the first dimension properly allocated when loading its data on
+  // demand.
+  frag_meta->loaded_metadata()->resize_tile_var_offsets_vectors(
+      num_dims_and_attrs);
+  loaded_metadata.tile_var_offsets_.resize(num_dims_and_attrs, false);
   if (frag_meta_reader.hasTileVarOffsets()) {
-    for (const auto& t : frag_meta_reader.getTileVarOffsets()) {
-      auto& last = frag_meta->tile_var_offsets().emplace_back();
+    auto tilevaroffsets_reader = frag_meta_reader.getTileVarOffsets();
+    uint64_t i = 0;
+    for (const auto& t : tilevaroffsets_reader) {
+      auto& last = frag_meta->loaded_metadata()->tile_var_offsets()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
+      loaded_metadata.tile_var_offsets_[i++] = loaded;
     }
-    frag_meta->tile_var_offsets_mtx().resize(
-        frag_meta_reader.getTileVarOffsets().size());
-    loaded_metadata.tile_var_offsets_.resize(
-        frag_meta_reader.getTileVarOffsets().size(), loaded);
   }
+
+  // The tile var sizes field may not be present here in some usecases such as
+  // refactored query, but readers on the server side require these vectors to
+  // have the first dimension properly allocated when loading its data on
+  // demand.
+  frag_meta->loaded_metadata()->resize_tile_var_sizes_vectors(
+      num_dims_and_attrs);
+  loaded_metadata.tile_var_sizes_.resize(num_dims_and_attrs, false);
   if (frag_meta_reader.hasTileVarSizes()) {
-    for (const auto& t : frag_meta_reader.getTileVarSizes()) {
-      auto& last = frag_meta->tile_var_sizes().emplace_back();
+    auto tilevarsizes_reader = frag_meta_reader.getTileVarSizes();
+    uint64_t i = 0;
+    for (const auto& t : tilevarsizes_reader) {
+      auto& last = frag_meta->loaded_metadata()->tile_var_sizes()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
+      loaded_metadata.tile_var_sizes_[i++] = loaded;
     }
-    loaded_metadata.tile_var_sizes_.resize(
-        frag_meta_reader.getTileVarSizes().size(), loaded);
   }
+
+  // This field may not be present here in some usecases such as refactored
+  // query, but readers on the server side require this vector to have the first
+  // dimension properly allocated when loading its data on demand.
+  frag_meta->loaded_metadata()->resize_tile_validity_offsets_vectors(
+      num_dims_and_attrs);
+  loaded_metadata.tile_validity_offsets_.resize(num_dims_and_attrs, false);
   if (frag_meta_reader.hasTileValidityOffsets()) {
-    for (const auto& t : frag_meta_reader.getTileValidityOffsets()) {
-      auto& last = frag_meta->tile_validity_offsets().emplace_back();
+    auto tilevalidityoffsets_reader = frag_meta_reader.getTileValidityOffsets();
+    uint64_t i = 0;
+    for (const auto& t : tilevalidityoffsets_reader) {
+      auto& last = frag_meta->loaded_metadata()->tile_validity_offsets()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
+      loaded_metadata.tile_validity_offsets_[i++] = false;
     }
-    loaded_metadata.tile_validity_offsets_.resize(
-        frag_meta_reader.getTileValidityOffsets().size(), false);
   }
   if (frag_meta_reader.hasTileMinBuffer()) {
-    for (const auto& t : frag_meta_reader.getTileMinBuffer()) {
-      auto& last = frag_meta->tile_min_buffer().emplace_back();
+    auto tileminbuffer_reader = frag_meta_reader.getTileMinBuffer();
+    for (const auto& t : tileminbuffer_reader) {
+      auto& last =
+          frag_meta->loaded_metadata()->tile_min_buffer().emplace_back();
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
     }
-    loaded_metadata.tile_min_.resize(
-        frag_meta_reader.getTileMinBuffer().size(), false);
+    loaded_metadata.tile_min_.resize(tileminbuffer_reader.size(), false);
   }
   if (frag_meta_reader.hasTileMinVarBuffer()) {
-    for (const auto& t : frag_meta_reader.getTileMinVarBuffer()) {
-      auto& last = frag_meta->tile_min_var_buffer().emplace_back();
+    auto tileminvarbuffer_reader = frag_meta_reader.getTileMinVarBuffer();
+    for (const auto& t : tileminvarbuffer_reader) {
+      auto& last =
+          frag_meta->loaded_metadata()->tile_min_var_buffer().emplace_back();
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
@@ -237,19 +276,22 @@ Status fragment_metadata_from_capnp(
     }
   }
   if (frag_meta_reader.hasTileMaxBuffer()) {
-    for (const auto& t : frag_meta_reader.getTileMaxBuffer()) {
-      auto& last = frag_meta->tile_max_buffer().emplace_back();
+    auto tilemaxbuffer_reader = frag_meta_reader.getTileMaxBuffer();
+    for (const auto& t : tilemaxbuffer_reader) {
+      auto& last =
+          frag_meta->loaded_metadata()->tile_max_buffer().emplace_back();
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
     }
-    loaded_metadata.tile_max_.resize(
-        frag_meta_reader.getTileMaxBuffer().size(), false);
+    loaded_metadata.tile_max_.resize(tilemaxbuffer_reader.size(), false);
   }
   if (frag_meta_reader.hasTileMaxVarBuffer()) {
-    for (const auto& t : frag_meta_reader.getTileMaxVarBuffer()) {
-      auto& last = frag_meta->tile_max_var_buffer().emplace_back();
+    auto tilemaxvarbuffer_reader = frag_meta_reader.getTileMaxVarBuffer();
+    for (const auto& t : tilemaxvarbuffer_reader) {
+      auto& last =
+          frag_meta->loaded_metadata()->tile_max_var_buffer().emplace_back();
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
@@ -257,30 +299,33 @@ Status fragment_metadata_from_capnp(
     }
   }
   if (frag_meta_reader.hasTileSums()) {
-    for (const auto& t : frag_meta_reader.getTileSums()) {
-      auto& last = frag_meta->tile_sums().emplace_back();
+    auto tilesums_reader = frag_meta_reader.getTileSums();
+    for (const auto& t : tilesums_reader) {
+      auto& last = frag_meta->loaded_metadata()->tile_sums().emplace_back();
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
     }
-    loaded_metadata.tile_sum_.resize(
-        frag_meta_reader.getTileSums().size(), false);
+    loaded_metadata.tile_sum_.resize(tilesums_reader.size(), false);
   }
   if (frag_meta_reader.hasTileNullCounts()) {
-    for (const auto& t : frag_meta_reader.getTileNullCounts()) {
-      auto& last = frag_meta->tile_null_counts().emplace_back();
+    auto tilenullcounts_reader = frag_meta_reader.getTileNullCounts();
+    for (const auto& t : tilenullcounts_reader) {
+      auto& last =
+          frag_meta->loaded_metadata()->tile_null_counts().emplace_back();
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
     }
     loaded_metadata.tile_null_count_.resize(
-        frag_meta_reader.getTileNullCounts().size(), false);
+        tilenullcounts_reader.size(), false);
   }
   if (frag_meta_reader.hasFragmentMins()) {
-    for (const auto& t : frag_meta_reader.getFragmentMins()) {
-      auto& last = frag_meta->fragment_mins().emplace_back();
+    auto fragmentmins_reader = frag_meta_reader.getFragmentMins();
+    for (const auto& t : fragmentmins_reader) {
+      auto& last = frag_meta->loaded_metadata()->fragment_mins().emplace_back();
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
@@ -288,8 +333,9 @@ Status fragment_metadata_from_capnp(
     }
   }
   if (frag_meta_reader.hasFragmentMaxs()) {
-    for (const auto& t : frag_meta_reader.getFragmentMaxs()) {
-      auto& last = frag_meta->fragment_maxs().emplace_back();
+    auto fragmentmaxs_reader = frag_meta_reader.getFragmentMaxs();
+    for (const auto& t : fragmentmaxs_reader) {
+      auto& last = frag_meta->loaded_metadata()->fragment_maxs().emplace_back();
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
@@ -297,18 +343,20 @@ Status fragment_metadata_from_capnp(
     }
   }
   if (frag_meta_reader.hasFragmentSums()) {
-    frag_meta->fragment_sums().reserve(
-        frag_meta_reader.getFragmentSums().size());
-    for (const auto& fragment_sum : frag_meta_reader.getFragmentSums()) {
-      frag_meta->fragment_sums().emplace_back(fragment_sum);
+    auto fragmentsums_reader = frag_meta_reader.getFragmentSums();
+    frag_meta->loaded_metadata()->fragment_sums().reserve(
+        fragmentsums_reader.size());
+    for (const auto& fragment_sum : fragmentsums_reader) {
+      frag_meta->loaded_metadata()->fragment_sums().emplace_back(fragment_sum);
     }
   }
   if (frag_meta_reader.hasFragmentNullCounts()) {
-    frag_meta->fragment_null_counts().reserve(
-        frag_meta_reader.getFragmentNullCounts().size());
-    for (const auto& fragment_null_count :
-         frag_meta_reader.getFragmentNullCounts()) {
-      frag_meta->fragment_null_counts().emplace_back(fragment_null_count);
+    auto fragmentnullcounts_reader = frag_meta_reader.getFragmentNullCounts();
+    frag_meta->loaded_metadata()->fragment_null_counts().reserve(
+        fragmentnullcounts_reader.size());
+    for (const auto& fragment_null_count : fragmentnullcounts_reader) {
+      frag_meta->loaded_metadata()->fragment_null_counts().emplace_back(
+          fragment_null_count);
     }
   }
 
@@ -322,9 +370,10 @@ Status fragment_metadata_from_capnp(
 
   if (frag_meta_reader.hasRtree()) {
     auto data = frag_meta_reader.getRtree();
-    auto& domain = array_schema->domain();
+    auto& domain = fragment_array_schema->domain();
     // If there are no levels, we still need domain_ properly initialized
-    frag_meta->rtree() = RTree(&domain, constants::rtree_fanout);
+    frag_meta->loaded_metadata()->rtree().reset(
+        &domain, constants::rtree_fanout);
     Deserializer deserializer(data.begin(), data.size());
     // What we actually deserialize is not something written on disk in a
     // possibly historical format, but what has been serialized in
@@ -333,16 +382,9 @@ Status fragment_metadata_from_capnp(
     // the version of a fragment is on disk, we will be serializing _on wire_ in
     // fragment_metadata_to_capnp in the "modern" (post v5) way, so we need to
     // deserialize it as well in that way.
-    frag_meta->rtree().deserialize(
+    frag_meta->loaded_metadata()->rtree().deserialize(
         deserializer, &domain, constants::format_version);
   }
-
-  // Set the array schema and most importantly retrigger the build
-  // of the internal idx_map. Also set array_schema_name which is used
-  // in some places in the global writer
-  frag_meta->set_array_schema(array_schema);
-  frag_meta->set_schema_name(array_schema->name());
-  frag_meta->set_dense(array_schema->dense());
 
   // It's important to do this here as init_domain depends on some fields
   // above to be properly initialized
@@ -352,8 +394,8 @@ Status fragment_metadata_from_capnp(
     RETURN_NOT_OK(status);
     // Whilst sparse gets its domain calculated, dense needs to have it
     // set here from the deserialized data
-    if (array_schema->dense()) {
-      throw_if_not_ok(frag_meta->init_domain(*ndrange));
+    if (fragment_array_schema->dense()) {
+      frag_meta->init_domain(*ndrange);
     } else {
       const auto& frag0_dom = *ndrange;
       frag_meta->non_empty_domain().assign(frag0_dom.begin(), frag0_dom.end());
@@ -363,10 +405,9 @@ Status fragment_metadata_from_capnp(
   if (frag_meta_reader.hasGtOffsets()) {
     generic_tile_offsets_from_capnp(
         frag_meta_reader.getGtOffsets(), frag_meta->generic_tile_offsets());
-    loaded_metadata.footer_ = true;
   }
 
-  frag_meta->set_loaded_metadata(loaded_metadata);
+  frag_meta->loaded_metadata()->set_loaded_metadata(loaded_metadata);
 
   return Status::Ok();
 }
@@ -444,9 +485,67 @@ void generic_tile_offsets_to_capnp(
       gt_offsets.processed_conditions_offsets_);
 }
 
+void fragment_meta_sizes_offsets_to_capnp(
+    const FragmentMetadata& frag_meta,
+    capnp::FragmentMetadata::Builder* frag_meta_builder) {
+  auto& tile_offsets = frag_meta.loaded_metadata()->tile_offsets();
+  if (!tile_offsets.empty()) {
+    auto builder = frag_meta_builder->initTileOffsets(tile_offsets.size());
+    for (uint64_t i = 0; i < tile_offsets.size(); ++i) {
+      builder.init(i, tile_offsets[i].size());
+      for (uint64_t j = 0; j < tile_offsets[i].size(); ++j) {
+        builder[i].set(j, tile_offsets[i][j]);
+      }
+    }
+  }
+  auto& tile_var_offsets = frag_meta.loaded_metadata()->tile_var_offsets();
+  if (!tile_var_offsets.empty()) {
+    auto builder =
+        frag_meta_builder->initTileVarOffsets(tile_var_offsets.size());
+    for (uint64_t i = 0; i < tile_var_offsets.size(); ++i) {
+      builder.init(i, tile_var_offsets[i].size());
+      for (uint64_t j = 0; j < tile_var_offsets[i].size(); ++j) {
+        builder[i].set(j, tile_var_offsets[i][j]);
+      }
+    }
+  }
+  auto& tile_var_sizes = frag_meta.loaded_metadata()->tile_var_sizes();
+  if (!tile_var_sizes.empty()) {
+    auto builder = frag_meta_builder->initTileVarSizes(tile_var_sizes.size());
+    for (uint64_t i = 0; i < tile_var_sizes.size(); ++i) {
+      builder.init(i, tile_var_sizes[i].size());
+      for (uint64_t j = 0; j < tile_var_sizes[i].size(); ++j) {
+        builder[i].set(j, tile_var_sizes[i][j]);
+      }
+    }
+  }
+  auto& tile_validity_offsets =
+      frag_meta.loaded_metadata()->tile_validity_offsets();
+  if (!tile_validity_offsets.empty()) {
+    auto builder = frag_meta_builder->initTileValidityOffsets(
+        tile_validity_offsets.size());
+    for (uint64_t i = 0; i < tile_validity_offsets.size(); ++i) {
+      builder.init(i, tile_validity_offsets[i].size());
+      for (uint64_t j = 0; j < tile_validity_offsets[i].size(); ++j) {
+        builder[i].set(j, tile_validity_offsets[i][j]);
+      }
+    }
+  }
+}
+
 Status fragment_metadata_to_capnp(
     const FragmentMetadata& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder) {
+  const auto& relative_fragment_uri =
+      serialize_array_uri_to_relative(frag_meta.fragment_uri());
+  frag_meta_builder->setFragmentUri(relative_fragment_uri);
+  frag_meta_builder->setHasTimestamps(frag_meta.has_timestamps());
+  frag_meta_builder->setHasDeleteMeta(frag_meta.has_delete_meta());
+  frag_meta_builder->setHasConsolidatedFooter(
+      frag_meta.has_consolidated_footer());
+  frag_meta_builder->setSparseTileNum(frag_meta.sparse_tile_num());
+  frag_meta_builder->setTileIndexBase(frag_meta.tile_index_base());
+
   auto& file_sizes = frag_meta.file_sizes();
   if (!file_sizes.empty()) {
     auto builder = frag_meta_builder->initFileSizes(file_sizes.size());
@@ -470,59 +569,7 @@ Status fragment_metadata_to_capnp(
     }
   }
 
-  const auto& relative_fragment_uri =
-      serialize_array_uri_to_relative(frag_meta.fragment_uri());
-  frag_meta_builder->setFragmentUri(relative_fragment_uri);
-  frag_meta_builder->setHasTimestamps(frag_meta.has_timestamps());
-  frag_meta_builder->setHasDeleteMeta(frag_meta.has_delete_meta());
-  frag_meta_builder->setHasConsolidatedFooter(
-      frag_meta.has_consolidated_footer());
-  frag_meta_builder->setSparseTileNum(frag_meta.sparse_tile_num());
-  frag_meta_builder->setTileIndexBase(frag_meta.tile_index_base());
-
-  auto& tile_offsets = frag_meta.tile_offsets();
-  if (!tile_offsets.empty()) {
-    auto builder = frag_meta_builder->initTileOffsets(tile_offsets.size());
-    for (uint64_t i = 0; i < tile_offsets.size(); ++i) {
-      builder.init(i, tile_offsets[i].size());
-      for (uint64_t j = 0; j < tile_offsets[i].size(); ++j) {
-        builder[i].set(j, tile_offsets[i][j]);
-      }
-    }
-  }
-  auto& tile_var_offsets = frag_meta.tile_var_offsets();
-  if (!tile_var_offsets.empty()) {
-    auto builder =
-        frag_meta_builder->initTileVarOffsets(tile_var_offsets.size());
-    for (uint64_t i = 0; i < tile_var_offsets.size(); ++i) {
-      builder.init(i, tile_var_offsets[i].size());
-      for (uint64_t j = 0; j < tile_var_offsets[i].size(); ++j) {
-        builder[i].set(j, tile_var_offsets[i][j]);
-      }
-    }
-  }
-  auto& tile_var_sizes = frag_meta.tile_var_sizes();
-  if (!tile_var_sizes.empty()) {
-    auto builder = frag_meta_builder->initTileVarSizes(tile_var_sizes.size());
-    for (uint64_t i = 0; i < tile_var_sizes.size(); ++i) {
-      builder.init(i, tile_var_sizes[i].size());
-      for (uint64_t j = 0; j < tile_var_sizes[i].size(); ++j) {
-        builder[i].set(j, tile_var_sizes[i][j]);
-      }
-    }
-  }
-  auto& tile_validity_offsets = frag_meta.tile_validity_offsets();
-  if (!tile_validity_offsets.empty()) {
-    auto builder = frag_meta_builder->initTileValidityOffsets(
-        tile_validity_offsets.size());
-    for (uint64_t i = 0; i < tile_validity_offsets.size(); ++i) {
-      builder.init(i, tile_validity_offsets[i].size());
-      for (uint64_t j = 0; j < tile_validity_offsets[i].size(); ++j) {
-        builder[i].set(j, tile_validity_offsets[i][j]);
-      }
-    }
-  }
-  auto& tile_min_buffer = frag_meta.tile_min_buffer();
+  auto& tile_min_buffer = frag_meta.loaded_metadata()->tile_min_buffer();
   if (!tile_min_buffer.empty()) {
     auto builder = frag_meta_builder->initTileMinBuffer(tile_min_buffer.size());
     for (uint64_t i = 0; i < tile_min_buffer.size(); ++i) {
@@ -532,7 +579,8 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_min_var_buffer = frag_meta.tile_min_var_buffer();
+  auto& tile_min_var_buffer =
+      frag_meta.loaded_metadata()->tile_min_var_buffer();
   if (!tile_min_var_buffer.empty()) {
     auto builder =
         frag_meta_builder->initTileMinVarBuffer(tile_min_var_buffer.size());
@@ -543,7 +591,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_max_buffer = frag_meta.tile_max_buffer();
+  auto& tile_max_buffer = frag_meta.loaded_metadata()->tile_max_buffer();
   if (!tile_max_buffer.empty()) {
     auto builder = frag_meta_builder->initTileMaxBuffer(tile_max_buffer.size());
     for (uint64_t i = 0; i < tile_max_buffer.size(); ++i) {
@@ -553,7 +601,8 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_max_var_buffer = frag_meta.tile_max_var_buffer();
+  auto& tile_max_var_buffer =
+      frag_meta.loaded_metadata()->tile_max_var_buffer();
   if (!tile_max_var_buffer.empty()) {
     auto builder =
         frag_meta_builder->initTileMaxVarBuffer(tile_max_var_buffer.size());
@@ -564,7 +613,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_sums = frag_meta.tile_sums();
+  auto& tile_sums = frag_meta.loaded_metadata()->tile_sums();
   if (!tile_sums.empty()) {
     auto builder = frag_meta_builder->initTileSums(tile_sums.size());
     for (uint64_t i = 0; i < tile_sums.size(); ++i) {
@@ -574,7 +623,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& tile_null_counts = frag_meta.tile_null_counts();
+  auto& tile_null_counts = frag_meta.loaded_metadata()->tile_null_counts();
   if (!tile_null_counts.empty()) {
     auto builder =
         frag_meta_builder->initTileNullCounts(tile_null_counts.size());
@@ -585,7 +634,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_mins = frag_meta.fragment_mins();
+  auto& fragment_mins = frag_meta.loaded_metadata()->fragment_mins();
   if (!fragment_mins.empty()) {
     auto builder = frag_meta_builder->initFragmentMins(fragment_mins.size());
     for (uint64_t i = 0; i < fragment_mins.size(); ++i) {
@@ -595,7 +644,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_maxs = frag_meta.fragment_maxs();
+  auto& fragment_maxs = frag_meta.loaded_metadata()->fragment_maxs();
   if (!fragment_maxs.empty()) {
     auto builder = frag_meta_builder->initFragmentMaxs(fragment_maxs.size());
     for (uint64_t i = 0; i < fragment_maxs.size(); ++i) {
@@ -605,14 +654,15 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_sums = frag_meta.fragment_sums();
+  auto& fragment_sums = frag_meta.loaded_metadata()->fragment_sums();
   if (!fragment_sums.empty()) {
     auto builder = frag_meta_builder->initFragmentSums(fragment_sums.size());
     for (uint64_t i = 0; i < fragment_sums.size(); ++i) {
       builder.set(i, fragment_sums[i]);
     }
   }
-  auto& fragment_null_counts = frag_meta.fragment_null_counts();
+  auto& fragment_null_counts =
+      frag_meta.loaded_metadata()->fragment_null_counts();
   if (!fragment_null_counts.empty()) {
     auto builder =
         frag_meta_builder->initFragmentNullCounts(fragment_null_counts.size());
@@ -637,11 +687,11 @@ Status fragment_metadata_to_capnp(
 
   // TODO: Can this be done better? Does this make a lot of copies?
   SizeComputationSerializer size_computation_serializer;
-  frag_meta.rtree().serialize(size_computation_serializer);
+  frag_meta.loaded_metadata()->rtree().serialize(size_computation_serializer);
 
   std::vector<uint8_t> buff(size_computation_serializer.size());
   Serializer serializer(buff.data(), buff.size());
-  frag_meta.rtree().serialize(serializer);
+  frag_meta.loaded_metadata()->rtree().serialize(serializer);
 
   auto vec = kj::Vector<uint8_t>();
   vec.addAll(
@@ -651,6 +701,8 @@ Status fragment_metadata_to_capnp(
   auto gt_offsets_builder = frag_meta_builder->initGtOffsets();
   generic_tile_offsets_to_capnp(
       frag_meta.generic_tile_offsets(), gt_offsets_builder);
+
+  frag_meta_builder->setArraySchemaName(frag_meta.array_schema_name());
 
   return Status::Ok();
 }

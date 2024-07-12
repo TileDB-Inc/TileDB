@@ -34,6 +34,11 @@
 # Search the path set during the superbuild for the EP.
 set(CLIPP_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
+if (TILEDB_VCPKG)
+  find_package(clipp REQUIRED)
+  return()
+endif()
+
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CLIPP_EP_BUILT)
   find_path(CLIPP_INCLUDE_DIR
     NAMES clipp.h
@@ -83,9 +88,9 @@ if (NOT CLIPP_FOUND)
 endif()
 
 # Create the imported target for Clipp
-if (CLIPP_FOUND AND NOT TARGET Clipp::Clipp)
-  add_library(Clipp::Clipp INTERFACE IMPORTED)
-  set_target_properties(Clipp::Clipp PROPERTIES
+if (CLIPP_FOUND AND NOT TARGET clipp::clipp)
+  add_library(clipp::clipp INTERFACE IMPORTED)
+  set_target_properties(clipp::clipp PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CLIPP_INCLUDE_DIR}"
   )
 endif()

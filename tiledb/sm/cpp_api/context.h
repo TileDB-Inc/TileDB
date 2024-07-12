@@ -134,33 +134,44 @@ class Context {
    * @param rc If != TILEDB_OK, calls error handler
    */
   void handle_error(int rc) const {
-    // Do nothing if there is not error
+    // Do nothing if there is no error
     if (rc == TILEDB_OK)
       return;
 
+    error_handler_(get_last_error_message());
+  }
+
+  /**
+   * Get the message of the last error that occurred.
+   *
+   * @return The last error message
+   */
+  std::string get_last_error_message() const noexcept {
     // Get error
     const auto& ctx = ctx_.get();
     tiledb_error_t* err = nullptr;
-    const char* msg = nullptr;
-    rc = tiledb_ctx_get_last_error(ctx, &err);
+
+    auto rc = tiledb_ctx_get_last_error(ctx, &err);
     if (rc != TILEDB_OK) {
       tiledb_error_free(&err);
-      error_handler_("[TileDB::C++API] Error: Non-retrievable error occurred");
+      return "[TileDB::C++API] Error: Non-retrievable error occurred";
     }
 
-    // Get error message
+    // Get the error message
+    const char* msg = nullptr;
     rc = tiledb_error_message(err, &msg);
     if (rc != TILEDB_OK) {
       tiledb_error_free(&err);
-      error_handler_("[TileDB::C++API] Error: Non-retrievable error occurred");
+      return "[TileDB::C++API] Error: Non-retrievable error occurred";
     }
-    auto msg_str = std::string(msg);
 
-    // Clean up
+    // Create a copy of the error
+    std::string msg_str(msg);
+
+    // Cleanup error struct
     tiledb_error_free(&err);
 
-    // Throw exception
-    error_handler_(msg_str);
+    return msg_str;
   }
 
   /** Returns the C TileDB context object. */

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,49 +41,50 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-PositiveDeltaFilter::PositiveDeltaFilter()
-    : Filter(FilterType::FILTER_POSITIVE_DELTA) {
+PositiveDeltaFilter::PositiveDeltaFilter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_POSITIVE_DELTA, filter_data_type) {
   max_window_size_ = 1024;
 }
 
-PositiveDeltaFilter::PositiveDeltaFilter(uint32_t max_window_size)
-    : Filter(FilterType::FILTER_POSITIVE_DELTA)
+PositiveDeltaFilter::PositiveDeltaFilter(
+    uint32_t max_window_size, Datatype filter_data_type)
+    : Filter(FilterType::FILTER_POSITIVE_DELTA, filter_data_type)
     , max_window_size_(max_window_size) {
 }
 
-void PositiveDeltaFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-  fprintf(out, "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=%u", max_window_size_);
+std::ostream& PositiveDeltaFilter::output(std::ostream& os) const {
+  os << "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=";
+  os << std::to_string(max_window_size_);
+  return os;
 }
 
-Status PositiveDeltaFilter::run_forward(
+bool PositiveDeltaFilter::accepts_input_datatype(Datatype datatype) const {
+  if (datatype_is_integer(datatype) || datatype_is_datetime(datatype) ||
+      datatype_is_time(datatype) || datatype_is_byte(datatype)) {
+    return true;
+  }
+  return false;
+}
+
+void PositiveDeltaFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-
-  // If encoding can't work, just return the input unmodified.
-  if (!datatype_is_integer(tile_type)) {
-    RETURN_NOT_OK(output->append_view(input));
-    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-    return Status::Ok();
-  }
-
   /* Note: Arithmetic operations cannot be performed on std::byte.
-    We will use uint8_t for the Datatype::BLOB case as it is the same size as
-    std::byte and can have arithmetic perfomed on it. */
-  switch (tile_type) {
+    We will use uint8_t for the byte-type cases as it is the same size as
+    std::byte and can have arithmetic performed on it. */
+  switch (filter_data_type_) {
     case Datatype::INT8:
       return run_forward<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::BOOL:
     case Datatype::UINT8:
       return run_forward<uint8_t>(
@@ -128,16 +129,24 @@ Status PositiveDeltaFilter::run_forward(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
+      if (tile.format_version() < 20) {
+        // Return data as-is for backwards compatibility.
+        throw_if_not_ok(output->append_view(input));
+        throw_if_not_ok(output_metadata->append_view(input_metadata));
+        return;
+      }
       return run_forward<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(
-          Status_FilterError("Cannot filter; Unsupported input type"));
+      // If encoding can't work, just return the input unmodified.
+      throw_if_not_ok(output->append_view(input));
+      throw_if_not_ok(output_metadata->append_view(input_metadata));
+      return;
   }
 }
 
 template <typename T>
-Status PositiveDeltaFilter::run_forward(
+void PositiveDeltaFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -165,23 +174,21 @@ Status PositiveDeltaFilter::run_forward(
   }
 
   // Allocate space in output buffer for the upper bound.
-  RETURN_NOT_OK(output->prepend_buffer(output_size_ub));
+  throw_if_not_ok(output->prepend_buffer(output_size_ub));
   Buffer* buffer_ptr = output->buffer_ptr(0);
   buffer_ptr->reset_offset();
   assert(buffer_ptr != nullptr);
 
   // Forward the existing metadata
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
   // Allocate a buffer for this filter's metadata and write the header.
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&total_num_windows, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(output_metadata->write(&total_num_windows, sizeof(uint32_t)));
 
   // Compress all parts.
   for (unsigned i = 0; i < num_parts; i++) {
-    RETURN_NOT_OK(encode_part<T>(&parts[i], output, output_metadata));
+    throw_if_not_ok(encode_part<T>(&parts[i], output, output_metadata));
   }
-
-  return Status::Ok();
 }
 
 template <typename T>
@@ -244,26 +251,17 @@ Status PositiveDeltaFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
-
-  auto tile_type = tile.type();
-
-  // If encoding wasn't applied, just return the input unmodified.
-  if (!datatype_is_integer(tile_type)) {
-    RETURN_NOT_OK(output->append_view(input));
-    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-    return Status::Ok();
-  }
-
+    const Config&) const {
   /* Note: Arithmetic operations cannot be performed on std::byte.
-    We will use uint8_t for the Datatype::BLOB case as it is the same size as
+    We will use uint8_t for the byte-type cases as it is the same size as
     std::byte and can have arithmetic perfomed on it. */
-  switch (tile_type) {
+  switch (filter_data_type_) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::BOOL:
     case Datatype::UINT8:
       return run_reverse<uint8_t>(
@@ -308,24 +306,31 @@ Status PositiveDeltaFilter::run_reverse(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
+      if (tile.format_version() < 20) {
+        // Return data as-is for backwards compatibility.
+        RETURN_NOT_OK(output->append_view(input));
+        RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+        return Status::Ok();
+      }
       return run_reverse<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(
-          Status_FilterError("Cannot filter; Unsupported input type"));
+      // If encoding wasn't applied, just return the input unmodified.
+      RETURN_NOT_OK(output->append_view(input));
+      RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+      return Status::Ok();
   }
 }
 
 template <typename T>
 Status PositiveDeltaFilter::run_reverse(
-    const Tile& tile,
+    const Tile&,
     Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = datatype_size(tile_type);
+  auto tile_type_size = datatype_size(filter_data_type_);
 
   uint32_t num_windows;
   RETURN_NOT_OK(input_metadata->read(&num_windows, sizeof(uint32_t)));
@@ -406,7 +411,7 @@ void PositiveDeltaFilter::set_max_window_size(uint32_t max_window_size) {
 }
 
 PositiveDeltaFilter* PositiveDeltaFilter::clone_impl() const {
-  auto clone = new PositiveDeltaFilter;
+  auto clone = tdb_new(PositiveDeltaFilter, filter_data_type_);
   clone->max_window_size_ = max_window_size_;
   return clone;
 }
@@ -415,5 +420,4 @@ void PositiveDeltaFilter::serialize_impl(Serializer& serializer) const {
   serializer.write<uint32_t>(max_window_size_);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

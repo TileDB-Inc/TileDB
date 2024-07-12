@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/helpers-dimension.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -47,10 +48,11 @@ TEST_CASE(
     "Dimension: Test map_to_uint64, integers",
     "[dimension][map_to_uint64][int]") {
   // Create dimensions
-  Dimension d1("d1", Datatype::INT32);
+  auto memory_tracker = get_test_memory_tracker();
+  Dimension d1("d1", Datatype::INT32, memory_tracker);
   int32_t dom1[] = {0, 100};
   CHECK(d1.set_domain(dom1).ok());
-  Dimension d2("d2", Datatype::INT32);
+  Dimension d2("d2", Datatype::INT32, memory_tracker);
   int32_t dom2[] = {0, 200};
   CHECK(d2.set_domain(dom2).ok());
 
@@ -161,10 +163,11 @@ TEST_CASE(
     "Dimension: Test map_to_uint64, int32, negative",
     "[dimension][map_to_uint64][int32][negative]") {
   // Create dimensions
-  Dimension d1("d1", Datatype::INT32);
+  auto memory_tracker = get_test_memory_tracker();
+  Dimension d1("d1", Datatype::INT32, memory_tracker);
   int32_t dom1[] = {-50, 50};
   CHECK(d1.set_domain(dom1).ok());
-  Dimension d2("d2", Datatype::INT32);
+  Dimension d2("d2", Datatype::INT32, memory_tracker);
   int32_t dom2[] = {-100, 100};
   CHECK(d2.set_domain(dom2).ok());
 
@@ -273,12 +276,13 @@ TEST_CASE(
 
 TEST_CASE(
     "Dimension: Test map_to_uint64, float32",
-    "[dimension][map_to_uint64][float32") {
+    "[dimension][map_to_uint64][float32]") {
   // Create dimensions
-  Dimension d1("d1", Datatype::FLOAT32);
+  auto memory_tracker = get_test_memory_tracker();
+  Dimension d1("d1", Datatype::FLOAT32, memory_tracker);
   float dom1[] = {0.0f, 1.0f};
   CHECK(d1.set_domain(dom1).ok());
-  Dimension d2("d2", Datatype::FLOAT32);
+  Dimension d2("d2", Datatype::FLOAT32, memory_tracker);
   float dom2[] = {0.0f, 2.0f};
   CHECK(d2.set_domain(dom2).ok());
 
@@ -398,8 +402,9 @@ TEST_CASE(
     "Dimension: Test map_to_uint64, string",
     "[dimension][map_to_uint64][string]") {
   // Create dimensions
-  Dimension d1("d1", Datatype::STRING_ASCII);
-  Dimension d2("d2", Datatype::STRING_ASCII);
+  auto memory_tracker = get_test_memory_tracker();
+  Dimension d1("d1", Datatype::STRING_ASCII, memory_tracker);
+  Dimension d2("d2", Datatype::STRING_ASCII, memory_tracker);
 
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);
@@ -517,7 +522,8 @@ TEST_CASE(
     "Dimension: Test map_from_uint64, int32",
     "[dimension][map_from_uint64][int32]") {
   // Create dimensions
-  Dimension d1("d1", Datatype::INT32);
+  auto memory_tracker = get_test_memory_tracker();
+  Dimension d1("d1", Datatype::INT32, memory_tracker);
   int32_t dom1[] = {0, 100};
   CHECK(d1.set_domain(dom1).ok());
 
@@ -538,7 +544,8 @@ TEST_CASE(
     "Dimension: Test map_from_uint64, int32, negative",
     "[dimension][map_from_uint64][int32][negative]") {
   // Create dimensions
-  Dimension d1("d1", Datatype::INT32);
+  auto memory_tracker = get_test_memory_tracker();
+  Dimension d1("d1", Datatype::INT32, memory_tracker);
   int32_t dom1[] = {-50, 50};
   CHECK(d1.set_domain(dom1).ok());
 
@@ -559,7 +566,8 @@ TEST_CASE(
     "Dimension: Test map_from_uint64, float32",
     "[dimension][map_from_uint64][float32]") {
   // Create dimensions
-  Dimension d1("d1", Datatype::FLOAT32);
+  auto memory_tracker = get_test_memory_tracker();
+  Dimension d1("d1", Datatype::FLOAT32, memory_tracker);
   float dom1[] = {0.0f, 1.0f};
   CHECK(d1.set_domain(dom1).ok());
 
@@ -580,7 +588,8 @@ TEST_CASE(
     "Dimension: Test map_from_uint64, string",
     "[dimension][map_from_uint64][string]") {
   // Create dimensions
-  Dimension d1("d1", Datatype::STRING_ASCII);
+  auto memory_tracker = get_test_memory_tracker();
+  Dimension d1("d1", Datatype::STRING_ASCII, memory_tracker);
 
   // Set number of buckets
   Hilbert h(2);
@@ -611,7 +620,7 @@ double basic_verify_overlap_ratio(
     T range1_low, T range1_high, T range2_low, T range2_high) {
   auto r1 = TypedRange<T>(range1_low, range1_high);
   auto r2 = TypedRange<T>(range2_low, range2_high);
-  Dimension d("foo", RangeTraits<T>::datatype);
+  Dimension d("foo", RangeTraits<T>::datatype, get_test_memory_tracker());
   auto ratio = d.overlap_ratio(r1, r2);
   CHECK(0.0 <= ratio);
   CHECK(ratio <= 1.0);

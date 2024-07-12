@@ -35,6 +35,7 @@ set(SOURCES
   targets/sc-15387.cc
   targets/sc-18836.cc
   targets/sc-23712.cc
+  targets/sc-44758.cc
 )
 
 if (TILEDB_SERIALIZATION)
@@ -45,12 +46,21 @@ if (TILEDB_CPP_API)
   list(APPEND SOURCES targets/sc-19240_cppapi-vfs-exception.cc)
   list(APPEND SOURCES targets/sc-24079.cc)
   list(APPEND SOURCES targets/sc-25116.cc)
+  list(APPEND SOURCES targets/sc-29682.cc)
+  list(APPEND SOURCES targets/sc-33480.cc)
+  list(APPEND SOURCES targets/sc-35424.cc)
+  list(APPEND SOURCES targets/sc-36372.cc)
+  list(APPEND SOURCES targets/sc-38300.cc)
 endif()
 
 add_executable(tiledb_regression
   EXCLUDE_FROM_ALL
   regression.cc
   ${SOURCES}
+)
+
+target_compile_definitions(tiledb_regression PRIVATE
+  -DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs/"
 )
 
 if (NOT MSVC)
@@ -61,7 +71,7 @@ target_link_libraries(tiledb_regression
   PUBLIC
     Catch2::Catch2WithMain
     local_install
-    tiledb_shared
+    tiledb
 )
 
 target_include_directories(tiledb_regression
@@ -76,3 +86,8 @@ add_test(
   COMMAND $<TARGET_FILE:tiledb_regression> --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+if (BUILD_SHARED_LIBS)
+  # Add the location of the tiledb shared library to PATH, to help Windows find it.
+  set_property(TEST tiledb_regression PROPERTY ENVIRONMENT_MODIFICATION "PATH=path_list_append:$<TARGET_FILE_DIR:tiledb>")
+endif()

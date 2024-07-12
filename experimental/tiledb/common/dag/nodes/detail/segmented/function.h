@@ -208,8 +208,8 @@ class function_node_impl : public node_base,
   BlockOut out_thing{};
 
  public:
-  //#pragma clang diagnostic push
-  //#pragma ide diagnostic ignored "UnreachableCode"
+  // #pragma clang diagnostic push
+  // #pragma ide diagnostic ignored "UnreachableCode"
   /**
    * Resume the node.  This will call the function that produces items.
    * Main entry point of the node.
@@ -226,6 +226,11 @@ class function_node_impl : public node_base,
   scheduler_event_type resume() override {
     auto source_mover = SourceBase::get_mover();
     auto sink_mover = SinkBase::get_mover();
+
+    // #ifdef __clang__
+    // #pragma clang diagnostic push
+    // #pragma ide diagnostic ignored "UnreachableCode"
+    // #endif
 
     switch (this->program_counter_) {
       // pull / extract drain
@@ -279,9 +284,6 @@ auto post_state = sink_mover->state();
 
       case 3: {
         ++this->program_counter_;
-
-        assert(this->source_correspondent() != nullptr);
-        assert(this->sink_correspondent() != nullptr);
       }
         [[fallthrough]];
 
@@ -333,9 +335,14 @@ auto post_state = sink_mover->state();
         break;
       }
     }
+
+    // #ifdef __clang__
+    // #pragma clang diagnostic pop
+    // #endif
+
     return scheduler_event_type::error;
   }
-  //#pragma clang diagnostic pop
+  // #pragma clang diagnostic pop
 
   /** Run the node until it is done. */
   void run() override {
@@ -358,8 +365,9 @@ template <
     template <class>
     class SinkMover,
     class BlockIn,
-    template <class> class SourceMover = SinkMover,
-    class BlockOut = BlockIn>
+    template <class>
+    class SourceMover,
+    class BlockOut>
 struct function_node
     : public std::shared_ptr<
           function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>> {

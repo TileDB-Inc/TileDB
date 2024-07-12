@@ -61,14 +61,17 @@ TEST_CASE(
   f.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width);
   f.get_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &get_byte_width);
   CHECK(get_byte_width == byte_width);
+  CHECK(get_byte_width == f.get_option<uint64_t>(TILEDB_SCALE_FLOAT_BYTEWIDTH));
 
   f.set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale);
   f.get_option(TILEDB_SCALE_FLOAT_FACTOR, &get_scale);
   CHECK(get_scale == scale);
+  CHECK(get_scale == f.get_option<double>(TILEDB_SCALE_FLOAT_FACTOR));
 
   f.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
   f.get_option(TILEDB_SCALE_FLOAT_OFFSET, &get_offset);
   CHECK(get_offset == offset);
+  CHECK(get_offset == f.get_option<double>(TILEDB_SCALE_FLOAT_OFFSET));
 }
 
 template <typename T, typename W>
@@ -146,10 +149,12 @@ struct FloatScalingFilterTestStruct {
     Query query_r(ctx, array_r);
     query_r.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_data_read);
 
+    Subarray subarray_r(ctx, array_r);
     if (array_type == TILEDB_DENSE) {
       int range[] = {1, dim_hi};
-      query_r.add_range("rows", range[0], range[1])
+      subarray_r.add_range("rows", range[0], range[1])
           .add_range("cols", range[0], range[1]);
+      query_r.set_subarray(subarray_r);
     }
 
     query_r.submit();

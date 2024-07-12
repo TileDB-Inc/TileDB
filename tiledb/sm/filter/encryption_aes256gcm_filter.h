@@ -80,23 +80,24 @@ class EncryptionAES256GCMFilter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  EncryptionAES256GCMFilter();
+  EncryptionAES256GCMFilter(Datatype filter_data_type);
 
   /**
    * Constructor with explicit key.
    *
    * @param key Key to use for the filter.
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  explicit EncryptionAES256GCMFilter(const EncryptionKey& key);
-
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
+  explicit EncryptionAES256GCMFilter(
+      const EncryptionKey& key, Datatype filter_data_type);
 
   /**
    * Encrypt the bytes of the input data into the output data buffer.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -138,6 +139,10 @@ class EncryptionAES256GCMFilter : public Filter {
    */
   void set_key(const void* key_bytes);
 
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
+
  private:
   /** Pointer to a buffer storing the secret key. */
   const void* key_bytes_;
@@ -166,6 +171,15 @@ class EncryptionAES256GCMFilter : public Filter {
    */
   Status encrypt_part(
       ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const;
+
+  /**
+   * Returns the filter output type
+   *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
+   */
+  Datatype output_datatype(Datatype input_type) const override;
 };
 
 }  // namespace sm

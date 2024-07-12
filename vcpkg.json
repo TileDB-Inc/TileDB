@@ -1,10 +1,7 @@
 {
-    "name": "tiledb",
-    "version-string": "2.15.0",
-    "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
+    "builtin-baseline": "72010900b7cee36cea77aebb97695095c9358eaf",
     "dependencies": [
         "bzip2",
-        "liblzma",
         "libmagic",
         "lz4",
         {
@@ -16,50 +13,51 @@
         "zstd"
     ],
     "features": {
-        "abseil": {
-            "description": "Enables building of abseil library and linkage test",
-            "dependencies": [
-                {
-                    "name": "abseil",
-                    "version>=": "20211102.0"
-                }
-            ]
-        },
         "azure": {
-            "description": "Support Azure Storage",
+            "description": "Support Azure Blob Storage",
             "dependencies": [
+                "azure-storage-blobs-cpp",
+                "azure-identity-cpp",
                 {
-                    "name": "azure-storage-cpplite",
-                    "version>=": "0.3.0"
+                    "name": "libxml2",
+                    "default-features": false,
+                    "platform": "!windows"
                 }
             ]
         },
         "gcs": {
-            "description": "Support google cloud storage",
+            "description": "Support Google Cloud Storage",
             "dependencies": [
                 {
                     "name": "google-cloud-cpp",
-                    "version>=": "2.6.0",
-                    "features": [ "storage" ],
+                    "features": [
+                        "storage"
+                    ],
                     "default-features": false
+                },
+                {
+                    "name": "abseil",
+                    "features": [
+                        "cxx17"
+                    ]
                 }
             ]
         },
         "serialization": {
-          "description": "Enable TileDB Cloud Support",
-          "dependencies": [
-              {
-                  "name": "capnproto",
-                  "version>=": "0.8.0"
-              }
-          ]
+            "description": "Enable TileDB Cloud Support",
+            "dependencies": [
+                {
+                    "name": "curl",
+                    "features": [ "zstd" ]
+                },
+                "capnproto"
+            ]
         },
         "s3": {
             "description": "Support AWS S3 Storage",
             "dependencies": [
                 {
                     "name": "aws-sdk-cpp",
-                    "version>=": "1.8.84",
                     "features": ["s3", "identity-management", "sts"],
                     "default-features": false
                 }
@@ -68,27 +66,31 @@
         "tests": {
             "description": "Build tiledb tests",
             "dependencies": [
-                "catch2"
+                "catch2",
+                {
+                  "name": "libfaketime",
+                  "platform": "!windows"
+                }
             ]
         },
         "tools": {
             "description": "Build tiledb command line tool",
             "dependencies": [
-                {
-                    "name": "clipp",
-                    "version>=": "1.2.3"
-                }
+                "clipp"
             ]
         },
         "webp": {
             "description": "Support WebP compression",
             "dependencies": [
-                {
-                    "name": "libwebp",
-                    "version>=": "1.2.3"
-                }
+                "libwebp"
             ]
-
         }
-    }
+    },
+    "overrides": [
+        {
+            "$note": "Remove this when the custom port for libmagic gets removed",
+            "name": "dirent",
+            "version": "1.23.2#3"
+        }
+    ]
 }

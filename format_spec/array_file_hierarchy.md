@@ -30,21 +30,15 @@ my_array                                # array folder
 
 ```
 
-A `<timestamped_name>` above has format `__t1_t2_uuid_v`, where 
-
-* `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-* `v` is the format version
-
 Inside the array folder, you can find the following:
 
 * [Array schema](./array_schema.md) folder `__schema`.
-* Inside of a fragments folder, any number of [fragment folders](./fragment.md) `<timestamped_name>`.
-* Inside of a commit folder, an empty file `<timestamped_name>.wrt` associated with every fragment folder `<timestamped_name>`, where `<timestamped_name>` is common for the folder and the WRT file. This is used to indicate that fragment `<timestamped_name>` has been *committed* (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.
-* Inside the same commit folder, any number of [delete commit files](./delete_commit_file.md) of the form `<timestamped_name>.del`.
-* Inside the same commit folder, any number of [update commit files](./update_commit_file.md) of the form `<timestamped_name>.upd`.
-* Inside the same commit folder, any number of [consolidated commits files](./consolidated_commits_file.md) of the form `<timestamped_name>.con`.
-* Inside the same commit folder, any number of [ignore files](./ignore_file.md) of the form `<timestamped_name>.ign`.
-* Inside of a fragment metadata folder, any number of [consolidated fragment metadata files](./consolidated_fragment_metadata_file.md) of the form `<timestamped_name>.meta`.
+* Inside of a fragments folder, any number of [fragment folders](./fragment.md) [`<timestamped_name>`](./timestamped_name.md).
+* Inside of a commit folder, an empty file [`<timestamped_name>`](./timestamped_name.md)`.wrt` associated with every fragment folder [`<timestamped_name>`](./timestamped_name.md), where [`<timestamped_name>`](./timestamped_name.md) is common for the folder and the WRT file. This is used to indicate that fragment [`<timestamped_name>`](./timestamped_name.md) has been *committed* (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.
+* Inside the same commit folder, any number of [delete commit files](./delete_commit_file.md) of the form [`<timestamped_name>`](./timestamped_name.md)`.del`.
+* Inside the same commit folder, any number of [update commit files](./update_commit_file.md) of the form [`<timestamped_name>`](./timestamped_name.md)`.upd`.
+* Inside the same commit folder, any number of [consolidated commits files](./consolidated_commits_file.md) of the form [`<timestamped_name>`](./timestamped_name.md)`.con`.
+* Inside the same commit folder, any number of [ignore files](./ignore_file.md) of the form [`<timestamped_name>`](./timestamped_name.md)`.ign`.
+* Inside of a fragment metadata folder, any number of [consolidated fragment metadata files](./consolidated_fragment_metadata_file.md) of the form [`<timestamped_name>`](./timestamped_name.md)`.meta`.
 * [Array metadata](./metadata.md) folder `__meta`.
 * Inside of a labels folder, additional TileDB arrays storing dimension label data.

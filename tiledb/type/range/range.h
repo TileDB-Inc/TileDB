@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,11 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/pmr.h"
+#include "tiledb/common/tag.h"
 #include "tiledb/sm/enums/datatype.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -48,36 +51,102 @@ using namespace tiledb::common;
 namespace tiledb::type {
 
 /**
- * Defines a 1D range (low, high), flattened in a sequence of bytes.
- * If the range consists of var-sized values (e.g., strings), then
- * the format is:
+ * Untyped storage for a closed interval
  *
- * low_nbytes (uint32) | low | high_nbytes (uint32) | high
+ * This class is the storage part in a split type system, so it must be used in
+ * conjunction with a type object (of some sort). Internally it does distinguish
+ * between fixed and variable size types.
  */
 class Range {
+  /**
+   * The range is stored as a sequence of bytes with manual memory layout. The
+   * memory layout is different for fixed-size and variable-size types.
+   *
+   * All constructors accept an optional allocator argument, whose default value
+   * is an allocator using std::pmr::get_default_resource.
+   *
+   * Fixed-size type T:
+   *   lower limit: sizeof(T)
+   *   upper limit: sizeof(T)
+   * Variable-size type T:
+   *   lower limit: range_start_size_
+   *   upper limit: range_size() - range_start_size_
+   */
+  tdb::pmr::vector<uint8_t> range_;
+
+  /**
+   * Alias to the allocator type used by the range vector.
+   */
+  using allocator_type = decltype(range_)::allocator_type;
+
+  /**
+   * The byte size of the lower limit of the range. Applicable only to variable
+   * size types.
+   *
+   * Default size of zero applicable to fixed size types
+   */
+  uint64_t range_start_size_{0};
+
+  /**
+   * True if the type is of variable size; false otherwise.
+   *
+   * Default is false for fixed size types
+   */
+  bool var_size_{false};
+
+  /**
+   * The ranges in a query's initial subarray have a depth of 0.
+   * When a range is split, the depth on the split ranges are
+   * set to +1 the depth of the original range.
+   *
+   * TODO: This value is only used in the subarray partitioner and should be
+   * moved to a `class PartitionRange` in that module.
+   *
+   * Default is zero in all cases.
+   */
+  uint64_t partition_depth_{0};
+
+  /**
+   * Constructor that designates the size of the storage. This constructor is
+   * meant to be delegated to and then initialized in the calling constructor's
+   * body.
+   *
+   * @param size Size of the storage array in bytes
+   */
+  explicit Range(size_t size, const allocator_type& alloc)
+      : range_(size, alloc) {
+  }
+
  public:
   /** Default constructor. */
-  Range()
-      : range_start_size_(0)
-      , var_size_(false)
-      , partition_depth_(0) {
+  Range(const allocator_type& alloc = {})
+      : range_(alloc) {
   }
 
   /** Constructs a range and sets fixed data. */
-  Range(const void* range, uint64_t range_size)
-      : Range() {
+  Range(
+      const void* range, uint64_t range_size, const allocator_type& alloc = {})
+      : Range(alloc) {
     set_range(range, range_size);
   }
 
   /** Constructs a range and sets variable data. */
-  Range(const void* range, uint64_t range_size, uint64_t range_start_size)
-      : Range() {
+  Range(
+      const void* range,
+      uint64_t range_size,
+      uint64_t range_start_size,
+      const allocator_type& alloc = {})
+      : Range(alloc) {
     set_range(range, range_size, range_start_size);
   }
 
   /** Constructs a range and sets fixed data. */
-  Range(const void* start, const void* end, uint64_t type_size)
-      : Range() {
+  Range(
+      const void* start,
+      const void* end,
+      uint64_t type_size,
+      const allocator_type& alloc = {})
+      : Range(alloc) {
     set_range_fixed(start, end, type_size);
   }
 
@@ -86,15 +155,34 @@ class Range {
       const void* start,
       uint64_t start_size,
       const void* end,
-      uint64_t end_size)
-      : Range() {
+      uint64_t end_size,
+      const allocator_type& alloc = {})
+      : Range(alloc) {
     set_range_var(start, start_size, end, end_size);
   }
 
   /** Constructs a range and sets variable data. */
-  Range(const std::string& s1, const std::string& s2)
-      : Range() {
+  Range(
+      const std::string& s1,
+      const std::string& s2,
+      const allocator_type& alloc = {})
+      : Range(alloc) {
     set_str_range(s1, s2);
+  }
+
+  /**
+   * Construct from two values of a fixed size type.
+   *
+   * This constructor requires a tag because otherwise it conflicts with the
+   * two-argument string constructor. Before C++20 it's difficult to only enable
+   * this constructor for language type that we use as fixed-length data.
+   */
+  template <class T>
+  Range(Tag<T>, T first, T second, const allocator_type& alloc = {})
+      : Range(2 * sizeof(T), alloc) {
+    auto d{reinterpret_cast<T*>(range_.data())};
+    d[0] = first;
+    d[1] = second;
   }
 
   /** Copy constructor. */
@@ -177,7 +265,9 @@ class Range {
   inline const T* typed_data() const {
     assert(!var_size_);
     assert(range_.empty() || (range_.size() == 2 * sizeof(T)));
-    return range_.empty() ? nullptr : (T*)range_.data();
+    return range_.empty() ?
+               nullptr :
+               static_cast<const T*>(static_cast<const void*>(range_.data()));
   }
 
   /** Returns a pointer to the start of the range. */
@@ -261,6 +351,24 @@ class Range {
     std::memcpy(&range_[fixed_size], end, fixed_size);
   }
 
+  /** Returns the start range as the requested type. */
+  template <typename T>
+  inline T start_as() const {
+    assert(!var_size_);
+    assert(!range_.empty());
+    return *static_cast<const T*>(static_cast<const void*>(range_.data()));
+  }
+
+  /** Returns the end range as the requested type. */
+  template <typename T>
+  inline T end_as() const {
+    assert(!var_size_);
+    assert(!range_.empty());
+    auto end_pos = range_.size() / 2;
+    return *static_cast<const T*>(
+        static_cast<const void*>(range_.data() + end_pos));
+  }
+
   /** Returns true if the range is empty. */
   bool empty() const {
     return range_.empty();
@@ -308,23 +416,6 @@ class Range {
   uint64_t partition_depth() const {
     return partition_depth_;
   }
-
- private:
-  /** The range as a flat byte vector. */
-  std::vector<uint8_t> range_;
-
-  /** The size of the start of `range_`. */
-  uint64_t range_start_size_;
-
-  /** Is the range var sized. */
-  bool var_size_;
-
-  /**
-   * The ranges in a query's initial subarray have a depth of 0.
-   * When a range is split, the depth on the split ranges are
-   * set to +1 the depth of the original range.
-   */
-  uint64_t partition_depth_;
 };
 
 /**
@@ -362,22 +453,40 @@ Status check_range_is_subset(const Range& superset, const Range& range) {
  */
 template <
     typename T,
-    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+    typename std::enable_if_t<
+        std::is_arithmetic_v<T> || std::is_same_v<T, std::string_view>>* =
+        nullptr>
 void check_range_is_valid(const Range& range) {
   // Check has data.
   if (range.empty())
     throw std::invalid_argument("Range is empty");
-  auto r = (const T*)range.data();
-  // Check for NaN
-  if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(r[0]) || std::isnan(r[1]))
-      throw std::invalid_argument("Range contains NaN");
+
+  // Compare string views
+  if constexpr (std::is_same_v<T, std::string_view>) {
+    auto start = range.start_str();
+    auto end = range.end_str();
+    // Check range bounds
+    if (start > end)
+      throw std::invalid_argument(
+          "Lower range bound " + std::string(start) +
+          " cannot be larger than the higher bound " + std::string(end));
+  } else {
+    if (range.size() != 2 * sizeof(T))
+      throw std::invalid_argument(
+          "Range size " + std::to_string(range.size()) +
+          " does not match the expected size " + std::to_string(2 * sizeof(T)));
+    auto r = (const T*)range.data();
+    // Check for NaN
+    if constexpr (std::is_floating_point_v<T>) {
+      if (std::isnan(r[0]) || std::isnan(r[1]))
+        throw std::invalid_argument("Range contains NaN");
+    }
+    // Check range bounds
+    if (r[0] > r[1])
+      throw std::invalid_argument(
+          "Lower range bound " + std::to_string(r[0]) +
+          " cannot be larger than the higher bound " + std::to_string(r[1]));
   }
-  // Check range bounds
-  if (r[0] > r[1])
-    throw std::invalid_argument(
-        "Lower range bound " + std::to_string(r[0]) +
-        " cannot be larger than the higher bound " + std::to_string(r[1]));
 };
 
 /**
@@ -393,8 +502,8 @@ template <
 void crop_range(const Range& bounds, Range& range) {
   auto bounds_data = (const T*)bounds.data();
   auto range_data = (T*)range.data();
-  range_data[0] = std::max(bounds_data[0], range_data[0]);
-  range_data[1] = std::min(bounds_data[1], range_data[1]);
+  range_data[0] = std::clamp(range_data[0], bounds_data[0], bounds_data[1]);
+  range_data[1] = std::clamp(range_data[1], bounds_data[0], bounds_data[1]);
 };
 
 /**
@@ -403,6 +512,17 @@ void crop_range(const Range& bounds, Range& range) {
  * @param range The range to get a string representation of.
  */
 std::string range_str(const Range& range, const tiledb::sm::Datatype type);
+
+/**
+ * Validates that the range's elements are in the correct order.
+ *
+ * @param range The range to validate.
+ * @param type The datatype to view the range's elements as.
+ *
+ * @throws std::invalid_argument If the range's elements are not in the correct
+ * order.
+ */
+void check_range_is_valid(const Range& range, const tiledb::sm::Datatype type);
 
 }  // namespace tiledb::type
 

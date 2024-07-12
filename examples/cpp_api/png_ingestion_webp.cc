@@ -310,12 +310,14 @@ void read_png_array(
 
   std::vector<unsigned> subarray = {1, array_height, 1, array_width};
   auto output_width = subarray[3], output_height = subarray[1];
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
 
   // Allocate query and set subarray.
   std::vector<uint8_t> rgba(output_height * output_width);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
-      .set_subarray(subarray)
+      .set_subarray(sub)
       .set_data_buffer("rgba", rgba);
   // Read from the array.
   query.submit();
@@ -363,7 +365,8 @@ int main(int argc, char** argv) {
               << std::endl
               << "`quality_factor` should be a float in the range [0.0, 100.0] "
                  "and is used to adjust quality of lossy compression. If no "
-                 "`quality_factor` is given lossless compression will be used.";
+                 "`quality_factor` is given lossless compression will be used."
+              << std::endl;
     return 1;
   }
   std::string input_png(argv[1]), array_path(argv[2]), output_png(argv[3]);

@@ -45,6 +45,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+#if defined(_WIN32) && defined(IN)
+#pragma message("WARNING: Windows.h may have already been included before")
+#pragma message("         tiledb/sm/enums/query_condition_op.h which will ")
+#pragma message("         likely cause a syntax error while defining the ")
+#pragma message("         QueryConditionOp enum class.")
+#endif
+
 /** Defines the query condition ops. */
 enum class QueryConditionOp : uint8_t {
 #define TILEDB_QUERY_CONDITION_OP_ENUM(id) id
@@ -68,6 +75,14 @@ inline const std::string& query_condition_op_str(
       return constants::query_condition_op_eq_str;
     case QueryConditionOp::NE:
       return constants::query_condition_op_ne_str;
+    case QueryConditionOp::IN:
+      return constants::query_condition_op_in_str;
+    case QueryConditionOp::NOT_IN:
+      return constants::query_condition_op_not_in_str;
+    case QueryConditionOp::ALWAYS_TRUE:
+      return constants::query_condition_op_always_true_str;
+    case QueryConditionOp::ALWAYS_FALSE:
+      return constants::query_condition_op_always_false_str;
     default:
       return constants::empty_str;
   }
@@ -77,19 +92,31 @@ inline const std::string& query_condition_op_str(
 inline Status query_condition_op_enum(
     const std::string& query_condition_op_str,
     QueryConditionOp* query_condition_op) {
-  if (query_condition_op_str == constants::query_condition_op_lt_str)
+  if (query_condition_op_str == constants::query_condition_op_lt_str) {
     *query_condition_op = QueryConditionOp::LT;
-  else if (query_condition_op_str == constants::query_condition_op_le_str)
+  } else if (query_condition_op_str == constants::query_condition_op_le_str) {
     *query_condition_op = QueryConditionOp::LE;
-  else if (query_condition_op_str == constants::query_condition_op_gt_str)
+  } else if (query_condition_op_str == constants::query_condition_op_gt_str) {
     *query_condition_op = QueryConditionOp::GT;
-  else if (query_condition_op_str == constants::query_condition_op_ge_str)
+  } else if (query_condition_op_str == constants::query_condition_op_ge_str) {
     *query_condition_op = QueryConditionOp::GE;
-  else if (query_condition_op_str == constants::query_condition_op_eq_str)
+  } else if (query_condition_op_str == constants::query_condition_op_eq_str) {
     *query_condition_op = QueryConditionOp::EQ;
-  else if (query_condition_op_str == constants::query_condition_op_ne_str)
+  } else if (query_condition_op_str == constants::query_condition_op_ne_str) {
     *query_condition_op = QueryConditionOp::NE;
-  else {
+  } else if (query_condition_op_str == constants::query_condition_op_in_str) {
+    *query_condition_op = QueryConditionOp::IN;
+  } else if (
+      query_condition_op_str == constants::query_condition_op_not_in_str) {
+    *query_condition_op = QueryConditionOp::NOT_IN;
+  } else if (
+      query_condition_op_str == constants::query_condition_op_always_true_str) {
+    *query_condition_op = QueryConditionOp::ALWAYS_TRUE;
+  } else if (
+      query_condition_op_str ==
+      constants::query_condition_op_always_false_str) {
+    *query_condition_op = QueryConditionOp::ALWAYS_FALSE;
+  } else {
     return Status_Error("Invalid QueryConditionOp " + query_condition_op_str);
   }
   return Status::Ok();
@@ -97,7 +124,7 @@ inline Status query_condition_op_enum(
 
 inline void ensure_qc_op_is_valid(QueryConditionOp query_condition_op) {
   auto qc_op_enum{::stdx::to_underlying(query_condition_op)};
-  if (qc_op_enum > 5) {
+  if (qc_op_enum > 7 && qc_op_enum != 253 && qc_op_enum != 254) {
     throw std::runtime_error(
         "Invalid Query Condition Op " + std::to_string(qc_op_enum));
   }
@@ -133,6 +160,22 @@ inline QueryConditionOp negate_query_condition_op(const QueryConditionOp op) {
 
     case QueryConditionOp::EQ:
       return QueryConditionOp::NE;
+
+    case QueryConditionOp::IN:
+      return QueryConditionOp::NOT_IN;
+
+    case QueryConditionOp::NOT_IN:
+      return QueryConditionOp::IN;
+
+    // ALWAYS_TRUE and ALWAYS_FALSE are the result of QueryCondition rewriting
+    // which means they should not be available for negation. This saves us
+    // from having to have invertible and non-invertible versions of these
+    // operations.
+    case QueryConditionOp::ALWAYS_TRUE:
+      throw std::logic_error("Invalid negation of rewritten query.");
+
+    case QueryConditionOp::ALWAYS_FALSE:
+      throw std::logic_error("Invalid negation of rewritten query.");
 
     default:
       throw std::runtime_error("negate_query_condition_op: Invalid op.");

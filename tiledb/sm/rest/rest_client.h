@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,23 +36,23 @@
 #include <string>
 #include <unordered_map>
 
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArraySchema;
 class ArraySchemaEvolution;
 class Config;
 class FragmentInfo;
 class Query;
+class MemoryTracker;
+class QueryPlan;
 
 enum class SerializationType : uint8_t;
 
@@ -66,10 +66,20 @@ class RestClient {
       stats::Stats* parent_stats,
       const Config* config,
       ThreadPool* compute_tp,
-      const std::shared_ptr<Logger>& logger);
+      const std::shared_ptr<Logger>& logger,
+      ContextResources& resources);
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
+
+  /**
+   * Check if use_refactored_array_open_and_query_submit is set in
+   * input config so that rest_client chooses the right URI
+   *
+   * @param config Config to check
+   *
+   * */
+  static bool use_refactored_query(const Config& config);
 
   /**
    * Check if an array exists by making a REST call. To start with this fetches
@@ -101,14 +111,29 @@ class RestClient {
       const URI& uri);
 
   /**
+   * Get an array schema from the rest server. This will eventually replace the
+   * get_array_schema_from_rest after TileDB-Cloud-REST merges support for the
+   * POST endpoint.
+   *
+   * @param uri The Array URI to load the schema from.
+   * @return shared_ptr<ArraySchema> The loaded array schema.
+   */
+  shared_ptr<ArraySchema> post_array_schema_from_rest(
+      const Config& config,
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      bool include_enumerations = false);
+
+  /**
    * Post the array config and get an array from rest server
    *
    * @param uri of array being loaded
-   * @param storage_manager storage manager of array being loaded
+   * @param resources the context resources
    * @param array array to load into
    */
-  Status post_array_from_rest(
-      const URI& uri, StorageManager* storage_manager, Array* array);
+  void post_array_from_rest(
+      const URI& uri, ContextResources& resources, Array* array);
 
   /**
    * Post a data array schema to rest server
@@ -123,10 +148,39 @@ class RestClient {
   /**
    * Deletes all written data from array at the given URI from the REST server.
    *
-   * #TODO Implement API endpoint on TileDBCloud.
    * @param uri Array URI to delete
    */
   void delete_array_from_rest(const URI& uri);
+
+  /**
+   * Deletes the fragments written between the given timestamps from the array
+   * at the given URI from the REST server.
+   *
+   * @param uri Array URI to delete fragments from
+   * @param array Array to delete fragments from
+   * @param timestamp_start The start timestamp at which to delete fragments
+   * @param timestamp_end The end timestamp at which to delete fragments
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   */
+  void post_delete_fragments_to_rest(
+      const URI& uri,
+      Array* array,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end);
+
+  /**
+   * Deletes the fragments with the given URIs from the array at the given URI
+   * from the REST server.
+   *
+   * @param uri Array URI to delete fragments from
+   * @param array Array to delete fragments from
+   * @param fragment_uris The uris of the fragments to be deleted
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   */
+  void post_delete_fragments_list_to_rest(
+      const URI& uri, Array* array, const std::vector<URI>& fragment_uris);
 
   /**
    * Deregisters an array at the given URI from the REST server.
@@ -193,6 +247,33 @@ class RestClient {
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       Array* array);
+
+  /**
+   * Get the requested enumerations from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param timestamp_start Inclusive starting timestamp at which to open array.
+   * @param timestamp_end Inclusive ending timestamp at which to open array.
+   * @param array Array to fetch metadata for.
+   * @param enumeration_names The names of the enumerations to get.
+   */
+  std::vector<shared_ptr<const Enumeration>> post_enumerations_from_rest(
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      Array* array,
+      const std::vector<std::string>& enumeration_names,
+      shared_ptr<MemoryTracker> memory_tracker = nullptr);
+
+  /**
+   * Get the requested query plan from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param query Query to fetch query plan for.
+   * @param query_plan The requested query plan.
+   */
+  void post_query_plan_from_rest(
+      const URI& uri, Query& query, QueryPlan& query_plan);
 
   /**
    * Post a data query to rest server
@@ -290,10 +371,10 @@ class RestClient {
   /**
    * Deletes all written data from group at the given URI from the REST server.
    *
-   * #TODO Implement API endpoint on TileDBCloud.
    * @param uri Group URI to delete
+   * @param recursive True if all data inside the group is to be deleted
    */
-  void delete_group_from_rest(const URI& uri);
+  void delete_group_from_rest(const URI& uri, bool recursive);
 
   /**
    * Post group create to the REST server.
@@ -303,6 +384,46 @@ class RestClient {
    * @return Status
    */
   Status post_group_create_to_rest(const URI& uri, Group* group);
+
+  /**
+   * Post array consolidation request to the REST server.
+   *
+   * @param uri Array URI
+   * @param config config
+   * @return
+   */
+  Status post_consolidation_to_rest(const URI& uri, const Config& config);
+
+  /**
+   * Post array vacuum request to the REST server.
+   *
+   * @param uri Array URI
+   * @param config config
+   * @return
+   */
+  Status post_vacuum_to_rest(const URI& uri, const Config& config);
+
+  inline std::string rest_server() const {
+    return rest_server_;
+  }
+
+  /**
+   * Get consolidation plan from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param config Config of the array.
+   * @param fragment_size Maximum fragment size for constructing the plan.
+   * @return The requested consolidation plan
+   */
+  std::vector<std::vector<std::string>> post_consolidation_plan_from_rest(
+      const URI& uri, const Config& config, uint64_t fragment_size);
+
+  /**
+   * Constant accessor to `extra_headers_` member variable.
+   */
+  const std::unordered_map<std::string, std::string>& extra_headers() const {
+    return extra_headers_;
+  }
 
  private:
   /* ********************************* */
@@ -335,12 +456,6 @@ class RestClient {
    */
   bool resubmit_incomplete_;
 
-  /**
-   * If true, the new, experimental REST routes and APIs for opening an array
-   * and submitting a query will be used
-   */
-  bool use_refactored_array_and_query_;
-
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;
 
@@ -355,6 +470,9 @@ class RestClient {
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** The class MemoryTracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
@@ -455,9 +573,11 @@ class RestClient {
    * @return Status
    */
   Status ensure_json_null_delimited_string(Buffer* buffer);
+
+  /** Load all custom headers from the given config. */
+  void load_headers(const Config& cfg);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_REST_CLIENT_H

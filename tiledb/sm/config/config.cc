@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,15 +30,15 @@
  * This file implements class Config.
  */
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include "config.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parse_argument.h"
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
 
 using namespace tiledb::common;
 
@@ -89,11 +89,14 @@ const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_BUFFER_SIZE = "524288";
+const std::string Config::REST_CAPNP_TRAVERSAL_LIMIT = "536870912";
 const std::string Config::REST_CURL_VERBOSE = "false";
+const std::string Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
 const std::string Config::REST_USE_REFACTORED_QUERY_SUBMIT = "false";
+const std::string Config::REST_PAYER_NAMESPACE = "";
 const std::string Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES = "false";
 const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
@@ -103,6 +106,7 @@ const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
 const std::string Config::SM_READ_RANGE_OOB = "warn";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
+const std::string Config::SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL = "true";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
@@ -115,6 +119,9 @@ const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
+const std::string Config::SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT = "1";
+const std::string Config::SM_MEM_CONSOLIDATION_READER_WEIGHT = "3";
+const std::string Config::SM_MEM_CONSOLIDATION_WRITER_WEIGHT = "2";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
@@ -154,30 +161,42 @@ const std::string Config::SM_GROUP_TIMESTAMP_START = "0";
 const std::string Config::SM_GROUP_TIMESTAMP_END = std::to_string(UINT64_MAX);
 const std::string Config::SM_FRAGMENT_INFO_PRELOAD_MBRS = "false";
 const std::string Config::SM_PARTIAL_TILE_OFFSETS_LOADING = "false";
+const std::string Config::SM_ENUMERATIONS_MAX_SIZE = "10485760";        // 10MiB
+const std::string Config::SM_ENUMERATIONS_MAX_TOTAL_SIZE = "52428800";  // 50MiB
+const std::string Config::SSL_CA_FILE = "";
+const std::string Config::SSL_CA_PATH = "";
+const std::string Config::SSL_VERIFY = "true";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = "104857600";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
 const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
-const std::string Config::VFS_FILE_MAX_PARALLEL_OPS = "1";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
+const std::string Config::VFS_READ_LOGGING_MODE = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
-const std::string Config::VFS_AZURE_USE_HTTPS = "true";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
 const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
+const std::string Config::VFS_AZURE_MAX_RETRIES = "5";
+const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
+const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
+const std::string Config::VFS_GCS_ENDPOINT = "";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
+const std::string Config::VFS_GCS_SERVICE_ACCOUNT_KEY = "";
+const std::string Config::VFS_GCS_WORKLOAD_IDENTITY_CONFIGURATION = "";
+const std::string Config::VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_GCS_MULTI_PART_SIZE = "5242880";
 const std::string Config::VFS_GCS_USE_MULTI_PART_UPLOAD = "true";
 const std::string Config::VFS_GCS_REQUEST_TIMEOUT_MS = "3000";
+const std::string Config::VFS_GCS_MAX_DIRECT_UPLOAD_SIZE = "10737418240";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
@@ -201,6 +220,7 @@ const std::string Config::VFS_S3_CONNECT_MAX_TRIES = "5";
 const std::string Config::VFS_S3_CONNECT_SCALE_FACTOR = "25";
 const std::string Config::VFS_S3_SSE = "";
 const std::string Config::VFS_S3_SSE_KMS_KEY_ID = "";
+const std::string Config::VFS_S3_STORAGE_CLASS = "NOT_SET";
 const std::string Config::VFS_S3_REQUEST_TIMEOUT_MS = "3000";
 const std::string Config::VFS_S3_REQUESTER_PAYS = "false";
 const std::string Config::VFS_S3_PROXY_SCHEME = "http";
@@ -213,6 +233,8 @@ const std::string Config::VFS_S3_VERIFY_SSL = "true";
 const std::string Config::VFS_S3_NO_SIGN_REQUEST = "false";
 const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
+const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
+const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
@@ -231,7 +253,12 @@ const std::map<std::string, std::string> default_config_values = {
         "rest.retry_initial_delay_ms", Config::REST_RETRY_INITIAL_DELAY_MS),
     std::make_pair("rest.retry_delay_factor", Config::REST_RETRY_DELAY_FACTOR),
     std::make_pair("rest.curl.buffer_size", Config::REST_CURL_BUFFER_SIZE),
+    std::make_pair(
+        "rest.capnp_traversal_limit", Config::REST_CAPNP_TRAVERSAL_LIMIT),
     std::make_pair("rest.curl.verbose", Config::REST_CURL_VERBOSE),
+    std::make_pair(
+        "rest.load_enumerations_on_array_open",
+        Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN),
     std::make_pair(
         "rest.load_metadata_on_array_open",
         Config::REST_LOAD_METADATA_ON_ARRAY_OPEN),
@@ -244,6 +271,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "rest.use_refactored_array_open_and_query_submit",
         Config::REST_USE_REFACTORED_QUERY_SUBMIT),
+    std::make_pair("rest.payer_namespace", Config::REST_PAYER_NAMESPACE),
     std::make_pair(
         "config.env_var_prefix", Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX),
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
@@ -261,6 +289,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("sm.check_coord_oob", Config::SM_CHECK_COORD_OOB),
     std::make_pair("sm.read_range_oob", Config::SM_READ_RANGE_OOB),
     std::make_pair("sm.check_global_order", Config::SM_CHECK_GLOBAL_ORDER),
+    std::make_pair(
+        "sm.merge_overlapping_ranges_experimental",
+        Config::SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL),
     std::make_pair(
         "sm.skip_est_size_partitioning", Config::SM_SKIP_EST_SIZE_PARTITIONING),
     std::make_pair(
@@ -281,6 +312,15 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.mem.tile_upper_memory_limit", Config::SM_UPPER_MEMORY_LIMIT),
     std::make_pair("sm.mem.total_budget", Config::SM_MEM_TOTAL_BUDGET),
+    std::make_pair(
+        "sm.mem.consolidation.buffers_weight",
+        Config::SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT),
+    std::make_pair(
+        "sm.mem.consolidation.reader_weight",
+        Config::SM_MEM_CONSOLIDATION_READER_WEIGHT),
+    std::make_pair(
+        "sm.mem.consolidation.writer_weight",
+        Config::SM_MEM_CONSOLIDATION_WRITER_WEIGHT),
     std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_coords",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS),
@@ -349,6 +389,14 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.partial_tile_offsets_loading",
         Config::SM_PARTIAL_TILE_OFFSETS_LOADING),
+    std::make_pair(
+        "sm.enumerations_max_size", Config::SM_ENUMERATIONS_MAX_SIZE),
+    std::make_pair(
+        "sm.enumerations_max_total_size",
+        Config::SM_ENUMERATIONS_MAX_TOTAL_SIZE),
+    std::make_pair("ssl.ca_file", Config::SSL_CA_FILE),
+    std::make_pair("ssl.ca_path", Config::SSL_CA_PATH),
+    std::make_pair("ssl.verify", Config::SSL_VERIFY),
     std::make_pair("vfs.min_parallel_size", Config::VFS_MIN_PARALLEL_SIZE),
     std::make_pair("vfs.max_batch_size", Config::VFS_MAX_BATCH_SIZE),
     std::make_pair("vfs.min_batch_gap", Config::VFS_MIN_BATCH_GAP),
@@ -362,8 +410,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.file.posix_directory_permissions",
         Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS),
-    std::make_pair(
-        "vfs.file.max_parallel_ops", Config::VFS_FILE_MAX_PARALLEL_OPS),
+    std::make_pair("vfs.read_logging_mode", Config::VFS_READ_LOGGING_MODE),
     std::make_pair(
         "vfs.azure.storage_account_name",
         Config::VFS_AZURE_STORAGE_ACCOUNT_NAME),
@@ -372,7 +419,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.azure.storage_sas_token", Config::VFS_AZURE_STORAGE_SAS_TOKEN),
     std::make_pair("vfs.azure.blob_endpoint", Config::VFS_AZURE_BLOB_ENDPOINT),
-    std::make_pair("vfs.azure.use_https", Config::VFS_AZURE_USE_HTTPS),
     std::make_pair(
         "vfs.azure.max_parallel_ops", Config::VFS_AZURE_MAX_PARALLEL_OPS),
     std::make_pair(
@@ -381,7 +427,21 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.azure.use_block_list_upload",
         Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD),
+    std::make_pair("vfs.azure.max_retries", Config::VFS_AZURE_MAX_RETRIES),
+    std::make_pair(
+        "vfs.azure.retry_delay_ms", Config::VFS_AZURE_RETRY_DELAY_MS),
+    std::make_pair(
+        "vfs.azure.max_retry_delay_ms", Config::VFS_AZURE_MAX_RETRY_DELAY_MS),
+    std::make_pair("vfs.gcs.endpoint", Config::VFS_GCS_ENDPOINT),
     std::make_pair("vfs.gcs.project_id", Config::VFS_GCS_PROJECT_ID),
+    std::make_pair(
+        "vfs.gcs.service_account_key", Config::VFS_GCS_SERVICE_ACCOUNT_KEY),
+    std::make_pair(
+        "vfs.gcs.workload_identity_configuration",
+        Config::VFS_GCS_WORKLOAD_IDENTITY_CONFIGURATION),
+    std::make_pair(
+        "vfs.gcs.impersonate_service_account",
+        Config::VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT),
     std::make_pair(
         "vfs.gcs.max_parallel_ops", Config::VFS_GCS_MAX_PARALLEL_OPS),
     std::make_pair("vfs.gcs.multi_part_size", Config::VFS_GCS_MULTI_PART_SIZE),
@@ -389,6 +449,9 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.gcs.use_multi_part_upload", Config::VFS_GCS_USE_MULTI_PART_UPLOAD),
     std::make_pair(
         "vfs.gcs.request_timeout_ms", Config::VFS_GCS_REQUEST_TIMEOUT_MS),
+    std::make_pair(
+        "vfs.gcs.max_direct_upload_size",
+        Config::VFS_GCS_MAX_DIRECT_UPLOAD_SIZE),
     std::make_pair("vfs.s3.region", Config::VFS_S3_REGION),
     std::make_pair(
         "vfs.s3.aws_access_key_id", Config::VFS_S3_AWS_ACCESS_KEY_ID),
@@ -422,6 +485,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.connect_scale_factor", Config::VFS_S3_CONNECT_SCALE_FACTOR),
     std::make_pair("vfs.s3.sse", Config::VFS_S3_SSE),
     std::make_pair("vfs.s3.sse_kms_key_id", Config::VFS_S3_SSE_KMS_KEY_ID),
+    std::make_pair("vfs.s3.storage_class", Config::VFS_S3_STORAGE_CLASS),
     std::make_pair(
         "vfs.s3.request_timeout_ms", Config::VFS_S3_REQUEST_TIMEOUT_MS),
     std::make_pair("vfs.s3.requester_pays", Config::VFS_S3_REQUESTER_PAYS),
@@ -437,6 +501,10 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.bucket_canned_acl", Config::VFS_S3_BUCKET_CANNED_ACL),
     std::make_pair(
         "vfs.s3.object_canned_acl", Config::VFS_S3_OBJECT_CANNED_ACL),
+    std::make_pair("vfs.s3.config_source", Config::VFS_S3_CONFIG_SOURCE),
+    std::make_pair(
+        "vfs.s3.install_sigpipe_handler",
+        Config::VFS_S3_INSTALL_SIGPIPE_HANDLER),
     std::make_pair("vfs.hdfs.name_node_uri", Config::VFS_HDFS_NAME_NODE_URI),
     std::make_pair("vfs.hdfs.username", Config::VFS_HDFS_USERNAME),
     std::make_pair(
@@ -464,6 +532,9 @@ const std::set<std::string> Config::unserialized_params_ = {
     "vfs.s3.aws_external_id",
     "vfs.s3.aws_load_frequency",
     "vfs.s3.aws_session_name",
+    "vfs.gcs.service_account_key",
+    "vfs.gcs.workload_identity_configuration",
+    "vfs.gcs.impersonate_service_account",
     "rest.username",
     "rest.password",
     "rest.token",
@@ -688,6 +759,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_global_order") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "sm.merge_overlapping_ranges_experimental") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.memory_budget") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.memory_budget_var") {
@@ -724,6 +797,8 @@ Status Config::sanity_check(
           Status_ConfigError("Invalid offsets format parameter value"));
   } else if (param == "sm.fragment_info.preload_mbrs") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "ssl.verify") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.max_batch_size") {
@@ -740,8 +815,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.file.posix_directory_permissions") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
-  } else if (param == "vfs.file.max_parallel_ops") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
       return LOG_STATUS(
@@ -867,6 +940,17 @@ const char* Config::get_from_config_or_env(
   // indicate it was not found
   *found = found_config;
   return *found ? value_config : "";
+}
+
+const std::map<std::string, std::string>
+Config::get_all_params_from_config_or_env() const {
+  std::map<std::string, std::string> values;
+  bool found = false;
+  for (const auto& [key, value] : param_values_) {
+    std::string val = get_from_config_or_env(key, &found);
+    values.emplace(key, val);
+  }
+  return values;
 }
 
 template <class T, bool must_find_>

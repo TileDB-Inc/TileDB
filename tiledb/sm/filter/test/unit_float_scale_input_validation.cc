@@ -37,6 +37,7 @@
 #include "../../../common/common.h"
 #include "../../enums/filter_option.h"
 #include "../float_scaling_filter.h"
+#include "tiledb/sm/enums/datatype.h"
 
 using namespace tiledb::sm;
 
@@ -56,14 +57,14 @@ void check_input_values() {
 
 void check_throw_message(
     FilterOption option, double* value, const std::string& message) {
-  FloatScalingFilter filter;
+  FloatScalingFilter filter(Datatype::FLOAT32);
   Status status = filter.set_option_impl(option, value);
   CHECK(!status.ok());
   CHECK(status.message() == message);
 }
 
 void check_ok(FilterOption option, double* value) {
-  FloatScalingFilter filter;
+  FloatScalingFilter filter(Datatype::FLOAT32);
   Status status = filter.set_option_impl(option, value);
   CHECK(status.ok());
 }

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "../range_subset.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb;
@@ -57,6 +57,23 @@ void check_subset_range_values(
   auto result_data = static_cast<const T*>(range.data());
   CHECK(result_data[0] == expected_start);
   CHECK(result_data[1] == expected_end);
+}
+
+/**
+ * Check the values of a particular range in a RangeSetAndSuperset object.
+ *
+ * @param index The index of the range.
+ */
+void check_subset_range_strings(
+    const RangeSetAndSuperset& subset,
+    const uint64_t index,
+    const std::string expected_start,
+    const std::string expected_end) {
+  REQUIRE(index < subset.num_ranges());
+  auto range = subset[index];
+  REQUIRE(!range.empty());
+  CHECK(range.start_str() == expected_start);
+  CHECK(range.end_str() == expected_end);
 }
 
 TEMPLATE_TEST_CASE_SIG(
@@ -309,8 +326,8 @@ TEMPLATE_TEST_CASE_SIG(
 }
 
 TEMPLATE_TEST_CASE_SIG(
-    "Test RangeSetAndSuperset numeric sort",
-    "[range_multi_subset][threadpool]",
+    "RangeSetAndSuperset::sort_and_merge_ranges - numeric",
+    "[sort_and_merge_ranges][numeric]",
     ((typename T, Datatype D), T, D),
     (int8_t, Datatype::INT8),
     (uint8_t, Datatype::UINT8),
@@ -323,67 +340,335 @@ TEMPLATE_TEST_CASE_SIG(
     (int64_t, Datatype::DATETIME_YEAR),
     (float, Datatype::FLOAT32),
     (double, Datatype::FLOAT64)) {
+  bool merge = GENERATE(true, false);
   T bounds[2] = {0, 10};
   Range range{bounds, 2 * sizeof(T)};
   RangeSetAndSuperset range_subset{D, range, false, true};
-  SECTION("Sort 2 reverse ordered ranges") {
-    // Add ranges.
-    T data1[2] = {4, 5};
-    T data2[2] = {1, 2};
-    Range r1{data1, 2 * sizeof(T)};
-    Range r2{data2, 2 * sizeof(T)};
-    range_subset.add_range(r1);
-    range_subset.add_range(r2);
-    CHECK(range_subset.num_ranges() == 2);
-    // Create ThreadPool.
+
+  SECTION("Empty ranges") {
+    CHECK(range_subset.num_ranges() == 0);
+
+    // Try to sort and merge ranges.
     ThreadPool pool{2};
-    //  Sort ranges.
-    auto sort_status = range_subset.sort_ranges(&pool);
-    CHECK(sort_status.ok());
-    // Check the numner of ranges.
-    CHECK(range_subset.num_ranges() == 2);
-    // Check the first range.
-    auto result_range = range_subset[0];
-    auto result_data1 = (const T*)result_range.data();
-    CHECK(result_data1[0] == data2[0]);
-    REQUIRE(result_data1[1] == data2[1]);
-    // Check the second range.
-    result_range = range_subset[1];
-    auto result_data2 = (const T*)result_range.data();
-    CHECK(result_data2[0] == data1[0]);
-    REQUIRE(result_data2[1] == data1[1]);
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    CHECK(range_subset.num_ranges() == 0);
+  }
+
+  SECTION("Adjacent, sorted ranges") {
+    // Add ranges.
+    T data1[2] = {0, 1};
+    T data2[2] = {2, 3};
+    T data3[2] = {4, 5};
+    T data4[2] = {6, 7};
+    std::vector<Range> ranges = {
+        Range(data1, 2 * sizeof(T)),
+        Range(data2, 2 * sizeof(T)),
+        Range(data3, 2 * sizeof(T)),
+        Range(data4, 2 * sizeof(T))};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+
+    // Integer-type ranges will coalesce and needn't be merged.
+    // Float-type ranges cannot coalesce and will only be sorted.
+    if constexpr (D == Datatype::FLOAT32 || D == Datatype::FLOAT64) {
+      CHECK(range_subset.num_ranges() == 4);
+      ThreadPool pool{2};
+      range_subset.sort_and_merge_ranges(&pool, merge);
+      CHECK(range_subset.num_ranges() == 4);
+      check_subset_range_values(range_subset, 0, data1[0], data1[1]);
+      check_subset_range_values(range_subset, 1, data2[0], data2[1]);
+      check_subset_range_values(range_subset, 2, data3[0], data3[1]);
+      check_subset_range_values(range_subset, 3, data4[0], data4[1]);
+    } else {
+      CHECK(range_subset.num_ranges() == 1);
+      check_subset_range_values(range_subset, 0, data1[0], data4[1]);
+    }
+  }
+
+  SECTION("Adjacent, unsorted ranges") {
+    // Add ranges.
+    T data1[2] = {0, 1};
+    T data2[2] = {4, 5};
+    T data3[2] = {2, 3};
+    T data4[2] = {6, 7};
+    std::vector<Range> ranges = {
+        Range(data1, 2 * sizeof(T)),
+        Range(data2, 2 * sizeof(T)),
+        Range(data3, 2 * sizeof(T)),
+        Range(data4, 2 * sizeof(T))};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 4);
+
+    // Sort and merge ranges.
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    if constexpr (D == Datatype::FLOAT32 || D == Datatype::FLOAT64) {
+      CHECK(range_subset.num_ranges() == 4);
+      check_subset_range_values(range_subset, 0, data1[0], data1[1]);
+      check_subset_range_values(range_subset, 1, data3[0], data3[1]);
+      check_subset_range_values(range_subset, 2, data2[0], data2[1]);
+      check_subset_range_values(range_subset, 3, data4[0], data4[1]);
+    } else {
+      if (merge) {
+        CHECK(range_subset.num_ranges() == 1);
+        check_subset_range_values(range_subset, 0, data1[0], data4[1]);
+      } else {
+        CHECK(range_subset.num_ranges() == 4);
+        check_subset_range_values(range_subset, 0, data1[0], data1[1]);
+        check_subset_range_values(range_subset, 1, data3[0], data3[1]);
+        check_subset_range_values(range_subset, 2, data2[0], data2[1]);
+        check_subset_range_values(range_subset, 3, data4[0], data4[1]);
+      }
+    }
+  }
+
+  SECTION("Overlapping, sorted ranges") {
+    // Add ranges.
+    T data1[2] = {0, 2};
+    T data2[2] = {1, 4};
+    T data3[2] = {3, 6};
+    T data4[2] = {5, 8};
+    std::vector<Range> ranges = {
+        Range(data1, 2 * sizeof(T)),
+        Range(data2, 2 * sizeof(T)),
+        Range(data3, 2 * sizeof(T)),
+        Range(data4, 2 * sizeof(T))};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 4);
+
+    // Sort and merge ranges.
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 1);
+      check_subset_range_values(range_subset, 0, data1[0], data4[1]);
+    } else {
+      CHECK(range_subset.num_ranges() == 4);
+      check_subset_range_values(range_subset, 0, data1[0], data1[1]);
+      check_subset_range_values(range_subset, 1, data2[0], data2[1]);
+      check_subset_range_values(range_subset, 2, data3[0], data3[1]);
+      check_subset_range_values(range_subset, 3, data4[0], data4[1]);
+    }
+  }
+
+  SECTION("Overlapping, unsorted ranges") {
+    // Add ranges.
+    T data1[2] = {0, 2};
+    T data2[2] = {5, 8};
+    T data3[2] = {3, 6};
+    T data4[2] = {1, 4};
+    std::vector<Range> ranges = {
+        Range(data1, 2 * sizeof(T)),
+        Range(data2, 2 * sizeof(T)),
+        Range(data3, 2 * sizeof(T)),
+        Range(data4, 2 * sizeof(T))};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 4);
+
+    // Sort and merge ranges.
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 1);
+      check_subset_range_values(range_subset, 0, data1[0], data2[1]);
+    } else {
+      CHECK(range_subset.num_ranges() == 4);
+      check_subset_range_values(range_subset, 0, data1[0], data1[1]);
+      check_subset_range_values(range_subset, 1, data4[0], data4[1]);
+      check_subset_range_values(range_subset, 2, data3[0], data3[1]);
+      check_subset_range_values(range_subset, 3, data2[0], data2[1]);
+    }
+  }
+
+  SECTION("Partially overlapping") {
+    // Add ranges.
+    T data1[2] = {0, 2};
+    T data2[2] = {1, 4};
+    T data3[2] = {7, 9};
+    T data4[2] = {3, 5};
+    std::vector<Range> ranges = {
+        Range(data1, 2 * sizeof(T)),
+        Range(data2, 2 * sizeof(T)),
+        Range(data3, 2 * sizeof(T)),
+        Range(data4, 2 * sizeof(T))};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 4);
+
+    // Sort and merge ranges.
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 2);
+      check_subset_range_values(range_subset, 0, data1[0], data4[1]);
+      check_subset_range_values(range_subset, 1, data3[0], data3[1]);
+    } else {
+      CHECK(range_subset.num_ranges() == 4);
+      check_subset_range_values(range_subset, 0, data1[0], data1[1]);
+      check_subset_range_values(range_subset, 1, data2[0], data2[1]);
+      check_subset_range_values(range_subset, 2, data4[0], data4[1]);
+      check_subset_range_values(range_subset, 3, data3[0], data3[1]);
+    }
   }
 }
 
-TEST_CASE("RangeSetAndSuperset::sort - STRING_ASCII") {
+TEST_CASE(
+    "RangeSetAndSuperset::sort_and_merge_ranges - STRING_ASCII",
+    "[sort_and_merge_ranges][string]") {
+  bool merge = GENERATE(true, false);
   Range range{};
   RangeSetAndSuperset range_subset{Datatype::STRING_ASCII, range, false, false};
-  SECTION("Sort 2 reverse ordered non-overlapping ranges") {
-    // Set ranges.
-    const std::string d1{"cat"};
-    const std::string d2{"dog"};
-    const std::string d3{"ax"};
-    const std::string d4{"bird"};
-    Range r1{d1, d2};
-    range_subset.add_range(r1);
-    Range r2{d3, d4};
-    range_subset.add_range(r2);
-    CHECK(range_subset.num_ranges() == 2);
-    // Create ThreadPool.
+
+  SECTION("Empty ranges") {
+    CHECK(range_subset.num_ranges() == 0);
+
+    // Try to sort and merge ranges.
     ThreadPool pool{2};
-    // Sort ranges.
-    auto sort_status = range_subset.sort_ranges(&pool);
-    CHECK(sort_status.ok());
-    // Check the number of ranges.
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    CHECK(range_subset.num_ranges() == 0);
+  }
+
+  SECTION("Adjacent, sorted ranges") {
+    // Note: string ranges do not coalesce
+    std::vector<Range> ranges = {
+        Range("a", "b"), Range("c", "d"), Range("ef", "g"), Range("h", "ij")};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 4);
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results
+    CHECK(range_subset.num_ranges() == 4);
+    check_subset_range_strings(range_subset, 0, "a", "b");
+    check_subset_range_strings(range_subset, 1, "c", "d");
+    check_subset_range_strings(range_subset, 2, "ef", "g");
+    check_subset_range_strings(range_subset, 3, "h", "ij");
+  }
+
+  SECTION("Adjacent, unsorted ranges") {
+    std::vector<Range> ranges = {Range("c", "d"), Range("a", "b")};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
     CHECK(range_subset.num_ranges() == 2);
-    // Check the first range.
-    auto result_range = range_subset[0];
-    auto start = result_range.start_str();
-    auto end = result_range.end_str();
-    CHECK(start == d3);
-    CHECK(end == d4);
-    // Check the second range.
-    result_range = range_subset[1];
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results
+    CHECK(range_subset.num_ranges() == 2);
+    check_subset_range_strings(range_subset, 0, "a", "b");
+    check_subset_range_strings(range_subset, 1, "c", "d");
+  }
+
+  SECTION("Overlapping, sorted ranges") {
+    std::vector<Range> ranges = {Range("a", "c"), Range("b", "d")};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 2);
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 1);
+      check_subset_range_strings(range_subset, 0, "a", "d");
+    } else {
+      CHECK(range_subset.num_ranges() == 2);
+      check_subset_range_strings(range_subset, 0, "a", "c");
+      check_subset_range_strings(range_subset, 1, "b", "d");
+    }
+  }
+
+  SECTION("Overlapping, unsorted ranges") {
+    std::vector<Range> ranges = {Range("b", "d"), Range("a", "c")};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 2);
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 1);
+      check_subset_range_strings(range_subset, 0, "a", "d");
+    } else {
+      CHECK(range_subset.num_ranges() == 2);
+      check_subset_range_strings(range_subset, 0, "a", "c");
+      check_subset_range_strings(range_subset, 1, "b", "d");
+    }
+  }
+
+  SECTION("Partially overlapping") {
+    std::vector<Range> ranges = {
+        Range("a", "c"), Range("b", "d"), Range("h", "j"), Range("e", "f")};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 4);
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 3);
+      check_subset_range_strings(range_subset, 0, "a", "d");
+      check_subset_range_strings(range_subset, 1, "e", "f");
+      check_subset_range_strings(range_subset, 2, "h", "j");
+    } else {
+      CHECK(range_subset.num_ranges() == 4);
+      check_subset_range_strings(range_subset, 0, "a", "c");
+      check_subset_range_strings(range_subset, 1, "b", "d");
+      check_subset_range_strings(range_subset, 2, "e", "f");
+      check_subset_range_strings(range_subset, 3, "h", "j");
+    }
+  }
+
+  SECTION("Same first letter") {
+    std::vector<Range> ranges = {
+        Range("G1", "G1"), Range("G2", "G2"), Range("G59", "G59")};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 3);
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 3);
+      check_subset_range_strings(range_subset, 0, "G1", "G1");
+      check_subset_range_strings(range_subset, 1, "G2", "G2");
+      check_subset_range_strings(range_subset, 2, "G59", "G59");
+    } else {
+      CHECK(range_subset.num_ranges() == 3);
+      check_subset_range_strings(range_subset, 0, "G1", "G1");
+      check_subset_range_strings(range_subset, 1, "G2", "G2");
+      check_subset_range_strings(range_subset, 2, "G59", "G59");
+    }
   }
 }
 

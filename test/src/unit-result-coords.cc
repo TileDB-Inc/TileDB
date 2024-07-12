@@ -29,6 +29,8 @@
  *
  * Tests for the ResultCoords classes.
  */
+
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 
@@ -54,15 +56,13 @@ struct CResultCoordsFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
-  std::unique_ptr<FragmentMetadata> frag_md;
+  std::shared_ptr<FragmentMetadata> frag_md_;
 
-  CResultCoordsFx();
+  CResultCoordsFx(uint64_t num_cells);
   ~CResultCoordsFx();
-
-  GlobalOrderResultTile<uint8_t> make_tile_with_num_cells(uint64_t num_cells);
 };
 
-CResultCoordsFx::CResultCoordsFx() {
+CResultCoordsFx::CResultCoordsFx(uint64_t num_cells) {
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
@@ -81,8 +81,8 @@ CResultCoordsFx::CResultCoordsFx() {
   create_dir(temp_dir_, ctx_, vfs_);
   array_name_ = temp_dir_ + ARRAY_NAME;
 
-  int64_t domain[] = {1, 10};
-  int64_t tile_extent = 5;
+  int64_t domain[] = {1, 2 * static_cast<int64_t>(num_cells)};
+  int64_t tile_extent = num_cells;
   // Create array
   create_array(
       ctx_,
@@ -98,7 +98,7 @@ CResultCoordsFx::CResultCoordsFx() {
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      5);
+      num_cells);
 
   // Open array for reading.
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array_);
@@ -106,13 +106,14 @@ CResultCoordsFx::CResultCoordsFx() {
   rc = tiledb_array_open(ctx_, array_, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
-  frag_md.reset(new FragmentMetadata(
-      nullptr,
+  frag_md_ = make_shared<FragmentMetadata>(
+      HERE(),
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(array_->array_.get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
-      true));
+      tiledb::test::create_test_memory_tracker(),
+      true);
 }
 
 CResultCoordsFx::~CResultCoordsFx() {
@@ -125,26 +126,21 @@ CResultCoordsFx::~CResultCoordsFx() {
   tiledb_vfs_free(&vfs_);
 }
 
-GlobalOrderResultTile<uint8_t> CResultCoordsFx::make_tile_with_num_cells(
-    uint64_t num_cells) {
-  GlobalOrderResultTile<uint8_t> result_tile(0, 0, false, false, *frag_md);
-  ResultTile::TileSizes tile_sizes(
-      num_cells * sizeof(int64_t),
-      0,
-      std::nullopt,
-      std::nullopt,
-      std::nullopt,
-      std::nullopt);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
-  result_tile.init_attr_tile(
-      constants::format_version,
-      array_->array_->array_schema_latest(),
-      constants::coords,
-      tile_sizes,
-      tile_data);
+struct CResultCoordsFxSmall {
+  CResultCoordsFxSmall()
+      : fx_(5) {
+  }
 
-  return result_tile;
-}
+  CResultCoordsFx fx_;
+};
+
+struct CResultCoordsFxLarge {
+  CResultCoordsFxLarge()
+      : fx_(100) {
+  }
+
+  CResultCoordsFx fx_;
+};
 
 /* ********************************* */
 /*                TESTS              */
@@ -168,37 +164,49 @@ class Cmp {
 };
 
 TEST_CASE_METHOD(
-    CResultCoordsFx,
+    CResultCoordsFxSmall,
     "GlobalOrderResultCoords: test max_slab_length",
     "[globalorderresultcoords][max_slab_length]") {
-  auto tile = make_tile_with_num_cells(5);
+  GlobalOrderResultTile<uint8_t> tile(
+      0,
+      0,
+      false,
+      false,
+      *fx_.frag_md_,
+      tiledb::test::get_test_memory_tracker());
 
   // Test max_slab_length with no bitmap.
   GlobalOrderResultCoords rc1(&tile, 1);
   REQUIRE(rc1.max_slab_length() == 4);
 
   // Test max_slab_length with bitmap 1.
-  tile.bitmap() = {0, 1, 1, 1, 1};
+  tile.bitmap().assign({0, 1, 1, 1, 1});
   tile.count_cells();
   REQUIRE(rc1.max_slab_length() == 4);
 
   // Test max_slab_length with bitmap 2.
-  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.bitmap().assign({0, 1, 1, 1, 0});
   tile.count_cells();
   REQUIRE(rc1.max_slab_length() == 3);
 
   // Test max_slab_length with bitmap 3.
-  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.bitmap().assign({0, 1, 1, 1, 0});
   tile.count_cells();
   rc1.pos_ = 0;
   REQUIRE(rc1.max_slab_length() == 0);
 }
 
 TEST_CASE_METHOD(
-    CResultCoordsFx,
+    CResultCoordsFxSmall,
     "GlobalOrderResultCoords: test max_slab_length with comparator",
     "[globalorderresultcoords][max_slab_length_with_comp]") {
-  auto tile = make_tile_with_num_cells(5);
+  GlobalOrderResultTile<uint8_t> tile(
+      0,
+      0,
+      false,
+      false,
+      *fx_.frag_md_,
+      tiledb::test::get_test_memory_tracker());
   Cmp cmp;
 
   // Test max_slab_length with no bitmap and comparator.
@@ -206,44 +214,62 @@ TEST_CASE_METHOD(
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 1.
-  tile.bitmap() = {0, 1, 1, 1, 1};
+  tile.bitmap().assign({0, 1, 1, 1, 1});
   tile.count_cells();
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 10), cmp) == 4);
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 2.
-  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.bitmap().assign({0, 1, 1, 1, 0});
   tile.count_cells();
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 10), cmp) == 3);
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 3.
-  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.bitmap().assign({0, 1, 1, 1, 0});
   tile.count_cells();
   rc1.pos_ = 0;
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 0);
+}
 
-  auto tile2 = make_tile_with_num_cells(100);
-  rc1.tile_ = &tile2;
+TEST_CASE_METHOD(
+    CResultCoordsFxLarge,
+    "GlobalOrderResultCoords: test max_slab_length with comparator, large tile",
+    "[globalorderresultcoords][max_slab_length_with_comp]") {
+  GlobalOrderResultTile<uint8_t> tile(
+      0,
+      0,
+      false,
+      false,
+      *fx_.frag_md_,
+      tiledb::test::get_test_memory_tracker());
+  Cmp cmp;
+
+  GlobalOrderResultCoords rc1(&tile, 1);
   for (uint64_t i = 0; i < 100; i++) {
     for (uint64_t j = i + 1; j < 100; j++) {
       rc1.pos_ = i;
       REQUIRE(
-          rc1.max_slab_length(GlobalOrderResultCoords(&tile2, j), cmp) ==
-          j - i);
+          rc1.max_slab_length(GlobalOrderResultCoords(&tile, j), cmp) == j - i);
     }
   }
 }
 
 TEST_CASE_METHOD(
-    CResultCoordsFx,
+    CResultCoordsFxSmall,
     "GlobalOrderResultCoords: advance_to_next_cell",
     "[globalorderresultcoords][advance_to_next_cell]") {
-  auto tile = make_tile_with_num_cells(5);
+  GlobalOrderResultTile<uint8_t> tile(
+      0,
+      0,
+      false,
+      false,
+      *fx_.frag_md_,
+      tiledb::test::get_test_memory_tracker());
   Cmp cmp;
 
   GlobalOrderResultCoords rc1(&tile, 0);
-  tile.bitmap() = {0, 1, 1, 0, 1};
+  tile.bitmap().assign({0, 1, 1, 0, 1});
   tile.count_cells();
   REQUIRE(rc1.advance_to_next_cell() == true);
   REQUIRE(rc1.pos_ == 1);
@@ -255,7 +281,7 @@ TEST_CASE_METHOD(
 
   // Recreate to test that we don't move pos_ on the first call.
   GlobalOrderResultCoords rc2(&tile, 0);
-  tile.bitmap() = {1, 1, 1, 0, 0};
+  tile.bitmap().assign({1, 1, 1, 0, 0});
   tile.count_cells();
   REQUIRE(rc2.advance_to_next_cell() == true);
   REQUIRE(rc2.pos_ == 0);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * When run, this program will create a simple 2D dense array, write some data
- * to it, and read a slice of the data back.
+ * When run, this program will create a simple 2D dense array on memfs,
+ * write some data to it, and read a slice of the data back.
+ *
+ * Note: MemFS lives on a single VFS instance on a global Context object
  */
 
 #include <iostream>
@@ -37,12 +39,9 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("quickstart_dense_array");
+std::string array_name_("mem://quickstart_dense_array");
 
-void create_array() {
-  // Create a TileDB context.
-  Context ctx;
-
+void create_array(const Context& ctx) {
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
@@ -56,18 +55,16 @@ void create_array() {
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
 
   // Create the (empty) array on disk.
-  Array::create(array_name, schema);
+  Array::create(array_name_, schema);
 }
 
-void write_array() {
-  Context ctx;
-
+void write_array(const Context& ctx) {
   // Prepare some data for the array
   std::vector<int> data = {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
   // Open the array for writing and create the query.
-  Array array(ctx, array_name, TILEDB_WRITE);
+  Array array(ctx, array_name_, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
 
@@ -76,11 +73,9 @@ void write_array() {
   array.close();
 }
 
-void read_array() {
-  Context ctx;
-
+void read_array(const Context& ctx) {
   // Prepare the array for reading
-  Array array(ctx, array_name, TILEDB_READ);
+  Array array(ctx, array_name_, TILEDB_READ);
 
   // Slice only rows 1, 2 and cols 2, 3, 4
   Subarray subarray(ctx, array);
@@ -106,13 +101,13 @@ void read_array() {
 }
 
 int main() {
+  // Create TileDB context
   Context ctx;
-
-  if (Object::object(ctx, array_name).type() != Object::Type::Array) {
-    create_array();
-    write_array();
+  if (Object::object(ctx, array_name_).type() != Object::Type::Array) {
+    create_array(ctx);
+    write_array(ctx);
   }
 
-  read_array();
+  read_array(ctx);
   return 0;
 }

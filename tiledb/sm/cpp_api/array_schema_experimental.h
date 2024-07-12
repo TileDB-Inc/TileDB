@@ -34,7 +34,9 @@
 #define TILEDB_CPP_API_ARRAY_SCHEMA_EXPERIMENTAL_H
 
 #include "array_schema.h"
+#include "current_domain.h"
 #include "dimension_label_experimental.h"
+#include "enumeration_experimental.h"
 #include "filter_list.h"
 #include "tiledb_experimental.h"
 
@@ -153,6 +155,53 @@ class ArraySchemaExperimental {
     ctx.handle_error(tiledb_array_schema_get_dimension_label_from_name(
         ctx.ptr().get(), array_schema.ptr().get(), name.c_str(), &dim_label));
     return DimensionLabel(ctx, dim_label);
+  }
+
+  /**
+   * Returns a copy of the schema's array currentDomain. To change the
+   * currentDomain, use `set_current_domain()`.
+   *
+   * @param ctx The TileDB context.
+   * @param array_schema The array schema.
+   * @return Copy of the schema's currentDomain.
+   */
+  static CurrentDomain current_domain(
+      const Context& ctx, const ArraySchema& array_schema) {
+    tiledb_current_domain_t* current_domain;
+    ctx.handle_error(tiledb_array_schema_get_current_domain(
+        ctx.ptr().get(), array_schema.ptr().get(), &current_domain));
+
+    return CurrentDomain(ctx, current_domain);
+  }
+
+  /**
+   * Sets the currentDomain.
+   *
+   * @param ctx The TileDB context.
+   * @param array_schema The array schema.
+   * @param current_domain The currentDomain to use.
+   */
+  static void set_current_domain(
+      const Context& ctx,
+      const ArraySchema& array_schema,
+      const CurrentDomain& current_domain) {
+    ctx.handle_error(tiledb_array_schema_set_current_domain(
+        ctx.ptr().get(), array_schema.ptr().get(), current_domain.ptr().get()));
+  }
+
+  /**
+   * Add an enumeration to the array schema.
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Target array schema.
+   * @param enmr The enumeration to add.
+   */
+  static void add_enumeration(
+      const Context& ctx,
+      const ArraySchema& array_schema,
+      const Enumeration& enmr) {
+    ctx.handle_error(tiledb_array_schema_add_enumeration(
+        ctx.ptr().get(), array_schema.ptr().get(), enmr.ptr().get()));
   }
 };
 

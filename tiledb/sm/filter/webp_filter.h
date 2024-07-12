@@ -40,6 +40,7 @@ constexpr bool webp_filter_exists = false;
 #endif  // TILEDB_WEBP
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter.h"
@@ -107,27 +108,35 @@ class WebpFilter : public Filter {
   /* ********************************* */
 
   /**
+   * Constructor.
    * Default setting for webp quality factor is 100.0 for lossy compression.
    * Caller must set colorspace format filter option.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  WebpFilter()
-      : WebpFilter(100.0f, WebpInputFormat::WEBP_NONE, false, 0, 0) {
+  WebpFilter(Datatype filter_data_type)
+      : WebpFilter(
+            100.0f, WebpInputFormat::WEBP_NONE, false, 0, 0, filter_data_type) {
   }
 
   /**
+   * Constructor.
+   *
    * @param quality Quality factor to use for WebP lossy compression.
    * @param inputFormat Colorspace format to use for WebP compression.
    * @param lossless Enable lossless compression.
    * @param y_extent Extent at dimension index 0.
    * @param x_extent Extent at dimension index 1.
+   * @param filter_data_type Datatype the filter will operate on.
    */
   WebpFilter(
       float quality,
       WebpInputFormat inputFormat,
       bool lossless,
       uint16_t y_extent,
-      uint16_t x_extent)
-      : Filter(FilterType::FILTER_WEBP)
+      uint16_t x_extent,
+      Datatype filter_data_type)
+      : Filter(FilterType::FILTER_WEBP, filter_data_type)
       , quality_(quality)
       , format_(inputFormat)
       , lossless_(lossless)
@@ -139,10 +148,11 @@ class WebpFilter : public Filter {
   /* ****************************** */
 
   /**
-   * Dumps filter details in ASCII format.
-   * @param out Location to write output.
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
    */
-  void dump(FILE* out) const override;
+  bool accepts_input_datatype(Datatype datatype) const override;
 
   /**
    * Runs the filter forward, taking raw colorspace values as input and writing.
@@ -155,9 +165,8 @@ class WebpFilter : public Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return Status::Ok() on success. Throws on failure.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -173,9 +182,8 @@ class WebpFilter : public Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return Status::Ok() on success. Throws on failure.
    */
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -262,6 +270,13 @@ class WebpFilter : public Filter {
   inline std::pair<uint16_t, uint16_t> get_extents() const {
     return extents_;
   }
+
+ protected:
+  /**
+   * Dumps filter details in ASCII format.
+   * @param out String to write output.
+   */
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /* ********************************* */

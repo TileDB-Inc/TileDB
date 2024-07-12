@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/common/types/untyped_datum.h"
@@ -57,6 +58,8 @@ class Buffer;
 class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
+class FilterPipeline;
+class MemoryTracker;
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
 
@@ -73,27 +76,18 @@ class Domain {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Empty constructor. */
-  Domain();
+  /** Deleted default constructor */
+  Domain() = delete;
+
+  /** Constructor. */
+  Domain(shared_ptr<MemoryTracker> memory_tracker);
 
   /** Constructor.*/
   Domain(
       Layout cell_order,
       const std::vector<shared_ptr<Dimension>> dimensions,
-      Layout tile_order);
-
-  /**
-   * Constructor that clones the input domain.
-   *
-   * @param domain The object to clone.
-   */
-  explicit Domain(const Domain* domain);
-
-  /** Copy constructor. */
-  DISABLE_COPY(Domain);
-
-  /** Move constructor. */
-  Domain(Domain&& rhs);
+      Layout tile_order,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Destructor. */
   ~Domain() = default;
@@ -102,11 +96,8 @@ class Domain {
   /*             OPERATORS             */
   /* ********************************* */
 
-  /** Copy-assignment operator. */
-  DISABLE_COPY_ASSIGN(Domain);
-
-  /** Move-assignment operator. */
-  Domain& operator=(Domain&& rhs);
+  DISABLE_COPY_AND_COPY_ASSIGN(Domain);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Domain);
 
   /* ********************************* */
   /*                 API               */
@@ -189,13 +180,19 @@ class Domain {
    *
    * @param deserializer The deserializer to deserialize from.
    * @param version The array schema version.
+   * @param cell_order Cell order.
+   * @param tile_order Tile order.
+   * @param coords_filters Coords filters to replace empty coords pipelines.
+   * @param memory_tracker The memory tracker to use.
    * @return Status and Domain
    */
   static shared_ptr<Domain> deserialize(
       Deserializer& deserializer,
       uint32_t version,
       Layout cell_order,
-      Layout tile_order);
+      Layout tile_order,
+      FilterPipeline& coords_filters,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Returns the cell order. */
   Layout cell_order() const;
@@ -230,7 +227,7 @@ class Domain {
    * @return non-null pointer to the dimension
    */
   inline const Dimension* dimension_ptr(dimension_size_type i) const {
-    if (i > dim_num_) {
+    if (i >= dim_num_) {
       throw std::invalid_argument("invalid dimension index");
     }
     return dimension_ptrs_[i];
@@ -249,9 +246,8 @@ class Domain {
    * @param i index of the dimension within the domain
    * @return non-null pointer to the dimension
    */
-  inline shared_ptr<Dimension> dimension_shared_ptr(
-      dimension_size_type i) const {
-    if (i > dim_num_) {
+  inline shared_ptr<Dimension> shared_dimension(dimension_size_type i) const {
+    if (i >= dim_num_) {
       throw std::invalid_argument("invalid dimension index");
     }
     return dimensions_[i];
@@ -271,10 +267,7 @@ class Domain {
    * @return copy of the storage pointer to the dimension with matching name,
    * a null pointer otherwise.
    */
-  shared_ptr<Dimension> dimension_shared_ptr(const std::string& name) const;
-
-  /** Dumps the domain in ASCII format in the selected output. */
-  void dump(FILE* out) const;
+  shared_ptr<Dimension> shared_dimension(const std::string& name) const;
 
   /** Expands ND range `r2` using ND range `r1`. */
   void expand_ndrange(const NDRange& r1, NDRange* r2) const;
@@ -297,23 +290,6 @@ class Domain {
    */
   template <class T>
   void get_tile_coords(const T* coords, T* tile_coords) const;
-
-  /**
-   * Retrieves the end of a cell slab starting at the `start` input
-   * coordinates. The cell slab is determined based on the domain
-   * tile/cell order and the input query `layout`. Essentially a
-   * cell slab is a contiguous (in the global cell order) range of
-   * cells that follow the query layout.
-   *
-   * @tparam T The domain type.
-   * @param subarray The subarray in which the end of the cell slab must
-   *     be contained.
-   * @param start The start coordinates.
-   * @param layout The query layout.
-   * @param end The cell slab end coordinates to be retrieved.
-   */
-  template <class T>
-  void get_end_of_cell_slab(T* subarray, T* start, Layout layout, T* end) const;
 
   /**
    * Retrieves the next tile coordinates along the array tile order within a
@@ -407,19 +383,9 @@ class Domain {
    * Gets the index in the domain of a given dimension name
    *
    * @param name Name of dimension to check for
-   * @param dim_idx The index of this dimension in the domain
-   * @return Status
+   * @return Dimension index
    */
-  Status get_dimension_index(const std::string& name, unsigned* dim_idx) const;
-
-  /**
-   * Initializes the domain.
-   *
-   * @param cell_order The cell order of the array the domain belongs to.
-   * @param tile_order The cell order of the array the domain belongs to.
-   * @return Status
-   */
-  Status init(Layout cell_order, Layout tile_order);
+  unsigned get_dimension_index(const std::string& name) const;
 
   /** Returns true if at least one dimension has null tile extent. */
   bool null_tile_extents() const;
@@ -517,6 +483,9 @@ class Domain {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The memory tracker for this Domain. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The number of cells per tile. Meaningful only for the **dense** case. */
   uint64_t cell_num_per_tile_;
 
@@ -532,7 +501,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  std::vector<shared_ptr<Dimension>> dimensions_;
+  tdb::pmr::vector<shared_ptr<Dimension>> dimensions_;
 
   /**
    * Non-allocating mirror of the dimensions vector.
@@ -544,7 +513,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  std::vector<const Dimension*> dimension_ptrs_;
+  tdb::pmr::vector<const Dimension*> dimension_ptrs_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
@@ -560,7 +529,7 @@ class Domain {
    * - buff: The buffer that stores all coorinates;
    * - a, b: The positions of the two coordinates in the buffer to compare.
    */
-  std::vector<int (*)(
+  tdb::pmr::vector<int (*)(
       const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b)>
       cell_order_cmp_func_;
 
@@ -570,7 +539,7 @@ class Domain {
    *
    * - coord_a, coord_b: The two coordinates to compare.
    */
-  std::vector<int (*)(const void* coord_a, const void* coord_b)>
+  tdb::pmr::vector<int (*)(const void* coord_a, const void* coord_b)>
       cell_order_cmp_func_2_;
 
   /**
@@ -580,7 +549,7 @@ class Domain {
    * - dim: The dimension to compare on.
    * - coord_a, coord_b: The two coordinates to compare.
    */
-  std::vector<int (*)(
+  tdb::pmr::vector<int (*)(
       const Dimension* dim, const void* coord_a, const void* coord_b)>
       tile_order_cmp_func_;
 
@@ -729,5 +698,8 @@ class Domain {
 };
 
 }  // namespace tiledb::sm
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Domain& domain);
 
 #endif  // TILEDB_DOMAIN_H

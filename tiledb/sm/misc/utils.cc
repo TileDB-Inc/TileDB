@@ -33,6 +33,7 @@
 
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"

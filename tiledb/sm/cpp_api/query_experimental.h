@@ -36,6 +36,7 @@
 #include "array_schema_experimental.h"
 #include "context.h"
 #include "dimension_label_experimental.h"
+#include "query_channel.h"
 #include "tiledb.h"
 
 namespace tiledb {
@@ -235,6 +236,183 @@ class QueryExperimental {
 
     // Set the data buffer.
     return query.set_data_buffer(name, &data[0], data.size(), sizeof(char));
+  }
+
+  /**
+   * Returns the number of elements for dimension labels in the result buffers
+   * from a read query. This is a map from the dimension label name to a pair of
+   * values.
+   *
+   * The first is number of elements (offsets) for var size labels, and the
+   * second is number of elements in the data buffer. For fixed sized labels,
+   * the first is always 0.
+   *
+   * For variable sized labels the first value is the number of cells read, i.e.
+   * the number of offsets read for the dimension label. The second value is the
+   * total number of elements in the data buffer. For example, a read query on a
+   * variable-length `float` dimension label that reads three cells would return
+   * 3 for the first number in the pair. If the total amount of `floats` read
+   * across the three cells was 10, then the second number in the pair would be
+   * 10.
+   *
+   * For fixed-length labels, the first value is always 0. The second value is
+   * the total number of elements in the data buffer. For example, a read query
+   * on a single `float` dimension label that reads three cells would return 3
+   * for the second value. A read query on a `float` dimension label with
+   * cell_val_num 2 that reads three cells would return 3 * 2 = 6 for the second
+   * value.
+   *
+   * If the query has not been submitted, an empty map is returned.
+   */
+  static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+  result_buffer_elements_labels(const Query& query) {
+    // Query hasn't been submitted
+    if (query.buff_sizes_.empty()) {
+      return {};
+    }
+    auto elements = query.result_buffer_elements();
+    for (const auto& b_it : query.buff_sizes_) {
+      auto attr_name = b_it.first;
+      auto size_tuple = b_it.second;
+      // Only update result elements for dimension labels.
+      if (!ArraySchemaExperimental::has_dimension_label(
+              query.ctx_, query.schema_, attr_name)) {
+        continue;
+      }
+      auto var_label = ArraySchemaExperimental::dimension_label(
+                           query.ctx_, query.schema_, attr_name)
+                           .label_cell_val_num() == TILEDB_VAR_NUM;
+      auto element_size = query.element_sizes_.find(attr_name)->second;
+      elements[attr_name] = var_label ?
+                                std::pair<uint64_t, uint64_t>(
+                                    std::get<0>(size_tuple) / sizeof(uint64_t),
+                                    std::get<1>(size_tuple) / element_size) :
+                                std::pair<uint64_t, uint64_t>(
+                                    0, std::get<1>(size_tuple) / element_size);
+    }
+    return elements;
+  }
+
+  /**
+   * Returns the number of elements in the result buffers from a read query.
+   * This is a map from the dimension label name to a tuple of values.
+   *
+   * The first is number of elements (offsets) for var size labels, and the
+   * second is number of elements in the data buffer. For fixed sized labels,
+   * the first is always 0. The third element is the size of the validity
+   * bytemap buffer.
+   *
+   * For variable sized labels: the first value is the number of cells read,
+   * i.e. the number of offsets read for the dimension label. The second value
+   * is the total number of elements in the data buffer. For example, a read
+   * query on a variable-length `float` dimension label that reads three cells
+   * would return 3 for the first number in the pair. If the total amount of
+   * `floats` read across the three cells was 10, then the second number in the
+   * pair would be 10.
+   *
+   * For fixed-length labels, the first value is always 0. The second value is
+   * the total number of elements in the data buffer. For example, a read query
+   * on a single `float` dimension label that reads three cells would return 3
+   * for the second value. A read query on a `float` dimension label with
+   * cell_val_num 2 that reads three cells would return 3 * 2 = 6 for the second
+   * value.
+   *
+   * If the query has not been submitted, an empty map is returned.
+   */
+  static std::
+      unordered_map<std::string, std::tuple<uint64_t, uint64_t, uint64_t>>
+      result_buffer_elements_nullable_labels(const Query& query) {
+    // Query hasn't been submitted
+    if (query.buff_sizes_.empty()) {
+      return {};
+    }
+    auto elements = query.result_buffer_elements_nullable();
+    for (const auto& b_it : query.buff_sizes_) {
+      auto attr_name = b_it.first;
+      auto size_tuple = b_it.second;
+      // Only update result elements for dimension labels.
+      if (!ArraySchemaExperimental::has_dimension_label(
+              query.ctx_, query.schema_, attr_name)) {
+        continue;
+      }
+      auto var_label = ArraySchemaExperimental::dimension_label(
+                           query.ctx_, query.schema_, attr_name)
+                           .label_cell_val_num() == TILEDB_VAR_NUM;
+      auto element_size = query.element_sizes_.find(attr_name)->second;
+      elements[attr_name] = var_label ?
+                                std::tuple<uint64_t, uint64_t, uint64_t>(
+                                    std::get<0>(size_tuple) / sizeof(uint64_t),
+                                    std::get<1>(size_tuple) / element_size,
+                                    std::get<2>(size_tuple) / sizeof(uint8_t)) :
+                                std::tuple<uint64_t, uint64_t, uint64_t>(
+                                    0,
+                                    std::get<1>(size_tuple) / element_size,
+                                    std::get<2>(size_tuple) / sizeof(uint8_t));
+    }
+    return elements;
+  }
+
+  /**
+   * Get a `QueryChannel` instance that represents the default channel
+   * of the query passed as argument
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto array = Array(ctx, uri, TILEDB_READ);
+   * Query query(ctx, array);
+   * QueryChannel default_channel =
+   *    QueryExperimental::get_default_channel(query);
+   * default_channel.apply_aggregate("Count", CountOperation{});
+   *
+   * uint64_t count = 0;
+   * uint64_t size = 1;
+   * query.set_data_buffer("Count", &count, size);
+   * query.submit();
+   * @endcode
+   *
+   * @param query Query object.
+   * @return The default query channel.
+   */
+  static QueryChannel get_default_channel(const Query& query) {
+    return QueryChannel::create_default_channel(query);
+  }
+
+  /**
+   * Create an aggregate operation that operates on a single input field
+   * and produces a single output
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto array = Array(ctx, uri, TILEDB_READ);
+   * Query query(ctx, array);
+   * Subarray subarray(ctx, array);
+   * subarray.add_range("dim", 1, 5);
+   * query.set_subarray(subarray);
+   * QueryChannel default_channel =
+   *    QueryExperimental::get_default_channel(query);
+   * ChannelOperation operation =
+   *    QueryExperimental::create_unary_aggregate<SumOperator>(query, "a");
+   * default_channel.apply_aggregate("Sum", operation);
+   *
+   * double sum = 0;
+   * uint64_t size = 1;
+   * query.set_data_buffer("Sum", &sum, size);
+   * query.submit();
+   * @endcode
+   *
+   * @tparam Op The channel operator type
+   * @param query Query object.
+   * @param input_field The attribute name as input for the aggregate
+   * @return The aggregate operation
+   */
+  template <
+      class Op,
+      std::enable_if_t<std::is_base_of_v<ChannelOperator, Op>, bool> = true>
+  static ChannelOperation create_unary_aggregate(
+      const Query& query, const std::string& input_field) {
+    return ChannelOperation::create<Op>(query, input_field);
   }
 };
 }  // namespace tiledb

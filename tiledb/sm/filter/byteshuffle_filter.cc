@@ -43,22 +43,20 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-ByteshuffleFilter::ByteshuffleFilter()
-    : Filter(FilterType::FILTER_BYTESHUFFLE) {
+ByteshuffleFilter::ByteshuffleFilter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_BYTESHUFFLE, filter_data_type) {
 }
 
 ByteshuffleFilter* ByteshuffleFilter::clone_impl() const {
-  return new ByteshuffleFilter;
+  return tdb_new(ByteshuffleFilter, filter_data_type_);
 }
 
-void ByteshuffleFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "ByteShuffle");
+std::ostream& ByteshuffleFilter::output(std::ostream& os) const {
+  os << "ByteShuffle";
+  return os;
 }
 
-Status ByteshuffleFilter::run_forward(
+void ByteshuffleFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -66,7 +64,7 @@ Status ByteshuffleFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // Output size does not change with this filter.
-  RETURN_NOT_OK(output->prepend_buffer(input->size()));
+  throw_if_not_ok(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
 
@@ -74,29 +72,26 @@ Status ByteshuffleFilter::run_forward(
   auto parts = input->buffers();
   auto num_parts = (uint32_t)parts.size();
   uint32_t metadata_size = sizeof(uint32_t) + num_parts * sizeof(uint32_t);
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
   // Shuffle all parts
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
-    RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
+    throw_if_not_ok(output_metadata->write(&part_size, sizeof(uint32_t)));
 
-    RETURN_NOT_OK(shuffle_part(tile, &part, output_buf));
+    throw_if_not_ok(shuffle_part(tile, &part, output_buf));
 
     if (output_buf->owns_data())
       output_buf->advance_size(part.size());
     output_buf->advance_offset(part.size());
   }
-
-  return Status::Ok();
 }
 
 Status ByteshuffleFilter::shuffle_part(
-    const WriterTile& tile, const ConstBuffer* part, Buffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+    const WriterTile&, const ConstBuffer* part, Buffer* output) const {
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   blosc::shuffle(
       tile_type_size,
@@ -114,9 +109,7 @@ Status ByteshuffleFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
-
+    const Config&) const {
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
@@ -149,9 +142,8 @@ Status ByteshuffleFilter::run_reverse(
 }
 
 Status ByteshuffleFilter::unshuffle_part(
-    const Tile& tile, const ConstBuffer* part, Buffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+    const Tile&, const ConstBuffer* part, Buffer* output) const {
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   blosc::unshuffle(
       tile_type_size,

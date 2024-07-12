@@ -52,7 +52,7 @@ target_sources(unit_ports_sieve PUBLIC
 #
 add_test(
     NAME "unit_ports_sieve"
-    COMMAND $<TARGET_FILE:unit_ports_sieve> --durations=yes
+    COMMAND $<TARGET_FILE:unit_ports_sieve>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_dependencies(all_unit_tests "unit_ports_sieve")

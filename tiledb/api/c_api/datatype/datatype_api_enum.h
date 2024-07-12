@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -114,4 +114,8 @@
   TILEDB_DATATYPE_ENUM(BLOB) = 40,
   /** Boolean */
   TILEDB_DATATYPE_ENUM(BOOL) = 41,
+  /** Geometry data in well-known binary (WKB) format, stored as std::byte */
+  TILEDB_DATATYPE_ENUM(GEOM_WKB) = 42,
+  /** Geometry data in well-known text (WKT) format, stored as std::byte */
+  TILEDB_DATATYPE_ENUM(GEOM_WKT) = 43,
 #endif

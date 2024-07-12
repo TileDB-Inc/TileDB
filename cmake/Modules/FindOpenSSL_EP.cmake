@@ -33,6 +33,11 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG)
+  find_package(OpenSSL REQUIRED)
+  return()
+endif()
+
 # Search the path set during the superbuild for the EP.
 set(OPENSSL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -147,10 +152,4 @@ if (OPENSSL_FOUND)
       INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}"
       )
   endif()
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_OPENSSL_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(OpenSSL::SSL)
-  install_target_libs(OpenSSL::Crypto)
 endif()

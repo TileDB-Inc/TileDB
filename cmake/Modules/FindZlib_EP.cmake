@@ -33,6 +33,12 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG)
+  find_package(ZLIB REQUIRED)
+  return()
+endif()
+
+
 # Search the path set during the superbuild for the EP.
 set(ZLIB_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -119,9 +125,4 @@ if (ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB )
     IMPORTED_LOCATION "${ZLIB_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
   )
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_ZLIB_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(ZLIB::ZLIB)
 endif()

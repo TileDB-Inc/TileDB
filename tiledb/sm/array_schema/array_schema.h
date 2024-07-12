@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,17 +37,16 @@
 #include <unordered_map>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Attribute;
 class Buffer;
@@ -55,6 +54,9 @@ class ConstBuffer;
 class Dimension;
 class DimensionLabel;
 class Domain;
+class Enumeration;
+class MemoryTracker;
+class CurrentDomain;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -91,12 +93,15 @@ class ArraySchema {
   /* ********************************* */
 
   /** Constructor. */
-  ArraySchema();
-
-  /** Constructor. */
-  ArraySchema(ArrayType array_type);
+  ArraySchema() = delete;
 
   /** Constructor.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
+   */
+  ArraySchema(ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Constructor with std::vector attributes.
    * @param uri The URI of the array schema file.
    * @param version The format version of this array schema.
    * @param timestamp_range The timestamp the array schema was written.
@@ -108,11 +113,17 @@ class ArraySchema {
    * @param tile_order The tile order.
    * @param capacity The tile capacity for the case of sparse fragments.
    * @param attributes The array attributes.
+   * @param dimension_labels The array dimension labels.
+   * @param enumerations The array enumerations
+   * @param enumeration_path_map The array enumeration path map
    * @param cell_var_offsets_filters
    *    The filter pipeline run on offset tiles for var-length attributes.
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
+   * @param current_domain The array current domain object
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
    **/
   ArraySchema(
       URI uri,
@@ -127,19 +138,26 @@ class ArraySchema {
       uint64_t capacity,
       std::vector<shared_ptr<const Attribute>> attributes,
       std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
+      std::vector<shared_ptr<const Enumeration>> enumerations,
+      std::unordered_map<std::string, std::string> enumeration_path_map,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters);
+      FilterPipeline coords_filters,
+      shared_ptr<CurrentDomain> current_domain,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
-   * Constructor. Clones the input.
+   * Copy constructor. Clones the input.
    *
    * @param array_schema The array schema to copy.
    */
-  explicit ArraySchema(const ArraySchema& array_schema);
+  ArraySchema(const ArraySchema& array_schema);
+
+  DISABLE_COPY_ASSIGN(ArraySchema);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(ArraySchema);
 
   /** Destructor. */
-  ~ArraySchema();
+  ~ArraySchema() = default;
 
   /* ********************************* */
   /*               API                 */
@@ -151,7 +169,8 @@ class ArraySchema {
   static inline bool is_special_attribute(const std::string& name) {
     return name == constants::coords || name == constants::timestamps ||
            name == constants::delete_timestamps ||
-           name == constants::delete_condition_index;
+           name == constants::delete_condition_index ||
+           name == constants::count_of_rows;
   }
 
   /**
@@ -173,16 +192,32 @@ class ArraySchema {
   const Attribute* attribute(attribute_size_type id) const;
 
   /**
+   * Returns a shared pointer to the selected attribute.
+   */
+  shared_ptr<const Attribute> shared_attribute(attribute_size_type id) const;
+
+  /**
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
   const Attribute* attribute(const std::string& name) const;
 
+  /**
+   * Returns a shared pointer to the selected attribute if found. Returns an
+   * empty pointer otherwise.
+   */
+  shared_ptr<const Attribute> shared_attribute(const std::string& name) const;
+
   /** Returns the number of attributes. */
-  attribute_size_type attribute_num() const;
+  inline attribute_size_type attribute_num() const {
+    return static_cast<attribute_size_type>(attributes_.size());
+  }
 
   /** Returns the attributes. */
-  const std::vector<shared_ptr<const Attribute>>& attributes() const;
+  inline const tdb::pmr::vector<shared_ptr<const Attribute>>& attributes()
+      const {
+    return attributes_;
+  }
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -205,18 +240,14 @@ class ArraySchema {
   /**
    * Checks the correctness of the array schema.
    *
-   * @return Status
+   * Throws if validation fails
    */
-  Status check() const;
+  void check(const Config& cfg) const;
 
   /**
-   * Throws an error if there is an attribute in the input that does not
-   * exist in the schema.
-   *
-   * @param attributes The attributes to be checked.
-   * @return Status
+   * Checks the correctness of the array schema without config access.
    */
-  Status check_attributes(const std::vector<std::string>& attributes) const;
+  void check_without_config() const;
 
   /**
    * Throws an error if the provided schema does not match the definition given
@@ -270,9 +301,6 @@ class ArraySchema {
 
   /** Returns the number of dimensions. */
   dimension_size_type dim_num() const;
-
-  /** Dumps the array schema in ASCII format in the selected output. */
-  void dump(FILE* out) const;
 
   /**
    * Checks if the array schema has a attribute of the given name.
@@ -364,13 +392,102 @@ class ArraySchema {
   Status drop_attribute(const std::string& attr_name);
 
   /**
+   * Add an Enumeration to this ArraySchema.
+   *
+   * @param enmr The enumeration to add.
+   */
+  void add_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Extend an Enumeration on this ArraySchema.
+   *
+   * N.B., this method is intended to be called via ArraySchemaEvolution.
+   * Calling it from anywhere else is likely incorrect.
+   *
+   * @param enmr The extended enumeration.
+   */
+  void extend_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Check if an enumeration exists with the given name.
+   *
+   * @param enmr_name The name to check
+   * @return bool Whether the enumeration exists.
+   */
+  bool has_enumeration(const std::string& enmr_name) const;
+
+  /**
+   * Store a known enumeration on this ArraySchema after the schema
+   * was loaded. This allows for only incuring the cost of loading an
+   * enumeration when it is needed. An exception is thrown if the
+   * Enumeration is unknown to this ArraySchema.
+   *
+   * @param enmr The Enumeration to store.
+   */
+  void store_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Get a vector of Enumeration names.
+   *
+   * @return A vector of enumeration names.
+   */
+  std::vector<std::string> get_enumeration_names() const;
+
+  /**
+   * Get a vector of loaded Enumeration names.
+   *
+   * @return A vector of loaded enumeration names.
+   */
+  std::vector<std::string> get_loaded_enumeration_names() const;
+
+  /**
+   * Check if a given enumeration has already been loaded.
+   *
+   * @param enumeration_name The name of the enumeration to check
+   * @return bool Whether the enumeration has been loaded or not.
+   */
+  bool is_enumeration_loaded(const std::string& enumeration_name) const;
+
+  /**
+   * Get an Enumeration by name. Throws if the enumeration is unknown.
+   *
+   * @param enmr_name The name of the Enumeration.
+   * @return shared_ptr<Enumeration>
+   */
+  shared_ptr<const Enumeration> get_enumeration(
+      const std::string& enmr_name) const;
+
+  /**
+   * Get an Enumeration's object name. Throws if the enumeration is unknown.
+   *
+   * @param enmr_name The name of the Enumeration.
+   * @return The path name of the enumeration on disk
+   */
+  const std::string& get_enumeration_path_name(
+      const std::string& enmr_name) const;
+
+  /**
+   * Drop an enumeration
+   *
+   * @param enumeration_name The enumeration to drop.
+   */
+  void drop_enumeration(const std::string& enmr_name);
+
+  /**
    * It assigns values to the members of the object from the input buffer.
    *
    * @param deserializer The deserializer to deserialize from.
    * @param uri The uri of the Array.
+   * @param memory_tracker The memory tracker to use.
    * @return A new ArraySchema.
    */
-  static ArraySchema deserialize(Deserializer& deserializer, const URI& uri);
+  static shared_ptr<ArraySchema> deserialize(
+      Deserializer& deserializer,
+      const URI& uri,
+      shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Return a cloned copy of this array schema. */
+  shared_ptr<ArraySchema> clone() const;
 
   /** Returns the array domain. */
   inline const Domain& domain() const {
@@ -378,12 +495,11 @@ class ArraySchema {
   }
 
   /**
-   * Initializes the ArraySchema object. It also performs a check to see if
-   * all the member attributes have been properly set.
-   *
-   * @return Status
+   * Return a copy of the shared_pointer to the domain.
    */
-  Status init();
+  inline shared_ptr<Domain> shared_domain() const {
+    return domain_;
+  };
 
   /**
    * Sets whether the array allows coordinate duplicates.
@@ -449,7 +565,7 @@ class ArraySchema {
   format_version_t version() const;
 
   /** Set a timestamp range for the array schema */
-  Status set_timestamp_range(
+  void set_timestamp_range(
       const std::pair<uint64_t, uint64_t>& timestamp_range);
 
   /** Returns the timestamp range. */
@@ -467,16 +583,50 @@ class ArraySchema {
   /** Set the schema name. */
   void set_name(const std::string& name);
 
-  /** Generates a new array schema URI. */
-  Status generate_uri();
+  /** Generates a new array schema URI with optional timestamp range. */
+  void generate_uri(
+      std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
+          std::nullopt);
 
-  /** Generates a new array schema URI with specified timestamp range. */
-  Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
+  /** Returns the enumeration map. */
+  inline const tdb::pmr::
+      unordered_map<std::string, shared_ptr<const Enumeration>>&
+      enumeration_map() const {
+    return enumeration_map_;
+  }
+
+  /** Returns the dimension labels. */
+  inline const tdb::pmr::vector<shared_ptr<const DimensionLabel>>&
+  dimension_labels() const {
+    return dimension_labels_;
+  }
+
+  /**
+   * Expand the array current domain
+   *
+   * @param new_current_domain The new array current domain we want to expand to
+   */
+  void expand_current_domain(shared_ptr<CurrentDomain> new_current_domain);
+
+  /**
+   * Set the array current domain on the schema
+   *
+   * @param current_domain The array current domain we want to set on the schema
+   */
+  void set_current_domain(shared_ptr<CurrentDomain> current_domain);
+
+  /** Array current domain accessor */
+  shared_ptr<CurrentDomain> get_current_domain() const;
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * The memory tracker of the ArraySchema.
+   */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The URI of the array schema file. */
   URI uri_;
@@ -511,7 +661,7 @@ class ArraySchema {
   shared_ptr<Domain> domain_;
 
   /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, const Dimension*> dim_map_;
+  tdb::pmr::unordered_map<std::string, const Dimension*> dim_map_;
 
   /**
    * The cell order. It can be one of the following:
@@ -532,19 +682,47 @@ class ArraySchema {
    */
   uint64_t capacity_;
 
-  /** It maps each attribute name to the corresponding attribute object.
-   * Lifespan is maintained by the shared_ptr in attributes_. */
-  std::unordered_map<std::string, const Attribute*> attribute_map_;
+  /**
+   * Container of `shared_ptr<Attribute>` maintains lifespan for all attributes
+   * within this array schema. Other member variables reference objects within
+   * this container.
+   */
+  tdb::pmr::vector<shared_ptr<const Attribute>> attributes_;
 
-  /** The array attributes.
-   * Maintains lifespan for elements in both attributes_ and attribute_map_. */
-  std::vector<shared_ptr<const Attribute>> attributes_;
+  /**
+   * Type for the range of the map that is member `attribute_map_`. See the
+   * invariants of that variable for the meaning of the members of this
+   * `struct`.
+   */
+  struct attribute_reference {
+    const Attribute* pointer;
+    attribute_size_type index;
+  };
+
+  /**
+   * Map from an attribute name to its corresponding Attribute object. Lifespan
+   * is maintained by the shared_ptr in `attributes_`.
+   *
+   * Invariant: For each entry `{p,i}` in `attribute_map_`,
+   *   `attributes_[i].get() == p`
+   * Invariant: The number of entries in `attribute_map_` is the same as the
+   *   number of entries in `attributes_`
+   */
+  tdb::pmr::unordered_map<std::string, attribute_reference> attribute_map_;
 
   /** The array dimension labels. */
-  std::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
+  tdb::pmr::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
 
   /** A map from the dimension label names to the label schemas. */
-  std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;
+  tdb::pmr::unordered_map<std::string, const DimensionLabel*>
+      dimension_label_map_;
+
+  /** A map of Enumeration names to Enumeration pointers. */
+  tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>
+      enumeration_map_;
+
+  /** A map of Enumeration names to Enumeration URIs */
+  tdb::pmr::unordered_map<std::string, std::string> enumeration_path_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
@@ -554,6 +732,9 @@ class ArraySchema {
 
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
+
+  /** The array current domain */
+  shared_ptr<CurrentDomain> current_domain_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
@@ -591,11 +772,17 @@ class ArraySchema {
 
   void check_webp_filter() const;
 
+  // Check enumeration sizes are below the configured maximums.
+  void check_enumerations(const Config& cfg) const;
+
   /** Clears all members. Use with caution! */
   void clear();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::ArraySchema& schema);
 
 #endif  // TILEDB_ARRAY_SCHEMA_H

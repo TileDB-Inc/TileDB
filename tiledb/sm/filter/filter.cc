@@ -34,21 +34,52 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-Filter::Filter(FilterType type) {
+Filter::Filter(FilterType type, Datatype filter_data_type) {
   type_ = type;
+  filter_data_type_ = filter_data_type;
 }
 
 Filter* Filter::clone() const {
   // Call subclass-specific clone function
   auto clone = clone_impl();
+  clone->filter_data_type_ = filter_data_type_;
   return clone;
 }
+
+Filter* Filter::clone(const Datatype data_type) const {
+  // Call subclass-specific clone function
+  auto clone = clone_impl();
+  clone->filter_data_type_ = data_type;
+  return clone;
+}
+
+Datatype Filter::output_datatype(Datatype datatype) const {
+  return datatype;
+}
+
+void Filter::ensure_accepts_datatype(Datatype datatype) const {
+  if (this->type() == FilterType::FILTER_NONE) {
+    return;
+  }
+
+  if (!this->accepts_input_datatype(datatype)) {
+    throw FilterStatusException(
+        "Filter " + filter_type_str(this->type()) +
+        " does not accept input type " + datatype_str(datatype));
+  }
+}
+
+bool Filter::accepts_input_datatype(Datatype) const {
+  return true;
+};
 
 Status Filter::get_option(FilterOption option, void* value) const {
   if (value == nullptr)
@@ -80,15 +111,11 @@ void Filter::serialize(Serializer& serializer) const {
   serialize_impl(serializer);
 }
 
-Status Filter::get_option_impl(FilterOption option, void* value) const {
-  (void)option;
-  (void)value;
+Status Filter::get_option_impl(FilterOption, void*) const {
   return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
-Status Filter::set_option_impl(FilterOption option, const void* value) {
-  (void)option;
-  (void)value;
+Status Filter::set_option_impl(FilterOption, const void*) {
   return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
@@ -99,13 +126,16 @@ FilterType Filter::type() const {
   return type_;
 }
 
-void Filter::init_compression_resource_pool(uint64_t size) {
-  (void)size;
+void Filter::init_compression_resource_pool(uint64_t) {
 }
 
-void Filter::init_decompression_resource_pool(uint64_t size) {
-  (void)size;
+void Filter::init_decompression_resource_pool(uint64_t) {
 }
 
 }  // namespace sm
 }  // namespace tiledb
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Filter& filter) {
+  filter.output(os);
+  return os;
+}

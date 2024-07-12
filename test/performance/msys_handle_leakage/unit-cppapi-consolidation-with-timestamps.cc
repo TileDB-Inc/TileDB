@@ -30,6 +30,13 @@
  * Tests the CPP API for consolidation with timestamps.
  */
 
+/*
+ * WARNING:
+ *   [2024/05/13] This file has succumbed to bit rot. It used to be a copy of
+ *   a file by the same name within `tiledb_unit`, but it no longer is. It
+ *   should not be expected to compile.
+ */
+
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"

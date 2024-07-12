@@ -42,8 +42,8 @@ namespace tiledb {
 namespace sm {
 
 /**
- * A filter that compresses an array of unsigned integers by reducing the number
- * of bits per element if possible.
+ * A filter that compresses an array of integers by reducing the number of bits
+ * per element if possible.
  *
  * When compressing, the filter determines the min and max values of the input
  * elements within a window of size N. If the range of values can be represented
@@ -82,17 +82,27 @@ namespace sm {
  */
 class BitWidthReductionFilter : public Filter {
  public:
-  /** Constructor. */
-  BitWidthReductionFilter();
-
-  /** Constructor.
+  /**
+   * Constructor.
    *
-   * @param max_window_size
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  BitWidthReductionFilter(uint32_t max_window_size);
+  BitWidthReductionFilter(Datatype filter_data_type);
 
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
+  /**
+   * Constructor.
+   *
+   * @param max_window_size Window size in bytes to apply bit width reduction.
+   * @param filter_data_type Datatype the filter will operate on.
+   */
+  BitWidthReductionFilter(uint32_t max_window_size, Datatype filter_data_type);
+
+  /**
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param datatype Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
 
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
@@ -100,7 +110,7 @@ class BitWidthReductionFilter : public Filter {
   /**
    * Reduce the bit size of the given input into the given output.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -122,6 +132,10 @@ class BitWidthReductionFilter : public Filter {
 
   /** Set the max window size (in bytes) to use. */
   void set_max_window_size(uint32_t max_window_size);
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** Maximum size, in bytes, of a window of input elements to compress. */
@@ -179,7 +193,7 @@ class BitWidthReductionFilter : public Filter {
 
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const tile_offsets,
       FilterBuffer* input_metadata,

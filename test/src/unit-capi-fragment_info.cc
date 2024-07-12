@@ -196,17 +196,14 @@ TEST_CASE(
   encrypt = GENERATE(false, true);
   tiledb_encryption_type_t encryption_type;
   const char* key;
-  int key_length;
   uint64_t expected_fragment_size;
   if (encrypt) {
     encryption_type = tiledb_encryption_type_t::TILEDB_AES_256_GCM;
     key = "12345678901234567890123456789012";
-    key_length = 32;
     expected_fragment_size = 5585;
   } else {
     encryption_type = tiledb_encryption_type_t::TILEDB_NO_ENCRYPTION;
     key = "";
-    key_length = 0;
     expected_fragment_size = 3202;
   }
 
@@ -218,7 +215,6 @@ TEST_CASE(
       array_name,
       encryption_type,
       key,
-      key_length,
       TILEDB_DENSE,
       {"d"},
       {TILEDB_UINT64},
@@ -323,7 +319,6 @@ TEST_CASE(
       array_name,
       encryption_type,
       key,
-      key_length,
       1,
       subarray,
       TILEDB_ROW_MAJOR,
@@ -380,7 +375,6 @@ TEST_CASE(
       array_name,
       encryption_type,
       key,
-      key_length,
       2,
       subarray,
       TILEDB_ROW_MAJOR,
@@ -398,7 +392,6 @@ TEST_CASE(
       array_name,
       encryption_type,
       key,
-      key_length,
       3,
       subarray,
       TILEDB_ROW_MAJOR,
@@ -593,7 +586,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       array_name,
       TILEDB_AES_256_GCM,
       key,
-      32,
       TILEDB_SPARSE,
       {"d1", "d2"},
       {TILEDB_UINT64, TILEDB_UINT64},
@@ -635,7 +627,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       array_name,
       TILEDB_AES_256_GCM,
       key,
-      32,
       1,
       TILEDB_UNORDERED,
       buffers,
@@ -656,7 +647,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       array_name,
       TILEDB_AES_256_GCM,
       key,
-      32,
       2,
       TILEDB_UNORDERED,
       buffers,
@@ -677,7 +667,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       array_name,
       TILEDB_AES_256_GCM,
       key,
-      32,
       3,
       TILEDB_UNORDERED,
       buffers,
@@ -1281,9 +1270,24 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Consolidate
   rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
@@ -1641,9 +1645,30 @@ TEST_CASE(
       buffers,
       &written_frag_uri_3);
 
+  // Consolidate fragments
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Consolidate
-  rc = tiledb_array_consolidate(ctx, array_name.c_str(), nullptr);
+  rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;

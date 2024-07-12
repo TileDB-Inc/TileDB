@@ -37,11 +37,14 @@
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/data_order.h"
@@ -65,6 +68,8 @@
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/current_domain.h"
+#include "tiledb/sm/serialization/enumeration.h"
 
 #include <cstring>
 #include <set>
@@ -72,9 +77,22 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
+class ArraySchemaSerializationException : public StatusException {
+ public:
+  explicit ArraySchemaSerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][ArraySchema]", message) {
+  }
+};
+
+class ArraySchemaSerializationDisabledException
+    : public ArraySchemaSerializationException {
+ public:
+  explicit ArraySchemaSerializationDisabledException()
+      : ArraySchemaSerializationException(
+            "Cannot (de)serialize; serialization not enabled.") {
+  }
+};
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -103,13 +121,21 @@ Status filter_to_capnp(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       int32_t level;
       RETURN_NOT_OK(
           filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
       auto data = filter_builder->initData();
       data.setInt32(level);
+      break;
+    }
+    case FilterType::FILTER_DELTA:
+    case FilterType::FILTER_DOUBLE_DELTA: {
+      auto data = filter_builder->getData();
+      Datatype reinterpret_type = Datatype::ANY;
+      RETURN_NOT_OK(filter->get_option(
+          FilterOption::COMPRESSION_REINTERPRET_DATATYPE, &reinterpret_type));
+      data.setUint8(static_cast<uint8_t>(reinterpret_type));
       break;
     }
     case FilterType::FILTER_SCALE_FLOAT: {
@@ -127,6 +153,24 @@ Status filter_to_capnp(
       config.setByteWidth(byte_width);
       break;
     }
+    case FilterType::FILTER_WEBP: {
+      float quality;
+      WebpInputFormat format;
+      bool lossless;
+      RETURN_NOT_OK(filter->get_option(FilterOption::WEBP_QUALITY, &quality));
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::WEBP_INPUT_FORMAT, &format));
+      RETURN_NOT_OK(filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless));
+      auto extents = dynamic_cast<const WebpFilter*>(filter)->get_extents();
+
+      auto webpConfig = filter_builder->initWebpConfig();
+      webpConfig.setQuality(quality);
+      webpConfig.setFormat(static_cast<uint8_t>(format));
+      webpConfig.setLossless(lossless);
+      webpConfig.setExtentX(extents.first);
+      webpConfig.setExtentY(extents.second);
+      break;
+    }
     case FilterType::FILTER_NONE:
     case FilterType::FILTER_BITSHUFFLE:
     case FilterType::FILTER_BYTESHUFFLE:
@@ -135,7 +179,6 @@ Status filter_to_capnp(
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
     case FilterType::FILTER_XOR:
     case FilterType::FILTER_DEPRECATED:
-    case FilterType::FILTER_WEBP:
       break;
   }
 
@@ -164,7 +207,7 @@ Status filter_pipeline_to_capnp(
 }
 
 tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
-    const capnp::Filter::Reader& filter_reader) {
+    const capnp::Filter::Reader& filter_reader, Datatype datatype) {
   FilterType type = FilterType::FILTER_NONE;
   RETURN_NOT_OK_TUPLE(
       filter_type_enum(filter_reader.getType().cStr(), &type), nullopt);
@@ -175,27 +218,39 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       uint32_t window = data.getUint32();
       return {
           Status::Ok(),
-          tiledb::common::make_shared<BitWidthReductionFilter>(HERE(), window)};
+          tiledb::common::make_shared<BitWidthReductionFilter>(
+              HERE(), window, datatype)};
     }
     case FilterType::FILTER_POSITIVE_DELTA: {
       auto data = filter_reader.getData();
       uint32_t window = data.getUint32();
       return {
           Status::Ok(),
-          tiledb::common::make_shared<PositiveDeltaFilter>(HERE(), window)};
+          tiledb::common::make_shared<PositiveDeltaFilter>(
+              HERE(), window, datatype)};
     }
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       auto data = filter_reader.getData();
       int32_t level = data.getInt32();
       return {
           Status::Ok(),
-          tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
+          tiledb::common::make_shared<CompressionFilter>(
+              HERE(), type, level, datatype)};
+    }
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DELTA: {
+      auto data = filter_reader.getData();
+      Datatype reinterpret_datatype = Datatype::ANY;
+      reinterpret_datatype = static_cast<Datatype>(data.getUint8());
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<CompressionFilter>(
+              HERE(), type, -1, datatype, reinterpret_datatype)};
     }
     case FilterType::FILTER_SCALE_FLOAT: {
       if (filter_reader.hasFloatScaleConfig()) {
@@ -206,44 +261,73 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
         return {
             Status::Ok(),
             tiledb::common::make_shared<FloatScalingFilter>(
-                HERE(), byte_width, scale, offset)};
+                HERE(), byte_width, scale, offset, datatype)};
       }
 
       return {
           Status::Ok(),
-          tiledb::common::make_shared<FloatScalingFilter>(HERE())};
+          tiledb::common::make_shared<FloatScalingFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_NONE: {
-      return {Status::Ok(), tiledb::common::make_shared<NoopFilter>(HERE())};
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<NoopFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_BITSHUFFLE: {
       return {
-          Status::Ok(), tiledb::common::make_shared<BitshuffleFilter>(HERE())};
+          Status::Ok(),
+          tiledb::common::make_shared<BitshuffleFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_BYTESHUFFLE: {
       return {
-          Status::Ok(), tiledb::common::make_shared<ByteshuffleFilter>(HERE())};
+          Status::Ok(),
+          tiledb::common::make_shared<ByteshuffleFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_CHECKSUM_MD5: {
       return {
-          Status::Ok(), tiledb::common::make_shared<ChecksumMD5Filter>(HERE())};
+          Status::Ok(),
+          tiledb::common::make_shared<ChecksumMD5Filter>(HERE(), datatype)};
     }
     case FilterType::FILTER_CHECKSUM_SHA256: {
       return {
           Status::Ok(),
-          tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
+          tiledb::common::make_shared<ChecksumSHA256Filter>(HERE(), datatype)};
     }
     case FilterType::INTERNAL_FILTER_AES_256_GCM: {
       return {
           Status::Ok(),
-          tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
+          tiledb::common::make_shared<EncryptionAES256GCMFilter>(
+              HERE(), datatype)};
     }
     case FilterType::FILTER_XOR: {
-      return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<XORFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {
-        return {Status::Ok(), tiledb::common::make_shared<WebpFilter>(HERE())};
+        if (filter_reader.hasWebpConfig()) {
+          auto webpConfig = filter_reader.getWebpConfig();
+          float quality = webpConfig.getQuality();
+          auto format = static_cast<WebpInputFormat>(webpConfig.getFormat());
+          bool lossless = webpConfig.getLossless();
+          uint16_t extent_x = webpConfig.getExtentX();
+          uint16_t extent_y = webpConfig.getExtentY();
+          return {
+              Status::Ok(),
+              tiledb::common::make_shared<WebpFilter>(
+                  HERE(),
+                  quality,
+                  format,
+                  lossless,
+                  extent_x,
+                  extent_y,
+                  datatype)};
+        } else {
+          return {
+              Status::Ok(),
+              tiledb::common::make_shared<WebpFilter>(HERE(), datatype)};
+        }
       } else {
         throw WebpNotPresentError();
       }
@@ -263,15 +347,20 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
 }
 
 tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
-    const capnp::FilterPipeline::Reader& filter_pipeline_reader) {
+    const capnp::FilterPipeline::Reader& filter_pipeline_reader,
+    Datatype datatype) {
   if (!filter_pipeline_reader.hasFilters())
     return {Status::Ok(), make_shared<FilterPipeline>(HERE())};
 
   std::vector<shared_ptr<Filter>> filter_list;
   auto filter_list_reader = filter_pipeline_reader.getFilters();
   for (auto filter_reader : filter_list_reader) {
-    auto&& [st_f, filter]{filter_from_capnp(filter_reader)};
+    // Deserialize and initialize filter with filter datatype within the
+    // pipeline.
+    auto&& [st_f, filter]{filter_from_capnp(filter_reader, datatype)};
     RETURN_NOT_OK_TUPLE(st_f, nullopt);
+    // Update datatype to next in pipeline.
+    datatype = filter.value()->output_datatype(datatype);
     filter_list.push_back(filter.value());
   }
 
@@ -284,7 +373,7 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
 void attribute_to_capnp(
     const Attribute* attribute, capnp::Attribute::Builder* attribute_builder) {
   if (attribute == nullptr) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error serializing attribute; attribute is null.");
   }
 
@@ -319,13 +408,17 @@ void attribute_to_capnp(
   const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
   throw_if_not_ok(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
+
+  auto enmr_name = attribute->get_enumeration_name();
+  if (enmr_name.has_value()) {
+    attribute_builder->setEnumerationName(enmr_name.value());
+  }
 }
 
 shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader) {
   // Get datatype
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(attribute_reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(attribute_reader.getType());
 
   // Set nullable
   const bool nullable = attribute_reader.getNullable();
@@ -339,7 +432,8 @@ shared_ptr<Attribute> attribute_from_capnp(
   shared_ptr<FilterPipeline> filters{};
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
-    auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
+    auto&& [st_fp, f]{
+        filter_pipeline_from_capnp(filter_pipeline_reader, datatype)};
     throw_if_not_ok(st_fp);
     filters = f.value();
   } else {
@@ -366,6 +460,11 @@ shared_ptr<Attribute> attribute_from_capnp(
         datatype, attribute_reader.getCellValNum());
   }
 
+  std::optional<std::string> enmr_name;
+  if (attribute_reader.hasEnumerationName()) {
+    enmr_name = attribute_reader.getEnumerationName();
+  }
+
   return tiledb::common::make_shared<Attribute>(
       HERE(),
       attribute_reader.getName(),
@@ -375,7 +474,8 @@ shared_ptr<Attribute> attribute_from_capnp(
       *(filters.get()),
       fill_value_vec,
       fill_value_validity,
-      data_order);
+      data_order,
+      enmr_name);
 }
 
 Status dimension_to_capnp(
@@ -527,12 +627,12 @@ Range range_from_capnp(
 
 /** Deserialize a dimension from a cap'n proto object. */
 shared_ptr<Dimension> dimension_from_capnp(
-    const capnp::Dimension::Reader& dimension_reader) {
+    const capnp::Dimension::Reader& dimension_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
 
   // Deserialize datatype
-  Datatype dim_type;
-  st = datatype_enum(dimension_reader.getType().cStr(), &dim_type);
+  Datatype dim_type = datatype_enum(dimension_reader.getType().cStr());
   if (!st.ok()) {
     throw std::runtime_error(
         "[Deserialization::dimension_from_capnp] " +
@@ -569,7 +669,7 @@ shared_ptr<Dimension> dimension_from_capnp(
   shared_ptr<FilterPipeline> filters{};
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
-    auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
+    auto&& [st_fp, f]{filter_pipeline_from_capnp(reader, dim_type)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
           "[Deserialization::dimension_from_capnp] Failed to deserialize "
@@ -595,7 +695,8 @@ shared_ptr<Dimension> dimension_from_capnp(
       cell_val_num,
       domain,
       *(filters.get()),
-      tile_extent);
+      tile_extent,
+      memory_tracker);
 }
 
 Status domain_to_capnp(
@@ -622,7 +723,8 @@ Status domain_to_capnp(
 
 /* Deserialize a domain from a cap'n proto object. */
 shared_ptr<Domain> domain_from_capnp(
-    const capnp::Domain::Reader& domain_reader) {
+    const capnp::Domain::Reader& domain_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
 
   // Deserialize and validate cell order
@@ -662,10 +764,11 @@ shared_ptr<Domain> domain_from_capnp(
   std::vector<shared_ptr<Dimension>> dims;
   auto dimensions = domain_reader.getDimensions();
   for (auto dimension : dimensions) {
-    dims.emplace_back(dimension_from_capnp(dimension));
+    dims.emplace_back(dimension_from_capnp(dimension, memory_tracker));
   }
 
-  return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
+  return make_shared<Domain>(
+      HERE(), cell_order, dims, tile_order, memory_tracker);
 }
 
 void dimension_label_to_capnp(
@@ -683,7 +786,7 @@ void dimension_label_to_capnp(
   if (dimension_label.uri_is_relative()) {
     dim_label_builder->setUri(dimension_label.uri().to_string());
   } else {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "[Serialization::dimension_label_to_capnp] Serialization of absolute "
         "dimension label URIs not yet implemented.");
   }
@@ -697,21 +800,20 @@ void dimension_label_to_capnp(
 }
 
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
-    const capnp::DimensionLabel::Reader& dim_label_reader) {
+    const capnp::DimensionLabel::Reader& dim_label_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Get datatype
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(dim_label_reader.getType());
 
   shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
-    schema = make_shared<ArraySchema>(
-        HERE(), array_schema_from_capnp(schema_reader, URI()));
+    schema = array_schema_from_capnp(schema_reader, URI(), memory_tracker);
   }
 
   auto is_relative = dim_label_reader.getRelative();
   if (!is_relative) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "[Deserialization::dimension_label_from_capnp] Deserialization of "
         "absolute dimension label URIs not yet implemented.");
   }
@@ -776,9 +878,9 @@ Status array_schema_to_capnp(
 
   // Attributes
   const unsigned num_attrs = array_schema.attribute_num();
-  auto attributes_buidler = array_schema_builder->initAttributes(num_attrs);
+  auto attribute_builders = array_schema_builder->initAttributes(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
-    auto attribute_builder = attributes_buidler[i];
+    auto attribute_builder = attribute_builders[i];
     attribute_to_capnp(array_schema.attribute(i), &attribute_builder);
   }
 
@@ -800,12 +902,45 @@ Status array_schema_to_capnp(
     }
   }
 
+  // Loaded enumerations
+  auto loaded_enmr_names = array_schema.get_loaded_enumeration_names();
+  const unsigned num_loaded_enmrs = loaded_enmr_names.size();
+  if (num_loaded_enmrs > 0) {
+    auto enmr_builders =
+        array_schema_builder->initEnumerations(num_loaded_enmrs);
+    for (size_t i = 0; i < num_loaded_enmrs; i++) {
+      auto enmr = array_schema.get_enumeration(loaded_enmr_names[i]);
+      auto builder = enmr_builders[i];
+      enumeration_to_capnp(enmr, builder);
+    }
+  }
+
+  // Enumeration path map
+  auto enmr_names = array_schema.get_enumeration_names();
+  const unsigned num_enmr_names = enmr_names.size();
+  if (num_enmr_names > 0) {
+    auto enmr_path_map_builders =
+        array_schema_builder->initEnumerationPathMap(num_enmr_names);
+    for (size_t i = 0; i < num_enmr_names; i++) {
+      auto enmr_path_name =
+          array_schema.get_enumeration_path_name(enmr_names[i]);
+      enmr_path_map_builders[i].setKey(enmr_names[i]);
+      enmr_path_map_builders[i].setValue(enmr_path_name);
+    }
+  }
+
+  auto crd = array_schema.get_current_domain();
+  auto current_domain_builder = array_schema_builder->initCurrentDomain();
+  current_domain_to_capnp(crd, current_domain_builder);
+
   return Status::Ok();
 }
 
 // #TODO Add security validation on incoming URI
-ArraySchema array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
+shared_ptr<ArraySchema> array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader,
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
   Status st = array_type_enum(schema_reader.getArrayType(), &array_type);
@@ -886,7 +1021,7 @@ ArraySchema array_schema_from_capnp(
   // Deserialize domain
   // Note: Security validation delegated to invoked API
   auto domain_reader = schema_reader.getDomain();
-  auto domain{domain_from_capnp(domain_reader)};
+  auto domain{domain_from_capnp(domain_reader, memory_tracker)};
 
   // Set coords filter pipelines
   // Note: Security validation delegated to invoked API
@@ -894,7 +1029,7 @@ ArraySchema array_schema_from_capnp(
   FilterPipeline coords_filters;
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
-    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader, Datatype::ANY)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
           "[Deserialization::array_schema_from_capnp] Cannot deserialize "
@@ -909,7 +1044,8 @@ ArraySchema array_schema_from_capnp(
   FilterPipeline cell_var_offsets_filters;
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
-    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    auto&& [st_fp, filters]{
+        filter_pipeline_from_capnp(reader, Datatype::UINT64)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
           "[Deserialization::array_schema_from_capnp] Cannot deserialize "
@@ -924,7 +1060,8 @@ ArraySchema array_schema_from_capnp(
   FilterPipeline cell_validity_filters;
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
-    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    auto&& [st_fp, filters]{
+        filter_pipeline_from_capnp(reader, Datatype::UINT8)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
           "[Deserialization::array_schema_from_capnp] Cannot deserialize "
@@ -957,12 +1094,46 @@ ArraySchema array_schema_from_capnp(
     try {
       for (auto dim_label_reader : dim_labels_reader) {
         dimension_labels.emplace_back(
-            dimension_label_from_capnp(dim_label_reader));
+            dimension_label_from_capnp(dim_label_reader, memory_tracker));
       }
     } catch (const std::exception& e) {
       std::throw_with_nested(std::runtime_error(
           "[Deserialization::array_schema_from_capnp] Cannot deserialize "
           "dimension labels."));
+    }
+  }
+
+  // Loaded enumerations
+  std::vector<shared_ptr<const Enumeration>> enumerations;
+  if (schema_reader.hasEnumerations()) {
+    auto enmr_readers = schema_reader.getEnumerations();
+    enumerations.reserve(enmr_readers.size());
+    try {
+      for (auto&& enmr_reader : enmr_readers) {
+        enumerations.emplace_back(
+            enumeration_from_capnp(enmr_reader, memory_tracker));
+      }
+    } catch (const std::exception& e) {
+      std::throw_with_nested(std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "enumerations"));
+    }
+  }
+
+  // Enumeration path map
+  std::unordered_map<std::string, std::string> enmr_path_map;
+  if (schema_reader.hasEnumerationPathMap()) {
+    auto enmr_path_map_readers = schema_reader.getEnumerationPathMap();
+    try {
+      for (auto&& kv_reader : enmr_path_map_readers) {
+        auto enmr_name = kv_reader.getKey();
+        auto enmr_path_name = kv_reader.getValue();
+        enmr_path_map[enmr_name] = enmr_path_name;
+      }
+    } catch (const std::exception& e) {
+      std::throw_with_nested(std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "enumeration path map"));
     }
   }
 
@@ -982,22 +1153,36 @@ ArraySchema array_schema_from_capnp(
     name = schema_reader.getName().cStr();
   }
 
-  return ArraySchema(
+  std::shared_ptr<CurrentDomain> crd;
+  if (schema_reader.hasCurrentDomain()) {
+    crd = current_domain_from_capnp(
+        schema_reader.getCurrentDomain(), domain, memory_tracker);
+  } else {
+    crd = make_shared<CurrentDomain>(
+        memory_tracker, constants::current_domain_version);
+  }
+
+  return make_shared<ArraySchema>(
+      HERE(),
       uri_deserialized,
       version,
       timestamp_range,
       name,
       array_type,
       allows_dups,
-      make_shared<Domain>(HERE(), domain.get()),
+      domain,
       cell_order,
       tile_order,
       capacity,
       attributes,
       dimension_labels,
+      enumerations,
+      enmr_path_map,
       cell_var_offsets_filters,
       cell_validity_filters,
-      coords_filters);
+      coords_filters,
+      crd,
+      memory_tracker);
 }
 
 Status array_schema_serialize(
@@ -1054,8 +1239,10 @@ Status array_schema_serialize(
   return Status::Ok();
 }
 
-ArraySchema array_schema_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer) {
+shared_ptr<ArraySchema> array_schema_deserialize(
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
 
@@ -1069,7 +1256,8 @@ ArraySchema array_schema_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
-        return array_schema_from_capnp(array_schema_reader, URI());
+        return array_schema_from_capnp(
+            array_schema_reader, URI(), memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -1078,7 +1266,8 @@ ArraySchema array_schema_deserialize(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
         array_schema_reader = reader.getRoot<capnp::ArraySchema>();
-        return array_schema_from_capnp(array_schema_reader, URI());
+        return array_schema_from_capnp(
+            array_schema_reader, URI(), memory_tracker);
       }
       default: {
         throw StatusException(Status_SerializationError(
@@ -1655,6 +1844,215 @@ Status max_buffer_sizes_deserialize(
   return Status::Ok();
 }
 
+void load_array_schema_request_to_capnp(
+    capnp::LoadArraySchemaRequest::Builder& builder,
+    const Config& config,
+    const LoadArraySchemaRequest& req) {
+  auto config_builder = builder.initConfig();
+  throw_if_not_ok(config_to_capnp(config, &config_builder));
+  builder.setIncludeEnumerations(req.include_enumerations());
+}
+
+void serialize_load_array_schema_request(
+    const Config& config,
+    const LoadArraySchemaRequest& req,
+    SerializationType serialization_type,
+    Buffer& data) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::LoadArraySchemaRequest>();
+    load_array_schema_request_to_capnp(builder, config, req);
+
+    data.reset_size();
+    data.reset_offset();
+
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(data.realloc(json_len + 1));
+        throw_if_not_ok(data.write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(data.write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(data.realloc(nbytes));
+        throw_if_not_ok(data.write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw ArraySchemaSerializationException(
+            "Error serializing load array schema request; "
+            "Unknown serialization type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error serializing load array schema request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error serializing load array schema request; exception " +
+        std::string(e.what()));
+  }
+}
+
+LoadArraySchemaRequest load_array_schema_request_from_capnp(
+    capnp::LoadArraySchemaRequest::Reader& reader) {
+  return LoadArraySchemaRequest(reader.getIncludeEnumerations());
+}
+
+LoadArraySchemaRequest deserialize_load_array_schema_request(
+    SerializationType serialization_type, const Buffer& data) {
+  try {
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder =
+            message_builder.initRoot<capnp::LoadArraySchemaRequest>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(data.data())), builder);
+        auto reader = builder.asReader();
+        return load_array_schema_request_from_capnp(reader);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
+        ::capnp::FlatArrayMessageReader message_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            data.size() / sizeof(::capnp::word)));
+        auto reader = message_reader.getRoot<capnp::LoadArraySchemaRequest>();
+        return load_array_schema_request_from_capnp(reader);
+      }
+      default: {
+        throw ArraySchemaSerializationException(
+            "Error deserializing load array schema request; "
+            "Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error deserializing load array schema request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error deserializing load array schema request; exception " +
+        std::string(e.what()));
+  }
+}
+
+void load_array_schema_response_to_capnp(
+    capnp::LoadArraySchemaResponse::Builder& builder,
+    const ArraySchema& schema) {
+  auto schema_builder = builder.initSchema();
+  throw_if_not_ok(array_schema_to_capnp(schema, &schema_builder, false));
+}
+
+void serialize_load_array_schema_response(
+    const ArraySchema& schema,
+    SerializationType serialization_type,
+    Buffer& data) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::LoadArraySchemaResponse>();
+    load_array_schema_response_to_capnp(builder, schema);
+
+    data.reset_size();
+    data.reset_offset();
+
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(data.realloc(json_len + 1));
+        throw_if_not_ok(data.write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(data.write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(data.realloc(nbytes));
+        throw_if_not_ok(data.write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw ArraySchemaSerializationException(
+            "Error serializing load array schema response; "
+            "Unknown serialization type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error serializing load array schema response; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error serializing load array schema response; exception " +
+        std::string(e.what()));
+  }
+}
+
+shared_ptr<ArraySchema> load_array_schema_response_from_capnp(
+    capnp::LoadArraySchemaResponse::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  auto schema_reader = reader.getSchema();
+  return array_schema_from_capnp(schema_reader, URI(), memory_tracker);
+}
+
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+    SerializationType serialization_type,
+    const Buffer& data,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  try {
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder =
+            message_builder.initRoot<capnp::LoadArraySchemaResponse>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(data.data())), builder);
+        auto reader = builder.asReader();
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
+        ::capnp::FlatArrayMessageReader array_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            data.size() / sizeof(::capnp::word)));
+        auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
+      }
+      default: {
+        throw ArraySchemaSerializationException(
+            "Error deserializing load array schema response; "
+            "Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error deserializing load array schema response; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySchemaSerializationException(
+        "Error deserializing load array schema response; exception " +
+        std::string(e.what()));
+  }
+}
+
 #else
 
 Status array_schema_serialize(
@@ -1663,7 +2061,8 @@ Status array_schema_serialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-ArraySchema array_schema_deserialize(SerializationType, const Buffer&) {
+shared_ptr<ArraySchema> array_schema_deserialize(
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -1705,8 +2104,26 @@ Status max_buffer_sizes_deserialize(
       "Cannot serialize; serialization not enabled."));
 }
 
+void serialize_load_array_schema_request(
+    const Config&, const LoadArraySchemaRequest&, SerializationType, Buffer&) {
+  throw ArraySchemaSerializationDisabledException();
+}
+
+LoadArraySchemaRequest deserialize_load_array_schema_request(
+    SerializationType, const Buffer&) {
+  throw ArraySchemaSerializationDisabledException();
+}
+
+void serialize_load_array_schema_response(
+    const ArraySchema&, SerializationType, Buffer&) {
+  throw ArraySchemaSerializationDisabledException();
+}
+
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+  throw ArraySchemaSerializationDisabledException();
+}
+
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

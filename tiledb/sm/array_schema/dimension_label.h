@@ -48,6 +48,7 @@ class ArraySchema;
 class Buffer;
 class ConstBuffer;
 class Dimension;
+class MemoryTracker;
 enum class Datatype : uint8_t;
 enum class DataOrder : uint8_t;
 
@@ -107,6 +108,7 @@ class DimensionLabel {
   /**
    * Constructor for an internally generated dimension label.
    *
+   * @param memory_tracker Memory tracker for the dimension label.
    * @param dim_id The index of the dimension the label is attached to.
    * @param dim_label_name The name of the dimension label.
    * @param uri The URI of an external dimension label.
@@ -120,7 +122,8 @@ class DimensionLabel {
       const URI& uri,
       const Dimension* dim,
       DataOrder label_order,
-      Datatype label_type);
+      Datatype label_type,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -136,11 +139,6 @@ class DimensionLabel {
   inline dimension_size_type dimension_index() const {
     return dim_id_;
   }
-
-  /**
-   * Dumps the dimension label contents in ASCII form in the selected output.
-   */
-  void dump(FILE* out) const;
 
   /**
    * Returns ``true`` if the dimension label is not contained inside the array.
@@ -268,5 +266,9 @@ class DimensionLabel {
 };
 
 }  // namespace tiledb::sm
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::DimensionLabel& dl);
 
 #endif

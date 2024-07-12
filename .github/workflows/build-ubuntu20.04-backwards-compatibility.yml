@@ -3,7 +3,8 @@ on:
   workflow_call:
 
 env:
-  CXX: g++
+  CXX: g++-10
+  CC: gcc-10
 
 jobs:
   build:
@@ -23,9 +24,9 @@ jobs:
         shell: bash
 
       # Need this for virtualenv and arrow tests if enabled
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.8'
+          python-version: '3.9'
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
@@ -58,7 +59,7 @@ jobs:
           - ubuntu-20.04
         # Note: v2_1_0 arrays were never created so its currently skipped
         # Note: This matrix is used to set the value of TILEDB_COMPATIBILITY_VERSION
-        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1", "v2_10_0", "v2_11_0", "v2_12_0", "v2_13_0", "v2_14_0", "v2_15_0"]
+        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1", "v2_10_0", "v2_11_0", "v2_12_3", "v2_13_2", "v2_14_0", "v2_15_0", "v2_16_3", "v2_17_5", "v2_18_3", "v2_19_1", "v2_20_1", "v2_21_1", "v2_22_0", "v2_23_0", "v2_24_0"]
     timeout-minutes: 30
     name: ${{ matrix.tiledb_version }}
     steps:
@@ -72,6 +73,16 @@ jobs:
 
       - name: Update tiledb_unit permissions
         run: chmod +x $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit
+
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: 'Test backward compatibility'
         id: test

@@ -66,9 +66,11 @@ class FloatScalingFilter : public Filter {
   /**
    * Default constructor. Default settings for Float Scaling Filter are
    * scale = 1.0f, offset = 0.0f, and byte_width = 8.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  FloatScalingFilter()
-      : Filter(FilterType::FILTER_SCALE_FLOAT)
+  FloatScalingFilter(Datatype filter_data_type)
+      : Filter(FilterType::FILTER_SCALE_FLOAT, filter_data_type)
       , scale_(1.0f)
       , offset_(0.0f)
       , byte_width_(8) {
@@ -80,16 +82,18 @@ class FloatScalingFilter : public Filter {
    * @param byte_width The byte width of the compressed representation.
    * @param scale The scale factor.
    * @param offset The offset factor.
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  FloatScalingFilter(uint64_t byte_width, double scale, double offset)
-      : Filter(FilterType::FILTER_SCALE_FLOAT)
+  FloatScalingFilter(
+      uint64_t byte_width,
+      double scale,
+      double offset,
+      Datatype filter_data_type)
+      : Filter(FilterType::FILTER_SCALE_FLOAT, filter_data_type)
       , scale_(scale)
       , offset_(offset)
       , byte_width_(byte_width) {
   }
-
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
 
   /** Serializes this filter's metadata to the given buffer. */
   void serialize_impl(Serializer& serializer) const override;
@@ -99,7 +103,7 @@ class FloatScalingFilter : public Filter {
    * stores it as integers with the value round((raw_float - offset) / scale)
    * with the pre-specified byte width.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -127,6 +131,26 @@ class FloatScalingFilter : public Filter {
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
 
+  /**
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
+
+  /**
+   * Returns the filter output type
+   *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
+   */
+  Datatype output_datatype(Datatype input_type) const override;
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
+
  private:
   /** The scale factor. */
   double scale_;
@@ -144,7 +168,7 @@ class FloatScalingFilter : public Filter {
    * Run forward, templated on the size of the input type.
    */
   template <typename T>
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -154,7 +178,7 @@ class FloatScalingFilter : public Filter {
    * Run forward, templated on the size of the input type and byte width.
    */
   template <typename T, typename W>
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

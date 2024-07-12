@@ -31,12 +31,19 @@
  * through serialization.
  */
 
-#include <test/support/tdb_catch.h>
-#include <string>
-
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/serialization/query.h"
+
+#ifdef TILEDB_SERIALIZATION
+#include <capnp/message.h>
+#endif
+#include <test/support/tdb_catch.h>
+#include <string>
+
+using namespace tiledb::sm;
 
 int tiledb_array_create_serialization_wrapper(
     tiledb_ctx_t* ctx,
@@ -134,7 +141,13 @@ int array_serialize_wrapper(
   REQUIRE(rc == TILEDB_OK);
 
   // Load array from the rest server
-  rc = tiledb_deserialize_array(ctx, buff, serialize_type, 0, new_array);
+  rc = tiledb_deserialize_array(
+      ctx,
+      buff,
+      serialize_type,
+      0,
+      array->array_->array_uri().c_str(),
+      new_array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up.
@@ -179,4 +192,29 @@ int tiledb_fragment_info_serialize(
 
   tiledb_buffer_free(&buffer);
   return rc;
+}
+
+void tiledb_subarray_serialize(
+    [[maybe_unused]] tiledb_ctx_t* ctx,
+    [[maybe_unused]] tiledb_array_t* array,
+    [[maybe_unused]] tiledb_subarray_t** subarray) {
+#ifdef TILEDB_SERIALIZATION
+  // Serialize
+  ::capnp::MallocMessageBuilder message;
+  tiledb::sm::serialization::capnp::Subarray::Builder builder =
+      message.initRoot<tiledb::sm::serialization::capnp::Subarray>();
+  tiledb_array_schema_t* array_schema = nullptr;
+  tiledb_array_get_schema(ctx, array, &array_schema);
+  REQUIRE(tiledb::sm::serialization::subarray_to_capnp(
+              *(array_schema->array_schema_), (*subarray)->subarray_, &builder)
+              .ok());
+  // Deserialize
+  tiledb_subarray_t* deserialized_subarray;
+  tiledb::test::require_tiledb_ok(
+      ctx, tiledb_subarray_alloc(ctx, array, &deserialized_subarray));
+  REQUIRE(tiledb::sm::serialization::subarray_from_capnp(
+              builder, deserialized_subarray->subarray_)
+              .ok());
+  *subarray = deserialized_subarray;
+#endif
 }

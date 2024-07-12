@@ -32,7 +32,7 @@ include(common NO_POLICY_SCOPE)
 #   - Include path for `c_api` headers
 #
 add_library(export INTERFACE)
-target_compile_definitions(export INTERFACE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(export INTERFACE -Dtiledb_EXPORTS)
 target_include_directories(export INTERFACE ${TILEDB_EXPORT_HEADER_DIR})
 target_include_directories(export INTERFACE ${TILEDB_SOURCE_ROOT}/tiledb/sm/c_api)
 
@@ -58,6 +58,9 @@ add_subdirectory(buffer)
 # `buffer_list`: depends on `buffer`
 add_subdirectory(buffer_list)
 
+# `current_domain`: depends on `ndrectangle`
+add_subdirectory(current_domain)
+
 # `error`: no dependencies
 add_subdirectory(error)
 
@@ -76,6 +79,9 @@ add_subdirectory(data_order)
 # `dimension_label`: depends on `context`, `datatype`, `data_order`
 add_subdirectory(dimension_label)
 
+# `enumeration`: depends on `buffer`, `constants`, and `context`
+add_subdirectory(enumeration)
+
 # `filesystem`: no dependencies
 add_subdirectory(filesystem)
 
@@ -85,11 +91,20 @@ add_subdirectory(filter)
 # `filter_list`: depends on `context`, `filter`
 add_subdirectory(filter_list)
 
-# `dimension`: depends on `filter_list`
+# `dimension`: depends on `filter_list`, `datatype`
 add_subdirectory(dimension)
+
+# `domain`: depends on `dimension`
+add_subdirectory(domain)
+
+# `attribute`: depends on `filter_list`, `datatype`
+add_subdirectory(attribute)
 
 # `group`: depends on `config`, `context`
 add_subdirectory(group)
+
+# `ndrectangle`: depends on `domain`
+add_subdirectory(ndrectangle)
 
 # `object`: no dependencies
 add_subdirectory(object)
@@ -108,4 +123,10 @@ add_subdirectory(vfs)
 
 # `query_plan`: no dependencies yet
 add_subdirectory(query_plan)
+
+# `query_aggregate`: no dependencies
+add_subdirectory(query_aggregate)
+
+# `query_field`: no dependencies
+add_subdirectory(query_field)
 

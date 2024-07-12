@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,18 +36,10 @@
 #endif
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/sm/c_api/tiledb.h"
-
-#include <iostream>
-
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
-#if !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-#include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -61,9 +53,10 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/serialization/array.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
+#include "tiledb/sm/serialization/fragments.h"
 
 #include <chrono>
 #include <climits>
@@ -71,11 +64,24 @@
 #include <sstream>
 #include <thread>
 
+#ifdef _WIN32
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+#if !defined(WIN32_LEAN_AND_MEAN)
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
+#endif
+
 using namespace tiledb::test;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
 struct ArrayFx {
+  // The memory tracker
+  shared_ptr<tiledb::sm::MemoryTracker> memory_tracker_;
+
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -87,12 +93,6 @@ struct ArrayFx {
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
   const char* encryption_key_ = nullptr;
 
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  tiledb::test::ServerQueryBuffers server_buffers_;
-
   // Functions
   ArrayFx();
   ~ArrayFx();
@@ -103,7 +103,6 @@ struct ArrayFx {
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
   void write_fragment(tiledb_array_t* array, uint64_t timestamp);
-  static std::string random_name(const std::string& prefix);
   static int get_fragment_timestamps(const char* path, void* data);
 };
 
@@ -114,7 +113,8 @@ static const std::string test_ca_file =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/test_certs/public.crt";
 
 ArrayFx::ArrayFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
@@ -138,22 +138,12 @@ void ArrayFx::remove_temp_dir(const std::string& path) {
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-std::string ArrayFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
-}
-
 int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
   auto data_vec = (std::vector<uint64_t>*)data;
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::write_file_suffix)) {
-    auto uri = tiledb::sm::URI(path);
-    if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
-            .ok())
-      data_vec->push_back(timestamp_range.first);
+  if (utils::parse::ends_with(path, constants::write_file_suffix)) {
+    FragmentID fragment_id{path};
+    auto timestamp_range{fragment_id.timestamp_range()};
+    data_vec->push_back(timestamp_range.first);
   }
 
   return 1;
@@ -312,7 +302,6 @@ void ArrayFx::create_dense_vector(const std::string& path) {
     rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.reset();
     REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, cfg).ok());
     tiledb_config_free(&cfg);
   }
@@ -379,7 +368,7 @@ void ArrayFx::create_dense_array(const std::string& path) {
 
 void ArrayFx::write_fragment(tiledb_array_t* array, uint64_t timestamp) {
   // Open the array at the given timestamp
-  int rc = tiledb_array_set_open_timestamp_start(ctx_, array, timestamp);
+  int rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -396,9 +385,7 @@ void ArrayFx::write_fragment(tiledb_array_t* array, uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", buffer, &buffer_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -475,7 +462,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Test array with encryption", "[capi][array][encryption]") {
+    ArrayFx,
+    "C API: Test array with encryption",
+    "[capi][array][encryption][non-rest]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
@@ -528,7 +517,8 @@ TEST_CASE_METHOD(
 
   SECTION("- API calls with encrypted schema") {
     const char key[] = "0123456789abcdeF0123456789abcdeF";
-    uint32_t key_len = (uint32_t)strlen(key);
+    const char bad_key_len[] = "bad_key_len";
+    const char wrong_key[] = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
     // Check error with invalid key length
     tiledb_config_t* cfg;
@@ -538,10 +528,9 @@ TEST_CASE_METHOD(
     REQUIRE(err == nullptr);
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key_len, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(31);
     tiledb_ctx_t* ctx_invalid_key_len_1;
     tiledb_vfs_t* vfs_invalid_key_len_1;
     REQUIRE(vfs_test_init(
@@ -556,8 +545,6 @@ TEST_CASE_METHOD(
     rc = tiledb_config_set(
         cfg, "sm.encryption_type", "TILEDB_NO_ENCRYPTION", &err);
     REQUIRE(err == nullptr);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
     tiledb_ctx_t* ctx_invalid_key_len_2;
     tiledb_vfs_t* vfs_invalid_key_len_2;
     REQUIRE(vfs_test_init(
@@ -573,6 +560,8 @@ TEST_CASE_METHOD(
 
     // Create array with proper key
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
     REQUIRE(err == nullptr);
     tiledb_ctx_t* ctx_proper_key;
     tiledb_vfs_t* vfs_proper_key;
@@ -623,12 +612,11 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
 
-    // Check error with bad key
-    char bad_key[32];
+    // Check error with wrong key
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -641,12 +629,11 @@ TEST_CASE_METHOD(
 
     // Check error with bad key length
     REQUIRE(
-        tiledb_config_set(cfg, "sm.encryption_key", key, &err) == TILEDB_OK);
+        tiledb_config_set(cfg, "sm.encryption_key", bad_key_len, &err) ==
+        TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len - 1);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
@@ -654,8 +641,10 @@ TEST_CASE_METHOD(
     REQUIRE(is_open == 0);
 
     // Use correct key
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", key, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
@@ -666,7 +655,7 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_close(ctx_, array);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -680,6 +669,10 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_ERR);
 
     // Opening an array with a bad key should fail
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array2, cfg);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx_, array2, TILEDB_READ);
@@ -699,7 +692,7 @@ TEST_CASE_METHOD(
     // Check with bad key
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     tiledb_ctx_t* ctx_bad_key;
@@ -727,12 +720,17 @@ TEST_CASE_METHOD(
     tiledb_vfs_free(&vfs_correct_key);
 
     // Check opening after closing still requires a key.
+    rc = tiledb_config_set(cfg, "sm.encryption_key", "", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -811,7 +809,6 @@ TEST_CASE_METHOD(
     rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.reset();
     rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
@@ -830,7 +827,6 @@ TEST_CASE_METHOD(
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(0);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
@@ -881,28 +877,22 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test opening array at timestamp, reads",
-    "[capi][array][open-at][reads]") {
+    "[capi][array][open-at][reads][rest]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
+  std::string array_path = temp_dir + "array-open-at-reads";
+  std::string array_name = vfs_array_uri(fs_vec_[0], array_path);
 
-  std::string array_name = temp_dir + "array-open-at-reads";
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
-    SECTION("no serialization") {
-      serialize_ = false;
-    }
-#ifdef TILEDB_SERIALIZATION
-    SECTION("serialization enabled") {
-      serialize_ = true;
-      refactored_query_v2_ = GENERATE(true, false);
-    }
-#endif
   }
 
-  SECTION("- with encryption") {
-    encryption_type_ = TILEDB_AES_256_GCM;
-    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+  if (!fs_vec_[0]->is_rest()) {
+    SECTION("- with encryption") {
+      encryption_type_ = TILEDB_AES_256_GCM;
+      encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    }
   }
 
   create_temp_dir(temp_dir);
@@ -936,9 +926,6 @@ TEST_CASE_METHOD(
     rc = tiledb_array_set_config(ctx_, array, cfg);
     CHECK(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
-    uint32_t key_len = (uint32_t)strlen(encryption_key_);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
   }
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -952,13 +939,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -997,23 +978,24 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  tiledb_subarray_t* sub;
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_upd, &buffer_upd_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1021,12 +1003,13 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&sub);
 
   std::vector<uint64_t> fragment_timestamps;
   rc = tiledb_vfs_ls(
       ctx_,
       vfs_,
-      get_commit_dir(array_name).c_str(),
+      get_commit_dir(array_path).c_str(),
       &get_fragment_timestamps,
       &fragment_timestamps);
   CHECK(rc == TILEDB_OK);
@@ -1060,24 +1043,24 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
-  // Submit query
+  // Create subarray
   int64_t subarray_read[] = {1, 10};
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1085,6 +1068,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&sub);
 
   // Check correctness
   int32_t buffer_read_c[] = {1, 2, 3, 4, 50, 60, 70, 8, 9, 10};
@@ -1125,23 +1109,23 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(timestamp_get == 0);
 
+  // Create subarray
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1149,6 +1133,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&sub);
   tiledb_config_free(&cfg);
 
   // Check correctness
@@ -1182,23 +1167,23 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1206,6 +1191,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&sub);
   tiledb_config_free(&cfg);
 
   // Check correctness
@@ -1245,27 +1231,28 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(timestamp_get == fragment_timestamps[1]);
 
+  // Create subarray
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Clean up but don't close the array yet (we will reopen it).
   tiledb_query_free(&query);
+  tiledb_subarray_free(&sub);
   tiledb_config_free(&cfg);
 
   // Check correctness
@@ -1282,27 +1269,28 @@ TEST_CASE_METHOD(
   rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Clean up but don't close the array yet (we will reopen it).
   tiledb_query_free(&query);
+  tiledb_subarray_free(&sub);
 
   // Check correctness
   int buffer_read_reopen_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -1322,23 +1310,23 @@ TEST_CASE_METHOD(
   rc = tiledb_array_reopen(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1346,6 +1334,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&sub);
 
   // Check correctness
   int buffer_read_reopen_start_c[] = {
@@ -1392,23 +1381,23 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1416,6 +1405,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&sub);
   tiledb_config_free(&cfg);
 
   // Check correctness
@@ -1462,23 +1452,23 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1486,6 +1476,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&sub);
   tiledb_config_free(&cfg);
 
   // Check correctness
@@ -1512,28 +1503,22 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test opening array at timestamp, writes",
-    "[capi][array][open-at][writes]") {
+    "[capi][array][open-at][writes][rest-fails][sc-42722]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
+  std::string array_name =
+      vfs_array_uri(fs_vec_[0], temp_dir + "array-open-at-writes");
 
-  std::string array_name = temp_dir + "array-open-at-writes";
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
     encryption_key_ = nullptr;
-    SECTION("no serialization") {
-      serialize_ = false;
-    }
-#ifdef TILEDB_SERIALIZATION
-    SECTION("serialization enabled") {
-      serialize_ = true;
-      refactored_query_v2_ = GENERATE(true, false);
-    }
-#endif
   }
 
-  SECTION("- with encryption") {
-    encryption_type_ = TILEDB_AES_256_GCM;
-    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+  if (!fs_vec_[0]->is_rest()) {
+    SECTION("- with encryption") {
+      encryption_type_ = TILEDB_AES_256_GCM;
+      encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    }
   }
 
   create_temp_dir(temp_dir);
@@ -1585,13 +1570,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Get written timestamp
@@ -1643,26 +1622,27 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(timestamp_get == 0);
 
+  // Create subarray
+  int64_t subarray_read[] = {1, 10};
+  tiledb_subarray_t* sub;
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  int64_t subarray_read[] = {1, 10};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   int buffer_read[10];
   uint64_t buffer_read_size = sizeof(buffer_read);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1670,6 +1650,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&sub);
   tiledb_config_free(&cfg);
 
   // Check correctness
@@ -1703,23 +1684,23 @@ TEST_CASE_METHOD(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  CHECK(rc == TILEDB_OK);
+
   // Submit query
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray_read);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a", buffer_read, &buffer_read_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb::test::submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
@@ -1727,6 +1708,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&sub);
   tiledb_config_free(&cfg);
 
   // Check correctness
@@ -1740,10 +1722,10 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Check writing coordinates out of bounds",
-    "[capi][array][array-write-coords-oob]") {
-  SupportedFsLocal local_fs;
-  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  std::string array_name = temp_dir + "array-write-coords-oob";
+    "[capi][array][array-write-coords-oob][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  std::string array_name =
+      vfs_array_uri(fs_vec_[0], temp_dir + "array-write-coords-oob");
   create_temp_dir(temp_dir);
 
   int dimension = 0;
@@ -1757,7 +1739,6 @@ TEST_CASE_METHOD(
   // Create TileDB context
   tiledb_config_t* cfg = nullptr;
   tiledb_error_t* err = nullptr;
-  tiledb_ctx_t* ctx = nullptr;
 
   SECTION("- Check out-of-bounds coordinates") {
     check_coords_oob = true;
@@ -1843,59 +1824,58 @@ TEST_CASE_METHOD(
     }
   }
 
-  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
-  REQUIRE(err == nullptr);
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, cfg).ok();
   tiledb_config_free(&cfg);
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
-  CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_data_buffer(ctx, query, "a", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, "d1", buffer_coords_dim1, &buffer_coords_size);
+      ctx_, query, "a", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_size);
   CHECK(rc == TILEDB_OK);
   if (dimension == 2) {
     rc = tiledb_query_set_data_buffer(
-        ctx, query, "d2", buffer_coords_dim2, &buffer_coords_size);
+        ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_size);
     CHECK(rc == TILEDB_OK);
   }
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   if (check_coords_oob) {
     CHECK(rc == TILEDB_ERR);
   } else {
     CHECK(rc == TILEDB_OK);
   }
-  rc = tiledb_query_finalize(ctx, query);
-  CHECK(rc == TILEDB_OK);
 
   // Close array and clean up
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 
   remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Test empty array", "[capi][array][array-empty]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "array_empty";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+    ArrayFx, "C API: Test empty array", "[capi][array][array-empty][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  std::string array_name = vfs_array_uri(fs_vec_[0], temp_dir + "array_empty");
+
+  create_temp_dir(temp_dir);
 
   create_sparse_vector(array_name);
 
@@ -1938,15 +1918,17 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Test deletion of array", "[capi][array][delete]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "array_delete";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+    ArrayFx, "C API: Test deletion of array", "[capi][array][delete][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  std::string array_path = temp_dir + "array_delete";
+  std::string array_name = vfs_array_uri(fs_vec_[0], array_path);
+
+  create_temp_dir(temp_dir);
+
   create_dense_vector(array_name);
 
   // Conditionally consolidate
@@ -1962,11 +1944,17 @@ TEST_CASE_METHOD(
   write_fragment(array, 5);
 
   // Check write
-  CHECK(tiledb::test::num_commits(array_name) == 3);
-  CHECK(tiledb::test::num_fragments(array_name) == 3);
+  // Get the number of write files in the commit directory
+  tiledb::Context ctx(ctx_, false);
+  tiledb::VFS vfs(ctx);
+  CommitsDirectory commits_dir(vfs, array_path);
+  CHECK(commits_dir.file_count(constants::write_file_suffix) == 3);
+  auto uris = vfs.ls(
+      array_path + "/" + tiledb::sm::constants::array_fragments_dir_name);
+  CHECK(static_cast<uint32_t>(uris.size()) == 3);
 
   // Conditionally consolidate commits
-  if (consolidate) {
+  if (consolidate && !fs_vec_[0]->is_rest()) {
     tiledb_config_t* cfg;
     tiledb_error_t* err = nullptr;
     rc = tiledb_config_alloc(&cfg, &err);
@@ -1980,16 +1968,22 @@ TEST_CASE_METHOD(
     tiledb_config_free(&cfg);
 
     // Validate working directory
-    CHECK(tiledb::test::num_commits(array_name) == 3);
-    CHECK(tiledb::test::num_fragments(array_name) == 3);
+    CommitsDirectory commits_dir2(vfs, array_path);
+    CHECK(commits_dir2.file_count(constants::write_file_suffix) == 3);
+    auto uris2 = vfs.ls(
+        array_path + "/" + tiledb::sm::constants::array_fragments_dir_name);
+    CHECK(static_cast<uint32_t>(uris2.size()) == 3);
   }
 
   // Delete array data
   rc = tiledb_array_delete(ctx_, array_name.c_str());
 
   // Validate working directory after delete
-  CHECK(tiledb::test::num_commits(array_name) == 0);
-  CHECK(tiledb::test::num_fragments(array_name) == 0);
+  CommitsDirectory commits_dir3(vfs, array_path);
+  CHECK(commits_dir3.file_count(constants::write_file_suffix) == 0);
+  auto uris3 = vfs.ls(
+      array_path + "/" + tiledb::sm::constants::array_fragments_dir_name);
+  CHECK(static_cast<uint32_t>(uris3.size()) == 0);
 
   // Try to open array
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
@@ -1997,18 +1991,18 @@ TEST_CASE_METHOD(
 
   // Clean up
   tiledb_array_free(&array);
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
-    "C API: Test query errors, getting subarray info from write queries in "
+    "C API: Test subarray errors, getting subarray info from write queries in "
     "sparse arrays",
-    "[capi][query][error][sparse]") {
-  SupportedFsLocal local_fs;
+    "[capi][subarray][error][sparse][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_sparse";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_sparse");
+  create_temp_dir(temp_dir);
 
   create_sparse_vector(array_name);
 
@@ -2022,17 +2016,20 @@ TEST_CASE_METHOD(
   // Prepare query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+
+  // Prepare subarray
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
   uint64_t range_num;
 
-  // Note: deprecated function.
-  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);
 
   // Note: deprecated function.
   const void *start, *end, *stride;
-  rc = tiledb_query_get_range(ctx_, query, 0, 0, &start, &end, &stride);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
   CHECK(*static_cast<const int64_t*>(start) == -1);
   CHECK(*static_cast<const int64_t*>(end) == 2);
@@ -2040,10 +2037,12 @@ TEST_CASE_METHOD(
 
   int64_t s = 10;
   int64_t e = 20;
-  rc = tiledb_query_add_range(ctx_, query, 0, &s, &e, nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s, &e, nullptr);
   CHECK(rc == TILEDB_ERR);
-  int64_t subarray[] = {-1, 2};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  int64_t sub[] = {-1, 2};
+  rc = tiledb_subarray_set_subarray(ctx_, subarray, sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_ERR);
 
   // Close array
@@ -2053,18 +2052,19 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense writes",
-    "[capi][query][error][dense]") {
-  SupportedFsLocal local_fs;
+    "[capi][query][error][dense][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense");
+  create_temp_dir(temp_dir);
 
   create_dense_array(array_name);
 
@@ -2078,44 +2078,49 @@ TEST_CASE_METHOD(
   int32_t a[] = {1, 2, 3, 4};
   uint64_t a_size = sizeof(a);
 
-  // Prepare query
+  // Prepare query/subarray
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   uint64_t range_num;
-  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);  // The default
   const void *start, *end, *stride;
-  rc = tiledb_query_get_range(ctx_, query, 0, 0, &start, &end, &stride);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
   CHECK(*(const uint64_t*)start == 1);
   CHECK(*(const uint64_t*)end == 10);
   int64_t s = 1;
   int64_t e = 2;
-  rc = tiledb_query_add_range(ctx_, query, 0, &s, &e, nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s, &e, nullptr);
   CHECK(rc == TILEDB_OK);
 
-  int64_t subarray[] = {2, 3, 4, 5};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  int64_t sub[] = {2, 3, 4, 5};
+  rc = tiledb_subarray_set_subarray(ctx_, subarray, sub);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s, &e, nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s, &e, nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 2);
-  rc = tiledb_query_get_range(ctx_, query, 0, 0, &start, &end, &stride);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 0, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
   CHECK(*(const uint64_t*)start == 2);
   CHECK(*(const uint64_t*)end == 3);
-  rc = tiledb_query_get_range(ctx_, query, 1, 0, &start, &end, &stride);
+  rc = tiledb_subarray_get_range(ctx_, subarray, 1, 0, &start, &end, &stride);
   CHECK(rc == TILEDB_OK);
   CHECK(*(const uint64_t*)start == 4);
   CHECK(*(const uint64_t*)end == 5);
 
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
@@ -2127,18 +2132,20 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense unordered writes",
-    "[capi][query][error][dense]") {
-  SupportedFsLocal local_fs;
+    "[capi][query][error][dense][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense");
+
+  create_temp_dir(temp_dir);
 
   create_dense_array(array_name);
 
@@ -2165,17 +2172,18 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     ArrayFx,
     "C API: Test query errors, dense reads in global order",
-    "[capi][query][error][dense]") {
-  SupportedFsLocal local_fs;
+    "[capi][query][error][dense][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "query_error_dense";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense");
+
+  create_temp_dir(temp_dir);
 
   create_dense_array(array_name);
 
@@ -2196,15 +2204,20 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
 
-  int64_t subarray[] = {2, 3, 4, 5};
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  int64_t sub[] = {2, 3, 4, 5};
+  rc = tiledb_subarray_set_subarray(ctx_, subarray, sub);
   CHECK(rc == TILEDB_OK);
   int64_t s = 1;
   int64_t e = 2;
-  rc = tiledb_query_add_range(ctx_, query, 0, &s, &e, nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s, &e, nullptr);
   CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
@@ -2216,8 +2229,9 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -2294,8 +2308,8 @@ TEST_CASE_METHOD(
   // in array open v1 but with separate requests, so we simulate
   // this here by forcing metadata loading
   if (!array_v2) {
-    Metadata* metadata = nullptr;
-    CHECK(array->array_->metadata(&metadata).ok());
+    auto metadata = &array->array_->metadata();
+    CHECK(metadata != nullptr);
     array->array_->non_empty_domain();
   }
 
@@ -2339,19 +2353,19 @@ TEST_CASE_METHOD(
 
   // Check the retrieved non empty domain
   auto non_empty_domain = new_array->array_->loaded_non_empty_domain();
-  CHECK(non_empty_domain->empty() == false);
+  CHECK(non_empty_domain.empty() == false);
 
   // Check the retrieved metadata
   Datatype type;
   const void* v_r;
   uint32_t v_num;
-  auto new_metadata = new_array->array_->unsafe_metadata();
-  Status st = new_metadata->get("aaa", &type, &v_num, &v_r);
+  auto new_metadata = &new_array->array_->metadata();
+  new_metadata->get("aaa", &type, &v_num, &v_r);
   CHECK(static_cast<tiledb_datatype_t>(type) == TILEDB_INT32);
   CHECK(v_num == 1);
   CHECK(*((const int32_t*)v_r) == 5);
 
-  st = new_metadata->get("bb", &type, &v_num, &v_r);
+  new_metadata->get("bb", &type, &v_num, &v_r);
   CHECK(static_cast<tiledb_datatype_t>(type) == TILEDB_FLOAT32);
   CHECK(v_num == 2);
   CHECK(((const float*)v_r)[0] == 1.1f);
@@ -2591,12 +2605,12 @@ TEST_CASE_METHOD(
       1,
       &buff);
   REQUIRE(rc == TILEDB_OK);
-  auto st = tiledb::sm::serialization::array_deserialize(
+  tiledb::sm::serialization::array_deserialize(
       array->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
-      ctx_->storage_manager());
-  REQUIRE(st.ok());
+      ctx_->context().resources(),
+      memory_tracker_);
 
   // 6. Server: Close array and clean up
   rc = tiledb_array_close(ctx_, deserialized_array_server);
@@ -2657,6 +2671,103 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query_client);
   tiledb_query_free(&deserialized_query);
 
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+#endif
+}
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "Test array fragments serialization",
+    "[array][fragments][serialization]") {
+#ifdef TILEDB_SERIALIZATION
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "array_fragments_serialization";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  create_dense_vector(array_name);
+
+  // Write fragments at timestamps 1, 2
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  uint64_t start_timestamp = 1;
+  uint64_t end_timestamp = 2;
+  write_fragment(array, start_timestamp);
+  write_fragment(array, end_timestamp);
+  CHECK(tiledb::test::num_commits(array_name) == 2);
+  CHECK(tiledb::test::num_fragments(array_name) == 2);
+
+  // Reopen for modify exclusive.
+  tiledb_array_free(&array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_MODIFY_EXCLUSIVE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // ALlocate buffer
+  tiledb_buffer_t* buff;
+  rc = tiledb_buffer_alloc(ctx_, &buff);
+  REQUIRE(rc == TILEDB_OK);
+
+  SECTION("delete_fragments") {
+    // Serialize fragment timestamps and deserialize delete request
+    tiledb::sm::serialization::serialize_delete_fragments_timestamps_request(
+        array->array_->config(),
+        start_timestamp,
+        end_timestamp,
+        tiledb::sm::SerializationType::CAPNP,
+        &buff->buffer());
+    rc = tiledb_handle_array_delete_fragments_timestamps_request(
+        ctx_,
+        array,
+        (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+        buff);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(tiledb::test::num_commits(array_name) == 0);
+    CHECK(tiledb::test::num_fragments(array_name) == 0);
+  }
+
+  SECTION("delete_fragments_list") {
+    // Get the fragment info object
+    tiledb_fragment_info_t* fragment_info = nullptr;
+    rc = tiledb_fragment_info_alloc(ctx_, array_name.c_str(), &fragment_info);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_load(ctx_, fragment_info);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Get the fragment URIs
+    const char* uri1;
+    rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 0, &uri1);
+    REQUIRE(rc == TILEDB_OK);
+    const char* uri2;
+    rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri2);
+    REQUIRE(rc == TILEDB_OK);
+
+    std::vector<URI> fragments;
+    fragments.emplace_back(URI(uri1));
+    fragments.emplace_back(URI(uri2));
+
+    // Serialize fragments list and deserialize delete request
+    tiledb::sm::serialization::serialize_delete_fragments_list_request(
+        array->array_->config(),
+        fragments,
+        tiledb::sm::SerializationType::CAPNP,
+        &buff->buffer());
+    rc = tiledb_handle_array_delete_fragments_list_request(
+        ctx_,
+        array,
+        (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+        buff);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(tiledb::test::num_commits(array_name) == 0);
+    CHECK(tiledb::test::num_fragments(array_name) == 0);
+    tiledb_fragment_info_free(&fragment_info);
+  }
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_buffer_free(&buff);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 #endif
 }

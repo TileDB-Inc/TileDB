@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2023-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,15 +24,9 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+include(unit_test)
 
-add_executable(unit_capi_data_order EXCLUDE_FROM_ALL)
-target_sources(unit_capi_data_order PUBLIC unit_capi_data_order.cc)
-target_link_libraries(unit_capi_data_order PUBLIC capi_data_order)
-target_link_libraries(unit_capi_data_order PUBLIC Catch2::Catch2WithMain)
-
-add_test(
-  NAME "unit_capi_data_order"
-  COMMAND $<TARGET_FILE:unit_capi_data_order>
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test capi_data_order)
+  this_target_sources(unit_capi_data_order.cc)
+  this_target_object_libraries(capi_data_order)
+conclude(unit_test)

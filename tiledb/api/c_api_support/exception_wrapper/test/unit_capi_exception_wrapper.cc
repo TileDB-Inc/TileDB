@@ -65,7 +65,7 @@ TEST_CASE("ExceptionAction - action") {
    * The action sends a message to the log. We're not going to check that, just
    * that it returns.
    */
-  CHECK_NOTHROW(h.action(Status_Error("an error message")));
+  CHECK_NOTHROW(h.action(std::runtime_error("an error message")));
 }
 
 TEST_CASE("ExceptionActionCtx - construct") {
@@ -84,10 +84,10 @@ TEST_CASE("ExceptionActionCtx - action") {
   tiledb::api::ExceptionActionCtx h{ctx};
   auto x{ctx->context().last_error()};
   CHECK(!x.has_value());
-  h.action(Status_Error("an error message"));
+  h.action(std::runtime_error("an error message"));
   auto y{ctx->context().last_error()};
   REQUIRE(y.has_value());
-  CHECK(y.value() == "Error: an error message");
+  CHECK(y.value() == "TileDB internal: an error message");
 }
 
 TEST_CASE("ExceptionActionErr - construct") {
@@ -117,10 +117,10 @@ TEST_CASE("ExceptionActionErr - action on success") {
 TEST_CASE("ExceptionActionErr - action") {
   tiledb_error_handle_t* error{nullptr};
   tiledb::api::ExceptionActionErr h{&error};
-  h.action(Status_Error("an error message"));
+  h.action(std::runtime_error("an error message"));
   REQUIRE(error != nullptr);
   REQUIRE_NOTHROW(tiledb::api::ensure_error_is_valid(error));
-  CHECK(error->message() == "Error: an error message");
+  CHECK(error->message() == "TileDB internal: an error message");
   tiledb_error_handle_t::break_handle(error);
 }
 
@@ -130,13 +130,13 @@ TEST_CASE("ExceptionActionCtxErr - action") {
   tiledb::api::ExceptionActionCtxErr h{ctx, &error};
   auto x{ctx->context().last_error()};
   CHECK(!x.has_value());
-  h.action(Status_Error("an error message"));
+  h.action(std::runtime_error("an error message"));
   auto y{ctx->context().last_error()};
   REQUIRE(y.has_value());
-  CHECK(y.value() == "Error: an error message");
+  CHECK(y.value() == "TileDB internal: an error message");
   REQUIRE(error != nullptr);
   REQUIRE_NOTHROW(tiledb::api::ensure_error_is_valid(error));
-  CHECK(error->message() == "Error: an error message");
+  CHECK(error->message() == "TileDB internal: an error message");
   tiledb_error_handle_t::break_handle(error);
 }
 
@@ -264,6 +264,7 @@ TEST_CASE("api_entry_context - throw") {
   CHECK(tiledb_status(rc) == TILEDB_ERR);
   auto e{x.context->last_error()};
   CHECK(e.has_value());
+  CHECK(e.value() == "Test: error");
 }
 
 TEST_CASE("api_entry_error - return") {
@@ -285,5 +286,22 @@ TEST_CASE("api_entry_error - throw") {
   auto rc{tiledb::api::api_entry_error<tf_always_throw>(&error)};
   CHECK(tiledb_status(rc) == TILEDB_ERR);
   REQUIRE(error != nullptr);
+  CHECK(error->message() == "Test: error");
   tiledb_error_free(&error);
+}
+
+capi_return_t tf_budget_never_available() {
+  throw BudgetUnavailable("Test", "budget unavailable");
+}
+TEST_CASE("BudgetUnavailable - special return value from CAPIFunction") {
+  auto rc{tiledb::api::api_entry_plain<tf_budget_never_available>()};
+  CHECK(tiledb_status(rc) == TILEDB_BUDGET_UNAVAILABLE);
+}
+
+capi_return_t tf_budget_exceeded() {
+  throw BudgetExceeded("Test", "budget exceeded");
+}
+TEST_CASE("BudgetExceeded - ordinary return value from CAPIFunction") {
+  auto rc{tiledb::api::api_entry_plain<tf_budget_exceeded>()};
+  CHECK(tiledb_status(rc) == TILEDB_ERR);
 }

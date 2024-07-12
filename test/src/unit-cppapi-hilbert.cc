@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,13 +32,13 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
 using namespace tiledb::test;
 
-void create_int32_array(const std::string& array_name) {
-  Context ctx;
+void create_int32_array(Context ctx, const std::string& array_name) {
   Domain domain(ctx);
   auto d1 = Dimension::create<int32_t>(ctx, "d1", {{0, 100}});
   auto d2 = Dimension::create<int32_t>(ctx, "d2", {{0, 200}});
@@ -53,8 +53,8 @@ void create_int32_array(const std::string& array_name) {
   Array::create(array_name, schema);
 }
 
-void create_int32_array_negative_domain(const std::string& array_name) {
-  Context ctx;
+void create_int32_array_negative_domain(
+    Context ctx, const std::string& array_name) {
   Domain domain(ctx);
   auto d1 = Dimension::create<int32_t>(ctx, "d1", {{-50, 50}});
   auto d2 = Dimension::create<int32_t>(ctx, "d2", {{-100, 100}});
@@ -69,8 +69,7 @@ void create_int32_array_negative_domain(const std::string& array_name) {
   Array::create(array_name, schema);
 }
 
-void create_float32_array(const std::string& array_name) {
-  Context ctx;
+void create_float32_array(Context ctx, const std::string& array_name) {
   Domain domain(ctx);
   auto d1 = Dimension::create<float>(ctx, "d1", {{0.0, 1.0}});
   auto d2 = Dimension::create<float>(ctx, "d2", {{0.0, 2.0}});
@@ -85,8 +84,7 @@ void create_float32_array(const std::string& array_name) {
   Array::create(array_name, schema);
 }
 
-void create_string_array(const std::string& array_name) {
-  Context ctx;
+void create_string_array(Context ctx, const std::string& array_name) {
   Domain domain(ctx);
   auto d1 = Dimension::create(ctx, "d1", TILEDB_STRING_ASCII, nullptr, nullptr);
   auto d2 = Dimension::create(ctx, "d2", TILEDB_STRING_ASCII, nullptr, nullptr);
@@ -103,35 +101,30 @@ void create_string_array(const std::string& array_name) {
 
 template <class T1, class T2>
 void write_2d_array(
+    Context ctx,
     const std::string& array_name,
     std::vector<T1>& buff_d1,
     std::vector<T2>& buff_d2,
     std::vector<int32_t>& buff_a,
-    tiledb_layout_t layout,
-    const bool serialized = false,
-    const bool refactored_query_v2 = false) {
-  Context ctx;
+    tiledb_layout_t layout) {
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
   query_w.set_data_buffer("a", buff_a);
   query_w.set_data_buffer("d1", buff_d1);
   query_w.set_data_buffer("d2", buff_d2);
   query_w.set_layout(layout);
-  // Submit query
-  test::ServerQueryBuffers server_buffers_;
-  auto rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_w,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query_w.submit_and_finalize();
+  } else {
+    query_w.submit();
+  }
 
   array_w.close();
 }
 
 void write_2d_array(
+    Context ctx,
     const std::string& array_name,
     std::vector<uint64_t>& off_d1,
     std::string& buff_d1,
@@ -139,7 +132,6 @@ void write_2d_array(
     std::string& buff_d2,
     std::vector<int32_t>& buff_a,
     tiledb_layout_t layout) {
-  Context ctx;
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
   query_w.set_data_buffer("a", buff_a);
@@ -224,7 +216,7 @@ TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Hilbert order not applicable to write queries
   Array array_w(ctx, array_name, TILEDB_WRITE);
@@ -257,42 +249,20 @@ TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
 
 TEST_CASE(
     "C++ API: Test Hilbert, test 2D, int32, write unordered, read global",
-    "[cppapi][hilbert][2d][int32]") {
-  bool serialized = false, refactored_query_v2 = false;
-  SECTION("no serialization") {
-    serialized = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized = true;
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  test::ServerQueryBuffers server_buffers_;
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][2d][int32][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
   std::vector<int32_t> buff_d1 = {1, 1, 4, 5};
   std::vector<int32_t> buff_d2 = {1, 3, 2, 4};
   write_2d_array<int32_t, int32_t>(
-      array_name,
-      buff_d1,
-      buff_d2,
-      buff_a,
-      TILEDB_UNORDERED,
-      serialized,
-      refactored_query_v2);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Read
   SECTION("- Global order") {
@@ -306,14 +276,7 @@ TEST_CASE(
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query_r,
-        server_buffers_,
-        serialized,
-        refactored_query_v2);
-    REQUIRE(rc == TILEDB_OK);
+    query_r.submit();
     array_r.close();
 
     // Check results
@@ -336,14 +299,7 @@ TEST_CASE(
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_ROW_MAJOR);
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query_r,
-        server_buffers_,
-        serialized,
-        refactored_query_v2);
-    REQUIRE(rc == TILEDB_OK);
+    query_r.submit();
     array_r.close();
 
     // Check results
@@ -366,14 +322,7 @@ TEST_CASE(
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_COL_MAJOR);
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query_r,
-        server_buffers_,
-        serialized,
-        refactored_query_v2);
-    REQUIRE(rc == TILEDB_OK);
+    query_r.submit();
     array_r.close();
 
     // Check results
@@ -397,14 +346,7 @@ TEST_CASE(
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_UNORDERED);
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query_r,
-        server_buffers_,
-        serialized,
-        refactored_query_v2);
-    REQUIRE(rc == TILEDB_OK);
+    query_r.submit();
     array_r.close();
 
     // Check results
@@ -418,6 +360,16 @@ TEST_CASE(
 
   // Read
   SECTION("- Unordered, overlapped") {
+    // Disable merge overlapping sparse ranges.
+    // Support for returning multiplicities for overlapping ranges will be
+    // deprecated in a few releases. Turning off this setting allows to still
+    // test that the feature functions properly until we do so. Once support is
+    // fully removed for overlapping ranges, this section can be deleted.
+    Config cfg;
+    cfg["sm.merge_overlapping_ranges_experimental"] = "false";
+    vfs_test_setup.update_config(cfg.ptr().get());
+    ctx = vfs_test_setup.ctx();
+
     // regression test for sc-11244
     Array array_r(ctx, array_name, TILEDB_READ);
     Query query_r(ctx, array_r, TILEDB_READ);
@@ -432,20 +384,14 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
 
-    query_r.add_range("d1", (int32_t)1, (int32_t)5);
-    query_r.add_range("d2", (int32_t)1, (int32_t)3);
-    query_r.add_range("d2", (int32_t)2, (int32_t)4);
+    Subarray subarray_r(ctx, array_r);
+    subarray_r.add_range("d1", (int32_t)1, (int32_t)5);
+    subarray_r.add_range("d2", (int32_t)1, (int32_t)3);
+    subarray_r.add_range("d2", (int32_t)2, (int32_t)4);
+    query_r.set_subarray(subarray_r);
     query_r.set_layout(TILEDB_UNORDERED);
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query_r,
-        server_buffers_,
-        serialized,
-        refactored_query_v2,
-        false);
-    REQUIRE(rc == TILEDB_OK);
+    query_r.submit();
     CHECK(query_r.query_status() == tiledb::Query::Status::COMPLETE);
     // check number of results
     uint64_t num = query_r.result_buffer_elements()["a"].second;
@@ -457,32 +403,24 @@ TEST_CASE(
     check_counts(span(r_buff_d1.data(), num), {0, 3, 0, 0, 2, 1});
     check_counts(span(r_buff_d2.data(), num), {0, 1, 2, 2, 1});
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, int32, 2D, partitioner",
-    "[cppapi][hilbert][2d][int32][partitioner]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][2d][int32][partitioner][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_d1 = {1, 1, 4, 5};
   std::vector<int32_t> buff_d2 = {1, 3, 2, 4};
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- entire domain") {
     // Read array
@@ -549,7 +487,7 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({1, 5, 1, 7});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 5, 1, 7}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -577,36 +515,17 @@ TEST_CASE(
 
     array_r.close();
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, test writing in global order",
-    "[cppapi][hilbert][write][global-order]") {
-  bool serialized = false, refactored_query_v2 = false;
-  SECTION("no serialization") {
-    serialized = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized = true;
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][write][global-order][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
@@ -625,40 +544,26 @@ TEST_CASE(
   buff_d1 = {1, 1, 5, 4};
   buff_d2 = {3, 1, 4, 2};
 
-  test::ServerQueryBuffers server_buffers_;
-  auto rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_w,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+  query_w.submit_and_finalize();
+  array_w.close();
 }
 
 TEST_CASE(
-    "C++ API: Test Hilbert, slicing", "[cppapi][hilbert][read][slicing]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "C++ API: Test Hilbert, slicing",
+    "[cppapi][hilbert][read][slicing][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {1, 1, 5, 4};
   std::vector<int32_t> buff_d2 = {1, 3, 4, 2};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- Row-major") {
     Array array_r(ctx, array_name, TILEDB_READ);
@@ -669,7 +574,7 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({1, 4, 1, 4});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 4, 1, 4}));
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -692,7 +597,7 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({1, 4, 1, 4});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 4, 1, 4}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -705,39 +610,31 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, multiple fragments, read in global order",
-    "[cppapi][hilbert][read][multiple-fragments][global-order]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][read][multiple-fragments][global-order][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {1, 1, 5, 4};
   std::vector<int32_t> buff_d2 = {1, 3, 4, 2};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {2, 2, 3, 7};
   buff_d2 = {1, 2, 7, 7};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -766,32 +663,24 @@ TEST_CASE(
   CHECK(r_buff_a == c_buff_a);
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, unsplittable",
-    "[cppapi][hilbert][read][2d][int32][unsplittable]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][read][2d][int32][unsplittable][rest-fails][sc-43108]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {1, 1, 5, 4};
   std::vector<int32_t> buff_d2 = {1, 3, 4, 2};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -806,15 +695,11 @@ TEST_CASE(
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
   CHECK(query_r.result_buffer_elements()["a"].second == 0);
   array_r.close();
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, consolidation",
-    "[cppapi][hilbert][consolidation]") {
+    "[cppapi][hilbert][consolidation][non-rest]") {
   Config cfg;
   cfg["sm.consolidation.buffer_size"] = "10000";
 
@@ -827,21 +712,21 @@ TEST_CASE(
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {1, 1, 5, 4};
   std::vector<int32_t> buff_d2 = {1, 3, 4, 2};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {2, 2, 3, 7};
   buff_d2 = {1, 2, 7, 7};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Consolidate and vacuum
   Config config;
@@ -887,17 +772,13 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2D, int32, negative, read/write in global order",
-    "[cppapi][hilbert][int32][negative][write][read][global-order]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][int32][negative][write][read][global-order][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
@@ -915,8 +796,7 @@ TEST_CASE(
   buff_a = {2, 3, 4, 1};
   buff_d1 = {-49, -49, -45, -46};
   buff_d2 = {-97, -99, -96, -98};
-  CHECK_NOTHROW(query_w.submit());
-  query_w.finalize();
+  CHECK_NOTHROW(query_w.submit_and_finalize());
   array_w.close();
 
   // Read
@@ -941,32 +821,24 @@ TEST_CASE(
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
   array_r.close();
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, int32, negative, 2D, partitioner",
-    "[cppapi][hilbert][2d][int32][negative][partitioner]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][2d][int32][negative][partitioner][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_d1 = {-49, -49, -46, -45};
   std::vector<int32_t> buff_d2 = {-99, -97, -98, -96};
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- entire domain") {
     // Read array
@@ -1033,7 +905,8 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({-49, -45, -99, -93});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -45, -99, -93}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -1061,32 +934,24 @@ TEST_CASE(
 
     array_r.close();
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, negative, slicing",
-    "[cppapi][hilbert][2d][int32][negative][read][slicing]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][2d][int32][negative][read][slicing][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {-49, -49, -45, -46};
   std::vector<int32_t> buff_d2 = {-99, -97, -96, -98};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- Row-major") {
     Array array_r(ctx, array_name, TILEDB_READ);
@@ -1097,7 +962,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({-49, -46, -99, -96});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -46, -99, -96}));
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1120,7 +986,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({-49, -46, -99, -96});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -46, -99, -96}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1133,41 +1000,33 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, negative, multiple fragments, read in "
     "global order",
     "[cppapi][hilbert][2d][int32][negative][read][multiple-fragments][global-"
-    "order]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "order][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {-49, -49, -45, -46};
   std::vector<int32_t> buff_d2 = {-99, -97, -96, -98};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {-48, -48, -47, -43};
   buff_d2 = {-99, -98, -93, -93};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1188,10 +1047,6 @@ TEST_CASE(
   CHECK(r_buff_a == c_buff_a);
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
@@ -1209,21 +1064,21 @@ TEST_CASE(
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {-49, -49, -45, -46};
   std::vector<int32_t> buff_d2 = {-99, -97, -96, -98};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {-48, -48, -47, -43};
   buff_d2 = {-99, -98, -93, -93};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Consolidate and vacuum
   Config config;
@@ -1261,24 +1116,21 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, negative, unsplittable",
-    "[cppapi][hilbert][read][2d][int32][negative][unsplittable]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][read][2d][int32][negative][unsplittable][rest-fails][sc-"
+    "43108]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {-49, -49, -45, -46};
   std::vector<int32_t> buff_d2 = {-99, -97, -96, -98};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1293,25 +1145,17 @@ TEST_CASE(
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
   CHECK(query_r.result_buffer_elements()["a"].second == 0);
   array_r.close();
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2D, float32, read/write in global order",
-    "[cppapi][hilbert][float32][write][read][global-order]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][float32][write][read][global-order][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1329,8 +1173,7 @@ TEST_CASE(
   buff_a = {3, 2, 1, 4};
   buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   buff_d2 = {0.1f, 0.3f, 0.2f, 0.4f};
-  CHECK_NOTHROW(query_w.submit());
-  query_w.finalize();
+  CHECK_NOTHROW(query_w.submit_and_finalize());
   array_w.close();
 
   // Read
@@ -1360,32 +1203,24 @@ TEST_CASE(
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
   array_r.close();
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, float32, 2D, partitioner",
     "[cppapi][hilbert][2d][float32][partitioner]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.41f, 0.4f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.41f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- entire domain") {
     // Read array
@@ -1452,7 +1287,8 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({0.1f, 0.6f, 0.1f, 0.7f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.6f, 0.1f, 0.7f}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -1495,32 +1331,24 @@ TEST_CASE(
 
     array_r.close();
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, float32, slicing",
-    "[cppapi][hilbert][2d][float32][read][slicing]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][2d][float32][read][slicing][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- Col-major") {
     Array array_r(ctx, array_name, TILEDB_READ);
@@ -1531,7 +1359,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({0.1f, 0.4f, 0.1f, 0.6f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.4f, 0.1f, 0.6f}));
     query_r.set_layout(TILEDB_COL_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1554,7 +1383,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({0.1f, 0.4f, 0.1f, 0.6f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.4f, 0.1f, 0.6f}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1567,41 +1397,33 @@ TEST_CASE(
     CHECK(r_buff_d1 == c_buff_d1);
     CHECK(r_buff_d2 == c_buff_d2);
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, float32, multiple fragments, read in "
     "global order",
     "[cppapi][hilbert][2d][float32][read][multiple-fragments][global-"
-    "order]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "order][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {0.2f, 0.2f, 0.3f, 0.7f};
   buff_d2 = {0.2f, 0.1f, 0.7f, 0.7f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1632,15 +1454,11 @@ TEST_CASE(
   CHECK(r_buff_a == c_buff_a);
   CHECK(r_buff_d1 == c_buff_d1);
   CHECK(r_buff_d2 == c_buff_d2);
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, float32, consolidation",
-    "[cppapi][hilbert][2d][float32][consolidation]") {
+    "[cppapi][hilbert][2d][float32][consolidation][non-rest]") {
   Config cfg;
   cfg["sm.consolidation.buffer_size"] = "10000";
 
@@ -1653,21 +1471,21 @@ TEST_CASE(
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {0.2f, 0.2f, 0.3f, 0.7f};
   buff_d2 = {0.2f, 0.1f, 0.7f, 0.7f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Consolidate and vacuum
   Config config;
@@ -1715,24 +1533,21 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, float32, unsplittable",
-    "[cppapi][hilbert][read][2d][float32][unsplittable]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][read][2d][float32][unsplittable][rest-fails][sc-"
+    "43108]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1747,25 +1562,17 @@ TEST_CASE(
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
   CHECK(query_r.result_buffer_elements()["a"].second == 0);
   array_r.close();
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2D, string, read/write in global order",
-    "[cppapi][hilbert][string][write][read][global-order]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][string][write][read][global-order][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1792,8 +1599,7 @@ TEST_CASE(
   query_w.set_offsets_buffer("d1", off_d1);
   query_w.set_data_buffer("d2", buff_d2);
   query_w.set_offsets_buffer("d2", off_d2);
-  CHECK_NOTHROW(query_w.submit());
-  query_w.finalize();
+  CHECK_NOTHROW(query_w.submit_and_finalize());
   array_w.close();
 
   // Read
@@ -1834,27 +1640,19 @@ TEST_CASE(
   CHECK(r_buff_d2 == c_buff_d2);
   CHECK(r_off_d2 == c_off_d2);
   array_r.close();
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, string, multiple fragments, read in "
     "global order",
     "[cppapi][hilbert][2d][string][read][multiple-fragments][global-"
-    "order]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "order][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1863,7 +1661,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
@@ -1872,7 +1677,14 @@ TEST_CASE(
   buff_d2 = std::string("aceyellowredgrey");
   off_d2 = {0, 3, 9, 12};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Read
   Array array_r(ctx, array_name, TILEDB_READ);
@@ -1916,15 +1728,11 @@ TEST_CASE(
   CHECK(r_off_d1 == c_off_d1);
   CHECK(r_buff_d2 == c_buff_d2);
   CHECK(r_off_d2 == c_off_d2);
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, string, consolidation",
-    "[cppapi][hilbert][2d][string][consolidation]") {
+    "[cppapi][hilbert][2d][string][consolidation][non-rest]") {
   Context ctx;
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
@@ -1934,7 +1742,7 @@ TEST_CASE(
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1943,7 +1751,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
@@ -1952,12 +1767,22 @@ TEST_CASE(
   buff_d2 = std::string("aceyellowredgrey");
   off_d2 = {0, 3, 9, 12};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Consolidate and vacuum
   Config config;
   config["sm.consolidation.mode"] = "fragments";
   config["sm.vacuum.mode"] = "fragments";
+  config["sm.mem.consolidation.buffers_weight"] = "1";
+  config["sm.mem.consolidation.reader_weight"] = "5000";
+  config["sm.mem.consolidation.writer_weight"] = "5000";
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
   auto contents = vfs.ls(get_fragment_dir(array_name));
@@ -2013,17 +1838,13 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, string, slicing",
-    "[cppapi][hilbert][2d][string][read][slicing]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][2d][string][read][slicing][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   auto buff_d1 = std::string("cameldog331a");
@@ -2031,7 +1852,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   SECTION("- Row-major") {
     // Read
@@ -2050,8 +1878,10 @@ TEST_CASE(
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_offsets_buffer("d2", r_off_d2);
     query_r.set_layout(TILEDB_ROW_MAJOR);
-    query_r.add_range(0, std::string("3"), std::string("z"));
-    query_r.add_range(1, std::string("a"), std::string("vase"));
+    Subarray subarray_r(ctx, array_r);
+    subarray_r.add_range(0, std::string("3"), std::string("z"));
+    subarray_r.add_range(1, std::string("a"), std::string("vase"));
+    query_r.set_subarray(subarray_r);
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -2091,8 +1921,10 @@ TEST_CASE(
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_offsets_buffer("d2", r_off_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.add_range(0, std::string("3"), std::string("z"));
-    query_r.add_range(1, std::string("a"), std::string("vase"));
+    Subarray subarray_r(ctx, array_r);
+    subarray_r.add_range(0, std::string("3"), std::string("z"));
+    subarray_r.add_range(1, std::string("a"), std::string("vase"));
+    query_r.set_subarray(subarray_r);
     CHECK_NOTHROW(query_r.submit());
 
     // Check results. Hilbert values:
@@ -2117,25 +1949,17 @@ TEST_CASE(
     CHECK(r_buff_d2 == c_buff_d2);
     CHECK(r_off_d2 == c_off_d2);
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, string, 2D, partitioner",
-    "[cppapi][hilbert][2d][string][partitioner]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][2d][string][partitioner][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -2144,7 +1968,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   SECTION("- entire domain") {
     // Read array
@@ -2264,8 +2095,10 @@ TEST_CASE(
     query_r.set_offsets_buffer("d1", r_off_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_offsets_buffer("d2", r_off_d2);
-    query_r.add_range(0, std::string("1a", 2), std::string("w", 1));
-    query_r.add_range(1, std::string("ca", 2), std::string("t1", 2));
+    Subarray subarray_r(ctx, array_r);
+    subarray_r.add_range(0, std::string("1a", 2), std::string("w", 1));
+    subarray_r.add_range(1, std::string("ca", 2), std::string("t1", 2));
+    query_r.set_subarray(subarray_r);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
 
@@ -2351,25 +2184,17 @@ TEST_CASE(
 
     array_r.close();
   }
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }
 
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, string, unsplittable",
-    "[cppapi][hilbert][read][2d][string][unsplittable]") {
-  Context ctx;
-  VFS vfs(ctx);
-  std::string array_name = "hilbert_array";
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
+    "[cppapi][hilbert][read][2d][string][unsplittable][rest]") {
+  VFSTestSetup vfs_test_setup{};
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -2378,7 +2203,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Read
   Array array_r(ctx, array_name, TILEDB_READ);
@@ -2400,8 +2232,4 @@ TEST_CASE(
   CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
   CHECK(query_r.result_buffer_elements()["a"].second == 0);
   array_r.close();
-
-  // Remove array
-  if (vfs.is_dir(array_name))
-    CHECK_NOTHROW(vfs.remove_dir(array_name));
 }

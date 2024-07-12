@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,10 +33,11 @@
 #ifndef TILEDB_TEST_HELPERS_H
 #define TILEDB_TEST_HELPERS_H
 
-#include <tiledb/common/logger_public.h>
 #include "test/support/src/coords_workaround.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/random/random_label.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
@@ -49,6 +50,15 @@
 #include <sstream>
 #include <string>
 #include <thread>
+
+/**
+ * Helper function to set environment variables across platforms.
+ *
+ * @param __name Name of the environment variable.
+ * @param __value Value of the environment variable.
+ * @return 0 on success, -1 on error.
+ */
+int setenv_local(const char* __name, const char* __value);
 
 // A mutex for protecting the thread-unsafe Catch2 macros.
 extern std::mutex catch2_macro_mutex;
@@ -67,13 +77,11 @@ extern std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
-namespace tiledb {
-
-namespace sm {
+namespace tiledb::sm {
 class SubarrayPartitioner;
 }
 
-namespace test {
+namespace tiledb::test {
 
 // A dummy `Stats` instance. This is useful for constructing
 // objects that require a parent `Stats` object. These stats are
@@ -84,12 +92,26 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 // objects that require a parent `Logger` object.
 shared_ptr<Logger> g_helper_logger(void);
 
-const std::string& get_temp_path();
-
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
 using SubarrayRanges = std::vector<std::vector<T>>;
+
+/**
+ * Throws if the return code is not OK.
+ * For use in test setup for object allocation.
+ *
+ * @param rc Return code from a TileDB C-API setup function.
+ */
+void throw_if_setup_failed(int rc);
+
+/**
+ * Throws if the condition is not met.
+ * For use in test setup for object allocation.
+ *
+ * @param condition Condition to check from a TileDB C-API setup function.
+ */
+void throw_if_setup_failed(bool condition);
 
 /**
  * Check the return code for a TileDB C-API function is TILEDB_ERR and
@@ -99,9 +121,13 @@ using SubarrayRanges = std::vector<std::vector<T>>;
  * @param ctx Context to check for the error and error message.
  * @param rc Return code from a TileDB C-API function.
  * @param expected_msg The expected message from the last error.
+ * @param contains If true, error messages are matched with ContainsSubstring
  */
 void check_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+    tiledb_ctx_t* ctx,
+    int rc,
+    const std::string& expected_msg,
+    bool contains = false);
 
 /**
  * Checks the return code for a TileDB C-API function is TILEDB_OK. If not,
@@ -121,9 +147,13 @@ void check_tiledb_ok(tiledb_ctx_t* ctx, int rc);
  * @param ctx Context to check for the error and error message.
  * @param rc Return code from a TileDB C-API function.
  * @param expected_msg The expected message from the last error.
+ * @param contains If true, error messages are matched with ContainsSubstring
  */
 void require_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+    tiledb_ctx_t* ctx,
+    int rc,
+    const std::string& expected_msg,
+    bool contains = false);
 
 /**
  * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,
@@ -221,10 +251,6 @@ void check_subarray(
     tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges);
 
 template <class T>
-void check_subarray_equiv(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-
-template <class T>
 bool subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 
@@ -268,8 +294,9 @@ int array_create_wrapper(
  * @param cell_order The cell order.
  * @param capacity The tile capacity.
  * @param allows_dups Whether the array allows coordinate duplicates.
- * @param serialize_array_schema whether to round-trip through serialization or
- * not
+ * @param serialize_array_schema Whether to round-trip through serialization or
+ * not.
+ * @param nullable Whether the attributes are nullable or not.
  */
 
 void create_array(
@@ -288,7 +315,8 @@ void create_array(
     tiledb_layout_t cell_order,
     uint64_t capacity,
     bool allows_dups = false,
-    bool serialize_array_schema = false);
+    bool serialize_array_schema = false,
+    const optional<std::vector<bool>>& nullable = nullopt);
 
 /**
  * Helper method to create an encrypted array.
@@ -297,7 +325,6 @@ void create_array(
  * @param array_name The array name.
  * @param enc_type The encryption type.
  * @param key The key to encrypt the array with.
- * @param key_len The key length.
  * @param array_type The array type (dense or sparse).
  * @param dim_names The names of dimensions.
  * @param dim_types The types of dimensions.
@@ -317,7 +344,6 @@ void create_array(
     const std::string& array_name,
     tiledb_encryption_type_t enc_type,
     const char* key,
-    uint32_t key_len,
     tiledb_array_type_t array_type,
     const std::vector<std::string>& dim_names,
     const std::vector<tiledb_datatype_t>& dim_types,
@@ -461,21 +487,8 @@ void create_subarray(
     bool coalesce_ranges = false);
 
 /**
- * Helper method that creates a TileDB context and a VFS object.
- *
- * @param s3_supported Indicates whether S3 is supported or not.
- * @param azure_supported Indicates whether Azure is supported or not.
- * @param ctx The TileDB context to be created.
- * @param vfs The VFS object to be created.
- */
-void create_ctx_and_vfs(
-    bool s3_supported,
-    bool azure_supported,
-    tiledb_ctx_t** ctx,
-    tiledb_vfs_t** vfs);
-
-/**
  * Helper function to get the supported filesystems.
+ * Supports VFS override via "--vfs" command line argument.
  *
  * @param s3_supported Set to `true` if S3 is supported.
  * @param hdfs_supported Set to `true` if HDFS is supported.
@@ -486,7 +499,8 @@ void get_supported_fs(
     bool* s3_supported,
     bool* hdfs_supported,
     bool* azure_supported,
-    bool* gcs_supported);
+    bool* gcs_supported,
+    bool* rest_s3_supported);
 
 /**
  * Opens an array.
@@ -496,15 +510,6 @@ void get_supported_fs(
  * @param query_type The query type.
  */
 void open_array(tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t);
-
-/**
- * Returns a random bucket name, with `prefix` as prefix and using
- * the thread id as a "random" suffix.
- *
- * @param prefix The prefix of the bucket name.
- * @return A random bucket name.
- */
-std::string random_name(const std::string& prefix);
 
 /**
  * Helper method that removes a directory.
@@ -567,7 +572,6 @@ void write_array(
  * @param array_name The array name.
  * @param encyrption_type The type of encryption.
  * @param key The encryption key.
- * @param key_len The encryption key length.
  * @param timestamp The timestamp to write at.
  * @param layout The layout to write into.
  * @param buffers The attribute/dimension buffers to be written.
@@ -577,7 +581,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers);
@@ -639,7 +642,6 @@ void write_array(
  * @param array_name The array name.
  * @param encyrption_type The type of encryption.
  * @param key The encryption key.
- * @param key_len The encryption key length.
  * @param timestamp The timestamp to write at.
  * @param subarray The subarray to write into.
  * @param layout The layout to write into.
@@ -650,7 +652,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* subarray,
     tiledb_layout_t layout,
@@ -681,7 +682,6 @@ void write_array(
  * @param array_name The array name.
  * @param encyrption_type The type of encryption.
  * @param key The encryption key.
- * @param key_len The encryption key length.
  * @param timestamp The timestamp to write at.
  * @param layout The layout to write into.
  * @param buffers The attribute/dimension buffers to be written.
@@ -692,7 +692,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
@@ -727,7 +726,6 @@ void write_array(
  * @param array_name The array name.
  * @param encyrption_type The type of encryption.
  * @param key The encryption key.
- * @param key_len The encryption key length.
  * @param timestamp The timestamp to write at.
  * @param subarray The subarray to write into.
  * @param layout The layout to write into.
@@ -739,7 +737,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* subarray,
     tiledb_layout_t layout,
@@ -766,9 +763,21 @@ void read_array(
 
 /**
  * Returns the number of commits in the input array,
+ * given a context.
+ */
+int32_t num_commits(Context ctx, const std::string& array_name);
+
+/**
+ * Returns the number of commits in the input array,
  * appropriately excluding special files and subdirectories.
  */
 int32_t num_commits(const std::string& array_name);
+
+/**
+ * Returns the number of fragments in the input array,
+ * given a context.
+ */
+int32_t num_fragments(Context ctx, const std::string& array_name);
 
 /**
  * Returns the number of fragments in the input array,
@@ -909,100 +918,17 @@ int deserialize_array_and_query(
     bool clientside);
 
 /**
- * Helper method that wraps tiledb_array_open() and inserts a serialization
- * step, if serialization is enabled. This wrapper models exclusively the
- * refactored array open (array open v2) serialization path. The added
- * serialization steps are designed to closely mimic the behavior of the REST
- * server.
+ * Helper function that generates a fragment uri for an array.
+ * If the `array` arg is specified, the full URI is generated using
+ * the write version of the array schema and the timestamp
+ * the array was opened at. If unspecified, the function
+ * will generate only the fragment name using the current timestamp
+ * and the latest library format version.
  *
- * @param ctx Context.
- * @param query_type Type of query to open the array for.
- * @param serialize True if this is a remote array open, false if not.
- * @param open_array Output open array.
+ * @param array A TileDB array
+ * @return A test fragment uri
  */
-int array_open_wrapper(
-    tiledb_ctx_t* ctx,
-    tiledb_query_type_t query_type,
-    bool serialize,
-    tiledb_array_t** open_array);
-
-/**
- * C API
- * Helper method that wraps tiledb_query_submit() and inserts serialization
- * steps, if serialization is enabled. The added serialization steps are
- * designed to closely mimic the behavior of the REST server.
- *
- * @param ctx Context.
- * @param array_uri URI of the array the query submit is for.
- * @param query Input/Output tiledb query object to submit/get back.
- * @param buffers Stack allocated buffers to be used by the step simulating
- * "server side buffer allocation" for READ queries. They can only be allocated
- * e.g. once in the test Fixture definition or just before the call to
- * submit_query_wrapper.
- * @param serialize_query True if this is a remote array open, false if not.
- * @param refactored_query_v2 If
- * "rest.use_refactored_array_open_and_query_submit" should be true.
- * @param finalize Finalize or not the query after submitting it.
- */
-int submit_query_wrapper(
-    tiledb_ctx_t* ctx,
-    const std::string& array_uri,
-    tiledb_query_t** query,
-    ServerQueryBuffers& buffers,
-    bool serialize_query,
-    bool refactored_query_v2 = false,
-    bool finalize = true);
-
-/** C++ wrapper of submit_query_wrapper */
-int submit_query_wrapper(
-    const Context& ctx,
-    const std::string& array_uri,
-    Query* query,
-    ServerQueryBuffers& buffers,
-    bool serialize_query,
-    bool refactored_query_v2 = false,
-    bool finalize = true);
-
-/**
- * C API
- * Helper method that wraps tiledb_query_finalize() and inserts serialization
- * steps, if serialization is enabled. The added serialization steps are
- * designed to closely mimic the behavior of the REST server.
- *
- * @param ctx Context.
- * @param array_uri URI of the array the query finalize is for.
- * @param query Input/Output tiledb query object to submit/get back.
- * @param serialize_query True if this is a remote array open, false if not.
- */
-int finalize_query_wrapper(
-    const Context& ctx,
-    const std::string& array_uri,
-    Query* query,
-    bool serialize_query);
-
-/** C++ wrapper of finalize_query_wrapper */
-int finalize_query_wrapper(
-    tiledb_ctx_t* ctx,
-    const std::string& array_uri,
-    tiledb_query_t** query,
-    bool serialize_query);
-
-/**
- * Helper function that allocates buffers on a query object that has been
- * deserialized on the "server" side. This is a necassary step for serialized
- * READ queries.
- *
- * @param ctx Context.
- * @param query Query for which we are allocating the buffers.
- * @param query_buffers Input/Output allocated buffers.
- */
-void allocate_query_buffers_server_side(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    ServerQueryBuffers& query_buffers);
-
-}  // End of namespace test
-
-}  // End of namespace tiledb
+sm::URI generate_fragment_uri(sm::Array* array);
+}  // namespace tiledb::test
 
 #endif

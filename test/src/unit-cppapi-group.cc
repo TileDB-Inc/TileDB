@@ -43,7 +43,6 @@
 
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/cpp_api/group.h"
-#include "tiledb/sm/cpp_api/group_experimental.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/utils.h"
@@ -71,11 +70,6 @@ struct GroupCPPFx {
    * serialization paths.
    */
   bool serialize_ = false;
-
-  const char* key_ = "0123456789abcdeF0123456789abcdeF";
-  const uint32_t key_len_ =
-      (uint32_t)strlen("0123456789abcdeF0123456789abcdeF");
-  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
 
   // Functions
   GroupCPPFx();
@@ -226,6 +220,10 @@ TEST_CASE_METHOD(
 
   // Write a correct item
   group.put_metadata("key", TILEDB_INT32, 1, &v);
+
+  // Consolidate and vacuum metadata with default config
+  group.consolidate_metadata(ctx_, group1_uri);
+  group.vacuum_metadata(ctx_, group1_uri);
 
   // Close group
   group.close();
@@ -686,6 +684,8 @@ TEST_CASE_METHOD(
     GroupCPPFx,
     "C++ API: Group, write/read, relative named",
     "[cppapi][group][read]") {
+  bool remove_by_name = GENERATE(true, false);
+
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -784,11 +784,21 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
-  group1.remove_member(group2_uri.to_string());
+  if (remove_by_name) {
+    group1.remove_member("three");
+  } else {
+    group1.remove_member(group2_uri.to_string());
+  }
+
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
-  group2.remove_member(array3_relative_uri);
+  if (remove_by_name) {
+    group2.remove_member("four");
+  } else {
+    group2.remove_member(array3_relative_uri);
+  }
+
   // There should be nothing left in group2
   group2_expected.clear();
 
@@ -814,4 +824,219 @@ TEST_CASE_METHOD(
   group1.close();
   group2.close();
   remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
+    "C++ API: Group, delete by URI, duplicates",
+    "[cppapi][group][delete]") {
+  bool nameless_uri = GENERATE(true, false);
+
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  tiledb::sm::URI group1_uri(temp_dir + "group1");
+  tiledb::Group::create(ctx_, group1_uri.to_string());
+
+  REQUIRE(
+      tiledb_vfs_create_dir(
+          ctx_.ptr().get(), vfs_, (temp_dir + "group1/arrays").c_str()) ==
+      TILEDB_OK);
+
+  const std::string array1_relative_uri("arrays/array1");
+  const tiledb::sm::URI array1_uri(temp_dir + "group1/arrays/array1");
+  const std::string array2_relative_uri("arrays/array2");
+  const tiledb::sm::URI array2_uri(temp_dir + "group1/arrays/array2");
+  create_array(array1_uri.to_string());
+  create_array(array2_uri.to_string());
+
+  // Set expected
+  std::vector<tiledb::Object> group1_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array1_uri.to_string(), "one"),
+      tiledb::Object(
+          tiledb::Object::Type::Array, array2_uri.to_string(), "two"),
+      nameless_uri ?
+          tiledb::Object(
+              tiledb::Object::Type::Array, array2_uri.to_string(), nullopt) :
+          tiledb::Object(
+              tiledb::Object::Type::Array, array2_uri.to_string(), "three"),
+  };
+
+  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
+
+  group1.add_member(array1_relative_uri, true, "one");
+  group1.add_member(array2_relative_uri, true, "two");
+  group1.add_member(
+      array2_relative_uri,
+      true,
+      nameless_uri ? nullopt : std::make_optional<std::string>("three"));
+
+  // Close group from write mode
+  group1.close();
+
+  // Reopen in read mode
+  group1.open(TILEDB_READ);
+
+  std::vector<tiledb::Object> group1_received = read_group(group1);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  bool is_relative;
+  is_relative = group1.is_relative("one");
+  REQUIRE(is_relative == true);
+  is_relative = group1.is_relative("two");
+  REQUIRE(is_relative == true);
+
+  if (!nameless_uri) {
+    is_relative = group1.is_relative("three");
+    REQUIRE(is_relative == true);
+  }
+
+  // Close group
+  group1.close();
+
+  // Remove assets from group
+  set_group_timestamp(&group1, 2);
+  group1.open(TILEDB_WRITE);
+  if (nameless_uri) {
+    group1.remove_member(array2_relative_uri);
+  } else {
+    CHECK_THROWS_WITH(
+        group1.remove_member(array2_relative_uri),
+        Catch::Matchers::ContainsSubstring(
+            "there are multiple members with the "
+            "same URI, please remove by name."));
+    group1.remove_member("three");
+  }
+
+  // Group is the latest element
+  group1_expected.resize(group1_expected.size() - 1);
+
+  // Close group
+  group1.close();
+
+  // Check read again
+  set_group_timestamp(&group1, 2);
+  group1.open(TILEDB_READ);
+
+  group1_received = read_group(group1);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  // Close group
+  group1.close();
+  remove_temp_dir(temp_dir);
+}
+
+/** Test Exception For Assertability */
+class GroupDtorDoesntThrowException : public std::exception {
+ public:
+  explicit GroupDtorDoesntThrowException()
+      : std::exception() {
+  }
+};
+
+TEST_CASE("C++ API: Group close group with error", "[cppapi][group][error]") {
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
+  std::vector<std::string> dnames = {"main_group", "main_group_renamed"};
+
+  auto cleaner = [&]() -> void {
+    for (auto dir : dnames) {
+      if (vfs.is_dir(dir)) {
+        vfs.remove_dir(dir);
+      }
+    }
+  };
+  cleaner();
+
+  // This test is a bit subtle in that we're attempting to assert that a
+  // destructor doesn't throw. Since throwing from a destructor is perfectly
+  // valid (although extremely discouraged outside of extremely niche cases)
+  // we have to force a situation such that an exception thrown from the
+  // destructor would cause some other observable behavior.
+  //
+  // For this test, I'm using the case where throwing an exception while the
+  // stack is already being unwound being C++ mandated as a call to
+  // std::terminate which will fail this test quite hard.
+  //
+  // The GroupDtroDoesntThrowException is a specific class so that we know
+  // we've caught the exception we expect. The thrown_correctly assertion
+  // is mostly for show since the real failure would be the std::terminate
+  // which is unrecoverable.
+
+  bool thrown_correctly = false;
+
+  try {
+    // Create our group preliminaries
+    tiledb::create_group(ctx, "main_group");
+    tiledb::create_group(ctx, "main_group/sub_group");
+
+    tiledb::Group group(ctx, "main_group", TILEDB_WRITE);
+    group.add_member("main_group/sub_group", false, "sub_group");
+
+    // Muck with the filesystem so that when the group.close() is called it
+    // throws an exception due to missing paths
+    REQUIRE(rename("main_group", "main_group_renamed") == 0);
+
+    // Check that group.close() actually throws
+    REQUIRE_THROWS(group.close());
+
+    // By throwing here, Group will go out of scope calling close. If this
+    // throws we end up with the exact reason why throwing from a destructor
+    // is a bad idea because throwing an exception while the stack is
+    // unwinding is specified by the language to call std::terminate
+    throw GroupDtorDoesntThrowException();
+
+  } catch (GroupDtorDoesntThrowException& exc) {
+    thrown_correctly = true;
+  }
+
+  REQUIRE(thrown_correctly);
+
+  cleaner();
+}
+
+TEST_CASE(
+    "C++ API: Group with Relative URI members, write/read, rest",
+    "[cppapi][group][relative][rest]") {
+  VFSTestSetup vfs_test_setup;
+  tiledb::Context ctx{vfs_test_setup.ctx()};
+  auto group_name{vfs_test_setup.array_uri("groups_relative")};
+  auto subgroup_name = group_name + "/subgroup";
+
+  // Create groups
+  tiledb::create_group(ctx, group_name);
+  tiledb::create_group(ctx, subgroup_name);
+
+  // Open group in write mode
+  {
+    auto group = tiledb::Group(ctx, group_name, TILEDB_WRITE);
+    if (vfs_test_setup.is_rest()) {
+      CHECK_THROWS_WITH(
+          group.add_member("subgroup", true, "subgroup"),
+          Catch::Matchers::EndsWith("Cannot add member; Remote groups do not "
+                                    "support members with relative "
+                                    "URIs"));
+    } else {
+      CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
+    }
+    group.close();
+  }
+
+  if (!vfs_test_setup.is_rest()) {
+    auto group = tiledb::Group(ctx, group_name, TILEDB_READ);
+
+    auto subgroup_member = group.member("subgroup");
+
+    CHECK(subgroup_member.type() == tiledb::Object::Type::Group);
+    CHECK(subgroup_member.name() == "subgroup");
+    CHECK(group.is_relative("subgroup"));
+  }
 }

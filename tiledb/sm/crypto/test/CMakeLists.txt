@@ -26,7 +26,7 @@
 
 include(unit_test)
 
-commence(unit_test crypto)
-    this_target_sources(main.cc unit_crypto.cc)
-    this_target_object_libraries(crypto)
+commence(unit_test tiledb_crypto)
+    this_target_sources(main.cc unit_tiledb_crypto.cc)
+    this_target_object_libraries(tiledb_crypto)
 conclude(unit_test)

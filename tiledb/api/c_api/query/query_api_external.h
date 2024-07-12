@@ -45,8 +45,12 @@ typedef struct tiledb_query_t tiledb_query_t;
 typedef enum {
 /** Helper macro for defining query type enums. */
 #define TILEDB_QUERY_TYPE_ENUM(id) TILEDB_##id
+// Use token-pasting _CONCAT_ID version for precarious symbols
+// (such as DELETE, see `query_api_enum.h`)
+#define TILEDB_QUERY_TYPE_ENUM_CONCAT_ID(id, id2) TILEDB_##id##id2
 #include "tiledb/api/c_api/query/query_api_enum.h"
 #undef TILEDB_QUERY_TYPE_ENUM
+#undef TILEDB_QUERY_TYPE_ENUM_CONCAT_ID
 } tiledb_query_type_t;
 
 /**

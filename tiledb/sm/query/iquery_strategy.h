@@ -42,13 +42,21 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Class for query status exceptions. */
+class QueryException : public StatusException {
+ public:
+  explicit QueryException(const std::string& msg)
+      : StatusException("Query", msg) {
+  }
+};
+
 class IQueryStrategy {
  public:
   /** Destructor. */
   virtual ~IQueryStrategy() = default;
 
   /** Initialize the memory budget variables. */
-  virtual void initialize_memory_budget() = 0;
+  virtual void refresh_config() = 0;
 
   /** Performs a query using its set members. */
   virtual Status dowork() = 0;

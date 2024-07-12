@@ -33,12 +33,27 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
+#include <ostream>
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
+
+// Forward declarations
+namespace tiledb::sm {
+class Filter;
+}
+
+/**
+ * Converts the filter into a string representation.
+ *
+ * @param os Output stream
+ * @param filter Filter to represent as a string
+ * @return the output stream argument
+ */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Filter& filter);
 
 namespace tiledb {
 namespace sm {
@@ -51,6 +66,14 @@ class WriterTile;
 
 enum class FilterOption : uint8_t;
 enum class FilterType : uint8_t;
+enum class Datatype : uint8_t;
+
+class FilterStatusException : public StatusException {
+ public:
+  explicit FilterStatusException(const std::string& msg)
+      : StatusException("Filter", msg) {
+  }
+};
 
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or
@@ -60,9 +83,15 @@ enum class FilterType : uint8_t;
  * and a reverse direction (for reads).
  */
 class Filter {
+  friend std::ostream& ::operator<<(std::ostream&, const tiledb::sm::Filter&);
+
  public:
-  /** Constructor. */
-  explicit Filter(FilterType type);
+  /**
+   * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
+   */
+  explicit Filter(FilterType type, Datatype filter_data_type);
 
   /** Destructor. */
   virtual ~Filter() = default;
@@ -73,8 +102,36 @@ class Filter {
    */
   Filter* clone() const;
 
-  /** Dumps the filter details in ASCII format in the selected output. */
-  virtual void dump(FILE* out) const = 0;
+  /**
+   * Returns a newly allocated clone of this Filter. The clone does not belong
+   * to any pipeline. Caller is responsible for deletion of the clone.
+   *
+   * @param data_type Data type for the new filter.
+   */
+  Filter* clone(Datatype data_type) const;
+
+  /**
+   * Returns the filter output type
+   *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
+   */
+  virtual Datatype output_datatype(Datatype input_type) const;
+
+  /**
+   * Throws if given data type *cannot* be handled by this filter.
+   *
+   * @param datatype Input datatype to check filter compatibility.
+   */
+  void ensure_accepts_datatype(Datatype datatype) const;
+
+  /**
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  virtual bool accepts_input_datatype(Datatype type) const;
 
   /**
    * Gets an option from this filter.
@@ -101,9 +158,8 @@ class Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return
    */
-  virtual Status run_forward(
+  virtual void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -179,6 +235,9 @@ class Filter {
   /** The filter type. */
   FilterType type_;
 
+  /** The datatype this filter will operate on within the pipeline. */
+  Datatype filter_data_type_;
+
   /**
    * Clone function must implemented by each specific Filter subclass. This is
    * used instead of copy constructors to allow for base-typed Filter instances
@@ -202,6 +261,9 @@ class Filter {
    * @param buff The buffer to serialize the data into.
    */
   virtual void serialize_impl(Serializer& serializer) const;
+
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  virtual std::ostream& output(std::ostream& os) const = 0;
 };
 
 }  // namespace sm

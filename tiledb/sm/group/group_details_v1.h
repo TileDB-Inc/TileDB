@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,20 +35,17 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/group/group_details.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GroupDetails;
 
@@ -59,39 +56,27 @@ class GroupDetailsV1 : public GroupDetails {
   /** Destructor. */
   ~GroupDetailsV1() override = default;
 
-  /**
-   * Serializes the object members into a binary buffer.
-   *
-   * @param buff The buffer to serialize the data into.
-   * @return Status
-   */
-  void serialize(Serializer& serializer) override;
+  void serialize(
+      const std::vector<std::shared_ptr<GroupMember>>& members,
+      Serializer& serializer) const override;
 
   /**
    * Returns a Group object from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group detail
    */
   static shared_ptr<GroupDetails> deserialize(
       Deserializer& deserializer, const URI& group_uri);
 
- protected:
-  /**
-   * Apply any pending member additions or removals
-   *
-   * mutates members_ and clears members_to_modify_;
-   *
-   * @return Status
-   */
-  Status apply_pending_changes() override;
+  std::vector<std::shared_ptr<GroupMember>> members_to_serialize()
+      const override;
 
  private:
   /* Format version for class. */
   inline static const format_version_t format_version_ = 1;
 };
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GROUP_DETAILS_V1_H

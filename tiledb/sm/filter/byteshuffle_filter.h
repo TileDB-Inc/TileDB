@@ -68,16 +68,15 @@ class ByteshuffleFilter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  ByteshuffleFilter();
-
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
+  ByteshuffleFilter(Datatype filter_data_type);
 
   /**
    * Shuffle the bytes of the input data into the output data buffer.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -96,6 +95,10 @@ class ByteshuffleFilter : public Filter {
       FilterBuffer* output_metadata,
       FilterBuffer* output,
       const Config& config) const override;
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** Returns a new clone of this filter. */

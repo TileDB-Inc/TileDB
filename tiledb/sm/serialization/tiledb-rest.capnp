@@ -71,6 +71,7 @@ struct Array {
 struct ArrayOpen {
   config @0 :Config;
   # Config
+
   queryType @1 :Text;
   # Query type to open the array for
 }
@@ -122,6 +123,15 @@ struct ArraySchema {
 
     dimensionLabels @14 :List(DimensionLabel);
     # Dimension labels of the array
+
+    enumerations @15: List(Enumeration);
+    # Enumerations of the array
+
+    enumerationPathMap @16: List(KV);
+    # Enumeration name to path map
+
+    currentDomain @17 :CurrentDomain;
+    # The current domain set on the schema
 }
 
 struct DimensionLabel {
@@ -167,6 +177,18 @@ struct ArraySchemaEvolution {
 
     timestampRange @2 :List(UInt64);
     # Timestamp range of array schema
+
+    enumerationsToAdd @3 :List(Enumeration);
+    # Enumerations to be added
+
+    enumerationsToDrop @4 :List(Text);
+    # Enumeration names to be dropped
+
+    enumerationsToExtend @5 :List(Enumeration);
+    # Enumerations to be extended.
+
+    currentDomainToExpand @6 : CurrentDomain;
+    # A CurrentDomain that we want to expand to.
 }
 
 struct Attribute {
@@ -194,6 +216,33 @@ struct Attribute {
 
     order @7 :Text;
     # The prescribed order of the data stored in the attribute
+
+    enumerationName @8 :Text;
+    # Name of the enumeration for this attribute, if it has one
+}
+
+struct Enumeration {
+# Enumeration of values for use by Attributes
+    name @0 :Text;
+    # Enumeration name
+
+    pathName @1 :Text;
+    # Enumeration path name
+
+    type @2 :Text;
+    # Type of the Enumeration values
+
+    cellValNum @3 :UInt32;
+    # Enumeration number of values per cell
+
+    ordered @4 :Bool;
+    # Whether the enumeration is considered orderable
+
+    data @5 :Data;
+    # The contents of the enumeration values
+
+    offsets @6 :Data;
+    # The contents of the enumeration offsets buffer
 }
 
 struct AttributeBufferHeader {
@@ -280,6 +329,19 @@ struct FloatScaleConfig {
   byteWidth @2 :UInt64;
 }
 
+struct WebpConfig {
+  quality @0 :Float32;
+  # WebP lossless quality; Valid range from 0.0f-1.0f
+  format @1 :UInt8;
+  # WebP colorspace format.
+  lossless @2 :Bool;
+  # True if compression is lossless, false if lossy.
+  extentX @3: UInt16;
+  # Tile extent along X axis.
+  extentY @4: UInt16;
+  # Tile extent along Y axis.
+}
+
 struct Filter {
   type @0 :Text;
   # filter type
@@ -301,6 +363,8 @@ struct Filter {
   # filter data
 
   floatScaleConfig @13 :FloatScaleConfig;
+
+  webpConfig @14 :WebpConfig;
 }
 
 struct FilterPipeline {
@@ -414,6 +478,19 @@ struct SubarrayRanges {
   # The list of start sizes per range
 }
 
+struct LabelSubarrayRanges {
+  # A set of label 1D ranges for a subarray
+
+  dimensionId @0 :UInt32;
+  # Index of the dimension the label is attached to
+
+  name @1 :Text;
+  # Name of the dimension label
+
+  ranges @2 :SubarrayRanges;
+  # A set of 1D ranges for a subarray
+}
+
 struct Subarray {
   # A Subarray
 
@@ -428,6 +505,15 @@ struct Subarray {
 
   relevantFragments @3 :List(UInt32);
   # Relevant fragments
+
+  labelRanges @4 :List(LabelSubarrayRanges);
+  # List of 1D ranges for dimensions that have labels
+
+  attributeRanges @5 :Map(Text, SubarrayRanges);
+  # List of 1D ranges for each attribute
+
+  coalesceRanges @6 :Bool = true;
+  # True if Subarray should coalesce overlapping ranges.
 }
 
 struct SubarrayPartitioner {
@@ -497,6 +583,9 @@ struct ConditionClause {
 
   op @2 :Text;
   # The comparison operation
+
+  useEnumeration @3 :Bool;
+  # Whether or not to use the associated attribute's Enumeration
 }
 
 struct ASTNode {
@@ -509,7 +598,7 @@ struct ASTNode {
   # The name of the field this clause applies to
 
   value @2 :Data;
-  # The comparison value
+  # The comparison value or set membership data
 
   op @3 :Text;
   # The comparison operation
@@ -520,6 +609,12 @@ struct ASTNode {
 
   combinationOp @5 :Text;
   # The combination logical operator
+
+  useEnumeration @6 :Bool;
+  # Whether or not to use the associated attribute's Enumeration
+
+  offsets @7 :Data;
+  # The offsets for set membership data
 }
 
 struct Condition {
@@ -552,6 +647,9 @@ struct QueryReader {
 
   stats @4 :Stats;
   # Stats object
+
+  dimLabelIncreasing @5 :Bool;
+  # True if dim label query is using increasing order, false if decreasing order.
 }
 
 struct Delete {
@@ -681,6 +779,13 @@ struct Query {
 
     writtenBuffers @19 : List(Text);
     # written buffers for partial attribute writes
+
+    orderedDimLabelReader @20 :QueryReader;
+    # orderedDimLabelReader contains data needed for dense dimension label reads.
+
+    channels @21 :List(QueryChannel);
+    # channels contains the list of channels (streams of data) within a read
+    # query. It always contains at least one element, the default channel.
 }
 
 struct NonEmptyDomain {
@@ -1064,6 +1169,9 @@ struct FragmentMetadata {
 
   gtOffsets @28 :GenericTileOffsets;
   # the start offsets of the generic tiles stored in the metadata file
+
+  arraySchemaName @29 :Text;
+  # array schema name
 }
 
 struct MultiPartUploadState {
@@ -1106,4 +1214,155 @@ struct BufferedChunk {
 
   size@1 :UInt64;
   # the size in bytes of the intermediate chunk
+}
+
+struct ArrayDeleteFragmentsListRequest {
+  config @0 :Config;
+  # Config
+
+  entries @1 :List(Text);
+  # Fragment list to delete
+}
+
+struct ArrayDeleteFragmentsTimestampsRequest {
+  config @0 :Config;
+  # Config
+
+  startTimestamp @1 :UInt64;
+  # Start timestamp for the delete
+
+  endTimestamp @2 :UInt64;
+  # End timestamp for the delete
+}
+
+struct ArrayConsolidationRequest {
+  config @0 :Config;
+  # Config
+
+  fragments @1 :List(Text);
+  # Fragment list to consolidate
+}
+
+struct ArrayVacuumRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct LoadEnumerationsRequest {
+  config @0 :Config;
+  # Config
+
+  enumerations @1 :List(Text);
+  # Enumeration names to load
+}
+
+struct LoadEnumerationsResponse {
+  enumerations @0 :List(Enumeration);
+  # The loaded enumerations
+}
+
+struct LoadArraySchemaRequest {
+  config @0 :Config;
+  # Config
+
+  includeEnumerations @1 :Bool;
+  # When true, include all enumeration data in the returned ArraySchema
+}
+
+struct LoadArraySchemaResponse {
+  schema @0 :ArraySchema;
+  # The loaded ArraySchema
+}
+
+struct QueryPlanRequest {
+  config @0 :Config;
+  # Config
+
+  query @1 :Query;
+  # the query for which we request the plan
+}
+
+struct QueryPlanResponse {
+  queryLayout @0 :Text;
+  # query layout
+
+  strategyName @1 :Text;
+  # name of strategy used by the query
+
+  arrayType @2 :Text;
+  # type of array
+
+  attributeNames @3 :List(Text);
+  # names of attributes in the query
+
+  dimensionNames @4 :List(Text);
+  # names of dimensions in the query
+}
+
+struct ConsolidationPlanRequest {
+  config @0 :Config;
+  # Config
+
+  fragmentSize @1 :UInt64;
+  # Maximum fragment size
+}
+
+struct ConsolidationPlanResponse {
+  fragmentUrisPerNode @0 :List(List(Text));
+  # The uris for each node of the consolidation plan
+}
+
+struct QueryChannel {
+  # structure representing a query channel, that is a stream of data within
+  # a TileDB query. Such channels can be generated for the purpose of avoiding
+  # processing result items multiple times in more complex queries such as e.g.
+  # grouping queries.
+
+  default @0 :Bool;
+  # True if a channel is the default query channel
+
+  aggregates @1 :List(Aggregate);
+  # a list of the aggregate operations applied on this channel
+}
+
+struct Aggregate {
+  # structure representing a query aggregate operation
+
+  outputFieldName @0 :Text;
+  # name of the result query buffers
+
+  inputFieldName @1 :Text;
+  # name of the input field the aggregate is applied on
+
+  name @2 :Text;
+  # the name of aggregate, e.g. COUNT, MEAN, SUM used for constructing the
+  # correct object during deserialization
+}
+
+struct CurrentDomain {
+  # This struct represents the current domain of an array.
+  # It is set on the schema at array creation time and can be
+  # be evolved using ArraySchemaEvolution APIs by providing an expansion
+  # of the current domain that is already set on the array schema.
+
+  version @0 :UInt32;
+  # The format version of this feature
+
+  type @1 :Text;
+  # The type of CurrentDomain (e.g. NDRECTANGLE)
+
+  union {
+    emptyCurrentDomain @2: Void;
+    # This is an empty CurrentDomain
+
+    ndRectangle @3 :NDRectangle;
+    # This CurrentDomain is an n-dimensional rectangle
+  }
+}
+
+struct NDRectangle {
+  ndranges @0 :List(SubarrayRanges);
+  # List of 1D ranges, one per dimension
+  # SubarrayRanges is designed to hold multiple ranges per dimension,
+  # For CurrentDomain's NDRectangle we only need one range per dimension.
 }

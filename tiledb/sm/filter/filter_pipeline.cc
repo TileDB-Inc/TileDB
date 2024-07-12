@@ -45,11 +45,18 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
+#include "webp_filter.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class FilterPipelineStatusException : public StatusException {
+ public:
+  explicit FilterPipelineStatusException(const std::string& msg)
+      : StatusException("FilterPipeline", msg) {
+  }
+};
 
 FilterPipeline::FilterPipeline()
     : max_chunk_size_(constants::max_tile_chunk_size) {
@@ -64,6 +71,16 @@ FilterPipeline::FilterPipeline(
 FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   for (auto& filter : other.filters_) {
     add_filter(*filter);
+  }
+  max_chunk_size_ = other.max_chunk_size_;
+}
+
+FilterPipeline::FilterPipeline(
+    const FilterPipeline& other, const Datatype on_disk_type) {
+  auto current_type = on_disk_type;
+  for (auto& filter : other.filters_) {
+    add_filter(*filter, current_type);
+    current_type = filters_.back()->output_datatype(current_type);
   }
   max_chunk_size_ = other.max_chunk_size_;
 }
@@ -90,8 +107,48 @@ void FilterPipeline::add_filter(const Filter& filter) {
   filters_.push_back(std::move(copy));
 }
 
+void FilterPipeline::add_filter(const Filter& filter, const Datatype new_type) {
+  shared_ptr<Filter> copy(filter.clone(new_type));
+  filters_.push_back(std::move(copy));
+}
+
 void FilterPipeline::clear() {
   filters_.clear();
+}
+
+void FilterPipeline::check_filter_types(
+    const FilterPipeline& pipeline,
+    const Datatype first_input_type,
+    bool is_var) {
+  if (pipeline.filters_.empty()) {
+    return;
+  }
+
+  if ((first_input_type == Datatype::STRING_ASCII ||
+       first_input_type == Datatype::STRING_UTF8) &&
+      is_var && pipeline.size() > 1) {
+    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
+      throw FilterPipelineStatusException(
+          "RLE filter must be the first filter to apply when used on a "
+          "variable length string attribute");
+    }
+    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
+      throw FilterPipelineStatusException(
+          "Dictionary filter must be the first filter to apply when used on a "
+          "variable length string attribute");
+    }
+  }
+
+  // ** Modern checks using Filter output type **
+  pipeline.get_filter(0)->ensure_accepts_datatype(first_input_type);
+  auto input_type = pipeline.get_filter(0)->output_datatype(first_input_type);
+  for (unsigned i = 1; i < pipeline.size(); ++i) {
+    ensure_compatible(
+        *pipeline.get_filter(i - 1), *pipeline.get_filter(i), input_type);
+    input_type = pipeline.get_filter(i)->output_datatype(input_type);
+  }
 }
 
 tuple<Status, optional<std::vector<uint64_t>>>
@@ -101,9 +158,8 @@ FilterPipeline::get_var_chunk_sizes(
     WriterTile* const offsets_tile) const {
   std::vector<uint64_t> chunk_offsets;
   if (offsets_tile != nullptr) {
-    uint64_t num_offsets =
-        offsets_tile->size() / constants::cell_var_offset_size;
-    auto offsets = (uint64_t*)offsets_tile->data();
+    uint64_t num_offsets = offsets_tile->size_as<offsets_t>();
+    auto offsets = offsets_tile->data_as<offsets_t>();
 
     uint64_t current_size = 0;
     uint64_t min_size = chunk_size / 2;
@@ -191,7 +247,7 @@ Status FilterPipeline::filter_chunks_forward(
 
     // First filter's input is the original chunk.
     uint64_t offset = var_sizes ? chunk_offsets[i] : i * chunk_size;
-    void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
+    void* chunk_buffer = tile.data_as<char>() + offset;
     uint32_t chunk_buffer_size =
         i == nchunks - 1 ? last_buffer_size :
         var_sizes        ? chunk_offsets[i + 1] - chunk_offsets[i] :
@@ -213,13 +269,13 @@ Status FilterPipeline::filter_chunks_forward(
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
-      RETURN_NOT_OK(f->run_forward(
+      f->run_forward(
           tile,
           offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
-          &output_data));
+          &output_data);
 
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
@@ -302,11 +358,11 @@ Status FilterPipeline::filter_chunks_forward(
     std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
     dest_offset += sizeof(uint32_t);
     // Write the chunk metadata
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         final_stage_output_metadata.copy_to((char*)dest + dest_offset));
     dest_offset += metadata_size;
     // Write the chunk data
-    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
+    throw_if_not_ok(final_stage_output_data.copy_to((char*)dest + dest_offset));
     return Status::Ok();
   });
 
@@ -326,13 +382,13 @@ uint32_t FilterPipeline::max_chunk_size() const {
   return max_chunk_size_;
 }
 
-Status FilterPipeline::run_forward(
+void FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     WriterTile* const tile,
     WriterTile* const offsets_tile,
     ThreadPool* const compute_tp,
     bool use_chunking) const {
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
 
   writer_stats->add_counter("write_filtered_byte_num", tile->size());
@@ -348,49 +404,38 @@ Status FilterPipeline::run_forward(
   // Get the chunk sizes for var size attributes.
   auto&& [st, chunk_offsets] =
       get_var_chunk_sizes(chunk_size, tile, offsets_tile);
-  RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
+  if (!st.ok()) {
+    tile->filtered_buffer().clear();
+    throw_if_not_ok(st);
+  }
 
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer'.
-  RETURN_NOT_OK_ELSE(
-      filter_chunks_forward(
-          *tile,
-          offsets_tile,
-          chunk_size,
-          *chunk_offsets,
-          tile->filtered_buffer(),
-          compute_tp),
-      tile->filtered_buffer().clear());
+  st = filter_chunks_forward(
+      *tile,
+      offsets_tile,
+      chunk_size,
+      *chunk_offsets,
+      tile->filtered_buffer(),
+      compute_tp);
+  if (!st.ok()) {
+    tile->filtered_buffer().clear();
+    throw_if_not_ok(st);
+  }
 
   // The contents of 'buffer' have been filtered and stored
   // in 'filtered_buffer'. We can safely free 'buffer'.
   tile->clear_data();
-
-  return Status::Ok();
 }
 
-void FilterPipeline::run_reverse(
-    stats::Stats* stats,
-    Tile& tile,
-    ThreadPool& compute_tp,
-    const Config& config) const {
+void FilterPipeline::run_reverse_generic_tile(
+    stats::Stats* stats, Tile& tile, const Config& config) const {
   ChunkData chunk_data;
   tile.load_chunk_data(chunk_data);
-  throw_if_not_ok(parallel_for(
-      &compute_tp,
-      0,
-      chunk_data.filtered_chunks_.size(),
-      [&](const unsigned c) {
-        return run_reverse(
-            stats,
-            &tile,
-            nullptr,
-            chunk_data,
-            c,
-            c + 1,
-            compute_tp.concurrency_level(),
-            config);
-      }));
+  for (unsigned c = 0; c < chunk_data.filtered_chunks_.size(); c++) {
+    throw_if_not_ok(
+        run_reverse(stats, &tile, nullptr, chunk_data, c, c + 1, 1, config));
+  }
   tile.clear_filtered_buffer();
 }
 
@@ -419,7 +464,7 @@ Status FilterPipeline::run_reverse(
     // If the pipeline is empty, just copy input to output.
     if (filters_.empty()) {
       void* output_chunk_buffer =
-          static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
+          tile->data_as<char>() + chunk_data.chunk_offsets_[i];
       RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
       continue;
     }
@@ -442,7 +487,7 @@ Status FilterPipeline::run_reverse(
       bool last_filter = filter_idx == 0;
       if (last_filter) {
         void* output_chunk_buffer =
-            static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
+            tile->data_as<char>() + chunk_data.chunk_offsets_[i];
         RETURN_NOT_OK(output_data.set_fixed_allocation(
             output_chunk_buffer, chunk.unfiltered_data_size_));
         reader_stats->add_counter(
@@ -490,7 +535,8 @@ void FilterPipeline::serialize(Serializer& serializer) const {
     // as a no-op filter instead.
     auto as_compression = dynamic_cast<CompressionFilter*>(f.get());
     if (as_compression != nullptr && f->type() == FilterType::FILTER_NONE) {
-      auto noop = tdb_unique_ptr<NoopFilter>(new NoopFilter);
+      auto noop =
+          tdb_unique_ptr<NoopFilter>(tdb_new(NoopFilter, Datatype::ANY));
       noop->serialize(serializer);
     } else {
       f->serialize(serializer);
@@ -499,26 +545,28 @@ void FilterPipeline::serialize(Serializer& serializer) const {
 }
 
 FilterPipeline FilterPipeline::deserialize(
-    Deserializer& deserializer, const uint32_t version) {
+    Deserializer& deserializer, const uint32_t version, Datatype datatype) {
   auto max_chunk_size = deserializer.read<uint32_t>();
   auto num_filters = deserializer.read<uint32_t>();
   std::vector<shared_ptr<Filter>> filters;
 
   for (uint32_t i = 0; i < num_filters; i++) {
-    auto filter{FilterCreate::deserialize(deserializer, version)};
+    auto filter{FilterCreate::deserialize(deserializer, version, datatype)};
+    datatype = filter->output_datatype(datatype);
     filters.push_back(std::move(filter));
   }
 
   return FilterPipeline(max_chunk_size, filters);
 }
 
-void FilterPipeline::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  for (const auto& filter : filters_) {
-    fprintf(out, "\n  > ");
-    filter->dump(out);
+void FilterPipeline::ensure_compatible(
+    const Filter& first, const Filter& second, Datatype first_input_type) {
+  auto first_output_type = first.output_datatype(first_input_type);
+  if (!second.accepts_input_datatype(first_output_type)) {
+    throw FilterPipelineStatusException(
+        "Filter " + filter_type_str(first.type()) + " produces " +
+        datatype_str(first_output_type) + " but second filter " +
+        filter_type_str(second.type()) + " does not accept this type.");
   }
 }
 
@@ -528,6 +576,10 @@ bool FilterPipeline::has_filter(const FilterType& filter_type) const {
       return true;
   }
   return false;
+}
+
+std::vector<shared_ptr<Filter>> FilterPipeline::filters() const {
+  return filters_;
 }
 
 void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
@@ -553,7 +605,8 @@ Status FilterPipeline::append_encryption_filter(
     case EncryptionType::NO_ENCRYPTION:
       return Status::Ok();
     case EncryptionType::AES_256_GCM:
-      pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
+      pipeline->add_filter(
+          EncryptionAES256GCMFilter(encryption_key, Datatype::ANY));
       return Status::Ok();
     default:
       return LOG_STATUS(Status_FilterError(
@@ -579,13 +632,18 @@ bool FilterPipeline::skip_offsets_filtering(
 
 bool FilterPipeline::use_tile_chunking(
     const bool is_var, const uint32_t version, const Datatype type) const {
-  if (is_var &&
+  if (max_chunk_size_ == 0) {
+    return false;
+  } else if (
+      is_var &&
       (type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8)) {
     if (version >= 12 && has_filter(FilterType::FILTER_RLE)) {
       return false;
     } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
+  } else if (has_filter(FilterType::FILTER_WEBP)) {
+    return false;
   }
 
   return true;
@@ -593,3 +651,12 @@ bool FilterPipeline::use_tile_chunking(
 
 }  // namespace sm
 }  // namespace tiledb
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FilterPipeline& fp) {
+  for (const auto& filter : fp.filters()) {
+    os << std::endl << "  > ";
+    os << *filter;
+  }
+  return os;
+}

@@ -75,7 +75,9 @@ struct CPPDenseQcCoordsModeFx {
 
     Array array(ctx_, array_name, TILEDB_WRITE);
     Query query(ctx_, array, TILEDB_WRITE);
-    query.set_subarray(subarray);
+    Subarray sub(ctx_, array);
+    sub.set_subarray(subarray);
+    query.set_subarray(sub);
     query.set_data_buffer("a1", a1_buff);
     query.set_layout(TILEDB_ROW_MAJOR);
     REQUIRE(query.submit() == Query::Status::COMPLETE);
@@ -105,9 +107,10 @@ TEST_CASE_METHOD(
   std::vector<int> c_d1_go;
   std::vector<int> c_d2_go;
   QueryCondition qc(ctx_);
+  tiledb_layout_t read_layout = GENERATE(TILEDB_ROW_MAJOR, TILEDB_GLOBAL_ORDER);
 
   // Set condition and expected results.
-  SECTION("Test 1") {
+  SECTION("Test TILEDB_LE") {
     int val = 20;
     qc.init("a1", &val, sizeof(int), TILEDB_LE);
     c_d1_rm = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
@@ -117,7 +120,7 @@ TEST_CASE_METHOD(
     c_result_num = 20;
   }
 
-  SECTION("Test 2") {
+  SECTION("Test TILEDB_AND") {
     int val = 60;
     qc.init("a1", &val, sizeof(int), TILEDB_GT);
     QueryCondition qc2(ctx_);
@@ -131,12 +134,44 @@ TEST_CASE_METHOD(
     c_result_num = 15;
   }
 
+  SECTION("Test TILEDB_OR") {
+    int val = 90;
+    qc.init("a1", &val, sizeof(int), TILEDB_GT);
+    QueryCondition qc2(ctx_);
+    val = 5;
+    qc2.init("a1", &val, sizeof(int), TILEDB_LE);
+    qc = qc.combine(qc2, TILEDB_OR);
+    c_d1_rm = {1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10};
+    c_d2_rm = {1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    c_d1_go = {1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10};
+    c_d2_go = {1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    c_result_num = 15;
+  }
+
+  SECTION("Test TILEDB_NOT") {
+    int val = 90;
+    qc.init("a1", &val, sizeof(int), TILEDB_LT);
+    QueryCondition qc2(ctx_);
+    val = 10;
+    qc2.init("a1", &val, sizeof(int), TILEDB_GE);
+    qc = qc.combine(qc2, TILEDB_AND);
+    qc = qc.negate();
+    c_d1_rm = {1,  1,  1,  1,  1,  1,  1,  1,  1,  9,
+               10, 10, 10, 10, 10, 10, 10, 10, 10, 10};
+    c_d2_rm = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    c_d1_go = {1,  1,  1,  1,  1,  1,  1,  1, 1,  10,
+               10, 10, 10, 10, 10, 10, 10, 9, 10, 10};
+    c_d2_go = {1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 10, 9, 10};
+    c_result_num = 20;
+  }
+
   // Set and run the query.
-  tiledb_layout_t read_layout = GENERATE(TILEDB_ROW_MAJOR, TILEDB_GLOBAL_ORDER);
   std::vector<int> subarray = {1, 10, 1, 10};
   std::vector<int> d1(100);
   std::vector<int> d2(100);
-  query.set_subarray(subarray);
+  Subarray sub(ctx_, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub);
   query.set_layout(read_layout);
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("d2", d2);

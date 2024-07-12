@@ -41,8 +41,13 @@
 /*
  * API sections
  */
-#include "tiledb/api/c_api/group/group_api_external_experimental.h"
+#include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
+#include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
+#include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
+#include "tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
+#include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
+#include "tiledb/api/c_api/vfs/vfs_api_experimental.h"
 #include "tiledb_dimension_label_experimental.h"
 
 /* ********************************* */
@@ -53,12 +58,52 @@
 extern "C" {
 #endif
 
-/** A TileDB array schema. */
-typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
+/* ********************************* */
+/*             LOGGING               */
+/* ********************************* */
+
+/**
+ * Log a message at WARN level using TileDB's internal logging mechanism
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_log_warn(ctx, "This is a log message.");
+ * @endcode
+ *
+ * @param ctx The TileDB Context.
+ * @param message The message to log
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t
+tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) TILEDB_NOEXCEPT;
+
+/* ********************************* */
+/*              AS BUILT             */
+/* ********************************* */
+
+/**
+ * Dumps the TileDB build configuration to a string.
+ *
+ * **Example**
+ * @code{.c}
+ * tiledb_string_t* out;
+ * tiledb_as_built_dump(&out);
+ * tiledb_string_free(&out);
+ * @endcode
+ *
+ * @param out The output.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_as_built_dump(tiledb_string_t** out)
+    TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*      ARRAY SCHEMA EVOLUTION       */
 /* ********************************* */
+
+/** A TileDB array schema. */
+typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
 
 /**
  * Creates a TileDB schema evolution object.
@@ -136,6 +181,95 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
     const char* attribute_name) TILEDB_NOEXCEPT;
 
 /**
+ * Adds an enumeration to an array schema evolution.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enmr;
+ * void* data = get_data();
+ * uint64_t data_size = get_data_size();
+ * tiledb_enumeration_alloc(
+ *     ctx,
+ *     TILEDB_INT64,
+ *     cell_val_num,
+ *     FALSE,
+ *     data,
+ *     data_size,
+ *     nullptr,
+ *     0,
+ *     &enumeration);
+ * tiledb_array_schema_evolution_add_enumeration(ctx, array_schema_evolution,
+ * enmr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param enumeration The enumeration to be added.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_add_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Extends an enumeration during array schema evolution.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* original_enmr = get_existing_enumeration();
+ * const void* data = get_new_data();
+ * uint64_t data_size = get_new_data_size();
+ * tiledb_enumeration_t* new_enmr;
+ * tiledb_enumeration_extend(
+ *     ctx,
+ *     original_enmr,
+ *     data,
+ *     data_size,
+ *     nullptr,
+ *     0,
+ *     &new_enmr);
+ * tiledb_array_schema_evolution_extend_enumeration(
+ *     ctx,
+ *     array_schema_evolution,
+ *     new_enmr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param enumeration The enumeration to be extended. This should be the result
+ *        of a call to tiledb_enumeration_extend.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_extend_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Drops an enumeration from an array schema evolution.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* enumeration_name = "enumeration_1";
+ * tiledb_array_schema_evolution_drop_enumeration(ctx, array_schema_evolution,
+ * enumeration_name);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param enumeration_name The name of the enumeration to be dropped.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_drop_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    const char* enumeration_name) TILEDB_NOEXCEPT;
+
+/**
  * Sets timestamp range in an array schema evolution
  * This function sets the output timestamp of the committed array schema after
  * evolution. The lo and hi values are currently required to be the same or else
@@ -161,6 +295,49 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     uint64_t lo,
     uint64_t hi) TILEDB_NOEXCEPT;
+
+/**
+ * Expands the current domain during array schema evolution.
+ * TileDB will enforce that the new current domain is expanding
+ * on the current one and not contracting during `tiledb_array_evolve`.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_current_domain_t *new_domain;
+ * tiledb_current_domain_create(ctx, &new_domain);
+ * tiledb_ndrectangle_t *ndr;
+ * tiledb_ndrectangle_alloc(ctx, domain, &ndr);
+ *
+ * tiledb_range_t range;
+ * range.min = &expanded_min;
+ * range.min_size = sizeof(expanded_min);
+ * range.max = &expanded_max;
+ * range.max_size = sizeof(expanded_max);
+ * tiledb_ndrectangle_set_range_for_name(ctx, ndr, "dim1", &range);
+ * tiledb_ndrectangle_set_range_for_name(ctx, ndr, "dim2", &range);
+ *
+ * tiledb_current_domain_set_ndrectangle(new_domain, ndr);
+ *
+ * tiledb_array_schema_evolution_expand_current_domain(ctx,
+ *      array_schema_evolution, new_domain);
+ *
+ * tiledb_array_evolve(ctx, array_uri, array_schema_evolution);
+ *
+ * tiledb_ndrectangle_free(&ndr);
+ * tiledb_current_domain_free(&new_domain);
+ *
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param expanded_domain The current domain we want to expand the schema to.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_expand_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_current_domain_t* expanded_domain) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*          ARRAY SCHEMA             */
@@ -190,44 +367,85 @@ TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
     uint64_t* lo,
     uint64_t* hi) TILEDB_NOEXCEPT;
 
+/**
+ * Adds an enumeration to an array schema.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enumeration;
+ * tiledb_enumeration_alloc(
+ *     ctx,
+ *     "enumeration_name",
+ *     TILEDB_INT64,
+ *     1,
+ *     FALSE,
+ *     data,
+ *     data_size,
+ *     nullptr,
+ *     0,
+ *     &enumeration);
+ * tiledb_array_schema_add_enumeration(ctx, array_schema, enumeration);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param enumeration The enumeration to add with the attribute
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Sets the current domain on the array schema
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_current_domain_t *current_domain;
+ * tiledb_current_domain_create(ctx, &current_domain);
+ * tiledb_array_schema_set_current_domain(ctx, array_schema, current_domain);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param current_domain The current domain to set on the schema
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_set_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t* current_domain) TILEDB_NOEXCEPT;
+
+/**
+ * Gets the current domain set on the array schema or
+ * creates an empty current domain if none was set.
+ * It is the responsability of the caller to free the resources associated
+ * with the current domain when the handle isn't needed anymore.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_current_domain_t *current_domain;
+ * tiledb_array_schema_get_current_domain(ctx, array_schema, &current_domain);
+ * tiledb_current_domain_free(&current_domain);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param current_domain The current domain set on the schema
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_get_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t** current_domain) TILEDB_NOEXCEPT;
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
-
-/**
- * Deletes all written array data.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_delete(ctx, "hdfs:///temp/my_array");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param uri The Array's URI.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
-    TILEDB_NOEXCEPT;
-
-/**
- * Note: This API is deprecated and replaced with tiledb_array_delete (above).
- *
- * Deletes all written array data.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_delete_array(ctx, array, "hdfs:///temp/my_array");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array to delete the data from.
- * @param uri The Array's URI.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_array(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Evolve array schema of an array.
@@ -250,25 +468,48 @@ TILEDB_EXPORT int32_t tiledb_array_evolve(
     tiledb_array_schema_evolution_t* array_schema_evolution) TILEDB_NOEXCEPT;
 
 /**
- * Upgrades an array to the latest format version.
+ * Retrieves an attribute's enumeration given the attribute name (key).
+ *
+ * **Example:**
+ *
+ * The following retrieves the first attribute in the schema.
+ *
+ * @code{.c}
+ * tiledb_attribute_t* attr;
+ * tiledb_array_schema_get_enumeration(
+ *     ctx, array_schema, "attr_0", &enumeration);
+ * // Make sure to delete the retrieved attribute in the end.
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB array.
+ * @param name The name (key) of the attribute from which to
+ * retrieve the enumeration.
+ * @param enumeration The enumeration object to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_get_enumeration(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const char* name,
+    tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Load all enumerations for the array.
  *
  * **Example:**
  *
  * @code{.c}
- * const char* array_uri="test_array";
- * tiledb_array_upgrade_version(ctx, array_uri);
+ * tiledb_array_load_all_enumerations(ctx, array);
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array_uri The uri of the array.
- * @param config Configuration parameters for the upgrade
- *     (`nullptr` means default, which will use the config from `ctx`).
+ * @param array The TileDB array.
+ * @param latest_only If non-zero, only load enumerations for the latest schema.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
+TILEDB_EXPORT capi_return_t tiledb_array_load_all_enumerations(
+    tiledb_ctx_t* ctx, const tiledb_array_t* array) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               QUERY               */
@@ -310,6 +551,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_point_ranges(
     const void* start,
     uint64_t count) TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Adds a set of point ranges along subarray dimension index. Each value
  * in the target array is added as `add_range(x,x)` for count elements.
@@ -340,6 +582,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_point_ranges(
     uint32_t dim_idx,
     const void* start,
     uint64_t count) TILEDB_NOEXCEPT;
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
 /**
  * Get the number of relevant fragments from the subarray. Should only be
@@ -357,6 +600,77 @@ TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint64_t* relevant_fragment_num) TILEDB_NOEXCEPT;
+
+/* ********************************* */
+/*          QUERY CONDITION          */
+/* ********************************* */
+
+/**
+ * Initializes a TileDB query condition set membership object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* cond
+ * tiledb_query_condition_alloc_set_membership(
+ *   ctx,
+ *   "some_name",
+ *   data,
+ *   data_size,
+ *   offsets,
+ *   offsets_size,
+ *   TILEDB_QUERY_CONDITION_OP_IN,
+ *   &cond);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param field_name The field name.
+ * @param data A pointer to the set member data.
+ * @param data_size The length of the data buffer.
+ * @param offsets A pointer to the array of offsets of members.
+ * @param offsets_size The length of the offsets array in bytes.
+ * @param op The set membership operator to use.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_query_condition_alloc_set_membership(
+    tiledb_ctx_t* ctx,
+    const char* field_name,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offests_size,
+    tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond) TILEDB_NOEXCEPT;
+
+/**
+ * Disable the use of enumerations on the given QueryCondition
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(ctx, &query_condition);
+ * uint32_t value = 5;
+ * tiledb_query_condition_init(
+ *   ctx,
+ *   query_condition,
+ *   "longitude",
+ *   &value,
+ *   sizeof(value),
+ *   TILEDB_LT);
+ * tiledb_query_condition_set_use_enumeration(ctx, query_condition, 0);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] cond The query condition
+ * @param[in] use_enumeration Non-zero to use the associated enumeration
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_set_use_enumeration(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_condition_t* cond,
+    int use_enumeration) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*        QUERY STATUS DETAILS       */
@@ -466,7 +780,8 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
  * @param[in] ctx The TileDB context.
  * @param[in] array_uri The name of the TileDB array whose metadata will
  *     be consolidated.
- * @param[in] fragment_uris URIs of the fragments to consolidate.
+ * @param[in] fragment_uris Fragment names of the fragments to consolidate. The
+ *     names can be recovered using tiledb_fragment_info_get_fragment_name.
  * @param[in] num_fragments Number of URIs to consolidate.
  * @param config Configuration parameters for the consolidation
  *     (`nullptr` means default, which will use the config from \p ctx).

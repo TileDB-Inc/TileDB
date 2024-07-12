@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,15 +42,13 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
-namespace tiledb {
-namespace cli {
+namespace tiledb::cli {
 
 using namespace tiledb::sm;
 
@@ -119,11 +117,10 @@ void InfoCommand::print_tile_sizes() const {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
-  Array array(uri, &sm);
+  Array array(resources, uri);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   EncryptionKey enc_key;
@@ -131,7 +128,7 @@ void InfoCommand::print_tile_sizes() const {
   // Compute and report mean persisted tile sizes over all attributes.
   const auto& schema = array.array_schema_latest();
   auto fragment_metadata = array.fragment_metadata();
-  auto attributes = schema.attributes();
+  auto& attributes = schema.attributes();
   uint64_t total_persisted_size = 0, total_in_memory_size = 0;
 
   // Helper function for processing each attribute.
@@ -142,15 +139,18 @@ void InfoCommand::print_tile_sizes() const {
       uint64_t tile_num = f->tile_num();
       std::vector<std::string> names;
       names.push_back(name);
-      THROW_NOT_OK(f->load_tile_offsets(enc_key, std::move(names)));
-      THROW_NOT_OK(f->load_tile_var_sizes(enc_key, name));
+      f->loaded_metadata()->load_tile_offsets(enc_key, names);
+      f->loaded_metadata()->load_tile_var_sizes(enc_key, name);
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
-        persisted_tile_size += f->persisted_tile_size(name, tile_idx);
+        persisted_tile_size +=
+            f->loaded_metadata()->persisted_tile_size(name, tile_idx);
         in_memory_tile_size += f->tile_size(name, tile_idx);
         num_tiles++;
         if (var_size) {
-          persisted_tile_size += f->persisted_tile_var_size(name, tile_idx);
-          in_memory_tile_size += f->tile_var_size(name, tile_idx);
+          persisted_tile_size +=
+              f->loaded_metadata()->persisted_tile_var_size(name, tile_idx);
+          in_memory_tile_size +=
+              f->loaded_metadata()->tile_var_size(name, tile_idx);
           num_tiles++;
         }
       }
@@ -190,15 +190,14 @@ void InfoCommand::print_schema_info() const {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
-  Array array(uri, &sm);
+  Array array(resources, uri);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-  array.array_schema_latest().dump(stdout);
+  std::cout << array.array_schema_latest() << std::endl;
 
   // Close the array.
   THROW_NOT_OK(array.close());
@@ -208,11 +207,10 @@ void InfoCommand::write_svg_mbrs() const {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
-  Array array(uri, &sm);
+  Array array(resources, uri);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
@@ -284,11 +282,10 @@ void InfoCommand::write_text_mbrs() const {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
-  Array array(uri, &sm);
+  Array array(resources, uri);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
@@ -298,7 +295,7 @@ void InfoCommand::write_text_mbrs() const {
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
-    THROW_NOT_OK(f->load_rtree(*encryption_key));
+    f->loaded_metadata()->load_rtree(*encryption_key);
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
       auto str_mbr = mbr_to_string(mbr, schema.domain());
@@ -557,5 +554,4 @@ std::vector<std::string> InfoCommand::mbr_to_string(
   return result;
 }
 
-}  // namespace cli
-}  // namespace tiledb
+}  // namespace tiledb::cli

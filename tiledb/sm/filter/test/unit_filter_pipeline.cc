@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -103,8 +103,8 @@ TEST_CASE(
   filters_buffer_offset<int32_t, 34>(p) = compressor_level3;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto filters{
-      FilterPipeline::deserialize(deserializer, constants::format_version)};
+  auto filters{FilterPipeline::deserialize(
+      deserializer, constants::format_version, Datatype::INT32)};
 
   CHECK(filters.max_chunk_size() == max_chunk_size);
   CHECK(filters.size() == num_filters);
@@ -128,10 +128,10 @@ TEST_CASE(
 TEST_CASE(
     "FilterPipeline: Test if filter list has a filter", "[filter-pipeline]") {
   FilterPipeline fp;
-  fp.add_filter(CompressionFilter(Compressor::ZSTD, 2));
-  fp.add_filter(BitWidthReductionFilter());
-  fp.add_filter(CompressionFilter(Compressor::RLE, 1));
-  fp.add_filter(CompressionFilter(Compressor::LZ4, 1));
+  fp.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
+  fp.add_filter(BitWidthReductionFilter(Datatype::ANY));
+  fp.add_filter(CompressionFilter(Compressor::RLE, 1, Datatype::ANY));
+  fp.add_filter(CompressionFilter(Compressor::LZ4, 1, Datatype::ANY));
 
   // Check that filters are searched correctly
   CHECK(fp.has_filter(FilterType::FILTER_RLE));
@@ -156,14 +156,14 @@ TEST_CASE(
 
   // pipeline that contains an RLE or Dictionary compressor
   FilterPipeline fp_with;
-  fp_with.add_filter(CompressionFilter(Compressor::ZSTD, 2));
-  fp_with.add_filter(BitWidthReductionFilter());
-  fp_with.add_filter(CompressionFilter(f, 1));
+  fp_with.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
+  fp_with.add_filter(BitWidthReductionFilter(Datatype::ANY));
+  fp_with.add_filter(CompressionFilter(f, 1, Datatype::ANY));
 
   // pipeline that doesn't contain an RLE or Dictionary compressor
   FilterPipeline fp_without;
-  fp_without.add_filter(CompressionFilter(Compressor::ZSTD, 2));
-  fp_without.add_filter(BitWidthReductionFilter());
+  fp_without.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
+  fp_without.add_filter(BitWidthReductionFilter(Datatype::ANY));
 
   bool is_var_sized = true;
 
@@ -185,8 +185,25 @@ TEST_CASE(
   CHECK(
       fp_with.use_tile_chunking(is_var_sized, version, Datatype::DATETIME_AS));
   CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::BLOB));
+  CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::GEOM_WKB));
+  CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::GEOM_WKT));
   CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::INT32));
   CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::FLOAT64));
+}
+
+TEST_CASE(
+    "FilterPipeline: Test if tile chunking should be used with "
+    "max_chunk_size=0",
+    "[filter-pipeline]") {
+  auto filter = Compressor::DELTA;
+
+  // pipeline that contains an RLE or Dictionary compressor
+  FilterPipeline fp;
+  fp.add_filter(CompressionFilter(filter, 1, Datatype::ANY));
+  fp.set_max_chunk_size(0);
+
+  CHECK_FALSE(fp.use_tile_chunking(true, 0, Datatype::INT32));
+  CHECK_FALSE(fp.use_tile_chunking(false, 0, Datatype::INT32));
 }
 
 TEST_CASE(
@@ -201,14 +218,14 @@ TEST_CASE(
 
   // pipeline that contains an RLE or Dictionary compressor
   FilterPipeline fp_with;
-  fp_with.add_filter(CompressionFilter(Compressor::ZSTD, 2));
-  fp_with.add_filter(BitWidthReductionFilter());
-  fp_with.add_filter(CompressionFilter(f, 1));
+  fp_with.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
+  fp_with.add_filter(BitWidthReductionFilter(Datatype::ANY));
+  fp_with.add_filter(CompressionFilter(f, 1, Datatype::ANY));
 
   // pipeline that doesn't contain an RLE or Dictionary compressor
   FilterPipeline fp_without;
-  fp_without.add_filter(CompressionFilter(Compressor::ZSTD, 2));
-  fp_without.add_filter(BitWidthReductionFilter());
+  fp_without.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
+  fp_without.add_filter(BitWidthReductionFilter(Datatype::ANY));
 
   // Do not filter offsets if RLE is used for var-sized strings for schema
   // version >= 12 or Dictionary for version >=13
@@ -223,6 +240,8 @@ TEST_CASE(
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::TIME_MS, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::DATETIME_AS, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::BLOB, version));
+  CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::GEOM_WKB, version));
+  CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::GEOM_WKT, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::INT32, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::FLOAT64, version));
 }

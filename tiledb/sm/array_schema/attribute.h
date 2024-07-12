@@ -51,11 +51,22 @@ namespace sm {
 
 class Buffer;
 class ConstBuffer;
+class Enumeration;
 
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
 
-/** Manipulates a TileDB attribute. */
+/**
+ * Manipulates a TileDB attribute.
+ *
+ * @invariant
+ *
+ * A valid `cell_val_num` depends on the Attribute datatype and ordering.
+ * For `Datatype::ANY`, the only valid value is `constants::var_num`.
+ * If the attribute is unordered, then all other datatypes support any value.
+ * If the attribute is ordered, then an Attribute of `Datatype::STRING_ASCII`
+ * must have `constants::var_num`, and all other datatypes must have 1.
+ */
 class Attribute {
  public:
   /* ********************************* */
@@ -63,7 +74,7 @@ class Attribute {
   /* ********************************* */
 
   /** Constructor. */
-  Attribute();
+  Attribute() = delete;
 
   /**
    * Constructor.
@@ -83,6 +94,8 @@ class Attribute {
    * @param type The type of the attribute.
    * @param cell_val_num The cell number of the attribute.
    * @param order The ordering of the attribute.
+   *
+   * @throws if `cell_val_num` is invalid. See `set_cell_val_num`.
    */
   Attribute(
       const std::string& name,
@@ -101,6 +114,8 @@ class Attribute {
    * @param fill_value The fill value of the attribute.
    * @param fill_value_validity The validity of fill_value.
    * @param order The order of the data stored in the attribute.
+   *
+   * @throws if `cell_val_num` is invalid. See `set_cell_val_num`.
    */
   Attribute(
       const std::string& name,
@@ -110,43 +125,110 @@ class Attribute {
       const FilterPipeline& filter_pipeline,
       const ByteVecValue& fill_value,
       uint8_t fill_value_validity,
-      DataOrder order = DataOrder::UNORDERED_DATA);
+      DataOrder order = DataOrder::UNORDERED_DATA,
+      std::optional<std::string> enumeration_name = nullopt);
 
   /**
-   * Constructor. It clones the input attribute.
-   *
-   * @param attr The attribute to be cloned.
+   * Copy constructor is default.
    */
-  explicit Attribute(const Attribute* attr);
+  Attribute(const Attribute&) = default;
 
-  /** Copy constructor. */
-  DISABLE_COPY(Attribute);
+  /**
+   * Copy assignment is default.
+   */
+  Attribute& operator=(const Attribute&) = default;
 
-  /* ********************************* */
-  /*             OPERATORS             */
-  /* ********************************* */
-
-  /** Copy-assignment operator. */
-  DISABLE_COPY_ASSIGN(Attribute);
-
-  /** Move constructor. */
+  /**
+   * Move constructor is default
+   */
   Attribute(Attribute&&) = default;
 
+  /**
+   * Move assignment is default.
+   */
+  Attribute& operator=(Attribute&&) = default;
+
   /** Destructor. */
-  ~Attribute();
+  ~Attribute() = default;
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
 
   /**
+   * The attribute name.
+   */
+  [[nodiscard]] inline const std::string& name() const {
+    return name_;
+  }
+
+  /**
+   * The attribute type.
+   */
+  [[nodiscard]] inline Datatype type() const {
+    return type_;
+  }
+
+  /** Returns the number of values per cell. */
+  [[nodiscard]] inline unsigned int cell_val_num() const {
+    return cell_val_num_;
+  }
+
+  /**
+   * Returns `true` if this is a nullable attribute, and `false` otherwise.
+   */
+  [[nodiscard]] inline bool nullable() const {
+    return nullable_;
+  }
+
+  /**
+   * Returns *true* if this is a variable-sized attribute, and *false*
+   * otherwise.
+   */
+  [[nodiscard]] inline bool var_size() const {
+    return cell_val_num_ == constants::var_num;
+  }
+
+  /**
    * Returns the size in bytes of one cell for this attribute. If the attribute
    * is variable-sized, this function returns the size in bytes of an offset.
    */
-  uint64_t cell_size() const;
+  [[nodiscard]] inline uint64_t cell_size() const {
+    if (var_size()) {
+      return constants::var_size;
+    }
+    return cell_val_num_ * datatype_size(type_);
+  }
 
-  /** Returns the number of values per cell. */
-  unsigned int cell_val_num() const;
+  /** Returns the fill value. */
+  [[nodiscard]] inline const ByteVecValue& fill_value() const {
+    return fill_value_;
+  }
+
+  /** Returns the fill value validity. */
+  [[nodiscard]] inline uint8_t fill_value_validity() const {
+    return fill_value_validity_;
+  }
+
+  /**
+   * Gets the fill value for the attribute. Applicable to
+   * fixed-sized and var-sized attributes.
+   */
+  void get_fill_value(const void** value, uint64_t* size) const;
+
+  /**
+   * Gets the fill value for the nullable attribute. Applicable to
+   * fixed-sized and var-sized attributes.
+   */
+  void get_fill_value(const void** value, uint64_t* size, uint8_t* valid) const;
+
+  /** Returns the order of the data stored in this attribute. */
+  [[nodiscard]] inline DataOrder order() const {
+    return order_;
+  }
+
+  /** Returns the filter pipeline of this attribute. */
+  const FilterPipeline& filters() const;
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -157,15 +239,6 @@ class Attribute {
    */
   static Attribute deserialize(Deserializer& deserializer, uint32_t version);
 
-  /** Dumps the attribute contents in ASCII form in the selected output. */
-  void dump(FILE* out) const;
-
-  /** Returns the filter pipeline of this attribute. */
-  const FilterPipeline& filters() const;
-
-  /** Returns the attribute name. */
-  const std::string& name() const;
-
   /**
    * Serializes the object members into a binary buffer.
    *
@@ -175,9 +248,13 @@ class Attribute {
   void serialize(Serializer& serializer, uint32_t version) const;
 
   /**
-   * Sets the attribute number of values per cell. Note that if the attribute
-   * datatype is `ANY` this function returns an error, since `ANY` datatype
-   * must always be variable-sized.
+   * Sets the attribute number of values per cell.
+   *
+   * @throws AttributeException if `cell_val_num` is invalid. See class
+   * documentation.
+   *
+   * @post `this->cell_val_num() == cell_val_num` if `cell_val_num` is
+   * valid, and `this->cell_val_num()` is unchanged otherwise.
    */
   void set_cell_val_num(unsigned int cell_val_num);
 
@@ -187,9 +264,6 @@ class Attribute {
   /** Sets the filter pipeline for this attribute. */
   void set_filter_pipeline(const FilterPipeline& pipeline);
 
-  /** Sets the attribute name. */
-  void set_name(const std::string& name);
-
   /**
    * Sets the fill value for the attribute. Applicable to
    * both fixed-sized and var-sized attributes.
@@ -197,50 +271,20 @@ class Attribute {
   void set_fill_value(const void* value, uint64_t size);
 
   /**
-   * Gets the fill value for the attribute. Applicable to
-   * fixed-sized and var-sized attributes.
-   */
-  void get_fill_value(const void** value, uint64_t* size) const;
-
-  /**
    * Sets the fill value for the nullable attribute. Applicable to
    * both fixed-sized and var-sized attributes.
    */
   void set_fill_value(const void* value, uint64_t size, uint8_t valid);
 
-  /**
-   * Gets the fill value for the nullable attribute. Applicable to
-   * fixed-sized and var-sized attributes.
-   */
-  void get_fill_value(const void** value, uint64_t* size, uint8_t* valid) const;
-
-  /** Returns the fill value. */
-  const ByteVecValue& fill_value() const;
-
-  /** Returns the fill value validity. */
-  uint8_t fill_value_validity() const;
-
-  /** Returns the attribute type. */
-  Datatype type() const;
-
-  /**
-   * Returns *true* if this is a variable-sized attribute, and *false*
-   * otherwise.
-   */
-  bool var_size() const;
-
-  /**
-   * Returns *true* if this is a nullable attribute, and *false*
-   * otherwise.
-   */
-  bool nullable() const;
-
-  /** Returns the order of the data stored in this attribute. */
-  DataOrder order() const;
-
   /** The default fill value. */
   static ByteVecValue default_fill_value(
       Datatype datatype, uint32_t cell_val_num);
+
+  /** Set an enumeration for this attribute. */
+  void set_enumeration_name(std::optional<std::string> enmr_name);
+
+  /** Get the enumeration for this attribute. */
+  std::optional<std::string> get_enumeration_name() const;
 
  private:
   /* ********************************* */
@@ -271,18 +315,23 @@ class Attribute {
   /** The required order of the data stored in the attribute. */
   DataOrder order_;
 
+  /** The name of the Enumeration to use for this attribute. */
+  std::optional<std::string> enumeration_name_;
+
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*          PRIVATE METHODS          */
   /* ********************************* */
+  /** Called to validate a cell val num for this attribute */
+  void validate_cell_val_num(unsigned cell_val_num) const;
 
   /** Sets the default fill value. */
   void set_default_fill_value();
-
-  /** Returns the fill value in string form. */
-  std::string fill_value_str() const;
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
 #endif  // TILEDB_ATTRIBUTE_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a);

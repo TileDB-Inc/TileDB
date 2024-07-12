@@ -64,6 +64,10 @@ class ConsolidationPlan {
 
   /** Constructor. */
   ConsolidationPlan(shared_ptr<Array> array, uint64_t fragment_size);
+  /** Constructor. */
+  ConsolidationPlan(
+      uint64_t fragment_size,
+      std::vector<std::vector<std::string>> fragment_uris_per_node);
 
   /** Destructor. */
   ~ConsolidationPlan();
@@ -87,7 +91,7 @@ class ConsolidationPlan {
     if (node_idx == std::numeric_limits<uint64_t>::max() ||
         node_idx + 1 > num_nodes_) {
       throw ConsolidationPlanStatusException(
-          "Trying to access a node that doesn't exists");
+          "Trying to access a node that doesn't exist.");
     }
 
     return fragment_uris_per_node_[node_idx].size();
@@ -97,7 +101,7 @@ class ConsolidationPlan {
    * Get the fragment URI for a node/fragment index.
    *
    * @param node_idx Index of the node.
-   * @param node_idx Index of the fragment.
+   * @param fragment_idx Index of the fragment.
    * @return The null terminated string for the fragment URI.
    */
   inline const char* get_fragment_uri(
@@ -105,13 +109,13 @@ class ConsolidationPlan {
     if (node_idx == std::numeric_limits<uint64_t>::max() ||
         node_idx + 1 > num_nodes_) {
       throw ConsolidationPlanStatusException(
-          "Trying to access a node that doesn't exists");
+          "Trying to access a node that doesn't exist.");
     }
 
     if (fragment_idx == std::numeric_limits<uint64_t>::max() ||
         fragment_idx + 1 > fragment_uris_per_node_[node_idx].size()) {
       throw ConsolidationPlanStatusException(
-          "Trying to access a fragment that doesn't exists");
+          "Trying to access a fragment that doesn't exist.");
     }
 
     return fragment_uris_per_node_[node_idx][fragment_idx].c_str();
@@ -194,8 +198,10 @@ class ConsolidationPlan {
       std::vector<std::string> ret;
       ret.reserve(fragment_indexes_.size());
       for (auto& idx : fragment_indexes_) {
-        ret.emplace_back(
-            array_->fragment_metadata()[idx]->fragment_uri().c_str());
+        ret.emplace_back(array_->fragment_metadata()[idx]
+                             ->fragment_uri()
+                             .last_path_part()
+                             .c_str());
       }
 
       return ret;

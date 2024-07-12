@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -226,9 +226,11 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "filestore.buffer_size 104857600\n";
+  ss << "rest.capnp_traversal_limit 536870912\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
+  ss << "rest.load_enumerations_on_array_open true\n";
   ss << "rest.load_metadata_on_array_open true\n";
   ss << "rest.load_non_empty_domain_on_array_open true\n";
   ss << "rest.retry_count 25\n";
@@ -261,12 +263,17 @@ void check_save_to_file() {
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
+  ss << "sm.enumerations_max_size 10485760\n";
+  ss << "sm.enumerations_max_total_size 52428800\n";
   ss << "sm.fragment_info.preload_mbrs false\n";
   ss << "sm.group.timestamp_end 18446744073709551615\n";
   ss << "sm.group.timestamp_start 0\n";
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.max_tile_overlap_size 314572800\n";
+  ss << "sm.mem.consolidation.buffers_weight 1\n";
+  ss << "sm.mem.consolidation.reader_weight 3\n";
+  ss << "sm.mem.consolidation.writer_weight 2\n";
   ss << "sm.mem.malloc_trim true\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
@@ -278,6 +285,7 @@ void check_save_to_file() {
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
+  ss << "sm.merge_overlapping_ranges_experimental true\n";
   ss << "sm.partial_tile_offsets_loading false\n";
   ss << "sm.query.dense.qc_coords_mode false\n";
   ss << "sm.query.dense.reader refactored\n";
@@ -291,14 +299,17 @@ void check_save_to_file() {
   ss << "sm.var_offsets.bitsize 64\n";
   ss << "sm.var_offsets.extra_element false\n";
   ss << "sm.var_offsets.mode bytes\n";
+  ss << "ssl.verify true\n";
   ss << "vfs.azure.block_list_block_size 5242880\n";
   ss << "vfs.azure.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "vfs.azure.max_retries 5\n";
+  ss << "vfs.azure.max_retry_delay_ms 60000\n";
+  ss << "vfs.azure.retry_delay_ms 800\n";
   ss << "vfs.azure.use_block_list_upload true\n";
-  ss << "vfs.azure.use_https true\n";
-  ss << "vfs.file.max_parallel_ops 1\n";
   ss << "vfs.file.posix_directory_permissions 755\n";
   ss << "vfs.file.posix_file_permissions 644\n";
+  ss << "vfs.gcs.max_direct_upload_size 10737418240\n";
   ss << "vfs.gcs.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.gcs.multi_part_size 5242880\n";
@@ -311,9 +322,11 @@ void check_save_to_file() {
   ss << "vfs.read_ahead_cache_size 10485760\n";
   ss << "vfs.read_ahead_size 102400\n";
   ss << "vfs.s3.bucket_canned_acl NOT_SET\n";
+  ss << "vfs.s3.config_source auto\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 10800\n";
+  ss << "vfs.s3.install_sigpipe_handler true\n";
   ss << "vfs.s3.logging_level Off\n";
   ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
@@ -327,6 +340,7 @@ void check_save_to_file() {
   ss << "vfs.s3.requester_pays false\n";
   ss << "vfs.s3.scheme https\n";
   ss << "vfs.s3.skip_init false\n";
+  ss << "vfs.s3.storage_class NOT_SET\n";
   ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
   ss << "vfs.s3.verify_ssl true\n";
@@ -561,6 +575,10 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(
+      config, "rest.load_enumerations_on_array_open", "false", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(
       config, "rest.use_refactored_array_open", "true", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -589,21 +607,27 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.retry_delay_factor"] = "1.25";
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
+  all_param_values["rest.capnp_traversal_limit"] = "536870912";
   all_param_values["rest.curl.buffer_size"] = "524288";
   all_param_values["rest.curl.verbose"] = "false";
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
+  all_param_values["rest.load_enumerations_on_array_open"] = "false";
   all_param_values["rest.use_refactored_array_open"] = "true";
   all_param_values["rest.use_refactored_array_open_and_query_submit"] = "true";
+  all_param_values["rest.payer_namespace"] = "";
   all_param_values["sm.allow_separate_attribute_writes"] = "false";
   all_param_values["sm.allow_updates_experimental"] = "false";
   all_param_values["sm.encryption_key"] = "";
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.partial_tile_offsets_loading"] = "false";
+  all_param_values["sm.enumerations_max_size"] = "10485760";
+  all_param_values["sm.enumerations_max_total_size"] = "52428800";
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
+  all_param_values["sm.merge_overlapping_ranges_experimental"] = "true";
   all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.skip_unary_partitioning_budget_check"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";
@@ -612,6 +636,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.dense.reader"] = "refactored";
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
+  all_param_values["sm.mem.consolidation.buffers_weight"] = "1";
+  all_param_values["sm.mem.consolidation.reader_weight"] = "3";
+  all_param_values["sm.mem.consolidation.writer_weight"] = "2";
   all_param_values["sm.mem.malloc_trim"] = "true";
   all_param_values["sm.mem.tile_upper_memory_limit"] = "1073741824";
   all_param_values["sm.mem.total_budget"] = "10737418240";
@@ -656,18 +683,28 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.fragment_info.preload_mbrs"] = "true";
   all_param_values["sm.partial_tile_offsets_loading"] = "false";
 
+  all_param_values["ssl.ca_file"] = "";
+  all_param_values["ssl.ca_path"] = "";
+  all_param_values["ssl.verify"] = "true";
+
   all_param_values["vfs.max_batch_size"] = "104857600";
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
   all_param_values["vfs.read_ahead_size"] = "102400";
   all_param_values["vfs.read_ahead_cache_size"] = "10485760";
+  all_param_values["vfs.read_logging_mode"] = "";
+  all_param_values["vfs.gcs.endpoint"] = "";
   all_param_values["vfs.gcs.project_id"] = "";
+  all_param_values["vfs.gcs.service_account_key"] = "";
+  all_param_values["vfs.gcs.workload_identity_configuration"] = "";
+  all_param_values["vfs.gcs.impersonate_service_account"] = "";
   all_param_values["vfs.gcs.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.gcs.multi_part_size"] = "5242880";
   all_param_values["vfs.gcs.use_multi_part_upload"] = "true";
   all_param_values["vfs.gcs.request_timeout_ms"] = "3000";
+  all_param_values["vfs.gcs.max_direct_upload_size"] = "10737418240";
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
   all_param_values["vfs.azure.storage_sas_token"] = "";
@@ -676,10 +713,11 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.azure.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.azure.use_block_list_upload"] = "true";
-  all_param_values["vfs.azure.use_https"] = "true";
+  all_param_values["vfs.azure.max_retries"] = "5";
+  all_param_values["vfs.azure.retry_delay_ms"] = "800";
+  all_param_values["vfs.azure.max_retry_delay_ms"] = "60000";
   all_param_values["vfs.file.posix_file_permissions"] = "644";
   all_param_values["vfs.file.posix_directory_permissions"] = "755";
-  all_param_values["vfs.file.max_parallel_ops"] = "1";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
@@ -703,6 +741,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
   all_param_values["vfs.s3.sse"] = "";
   all_param_values["vfs.s3.sse_kms_key_id"] = "";
+  all_param_values["vfs.s3.storage_class"] = "NOT_SET";
   all_param_values["vfs.s3.logging_level"] = "Off";
   all_param_values["vfs.s3.request_timeout_ms"] = "3000";
   all_param_values["vfs.s3.requester_pays"] = "false";
@@ -713,11 +752,13 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.proxy_username"] = "";
   all_param_values["vfs.s3.verify_ssl"] = "true";
   all_param_values["vfs.s3.no_sign_request"] = "false";
+  all_param_values["vfs.s3.install_sigpipe_handler"] = "true";
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
   all_param_values["vfs.hdfs.name_node_uri"] = "";
   all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
+  all_param_values["vfs.s3.config_source"] = "auto";
 
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["max_batch_size"] = "104857600";
@@ -726,12 +767,18 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["min_parallel_size"] = "10485760";
   vfs_param_values["read_ahead_size"] = "102400";
   vfs_param_values["read_ahead_cache_size"] = "10485760";
+  vfs_param_values["read_logging_mode"] = "";
+  vfs_param_values["gcs.endpoint"] = "";
   vfs_param_values["gcs.project_id"] = "";
+  vfs_param_values["gcs.service_account_key"] = "";
+  vfs_param_values["gcs.workload_identity_configuration"] = "";
+  vfs_param_values["gcs.impersonate_service_account"] = "";
   vfs_param_values["gcs.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["gcs.multi_part_size"] = "5242880";
   vfs_param_values["gcs.use_multi_part_upload"] = "true";
   vfs_param_values["gcs.request_timeout_ms"] = "3000";
+  vfs_param_values["gcs.max_direct_upload_size"] = "10737418240";
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
   vfs_param_values["azure.storage_sas_token"] = "";
@@ -740,10 +787,11 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["azure.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["azure.use_block_list_upload"] = "true";
-  vfs_param_values["azure.use_https"] = "true";
+  vfs_param_values["azure.max_retries"] = "5";
+  vfs_param_values["azure.retry_delay_ms"] = "800";
+  vfs_param_values["azure.max_retry_delay_ms"] = "60000";
   vfs_param_values["file.posix_file_permissions"] = "644";
   vfs_param_values["file.posix_directory_permissions"] = "755";
-  vfs_param_values["file.max_parallel_ops"] = "1";
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.aws_access_key_id"] = "";
@@ -767,6 +815,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.connect_scale_factor"] = "25";
   vfs_param_values["s3.sse"] = "";
   vfs_param_values["s3.sse_kms_key_id"] = "";
+  vfs_param_values["s3.storage_class"] = "NOT_SET";
   vfs_param_values["s3.logging_level"] = "Off";
   vfs_param_values["s3.request_timeout_ms"] = "3000";
   vfs_param_values["s3.requester_pays"] = "false";
@@ -779,17 +828,24 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.no_sign_request"] = "false";
   vfs_param_values["s3.bucket_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
+  vfs_param_values["s3.config_source"] = "auto";
+  vfs_param_values["s3.install_sigpipe_handler"] = "true";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
 
   std::map<std::string, std::string> gcs_param_values;
+  gcs_param_values["endpoint"] = "";
   gcs_param_values["project_id"] = "";
+  gcs_param_values["service_account_key"] = "";
+  gcs_param_values["workload_identity_configuration"] = "";
+  gcs_param_values["impersonate_service_account"] = "";
   gcs_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   gcs_param_values["multi_part_size"] = "5242880";
   gcs_param_values["use_multi_part_upload"] = "true";
   gcs_param_values["request_timeout_ms"] = "3000";
+  gcs_param_values["max_direct_upload_size"] = "10737418240";
 
   std::map<std::string, std::string> azure_param_values;
   azure_param_values["storage_account_name"] = "";
@@ -800,7 +856,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   azure_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   azure_param_values["use_block_list_upload"] = "true";
-  azure_param_values["use_https"] = "true";
+  azure_param_values["max_retries"] = "5";
+  azure_param_values["retry_delay_ms"] = "800";
+  azure_param_values["max_retry_delay_ms"] = "60000";
 
   std::map<std::string, std::string> s3_param_values;
   s3_param_values["scheme"] = "https";
@@ -826,6 +884,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["connect_scale_factor"] = "25";
   s3_param_values["sse"] = "";
   s3_param_values["sse_kms_key_id"] = "";
+  s3_param_values["storage_class"] = "NOT_SET";
   s3_param_values["logging_level"] = "Off";
   s3_param_values["request_timeout_ms"] = "3000";
   s3_param_values["requester_pays"] = "false";
@@ -838,6 +897,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["no_sign_request"] = "false";
   s3_param_values["bucket_canned_acl"] = "NOT_SET";
   s3_param_values["object_canned_acl"] = "NOT_SET";
+  s3_param_values["config_source"] = "auto";
+  s3_param_values["install_sigpipe_handler"] = "true";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,15 +27,16 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the configuration section of the C API for TileDB.
+ * This file declares the dimension section of the C API for TileDB.
  */
 
 #ifndef TILEDB_CAPI_DIMENSION_INTERNAL_H
 #define TILEDB_CAPI_DIMENSION_INTERNAL_H
 
-#include "dimension_api_external.h"
+#include <memory>
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/dimension.h"
 
 /**
@@ -63,8 +64,12 @@ struct tiledb_dimension_handle_t
    */
   static constexpr std::string_view object_type_name{"dimension"};
 
-  tiledb_dimension_handle_t(const std::string& name, tiledb::sm::Datatype type)
-      : dimension_(make_shared<tiledb::sm::Dimension>(HERE(), name, type)) {
+  tiledb_dimension_handle_t(
+      const std::string& name,
+      tiledb::sm::Datatype type,
+      shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+      : dimension_(make_shared<tiledb::sm::Dimension>(
+            HERE(), name, type, memory_tracker)) {
   }
 
   /**
@@ -90,7 +95,7 @@ struct tiledb_dimension_handle_t
   }
 
   inline void set_filter_pipeline(const tiledb::sm::FilterPipeline& x) {
-    throw_if_not_ok(dimension_->set_filter_pipeline(x));
+    dimension_->set_filter_pipeline(x);
   }
 
   inline void set_cell_val_num(unsigned int x) {
@@ -121,9 +126,8 @@ struct tiledb_dimension_handle_t
     return dimension_->tile_extent();
   }
 
-  inline void dump(FILE* out) const {
-    dimension_->dump(out);
-  }
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_dimension_handle_t& dim);
 };
 
 namespace tiledb::api {
@@ -131,7 +135,7 @@ namespace tiledb::api {
 /**
  * Returns after successfully validating an error. Throws otherwise.
  *
- * @param dim A possibly-valid configuration handle
+ * @param dim A possibly-valid dimension handle
  */
 inline void ensure_dimension_is_valid(const tiledb_dimension_handle_t* dim) {
   ensure_handle_is_valid(dim);

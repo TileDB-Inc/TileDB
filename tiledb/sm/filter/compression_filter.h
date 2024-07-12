@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/compressors/zstd_compressor.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/resource_pool.h"
@@ -83,11 +84,15 @@ class CompressionFilter : public Filter {
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param filter_data_type Datatype the compressor will operate on.
+   * @param reinterpret_type Type to reinterpret data prior to compression.
    * @param version Format version
    */
   CompressionFilter(
-      Compressor compressor,
+      FilterType compressor,
       int level,
+      Datatype filter_data_type,
+      Datatype reinterpret_type = Datatype::ANY,
       const format_version_t version = constants::format_version);
 
   /**
@@ -95,26 +100,30 @@ class CompressionFilter : public Filter {
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param filter_data_type Datatype the compressor will operate on.
+   * @param reinterpret_type Type to reinterpret data prior to compression.
    * @param version Format version
    */
   CompressionFilter(
-      FilterType compressor,
+      Compressor compressor,
       int level,
+      Datatype filter_data_type,
+      Datatype reinterpret_type = Datatype::ANY,
       const format_version_t version = constants::format_version);
 
   /** Return the compressor used by this filter instance. */
   Compressor compressor() const;
 
+  /** Return whether the compression filter accepts given Datatype */
+  bool accepts_input_datatype(Datatype type) const override;
+
   /** Return the compression level used by this filter instance. */
   int compression_level() const;
-
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
 
   /**
    * Compress the given input into the given output.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -140,6 +149,10 @@ class CompressionFilter : public Filter {
   /** Set the compression level used by this filter instance. */
   void set_compression_level(int compressor_level);
 
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
+
  private:
   /** The compressor. */
   Compressor compressor_;
@@ -149,9 +162,6 @@ class CompressionFilter : public Filter {
 
   /** The format version. */
   uint32_t version_;
-
-  /** The default filter compression level. */
-  static constexpr int default_level_ = -30000;
 
   /** Mutex guarding zstd_compress_ctx_pool */
   std::mutex zstd_compress_ctx_pool_mtx_;
@@ -167,6 +177,9 @@ class CompressionFilter : public Filter {
    */
   shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
       zstd_decompress_ctx_pool_;
+
+  /** Datatype to reinterpret prior to compression. */
+  Datatype reinterpret_datatype_;
 
   /** Returns a new clone of this filter. */
   CompressionFilter* clone_impl() const override;
@@ -238,8 +251,10 @@ class CompressionFilter : public Filter {
   /** Initializes the decompression resource pool */
   void init_decompression_resource_pool(uint64_t size) override;
 
-  /** Creates a vector of views of the input strings and returns the max string
-   * size */
+  /**
+   * Creates a vector of views of the input strings and returns the max string
+   * size
+   */
   static tuple<std::vector<std::string_view>, uint64_t> create_input_view(
       const FilterBuffer& input, WriterTile* const offsets_tile);
 
@@ -250,6 +265,15 @@ class CompressionFilter : public Filter {
    * @return Number of bytes required to store the input number
    */
   static uint8_t compute_bytesize(uint64_t param_length);
+
+  /**
+   * Returns the filter output type
+   *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
+   */
+  Datatype output_datatype(Datatype input_type) const override;
 };
 
 }  // namespace sm

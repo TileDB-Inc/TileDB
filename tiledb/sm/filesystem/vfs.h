@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,8 @@
 #include <string>
 #include <vector>
 
+#include "filesystem_base.h"
+#include "ls_scanner.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
@@ -59,23 +61,89 @@
 
 #ifdef HAVE_GCS
 #include "tiledb/sm/filesystem/gcs.h"
-#endif
+#endif  // HAVE_GCS
 
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
-#endif
+#endif  // HAVE_S3
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#endif
+#endif  // HAVE_HDFS
 
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
-#endif
+#endif  // HAVE_AZURE
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
+
+namespace filesystem {
+class VFSException : public StatusException {
+ public:
+  explicit VFSException(const std::string& message)
+      : StatusException("VFS", message) {
+  }
+};
+
+class BuiltWithout : public VFSException {
+ public:
+  explicit BuiltWithout(const std::string& filesystem)
+      : VFSException("TileDB was built without " + filesystem + "support") {
+  }
+};
+
+class UnsupportedOperation : public VFSException {
+ public:
+  explicit UnsupportedOperation(const std::string& operation)
+      : VFSException(operation + " across filesystems is not supported yet") {
+  }
+};
+
+class UnsupportedURI : public VFSException {
+ public:
+  explicit UnsupportedURI(const std::string& uri)
+      : VFSException("Unsupported URI scheme: " + uri) {
+  }
+};
+
+// Local filesystem is always enabled
+static constexpr bool local_enabled = true;
+
+#ifdef _WIN32
+static constexpr bool windows_enabled = true;
+static constexpr bool posix_enabled = false;
+#else
+static constexpr bool windows_enabled = false;
+static constexpr bool posix_enabled = true;
+#endif
+
+#ifdef HAVE_GCS
+static constexpr bool gcs_enabled = true;
+#else
+static constexpr bool gcs_enabled = false;
+#endif  // HAVE_GCS
+
+#ifdef HAVE_S3
+static constexpr bool s3_enabled = true;
+#else
+static constexpr bool s3_enabled = false;
+#endif  // HAVE_S3
+
+#ifdef HAVE_HDFS
+static constexpr bool hdfs_enabled = true;
+#else
+static constexpr bool hdfs_enabled = false;
+#endif  // HAVE_HDFS
+
+#ifdef HAVE_AZURE
+static constexpr bool azure_enabled = true;
+#else
+static constexpr bool azure_enabled = false;
+#endif  // HAVE_AZURE
+}  // namespace filesystem
 
 class Tile;
 
@@ -84,6 +152,19 @@ enum class VFSMode : uint8_t;
 
 /** The VFS configuration parameters. */
 struct VFSParameters {
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  enum struct ReadLoggingMode {
+    DISABLED,
+    FRAGMENTS,
+    FRAGMENT_FILES,
+    ALL_FILES,
+    ALL_READS,
+    ALL_READS_ALWAYS
+  };
+
   VFSParameters() = delete;
 
   VFSParameters(const Config& config)
@@ -91,7 +172,30 @@ struct VFSParameters {
             config.get<uint64_t>("vfs.min_parallel_size").value())
       , read_ahead_cache_size_(
             config.get<uint64_t>("vfs.read_ahead_cache_size").value())
-      , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value()){};
+      , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value())
+      , read_logging_mode_(ReadLoggingMode::DISABLED) {
+    auto log_mode = config.get<std::string>("vfs.read_logging_mode").value();
+    if (log_mode == "") {
+      read_logging_mode_ = ReadLoggingMode::DISABLED;
+    } else if (log_mode == "fragments") {
+      read_logging_mode_ = ReadLoggingMode::FRAGMENTS;
+    } else if (log_mode == "fragment_files") {
+      read_logging_mode_ = ReadLoggingMode::FRAGMENT_FILES;
+    } else if (log_mode == "all_files") {
+      read_logging_mode_ = ReadLoggingMode::ALL_FILES;
+    } else if (log_mode == "all_reads") {
+      read_logging_mode_ = ReadLoggingMode::ALL_READS;
+    } else if (log_mode == "all_reads_always") {
+      read_logging_mode_ = ReadLoggingMode::ALL_READS_ALWAYS;
+    } else {
+      std::stringstream ss;
+      ss << "Invalid read logging mode '" << log_mode << "'. "
+         << "Use one of 'fragments', 'fragment_files', 'all_files', "
+         << "'all_reads', or 'all_reads_always'. Read logging is currently "
+         << "disabled.";
+      LOG_WARN(ss.str());
+    }
+  };
 
   ~VFSParameters() = default;
 
@@ -103,13 +207,61 @@ struct VFSParameters {
 
   /** The byte size to read-ahead for each read. */
   uint64_t read_ahead_size_;
+
+  /** The read logging mode to use. */
+  ReadLoggingMode read_logging_mode_;
 };
+
+/** The base parameters for class VFS. */
+struct VFSBase {
+  VFSBase() = delete;
+
+  VFSBase(stats::Stats* const parent_stats)
+      : stats_(parent_stats->create_child("VFS")){};
+
+  ~VFSBase() = default;
+
+ protected:
+  /** The class stats. */
+  stats::Stats* stats_;
+};
+
+/** The S3 filesystem. */
+#ifdef HAVE_S3
+class S3_within_VFS {
+  /** Private member variable */
+  S3 s3_;
+
+ protected:
+  template <typename... Args>
+  S3_within_VFS(Args&&... args)
+      : s3_(std::forward<Args>(args)...) {
+  }
+
+  /** Protected accessor for the S3 object. */
+  inline S3& s3() {
+    return s3_;
+  }
+
+  /** Protected accessor for the const S3 object. */
+  inline const S3& s3() const {
+    return s3_;
+  }
+};
+#else
+class S3_within_VFS {
+ protected:
+  template <typename... Args>
+  S3_within_VFS(Args&&...) {
+  }  // empty constructor
+};
+#endif
 
 /**
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS {
+class VFS : private VFSBase, protected S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -180,11 +332,11 @@ class VFS {
    * @param path The input path.
    * @return The string with the absolute path.
    */
-  static std::string abs_path(const std::string& path);
+  static std::string abs_path(std::string_view path);
 
   /**
    * Return a config object containing the VFS parameters. All other non-VFS
-   * parameters will are set to default values.
+   * parameters are set to default values.
    */
   Config config() const;
 
@@ -257,6 +409,14 @@ class VFS {
    * @return Status
    */
   Status remove_dir(const URI& uri) const;
+
+  /**
+   * Deletes directories in parallel from the given vector of directories.
+   *
+   * @param compute_tp The compute-bound ThreadPool.
+   * @param uris The URIs of the directories.
+   */
+  void remove_dirs(ThreadPool* compute_tp, const std::vector<URI>& uris) const;
 
   /**
    * Deletes a file.
@@ -346,8 +506,99 @@ class VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& parent) const;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * Currently this API is only supported for local files, S3 and Azure.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to list the objects recursively.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+  LsObjects ls_filtered(
+      const URI& parent,
+      [[maybe_unused]] F f,
+      [[maybe_unused]] D d,
+      bool recursive) const {
+    LsObjects results;
+    try {
+      if (parent.is_file()) {
+#ifdef _WIN32
+        results = win_.ls_filtered(parent, f, d, recursive);
+#else
+        results = posix_.ls_filtered(parent, f, d, recursive);
+#endif
+      } else if (parent.is_s3()) {
+#ifdef HAVE_S3
+        results = s3().ls_filtered(parent, f, d, recursive);
+#else
+        throw filesystem::VFSException("TileDB was built without S3 support");
+#endif
+      } else if (parent.is_gcs()) {
+#ifdef HAVE_GCS
+        results = gcs_.ls_filtered(parent, f, d, recursive);
+#else
+        throw filesystem::VFSException("TileDB was built without GCS support");
+#endif
+      } else if (parent.is_azure()) {
+#ifdef HAVE_AZURE
+        results = azure_.ls_filtered(parent, f, d, recursive);
+#else
+        throw filesystem::VFSException(
+            "TileDB was built without Azure support");
+#endif
+      } else if (parent.is_hdfs()) {
+#ifdef HAVE_HDFS
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+#else
+        throw filesystem::VFSException("TileDB was built without HDFS support");
+#endif
+      } else {
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+      }
+    } catch (LsStopTraversal& e) {
+      // Do nothing, callback signaled to stop traversal.
+    } catch (...) {
+      // Rethrow exception thrown by the callback.
+      throw;
+    }
+    return results;
+  }
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`,
+   * invoking the FilePredicate on each entry collected and the
+   * DirectoryPredicate on common prefixes for pruning.
+   *
+   * Currently this API is only supported for local files, S3, Azure and GCS.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+  LsObjects ls_recursive(
+      const URI& parent,
+      [[maybe_unused]] F f,
+      [[maybe_unused]] D d = accept_all_dirs) const {
+    return ls_filtered(parent, f, d, true);
+  }
 
   /**
    * Renames a file.
@@ -649,8 +900,9 @@ class VFS {
 
       const uint64_t size = buffer.size();
       ReadAheadBuffer ra_buffer(offset, std::move(buffer));
-      return LRUCache<std::string, ReadAheadBuffer>::insert(
+      LRUCache<std::string, ReadAheadBuffer>::insert(
           uri.to_string(), std::move(ra_buffer), size);
+      return Status::Ok();
     }
 
    private:
@@ -674,10 +926,6 @@ class VFS {
   GCS gcs_;
 #endif
 
-#ifdef HAVE_S3
-  S3 s3_;
-#endif
-
 #ifdef _WIN32
   Win win_;
 #else
@@ -687,9 +935,6 @@ class VFS {
 #ifdef HAVE_HDFS
   tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
-
-  /** The class stats. */
-  stats::Stats* stats_;
 
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;
@@ -718,8 +963,11 @@ class VFS {
   /** The read-ahead cache. */
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
 
-  /* The VFS configuration parameters. */
+  /** The VFS configuration parameters. */
   VFSParameters vfs_params_;
+
+  /** The URIs previously read by this instance. */
+  std::unordered_set<std::string> reads_logged_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -767,6 +1015,16 @@ class VFS {
    * read.
    */
   Status max_parallel_ops(const URI& uri, uint64_t* ops) const;
+
+  /**
+   * Log a read operation. The format of the log message depends on the
+   * config value `vfs.read_logging_mode`.
+   *
+   * @param uri The URI being read.
+   * @param offset The offset being read from.
+   * @param nbytes The number of bytes requested.
+   */
+  void log_read(const URI& uri, uint64_t offset, uint64_t nbytes);
 };
 
 }  // namespace tiledb::sm

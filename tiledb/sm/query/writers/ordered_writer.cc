@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,21 +45,19 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -68,38 +66,26 @@ namespace sm {
 OrderedWriter::OrderedWriter(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
+    StrategyParams& params,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
-    bool skip_checks_serialization)
+    optional<std::string> fragment_name)
     : WriterBase(
           stats,
           logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout,
+          params,
           written_fragment_info,
           false,
           coords_info,
           remote_query,
-          fragment_name,
-          skip_checks_serialization)
+          fragment_name)
     , frag_uri_(std::nullopt) {
-  if (layout != Layout::ROW_MAJOR && layout != Layout::COL_MAJOR) {
+  if (layout_ != Layout::ROW_MAJOR && layout_ != Layout::COL_MAJOR) {
     throw StatusException(Status_WriterError(
         "Failed to initialize OrderedWriter; The ordered writer does not "
         "support layout " +
-        layout_str(layout)));
+        layout_str(layout_)));
   }
 
   if (!array_schema_.dense()) {
@@ -163,7 +149,7 @@ std::string OrderedWriter::name() {
 
 void OrderedWriter::clean_up() {
   if (frag_uri_.has_value()) {
-    throw_if_not_ok(storage_manager_->vfs()->remove_dir(frag_uri_.value()));
+    throw_if_not_ok(resources_.vfs().remove_dir(frag_uri_.value()));
   }
 }
 
@@ -173,52 +159,15 @@ Status OrderedWriter::ordered_write() {
   assert(array_schema_.dense());
 
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return ordered_write<int8_t>();
-    case Datatype::UINT8:
-      return ordered_write<uint8_t>();
-    case Datatype::INT16:
-      return ordered_write<int16_t>();
-    case Datatype::UINT16:
-      return ordered_write<uint16_t>();
-    case Datatype::INT32:
-      return ordered_write<int32_t>();
-    case Datatype::UINT32:
-      return ordered_write<uint32_t>();
-    case Datatype::INT64:
-      return ordered_write<int64_t>();
-    case Datatype::UINT64:
-      return ordered_write<uint64_t>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return ordered_write<int64_t>();
-    default:
-      return logger_->status(Status_WriterError(
-          "Cannot write in ordered layout; Unsupported domain type"));
-  }
 
-  return Status::Ok();
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+      return ordered_write<decltype(T)>();
+    }
+    return Status_WriterError(
+        "Cannot write in ordered layout; Unsupported domain type");
+  };
+  return apply_with_type(g, type);
 }
 
 template <class T>
@@ -226,12 +175,13 @@ Status OrderedWriter::ordered_write() {
   auto timer_se = stats_->start_timer("ordered_write");
 
   // Create new fragment
-  auto frag_meta = make_shared<FragmentMetadata>(HERE());
+  auto frag_meta = this->create_fragment_metadata();
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   frag_uri_ = frag_meta->fragment_uri();
 
   // Create a dense tiler
   DenseTiler<T> dense_tiler(
+      query_memory_tracker_,
       &buffers_,
       &subarray_,
       stats_,
@@ -241,15 +191,18 @@ Status OrderedWriter::ordered_write() {
   auto tile_num = dense_tiler.tile_num();
 
   // Set number of tiles in the fragment metadata
-  throw_if_not_ok(frag_meta->set_num_tiles(tile_num));
+  frag_meta->set_num_tiles(tile_num);
 
   // Prepare, filter and write tiles for all attributes
   auto attr_num = buffers_.size();
-  auto compute_tp = storage_manager_->compute_tp();
+  auto* compute_tp = &resources_.compute_tp();
   auto thread_num = compute_tp->concurrency_level();
-  std::unordered_map<std::string, std::vector<WriterTileTupleVector>> tiles;
+  std::unordered_map<std::string, IndexedList<WriterTileTupleVector>> tiles;
   for (const auto& buff : buffers_) {
-    tiles.emplace(buff.first, std::vector<WriterTileTupleVector>());
+    tiles.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(buff.first),
+        std::forward_as_tuple(query_memory_tracker_));
   }
 
   if (attr_num > tile_num) {  // Parallelize over attributes
@@ -257,14 +210,14 @@ Status OrderedWriter::ordered_write() {
       auto buff_it = buffers_.begin();
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
-      auto& attr_tile_batches = tiles[attr];
+      auto& attr_tile_batches = tiles.at(attr);
       return prepare_filter_and_write_tiles<T>(
           attr, attr_tile_batches, frag_meta, &dense_tiler, 1);
     }));
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
-      auto& attr_tile_batches = tiles[attr];
+      auto& attr_tile_batches = tiles.at(attr);
       RETURN_NOT_OK(prepare_filter_and_write_tiles<T>(
           attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num));
     }
@@ -279,7 +232,7 @@ Status OrderedWriter::ordered_write() {
       const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
-        auto& attr_tile_batches = tiles[attr];
+        auto& attr_tile_batches = tiles.at(attr);
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
         for (auto& batch : attr_tile_batches) {
           uint64_t idx = 0;
@@ -295,7 +248,7 @@ Status OrderedWriter::ordered_write() {
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
-      auto& attr_tile_batches = tiles[attr];
+      auto& attr_tile_batches = tiles.at(attr);
       const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
@@ -303,7 +256,7 @@ Status OrderedWriter::ordered_write() {
         RETURN_NOT_OK(parallel_for(
             compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
               const auto& attr = buff.first;
-              auto& batch = tiles[attr][b];
+              auto& batch = tiles.at(attr)[b];
               auto idx = b * thread_num;
               for (auto& tile : batch) {
                 frag_meta->set_tile_min_var(attr, idx, tile.min());
@@ -325,7 +278,7 @@ Status OrderedWriter::ordered_write() {
 
   // The following will make the fragment visible
   URI commit_uri = array_->array_directory().get_commit_uri(frag_uri_.value());
-  RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
+  throw_if_not_ok(resources_.vfs().touch(commit_uri));
 
   return Status::Ok();
 }
@@ -333,7 +286,7 @@ Status OrderedWriter::ordered_write() {
 template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
-    std::vector<WriterTileTupleVector>& tile_batches,
+    IndexedList<WriterTileTupleVector>& tile_batches,
     shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
@@ -367,31 +320,37 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     assert(batch_size > 0);
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
-      tile_batches[b].emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, var, nullable, cell_size, type));
+      tile_batches[b].emplace_back(
+          array_schema_,
+          cell_num_per_tile,
+          var,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_);
     }
 
     {
       auto timer_se = stats_->start_timer("prepare_and_filter_tiles");
       auto st = parallel_for(
-          storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
+          &resources_.compute_tp(), 0, batch_size, [&](uint64_t i) {
             // Prepare and filter tiles
             auto& writer_tile = tile_batches[b][i];
-            RETURN_NOT_OK(
+            throw_if_not_ok(
                 dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
 
             if (!var) {
-              RETURN_NOT_OK(filter_tile(
+              throw_if_not_ok(filter_tile(
                   name, &writer_tile.fixed_tile(), nullptr, false, false));
             } else {
               auto offset_tile = &writer_tile.offset_tile();
-              RETURN_NOT_OK(filter_tile(
+              throw_if_not_ok(filter_tile(
                   name, &writer_tile.var_tile(), offset_tile, false, false));
-              RETURN_NOT_OK(
+              throw_if_not_ok(
                   filter_tile(name, offset_tile, nullptr, true, false));
             }
             if (nullable) {
-              RETURN_NOT_OK(filter_tile(
+              throw_if_not_ok(filter_tile(
                   name, &writer_tile.validity_tile(), nullptr, false, true));
             }
             return Status::Ok();
@@ -404,7 +363,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
       RETURN_NOT_OK(write_task->get());
     }
 
-    write_task = storage_manager_->io_tp()->execute([&, b, frag_tile_id]() {
+    write_task = resources_.io_tp().execute([&, b, frag_tile_id]() {
       close_files = (b == batch_num - 1);
       RETURN_NOT_OK(write_tiles(
           0,
@@ -429,5 +388,4 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

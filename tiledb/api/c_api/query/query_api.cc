@@ -57,14 +57,14 @@ int32_t tiledb_query_type_from_str(
 
 using tiledb::api::api_entry_plain;
 
-int32_t tiledb_query_type_to_str(
-    tiledb_query_type_t query_type, const char** str) noexcept {
+CAPI_INTERFACE(
+    query_type_to_str, tiledb_query_type_t query_type, const char** str) {
   return api_entry_plain<tiledb::api::tiledb_query_type_to_str>(
       query_type, str);
 }
 
-int32_t tiledb_query_type_from_str(
-    const char* str, tiledb_query_type_t* query_type) noexcept {
+CAPI_INTERFACE(
+    query_type_from_str, const char* str, tiledb_query_type_t* query_type) {
   return api_entry_plain<tiledb::api::tiledb_query_type_from_str>(
       str, query_type);
 }

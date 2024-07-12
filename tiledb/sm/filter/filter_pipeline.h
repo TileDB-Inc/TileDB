@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter.h"
@@ -50,8 +50,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Buffer;
 class EncryptionKey;
@@ -81,6 +80,9 @@ class FilterPipeline {
   /** Copy constructor. */
   FilterPipeline(const FilterPipeline& other);
 
+  /** Copy constructor. */
+  FilterPipeline(const FilterPipeline& other, const Datatype on_disk_type);
+
   /** Move constructor. */
   FilterPipeline(FilterPipeline&& other);
 
@@ -93,12 +95,26 @@ class FilterPipeline {
   /**
    * Adds a copy of the given filter to the end of this pipeline.
    *
-   * @param filter Filter to add
+   * @param filter Filter to add.
    */
   void add_filter(const Filter& filter);
 
+  /**
+   * Adds a copy of the given filter to the end of this pipeline with the given
+   * internal type.
+   *
+   * @param filter Filter to add.
+   */
+  void add_filter(const Filter& filter, const Datatype new_type);
+
   /** Clears the pipeline (removes all filters. */
   void clear();
+
+  /** Checks that all filters in a pipeline have compatible types */
+  static void check_filter_types(
+      const FilterPipeline& pipeline,
+      const Datatype first_input_type,
+      bool is_var = false);
 
   /**
    * Populates the filter pipeline from the data in the input binary buffer.
@@ -108,13 +124,15 @@ class FilterPipeline {
    * @return FilterPipeline
    */
   static FilterPipeline deserialize(
-      Deserializer& deserializer, const uint32_t version);
+      Deserializer& deserializer, const uint32_t version, Datatype datatype);
 
   /**
-   * Dumps the filter pipeline details in ASCII format in the selected
-   * output.
+   * Checks that two filters have compatible input / output types.
+   * Checks fail if the first filter outputs a type not accepted by the second
+   * filter as input.
    */
-  void dump(FILE* out) const;
+  static void ensure_compatible(
+      const Filter& first, const Filter& second, Datatype first_input_type);
 
   /**
    * Returns pointer to the first instance of a filter in the pipeline with the
@@ -197,9 +215,8 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param chunking True if the tile should be cut into chunks before
    * filtering, false if not.
-   * @return Status
    */
-  Status run_forward(
+  void run_forward(
       stats::Stats* writer_stats,
       WriterTile* tile,
       WriterTile* offsets_tile,
@@ -207,18 +224,14 @@ class FilterPipeline {
       bool chunking = true) const;
 
   /**
-   * Runs the pipeline in reverse on the given tile.
+   * Runs the pipeline in reverse on the given generic tile.
    *
    * @param reader_stats Stats to record in the function.
    * @param tile Current tile on which the filter pipeline is being run.
-   * @param compute_tp Compute theread pool.
    * @param config Global config.
    */
-  void run_reverse(
-      stats::Stats* stats,
-      Tile& tile,
-      ThreadPool& compute_tp,
-      const Config& config) const;
+  void run_reverse_generic_tile(
+      stats::Stats* stats, Tile& tile, const Config& config) const;
 
   /**
    * Run the given chunk range in reverse through the pipeline.
@@ -299,6 +312,8 @@ class FilterPipeline {
   bool use_tile_chunking(
       const bool is_var, const uint32_t version, const Datatype type) const;
 
+  std::vector<shared_ptr<Filter>> filters() const;
+
  private:
   /** A pair of FilterBuffers. */
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
@@ -350,7 +365,10 @@ class FilterPipeline {
       ThreadPool* const compute_tp) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FILTER_PIPELINE_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FilterPipeline& filter_pipeline);
