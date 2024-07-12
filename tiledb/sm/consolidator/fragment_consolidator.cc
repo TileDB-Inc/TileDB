@@ -371,21 +371,21 @@ Status FragmentConsolidator::consolidate_fragments(
       FragmentID frag_id(fragment_uri);
       std::string fragment = fragment_uri.last_path_part();
 
+      // Normalizes path separators for windows paths.
+      std::string array_uri = URI(array_name).to_string();
       // Check for valid URI based on array format version.
       if (frag_id.array_format_version() <= 11 &&
-          !fragment_uri.contains(std::string(array_name) + "/" + fragment)) {
+          !fragment_uri.contains(array_uri.append("/" + fragment))) {
         throw FragmentConsolidatorException(
             "Failed request to consolidate an invalid fragment URI '" +
-            fragment_uri.to_string() + "' for array at '" +
-            std::string(array_name) + "'");
+            fragment_uri.to_string() + "' for array at '" + array_uri + "'");
       } else if (
           frag_id.array_format_version() > 11 &&
           !fragment_uri.contains(
-              std::string(array_name) + "/__fragments/" + fragment)) {
+              array_uri.append("/__fragments/" + fragment))) {
         throw FragmentConsolidatorException(
             "Failed request to consolidate an invalid fragment URI '" +
-            fragment_uri.to_string() + "' for array at '" +
-            std::string(array_name) + "'");
+            fragment_uri.to_string() + "' for array at '" + array_uri + "'");
       }
       to_consolidate_set.emplace(fragment);
     }

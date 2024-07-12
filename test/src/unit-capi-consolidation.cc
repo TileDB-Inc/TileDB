@@ -7303,6 +7303,17 @@ TEST_CASE_METHOD(
     rc = tiledb_array_consolidate_fragments(
         ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
   }
+
+  SECTION("Invalid URIs") {
+    std::string frag1(strrchr(uri, '/') + 1), frag2(strrchr(uri, '/') + 1);
+    frag1 = "/some/array/__fragments/" + frag1;
+    frag2 = "/some/array/__fragments/" + frag2;
+    const char* uris[2] = {frag1.c_str(), frag2.c_str()};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+    CHECK(rc == TILEDB_ERR);
+    return;
+  }
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
 
@@ -7394,6 +7405,17 @@ TEST_CASE_METHOD(
     const char* uris[2] = {uri, uri2};
     rc = tiledb_array_consolidate_fragments(
         ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  }
+
+  SECTION("Invalid URIs") {
+    std::string frag1(strrchr(uri, '/') + 1), frag2(strrchr(uri, '/') + 1);
+    frag1 = "/some/array/" + frag1;
+    frag2 = "/some/array/" + frag2;
+    const char* uris[2] = {frag1.c_str(), frag2.c_str()};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+    CHECK(rc == TILEDB_ERR);
+    return;
   }
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
