@@ -125,8 +125,9 @@ TEST_CASE_METHOD(
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
+  REQUIRE(cfg_.set("rest.load_enumerations_on_array_open", "false").ok());
   auto schema_response =
-      call_handler(serialization::LoadArraySchemaRequest(false), stype);
+      call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
   auto schema = std::get<0>(schema_response);
   REQUIRE(schema->has_enumeration("enmr"));
   REQUIRE(schema->get_loaded_enumeration_names().size() == 0);
@@ -139,8 +140,9 @@ TEST_CASE_METHOD(
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
+  REQUIRE(cfg_.set("rest.load_enumerations_on_array_open", "false").ok());
   auto schema_response =
-      call_handler(serialization::LoadArraySchemaRequest(true), stype);
+      call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
   auto schema = std::get<0>(schema_response);
   REQUIRE(schema->has_enumeration("enmr"));
   REQUIRE(schema->get_loaded_enumeration_names().size() == 1);

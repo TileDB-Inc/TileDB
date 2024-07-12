@@ -262,9 +262,8 @@ RestClient::post_array_schema_from_rest(
     const Config& config,
     const URI& uri,
     uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    bool include_enumerations) {
-  serialization::LoadArraySchemaRequest req(include_enumerations);
+    uint64_t timestamp_end) {
+  serialization::LoadArraySchemaRequest req(config);
 
   Buffer buf;
   serialization::serialize_load_array_schema_request(

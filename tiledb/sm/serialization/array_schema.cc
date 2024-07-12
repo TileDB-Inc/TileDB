@@ -1850,7 +1850,6 @@ void load_array_schema_request_to_capnp(
     const LoadArraySchemaRequest& req) {
   auto config_builder = builder.initConfig();
   throw_if_not_ok(config_to_capnp(config, &config_builder));
-  builder.setIncludeEnumerations(req.include_enumerations());
 }
 
 void serialize_load_array_schema_request(
@@ -1906,7 +1905,9 @@ void serialize_load_array_schema_request(
 
 LoadArraySchemaRequest load_array_schema_request_from_capnp(
     capnp::LoadArraySchemaRequest::Reader& reader) {
-  return LoadArraySchemaRequest(reader.getIncludeEnumerations());
+  tdb_unique_ptr<Config> decoded_config = nullptr;
+  throw_if_not_ok(config_from_capnp(reader.getConfig(), &decoded_config));
+  return LoadArraySchemaRequest(*decoded_config);
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
@@ -1963,8 +1964,8 @@ void load_array_schema_response_to_capnp(
     auto entry = entries_builder[i++];
     entry.setKey(schema.first);
     auto schema_entry_builder = entry.initValue();
-    throw_if_not_ok(array_schema_to_capnp(
-        *(schema.second.get()), &schema_entry_builder, false));
+    throw_if_not_ok(
+        array_schema_to_capnp(*(schema.second), &schema_entry_builder, false));
   }
 }
 

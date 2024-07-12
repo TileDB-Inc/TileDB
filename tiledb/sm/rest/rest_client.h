@@ -108,7 +108,6 @@ class RestClient {
    * @param uri The Array URI to load the schema from.
    * @param timestamp_start The starting timestamp used to open the array.
    * @param timestamp_end The ending timestamp used to open the array.
-   * @param include_enumerations If true the schema will load enumerations.
    * @return Tuple containing the latest array schema, and all array schemas for
    *    the array opened with provided timestamps.
    */
@@ -119,8 +118,7 @@ class RestClient {
       const Config& config,
       const URI& uri,
       uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      bool include_enumerations = false);
+      uint64_t timestamp_end);
 
   /**
    * Post the array config and get an array from rest server

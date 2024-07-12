@@ -502,7 +502,7 @@ int32_t tiledb_array_schema_load(
     auto& rest_client = ctx->context().rest_client();
     try {
       auto array_schema_response = rest_client.post_array_schema_from_rest(
-          ctx->resources().config(), uri, 0, UINT64_MAX, false);
+          ctx->resources().config(), uri, 0, UINT64_MAX);
       (*array_schema)->array_schema_ = std::get<0>(array_schema_response);
     } catch (...) {
       delete *array_schema;
@@ -571,7 +571,7 @@ int32_t tiledb_array_schema_load_with_options(
     auto& rest_client = ctx->context().rest_client();
     try {
       auto array_schema_response = rest_client.post_array_schema_from_rest(
-          ctx->resources().config(), uri, 0, UINT64_MAX, incl_enmrs);
+          ctx->resources().config(), uri, 0, UINT64_MAX);
       (*array_schema)->array_schema_ = std::get<0>(array_schema_response);
     } catch (...) {
       delete *array_schema;
@@ -658,7 +658,7 @@ int32_t tiledb_array_schema_load_with_key(
   if (uri.is_tiledb()) {
     auto& rest_client = ctx->context().rest_client();
     auto array_schema_response = rest_client.post_array_schema_from_rest(
-        ctx->config(), uri, 0, UINT64_MAX, false);
+        ctx->config(), uri, 0, UINT64_MAX);
     (*array_schema)->array_schema_ = std::get<0>(array_schema_response);
   } else {
     // Create key
