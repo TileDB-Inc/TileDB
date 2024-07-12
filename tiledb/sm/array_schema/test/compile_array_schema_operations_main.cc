@@ -28,6 +28,18 @@
 
 #include "../array_schema_operations.h"
 
+#include "tiledb/common/logger.h"
+#include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
+
+using namespace tiledb::sm;
+
 int main() {
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
+  EncryptionKey key;
+
+  store_array_schema(resources, nullptr, key);
   return 0;
 }

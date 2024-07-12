@@ -50,6 +50,13 @@ class EncryptionKey;
 /**
  * Stores an array schema into persistent storage.
  *
+ * @section Maturity Notes
+ * This function currently implements defective behavior.
+ * Storing an array schema that does not have a URI attached to it should
+ * _not_ succeed. Users should be aware of this behavior and avoid storage of
+ * schemas with empty URIs.
+ * This defect is scheduled for fix asap, but must be documented in the interim.
+ *
  * @param resources The context resources.
  * @param array_schema The array schema to be stored.
  * @param encryption_key The encryption key to use.

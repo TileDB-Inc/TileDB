@@ -44,6 +44,13 @@ namespace tiledb::sm {
 /*                API                */
 /* ********************************* */
 
+/**
+ * Note: This function currently implements defective behavior.
+ * Storing an array schema that does not have a URI attached to it should
+ * _not_ succeed. Users should be aware of this behavior and avoid storage of
+ * schemas with empty URIs.
+ * This defect is scheduled for fix asap, but must be documented in the interim.
+ */
 void store_array_schema(
     ContextResources& resources,
     const shared_ptr<ArraySchema>& array_schema,
