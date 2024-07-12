@@ -242,28 +242,29 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
     // These are test vectors where:
     // Keylen = 256, IVlen = 96, PTlen = 408, AADlen = 0, Taglen = 128.
     struct TestCase {
-      char key[64 + 1];
-      char iv[24 + 1];
-      char pt[102 + 1];
-      char ct[102 + 1];
-      char tag[32 + 1];
+      span<const char, 64 + 1> key;
+      span<const char, 24 + 1> iv;
+      span<const char, 102 + 1> plaintext;
+      span<const char, 102 + 1> ciphertext;
+      span<const char, 32 + 1> tag;
 
-      TestCase(
-          const char* key_arg,
-          const char* iv_arg,
-          const char* pt_arg,
-          const char* ct_arg,
-          const char* tag_arg) {
-        std::memcpy(key, key_arg, sizeof(key));
-        std::memcpy(iv, iv_arg, sizeof(iv));
-        std::memcpy(pt, pt_arg, sizeof(pt));
-        std::memcpy(ct, ct_arg, sizeof(ct));
-        std::memcpy(tag, tag_arg, sizeof(tag));
+      constexpr TestCase(
+          decltype(key) key,
+          decltype(iv) iv,
+          decltype(plaintext) pt,
+          decltype(ciphertext) ct,
+          decltype(tag) tag)
+          : key(key)
+          , iv(iv)
+          , plaintext(pt)
+          , ciphertext(ct)
+          , tag(tag) {
       }
 
-      Buffer get_buffer(
-          unsigned buf_size, unsigned num_chars, const char* field) const {
+      static Buffer get_buffer(span<const char> field) {
         Buffer result;
+        auto num_chars = field.size() - 1;  // Exclude null terminator.
+        auto buf_size = num_chars / 2;
         REQUIRE(result.realloc(buf_size).ok());
         for (unsigned i = 0; i < num_chars; i += 2) {
           char byte_str[3] = {field[i], field[i + 1], '\0'};
@@ -274,27 +275,27 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
       }
 
       Buffer get_key() const {
-        return get_buffer(256 / 8, 64, key);
+        return get_buffer(key);
       }
 
       Buffer get_iv() const {
-        return get_buffer(96 / 8, 24, iv);
+        return get_buffer(iv);
       }
 
       Buffer get_plaintext() const {
-        return get_buffer(408 / 8, 102, pt);
-      }
-
-      Buffer get_tag() const {
-        return get_buffer(128 / 8, 32, tag);
+        return get_buffer(plaintext);
       }
 
       Buffer get_ciphertext() const {
-        return get_buffer(408 / 8, 102, ct);
+        return get_buffer(ciphertext);
+      }
+
+      Buffer get_tag() const {
+        return get_buffer(tag);
       }
     };
 
-    std::vector<TestCase> tests = {
+    static constexpr auto tests = {
         TestCase(
             "1fded32d5999de4a76e0f8082108823aef60417e1896cf4218a2fa90f632ec8a",
             "1f3afa4711e9474f32e70462",
