@@ -521,7 +521,7 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
   }
 }
 
-static std::string from_hex(const std::string& str) {
+static std::string from_hex(const std::string_view& str) {
   std::string output;
   for (size_t i = 0; i < str.length(); i += 2) {
     char byte_str[3] = {str[i], str[i + 1], '\0'};
@@ -544,10 +544,13 @@ static std::string to_hex(const uint8_t* data, uint64_t length) {
  */
 template <Status Hash(const void*, uint64_t, Buffer*), int Digest_Bytes>
 static void test_expected_hash_value(
-    const std::string& input, const std::string& expected_value, bool hex) {
+    const std::string_view& input,
+    const std::string_view& expected_value,
+    bool hex) {
   REQUIRE(expected_value.length() == Digest_Bytes * 2);
 
-  const std::string& processed_input = hex ? from_hex(input) : input;
+  const std::string& processed_input =
+      hex ? from_hex(input) : std::string{input};
 
   Buffer hash_buf(Digest_Bytes);
   CHECK(
@@ -562,17 +565,19 @@ static void test_expected_hash_value(
 TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
   auto test_md5 =
       test_expected_hash_value<Crypto::md5, Crypto::MD5_DIGEST_BYTES>;
-  static const std::vector<std::pair<std::string, std::string>> test_cases{
-      {"", "d41d8cd98f00b204e9800998ecf8427e"},
-      {"a", "0cc175b9c0f1b6a831c399e269772661"},
-      {"abc", "900150983cd24fb0d6963f7d28e17f72"},
-      {"message digest", "f96b697d7cb7938d525a2f31aaf161d0"},
-      {"abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b"},
-      {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-       "d174ab98d277d9f5a5611c2c9f419d9f"},
-      {"1234567890123456789012345678901234567890123456789012345678901234567890"
-       "1234567890",
-       "57edf4a22be3c955ac49da2e2107b67a"}};
+  static const std::vector<std::pair<std::string_view, std::string_view>>
+      test_cases{
+          {"", "d41d8cd98f00b204e9800998ecf8427e"},
+          {"a", "0cc175b9c0f1b6a831c399e269772661"},
+          {"abc", "900150983cd24fb0d6963f7d28e17f72"},
+          {"message digest", "f96b697d7cb7938d525a2f31aaf161d0"},
+          {"abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b"},
+          {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+           "d174ab98d277d9f5a5611c2c9f419d9f"},
+          {"1234567890123456789012345678901234567890123456789012345678901234567"
+           "890"
+           "1234567890",
+           "57edf4a22be3c955ac49da2e2107b67a"}};
 
   for (auto& [input, expected_hash] : test_cases) {
     test_md5(input, expected_hash, false);
@@ -582,7 +587,7 @@ TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
 TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
   auto test_sha256 =
       test_expected_hash_value<Crypto::sha256, Crypto::SHA256_DIGEST_BYTES>;
-  std::vector<std::pair<std::string, std::string>> test_cases{
+  std::vector<std::pair<std::string_view, std::string_view>> test_cases{
       // Len = 0
       {"", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
       // Len = 64
