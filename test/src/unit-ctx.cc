@@ -43,56 +43,63 @@
 TEST_CASE("C API: Test context tags", "[capi][ctx-tags]") {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-  tiledb::sm::StorageManager* sm = ctx->storage_manager();
 
-  // Check defaults
-  REQUIRE(sm->tags().size() == 2);
-  REQUIRE(sm->tags().at("x-tiledb-api-language") == "c");
-  REQUIRE(
-      sm->tags().at("x-tiledb-version") ==
-      (std::to_string(tiledb::sm::constants::library_version[0]) + "." +
-       std::to_string(tiledb::sm::constants::library_version[1]) + "." +
-       std::to_string(tiledb::sm::constants::library_version[2])));
+  // Only run these tests if the rest client has been initialized
+  if (ctx->has_rest_client()) {
+    auto& rest_client{ctx->rest_client()};
+    SECTION("Defaults") {
+      REQUIRE(rest_client.extra_headers().size() == 2);
+      REQUIRE(rest_client.extra_headers().at("x-tiledb-api-language") == "c");
+      REQUIRE(
+          rest_client.extra_headers().at("x-tiledb-version") ==
+          (std::to_string(tiledb::sm::constants::library_version[0]) + "." +
+           std::to_string(tiledb::sm::constants::library_version[1]) + "." +
+           std::to_string(tiledb::sm::constants::library_version[2])));
+    }
+    SECTION("tiledb_ctx_set_tag") {
+      REQUIRE(tiledb_ctx_set_tag(ctx, "tag1", "value1") == TILEDB_OK);
+      REQUIRE(rest_client.extra_headers().size() == 3);
+      REQUIRE(rest_client.extra_headers().at("tag1") == "value1");
 
-  // Check setter
-  REQUIRE(tiledb_ctx_set_tag(ctx, "tag1", "value1") == TILEDB_OK);
-  REQUIRE(sm->tags().size() == 3);
-  REQUIRE(sm->tags().at("tag1") == "value1");
+      REQUIRE(tiledb_ctx_set_tag(ctx, "tag2", "value2") == TILEDB_OK);
+      REQUIRE(rest_client.extra_headers().size() == 4);
+      REQUIRE(rest_client.extra_headers().at("tag2") == "value2");
 
-  REQUIRE(tiledb_ctx_set_tag(ctx, "tag2", "value2") == TILEDB_OK);
-  REQUIRE(sm->tags().size() == 4);
-  REQUIRE(sm->tags().at("tag2") == "value2");
-
-  REQUIRE(tiledb_ctx_set_tag(ctx, "tag1", "value3") == TILEDB_OK);
-  REQUIRE(sm->tags().size() == 4);
-  REQUIRE(sm->tags().at("tag1") == "value3");
-
+      REQUIRE(tiledb_ctx_set_tag(ctx, "tag1", "value3") == TILEDB_OK);
+      REQUIRE(rest_client.extra_headers().size() == 4);
+      REQUIRE(rest_client.extra_headers().at("tag1") == "value3");
+    }
+  }
   tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
   tiledb::Context ctx;
-  tiledb::sm::StorageManager* sm = ctx.ptr().get()->storage_manager();
 
-  // Check defaults
-  REQUIRE(sm->tags().size() == 2);
-  REQUIRE(sm->tags().at("x-tiledb-api-language") == "c++");
-  REQUIRE(
-      sm->tags().at("x-tiledb-version") ==
-      (std::to_string(tiledb::sm::constants::library_version[0]) + "." +
-       std::to_string(tiledb::sm::constants::library_version[1]) + "." +
-       std::to_string(tiledb::sm::constants::library_version[2])));
+  // Only run these tests if the rest client has been initialized
+  if (ctx.ptr().get()->has_rest_client()) {
+    auto& rest_client{ctx.ptr().get()->rest_client()};
+    SECTION("Defaults") {
+      REQUIRE(rest_client.extra_headers().size() == 2);
+      REQUIRE(rest_client.extra_headers().at("x-tiledb-api-language") == "c++");
+      REQUIRE(
+          rest_client.extra_headers().at("x-tiledb-version") ==
+          (std::to_string(tiledb::sm::constants::library_version[0]) + "." +
+           std::to_string(tiledb::sm::constants::library_version[1]) + "." +
+           std::to_string(tiledb::sm::constants::library_version[2])));
+    }
+    SECTION("tiledb_ctx_set_tag") {
+      REQUIRE_NOTHROW(ctx.set_tag("tag1", "value1"));
+      REQUIRE(rest_client.extra_headers().size() == 3);
+      REQUIRE(rest_client.extra_headers().at("tag1") == "value1");
 
-  // Check setter
-  REQUIRE_NOTHROW(ctx.set_tag("tag1", "value1"));
-  REQUIRE(sm->tags().size() == 3);
-  REQUIRE(sm->tags().at("tag1") == "value1");
+      REQUIRE_NOTHROW(ctx.set_tag("tag2", "value2"));
+      REQUIRE(rest_client.extra_headers().size() == 4);
+      REQUIRE(rest_client.extra_headers().at("tag2") == "value2");
 
-  REQUIRE_NOTHROW(ctx.set_tag("tag2", "value2"));
-  REQUIRE(sm->tags().size() == 4);
-  REQUIRE(sm->tags().at("tag2") == "value2");
-
-  REQUIRE_NOTHROW(ctx.set_tag("tag1", "value3"));
-  REQUIRE(sm->tags().size() == 4);
-  REQUIRE(sm->tags().at("tag1") == "value3");
+      REQUIRE_NOTHROW(ctx.set_tag("tag1", "value3"));
+      REQUIRE(rest_client.extra_headers().size() == 4);
+      REQUIRE(rest_client.extra_headers().at("tag1") == "value3");
+    }
+  }
 }

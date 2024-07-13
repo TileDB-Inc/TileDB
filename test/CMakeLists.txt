@@ -302,6 +302,7 @@ target_link_libraries(tiledb_unit
     TILEDB_CORE_OBJECTS
     Catch2::Catch2
     tiledb_test_support_lib
+    configuration_definitions
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)

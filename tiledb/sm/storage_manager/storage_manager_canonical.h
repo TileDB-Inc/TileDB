@@ -67,7 +67,6 @@ class ArraySchema;
 class Consolidator;
 class EncryptionKey;
 class Query;
-class RestClient;
 
 enum class EncryptionType : uint8_t;
 
@@ -124,9 +123,6 @@ class StorageManagerCanonical {
   /** Returns true while all tasks are being cancelled. */
   bool cancellation_in_progress();
 
-  /** Returns the current map of any set tags. */
-  const std::unordered_map<std::string, std::string>& tags() const;
-
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
 
@@ -137,17 +133,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status query_submit_async(Query* query);
-
-  /**
-   * Sets a string/string KV "tag" on the storage manager instance.
-   *
-   * This is currently only meant for internal TileDB Inc. usage.
-   *
-   * @param key Tag key
-   * @param value Tag value
-   * @return Status
-   */
-  Status set_tag(const std::string& key, const std::string& value);
 
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
@@ -220,9 +205,6 @@ class StorageManagerCanonical {
    */
   CancelableTasks cancelable_tasks_;
 
-  /** Tags for the context object. */
-  std::unordered_map<std::string, std::string> tags_;
-
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
@@ -235,9 +217,6 @@ class StorageManagerCanonical {
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
-
-  /** Sets default tag values on this StorageManagerCanonical. */
-  Status set_default_tags();
 };
 
 }  // namespace tiledb::sm

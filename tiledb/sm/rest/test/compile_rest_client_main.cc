@@ -1,11 +1,11 @@
 /**
- * @file compile_context_resources_main.cc
+ * @file tiledb/sm/rest/test/compile_rest_client_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,13 @@
  * THE SOFTWARE.
  */
 
-#include "../context_resources.h"
+#include "../rest_client.h"
 
 int main() {
-  tiledb::sm::Config config{};
-  tiledb::sm::ContextResources(config, nullptr, 0, 0, "");
+  /*
+   * Even though the factory has a default constructor, it's enough to pull
+   * in the object code for `class RestClient` itself.
+   */
+  [[maybe_unused]] tiledb::sm::RestClientFactory x{};
   return 0;
 }

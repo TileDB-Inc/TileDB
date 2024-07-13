@@ -322,8 +322,6 @@ set(TILEDB_CORE_SOURCES
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})
 
-
-
 #openssl3 md5 deprecation mitigation
 if(MSVC)
   set_source_files_properties(${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "/wd4996")
@@ -334,11 +332,12 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/curl.cc
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client_remote.cc
   )
 
   if(NOT WIN32)
     set_source_files_properties(
-      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client_remote.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_directory.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
@@ -362,7 +361,7 @@ if (TILEDB_SERIALIZATION)
   endif()
   if(MSVC)
     set_source_files_properties(
-      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client_remote.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_directory.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
@@ -440,7 +439,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS
     ${TILEDB_CORE_OBJECTS_LIBS}
 )
 
-target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
+target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE configuration_definitions)
 
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
@@ -503,7 +502,7 @@ endif()
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
 # object store definitions
-target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE object_store_definitions)
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE configuration_definitions)
 
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
@@ -938,8 +937,8 @@ set(TILEDB_INSTALL_TARGETS
 )
 if (NOT BUILD_SHARED_LIBS)
   list(APPEND TILEDB_INSTALL_TARGETS
-    TILEDB_CORE_OBJECTS_ILIB
-    object_store_definitions
+      TILEDB_CORE_OBJECTS_ILIB
+      configuration_definitions
   )
 endif()
 

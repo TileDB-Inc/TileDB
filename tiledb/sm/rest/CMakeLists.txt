@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/rest/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021-2024 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,34 +22,21 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+
+include(common NO_POLICY_SCOPE)
+include(object_library)
+
 #
+# Object library `rest_client`
+#
+commence(object_library rest_client)
+  this_target_sources(rest_client.cc)
+  this_target_object_libraries(config)
+conclude(object_library)
 
-include(common-root)
-
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(consolidator)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(fragment)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(object)
-add_subdirectory(query)
-add_subdirectory(query_plan)
-add_subdirectory(rest)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(storage_manager)
-add_subdirectory(subarray)
-add_subdirectory(tile)
-
-
-if (TILEDB_SERIALIZATION)
-  add_subdirectory(serialization)
-endif()
+#
+# Object library `rest_client_remote`
+#
+# This object library does not link standalone at present. As long as the
+# cyclic dependencies in `class RestClient` persist, that won't be possible.
+#
