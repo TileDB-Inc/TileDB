@@ -1,11 +1,11 @@
 /**
- * @file tiledb/api/c_api/dimension/test/compile_capi_dimension_main.cc
+ * @file tiledb/sm/rest/test/compile_rest_client_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
