@@ -3348,6 +3348,30 @@
     "text": "This directory contains local implementations of C++ standard library components that have been introduced in recent versions of the standard, but that are not included in the standard library shipping with one or more of the compilers supported by libtiledb.\n\n\nThere are two views standardized as part of C++23 that we provide a subset for: zip_view and chunk_view. The file tiledb/stdx/ranges is an include file (mimicking “ranges” in the standard library) that provides these two views. The implementations of these views are included in the __ranges subdirectory. (This naming convention mirrors that of LLVM.) The include directives for the implementations are surrounded by the appropriate version preprocessor directives so that once zip_view and/or chunk_view are available for a given compiler, the standard implementation will be used instead of our local implementation.\n\n\n\nThese are copies of Josuttis’s model implementation."
   },
   {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Public code docs",
+    "section": "",
+    "text": "This is public documentation of the code within this repository.",
+    "crumbs": [
+      "Public code docs"
+    ]
+  },
+  {
+    "objectID": "scripts/ci/posix/DIRECTORY.html",
+    "href": "scripts/ci/posix/DIRECTORY.html",
+    "title": "",
+    "section": "",
+    "text": "This directory holds common auxiliary scripts used by Github actions workflows for macOS and Linux (see &lt;root&gt;/.github/workflows/ci-linux_mac.yml).\n\nprelim.sh: install required system packages; configure system for core dumps\nbuild-services-start.sh: start emulators (eg S3, GCS) for backend-specific testing\nbuild-services-stop.sh: stop emulators (this has been necessary to avoid job failure due to unexited processes)\ndump-core-stacks.sh: dump the stack traces from saved core dumps (if applicable)"
+  },
+  {
+    "objectID": "external/blosc/README-VERSIONS.html",
+    "href": "external/blosc/README-VERSIONS.html",
+    "title": "",
+    "section": "",
+    "text": "The blosc files here were copied from release 1.21.0 of the c-blosc repository of the Blosc project. All we are using here is the byte shuffle code, so we do not have the library itself as an external dependency. We only use a selected subset of the sources; they are used without modification.\n\nhttps://github.com/Blosc/c-blosc\nhttps://github.com/Blosc/c-blosc/releases/tag/v1.21.0"
+  },
+  {
     "objectID": "CONTRIBUTING.html",
     "href": "CONTRIBUTING.html",
     "title": "Contributing to TileDB",
@@ -3374,37 +3398,6 @@
     "title": "Contributing to TileDB",
     "section": "",
     "text": "By contributing code to TileDB, you are agreeing to release it under the MIT License.\n\n\nPlease see building from source for dependencies and detailed build instructions.\nFrom a fork of TileDB\ngit clone https://github.com/username/TileDB\ncd TileDB && mkdir build && cd build\n../bootstrap\nmake && make check\ncd ../\ngit checkout -b &lt;my_initials&gt;/&lt;my_bugfix_branch&gt;\n... code changes ...\nmake -C build format\nmake -C build check\ngit commit -a -m \"my commit message\"\ngit push --set-upstream origin &lt;my_initials&gt;/&lt;my_bugfix_branch&gt;\nIssue a PR from your updated TileDB fork\nBranch conventions: - dev is the development branch of TileDB, all PR’s are merged into dev. - master tracks the latest stable / released version of TileDB. - release-x.y.z are major / bugfix release branches of TileDB.\nFormatting conventions: - 2 spaces per indentation level not tabs - class names use CamelCase - member functions, variables use lowercase with underscores - class member variables use a trailing underscore foo_ - comments are good, TileDB uses doxygen for class doc strings. - format code using clang-format\n\n\n\n\ndev is the development branch, all PR’s should be rebased on top of the latest dev commit.\nCommit changes to a local branch. The convention is to use your initials to identify branches: (ex. “Fred Jones” , fj/my_bugfix_branch). Branch names should be identifiable and reflect the feature or bug that they want to address / fix. This helps in deleting old branches later.\nMake sure the test suite passes by running make check.\nWhen ready to submit a PR, git rebase the branch on top of the latest dev commit. Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most. Each atomic commit in a PR should be able to pass the test suite.\nRun the limiting / code format tooling (make format) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.\nIf the PR changes/adds/removes user-facing API or system behavior (such as API changes), add a note to the TileDB/HISTORY.md file.\nSubmit a PR, writing a descriptive message. If a PR closes an open issue, reference the issue in the PR message (ex. If an issue closes issue number 10, you would write closes #10)\nMake sure CI (continuous integration) is passing for your PR – click Show all checks in the pull request status box at the bottom of each PR page. The continuous integration project pages will also list all recently-built PRs:\n\nAzure Pipelines\n\n\n\n\n\n\nTileDB uses Sphinx as its documentation generator.\nDocumentation is written in reStructuredText markup.\n\nBuilding the docs locally:\n$ cd TileDB/doc\n$ ./local-build.sh\nThis will install all the required packages in a Python virtual environment, and build the docs locally. You can then open the doc/source/_build/html/index.html file in your browser.\nNote: If there are additions to the C/C++ API in between builds, rerun bootstrap:\n$ cd ../build\n$ ../bootstrap &lt;flags&gt;\n\n\n\n\nTileDB\n\nHomepage\nDocumentation\nIssues\nForum\nOrganization\n\nGitHub / Git\n\nGit cheatsheet\nGitHub Documentation\nForking a Repo\nMore Learning Resources"
-  },
-  {
-    "objectID": "external/blosc/README-VERSIONS.html",
-    "href": "external/blosc/README-VERSIONS.html",
-    "title": "",
-    "section": "",
-    "text": "The blosc files here were copied from release 1.21.0 of the c-blosc repository of the Blosc project. All we are using here is the byte shuffle code, so we do not have the library itself as an external dependency. We only use a selected subset of the sources; they are used without modification.\n\nhttps://github.com/Blosc/c-blosc\nhttps://github.com/Blosc/c-blosc/releases/tag/v1.21.0"
-  },
-  {
-    "objectID": "scripts/ci/posix/DIRECTORY.html",
-    "href": "scripts/ci/posix/DIRECTORY.html",
-    "title": "",
-    "section": "",
-    "text": "This directory holds common auxiliary scripts used by Github actions workflows for macOS and Linux (see &lt;root&gt;/.github/workflows/ci-linux_mac.yml).\n\nprelim.sh: install required system packages; configure system for core dumps\nbuild-services-start.sh: start emulators (eg S3, GCS) for backend-specific testing\nbuild-services-stop.sh: stop emulators (this has been necessary to avoid job failure due to unexited processes)\ndump-core-stacks.sh: dump the stack traces from saved core dumps (if applicable)"
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Public code docs",
-    "section": "",
-    "text": "This is public documentation of the code within this repository.",
-    "crumbs": [
-      "Public code docs"
-    ]
-  },
-  {
-    "objectID": "ports/openssl/license.html",
-    "href": "ports/openssl/license.html",
-    "title": "",
-    "section": "",
-    "text": "CC0, from https://github.com/luncliff/vcpkg-registry/tree/main/ports/openssl1"
   },
   {
     "objectID": "tiledb/storage_format/DIRECTORY.html",
