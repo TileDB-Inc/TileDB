@@ -117,16 +117,13 @@ TEST_CASE(
   ThreadPool tp{1};
   ContextResources resources(
       cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
-  tiledb::sm::RestClient rest_client;
-  REQUIRE(rest_client
-              .init(
-                  &tiledb::test::g_helper_stats,
-                  &cfg,
-                  &tp,
-                  tiledb::test::g_helper_logger(),
-                  resources)
-              .ok());
-  CHECK(rest_client.rest_server() == "http://localhost:8080");
+  auto rest_client{tiledb::sm::RestClientFactory::make(
+      tiledb::test::g_helper_stats,
+      cfg,
+      tp,
+      *tiledb::test::g_helper_logger().get(),
+      resources.create_memory_tracker())};
+  CHECK(rest_client->rest_server() == "http://localhost:8080");
 }
 
 TEST_CASE(

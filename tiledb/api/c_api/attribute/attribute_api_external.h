@@ -311,6 +311,31 @@ TILEDB_EXPORT int32_t tiledb_attribute_dump(
     FILE* out) TILEDB_NOEXCEPT;
 
 /**
+ * Dumps the contents of an Attribute in ASCII form to the selected string
+ * output.
+ *
+ * The output string handle must be freed by the user after use.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_attribute_dump_str(ctx, attr, &tdb_string);
+ * // Use the string
+ * tiledb_string_free(&tdb_string);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The attribute.
+ * @param out The output string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_attribute_dump_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    tiledb_string_t** out) TILEDB_NOEXCEPT;
+
+/**
  * Sets the default fill value for the input attribute. This value will
  * be used for the input attribute whenever querying (1) an empty cell in
  * a dense array, or (2) a non-empty cell (in either dense or sparse array)

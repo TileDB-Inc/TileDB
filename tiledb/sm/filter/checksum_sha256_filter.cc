@@ -53,11 +53,9 @@ ChecksumSHA256Filter* ChecksumSHA256Filter::clone_impl() const {
   return tdb_new(ChecksumSHA256Filter, filter_data_type_);
 }
 
-void ChecksumSHA256Filter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "ChecksumSHA256");
+std::ostream& ChecksumSHA256Filter::output(std::ostream& os) const {
+  os << "ChecksumSHA256";
+  return os;
 }
 
 void ChecksumSHA256Filter::run_forward(

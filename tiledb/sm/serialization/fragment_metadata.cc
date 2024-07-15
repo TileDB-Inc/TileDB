@@ -117,7 +117,7 @@ void generic_tile_offsets_from_capnp(
 }
 
 Status fragment_metadata_from_capnp(
-    const shared_ptr<const ArraySchema>& array_schema,
+    const shared_ptr<const ArraySchema>& fragment_array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
     shared_ptr<FragmentMetadata> frag_meta) {
   if (frag_meta_reader.hasFileSizes()) {
@@ -145,7 +145,8 @@ Status fragment_metadata_from_capnp(
   if (frag_meta_reader.hasFragmentUri()) {
     // Reconstruct the fragment uri out of the received fragment name
     frag_meta->fragment_uri() = deserialize_array_uri_to_absolute(
-        frag_meta_reader.getFragmentUri().cStr(), array_schema->array_uri());
+        frag_meta_reader.getFragmentUri().cStr(),
+        fragment_array_schema->array_uri());
   }
   frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
   frag_meta->has_delete_meta() = frag_meta_reader.getHasDeleteMeta();
@@ -156,11 +157,13 @@ Status fragment_metadata_from_capnp(
   frag_meta->version() = frag_meta_reader.getVersion();
 
   // Set the array schema and most importantly retrigger the build
-  // of the internal idx_map. Also set array_schema_name which is used
-  // in some places in the global writer
-  frag_meta->set_array_schema(array_schema);
-  frag_meta->set_schema_name(array_schema->name());
-  frag_meta->set_dense(array_schema->dense());
+  // of the internal idx_map.
+  frag_meta->set_array_schema(fragment_array_schema);
+  frag_meta->set_dense(fragment_array_schema->dense());
+
+  if (frag_meta_reader.hasArraySchemaName()) {
+    frag_meta->set_schema_name(frag_meta_reader.getArraySchemaName().cStr());
+  }
 
   LoadedFragmentMetadata::LoadedMetadata loaded_metadata;
 
@@ -367,7 +370,7 @@ Status fragment_metadata_from_capnp(
 
   if (frag_meta_reader.hasRtree()) {
     auto data = frag_meta_reader.getRtree();
-    auto& domain = array_schema->domain();
+    auto& domain = fragment_array_schema->domain();
     // If there are no levels, we still need domain_ properly initialized
     frag_meta->loaded_metadata()->rtree().reset(
         &domain, constants::rtree_fanout);
@@ -391,7 +394,7 @@ Status fragment_metadata_from_capnp(
     RETURN_NOT_OK(status);
     // Whilst sparse gets its domain calculated, dense needs to have it
     // set here from the deserialized data
-    if (array_schema->dense()) {
+    if (fragment_array_schema->dense()) {
       frag_meta->init_domain(*ndrange);
     } else {
       const auto& frag0_dom = *ndrange;
@@ -698,6 +701,8 @@ Status fragment_metadata_to_capnp(
   auto gt_offsets_builder = frag_meta_builder->initGtOffsets();
   generic_tile_offsets_to_capnp(
       frag_meta.generic_tile_offsets(), gt_offsets_builder);
+
+  frag_meta_builder->setArraySchemaName(frag_meta.array_schema_name());
 
   return Status::Ok();
 }

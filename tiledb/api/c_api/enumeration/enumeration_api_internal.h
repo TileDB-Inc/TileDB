@@ -132,14 +132,8 @@ struct tiledb_enumeration_handle_t
     return enumeration_->offsets();
   }
 
-  /**
-   * Dump a representation of the Enumeration to out
-   *
-   * @param out Where to display the output, stdout if nullptr
-   */
-  inline void dump(FILE* out) const {
-    enumeration_->dump(out);
-  }
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_enumeration_handle_t& enumeration);
 };
 
 namespace tiledb::api {

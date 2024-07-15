@@ -705,7 +705,33 @@ int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->dump(out);
+
+  ensure_cstream_handle_is_valid(out);
+
+  std::stringstream ss;
+
+  ss << *array_schema->array_schema_;
+  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  if (r != ss.str().size()) {
+    throw CAPIException(
+        "Error writing array schema " +
+        array_schema->array_schema_->array_uri().to_string() + " to file");
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_dump_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_string_t** out) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(out);
+  std::stringstream ss;
+  ss << *array_schema->array_schema_;
+  *out = tiledb_string_handle_t::make_handle(ss.str());
   return TILEDB_OK;
 }
 
@@ -3777,7 +3803,7 @@ int32_t tiledb_deserialize_query_and_array(
       buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       *(*array)->array_,
-      ctx->storage_manager(),
+      ctx->resources(),
       memory_tracker));
 
   // Create query struct
@@ -5561,6 +5587,15 @@ CAPI_INTERFACE(
     const tiledb_array_schema_t* array_schema,
     FILE* out) {
   return api_entry<tiledb::api::tiledb_array_schema_dump>(
+      ctx, array_schema, out);
+}
+
+CAPI_INTERFACE(
+    array_schema_dump_str,
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_string_t** out) {
+  return api_entry<tiledb::api::tiledb_array_schema_dump_str>(
       ctx, array_schema, out);
 }
 

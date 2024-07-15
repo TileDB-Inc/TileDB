@@ -240,3 +240,244 @@ TEST_CASE_METHOD(
     vfs.remove_dir(array_name);
   }
 }
+
+TEST_CASE_METHOD(
+    CurrentDomainFx,
+    "C++ API: CurrentDomain - Write outside of current domain",
+    "[cppapi][ArraySchema][currentDomain]") {
+  const std::string array_name = "test_current_domain_write";
+
+  tiledb::VFS vfs(ctx_);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create domain
+  tiledb::Domain domain(ctx_);
+  auto d1 = tiledb::Dimension::create<int32_t>(ctx_, "dim1", {{0, 100}}, 10);
+  auto d2 = tiledb::Dimension::create(
+      ctx_, "dim2", TILEDB_STRING_ASCII, nullptr, nullptr);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+
+  // Create an NDRectangle and set ranges
+  tiledb::NDRectangle ndrect(ctx_, domain);
+  int range_one[] = {10, 20};
+  ndrect.set_range(0, range_one[0], range_one[1]);
+  ndrect.set_range(1, std::string("b"), std::string("db"));
+
+  // Create a currentDomain and set the NDRectangle
+  tiledb::CurrentDomain current_domain(ctx_);
+  current_domain.set_ndrectangle(ndrect);
+
+  // Create array schema.
+  tiledb::ArraySchema schema(ctx_, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(tiledb::Attribute::create<int>(ctx_, "a"));
+
+  tiledb::ArraySchemaExperimental::set_current_domain(
+      ctx_, schema, current_domain);
+
+  // Create array
+  tiledb::Array::create(array_name, schema);
+
+  tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+
+  // Some of the data here is outside of the current domain.
+  std::vector<int32_t> dim1 = {12, 14};
+  std::vector<int32_t> dim1_out = {12, 22};
+  std::vector<char> dim2 = {'b', 'c'};
+  std::vector<uint64_t> dim2_offsets = {0, 1};
+  std::vector<char> dim2_out = {'a', 'c'};
+  std::vector<int> a1 = {1, 2};
+
+  // All data in current domain.
+  tiledb::Query query1(ctx_, array, TILEDB_WRITE);
+  query1.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", a1)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim2", dim2_offsets)
+      .set_data_buffer("dim2", dim2);
+  query1.submit();
+
+  // Dimension 1 data out of current domain.
+  tiledb::Query query2(ctx_, array, TILEDB_WRITE);
+  query2.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", a1)
+      .set_data_buffer("dim1", dim1_out)
+      .set_offsets_buffer("dim2", dim2_offsets)
+      .set_data_buffer("dim2", dim2);
+  CHECK_THROWS_WITH(
+      query2.submit(),
+      Catch::Matchers::ContainsSubstring(
+          "Cells are written outside of the defined current domain."));
+
+  // Dimension 2 data out of current domain.
+  tiledb::Query query3(ctx_, array, TILEDB_WRITE);
+  query3.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", a1)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim2", dim2_offsets)
+      .set_data_buffer("dim2", dim2_out);
+  CHECK_THROWS_WITH(
+      query3.submit(),
+      Catch::Matchers::ContainsSubstring(
+          "Cells are written outside of the defined current domain."));
+  array.close();
+
+  // Create new currentDomain to allow all data
+  tiledb::CurrentDomain new_current_domain(ctx_);
+  int range_two[] = {10, 22};
+  tiledb::NDRectangle ndrect_two(ctx_, domain);
+  ndrect_two.set_range(0, range_two[0], range_two[1]);
+  ndrect_two.set_range(1, std::string("a"), std::string("db"));
+  new_current_domain.set_ndrectangle(ndrect_two);
+
+  // Schema evolution
+  tiledb::ArraySchemaEvolution se(ctx_);
+  se.expand_current_domain(new_current_domain);
+  se.array_evolve(array_name);
+
+  // Now try data that didn't succeed before.
+  tiledb::Array array2(ctx_, array_name, TILEDB_WRITE);
+  tiledb::Query query4(ctx_, array2, TILEDB_WRITE);
+  query4.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", a1)
+      .set_data_buffer("dim1", dim1_out)
+      .set_offsets_buffer("dim2", dim2_offsets)
+      .set_data_buffer("dim2", dim2_out);
+  query4.submit();
+  array2.close();
+
+  // Clean up.
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE_METHOD(
+    CurrentDomainFx,
+    "C++ API: CurrentDomain - Read cells written outside of shape",
+    "[cppapi][ArraySchema][currentDomain][luc]") {
+  const std::string array_name = "test_current_domain_read";
+
+  tiledb::VFS vfs(ctx_);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create domain
+  tiledb::Domain domain(ctx_);
+  auto d1 = tiledb::Dimension::create<int32_t>(ctx_, "dim1", {{0, 100}}, 10);
+  auto d2 = tiledb::Dimension::create(
+      ctx_, "dim2", TILEDB_STRING_ASCII, nullptr, nullptr);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+
+  // Create array schema.
+  tiledb::ArraySchema schema(ctx_, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(tiledb::Attribute::create<int>(ctx_, "a"));
+
+  // Create array
+  tiledb::Array::create(array_name, schema);
+
+  tiledb::Array array(ctx_, array_name, TILEDB_WRITE);
+
+  // Some of the data here is outside of the current domain we will set later.
+  std::vector<int32_t> dim1 = {12, 14, 16, 18};
+  std::vector<char> dim2 = {'b', 'a', 'b', 'c'};
+  std::vector<uint64_t> dim2_offsets = {0, 1, 2, 3};
+  std::vector<int> a1 = {1, 2, 3, 4};
+
+  // All data in current domain.
+  tiledb::Query query(ctx_, array, TILEDB_WRITE);
+  query.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", a1)
+      .set_data_buffer("dim1", dim1)
+      .set_offsets_buffer("dim2", dim2_offsets)
+      .set_data_buffer("dim2", dim2);
+  query.submit();
+  array.close();
+
+  // Create new currentDomain to allow all data
+  tiledb::CurrentDomain current_domain(ctx_);
+  int range[] = {10, 16};
+  tiledb::NDRectangle ndrect(ctx_, domain);
+  ndrect.set_range(0, range[0], range[1]);
+  ndrect.set_range(1, std::string("b"), std::string("c"));
+  current_domain.set_ndrectangle(ndrect);
+
+  // Schema evolution
+  tiledb::ArraySchemaEvolution se(ctx_);
+  se.expand_current_domain(current_domain);
+  se.array_evolve(array_name);
+
+  std::vector<int32_t> dim1_read(100);
+  std::vector<char> dim2_read(100);
+  std::vector<uint64_t> dim2_offsets_read(100);
+  std::vector<int> a1_read(100);
+
+  // Now try to read data.
+  tiledb::Array array_read(ctx_, array_name, TILEDB_READ);
+  tiledb::Query query_read(ctx_, array_read, TILEDB_READ);
+  query_read.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", a1_read)
+      .set_data_buffer("dim1", dim1_read)
+      .set_offsets_buffer("dim2", dim2_offsets_read)
+      .set_data_buffer("dim2", dim2_read);
+  query_read.submit();
+
+  // Validate we got two results.
+  auto res = query_read.result_buffer_elements();
+  CHECK(res["a"].second == 2);
+  CHECK(res["dim1"].second == 2);
+  CHECK(res["dim2"].first == 2);
+  CHECK(res["dim2"].second == 2);
+  CHECK(a1_read[0] == 1);
+  CHECK(a1_read[1] == 3);
+  CHECK(dim1_read[0] == 12);
+  CHECK(dim1_read[1] == 16);
+  CHECK(dim2_offsets_read[0] == 0);
+  CHECK(dim2_offsets_read[1] == 1);
+  CHECK(dim2_read[0] == 'b');
+  CHECK(dim2_read[1] == 'b');
+
+  // Now try to read data with ranges outside of current domain
+  tiledb::Query query_read2(ctx_, array_read, TILEDB_READ);
+  tiledb::Subarray subarray_read2(ctx_, array_read);
+
+  subarray_read2.add_range<int32_t>(0, 12, 16).add_range(0, 17, 20);
+  query_read2.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", a1_read)
+      .set_data_buffer("dim1", dim1_read)
+      .set_offsets_buffer("dim2", dim2_offsets_read)
+      .set_data_buffer("dim2", dim2_read)
+      .set_subarray(subarray_read2);
+  CHECK_THROWS_WITH(
+      query_read2.submit(),
+      Catch::Matchers::ContainsSubstring(
+          "A range was set outside of the current domain."));
+
+  tiledb::Query query_read3(ctx_, array_read, TILEDB_READ);
+  tiledb::Subarray subarray_read3(ctx_, array_read);
+
+  subarray_read3.add_range(1, std::string("a"), std::string("b"));
+  query_read3.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", a1_read)
+      .set_data_buffer("dim1", dim1_read)
+      .set_offsets_buffer("dim2", dim2_offsets_read)
+      .set_data_buffer("dim2", dim2_read)
+      .set_subarray(subarray_read3);
+  CHECK_THROWS_WITH(
+      query_read3.submit(),
+      Catch::Matchers::ContainsSubstring(
+          "A range was set outside of the current domain."));
+
+  array_read.close();
+
+  // Clean up.
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}

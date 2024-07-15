@@ -51,7 +51,6 @@ struct UpdatesFx {
   // TileDB context.
   Context ctx_;
   VFS vfs_;
-  sm::StorageManager* sm_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
@@ -84,7 +83,6 @@ UpdatesFx::UpdatesFx()
   config.set("sm.consolidation.buffer_size", "1000");
   config["sm.allow_updates_experimental"] = "true";
   ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);
 }
 

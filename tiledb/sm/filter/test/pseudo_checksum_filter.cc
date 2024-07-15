@@ -39,10 +39,6 @@ PseudoChecksumFilter::PseudoChecksumFilter(Datatype filter_data_type)
     : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
-void PseudoChecksumFilter::dump(FILE* out) const {
-  (void)out;
-}
-
 void PseudoChecksumFilter::run_forward(
     const WriterTile&,
     WriterTile* const,

@@ -50,6 +50,15 @@ class Domain;
 /** Defines an array current domain */
 class CurrentDomain {
  public:
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -140,13 +149,6 @@ class CurrentDomain {
   }
 
   /**
-   * Dump a textual representation of the CurrentDomain to the FILE
-   *
-   * @param out A file pointer to write to. If out is nullptr, use stdout
-   */
-  void dump(FILE* out) const;
-
-  /**
    * Sets a NDRectangle to this current domain and adjusts its type to reflect
    * that. Throws if the current domain is not empty.
    *
@@ -177,6 +179,25 @@ class CurrentDomain {
    * @return True if the argument is a superset of the current instance
    */
   bool covered(const NDRange& expanded_range) const;
+
+  /**
+   * Checks if this current domain fully contains the non empty domain of a
+   * fragment.
+   *
+   * @param non_empty_domain The non empty domain to check
+   * @return True if the current domain includes the non empty domain
+   */
+  bool includes(const NDRange& non_empty_domain) const;
+
+  /**
+   * Checks if this current domain fully contains the range for a specific
+   * dimension.
+   *
+   * @param d Dimension index to check for.
+   * @param range Range to validate.
+   * @return True if the range is included for the specific dimension
+   */
+  bool includes(const dimension_size_type d, const Range& range) const;
 
   /**
    * Perform various checks to ensure the current domain is coherent with the
@@ -210,5 +231,8 @@ class CurrentDomain {
 };
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::CurrentDomain& current_domain);
 
 #endif  // TILEDB_CURRENT_DOMAIN_H
