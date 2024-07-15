@@ -547,7 +547,7 @@ int32_t tiledb_array_schema_load_with_options(
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
   bool incl_enmrs = config->config().get<bool>(
-      "sm.array_schema.load_with_enumerations", sm::Config::must_find);
+      "rest.load_enumerations_on_array_open", sm::Config::must_find);
 
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;

@@ -57,6 +57,11 @@ TEST_CASE_METHOD(
     "[rest][array-schema][simple-load]") {
   create_array();
 
+  auto config = ctx_.config();
+  config.set("rest.load_enumerations_on_array_open", "false");
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+
   ArraySchema schema = Array::load_schema(ctx_, uri_);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Enumeration 'my_enum' is not loaded.");

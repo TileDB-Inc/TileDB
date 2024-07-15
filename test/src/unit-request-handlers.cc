@@ -120,8 +120,8 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
 
 TEST_CASE_METHOD(
     HandleLoadArraySchemaRequestFx,
-    "tiledb_handle_load_array_schema_request - default request",
-    "[request_handler][load_array_schema][default]") {
+    "tiledb_handle_load_array_schema_request - no enumerations",
+    "[request_handler][load_array_schema]") {
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
@@ -136,11 +136,10 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     HandleLoadArraySchemaRequestFx,
     "tiledb_handle_load_array_schema_request - load enumerations",
-    "[request_handler][load_array_schema][with-enumerations]") {
+    "[request_handler][load_array_schema][with-enumerations][default]") {
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
-  REQUIRE(cfg_.set("rest.load_enumerations_on_array_open", "false").ok());
   auto schema_response =
       call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
   auto schema = std::get<0>(schema_response);

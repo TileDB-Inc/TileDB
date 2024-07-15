@@ -428,7 +428,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
  * used instead.
  *
  * Currently supported options to be read from the config:
- *  - sm.array_schema.load_with_enumerations - boolean
+ *  - rest.load_enumerations_on_array_open - boolean
  *
  * **Example:**
  *
