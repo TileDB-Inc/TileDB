@@ -498,6 +498,24 @@ class Config {
    *    If `true` tile offsets can be partially loaded and unloaded by the
    *    readers. <br>
    *    **Default**: false
+   * - `ssl.ca_file` <br>
+   *    The path to CA certificate to use when validating server certificates.
+   *    Applies to all SSL/TLS connections. <br>
+   *    This option might be ignored on platforms that have native certificate
+   *    stores like Windows. <br>
+   *    **Default**: ""
+   * - `ssl.ca_path` <br>
+   *    The path to a directory with CA certificates to use when validating
+   *    server certificates. Applies to all SSL/TLS connections. <br>
+   *    This option might be ignored on platforms that have native certificate
+   *    stores like Windows. <br>
+   *    **Default**: ""
+   * - `ssl.verify` <br>
+   *    Whether to verify the server's certificate. Applies to all SSL/TLS
+   *    connections. <br>
+   *    Disabling verification is insecure and should only used for testing
+   *    purposes. <br>
+   *    **Default**: true
    * -  `vfs.read_ahead_cache_size` <br>
    *    The the total maximum size of the read-ahead cache, which is an LRU.
    *    <br>
