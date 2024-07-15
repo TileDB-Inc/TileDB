@@ -59,6 +59,7 @@ Status OpenSSL::get_random_bytes(span<uint8_t> buffer) {
       return Status_EncryptionError(
           "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
     }
+    buffer = buffer.subspan(num_bytes);
   }
   return Status::Ok();
 }
