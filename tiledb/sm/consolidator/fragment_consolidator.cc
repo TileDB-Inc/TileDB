@@ -373,7 +373,8 @@ Status FragmentConsolidator::consolidate_fragments(
       // Check for valid URI based on array format version.
       auto fragments_dir = array_for_reads->array_directory().get_fragments_dir(
           frag_id.array_format_version());
-      if (!fragment_uri.contains(fragments_dir)) {
+      if (fragment_uri !=
+          fragments_dir.join_path(fragment_uri.last_path_part().c_str())) {
         throw FragmentConsolidatorException(
             "Failed request to consolidate an invalid fragment URI '" +
             fragment_uri.to_string() + "' for array at '" +
