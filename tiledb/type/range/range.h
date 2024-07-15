@@ -163,8 +163,8 @@ class Range {
 
   /** Constructs a range and sets variable data. */
   Range(
-      const std::string& s1,
-      const std::string& s2,
+      const std::string_view& s1,
+      const std::string_view& s2,
       const allocator_type& alloc = {})
       : Range(alloc) {
     set_str_range(s1, s2);
@@ -179,6 +179,7 @@ class Range {
    */
   template <class T>
   Range(Tag<T>, T first, T second, const allocator_type& alloc = {})
+    requires(std::is_arithmetic_v<T>)
       : Range(2 * sizeof(T), alloc) {
     auto d{reinterpret_cast<T*>(range_.data())};
     d[0] = first;
@@ -242,7 +243,7 @@ class Range {
   }
 
   /** Sets a string range. */
-  void set_str_range(const std::string& s1, const std::string& s2) {
+  void set_str_range(const std::string_view& s1, const std::string_view& s2) {
     auto size = s1.size() + s2.size();
     if (size == 0) {
       range_.clear();
