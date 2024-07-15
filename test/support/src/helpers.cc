@@ -1472,6 +1472,155 @@ sm::URI generate_fragment_uri(sm::Array* array) {
   return frag_dir_uri.join_path(new_fragment_str);
 }
 
+void create_sparse_array_v11(tiledb_ctx_t* ctx, const std::string& array_name) {
+  tiledb_config_t* config;
+  REQUIRE(tiledb_ctx_get_config(ctx, &config) == TILEDB_OK);
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_vfs_alloc(ctx, config, &vfs) == TILEDB_OK);
+  // Get the v11 sparse array.
+  std::string v11_arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
+  REQUIRE(
+      tiledb_vfs_copy_dir(
+          ctx, vfs, v11_arrays_dir.c_str(), array_name.c_str()) == TILEDB_OK);
+}
+
+void write_sparse_v11(
+    tiledb_ctx_t* ctx, const std::string& array_name, uint64_t timestamp) {
+  // Prepare cell buffers.
+  std::vector<int> buffer_a1{0, 1, 2, 3};
+  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
+  std::string buffer_var_a2("abbcccdddd");
+  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
+  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
+  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
+
+  // Open array.
+  tiledb_array_t* array;
+  REQUIRE(tiledb_array_alloc(ctx, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_set_open_timestamp_end(ctx, array, timestamp) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx, array, TILEDB_WRITE) == TILEDB_OK);
+
+  // Create query.
+  tiledb_query_t* query;
+  REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER) == TILEDB_OK);
+  uint64_t a1_size = buffer_a1.size() * sizeof(int);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a1", buffer_a1.data(), &a1_size) == TILEDB_OK);
+  uint64_t a2_var_size = buffer_var_a2.size() * sizeof(char);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a2", (void*)buffer_var_a2.c_str(), &a2_var_size) ==
+      TILEDB_OK);
+  uint64_t a2_size = buffer_a2.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_offsets_buffer(
+          ctx, query, "a2", buffer_a2.data(), &a2_size) == TILEDB_OK);
+  uint64_t a3_size = buffer_a3.size() * sizeof(float);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a3", buffer_a3.data(), &a3_size) == TILEDB_OK);
+
+  uint64_t d1_size = buffer_coords_dim1.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "d1", buffer_coords_dim1.data(), &d1_size) == TILEDB_OK);
+  uint64_t d2_size = buffer_coords_dim2.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "d2", buffer_coords_dim2.data(), &d2_size) == TILEDB_OK);
+
+  // Submit/finalize the query.
+  REQUIRE(tiledb_query_submit_and_finalize(ctx, query) == TILEDB_OK);
+  // Close array.
+  REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
+
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void read_sparse_v11(
+    tiledb_ctx_t* ctx, const std::string& array_name, uint64_t timestamp) {
+  // Prepare expected results for cell buffers.
+  std::vector<int> buffer_a1{0, 1, 2, 3};
+  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
+  std::string buffer_var_a2("abbcccdddd");
+  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
+  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
+  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
+
+  int buffer_a1_read[4];
+  uint64_t buffer_a2_read[4];
+  char buffer_var_a2_read[10];
+  float buffer_a3_read[8];
+  uint64_t buffer_coords_dim1_read[4];
+  uint64_t buffer_coords_dim2_read[4];
+
+  // Open array.
+  tiledb_array_t* array;
+  REQUIRE(tiledb_array_alloc(ctx, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_set_open_timestamp_end(ctx, array, timestamp) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
+
+  // Create query.
+  tiledb_query_t* query;
+  REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER) == TILEDB_OK);
+  uint64_t a1_size = buffer_a1.size() * sizeof(int);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a1", buffer_a1_read, &a1_size) == TILEDB_OK);
+  uint64_t a2_var_size = buffer_var_a2.size() * sizeof(char);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a2", buffer_var_a2_read, &a2_var_size) == TILEDB_OK);
+  uint64_t a2_size = buffer_a2.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_offsets_buffer(
+          ctx, query, "a2", buffer_a2_read, &a2_size) == TILEDB_OK);
+  uint64_t a3_size = buffer_a3.size() * sizeof(float);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a3", buffer_a3_read, &a3_size) == TILEDB_OK);
+
+  uint64_t d1_size = buffer_coords_dim1.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "d1", buffer_coords_dim1_read, &d1_size) == TILEDB_OK);
+  uint64_t d2_size = buffer_coords_dim2.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "d2", buffer_coords_dim2_read, &d2_size) == TILEDB_OK);
+
+  // Submit the query.
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
+  // Close array.
+  REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
+
+  CHECK(!memcmp(buffer_a1.data(), buffer_a1_read, sizeof(buffer_a1_read)));
+  CHECK(!memcmp(
+      buffer_var_a2.data(), buffer_var_a2_read, sizeof(buffer_var_a2_read)));
+  CHECK(!memcmp(buffer_a2.data(), buffer_a2_read, sizeof(buffer_a2_read)));
+  CHECK(!memcmp(buffer_a3.data(), buffer_a3_read, sizeof(buffer_a3_read)));
+  CHECK(!memcmp(
+      buffer_coords_dim1.data(),
+      buffer_coords_dim1_read,
+      sizeof(buffer_coords_dim1_read)));
+  CHECK(!memcmp(
+      buffer_coords_dim2.data(),
+      buffer_coords_dim2_read,
+      sizeof(buffer_coords_dim2_read)));
+
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(
