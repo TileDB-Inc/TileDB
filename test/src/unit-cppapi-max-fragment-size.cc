@@ -555,13 +555,13 @@ TEST_CASE(
 
   // Read data to validate write and num of fragments.
   CHECK(tiledb::test::num_fragments(array_name) == 3);
+
   Array array(ctx, array_name, TILEDB_READ);
-  const std::vector<int32_t> subarray = {0, 2, 0, 2};
+  tiledb::Subarray sub(ctx, array);
+  sub.set_subarray({0, 2, 0, 2});
   std::vector<int32_t> a(9);
   Query query(ctx, array, TILEDB_READ);
-  query.set_subarray(subarray)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", a);
+  query.set_subarray(sub).set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a);
   query.submit();
   array.close();
 
@@ -582,10 +582,11 @@ TEST_CASE(
 
   // Read data to validate correctness
   Array array2(ctx, array_name, TILEDB_READ);
-  const std::vector<int32_t> subarray2 = {0, 2, 0, 2};
+  tiledb::Subarray sub2(ctx, array2);
+  sub2.set_subarray({0, 2, 0, 2});
   std::vector<int32_t> a2(9);
   Query query2(ctx, array2, TILEDB_READ);
-  query2.set_subarray(subarray2)
+  query2.set_subarray(sub2)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a2);
   query2.submit();
