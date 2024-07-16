@@ -271,7 +271,11 @@ void DeletesFx::write_sparse_v11(uint64_t timestamp) {
   std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
 
   // Open array.
-  Array array(ctx_, array_name_.c_str(), TILEDB_WRITE, timestamp);
+  Array array(
+      ctx_,
+      array_name_.c_str(),
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);

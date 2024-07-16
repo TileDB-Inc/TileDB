@@ -313,7 +313,11 @@ TEST_CASE_METHOD(
 
   // Create and open array in write mode
   tiledb::Context ctx;
-  tiledb::Array array(ctx, std::string(array_name_), TILEDB_WRITE, 1);
+  tiledb::Array array(
+      ctx,
+      std::string(array_name_),
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, 1));
 
   // Write items
   int32_t v = 5;

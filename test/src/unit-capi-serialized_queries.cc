@@ -704,7 +704,7 @@ TEST_CASE_METHOD(
     Subarray cppapi_subarray(ctx, array);
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
-    query.set_coordinates(coords);
+    query.set_data_buffer("__coords", coords);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);

@@ -128,7 +128,11 @@ void CppPartialAttrWriteFx::write_sparse_dims(
     std::unique_ptr<Array>& array,
     std::unique_ptr<Query>& query) {
   // Open array.
-  array = std::make_unique<Array>(ctx_, array_name_, TILEDB_WRITE, timestamp);
+  array = std::make_unique<Array>(
+      ctx_,
+      array_name_,
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   query = std::make_unique<Query>(ctx_, *array, TILEDB_WRITE);
@@ -148,7 +152,11 @@ void CppPartialAttrWriteFx::write_sparse_dims_and_a1(
     std::unique_ptr<Array>& array,
     std::unique_ptr<Query>& query) {
   // Open array.
-  array = std::make_unique<Array>(ctx_, array_name_, TILEDB_WRITE, timestamp);
+  array = std::make_unique<Array>(
+      ctx_,
+      array_name_,
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   query = std::make_unique<Query>(ctx_, *array, TILEDB_WRITE);

@@ -422,47 +422,6 @@ TILEDB_EXPORT capi_return_t tiledb_group_remove_member(
 TILEDB_EXPORT capi_return_t tiledb_group_get_member_count(
     tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) TILEDB_NOEXCEPT;
 
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-/**
- * Get a member of a group by index and details of group.
- * Deprecated, use \p tiledb_group_get_member_by_index_v2 instead.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_WRITE);
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array");
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2");
- *
- * tiledb_group_close(ctx, group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * char *uri;
- * tiledb_object_t type;
- * tiledb_group_get_member_by_index(ctx, group, 0, &uri, &type);
- *
- * free(uri);
- *
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param index index of member to fetch
- * @param uri URI of member.
- * @param type type of member
- * @param name name of member. NULL if name was not set
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_get_member_by_index(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    uint64_t index,
-    char** uri,
-    tiledb_object_t* type,
-    char** name) TILEDB_NOEXCEPT;
-#endif  // TILEDB_REMOVE_DEPRECATIONS
-
 /**
  * Get a member of a group by index and details of group
  *
@@ -502,46 +461,6 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_index_v2(
     tiledb_object_t* type,
     tiledb_string_t** name) TILEDB_NOEXCEPT;
 
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-/**
- * Get a member of a group by name and details of group.
- * Deprecated, use \p tiledb_group_get_member_by_name_v2.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_WRITE);
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array", "array1");
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2",
- * "group2");
- *
- * tiledb_group_close(ctx, group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * char *uri;
- * tiledb_object_t type;
- * tiledb_group_get_member_by_name(ctx, group, "array1", &uri, &type);
- *
- * free(uri);
- *
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param name name of member to fetch
- * @param uri URI of member
- * @param type type of member
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_get_member_by_name(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    const char* name,
-    char** uri,
-    tiledb_object_t* type) TILEDB_NOEXCEPT;
-#endif  // TILEDB_REMOVE_DEPRECATIONS
-
 /**
  * Get a member of a group by name and details of group.
  *
@@ -559,7 +478,7 @@ TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_get_member_by_name(
  * tiledb_group_open(ctx, group, TILEDB_READ);
  * tilledb_string_t *uri;
  * tiledb_object_t type;
- * tiledb_group_get_member_by_name(ctx, group, "array1", &uri, &type);
+ * tiledb_group_get_member_by_name_v2(ctx, group, "array1", &uri, &type);
  *
  * tiledb_string_free(uri);
  *
