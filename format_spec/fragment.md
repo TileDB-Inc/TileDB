@@ -70,7 +70,7 @@ The fragment metadata file has the following on-disk format:
 | Variable sums for attribute/dimension N | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension N |
 | Tile null counts for attribute/dimension 1 | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension 1 |
 | … | … | … |
-| Variable maxes for attribute/dimension N | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
+| Tile null counts for attribute/dimension N | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
 | Fragment min, max, sum, null count | [Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | The serialized fragment min max sum null count |
 | Processed conditions | [Tile Processed Conditions](#tile-processed-conditions) | The serialized processed conditions |
 | Metadata footer | [Footer](#footer) | Basic metadata gathered in the footer |
