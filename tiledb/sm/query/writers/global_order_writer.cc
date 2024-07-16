@@ -1438,7 +1438,9 @@ uint64_t GlobalOrderWriter::num_tiles_per_row() {
     // skip first dim. todo Explain
     auto dim{array_schema_.dimension_ptr(d)};
     auto dim_dom = dim->domain();
-    ret *= dim->domain_range(dim_dom);
+    ret *= dim->domain_range(dim_dom) / dim->tile_extent().rvalue_as<int32_t>();
+    // todo consider cases where the above calculation has a remainder. Also
+    // consider other types
   }
   return ret;
 }
