@@ -215,6 +215,12 @@ class GlobalOrderWriter : public WriterBase {
    */
   uint64_t current_fragment_size_;
 
+  /**
+   * Counter for the number of rows written. This is used only when the
+   * consolidation produces more than one fragment in Dense arrays
+   */
+  uint64_t rows_written_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -384,6 +390,15 @@ class GlobalOrderWriter : public WriterBase {
       uint64_t start,
       uint64_t tile_num,
       tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles);
+
+  /**
+   * Return the number of tiles a single row can hold
+   *
+   * @return Number of tiles.
+   */
+  NDRange ndranges_after_split(uint64_t num);
+
+  uint64_t num_tiles_per_row();
 
   /**
    * Close the current fragment and start a new one. The closed fragment will

@@ -38,6 +38,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/consolidator/consolidator.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -91,7 +92,8 @@ GlobalOrderWriter::GlobalOrderWriter(
           fragment_name)
     , processed_conditions_(processed_conditions)
     , fragment_size_(fragment_size)
-    , current_fragment_size_(0) {
+    , current_fragment_size_(0)
+    , rows_written_(0) {
   // Check the layout is global order.
   if (layout_ != Layout::GLOBAL_ORDER) {
     throw GlobalOrderWriterException(
@@ -781,6 +783,13 @@ Status GlobalOrderWriter::global_write() {
     // Compute the number of tiles that will fit in this fragment.
     auto num = num_tiles_to_write(idx, tile_num, tiles);
 
+    if (tile_num != num && array_schema_.array_type() == ArrayType::DENSE) {
+      // if it is a dense array and not all tiles can fit in the current
+      // fragment then we need to split the domain
+      NDRange new_nd = ndranges_after_split(num);
+      frag_meta->init_domain(new_nd);
+    }
+
     // If we're resuming a fragment write and the first tile doesn't fit into
     // the previous fragment, we need to start a new fragment and recalculate
     // the number of tiles to write.
@@ -1420,6 +1429,52 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
   }
 
   return tile_num - start;
+}
+
+uint64_t GlobalOrderWriter::num_tiles_per_row() {
+  auto dim_num = array_schema_.dim_num();
+  uint64_t ret = 1;
+  for (unsigned d = 1; d < dim_num; ++d) {
+    // skip first dim. todo Explain
+    auto dim{array_schema_.dimension_ptr(d)};
+    auto dim_dom = dim->domain();
+    ret *= dim->domain_range(dim_dom);
+  }
+  return ret;
+}
+
+NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
+  uint64_t tiles_per_row = num_tiles_per_row();
+  auto dim_num = array_schema_.dim_num();
+  NDRange nd;
+  nd.reserve(dim_num);
+
+  if (num % tiles_per_row != 0) {
+    throw GlobalOrderWriterException(
+        "This fragment target size is not possible please try something else ");  // todo fix
+  }
+
+  // Calculate how many rows we will write in the current fragment
+  uint64_t rows_to_write = num / tiles_per_row;
+
+  // Create the range for the index dim (first).
+  int start = rows_written_;
+  int end = start + rows_to_write - 1;
+  Range range(&start, &end, sizeof(int));
+  nd.emplace_back(range);
+
+  // Use the domain as ranges for the rest of the dims
+  for (unsigned d = 1; d < dim_num; ++d) {
+    // begin from second dim
+    auto dim{array_schema_.dimension_ptr(d)};
+    auto dim_dom = dim->domain();
+    nd.emplace_back(dim_dom);
+  }
+
+  // add rows written to the cache
+  rows_written_ += rows_to_write;
+
+  return nd;
 }
 
 Status GlobalOrderWriter::start_new_fragment() {
