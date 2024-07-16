@@ -38,7 +38,6 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/filtered_data.h"

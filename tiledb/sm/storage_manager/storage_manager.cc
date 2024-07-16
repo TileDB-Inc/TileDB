@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017-2024 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,7 +56,6 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/query.h"

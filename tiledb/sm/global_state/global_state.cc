@@ -39,7 +39,6 @@
 #ifdef __linux__
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/filesystem/posix.h"
-#include "tiledb/sm/misc/utils.h"
 #endif
 
 #include <cassert>

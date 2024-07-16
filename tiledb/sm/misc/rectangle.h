@@ -1,12 +1,11 @@
 /**
- * @file   utils.h
+ * @file   rectangle.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,83 +27,19 @@
  *
  * @section DESCRIPTION
  *
- * This file contains useful (global) functions.
+ * This file defines namespace rectangle.
  */
 
-#ifndef TILEDB_UTILS_H
-#define TILEDB_UTILS_H
+#ifndef TILEDB_RECTANGLE_H
+#define TILEDB_RECTANGLE_H
 
-#include <cassert>
-#include <cmath>
-#include <string>
-#include <type_traits>
 #include <vector>
 
-#include "constants.h"
 #include "tiledb/common/status.h"
-
-namespace tiledb {
-namespace sm {
 
 using namespace tiledb::common;
 
-class Posix;
-class URI;
-
-enum class Datatype : uint8_t;
-enum class SerializationType : uint8_t;
-
-namespace utils {
-
-/* ********************************* */
-/*          TYPE FUNCTIONS           */
-/* ********************************* */
-
-namespace datatype {
-
-/**
- * Check if a given type T is quivalent to the tiledb::sm::DataType
- * @tparam T
- * @param datatype to compare T to
- * @return Status indicating Ok() on equal data types else Status:Error()
- */
-template <class T>
-Status check_template_type_to_datatype(Datatype datatype);
-
-}  // namespace datatype
-
-/* ********************************* */
-/*        GEOMETRY FUNCTIONS         */
-/* ********************************* */
-
-namespace geometry {
-
-/**
- * Returns the number of cells in the input rectangle. Applicable
- * only to integers.
- *
- * @tparam T The rectangle domain type.
- * @param rect The input rectangle.
- * @param dim_num The number of dimensions of the rectangle.
- * @return The number of cells in the rectangle.
- */
-template <
-    class T,
-    typename std::enable_if<std::is_integral<T>::value, T>::type* = nullptr>
-uint64_t cell_num(const T* rect, unsigned dim_num) {
-  uint64_t ret = 1;
-  for (unsigned i = 0; i < dim_num; ++i)
-    ret *= rect[2 * i + 1] - rect[2 * i] + 1;
-  return ret;
-}
-
-/** Non-applicable to non-integers. */
-template <
-    class T,
-    typename std::enable_if<!std::is_integral<T>::value, T>::type* = nullptr>
-uint64_t cell_num(const T*, unsigned) {
-  throw std::logic_error("Invalid call to `cell_num` for non-integral type");
-}
+namespace tiledb::sm::rectangle {
 
 /**
  * Checks if `coords` are inside `rect`.
@@ -173,10 +108,6 @@ std::vector<std::array<T, 2>> intersection(
     const std::vector<std::array<T, 2>>& r1,
     const std::vector<std::array<T, 2>>& r2);
 
-}  // namespace geometry
+}  // namespace tiledb::sm::rectangle
 
-}  // namespace utils
-}  // namespace sm
-}  // namespace tiledb
-
-#endif  // TILEDB_UTILS_H
+#endif  // TILEDB_RECTANGLE_H

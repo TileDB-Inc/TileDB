@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,6 @@
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
 #include <optional>

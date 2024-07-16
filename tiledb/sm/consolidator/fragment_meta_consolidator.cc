@@ -36,7 +36,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"

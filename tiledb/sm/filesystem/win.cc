@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,15 +55,13 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 #include "win.h"
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 namespace {
 /** Returns the last Windows error message string. */
@@ -588,7 +586,6 @@ Status Win::write_at(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // _WIN32

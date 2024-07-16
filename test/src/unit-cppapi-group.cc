@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,6 @@
 #include "tiledb/sm/cpp_api/group.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
 #include <sstream>

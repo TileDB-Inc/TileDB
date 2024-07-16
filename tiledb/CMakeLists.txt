@@ -237,10 +237,10 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/mgc_dict.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/rectangle.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_math.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_time.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/object/object.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/object/object_iter.cc

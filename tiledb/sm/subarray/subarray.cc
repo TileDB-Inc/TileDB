@@ -49,9 +49,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/rectangle.h"
 #include "tiledb/sm/misc/resource_pool.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -841,7 +841,7 @@ uint64_t Subarray::tile_cell_num(const T* tile_coords) const {
     uint64_t cell_num_for_dim = 0;
     for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
       const auto& range = range_subset_[d][r];
-      utils::geometry::overlap(
+      rectangle::overlap(
           (const T*)range.data(),
           &tile_subarray[2 * d],
           1,
@@ -2691,7 +2691,7 @@ void Subarray::crop_to_tile_impl(const T* tile_coords, SubarrayT& ret) const {
     uint64_t i = 0;
     for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
       const auto& range = range_subset_[d][r];
-      utils::geometry::overlap(
+      rectangle::overlap(
           (const T*)range.data(),
           &tile_subarray[2 * d],
           1,

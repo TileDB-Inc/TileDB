@@ -37,7 +37,6 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 #include <cassert>
@@ -55,8 +54,7 @@ class RTreeException : public StatusException {
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -419,5 +417,4 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
   domain_ = domain;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

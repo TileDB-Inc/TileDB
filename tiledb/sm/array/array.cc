@@ -52,7 +52,6 @@
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"

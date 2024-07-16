@@ -36,7 +36,6 @@
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
