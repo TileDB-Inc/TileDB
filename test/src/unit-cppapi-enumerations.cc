@@ -674,27 +674,10 @@ CPPEnumerationFx::~CPPEnumerationFx() {
 
 template <typename T>
 void CPPEnumerationFx::check_dump(const T& val) {
-  FILE* handle = fopen(dump_name.c_str(), "w");
-  REQUIRE(handle != nullptr);
-  val.dump(handle);
-  fclose(handle);
-
   std::stringstream ss;
+  ss << val;
 
-  // Scoped in an anonymous block to ensure that rstream closes before
-  // we attempt to delete the file for cleanup.
-  {
-    std::ifstream rstream(dump_name);
-    if (rstream.is_open()) {
-      ss << rstream.rdbuf();
-    }
-  }
-
-  auto data = ss.str();
-  auto iter = data.find("Enumeration");
-  REQUIRE(iter != std::string::npos);
-
-  vfs_.remove_file(dump_name);
+  REQUIRE(ss.str().find("Enumeration") != std::string::npos);
 }
 
 void CPPEnumerationFx::create_array(bool with_empty_enumeration) {

@@ -54,10 +54,10 @@ PositiveDeltaFilter::PositiveDeltaFilter(
     , max_window_size_(max_window_size) {
 }
 
-void PositiveDeltaFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-  fprintf(out, "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=%u", max_window_size_);
+std::ostream& PositiveDeltaFilter::output(std::ostream& os) const {
+  os << "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=";
+  os << std::to_string(max_window_size_);
+  return os;
 }
 
 bool PositiveDeltaFilter::accepts_input_datatype(Datatype datatype) const {

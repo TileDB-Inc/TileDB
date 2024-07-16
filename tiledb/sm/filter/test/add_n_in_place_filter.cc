@@ -41,10 +41,6 @@ AddNInPlace::AddNInPlace(Datatype filter_data_type)
   increment_ = 1;
 }
 
-void AddNInPlace::dump(FILE* out) const {
-  (void)out;
-}
-
 void AddNInPlace::run_forward(
     const WriterTile&,
     WriterTile* const,

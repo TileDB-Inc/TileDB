@@ -50,8 +50,6 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
  public:
   PseudoChecksumFilter(Datatype filter_data_type);
 
-  void dump(FILE* out) const override;
-
   void run_forward(
       const WriterTile&,
       WriterTile* const,
@@ -70,6 +68,11 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
       const tiledb::sm::Config& config) const override;
 
   PseudoChecksumFilter* clone_impl() const override;
+
+ protected:
+  inline std::ostream& output(std::ostream& os) const override {
+    return os;
+  };
 };
 
 }  // namespace tiledb::sm

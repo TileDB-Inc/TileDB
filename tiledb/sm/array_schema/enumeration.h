@@ -263,6 +263,15 @@ class Enumeration {
   }
 
   /**
+   * Get the value map of the enumeration
+   * @return const tdb::pmr::unordered_map<std::string_view, uint64_t>& The
+   *        value map of the enumeration.
+   */
+  const tdb::pmr::unordered_map<std::string_view, uint64_t>& value_map() const {
+    return value_map_;
+  }
+
+  /**
    * Get the cell_size of the enumeration
    *
    * This returns constants::var_size when cell_val_num is var_num, otherwise
@@ -344,13 +353,6 @@ class Enumeration {
    *         constants::missing_enumeration_value if not found.
    */
   uint64_t index_of(const void* data, uint64_t size) const;
-
-  /**
-   * Dump a textual representation of the Enumeration to the FILE
-   *
-   * @param out A file pointer to write to. If out is nullptr, use stdout
-   */
-  void dump(FILE* out) const;
 
  private:
   /* ********************************* */
@@ -438,3 +440,7 @@ class Enumeration {
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_DOMAIN_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::Enumeration& enumeration);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -135,7 +135,28 @@ int32_t tiledb_attribute_get_cell_size(
 int32_t tiledb_attribute_dump(
     const tiledb_attribute_handle_t* attr, FILE* out) {
   ensure_attribute_is_valid(attr);
-  attr->dump(out);
+  ensure_cstream_handle_is_valid(out);
+
+  std::stringstream ss;
+  ss << *attr;
+  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  if (r != ss.str().size()) {
+    throw CAPIException(
+        "Error writing attribute " + attr->name() + " to output stream");
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_attribute_dump_str(
+    const tiledb_attribute_handle_t* attr, tiledb_string_handle_t** out) {
+  ensure_attribute_is_valid(attr);
+  ensure_output_pointer_is_valid(out);
+
+  std::stringstream ss;
+  ss << *attr;
+  *out = tiledb_string_handle_t::make_handle(ss.str());
+
   return TILEDB_OK;
 }
 
@@ -186,7 +207,7 @@ capi_return_t tiledb_attribute_set_enumeration_name(
 }
 
 capi_return_t tiledb_attribute_get_enumeration_name(
-    tiledb_attribute_t* attr, tiledb_string_t** name) {
+    tiledb_attribute_t* attr, tiledb_string_handle_t** name) {
   ensure_attribute_is_valid(attr);
   ensure_output_pointer_is_valid(name);
 
@@ -202,6 +223,12 @@ capi_return_t tiledb_attribute_get_enumeration_name(
 }
 
 }  // namespace tiledb::api
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_attribute_handle_t& attr) {
+  os << *attr.attr_;
+  return os;
+}
 
 using tiledb::api::api_entry_context;
 
@@ -309,6 +336,15 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
+    attribute_dump_str,
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_handle_t* attr,
+    tiledb_string_handle_t** out) {
+  return api_entry_context<tiledb::api::tiledb_attribute_dump_str>(
+      ctx, attr, out);
+}
+
+CAPI_INTERFACE(
     attribute_set_fill_value,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
@@ -365,7 +401,7 @@ CAPI_INTERFACE(
     attribute_get_enumeration_name,
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
-    tiledb_string_t** name) {
+    tiledb_string_handle_t** name) {
   return api_entry_context<tiledb::api::tiledb_attribute_get_enumeration_name>(
       ctx, attr, name);
 }

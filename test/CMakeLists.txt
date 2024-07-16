@@ -169,6 +169,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
+  src/unit-current-domain-rest.cc
   src/unit-dense-reader.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
@@ -301,6 +302,7 @@ target_link_libraries(tiledb_unit
     TILEDB_CORE_OBJECTS
     Catch2::Catch2
     tiledb_test_support_lib
+    configuration_definitions
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)

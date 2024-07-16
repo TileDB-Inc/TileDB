@@ -97,9 +97,6 @@ class BitWidthReductionFilter : public Filter {
    */
   BitWidthReductionFilter(uint32_t max_window_size, Datatype filter_data_type);
 
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
-
   /**
    * Checks if the filter is applicable to the input datatype.
    *
@@ -135,6 +132,10 @@ class BitWidthReductionFilter : public Filter {
 
   /** Set the max window size (in bytes) to use. */
   void set_max_window_size(uint32_t max_window_size);
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** Maximum size, in bytes, of a window of input elements to compress. */

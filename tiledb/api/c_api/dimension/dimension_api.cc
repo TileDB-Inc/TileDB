@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include "../../c_api_support/c_api_support.h"
 #include "../filter_list/filter_list_api_internal.h"
+#include "../string/string_api_internal.h"
 #include "dimension_api_external.h"
 #include "dimension_api_internal.h"
 #include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
@@ -40,7 +41,7 @@
 namespace tiledb::api {
 
 int32_t tiledb_dimension_alloc(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_handle_t* ctx,
     const char* name,
     tiledb_datatype_t type,
     const void* dim_domain,
@@ -138,11 +139,37 @@ int32_t tiledb_dimension_get_tile_extent(
 
 int32_t tiledb_dimension_dump(const tiledb_dimension_t* dim, FILE* out) {
   ensure_dimension_is_valid(dim);
-  dim->dump(out);
+  ensure_cstream_handle_is_valid(out);
+
+  std::stringstream ss;
+  ss << *dim;
+  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  if (r != ss.str().size()) {
+    throw CAPIException(
+        "Error writing dimension " + dim->name() + " to output stream");
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_dimension_dump_str(
+    const tiledb_dimension_t* dim, tiledb_string_handle_t** out) {
+  ensure_dimension_is_valid(dim);
+  ensure_output_pointer_is_valid(out);
+
+  std::stringstream ss;
+  ss << *dim;
+  *out = tiledb_string_handle_t::make_handle(ss.str());
   return TILEDB_OK;
 }
 
 }  // namespace tiledb::api
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_dimension_handle_t& dim) {
+  os << *dim.dimension_;
+  return os;
+}
 
 using tiledb::api::api_entry_context;
 
@@ -241,4 +268,13 @@ CAPI_INTERFACE(
     const tiledb_dimension_t* dim,
     FILE* out) {
   return api_entry_context<tiledb::api::tiledb_dimension_dump>(ctx, dim, out);
+}
+
+CAPI_INTERFACE(
+    dimension_dump_str,
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dimension,
+    tiledb_string_handle_t** out) {
+  return api_entry_context<tiledb::api::tiledb_dimension_dump_str>(
+      ctx, dimension, out);
 }

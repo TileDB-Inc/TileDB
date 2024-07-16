@@ -372,16 +372,6 @@ shared_ptr<Dimension> Domain::shared_dimension(const std::string& name) const {
   return {nullptr};
 }
 
-void Domain::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  for (const auto dim : dimension_ptrs_) {
-    fprintf(out, "\n");
-    dim->dump(out);
-  }
-}
-
 void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
   assert(r2 != nullptr);
 
@@ -1179,3 +1169,14 @@ template uint64_t Domain::stride<float>(Layout subarray_layout) const;
 template uint64_t Domain::stride<double>(Layout subarray_layout) const;
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Domain& domain) {
+  std::string tmp;
+
+  for (unsigned i = 0; i < domain.dim_num(); i++) {
+    os << std::endl;
+    os << *domain.dimension_ptr(i);
+  }
+
+  return os;
+}

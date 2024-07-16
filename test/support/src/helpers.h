@@ -929,6 +929,34 @@ int deserialize_array_and_query(
  * @return A test fragment uri
  */
 sm::URI generate_fragment_uri(sm::Array* array);
+
+/**
+ * Helper function to create a sparse array using format version 11.
+ *
+ * @param ctx TileDB context.
+ * @param array_name The name of the new array to create.
+ */
+void create_sparse_array_v11(tiledb_ctx_t* ctx, const std::string& array_name);
+
+/**
+ * Helper function to write data to a format version 11 sparse array.
+ *
+ * @param ctx TileDB context.
+ * @param array_name The name of the array to write to.
+ * @param timestamp The timestamp to open the array for writing.
+ */
+void write_sparse_v11(
+    tiledb_ctx_t* ctx, const std::string& array_name, uint64_t timestamp);
+
+/**
+ * Helper function to validate data read from a format version 11 sparse array.
+ *
+ * @param ctx TileDB context.
+ * @param array_name The name of the array to read from.
+ * @param timestamp The timestamp to open the array for reading.
+ */
+void read_sparse_v11(
+    tiledb_ctx_t* ctx, const std::string& array_name, uint64_t timestamp);
 }  // namespace tiledb::test
 
 #endif

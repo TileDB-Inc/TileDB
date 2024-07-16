@@ -101,13 +101,18 @@ class NDRectangle {
    * ndrect.set_range(0, start, end);
    * @endcode
    *
-   * @tparam T The dimension datatype.
+   * @tparam T The dimension datatype. Must be an integer or a floating point
+   * number.
    * @param dim_name The name of the dimension to add the range to.
    * @param start The range start to add.
    * @param end The range end to add.
    * @return Reference to this NDRectangle.
    */
-  template <class T>
+  template <
+      class T,
+      std::enable_if_t<
+          std::is_integral_v<T> || std::is_floating_point_v<T>,
+          bool> = true>
   NDRectangle& set_range(const std::string& dim_name, T start, T end) {
     auto& ctx = ctx_.get();
 
@@ -138,13 +143,18 @@ class NDRectangle {
    * ndrect.set_range(0, start, end);
    * @endcode
    *
-   * @tparam T The dimension datatype.
+   * @tparam T The dimension datatype. Must be an integer or a floating point
+   * number.
    * @param dim_idx The index of the dimension to add the range to.
    * @param start The range start to add.
    * @param end The range end to add.
    * @return Reference to this NDRectangle.
    */
-  template <class T>
+  template <
+      class T,
+      std::enable_if_t<
+          std::is_integral_v<T> || std::is_floating_point_v<T>,
+          bool> = true>
   NDRectangle& set_range(uint32_t dim_idx, T start, T end) {
     auto& ctx = ctx_.get();
     // Create the tiledb_range_t struct and fill it

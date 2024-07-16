@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,6 @@
 #define TILEDB_CAPI_DIMENSION_INTERNAL_H
 
 #include <memory>
-#include "dimension_api_external.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
@@ -127,9 +126,8 @@ struct tiledb_dimension_handle_t
     return dimension_->tile_extent();
   }
 
-  inline void dump(FILE* out) const {
-    dimension_->dump(out);
-  }
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_dimension_handle_t& dim);
 };
 
 namespace tiledb::api {

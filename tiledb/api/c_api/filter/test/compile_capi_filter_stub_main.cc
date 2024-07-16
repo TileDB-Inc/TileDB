@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "../filter_api_internal.h"
+#include "../filter_api_external.h"
 
 int main() {
   tiledb_filter_free(nullptr);

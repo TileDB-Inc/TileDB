@@ -82,6 +82,9 @@ env:
   bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'x64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
+  # Manylinux does not support Node 20 due to libc incompatibility. Temporarily opt out.
+  # https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ inputs.manylinux && 'true' || 'false' }}
 
 jobs:
   build:
@@ -124,7 +127,7 @@ jobs:
         if: inputs.manylinux
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
 
       # Need this for virtualenv and arrow tests if enabled

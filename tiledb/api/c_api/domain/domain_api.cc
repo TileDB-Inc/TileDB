@@ -28,6 +28,7 @@
 
 #include "../../c_api_support/c_api_support.h"
 #include "../dimension/dimension_api_internal.h"
+#include "../string/string_api_internal.h"
 #include "domain_api_external.h"
 #include "domain_api_internal.h"
 #include "tiledb/common/memory_tracker.h"
@@ -142,11 +143,36 @@ int32_t tiledb_domain_has_dimension(
 
 int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
   ensure_domain_is_valid(domain);
-  domain->dump(out);
+  ensure_cstream_handle_is_valid(out);
+
+  std::stringstream ss;
+  ss << *domain;
+  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  if (r != ss.str().size()) {
+    throw CAPIException("Error writing domain to output stream");
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_domain_dump_str(
+    const tiledb_domain_t* domain, tiledb_string_handle_t** out) {
+  ensure_domain_is_valid(domain);
+  ensure_output_pointer_is_valid(out);
+
+  std::stringstream ss;
+  ss << *domain;
+  *out = tiledb_string_handle_t::make_handle(ss.str());
   return TILEDB_OK;
 }
 
 }  // namespace tiledb::api
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_domain_handle_t& domain) {
+  os << *domain.domain_;
+  return os;
+}
 
 using tiledb::api::api_entry_context;
 
@@ -219,4 +245,13 @@ CAPI_INTERFACE(
 CAPI_INTERFACE(
     domain_dump, tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) {
   return api_entry_context<tiledb::api::tiledb_domain_dump>(ctx, domain, out);
+}
+
+CAPI_INTERFACE(
+    domain_dump_str,
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    tiledb_string_handle_t** out) {
+  return api_entry_context<tiledb::api::tiledb_domain_dump_str>(
+      ctx, domain, out);
 }

@@ -38,12 +38,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-#ifdef TILEDB_SERIALIZATION
-constexpr bool TILEDB_SERIALIZATION_ENABLED = true;
-#else
-constexpr bool TILEDB_SERIALIZATION_ENABLED = false;
-#endif
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -63,7 +57,13 @@ ContextResources::ContextResources(
     , compute_tp_(compute_thread_count)
     , io_tp_(io_thread_count)
     , stats_(make_shared<stats::Stats>(HERE(), stats_name))
-    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config) {
+    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config)
+    , rest_client_{RestClientFactory::make(
+          *(stats_.get()),
+          config_,
+          compute_tp(),
+          *logger_.get(),
+          create_memory_tracker())} {
   ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);
 
   /*
@@ -73,16 +73,6 @@ ContextResources::ContextResources(
 
   if (!logger_) {
     throw std::logic_error("Logger must not be nullptr");
-  }
-
-  if constexpr (TILEDB_SERIALIZATION_ENABLED) {
-    auto server_address = config_.get<std::string>("rest.server_address");
-    if (server_address) {
-      auto client = tdb::make_shared<RestClient>(HERE());
-      auto st = client->init(&stats(), &config_, &compute_tp(), logger_, *this);
-      throw_if_not_ok(st);
-      rest_client_ = client;
-    }
   }
 
   memory_tracker_reporter_->start();

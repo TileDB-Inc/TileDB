@@ -39,10 +39,6 @@ Add1OutOfPlace::Add1OutOfPlace(Datatype filter_data_type)
     : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
-void Add1OutOfPlace::dump(FILE* out) const {
-  (void)out;
-}
-
 void Add1OutOfPlace::run_forward(
     const WriterTile&,
     WriterTile* const,

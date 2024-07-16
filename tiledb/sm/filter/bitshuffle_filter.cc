@@ -51,11 +51,9 @@ BitshuffleFilter* BitshuffleFilter::clone_impl() const {
   return tdb_new(BitshuffleFilter, filter_data_type_);
 }
 
-void BitshuffleFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "BitShuffle");
+std::ostream& BitshuffleFilter::output(std::ostream& os) const {
+  os << "BitShuffle";
+  return os;
 }
 
 void BitshuffleFilter::run_forward(

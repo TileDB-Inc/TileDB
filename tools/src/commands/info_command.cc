@@ -197,7 +197,7 @@ void InfoCommand::print_schema_info() const {
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-  array.array_schema_latest().dump(stdout);
+  std::cout << array.array_schema_latest() << std::endl;
 
   // Close the array.
   THROW_NOT_OK(array.close());
