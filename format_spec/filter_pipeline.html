@@ -354,21 +354,24 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Filter type</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">Type of filter (e.g.&nbsp;<code>TILEDB_FILTER_BZIP2</code>)</td>
+<td style="text-align: left;">Type of filter (e.g.&nbsp;<code>TILEDB_FILTER_BZIP2</code>) – see below for values</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Filter metadata size</td>
+<td style="text-align: left;">Filter options size</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of bytes in filter metadata — may be 0.</td>
+<td style="text-align: left;">Number of bytes in filter options – may be 0.</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">Filter metadata</td>
-<td style="text-align: left;"><a href="#filter-metadata">Filter Metadata</a></td>
-<td style="text-align: left;">Filter metadata, specific to each filter. E.g. compression level for compression filters.</td>
+<td style="text-align: left;">Filter options</td>
+<td style="text-align: left;"><a href="#filter-options">Filter Options</a></td>
+<td style="text-align: left;">Filter options, specific to each filter. E.g. compression level for compression filters.</td>
 </tr>
 </tbody>
 </table>
-<p>TileDB supports the following filters: * <a href="../format_spec/filters/float_scale.html">Float Scaling Filter</a> * <a href="../format_spec/filters/xor.html">XOR Filter</a> * <a href="../format_spec/filters/dictionary_encoding.html">Dictionary Encoding Filter</a> * <a href="../format_spec/filters/webp.html">WEBP Filter</a></p>
+<p>TileDB supports the following filters. Each filter has a type, which also corresponds to a constant in the C API: * <a href="../format_spec/tile.html#compression-filters">Compression</a> * <a href="https://www.gnu.org/software/gzip/">Gzip</a> – <code>TILEDB_FILTER_GZIP</code> (1) * <a href="https://facebook.github.io/zstd/">Zstandard</a> – <code>TILEDB_FILTER_ZSTD</code> (2) * <a href="https://lz4.org/">LZ4</a> – <code>TILEDB_FILTER_LZ4</code> (3) * Run-length encoding – <code>TILEDB_FILTER_RLE</code> (4) * <a href="http://sourceware.org/bzip2/">BZip2</a> – <code>TILEDB_FILTER_BZIP2</code> (5) * <a href="../format_spec/filters/double_delta.html">Double-delta</a> – <code>TILEDB_FILTER_DOUBLE_DELTA</code> (6) * <a href="../format_spec/filters/dictionary_encoding.html">Dictionary</a> – <code>TILEDB_FILTER_DICTIONARY</code> (14) * <a href="../format_spec/filters/delta.html">Delta</a> – <code>TILEDB_FILTER_DELTA</code> (19) * <a href="../format_spec/tile.html#bit-width-reduction-filter">Bit-width Reduction</a> – <code>TILEDB_FILTER_BIT_WIDTH_REDUCTION</code> (7) * <a href="../format_spec/tile.html#byteshuffle-filter">Bit Shuffle</a> – <code>TILEDB_FILTER_BITSHUFFLE</code> (8) * <a href="../format_spec/tile.html#bitshuffle-filter">Byte Shuffle</a> – <code>TILEDB_FILTER_BYTESHUFFLE</code> (9) * <a href="../format_spec/tile.html#positive-delta-encoding-filter">Positive Delta</a> – <code>TILEDB_FILTER_POSITIVE_DELTA</code> (10) * <a href="../format_spec/tile.html#encryption-filters">Encryption</a> * <a href="https://en.wikipedia.org/wiki/Galois/Counter_Mode">AES-256-GCM</a> * <a href="../format_spec/tile.html#checksum-filters">Checksum</a> * <a href="https://en.wikipedia.org/wiki/MD5">MD5</a> – <code>TILEDB_FILTER_CHECKSUM_MD5</code> (12) * <a href="https://en.wikipedia.org/wiki/SHA-2">SHA-256</a> – <code>TILEDB_FILTER_CHECKSUM_SHA256</code> (13) * <a href="../format_spec/filters/dictionary_encoding.html">Dictionary Encoding</a> – <code>TILEDB_FILTER_DICTIONARY</code> (14) * <a href="../format_spec/filters/float_scale.html">Float Scale</a> – <code>TILEDB_FILTER_SCALE_FLOAT</code> (15) * <a href="../format_spec/filters/xor.html">XOR</a> – <code>TILEDB_FILTER_XOR</code> (16) * <a href="../format_spec/filters/webp.html">WEBP</a> – <code>TILEDB_FILTER_WEBP</code> (18)</p>
+<blockquote class="blockquote">
+<p>[!NOTE] Encryption is implemented as a filter at the end of the pipeline, but the encryption filter is not directly selectable by the user, and does not appear in filter pipelines serialized to storage.</p>
+</blockquote>
 </section>
 <section id="filter-options" class="level2">
 <h2 class="anchored" data-anchor-id="filter-options">Filter Options</h2>
