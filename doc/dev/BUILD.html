@@ -389,11 +389,10 @@ git checkout &lt;version&gt;</code></pre>
 <section id="building-and-installing" class="level2">
 <h2 class="anchored" data-anchor-id="building-and-installing">Building and installing</h2>
 <p>Once the build tree has been configured, you can build and install TileDB by running the following commands from the build tree:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cmake</span> <span class="at">--build</span> . <span class="at">-j</span> <span class="op">&lt;</span>num-procs<span class="op">&gt;</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cmake</span> <span class="at">--build</span> . <span class="at">--target</span> install-tiledb</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cmake</span> <span class="at">--build</span> . <span class="at">-j</span> <span class="op">&lt;</span>num-procs<span class="op">&gt;</span> --target install</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cmake</span> <span class="at">--build</span> .</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>If you are building with a multi-config generator (e.g., Visual Studio), you will have to specify the configuration to build with the <code>--config</code> option. Also you can directly invoke the underlying build tool:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j4</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> install-tiledb</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j4</span> install</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>The following are the most important targets:</p>
 <table class="caption-top table">
 <thead>
@@ -404,7 +403,7 @@ git checkout &lt;version&gt;</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>install-tiledb</code></td>
+<td><code>install</code></td>
 <td>Installs the TileDB library and headers.</td>
 </tr>
 <tr class="even">
@@ -445,7 +444,7 @@ git checkout &lt;version&gt;</code></pre>
 </blockquote>
 <div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> TileDB <span class="kw">&amp;&amp;</span> <span class="fu">mkdir</span> build-asan <span class="kw">&amp;&amp;</span> <span class="bu">cd</span> build-asan</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">../bootstrap</span> <span class="at">--enable-sanitizer</span><span class="op">=</span>address <span class="at">--vcpkg-base-triplet</span><span class="op">=</span>x64-linux</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> check</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> check</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <blockquote class="blockquote">
 <p>[!IMPORTANT] To avoid errors, building with sanitizers must be done in a separate build directory.</p>
 </blockquote>

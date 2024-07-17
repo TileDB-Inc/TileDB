@@ -39,8 +39,6 @@ Configuration:
                                     ['"${default_dependency}"']
     --linkage                       specify the linkage of tiledb. Defaults to shared.
                                     [static|shared]
-    --force-build-all-deps          force building of all dependencies, even those
-                                    already installed at system-level
     --remove-deprecations           build TileDB without any deprecated APIs
     --disable-werror                disables use of -Werror during build
     --disable-cpp-api               disables building of the TileDB C++ API
@@ -99,7 +97,6 @@ tiledb_gcs="OFF"
 tiledb_werror="ON"
 tiledb_tests="ON"
 tiledb_cpp_api="ON"
-tiledb_force_all_deps="OFF"
 tiledb_remove_deprecations="OFF"
 tiledb_stats="ON"
 build_shared_libs="OFF"
@@ -122,7 +119,7 @@ while test $# != 0; do
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --linkage=*) linkage=`arg "$1"`;;
-    --force-build-all-deps) tiledb_force_all_deps="ON";;
+    --force-build-all-deps) echo "Argument '--force-build-all-deps' has no effect and will be removed in a future version. Vcpkg builds all dependencies by default, please consult the guide in doc/dev/BUILD.md or vcpkg's documentation to see how to provide your own dependencies.";;
     --remove-deprecations) tiledb_remove_deprecations="ON";;
     --disable-werror) tiledb_werror="OFF";;
     --disable-tests) tiledb_tests="OFF";;
@@ -246,7 +243,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
     -DTILEDB_WEBP=${tiledb_build_webp} \
-    -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DTILEDB_REMOVE_DEPRECATIONS=${tiledb_remove_deprecations} \
     -DTILEDB_SANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
@@ -255,4 +251,4 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     ${vcpkg_base_triplet} \
     "${source_dir}" || die "failed to configure the project"
 
-echo 'bootstrap success. Run "make" to build, "make check" to test, or "make -C tiledb install" to install.'
+echo 'bootstrap success. Run "make" to build, "make check" to test, or "make install" to install.'
