@@ -688,6 +688,8 @@ uint64_t CompressionFilter::overhead(
       return BZip::overhead(nbytes);
     case Compressor::DOUBLE_DELTA:
       return DoubleDelta::overhead(nbytes);
+    case Compressor::DELTA:
+      return Delta::OVERHEAD;
     case Compressor::DICTIONARY_ENCODING:
     default:
       // No compression
