@@ -536,7 +536,7 @@ static std::string to_hex(span<const uint8_t> data) {
  * Test that the given input (optionally in hex) has the expected hash value in
  * hex. The function is generic over the hash and the input size.
  */
-template <Status hash(const void*, size_t, Buffer*), int digest_bytes>
+template <Status hash(const void*, uint64_t, Buffer*), int digest_bytes>
 static void test_expected_hash_value(
     const std::string_view& input,
     const std::string_view& expected_value,
