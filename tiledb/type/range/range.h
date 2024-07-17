@@ -163,8 +163,8 @@ class Range {
 
   /** Constructs a range and sets variable data. */
   Range(
-      const std::string_view& s1,
-      const std::string_view& s2,
+      const std::string_view s1,
+      const std::string_view s2,
       const allocator_type& alloc = {})
       : Range(alloc) {
     set_str_range(s1, s2);
@@ -243,7 +243,7 @@ class Range {
   }
 
   /** Sets a string range. */
-  void set_str_range(const std::string_view& s1, const std::string_view& s2) {
+  void set_str_range(const std::string_view s1, const std::string_view s2) {
     auto size = s1.size() + s2.size();
     if (size == 0) {
       range_.clear();
