@@ -658,7 +658,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `config_files` (forces SDK to only consider options found in aws
  *    config files),
  *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
- * from config files with support for web tokens, commonly used by EKS/ECS).
+ *    from config files with support for web tokens, commonly used by EKS/ECS).
  *    **Default**: auto
  *    <br>
  * - `vfs.s3.install_sigpipe_handler` <br>

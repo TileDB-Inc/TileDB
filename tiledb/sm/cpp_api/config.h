@@ -272,7 +272,7 @@ class Config {
    *    **Default**: false
    * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
-   * sparse fragment writes. Note that ties during deduplication are broken
+   *    sparse fragment writes. Note that ties during deduplication are broken
    *    arbitrarily. Also note that this check means that it will take longer to
    *    perform the write operation. <br>
    *    **Default**: false
@@ -281,7 +281,7 @@ class Config {
    *    If `true`, an error will be thrown if there are cells with duplicate
    *    coordinates during sparse fragmnet writes. If `false` and there are
    *    duplicates, the duplicates will be written without errors. Note that
-   * this check is much ligher weight than the coordinate deduplication check
+   *    this check is much ligher weight than the coordinate deduplication check
    *    enabled by `sm.dedup_coords`. <br>
    *    **Default**: true
    * - `sm.check_coord_oob` <br>
@@ -605,7 +605,7 @@ class Config {
    *    The block size (in bytes) used in Azure blob block list writes.
    *    Any `uint64_t` value is acceptable. Note:
    *    `vfs.azure.block_list_block_size vfs.azure.max_parallel_ops` bytes will
-   * be buffered before issuing block uploads in parallel. <br>
+   *    be buffered before issuing block uploads in parallel. <br>
    *    **Default**: "5242880"
    * - `vfs.azure.max_parallel_ops` <br>
    *    The maximum number of Azure backend parallel operations. <br>
@@ -832,7 +832,8 @@ class Config {
    *    `config_files` (forces SDK to only consider options found in aws
    *    config files),
    *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
-   * from config files with support for web tokens, commonly used by EKS/ECS).
+   *    from config files with support for web tokens, commonly used by
+   *    EKS/ECS).
    *    **Default**: auto
    *    <br>
    * - `vfs.s3.install_sigpipe_handler` <br>
