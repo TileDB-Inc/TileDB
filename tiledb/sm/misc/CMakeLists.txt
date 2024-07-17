@@ -26,7 +26,7 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
-find_package(Magic_EP REQUIRED)
+find_package(LibMagic MODULE REQUIRED)
 
 #
 # `cancelable_tasks` object library
@@ -42,6 +42,9 @@ conclude(object_library)
 commence(object_library constants)
     this_target_sources(constants.cc)
 conclude(object_library)
+
+############################################################
+# provide actions/target for preparation of magic.mgc data for embedding/build
 
 #
 # `mgc_dict` object library

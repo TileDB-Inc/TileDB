@@ -438,11 +438,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS
 
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE configuration_definitions)
 
-############################################################
-# provide actions/target for preparation of magic.mgc data for embedding/build
-
-find_package(Magic_EP REQUIRED)
-
 add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
 
 target_include_directories(TILEDB_CORE_OBJECTS
@@ -483,10 +478,6 @@ endif()
 if (TILEDB_SERIALIZATION)
   add_definitions(-DTILEDB_SERIALIZATION)
   message(STATUS "The TileDB library is compiled with query serialization enabled.")
-
-  if(MSVC AND TILEDB_CURL_EP_BUILT)
-    target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
-  endif()
 endif()
 
 ############################################################
@@ -506,14 +497,15 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPT
 
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
-  find_package(OpenSSL_EP REQUIRED)
+  find_package(OpenSSL REQUIRED)
 endif()
 
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
 
-  find_package(AWSSDK_EP REQUIRED)
+  set(AWS_SERVICES identity-management sts s3)
+  find_package(AWSSDK REQUIRED QUIET COMPONENTS ${AWS_SERVICES})
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       ${AWSSDK_LINK_LIBRARIES}
@@ -542,7 +534,7 @@ endif()
 
 # Libcurl
 if (TILEDB_SERIALIZATION)
-  find_package(Curl_EP REQUIRED)
+  find_package(CURL REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       CURL::libcurl
@@ -581,11 +573,12 @@ endif()
 # Required dependencies. These come last as any prior dependencies relying on
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
-find_package(Bzip2_EP REQUIRED)
-find_package(LZ4_EP REQUIRED)
-find_package(Spdlog_EP REQUIRED)
-find_package(Zlib_EP REQUIRED)
-find_package(Zstd_EP REQUIRED)
+find_package(BZip2 REQUIRED)
+find_package(LZ4 MODULE REQUIRED)
+find_package(spdlog REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(Zstd MODULE REQUIRED)
+find_package(LibMagic MODULE REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
@@ -597,7 +590,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
 )
 
 if(TILEDB_WEBP)
-  find_package(Webp_EP REQUIRED)
+  find_package(WebP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     WebP::webp
@@ -647,100 +640,12 @@ target_include_directories(TILEDB_CORE_OBJECTS
 )
 
 ############################################################
-# Append Curl linking information
-############################################################
-
-# Find curl link dependencies.
-# This needs to be done after curl is built because we use
-# curl-config to query the dependency libraries and then add
-# those to the target. Ref:
-#   - https://github.com/TileDB-Inc/TileDB/issues/1080
-#   - https://github.com/TileDB-Inc/TileDB/pull/1253
-# NOTE: just like the static dependencies in TileDBConfig create above
-#       (via TILEDB_DEP_STRING), this linkage embeds absolute paths.
-if ((TILEDB_S3 OR TILEDB_GCS OR TILEDB_SERIALIZATION) AND NOT WIN32)
-  if (TILEDB_CURL_EP_BUILT)
-    set(CURL_CONFIG_BINARY "${TILEDB_EP_BASE}/install/bin/curl-config")
-
-      if (NOT EXISTS "${CURL_CONFIG_BINARY}")
-        message(WARNING "Missing '${CURL_CONFIG_BINARY}': TileDB targets may have linker errors!")
-      else()
-        message(STATUS "Found curl-config: '${CURL_CONFIG_BINARY}'")
-
-        if(${CURL_LIBRARIES} MATCHES "${CMAKE_SHARED_LIBRARY_SUFFIX}$")
-          execute_process(
-                  COMMAND ${CURL_CONFIG_BINARY} --libs
-                  OUTPUT_VARIABLE CURL_APPEND_LIBS
-                  RESULT_VARIABLE CMD_RESULT
-                  OUTPUT_STRIP_TRAILING_WHITESPACE
-          )
-
-        else()
-          execute_process(
-            COMMAND ${CURL_CONFIG_BINARY} --static-libs
-            OUTPUT_VARIABLE CURL_APPEND_LIBS
-            RESULT_VARIABLE CMD_RESULT
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-          )
-        endif()
-
-        if (NOT CMD_RESULT EQUAL 0)
-          message(WARNING
-            "TileDB::tiledb_static link target may lack transitive link dependencies"
-            "'${CURL_CONFIG_BINARY} --static-libs' failed with error: "
-            "${CMD_RESULT}")
-        elseif (CURL_APPEND_LIBS)
-          # ^ must check output, because it might be empty and break regex below
-          # Make a list. The variable passed to target_link_libraries *must* be a list.
-          string(REGEX REPLACE "[ \t\r\n]" ";" CURL_APPEND_LIBS ${CURL_APPEND_LIBS})
-
-          message(STATUS "Computed initial transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
-        endif()
-      endif()
-  endif()
-
-endif()
-
-if (CURL_APPEND_LIBS)
-  # OpenSSL is always linked on POSIX for encryption. If we include curl's
-  # linkage we might double link if we built openssl in superbuild
-  # but the system library exists. This happens on macOS 10.14 and 10.15
-  # where openssl is deprecated but the library still ships. OpenSSL headers
-  # are not shipped, thus we build a superbuild of openssl. The -lcrypto then
-  # ends up trying to link against the system shared library while we already
-  # linked the static lib from TileDB supper build.
-  # End result, we remove the -lssl and -lcrypto from the list of curl extra libs
-  # The same problem exists for libz, so we remove -lz also.
-  list(REMOVE_ITEM CURL_APPEND_LIBS "-lssl" "-lcrypto" "-lz")
-
-  # If we are cross compiling curl likely includes the arch details in the linker
-  # commands. In this case we want to remove them from the link libs as cmake
-  # will handle any linker flags for cross compilation.
-  SET(index 0)
-  foreach(CURL_APPEND_LIB ${CURL_APPEND_LIBS})
-    if(${CURL_APPEND_LIB} STREQUAL "-arch")
-      # remove "-arch"
-      LIST(REMOVE_AT CURL_APPEND_LIBS ${index})
-      # remove arch i.e. arm64 or x86_64
-      # there are two items because we split on space above
-      LIST(REMOVE_AT CURL_APPEND_LIBS ${index})
-    endif()
-    MATH(EXPR index "${index}+1")
-  endforeach()
-
-  message(STATUS "Adding final transitive Curl library links to TileDB targets: '${CURL_APPEND_LIBS}'")
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-    ${CURL_APPEND_LIBS})
-endif()
-
-############################################################
 # capnproto generated sources
 ############################################################
 
 # Serialization
 if(TILEDB_SERIALIZATION)
-  find_package(Capnp_EP REQUIRED)
+  find_package(CapnProto REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
           INTERFACE
           CapnProto::capnp
@@ -767,14 +672,8 @@ if(TILEDB_SERIALIZATION)
   #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++).
   #       For system installed capnp binaries we rely on the user to have their PATH
   #       include the directory with CapNProto plugin binaries.
-  if(TILEDB_CAPNP_EP_BUILT)
-    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${TILEDB_EP_BASE}/install/bin" "${CAPNP_EXECUTABLE}" compile -I "${TILEDB_EP_BASE}/install/include")
-  elseif(TILEDB_VCPKG)
-    set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
-    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_EXECUTABLE}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
-  else()
-    list(APPEND CAPNP_COMPILE_COMMAND "${CAPNP_EXECUTABLE}" compile)
-  endif()
+  set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
+  list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_EXECUTABLE}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
 
   # Add the rest of the capnp compile command
   list(APPEND CAPNP_COMPILE_COMMAND -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
@@ -785,8 +684,6 @@ if(TILEDB_SERIALIZATION)
     COMMAND
       "${CAPNP_COMPILE_COMMAND}"
     DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-    WORKING_DIRECTORY
-      ${TILEDB_EP_BASE}/..
     COMMAND_EXPAND_LISTS
     COMMENT "Re-generate tiledb-rest.capnp.<h,c++> files for serialization support"
     )
@@ -855,7 +752,10 @@ endif()
 # Link the dependencies specified earlier
 target_link_libraries(tiledb
   PRIVATE
-    $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+    # ZSTD_TARGET might be a generator expression. We need to evaluate it here again.
+    # TODO: TILEDB_CORE_OBJECTS_ILIB should be removed and dependencies should be specified
+    # without directly getting target_properties.
+    $<GENEX_EVAL:$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>>
     $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
 )
 
@@ -1027,3 +927,10 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 include(${CMAKE_SOURCE_DIR}/cmake/package.cmake)
+
+# Add alias for compatibility with earlier TileDB versions.
+add_custom_target(install-tiledb
+  COMMENT "The install-tiledb target is deprecated and can lead to worse performance. Use install instead."
+  COMMAND ${CMAKE_COMMAND} --build . --target install --config $<CONFIG>
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+)

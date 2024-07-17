@@ -213,10 +213,10 @@ jobs:
           # Run tests
 
           # Bypass Catch2 Framework stdout interception with awk on test output
-          ./tiledb/test/regression/tiledb_regression -d yes
-          ./tiledb/test/ci/test_assert -d yes
-          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-          ./tiledb/tiledb/sm/filesystem/test/unit_vfs -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./test/regression/tiledb_regression -d yes
+          ./test/ci/test_assert -d yes
+          ./test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/sm/filesystem/test/unit_vfs -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           
           ctest -R tiledb_timing_unit | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
@@ -244,7 +244,7 @@ jobs:
           ###################################################
           # Perform package test
 
-          cmake --build $GITHUB_WORKSPACE/build/tiledb --target check-package
+          cmake --build $GITHUB_WORKSPACE/build --target check-package
 
       - name: 'Dump core stacks on failure'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
