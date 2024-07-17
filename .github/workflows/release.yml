@@ -201,6 +201,9 @@ jobs:
     needs: Publish-Release
     if: (failure() || cancelled()) && github.event_name != 'workflow_dispatch'
     steps:
+      # The open-issue action requires to clone the repository.
+      - name: Checkout TileDB
+        uses: actions/checkout@v4
       - name: Create Issue if Build Fails
         uses: TileDB-Inc/github-actions/open-issue@main
         with:
