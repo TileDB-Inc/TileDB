@@ -705,14 +705,6 @@ class Query {
   /** Submits the query to the storage manager. */
   Status submit();
 
-  /**
-   * Submits the query to the storage manager. The query will be
-   * processed asynchronously (i.e., in a non-blocking manner).
-   * Once the query is completed, the input callback function will
-   * be executed using the input callback data.
-   */
-  Status submit_async(std::function<void(void*)> callback, void* callback_data);
-
   /** Returns the query status. */
   QueryStatus status() const;
 

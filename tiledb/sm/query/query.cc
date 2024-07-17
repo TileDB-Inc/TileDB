@@ -1638,24 +1638,6 @@ Status Query::submit() {
   return Status::Ok();
 }
 
-Status Query::submit_async(
-    std::function<void(void*)> callback, void* callback_data) {
-  // Do not resubmit completed reads.
-  if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
-    callback(callback_data);
-    return Status::Ok();
-  }
-  init();
-  if (array_->is_remote())
-    return logger_->status(
-        Status_QueryError("Error in async query submission; async queries not "
-                          "supported for remote arrays."));
-
-  callback_ = callback;
-  callback_data_ = callback_data;
-  return storage_manager_->query_submit_async(this);
-}
-
 QueryStatus Query::status() const {
   return status_;
 }
