@@ -271,8 +271,8 @@ class Config {
    *    Allow update queries. Experimental for testing purposes, do not use.<br>
    *    **Default**: false
    * - `sm.dedup_coords` <br>
-   *    If `true`, cells with duplicate coordinates will be removed during sparse
-   *    fragment writes. Note that ties during deduplication are broken
+   *    If `true`, cells with duplicate coordinates will be removed during
+   * sparse fragment writes. Note that ties during deduplication are broken
    *    arbitrarily. Also note that this check means that it will take longer to
    *    perform the write operation. <br>
    *    **Default**: false
@@ -280,8 +280,8 @@ class Config {
    *    This is applicable only if `sm.dedup_coords` is `false`.
    *    If `true`, an error will be thrown if there are cells with duplicate
    *    coordinates during sparse fragmnet writes. If `false` and there are
-   *    duplicates, the duplicates will be written without errors. Note that this
-   *    check is much ligher weight than the coordinate deduplication check
+   *    duplicates, the duplicates will be written without errors. Note that
+   * this check is much ligher weight than the coordinate deduplication check
    *    enabled by `sm.dedup_coords`. <br>
    *    **Default**: true
    * - `sm.check_coord_oob` <br>
@@ -306,7 +306,8 @@ class Config {
    *    Determines whether or not TileDB will install signal handlers. <br>
    *    **Default**: true
    * - `sm.compute_concurrency_level` <br>
-   *    Upper-bound on number of threads to allocate for compute-bound tasks. <br>
+   *    Upper-bound on number of threads to allocate for compute-bound tasks.
+   *    <br>
    *    **Default*: # cores
    * - `sm.io_concurrency_level` <br>
    *    Upper-bound on number of threads to allocate for IO-bound tasks. <br>
@@ -345,9 +346,9 @@ class Config {
    * - `sm.consolidation.max_fragment_size` <br>
    *    **Experimental** <br>
    *    The size (in bytes) of the maximum on-disk fragment size that will be
-   *    created by consolidation. When it is reached, consolidation will continue
-   *    the operation in a new fragment. The result will be a multiple fragments,
-   *    but with seperate MBRs. <br>
+   *    created by consolidation. When it is reached, consolidation will
+   *    continue the operation in a new fragment. The result will be a multiple
+   *    fragments, but with seperate MBRs. <br>
    * - `sm.consolidation.steps` <br>
    *    The number of consolidation steps to be performed when executing
    *    the consolidation algorithm.<br>
@@ -436,18 +437,18 @@ class Config {
    *    Skip checksum validation on reads for the md5 and sha256 filters. <br>
    *    **Default**: "false"
    * - `sm.mem.malloc_trim` <br>
-   *    Should malloc_trim be called on context and query destruction? This might
-   *    reduce residual memory usage. <br>
+   *    Should malloc_trim be called on context and query destruction? This
+   *    might reduce residual memory usage. <br>
    *    **Default**: true
    * - `sm.mem.tile_upper_memory_limit` <br>
    *    **Experimental** <br>
-   *    This is the upper memory limit that is used when loading tiles. For now it
-   *    is only used in the dense reader but will be eventually used by all
+   *    This is the upper memory limit that is used when loading tiles. For now
+   *    it is only used in the dense reader but will be eventually used by all
    *    readers. The readers using this value will use it as a way to limit the
    *    amount of tile data that is brought into memory at once so that we don't
    *    incur performance penalties during memory movement operations. It is a
-   *    soft limit that we might go over if a single tile doesn't fit into memory,
-   *    we will allow to load that tile if it still fits within
+   *    soft limit that we might go over if a single tile doesn't fit into
+   *    memory, we will allow to load that tile if it still fits within
    *    `sm.mem.total_budget`. <br>
    *    **Default**: 1GB
    * - `sm.mem.total_budget` <br>
@@ -514,8 +515,8 @@ class Config {
    *    **Default**: false
    * - `sm.fragment_info.preload_mbrs` <br>
    *    If `true` MBRs will be loaded at the same time as the rest of fragment
-   *    info, otherwise they will be loaded lazily when some info related to MBRs
-   *    is requested by the user. <br>
+   *    info, otherwise they will be loaded lazily when some info related to
+   *    MBRs is requested by the user. <br>
    *    **Default**: false
    * - `sm.partial_tile_offset_loading`
    *    **Experimental** <br>
@@ -541,7 +542,8 @@ class Config {
    *    purposes. <br>
    *    **Default**: true
    * - `vfs.read_ahead_cache_size` <br>
-   *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
+   *    The the total maximum size of the read-ahead cache, which is an LRU.
+   *    <br>
    *    **Default**: 10485760
    * - `vfs.min_parallel_size` <br>
    *    The minimum number of bytes in a parallel VFS operation
@@ -601,9 +603,9 @@ class Config {
    *    **Default**: ""
    * - `vfs.azure.block_list_block_size` <br>
    *    The block size (in bytes) used in Azure blob block list writes.
-   *    Any `uint64_t` value is acceptable. Note: `vfs.azure.block_list_block_size
-   *    vfs.azure.max_parallel_ops` bytes will be buffered before issuing block
-   *    uploads in parallel. <br>
+   *    Any `uint64_t` value is acceptable. Note:
+   *    `vfs.azure.block_list_block_size vfs.azure.max_parallel_ops` bytes will
+   * be buffered before issuing block uploads in parallel. <br>
    *    **Default**: "5242880"
    * - `vfs.azure.max_parallel_ops` <br>
    *    The maximum number of Azure backend parallel operations. <br>
@@ -642,8 +644,8 @@ class Config {
    * - `vfs.gcs.impersonate_service_account` <br>
    *    **Experimental** <br>
    *    Set the GCS service account to impersonate. A chain of impersonated
-   *    accounts can be formed by specifying many service accounts, separated by a
-   *    comma. <br>
+   *    accounts can be formed by specifying many service accounts, separated by
+   *    a comma. <br>
    *    **Default**: ""
    * - `vfs.gcs.multi_part_size` <br>
    *    The part size (in bytes) used in GCS multi part writes.
@@ -787,7 +789,8 @@ class Config {
    *    **Default**: ""
    * - `vfs.s3.storage_class` <br>
    *    The storage class to use for the newly uploaded S3 objects. The set of
-   *    accepted values is found in the Aws::S3::Model::StorageClass enumeration.
+   *    accepted values is found in the Aws::S3::Model::StorageClass
+   *    enumeration.
    *    "NOT_SET"
    *    "STANDARD"
    *    "REDUCED_REDUNDANCY"
@@ -908,8 +911,8 @@ class Config {
    *    the open array <br>
    *    **Default**: true
    * - `rest.load_non_empty_domain_on_array_open` <br>
-   *    If true, array non empty domain will be loaded and sent to server together
-   *    with the open array <br>
+   *    If true, array non empty domain will be loaded and sent to server
+   *    together with the open array <br>
    *    **Default**: true
    * - `rest.use_refactored_array_open` <br>
    *    If true, the new, experimental REST routes and APIs for opening an array
@@ -923,7 +926,8 @@ class Config {
    *    Set curl buffer size for REST requests <br>
    *    **Default**: 524288 (512KB)
    * - `rest.capnp_traversal_limit` <br>
-   *    CAPNP traversal limit used in the deserialization of messages(bytes) <br>
+   *    CAPNP traversal limit used in the deserialization of messages(bytes)
+   *    <br>
    *    **Default**: 536870912 (512MB)
    * - `rest.custom_headers.*` <br>
    *    (Optional) Prefix for custom headers on REST requests. For each custom
@@ -933,9 +937,9 @@ class Config {
    *    The namespace that should be charged for the request. <br>
    *    **Default**: no default set
    * - `filestore.buffer_size` <br>
-   *    Specifies the size in bytes of the internal buffers used in the filestore
-   *    API. The size should be bigger than the minimum tile size filestore
-   *    currently supports, that is currently 1024bytes. <br>
+   *    Specifies the size in bytes of the internal buffers used in the
+   *    filestore API. The size should be bigger than the minimum tile size
+   *    filestore currently supports, that is currently 1024bytes. <br>
    *    **Default**: 100MB
    */
   Config& set(const std::string& param, const std::string& value) {
