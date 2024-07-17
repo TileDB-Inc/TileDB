@@ -48,7 +48,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status OpenSSL::get_random_bytes(span<uint8_t> buffer) {
+static Status get_random_bytes(span<uint8_t> buffer) {
   while (!buffer.empty()) {
     int num_bytes =
         int(std::min(buffer.size(), size_t(std::numeric_limits<int>::max())));

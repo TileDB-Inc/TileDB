@@ -49,7 +49,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status Win32CNG::get_random_bytes(span<uint8_t> buffer) {
+static Status get_random_bytes(span<uint8_t> buffer) {
   BCRYPT_ALG_HANDLE alg_handle;
   if (!NT_SUCCESS(BCryptOpenAlgorithmProvider(
           &alg_handle, BCRYPT_RNG_ALGORITHM, nullptr, 0)))

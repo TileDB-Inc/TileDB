@@ -60,13 +60,6 @@
 
 using namespace tiledb::sm;
 
-TEST_CASE("Crypto: Test Random Number Generator", "[crypto][random]") {
-  std::array<unsigned char, 64> buf1 = {}, buf2 = {};
-  CHECK(Crypto::get_random_bytes(buf1).ok());
-  CHECK(Crypto::get_random_bytes(buf2).ok());
-  CHECK(buf1 != buf2);
-}
-
 TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
   SECTION("- Basic") {
     unsigned nelts = 123;

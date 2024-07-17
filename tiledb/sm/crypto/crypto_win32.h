@@ -119,14 +119,6 @@ class Win32CNG {
     return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALGORITHM);
   }
 
-  /**
-   * Generates a number of cryptographically random bytes.
-   *
-   * @param buffer Span to fill with random bytes.
-   * @return Status
-   */
-  static Status get_random_bytes(span<uint8_t> buffer);
-
  private:
   /**
    *
