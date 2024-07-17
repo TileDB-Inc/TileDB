@@ -535,7 +535,8 @@ void fragment_meta_sizes_offsets_to_capnp(
 
 Status fragment_metadata_to_capnp(
     const FragmentMetadata& frag_meta,
-    capnp::FragmentMetadata::Builder* frag_meta_builder) {
+    capnp::FragmentMetadata::Builder* frag_meta_builder,
+    bool include_rtrees) {
   const auto& relative_fragment_uri =
       serialize_array_uri_to_relative(frag_meta.fragment_uri());
   frag_meta_builder->setFragmentUri(relative_fragment_uri);
@@ -686,17 +687,19 @@ Status fragment_metadata_to_capnp(
       frag_meta.array_schema()->dim_num()));
 
   // TODO: Can this be done better? Does this make a lot of copies?
-  SizeComputationSerializer size_computation_serializer;
-  frag_meta.loaded_metadata()->rtree().serialize(size_computation_serializer);
+  if (include_rtrees) {
+    SizeComputationSerializer size_computation_serializer;
+    frag_meta.loaded_metadata()->rtree().serialize(size_computation_serializer);
 
-  std::vector<uint8_t> buff(size_computation_serializer.size());
-  Serializer serializer(buff.data(), buff.size());
-  frag_meta.loaded_metadata()->rtree().serialize(serializer);
+    std::vector<uint8_t> buff(size_computation_serializer.size());
+    Serializer serializer(buff.data(), buff.size());
+    frag_meta.loaded_metadata()->rtree().serialize(serializer);
 
-  auto vec = kj::Vector<uint8_t>();
-  vec.addAll(
-      kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
-  frag_meta_builder->setRtree(vec.asPtr());
+    auto vec = kj::Vector<uint8_t>();
+    vec.addAll(
+        kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
+    frag_meta_builder->setRtree(vec.asPtr());
+  }
 
   auto gt_offsets_builder = frag_meta_builder->initGtOffsets();
   generic_tile_offsets_to_capnp(

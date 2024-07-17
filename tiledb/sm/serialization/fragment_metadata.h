@@ -89,11 +89,13 @@ void fragment_meta_sizes_offsets_to_capnp(
  *
  * @param frag_meta fragment metadata to serialize
  * @param frag_meta_builder cap'n proto class
+ * @param include_rtrees include or not rtrees in serialized data
  * @return Status
  */
 Status fragment_metadata_to_capnp(
     const FragmentMetadata& frag_meta,
-    capnp::FragmentMetadata::Builder* frag_meta_builder);
+    capnp::FragmentMetadata::Builder* frag_meta_builder,
+    bool include_rtrees = false);
 
 #endif
 

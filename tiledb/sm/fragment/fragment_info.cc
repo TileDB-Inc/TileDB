@@ -816,7 +816,7 @@ Status FragmentInfo::load() {
     // Overriding this config parameter is necessary to enable Cloud to load
     // MBRs at the same time as the rest of fragment info and not lazily
     // as it's the case for local fragment info load requests.
-    throw_if_not_ok(config_.set("sm.fragment_info.preload_mbrs", "true"));
+    // throw_if_not_ok(config_.set("sm.fragment_info.preload_mbrs", "true"));
 
     return rest_client->post_fragment_info_from_rest(array_uri_, this);
   }

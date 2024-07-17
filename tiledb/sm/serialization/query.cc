@@ -2850,7 +2850,8 @@ Status global_write_state_to_capnp(
     auto frag_meta = write_state.frag_meta_;
     auto frag_meta_builder = state_builder->initFragMeta();
     fragment_meta_sizes_offsets_to_capnp(*frag_meta, &frag_meta_builder);
-    RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
+    RETURN_NOT_OK(
+        fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder, true));
   }
 
   if (write_state.last_cell_coords_.has_value()) {
@@ -3071,7 +3072,8 @@ Status unordered_write_state_to_capnp(
   if (frag_meta != nullptr) {
     auto frag_meta_builder = state_builder->initFragMeta();
     fragment_meta_sizes_offsets_to_capnp(*frag_meta, &frag_meta_builder);
-    RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
+    RETURN_NOT_OK(
+        fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder, true));
   }
 
   return Status::Ok();
