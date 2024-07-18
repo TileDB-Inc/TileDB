@@ -246,25 +246,14 @@ class NDRectangle {
     return {std::move(start_str), std::move(end_str)};
   }
 
-  /**
-   * Retrieves a range for a given variable length string dimension index and
-   * range id.
-   *
-   * @param dim_name The dimension name.
-   * @param range_idx The range index.
-   * @return A pair of the form (start, end).
-   */
-  std::array<std::string, 2> range(const std::string& dim_name) {
-    auto& ctx = ctx_.get();
-    tiledb_range_t range;
-    ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
-        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
-
-    std::string start_str(static_cast<const char*>(range.min), range.min_size);
-    std::string end_str(static_cast<const char*>(range.max), range.max_size);
-
-    return {std::move(start_str), std::move(end_str)};
-  }
+  template <class K>
+  struct tuple_ret {
+    using type = std::array<K, 2>;
+  };
+  template <>
+  struct tuple_ret<std::string> {
+    using type = std::array<std::string, 2>;
+  };
 
   /**
    * Retrieves a range for a given dimension name. The template datatype must be
@@ -275,13 +264,34 @@ class NDRectangle {
    * @return A duplex of the form (start, end).
    */
   template <class T>
-  std::array<T, 2> range(const std::string& dim_name) {
+  typename tuple_ret<T>::type range(const std::string& dim_name) {
     auto& ctx = ctx_.get();
     tiledb_range_t range;
     ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
         ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
 
     return {*(const T*)range.min, *(const T*)range.max};
+  }
+
+  /**
+   * Retrieves a range for a given variable length string dimension index and
+   * range id.
+   *
+   * @param dim_name The dimension name.
+   * @param range_idx The range index.
+   * @return A pair of the form (start, end).
+   */
+  template <>
+  tuple_ret<std::string>::type range<std::string>(const std::string& dim_name) {
+    auto& ctx = ctx_.get();
+    tiledb_range_t range;
+    ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
+        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
+
+    std::string start_str(static_cast<const char*>(range.min), range.min_size);
+    std::string end_str(static_cast<const char*>(range.max), range.max_size);
+
+    return {std::move(start_str), std::move(end_str)};
   }
 
   /**
