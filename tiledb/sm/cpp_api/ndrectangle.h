@@ -323,7 +323,7 @@ class NDRectangle {
  * @param range_idx The range index.
  * @return A pair of the form (start, end).
  */
-template <>
+inline template <>
 NDRectangle::tuple_ret<std::string>::type NDRectangle::range<std::string>(
     const std::string& dim_name) {
   auto& ctx = ctx_.get();
