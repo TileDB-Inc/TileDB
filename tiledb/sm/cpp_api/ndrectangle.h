@@ -263,7 +263,7 @@ class NDRectangle {
    * @param dim_name The dimension name.
    * @return A duplex of the form (start, end).
    */
-  template <class T>
+  template <class T, class Y = void>
   typename tuple_ret<T>::type range(const std::string& dim_name) {
     auto& ctx = ctx_.get();
     tiledb_range_t range;
@@ -271,27 +271,6 @@ class NDRectangle {
         ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
 
     return {*(const T*)range.min, *(const T*)range.max};
-  }
-
-  /**
-   * Retrieves a range for a given variable length string dimension index and
-   * range id.
-   *
-   * @param dim_name The dimension name.
-   * @param range_idx The range index.
-   * @return A pair of the form (start, end).
-   */
-  template <>
-  tuple_ret<std::string>::type range<std::string>(const std::string& dim_name) {
-    auto& ctx = ctx_.get();
-    tiledb_range_t range;
-    ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
-        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
-
-    std::string start_str(static_cast<const char*>(range.min), range.min_size);
-    std::string end_str(static_cast<const char*>(range.max), range.max_size);
-
-    return {std::move(start_str), std::move(end_str)};
   }
 
   /**
@@ -335,6 +314,28 @@ class NDRectangle {
   /** An auxiliary deleter. */
   impl::Deleter deleter_;
 };
+
+/**
+ * Retrieves a range for a given variable length string dimension index and
+ * range id.
+ *
+ * @param dim_name The dimension name.
+ * @param range_idx The range index.
+ * @return A pair of the form (start, end).
+ */
+template <>
+NDRectangle::tuple_ret<std::string>::type NDRectangle::range<std::string>(
+    const std::string& dim_name) {
+  auto& ctx = ctx_.get();
+  tiledb_range_t range;
+  ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
+      ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
+
+  std::string start_str(static_cast<const char*>(range.min), range.min_size);
+  std::string end_str(static_cast<const char*>(range.max), range.max_size);
+
+  return {std::move(start_str), std::move(end_str)};
+}
 
 }  // namespace tiledb
 
