@@ -38,24 +38,17 @@
 
 void check_dump(
     tiledb_ctx_t* ctx, tiledb_attribute_t* a, const std::string& gold_out) {
-  FILE* gold_fout = fopen("gold_fout.txt", "w");
-  fwrite(gold_out.c_str(), sizeof(char), gold_out.size(), gold_fout);
-  fclose(gold_fout);
-  FILE* fout = fopen("fout.txt", "w");
-  tiledb_attribute_dump(ctx, a, fout);
-  fclose(fout);
-#ifdef _WIN32
-  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
-#else
-  CHECK(!system("diff gold_fout.txt fout.txt"));
-#endif
+  tiledb_string_t* tdb_string;
+  auto rc = tiledb_attribute_dump_str(ctx, a, &tdb_string);
+  REQUIRE(rc == TILEDB_OK);
 
-  // Clean up
-  tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, nullptr, &vfs);
-  CHECK(tiledb_vfs_remove_file(ctx, vfs, "gold_fout.txt") == TILEDB_OK);
-  CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
-  tiledb_vfs_free(&vfs);
+  const char* out_ptr;
+  size_t out_length;
+  rc = tiledb_string_view(tdb_string, &out_ptr, &out_length);
+  REQUIRE(rc == TILEDB_OK);
+  std::string out_str(out_ptr, out_length);
+
+  CHECK(out_str == gold_out);
 }
 
 TEST_CASE(
