@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,14 +40,13 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 
 #include <iomanip>
 
-class SubarrayPartitionerStatusException : public StatusException {
+class SubarrayPartitionerException : public StatusException {
  public:
-  explicit SubarrayPartitionerStatusException(const std::string& message)
+  explicit SubarrayPartitionerException(const std::string& message)
       : StatusException("SubarrayPartitioner", message) {
   }
 };
@@ -1159,7 +1158,7 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
          mem_size.variable_ > memory_budget_var_ ||
          mem_size.validity_ > memory_budget_validity_)) {
       if (partition->is_unary()) {
-        throw SubarrayPartitionerStatusException(
+        throw SubarrayPartitionerException(
             "Trying to partition a unary range because of memory budget, this "
             "will cause the query to run very slow. Increase "
             "`sm.memory_budget` and `sm.memory_budget_var` through the "

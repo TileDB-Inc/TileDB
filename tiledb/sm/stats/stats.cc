@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,16 +32,13 @@
 
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/common/stdx_string.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <algorithm>
 #include <cassert>
 #include <sstream>
 #include <vector>
 
-namespace tiledb {
-namespace sm {
-namespace stats {
+namespace tiledb::sm::stats {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -301,6 +298,4 @@ void Stats::populate_with_data(const StatsData& data) {
   }
 }
 
-}  // namespace stats
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::stats

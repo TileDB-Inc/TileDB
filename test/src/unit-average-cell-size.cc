@@ -40,7 +40,6 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <numeric>
 

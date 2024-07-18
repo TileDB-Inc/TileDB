@@ -47,13 +47,12 @@
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
 class CompressionFilterStatusException : public StatusException {
  public:
   explicit CompressionFilterStatusException(const std::string& msg)
@@ -739,5 +738,4 @@ Datatype CompressionFilter::output_datatype(Datatype datatype) const {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -94,6 +94,14 @@ commence(object_library parse_argument)
 conclude(object_library)
 
 #
+# `rectangle` object library
+#
+commence(object_library rectangle)
+    this_target_sources(rectangle.cc)
+    this_target_object_libraries(baseline)
+conclude(object_library)
+
+#
 # `time` object library
 #
 commence(object_library time)

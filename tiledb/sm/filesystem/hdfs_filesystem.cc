@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,6 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 
 #include "hadoop/hdfs.h"
@@ -62,10 +61,7 @@
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
-
-namespace hdfs {
+namespace tiledb::sm::hdfs {
 
 Status close_library(void* handle) {
   if (dlclose(handle)) {
@@ -587,9 +583,6 @@ Status HDFS::file_size(const URI& uri, uint64_t* nbytes) {
   return Status::Ok();
 }
 
-}  // namespace hdfs
-
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::hdfs
 
 #endif  // HAVE_HDFS

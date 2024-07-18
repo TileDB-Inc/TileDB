@@ -37,7 +37,6 @@
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::common;
 

@@ -45,7 +45,6 @@
 #endif
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <chrono>
 #include <iostream>
