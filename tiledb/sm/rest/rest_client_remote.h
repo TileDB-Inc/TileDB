@@ -138,28 +138,23 @@ class RestClientRemote : public RestClient {
       const URI& uri) override;
 
   /**
-   * Get a data encoded array schema from rest server.
+   * Get an array schema from the rest server.
    *
-   * @param uri of array being loaded
-   * @return Status and new ArraySchema shared pointer.
-   */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema_from_rest(
-      const URI& uri) override;
-
-  /**
-   * Get an array schema from the rest server. This will eventually replace the
-   * get_array_schema_from_rest after TileDB-Cloud-REST merges support for the
-   * POST endpoint.
-   *
+   * @param config The TileDB config.
    * @param uri The Array URI to load the schema from.
-   * @return shared_ptr<ArraySchema> The loaded array schema.
+   * @param timestamp_start The starting timestamp used to open the array.
+   * @param timestamp_end The ending timestamp used to open the array.
+   * @return Tuple containing the latest array schema, and all array schemas for
+   *    the array opened with provided timestamps.
    */
-  shared_ptr<ArraySchema> post_array_schema_from_rest(
+  std::tuple<
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+  post_array_schema_from_rest(
       const Config& config,
       const URI& uri,
       uint64_t timestamp_start,
-      uint64_t timestamp_end,
-      bool include_enumerations) override;
+      uint64_t timestamp_end) override;
 
   /**
    * Post the array config and get an array from rest server
