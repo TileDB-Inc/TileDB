@@ -32,41 +32,10 @@
 
 #include "tiledb/common/common.h"
 
-#include <algorithm>
-#include <functional>
-#include <iostream>
-#include <sstream>
-
-#include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
-#include "tiledb/sm/array/array.h"
-#include "tiledb/sm/array/array_directory.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/array_schema_evolution.h"
-#include "tiledb/sm/array_schema/array_schema_operations.h"
-#include "tiledb/sm/array_schema/enumeration.h"
-#include "tiledb/sm/consolidator/consolidator.h"
-#include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/enums/object_type.h"
-#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/global_state/global_state.h"
-#include "tiledb/sm/global_state/unit_test_config.h"
-#include "tiledb/sm/group/group.h"
-#include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/object/object.h"
-#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/query.h"
-#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/tile/generic_tile_io.h"
-#include "tiledb/sm/tile/tile.h"
-
-#include <algorithm>
-#include <iostream>
-#include <sstream>
 
 using namespace tiledb::common;
 
@@ -83,29 +52,22 @@ class StorageManagerException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+/*
+ * Note: The logger argument is no longer used, but has not been removed from
+ * the constructor signature as yet.
+ */
 StorageManagerCanonical::StorageManagerCanonical(
     ContextResources& resources,
-    shared_ptr<Logger> logger,
+    const shared_ptr<Logger>&,  // unused
     const Config& config)
-    : resources_(resources)
-    , logger_(logger)
+    : vfs_(resources.vfs())
     , cancellation_in_progress_(false)
     , config_(config)
     , queries_in_progress_(0) {
-  /*
-   * This is a transitional version the implementation of this constructor. To
-   * complete the transition, the `init` member function must disappear.
-   */
-  throw_if_not_ok(init());
-}
-
-Status StorageManagerCanonical::init() {
   auto& global_state = global_state::GlobalState::GetGlobalState();
   global_state.init(config_);
 
   global_state.register_storage_manager(this);
-
-  return Status::Ok();
 }
 
 StorageManagerCanonical::~StorageManagerCanonical() {
@@ -127,24 +89,6 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::async_push_query(Query* query) {
-  cancelable_tasks_.execute(
-      &resources_.compute_tp(),
-      [this, query]() {
-        // Process query.
-        throw_if_not_ok(query_submit(query));
-        return Status::Ok();
-      },
-      [query]() {
-        // Task was cancelled. This is safe to perform in a separate thread,
-        // as we are guaranteed by the thread pool not to have entered
-        // query->process() yet.
-        throw_if_not_ok(query->cancel());
-      });
-
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::cancel_all_tasks() {
   // Check if there is already a "cancellation" in progress.
   bool handle_cancel = false;
@@ -159,8 +103,7 @@ Status StorageManagerCanonical::cancel_all_tasks() {
   // Handle the cancellation.
   if (handle_cancel) {
     // Cancel any queued tasks.
-    cancelable_tasks_.cancel_all_tasks();
-    throw_if_not_ok(resources_.vfs().cancel_all_tasks());
+    throw_if_not_ok(vfs_.cancel_all_tasks());
 
     // Wait for in-progress queries to finish.
     wait_for_zero_in_progress();
@@ -196,11 +139,6 @@ Status StorageManagerCanonical::query_submit(Query* query) {
   auto st = query->process();
 
   return st;
-}
-
-Status StorageManagerCanonical::query_submit_async(Query* query) {
-  // Push the query into the async queue
-  return async_push_query(query);
 }
 
 void StorageManagerCanonical::wait_for_zero_in_progress() {
