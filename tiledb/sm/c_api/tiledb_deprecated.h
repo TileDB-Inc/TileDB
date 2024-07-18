@@ -625,6 +625,27 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_get_fragment_name(
     const char** name) TILEDB_NOEXCEPT;
 
 /**
+ * Dumps the array schema in ASCII format in the selected file output.
+ *
+ * **Example:**
+ *
+ * The following prints the array schema dump in standard output.
+ *
+ * @code{.c}
+ * tiledb_array_schema_dump(ctx, array_schema, stdout);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param out The output handle.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_schema_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    FILE* out) TILEDB_NOEXCEPT;
+
+/**
  * Dumps the contents of an attribute in ASCII form to some output (e.g.,
  * file or stdout).
  *
