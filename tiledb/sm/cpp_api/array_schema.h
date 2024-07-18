@@ -157,6 +157,7 @@ class ArraySchema : public Schema {
   /*                API                */
   /* ********************************* */
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
   /**
    * Dumps the array schema in an ASCII representation to an output.
    *
@@ -168,6 +169,7 @@ class ArraySchema : public Schema {
     ctx.handle_error(
         tiledb_array_schema_dump(ctx.ptr().get(), schema_.get(), out));
   }
+#endif
 
   /** Returns the array type. */
   tiledb_array_type_t array_type() const {
