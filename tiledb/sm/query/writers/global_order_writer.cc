@@ -1434,8 +1434,11 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
 uint64_t GlobalOrderWriter::num_tiles_per_row() {
   auto dim_num = array_schema_.dim_num();
   uint64_t ret = 1;
+
   for (unsigned d = 1; d < dim_num; ++d) {
-    // skip first dim. todo Explain
+    // Skip first dim. We want to calculate how many tiles can fit in one row.
+    // To do that we skip the first dim and multiply the range / extend of the
+    // other dimensions
     auto dim{array_schema_.dimension_ptr(d)};
     auto dim_dom = dim->domain();
     ret *= dim->domain_range(dim_dom) / dim->tile_extent().rvalue_as<int32_t>();
@@ -1448,20 +1451,24 @@ uint64_t GlobalOrderWriter::num_tiles_per_row() {
 NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
   uint64_t tiles_per_row = num_tiles_per_row();
   auto dim_num = array_schema_.dim_num();
+  uint64_t cells_in_tile = array_schema_.domain().cell_num_per_tile();
   NDRange nd;
   nd.reserve(dim_num);
 
   if (num % tiles_per_row != 0) {
     throw GlobalOrderWriterException(
-        "This fragment target size is not possible please try something else ");  // todo fix
+        "The target fragment size cannot be achieved. Please try using a "
+        "different size, or there might be a misconfiguration in the array "
+        "schema.");
   }
 
   // Calculate how many rows we will write in the current fragment
-  uint64_t rows_to_write = num / tiles_per_row;
+  uint64_t rows_of_tiles_to_write = num / tiles_per_row;
 
   // Create the range for the index dim (first).
-  int start = rows_written_;
-  int end = start + rows_to_write - 1;
+  int start =
+      rows_written_ * cells_in_tile;  // todo start from the dim_dom start
+  int end = start + (rows_of_tiles_to_write * cells_in_tile) - 1;
   Range range(&start, &end, sizeof(int));
   nd.emplace_back(range);
 
@@ -1474,7 +1481,7 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
   }
 
   // add rows written to the cache
-  rows_written_ += rows_to_write;
+  rows_written_ += rows_of_tiles_to_write;
 
   return nd;
 }

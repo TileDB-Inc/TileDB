@@ -392,12 +392,19 @@ class GlobalOrderWriter : public WriterBase {
       tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles);
 
   /**
-   * Return the number of tiles a single row can hold
+   * Create new ndranges by splitting the first dimension based on the number of
+   * tiles we need to write
+   * @param num The number of tiles we need to write.
    *
-   * @return Number of tiles.
    */
   NDRange ndranges_after_split(uint64_t num);
 
+  /**
+   * Return the number of tiles a single row can hold. More specifically, the
+   * number of tiles all dimensions except the first can hold.
+   *
+   * @return Number of tiles.
+   */
   uint64_t num_tiles_per_row();
 
   /**
