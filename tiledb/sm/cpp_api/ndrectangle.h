@@ -47,6 +47,15 @@
 namespace tiledb {
 
 class NDRectangle {
+  template <class K, class Y = void>
+  struct tuple_ret {
+    using type = std::array<K, 2>;
+  };
+  template <class Y>
+  struct tuple_ret<std::string, Y> {
+    using type = std::array<std::string, 2>;
+  };
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -245,15 +254,6 @@ class NDRectangle {
 
     return {std::move(start_str), std::move(end_str)};
   }
-
-  template <class K>
-  struct tuple_ret {
-    using type = std::array<K, 2>;
-  };
-  template <>
-  struct tuple_ret<std::string> {
-    using type = std::array<std::string, 2>;
-  };
 
   /**
    * Retrieves a range for a given dimension name. The template datatype must be
