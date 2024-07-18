@@ -28,6 +28,5 @@ include(unit_test)
 
 commence(unit_test capi_domain)
   this_target_sources(unit_capi_domain.cc)
-  this_target_object_libraries(capi_attribute_stub)
   this_target_object_libraries(capi_domain_stub)
 conclude(unit_test)

@@ -28,6 +28,5 @@ include(unit_test)
 
 commence(unit_test capi_dimension)
   this_target_sources(unit_capi_dimension.cc)
-  this_target_object_libraries(capi_attribute_stub)
   this_target_object_libraries(capi_dimension_stub)
 conclude(unit_test)
