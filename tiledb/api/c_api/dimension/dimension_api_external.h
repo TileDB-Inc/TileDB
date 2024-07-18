@@ -38,6 +38,9 @@
 #include "../filter_list/filter_list_api_external.h"
 #include "../string/string_api_external.h"
 
+// For the `FILE *` argument in `tiledb_dimension_dump`
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
