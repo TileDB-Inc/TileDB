@@ -59,54 +59,58 @@ void generic_tile_offsets_from_capnp(
     FragmentMetadata::GenericTileOffsets& gt_offsets) {
   gt_offsets.rtree_ = gt_reader.getRtree();
   if (gt_reader.hasTileOffsets()) {
-    gt_offsets.tile_offsets_.reserve(gt_reader.getTileOffsets().size());
-    for (const auto& tile_offset : gt_reader.getTileOffsets()) {
+    auto tile_offsets = gt_reader.getTileOffsets();
+    gt_offsets.tile_offsets_.reserve(tile_offsets.size());
+    for (const auto& tile_offset : tile_offsets) {
       gt_offsets.tile_offsets_.emplace_back(tile_offset);
     }
   }
   if (gt_reader.hasTileVarOffsets()) {
-    gt_offsets.tile_var_offsets_.reserve(gt_reader.getTileVarOffsets().size());
-    for (const auto& tile_var_offset : gt_reader.getTileVarOffsets()) {
+    auto tile_var_offsets = gt_reader.getTileVarOffsets();
+    gt_offsets.tile_var_offsets_.reserve(tile_var_offsets.size());
+    for (const auto& tile_var_offset : tile_var_offsets) {
       gt_offsets.tile_var_offsets_.emplace_back(tile_var_offset);
     }
   }
   if (gt_reader.hasTileVarSizes()) {
-    gt_offsets.tile_var_sizes_.reserve(gt_reader.getTileVarSizes().size());
-    for (const auto& tile_var_size : gt_reader.getTileVarSizes()) {
+    auto tile_var_sizes = gt_reader.getTileVarSizes();
+    gt_offsets.tile_var_sizes_.reserve(tile_var_sizes.size());
+    for (const auto& tile_var_size : tile_var_sizes) {
       gt_offsets.tile_var_sizes_.emplace_back(tile_var_size);
     }
   }
   if (gt_reader.hasTileValidityOffsets()) {
-    gt_offsets.tile_validity_offsets_.reserve(
-        gt_reader.getTileValidityOffsets().size());
-    for (const auto& tile_validity_offset :
-         gt_reader.getTileValidityOffsets()) {
+    auto tile_validity_offsets = gt_reader.getTileValidityOffsets();
+    gt_offsets.tile_validity_offsets_.reserve(tile_validity_offsets.size());
+    for (const auto& tile_validity_offset : tile_validity_offsets) {
       gt_offsets.tile_validity_offsets_.emplace_back(tile_validity_offset);
     }
   }
   if (gt_reader.hasTileMinOffsets()) {
-    gt_offsets.tile_min_offsets_.reserve(gt_reader.getTileMinOffsets().size());
-    for (const auto& tile_min_offset : gt_reader.getTileMinOffsets()) {
+    auto tile_min_offsets = gt_reader.getTileMinOffsets();
+    gt_offsets.tile_min_offsets_.reserve(tile_min_offsets.size());
+    for (const auto& tile_min_offset : tile_min_offsets) {
       gt_offsets.tile_min_offsets_.emplace_back(tile_min_offset);
     }
   }
   if (gt_reader.hasTileMaxOffsets()) {
-    gt_offsets.tile_max_offsets_.reserve(gt_reader.getTileMaxOffsets().size());
-    for (const auto& tile_max_offset : gt_reader.getTileMaxOffsets()) {
+    auto tile_max_offsets = gt_reader.getTileMaxOffsets();
+    gt_offsets.tile_max_offsets_.reserve(tile_max_offsets.size());
+    for (const auto& tile_max_offset : tile_max_offsets) {
       gt_offsets.tile_max_offsets_.emplace_back(tile_max_offset);
     }
   }
   if (gt_reader.hasTileSumOffsets()) {
-    gt_offsets.tile_sum_offsets_.reserve(gt_reader.getTileSumOffsets().size());
-    for (const auto& tile_sum_offset : gt_reader.getTileSumOffsets()) {
+    auto tile_sum_offsets = gt_reader.getTileSumOffsets();
+    gt_offsets.tile_sum_offsets_.reserve(tile_sum_offsets.size());
+    for (const auto& tile_sum_offset : tile_sum_offsets) {
       gt_offsets.tile_sum_offsets_.emplace_back(tile_sum_offset);
     }
   }
   if (gt_reader.hasTileNullCountOffsets()) {
-    gt_offsets.tile_null_count_offsets_.reserve(
-        gt_reader.getTileNullCountOffsets().size());
-    for (const auto& tile_null_count_offset :
-         gt_reader.getTileNullCountOffsets()) {
+    auto tile_null_count_offsets = gt_reader.getTileNullCountOffsets();
+    gt_offsets.tile_null_count_offsets_.reserve(tile_null_count_offsets.size());
+    for (const auto& tile_null_count_offset : tile_null_count_offsets) {
       gt_offsets.tile_null_count_offsets_.emplace_back(tile_null_count_offset);
     }
   }
@@ -362,9 +366,9 @@ Status fragment_metadata_from_capnp(
 
   frag_meta->version() = frag_meta_reader.getVersion();
   if (frag_meta_reader.hasTimestampRange()) {
-    frag_meta->timestamp_range() = std::make_pair(
-        frag_meta_reader.getTimestampRange()[0],
-        frag_meta_reader.getTimestampRange()[1]);
+    auto timestamp_range = frag_meta_reader.getTimestampRange();
+    frag_meta->timestamp_range() =
+        std::make_pair(timestamp_range[0], timestamp_range[1]);
   }
   frag_meta->last_tile_cell_num() = frag_meta_reader.getLastTileCellNum();
 
