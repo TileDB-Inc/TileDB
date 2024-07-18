@@ -83,11 +83,21 @@ conclude(object_library)
 
 #
 # `array_schema` object library
+# for data-oriented array_schema functions.
 #
 commence(object_library array_schema)
     this_target_sources(array_schema.cc dimension_label.cc)
     this_target_object_libraries(
         attribute domain enumeration fragment current_domain time uri_format vfs)
+conclude(object_library)
+
+#
+# `array_schema_operations` object library 
+# for I/O-oriented array_schema operations on the array_schema library. 
+#
+commence(object_library array_schema_operations)
+    this_target_sources(array_schema_operations.cc)
+    this_target_object_libraries(array_schema generic_tile_io tiledb_crypto)
 conclude(object_library)
 
 add_test_subdirectory()

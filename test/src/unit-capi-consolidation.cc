@@ -167,6 +167,7 @@ struct ConsolidationFx {
   static int get_wrt_num(const char* path, void* data);
   static int get_ignore_num(const char* path, void* data);
   static int get_ok_num(const char* path, void* data);
+  static int get_vac_num(const char* path, void* data);
   static int get_array_meta_files_callback(const char* path, void* data);
   static int get_array_meta_vac_files_callback(const char* path, void* data);
   static int get_vac_files_callback(const char* path, void* data);
@@ -4863,6 +4864,16 @@ int ConsolidationFx::get_ok_num(const char* path, void* data) {
   return 1;
 }
 
+int ConsolidationFx::get_vac_num(const char* path, void* data) {
+  auto data_struct = (ConsolidationFx::get_num_struct*)data;
+  if (tiledb::sm::utils::parse::ends_with(
+          path, tiledb::sm::constants::vacuum_file_suffix)) {
+    ++data_struct->num;
+  }
+
+  return 1;
+}
+
 int ConsolidationFx::get_array_meta_files_callback(
     const char* path, void* data) {
   auto vec = static_cast<std::vector<std::string>*>(data);
@@ -7197,9 +7208,17 @@ TEST_CASE_METHOD(
   REQUIRE(err == nullptr);
 
   // Consolidate
-  const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
-  rc = tiledb_array_consolidate_fragments(
-      ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
+  SECTION("Relative URIs") {
+    const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
+  }
+
+  SECTION("Absolute URIs") {
+    const char* uris[2] = {uri, uri2};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
+  }
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
 
@@ -7273,9 +7292,28 @@ TEST_CASE_METHOD(
   REQUIRE(err == nullptr);
 
   // Consolidate
-  const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
-  rc = tiledb_array_consolidate_fragments(
-      ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  SECTION("Relative URIs") {
+    const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  }
+
+  SECTION("Absolute URIs") {
+    const char* uris[2] = {uri, uri2};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  }
+
+  SECTION("Invalid URIs") {
+    std::string frag1(strrchr(uri, '/') + 1), frag2(strrchr(uri, '/') + 1);
+    frag1 = "/some/array/__fragments/" + frag1;
+    frag2 = "/some/array/__fragments/" + frag2;
+    const char* uris[2] = {frag1.c_str(), frag2.c_str()};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+    CHECK(rc == TILEDB_ERR);
+    return;
+  }
   CHECK(rc == TILEDB_OK);
   tiledb_config_free(&cfg);
 
@@ -7306,6 +7344,122 @@ TEST_CASE_METHOD(
   // Clean up
   remove_sparse_array();
 }
+
+#ifndef _WIN32
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation v11 array, split fragments",
+    "[capi][consolidation][split-fragments][non-rest]") {
+  // vfs_copy_dir is only supported on Posix and S3.
+  // Experimental builds throw when attempting to write to an array with
+  // previous format version.
+  if (!vfs_test_setup_.is_local() || is_experimental_build) {
+    return;
+  }
+
+  remove_sparse_array();
+  create_sparse_array_v11(ctx_, sparse_array_uri_);
+  write_sparse_v11(ctx_, sparse_array_uri_, 0);
+  write_sparse_v11(ctx_, sparse_array_uri_, 1);
+  write_sparse_v11(ctx_, sparse_array_uri_, 2);
+  write_sparse_v11(ctx_, sparse_array_uri_, 3);
+
+  // Create fragment info object
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  int rc = tiledb_fragment_info_alloc(
+      ctx_, sparse_array_uri_.c_str(), &fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Load fragment info
+  rc = tiledb_fragment_info_load(ctx_, fragment_info);
+  CHECK(rc == TILEDB_OK);
+
+  // Get fragment URIs
+  const char* uri;
+  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri);
+  CHECK(rc == TILEDB_OK);
+  const char* uri2;
+  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 3, &uri2);
+  CHECK(rc == TILEDB_OK);
+
+  // Set consolidation buffer size
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+
+  rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  // Consolidate
+  SECTION("Relative URIs") {
+    const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  }
+
+  SECTION("Absolute URIs") {
+    const char* uris[2] = {uri, uri2};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+  }
+
+  SECTION("Invalid URIs") {
+    std::string frag1(strrchr(uri, '/') + 1), frag2(strrchr(uri, '/') + 1);
+    frag1 = "/some/array/" + frag1;
+    frag2 = "/some/array/" + frag2;
+    const char* uris[2] = {frag1.c_str(), frag2.c_str()};
+    rc = tiledb_array_consolidate_fragments(
+        ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
+    CHECK(rc == TILEDB_ERR);
+    return;
+  }
+  CHECK(rc == TILEDB_OK);
+  tiledb_config_free(&cfg);
+
+  tiledb_fragment_info_free(&fragment_info);
+
+  // Check for 1 vacuum file after consolidation.
+  get_num_struct data = {ctx_, vfs_, 0};
+  rc =
+      tiledb_vfs_ls(ctx_, vfs_, sparse_array_uri_.c_str(), &get_vac_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 1);
+
+  // Check for 5 fragments comitted: 4 writes and 1 consolidation.
+  data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, sparse_array_uri_.c_str(), &get_ok_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 5);
+
+  // Check reading after consolidation
+  read_sparse_v11(ctx_, sparse_array_uri_, UINT64_MAX);
+
+  // Vacuum
+  rc = tiledb_array_vacuum(ctx_, sparse_array_uri_.c_str(), NULL);
+  CHECK(rc == TILEDB_OK);
+  read_sparse_v11(ctx_, sparse_array_uri_, UINT64_MAX);
+
+  // Check for 3 comitted fragments after vacuum.
+  data = {ctx_, vfs_, 0};
+  rc = tiledb_vfs_ls(ctx_, vfs_, sparse_array_uri_.c_str(), &get_ok_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 3);
+
+  // Check for no vacuum file after vacuum.
+  data = {ctx_, vfs_, 0};
+  rc =
+      tiledb_vfs_ls(ctx_, vfs_, sparse_array_uri_.c_str(), &get_vac_num, &data);
+  CHECK(rc == TILEDB_OK);
+  CHECK(data.num == 0);
+
+  // Clean up
+  remove_sparse_array();
+}
+#endif
 
 TEST_CASE_METHOD(
     ConsolidationFx,

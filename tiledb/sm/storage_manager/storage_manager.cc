@@ -6,7 +6,6 @@
  * The MIT License
  *
  * @copyright Copyright (c) 2017-2024 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +44,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
-#include "tiledb/sm/array_schema/auxiliary.h"
+#include "tiledb/sm/array_schema/array_schema_operations.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -57,7 +56,6 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/query.h"
@@ -104,8 +102,6 @@ StorageManagerCanonical::StorageManagerCanonical(
 Status StorageManagerCanonical::init() {
   auto& global_state = global_state::GlobalState::GetGlobalState();
   global_state.init(config_);
-
-  RETURN_NOT_OK(set_default_tags());
 
   global_state.register_storage_manager(this);
 
@@ -188,11 +184,6 @@ void StorageManagerCanonical::decrement_in_progress() {
   queries_in_progress_cv_.notify_all();
 }
 
-const std::unordered_map<std::string, std::string>&
-StorageManagerCanonical::tags() const {
-  return tags_;
-}
-
 void StorageManagerCanonical::increment_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_++;
@@ -212,17 +203,6 @@ Status StorageManagerCanonical::query_submit_async(Query* query) {
   return async_push_query(query);
 }
 
-Status StorageManagerCanonical::set_tag(
-    const std::string& key, const std::string& value) {
-  tags_[key] = value;
-
-  // Tags are added to REST requests as HTTP headers.
-  if (resources_.rest_client() != nullptr)
-    throw_if_not_ok(resources_.rest_client()->set_header(key, value));
-
-  return Status::Ok();
-}
-
 void StorageManagerCanonical::wait_for_zero_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_cv_.wait(
@@ -232,16 +212,5 @@ void StorageManagerCanonical::wait_for_zero_in_progress() {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-Status StorageManagerCanonical::set_default_tags() {
-  const auto version = std::to_string(constants::library_version[0]) + "." +
-                       std::to_string(constants::library_version[1]) + "." +
-                       std::to_string(constants::library_version[2]);
-
-  RETURN_NOT_OK(set_tag("x-tiledb-version", version));
-  RETURN_NOT_OK(set_tag("x-tiledb-api-language", "c"));
-
-  return Status::Ok();
-}
 
 }  // namespace tiledb::sm

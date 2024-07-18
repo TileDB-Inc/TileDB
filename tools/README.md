@@ -10,7 +10,7 @@ To build the `tiledb` CLI executable, first configure TileDB with the CMake vari
 
 ```bash
 $ cmake -DTILEDB_TOOLS=ON ..
-$ make && make -C tiledb tools
+$ make tools
 ```
 
 This will produce the binary `tiledb/tools/tiledb`.

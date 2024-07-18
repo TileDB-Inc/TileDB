@@ -98,28 +98,6 @@ class RelevantFragmentGenerator {
 
  private:
   /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
-  /**
-   * Computes the relevant fragment bytemap for a specific dimension.
-   *
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param dim_idx The index of the dimension to compute on.
-   * @param fragment_num The number of fragments to compute on.
-   * @param start_coords The starting range coordinates to compute between.
-   * @param end_coords The ending range coordinates to compute between.
-   * @param frag_bytemap The fragment bytemap to mutate.
-   */
-  Status compute_relevant_fragments_for_dim(
-      ThreadPool* compute_tp,
-      dimension_size_type dim_idx,
-      size_t fragment_num,
-      const std::vector<uint64_t>& start_coords,
-      const std::vector<uint64_t>& end_coords,
-      std::vector<uint8_t>* frag_bytemap) const;
-
-  /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 

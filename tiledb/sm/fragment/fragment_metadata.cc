@@ -50,7 +50,7 @@
 #include "tiledb/sm/fragment/v1v2preloaded_fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/rectangle.h"
 #include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -1814,7 +1814,7 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
   auto metadata_domain = (const T*)&temp[0];
 
   // Check if there is any overlap
-  if (!utils::geometry::overlap(subarray, metadata_domain, dim_num))
+  if (!rectangle::overlap(subarray, metadata_domain, dim_num))
     return tids;
 
   // Initialize subarray tile domain
@@ -1833,8 +1833,8 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     tile_pos = domain.get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos);
     domain.get_next_tile_coords(subarray_tile_domain, tile_coords);
-  } while (utils::geometry::coords_in_rect(
-      tile_coords, subarray_tile_domain, dim_num));
+  } while (
+      rectangle::coords_in_rect(tile_coords, subarray_tile_domain, dim_num));
 
   // Clean up
   tdb_delete_array(subarray_tile_domain);
@@ -1862,7 +1862,7 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   auto metadata_domain = (const T*)&temp[0];
 
   // Check if there is any overlap
-  if (!utils::geometry::overlap(subarray, metadata_domain, dim_num))
+  if (!rectangle::overlap(subarray, metadata_domain, dim_num))
     return tids;
 
   // Initialize subarray tile domain
@@ -1884,15 +1884,15 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
   uint64_t tile_pos;
   do {
     domain.get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
-    utils::geometry::overlap(
+    rectangle::overlap(
         subarray, tile_subarray, dim_num, tile_overlap, &overlap);
     assert(overlap);
-    cov = utils::geometry::coverage(tile_overlap, tile_subarray, dim_num);
+    cov = rectangle::coverage(tile_overlap, tile_subarray, dim_num);
     tile_pos = domain.get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos, cov);
     domain.get_next_tile_coords(subarray_tile_domain, tile_coords);
-  } while (utils::geometry::coords_in_rect(
-      tile_coords, subarray_tile_domain, dim_num));
+  } while (
+      rectangle::coords_in_rect(tile_coords, subarray_tile_domain, dim_num));
 
   // Clean up
   tdb_delete_array(subarray_tile_domain);

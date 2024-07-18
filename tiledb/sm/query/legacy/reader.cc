@@ -40,7 +40,6 @@
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"

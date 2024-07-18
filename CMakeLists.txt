@@ -112,56 +112,9 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 # Disable warnings from Boost
 set(Boost_NO_WARN_NEW_VERSIONS ON)
 
-############################################################
-# Superbuild setup
-############################################################
-
-# Set the variable used when calling find_package(), find_file() etc.
-# to determine if NO_DEFAULT_PATH should be passed.
-if (TILEDB_FORCE_ALL_DEPS)
-  set(TILEDB_DEPS_NO_DEFAULT_PATH NO_DEFAULT_PATH)
-else()
-  set(TILEDB_DEPS_NO_DEFAULT_PATH)
-endif()
-
-# If this is an in-IDE build, we need to disable the superbuild and explicitly
-# set the EP base dir. The normal 'cmake && make' process won't need this step,
-# it is for better CLion support of this superbuild architecture.
-if (TILEDB_CMAKE_IDE)
-  set(TILEDB_SUPERBUILD OFF)
-  set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
-endif()
-
-# Set main TileDB Source
-set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
-# Set experimental TileDB Source
-set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
-
-# Perform superbuild config and exit.
-if (TILEDB_SUPERBUILD)
-  project(TileDB-Superbuild)
-
-  # Override default install prefix if not set
-  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    message(STATUS "Setting CMAKE_INSTALL_PREFIX to: '${PROJECT_BINARY_DIR}/dist'")
-    set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/dist" CACHE PATH "..." FORCE)
-  endif()
-
-  message(STATUS "Starting TileDB superbuild.")
-  include("cmake/TileDB-Superbuild.cmake")
-  message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-  # The superbuild file incorporates this file as an external project with the
-  # superbuild off. Thus we stop processing this file here, knowing that we'll
-  # come back later.
-  return()
-endif()
-
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
 message(STATUS "  CMake version: ${CMAKE_VERSION}")
-# Paths to locate the installed external projects.
-set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
-set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
 ############################################################
 # Compile options/definitions for all targets
@@ -384,28 +337,28 @@ set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAM
 set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
 
 ##################################
-# VFS Object Storage Configuration
+# Library Configuration
 ##################################
-# Create an interface library for use in passing the
-# appropriate compiler definitions for the set of
-# configured object storage backends.
+#
+# `configuration_definitions` is an interface library that contains compiler
+# definitions corresponding to the configuration variables passed to CMake
 
-add_library(object_store_definitions INTERFACE)
+add_library(configuration_definitions INTERFACE)
 
 if (TILEDB_AZURE)
-  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_AZURE)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_AZURE)
 endif()
 
 if (TILEDB_GCS)
-  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_GCS)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_GCS)
 endif()
 
 if (TILEDB_HDFS)
-  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_HDFS)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_HDFS)
 endif()
 
 if (TILEDB_S3)
-  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_S3)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
 
 ##################################
@@ -532,9 +485,6 @@ add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
-  if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
-    message(FATAL_ERROR "Building tools with Azure enabled requires enabling TILEDB_VCPKG")
-  endif()
   add_subdirectory(tools)
 endif()
 

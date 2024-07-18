@@ -35,7 +35,6 @@
 #include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 
 #include <algorithm>
@@ -49,8 +48,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * Wraps opaque user data to be invoked with a write callback.
@@ -453,9 +451,9 @@ CURLcode Curl::curl_easy_perform_instrumented(
     const char* const url, const uint8_t retry_number) const {
   CURL* curl = curl_.get();
   // Time the curl transfer
-  uint64_t t1 = tiledb::sm::utils::time::timestamp_now_ms();
+  uint64_t t1 = utils::time::timestamp_now_ms();
   auto curl_code = curl_easy_perform(curl);
-  uint64_t t2 = tiledb::sm::utils::time::timestamp_now_ms();
+  uint64_t t2 = utils::time::timestamp_now_ms();
   uint64_t dt = t2 - t1;
   long http_code = 0;
   if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) != CURLE_OK) {
@@ -1030,5 +1028,5 @@ Status Curl::put_data_common(
 
   return Status::Ok();
 }
-}  // namespace sm
-}  // namespace tiledb
+
+}  // namespace tiledb::sm

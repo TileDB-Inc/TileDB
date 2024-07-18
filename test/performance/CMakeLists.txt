@@ -26,7 +26,7 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+find_package(Catch2 REQUIRED)
 
 # These options not exposed in bootstrap script.
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)

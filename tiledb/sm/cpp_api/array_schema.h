@@ -601,13 +601,6 @@ class ArraySchema : public Schema {
     return "";
   }
 
-/* ********************************* */
-/*           DEPRECATED API          */
-/* ********************************* */
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-#include "array_schema_deprecated.h"
-#endif  // TILEDB_REMOVE_DEPRECATIONS
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

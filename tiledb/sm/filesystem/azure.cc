@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,6 @@
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 
 static std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
     const tiledb::sm::SSLConfig& ssl_cfg);
@@ -54,8 +53,7 @@ static std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Converts an Azure nullable value to an STL optional. */
 template <class T>
@@ -1257,8 +1255,7 @@ std::string Azure::BlockListUploadState::next_block_id() {
   return b64_block_id_str;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #if defined(_WIN32)
 #include <azure/core/http/win_http_transport.hpp>

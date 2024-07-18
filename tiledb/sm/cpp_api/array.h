@@ -418,6 +418,22 @@ class Array {
    * See @ref Array::open(tiledb_query_type_t) "Array::open"
    */
   // clang-format on
+  void open(tiledb_query_type_t query_type, uint64_t timestamp) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+
+    ctx.handle_error(
+        tiledb_array_set_open_timestamp_end(c_ctx, array_.get(), timestamp));
+    open(query_type);
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Array::open(tiledb_query_type_t)
+   *
+   * See @ref Array::open(tiledb_query_type_t) "Array::open"
+   */
+  // clang-format on
   void open(
       tiledb_query_type_t query_type,
       tiledb_encryption_type_t encryption_type,
@@ -602,7 +618,7 @@ class Array {
    * @param ctx TileDB context
    * @param array_uri The URI of the TileDB array to be consolidated.
    * @param fragment_uris Fragment names of the fragments to consolidate. The
-   *     names can be recovered using tiledb_fragment_info_get_fragment_name.
+   *     names can be recovered using tiledb_fragment_info_get_fragment_name_v2.
    * @param num_fragments The number of fragments to consolidate.
    * @param config Configuration parameters for the consolidation.
    */
@@ -1120,13 +1136,6 @@ class Array {
     key->resize(key_len);
     std::memcpy((void*)key->data(), key_c, key_len);
   }
-
-/* ********************************* */
-/*           DEPRECATED API          */
-/* ********************************* */
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-#include "array_deprecated.h"
-#endif  // TILEDB_REMOVE_DEPRECATIONS
 
  private:
   /* ********************************* */

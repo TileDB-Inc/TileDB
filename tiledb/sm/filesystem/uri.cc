@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/constants.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
@@ -44,8 +44,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -240,7 +239,7 @@ Status URI::get_rest_components(
 }
 
 std::optional<URI> URI::get_fragment_name() const {
-  auto to_find = "/" + sm::constants::array_fragments_dir_name + "/";
+  auto to_find = "/" + constants::array_fragments_dir_name + "/";
   auto pos = uri_.find(to_find);
   if (pos == std::string::npos) {
     // Unable to find '/__fragments/' anywhere.
@@ -361,5 +360,4 @@ bool URI::operator>(const URI& uri) const {
   return uri_ > uri.uri_;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

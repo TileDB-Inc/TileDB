@@ -195,7 +195,7 @@ TEST_CASE(
   query.set_data_buffer("a1", a1_data)
       .set_data_buffer("a2", a2buf.second)
       .set_offsets_buffer("a2", a2buf.first)
-      .set_coordinates(coords)
+      .set_data_buffer("__coords", coords)
       .set_layout(TILEDB_UNORDERED);
   REQUIRE(query.submit() == Query::Status::COMPLETE);
   array.close();

@@ -3,8 +3,8 @@
 SourceDir="$(dirname $0)/.."
 BaseDir="$(pwd)"
 
-TestAppDir="$(pwd)/tiledb/examples/c_api"
-TestAppDataDir="$(pwd)/tiledb/examples/c_api/test_app_data"
+TestAppDir="$(pwd)/examples/c_api"
+TestAppDataDir="$(pwd)/examples/c_api/test_app_data"
 for example in $(ls ${SourceDir}/examples/c_api/*.c) ;
 do
   cd ${TestAppDir}
@@ -13,7 +13,7 @@ do
   cd ${TestAppDataDir}
   exampleexe=${example%.c}_c
   exampleexe=${exampleexe##*/}
-  cmake --build ${BaseDir}/tiledb --target ${exampleexe}
+  cmake --build ${BaseDir} --target ${exampleexe}
   echo $TestAppDir/$exampleexe
   $TestAppDir/$exampleexe;
   status=$?
@@ -29,8 +29,8 @@ cd ${TestAppDir}
 rm -rf ${TestAppDataDir}
 
 cd ${BaseDir}
-TestAppDir="$(pwd)/tiledb/examples/cpp_api"
-TestAppDataDir="$(pwd)/tiledb/examples/cpp_api/test_app_data"
+TestAppDir="$(pwd)/examples/cpp_api"
+TestAppDataDir="$(pwd)/examples/cpp_api/test_app_data"
 for example in $(ls ${SourceDir}/examples/cpp_api/*.cc) ;
 do
   # Skip running WebP example with no input
@@ -44,7 +44,7 @@ do
   cd ${TestAppDataDir}
   exampleexe=${example%.cc}_cpp
   exampleexe=${exampleexe##*/}
-  cmake --build ${BaseDir}/tiledb --target ${exampleexe}
+  cmake --build ${BaseDir} --target ${exampleexe}
   echo $TestAppDir/$exampleexe
   $TestAppDir/$exampleexe;
   status=$?

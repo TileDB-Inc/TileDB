@@ -1,10 +1,9 @@
 #
-# CMakeLists.txt
-#
+# FindZstd.cmake
 #
 # The MIT License
 #
-# Copyright (c) 2017 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,32 +23,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+# Finds the Zstd library.
+# This module defines:
+#   - The ${ZSTD_TARGET} imported target
 
-project(bzip2)
-cmake_minimum_required(VERSION 3.21)
-
-set(SOURCES "blocksort.c" "huffman.c" "crctable.c" "randtable.c"
-"compress.c" "decompress.c" "bzlib.c")
-file(GLOB HEADERS "bzlib.h")
-
-# Set build flags
-if (WIN32)
-  set(CMAKE_C_FLAGS "/DWIN32 /D_FILE_OFFSET_BITS=64 /MD /Ox /nologo")
+find_package(zstd CONFIG REQUIRED)
+# Unified target introduced in zstd 1.5.6.
+if (TARGET zstd::libzstd)
+  set(ZSTD_TARGET zstd::libzstd)
 else()
-  set(CMAKE_C_FLAGS "-D_FILE_OFFSET_BITS=64 -Wall -Winline -O2 -g")
+  set(ZSTD_TARGET $<IF:$<TARGET_EXISTS:zstd::libzstd_shared>,zstd::libzstd_shared,zstd::libzstd_static>)
 endif()
-
-# Create libraries
-add_library(bzip2_static STATIC ${SOURCES})
-set_target_properties(bzip2_static PROPERTIES OUTPUT_NAME "libbz2static")
-add_library(bzip2_shared SHARED ${SOURCES} libbz2.def)
-set_target_properties(bzip2_shared PROPERTIES OUTPUT_NAME "libbz2")
-
-# Install libraries
-install(
-  TARGETS bzip2_static bzip2_shared
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-)
-install(FILES ${HEADERS} DESTINATION include)
