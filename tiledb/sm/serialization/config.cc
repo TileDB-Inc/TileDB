@@ -84,8 +84,7 @@ Status config_from_capnp(
       auto key = std::string_view{kv.getKey().cStr(), kv.getKey().size()};
       auto value = std::string_view{kv.getValue().cStr(), kv.getValue().size()};
       RETURN_NOT_OK((*config)->set(std::string{key}, std::string{value}));
-      if (key == "sm.use_refactored_readers" ||
-          key == "sm.query.dense.reader" ||
+      if (key == "sm.query.dense.reader" ||
           key == "sm.query.sparse_global_order.reader" ||
           key == "sm.query.sparse_unordered_with_dups.reader")
         found_refactored_reader_config = true;
