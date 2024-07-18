@@ -27,7 +27,7 @@
 
 add_custom_target(experimental_examples_cpp)
 
-find_package(Bzip2_EP REQUIRED)
+find_package(BZip2 REQUIRED)
 
 # Function that builds an executable per example
 function(build_TileDB_experimental_example_cppapi TARGET)

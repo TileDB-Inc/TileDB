@@ -39,7 +39,6 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/update_value.h"
 
 using namespace tiledb;

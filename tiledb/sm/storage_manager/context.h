@@ -127,6 +127,11 @@ class Context {
     return *(x.get());
   }
 
+  [[nodiscard]] inline bool has_rest_client() const {
+    auto x = resources_.rest_client();
+    return bool(x);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

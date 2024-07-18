@@ -167,7 +167,11 @@ void ConsolidationWithTimestampsFx::write_sparse(
     std::vector<uint64_t> dim2,
     uint64_t timestamp) {
   // Open array.
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
+  Array array(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
@@ -193,7 +197,11 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
 
   // Open array.
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
+  Array array(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
@@ -290,7 +298,11 @@ void ConsolidationWithTimestampsFx::read_sparse(
     uint64_t timestamp,
     std::vector<uint64_t>* timestamps_ptr) {
   // Open array.
-  Array array(ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
+  Array array(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      TILEDB_READ,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   Query query(ctx_, array, TILEDB_READ);
@@ -1314,6 +1326,7 @@ TEST_CASE_METHOD(
   Subarray subarray(ctx_, array);
   subarray.add_range<uint64_t>(1, 2, 3);
   subarray.add_range<uint64_t>(1, 2, 3);
+  subarray.set_config(cfg);
   query.set_subarray(subarray);
 
   // Submit/finalize the query

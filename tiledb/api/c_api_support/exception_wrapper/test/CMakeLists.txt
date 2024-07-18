@@ -77,6 +77,7 @@ commence(unit_test capi_ew_with_hook)
   this_target_link_libraries(export)
   this_target_object_libraries(
       exception_wrapper
+      rest_client
       storage_manager_stub
       vfs
   )

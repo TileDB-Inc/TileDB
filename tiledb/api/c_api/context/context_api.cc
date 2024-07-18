@@ -34,6 +34,7 @@
 #include "context_api_external.h"
 #include "context_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 namespace tiledb::api {
 
@@ -121,12 +122,12 @@ capi_return_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
 capi_return_t tiledb_ctx_set_tag(
     tiledb_ctx_t* ctx, const char* key, const char* value) {
   if (key == nullptr) {
-    throw CAPIStatusException("tiledb_ctx_set_tag: key may not be null");
+    throw CAPIException("tiledb_ctx_set_tag: key may not be null");
   }
   if (value == nullptr) {
-    throw CAPIStatusException("tiledb_ctx_set_tag: value may not be null");
+    throw CAPIException("tiledb_ctx_set_tag: value may not be null");
   }
-  throw_if_not_ok(ctx->storage_manager()->set_tag(key, value));
+  ctx->rest_client().add_header(key, value);
   return TILEDB_OK;
 }
 

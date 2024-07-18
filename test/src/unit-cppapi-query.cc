@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,6 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
 
@@ -195,7 +194,7 @@ TEST_CASE(
   std::vector<int> coords_w = {0, 0, 1, 1, 2, 2, 3, 3};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
+  query_w.set_data_buffer("__coords", coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", data_w);
   query_w.submit();
@@ -221,7 +220,7 @@ TEST_CASE(
   // Open and write to the same array without closing it.
   Array array2(ctx, array_name, TILEDB_WRITE);
   Query query2(ctx, array2);
-  query2.set_coordinates(coords_w)
+  query2.set_data_buffer("__coords", coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", data_w);
   query2.submit();
@@ -324,7 +323,7 @@ TEST_CASE(
   std::vector<uint8_t> coords_w = {0, 0, 1, 1, 2, 2, 3, 3};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
+  query_w.set_data_buffer("__coords", coords_w)
       .set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", data_w);
   query_w.submit();

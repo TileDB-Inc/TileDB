@@ -46,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: tiledb_unit
-          path: ${{ github.workspace }}/build/tiledb/test/tiledb_unit
+          path: ${{ github.workspace }}/build/test/tiledb_unit
           retention-days: 1
 
   test:
@@ -69,10 +69,10 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: tiledb_unit
-          path: ${{ github.workspace }}/build/tiledb/test/
+          path: ${{ github.workspace }}/build/test/
 
       - name: Update tiledb_unit permissions
-        run: chmod +x $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit
+        run: chmod +x $GITHUB_WORKSPACE/build/test/tiledb_unit
 
       - name: Free disk space
         run: |
@@ -106,7 +106,7 @@ jobs:
 
 
           # Bypass Catch2 Framework stdout interception with awk on test output
-          $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          $GITHUB_WORKSPACE/build/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
       - name: 'Test status check'
         run: |

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,14 +38,13 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/rectangle.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -115,7 +114,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 
   // Focus on the input tile
   auto tile_sub = this->tile_subarray(id);
-  auto sub_in_tile = utils::geometry::intersection<T>(sub, tile_sub);
+  auto sub_in_tile = rectangle::intersection<T>(sub, tile_sub);
 
   // Compute the starting element to copy from in the subarray, and
   // to copy to in the tile
@@ -651,5 +650,4 @@ template class DenseTiler<uint32_t>;
 template class DenseTiler<int64_t>;
 template class DenseTiler<uint64_t>;
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

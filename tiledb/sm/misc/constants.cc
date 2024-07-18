@@ -49,7 +49,6 @@
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/misc/utils.h"
 
 namespace tiledb::sm::constants {
 

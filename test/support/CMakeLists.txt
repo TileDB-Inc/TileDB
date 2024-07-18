@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+find_package(Catch2 REQUIRED)
 
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}")

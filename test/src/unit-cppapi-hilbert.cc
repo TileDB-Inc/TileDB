@@ -388,6 +388,7 @@ TEST_CASE(
     subarray_r.add_range("d1", (int32_t)1, (int32_t)5);
     subarray_r.add_range("d2", (int32_t)1, (int32_t)3);
     subarray_r.add_range("d2", (int32_t)2, (int32_t)4);
+    subarray_r.set_config(cfg);
     query_r.set_subarray(subarray_r);
     query_r.set_layout(TILEDB_UNORDERED);
     // Submit query

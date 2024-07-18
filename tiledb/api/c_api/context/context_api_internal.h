@@ -71,6 +71,14 @@ struct tiledb_ctx_handle_t
     return ctx_.storage_manager();
   }
 
+  inline tiledb::sm::RestClient& rest_client() {
+    return ctx_.rest_client();
+  }
+
+  inline bool has_rest_client() {
+    return ctx_.has_rest_client();
+  }
+
   inline optional<std::string> last_error() {
     return ctx_.last_error();
   }
