@@ -219,6 +219,7 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
+    const URI& uri,
     SerializationType serialization_type,
     const Buffer& data,
     shared_ptr<MemoryTracker> memory_tracker);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests tiledb_array_schema_load* functions via a REST server.
+ * Tests tiledb_array_schema_load* functions across VFS backends and REST.
  */
 
 #include "test/support/src/vfs_helpers.h"
@@ -40,19 +40,21 @@
 
 using namespace tiledb;
 
-struct RESTArraySchemaLoadFx {
-  RESTArraySchemaLoadFx();
-  ~RESTArraySchemaLoadFx() = default;
+struct ArraySchemaLoadFx {
+  ArraySchemaLoadFx();
+  ~ArraySchemaLoadFx() = default;
 
   void create_array();
+  void check_schema(const ArraySchema& schema) const;
 
   test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
   Context ctx_;
+  ArraySchema schema_;
 };
 
 TEST_CASE_METHOD(
-    RESTArraySchemaLoadFx,
+    ArraySchemaLoadFx,
     "Simple schema load test",
     "[rest][array-schema][simple-load]") {
   create_array();
@@ -68,10 +70,12 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(
       ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"),
       matcher);
+
+  check_schema(schema);
 }
 
 TEST_CASE_METHOD(
-    RESTArraySchemaLoadFx,
+    ArraySchemaLoadFx,
     "Simple schema load with enumerations test",
     "[rest][array-schema][simple-load-with-enumerations]") {
   create_array();
@@ -80,15 +84,18 @@ TEST_CASE_METHOD(
       ArrayExperimental::load_schema_with_enumerations(ctx_, uri_);
   REQUIRE_NOTHROW(
       ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"));
+
+  check_schema(schema);
 }
 
-RESTArraySchemaLoadFx::RESTArraySchemaLoadFx()
+ArraySchemaLoadFx::ArraySchemaLoadFx()
     : vfs_test_setup_()
     , uri_(vfs_test_setup_.array_uri("array-schema-load-tests"))
-    , ctx_(vfs_test_setup_.ctx()) {
+    , ctx_(vfs_test_setup_.ctx())
+    , schema_(ctx_, TILEDB_DENSE) {
 }
 
-void RESTArraySchemaLoadFx::create_array() {
+void ArraySchemaLoadFx::create_array() {
   // Create a simple array for testing. This ends up with just five elements in
   // the array. dim is an int32_t dimension, attr1 is an enumeration with string
   // values and int32_t attribute values. attr2 is a float attribute.
@@ -99,24 +106,45 @@ void RESTArraySchemaLoadFx::create_array() {
   // dim = {1, 2, 3, 4, 5}
   // attr1 = {"fred", "wilma", "barney", "wilma", "fred"}
   // attr2 = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}
-  ArraySchema schema(ctx_, TILEDB_DENSE);
-
   auto dim = Dimension::create<int>(ctx_, "dim", {{-100, 100}});
   auto dom = Domain(ctx_);
   dom.add_dimension(dim);
-  schema.set_domain(dom);
+  schema_.set_domain(dom);
 
   // The list of string values in the attr1 enumeration
   std::vector<std::string> values = {"fred", "wilma", "barney", "pebbles"};
   auto enmr = Enumeration::create(ctx_, "my_enum", values);
-  ArraySchemaExperimental::add_enumeration(ctx_, schema, enmr);
+  ArraySchemaExperimental::add_enumeration(ctx_, schema_, enmr);
 
   auto attr1 = Attribute::create<int>(ctx_, "attr1");
   AttributeExperimental::set_enumeration_name(ctx_, attr1, "my_enum");
-  schema.add_attribute(attr1);
+  schema_.add_attribute(attr1);
 
   auto attr2 = Attribute::create<float>(ctx_, "attr2");
-  schema.add_attribute(attr2);
+  schema_.add_attribute(attr2);
 
-  Array::create(uri_, schema);
+  Array::create(uri_, schema_);
+}
+
+void ArraySchemaLoadFx::check_schema(const ArraySchema& schema) const {
+  CHECK(schema.array_type() == schema_.array_type());
+  CHECK(schema.attributes().size() == schema_.attributes().size());
+  for (unsigned int i = 0; i < schema.attribute_num(); i++) {
+    auto a = schema_.attribute(i);
+    auto b = schema.attribute(i);
+    CHECK(a.cell_val_num() == b.cell_val_num());
+    CHECK(a.name() == b.name());
+    CHECK(a.type() == b.type());
+    CHECK(a.nullable() == b.nullable());
+    CHECK(
+        AttributeExperimental::get_enumeration_name(ctx_, a) ==
+        AttributeExperimental::get_enumeration_name(ctx_, b));
+  }
+  CHECK(schema.capacity() == schema_.capacity());
+  CHECK(schema.cell_order() == schema_.cell_order());
+  CHECK(schema.tile_order() == schema_.tile_order());
+  CHECK(schema.allows_dups() == schema_.allows_dups());
+  CHECK(
+      schema.ptr()->array_schema_->array_uri().to_string() ==
+      sm::URI(uri_).to_string());
 }

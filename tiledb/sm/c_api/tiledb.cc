@@ -400,12 +400,13 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
     tiledb_array_schema_t* array_schema,
     const char* enumeration_name,
     tiledb_enumeration_t** enumeration) {
+  ensure_context_is_valid(ctx);
   if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
-    return TILEDB_ERR;
+    throw CAPIStatusException("Failed to validate array schema.");
   }
 
   if (enumeration_name == nullptr) {
-    throw std::invalid_argument("enumeration_name must not be nullptr");
+    throw CAPIStatusException("enumeration_name must not be nullptr");
   }
 
   ensure_output_pointer_is_valid(enumeration);
@@ -481,21 +482,17 @@ int32_t tiledb_array_schema_load(
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
   // Create array schema
+  ensure_context_is_valid(ctx);
+  ensure_output_pointer_is_valid(array_schema);
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    throw CAPIStatusException("Failed to allocate TileDB array schema object");
   }
 
   // Check array name
   tiledb::sm::URI uri(array_uri);
   if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to load array schema; Invalid array URI");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
+    throw CAPIStatusException("Failed to load array schema; Invalid array URI");
   }
 
   if (uri.is_tiledb()) {
@@ -524,11 +521,8 @@ int32_t tiledb_array_schema_load(
           UINT64_MAX,
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
-      auto st = Status_ArrayDirectoryError(le.what());
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
       delete *array_schema;
-      return TILEDB_ERR;
+      throw CAPIStatusException(le.what());
     }
 
     auto tracker = ctx->resources().ephemeral_memory_tracker();
@@ -546,25 +540,22 @@ int32_t tiledb_array_schema_load_with_options(
     tiledb_config_t* config,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
+  ensure_context_is_valid(ctx);
+  ensure_config_is_valid(config);
+  ensure_output_pointer_is_valid(array_schema);
   bool incl_enmrs = config->config().get<bool>(
       "rest.load_enumerations_on_array_open", sm::Config::must_find);
 
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB array schema object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    throw CAPIStatusException("Failed to allocate TileDB array schema object");
   }
 
   // Check array name
   tiledb::sm::URI uri(array_uri);
   if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to load array schema; Invalid array URI");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
+    throw CAPIStatusException("Failed to load array schema; Invalid array URI");
   }
 
   if (uri.is_tiledb()) {
@@ -593,11 +584,8 @@ int32_t tiledb_array_schema_load_with_options(
           UINT64_MAX,
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
-      auto st = Status_ArrayDirectoryError(le.what());
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
       delete *array_schema;
-      return TILEDB_ERR;
+      throw CAPIStatusException(le.what());
     }
 
     auto tracker = ctx->resources().ephemeral_memory_tracker();
@@ -1064,8 +1052,7 @@ int32_t tiledb_query_alloc(
     errmsg << "Cannot create query; "
            << "Array query type does not match declared query type: "
            << "(" << query_type_str(array_query_type) << " != "
-           << tiledb::sm::query_type_str(
-                  static_cast<tiledb::sm::QueryType>(query_type))
+           << query_type_str(static_cast<tiledb::sm::QueryType>(query_type))
            << ")";
     *query = nullptr;
     auto st = Status_Error(errmsg.str());
@@ -4000,12 +3987,13 @@ capi_return_t tiledb_handle_load_array_schema_request(
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
+  ensure_context_is_valid(ctx);
   if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array paramter must be valid.");
+    throw CAPIStatusException("Array paramter must be valid.");
   }
-
-  api::ensure_buffer_is_valid(request);
-  api::ensure_buffer_is_valid(response);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(request);
+  ensure_buffer_is_valid(response);
 
   auto load_schema_req =
       tiledb::sm::serialization::deserialize_load_array_schema_request(

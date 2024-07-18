@@ -2021,10 +2021,12 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 load_array_schema_response_from_capnp(
+    const URI& uri,
     capnp::LoadArraySchemaResponse::Reader& reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   auto schema_reader = reader.getSchema();
   auto schema = array_schema_from_capnp(schema_reader, URI(), memory_tracker);
+  schema->set_array_uri(uri);
 
   std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
   if (reader.hasArraySchemasAll()) {
@@ -2035,7 +2037,7 @@ load_array_schema_response_from_capnp(
       for (auto array_schema_build : entries) {
         auto schema_entry = array_schema_from_capnp(
             array_schema_build.getValue(), schema->array_uri(), memory_tracker);
-        schema->set_array_uri(schema->array_uri());
+        schema_entry->set_array_uri(schema->array_uri());
         all_schemas[array_schema_build.getKey()] = schema_entry;
       }
     }
@@ -2047,6 +2049,7 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
+    const URI& uri,
     SerializationType serialization_type,
     const Buffer& data,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -2060,7 +2063,8 @@ deserialize_load_array_schema_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(data.data())), builder);
         auto reader = builder.asReader();
-        return load_array_schema_response_from_capnp(reader, memory_tracker);
+        return load_array_schema_response_from_capnp(
+            uri, reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
@@ -2068,7 +2072,8 @@ deserialize_load_array_schema_response(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             data.size() / sizeof(::capnp::word)));
         auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
-        return load_array_schema_response_from_capnp(reader, memory_tracker);
+        return load_array_schema_response_from_capnp(
+            uri, reader, memory_tracker);
       }
       default: {
         throw ArraySchemaSerializationException(
@@ -2157,7 +2162,7 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
-    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+    const URI&, SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw ArraySchemaSerializationDisabledException();
 }
 

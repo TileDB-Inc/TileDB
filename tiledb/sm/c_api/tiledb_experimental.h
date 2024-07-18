@@ -422,10 +422,10 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
     tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
 
 /**
- * Retrieves the schema of an array with all of its enumerations from disk,
- * creating an array schema struct. Options are read from the provided
- * tiledb_config_t* instance. If config is nullptr, the config from `ctx` is
- * used instead.
+ * Retrieves the schema of an array, creating an array schema struct. Options to
+ * load additional features are read from the provided tiledb_config_t*
+ * instance. If the provided config is nullptr, the config from `ctx` is used
+ * instead.
  *
  * Currently supported options to be read from the config:
  *  - rest.load_enumerations_on_array_open - boolean

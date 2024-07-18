@@ -604,7 +604,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_check(
 
 /**
  * Retrieves the schema of an array from the disk, creating an array schema
- * struct.
+ * struct. The schema retrieved will always be the latest schema for the array.
  *
  * **Example:**
  *
