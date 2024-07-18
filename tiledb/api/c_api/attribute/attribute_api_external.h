@@ -285,6 +285,30 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
     const tiledb_attribute_t* attr,
     uint64_t* cell_size) TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
+/**
+ * Dumps the contents of an attribute in ASCII form to some output (e.g.,
+ * file or stdout).
+ *
+ * **Example:**
+ *
+ * The following prints the attribute dump to standard output.
+ *
+ * @code{.c}
+ * tiledb_attribute_dump(ctx, attr, stdout);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The attribute.
+ * @param out The output.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_attribute_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    FILE* out) TILEDB_NOEXCEPT;
+#endif
+
 /**
  * Dumps the contents of an Attribute in ASCII form to the selected string
  * output.
