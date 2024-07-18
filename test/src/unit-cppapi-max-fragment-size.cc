@@ -631,7 +631,7 @@ TEST_CASE(
 
   // Populate array with data from 1 to 9
   int value = 0;
-  for (int i = 0; i < 9; i+=3) {
+  for (int i = 0; i < 9; i += 3) {
     Array array(ctx, array_name, TILEDB_WRITE);
     Query query(ctx, array);
     query.set_layout(TILEDB_ROW_MAJOR);
