@@ -42,14 +42,16 @@ namespace tiledb::sm {
  * Returns an error status if the given Status is not Status::Ok, or
  * if the StorageManager that owns this Query has requested cancellation.
  */
-#define RETURN_CANCEL_OR_ERROR(s)                              \
-  do {                                                         \
-    Status _s = (s);                                           \
-    if (!_s.ok()) {                                            \
-      return _s;                                               \
-    } else if (storage_manager_->cancellation_in_progress()) { \
-      return Status_QueryError("Query cancelled.");            \
-    }                                                          \
+#define RETURN_CANCEL_OR_ERROR(s)                   \
+  do {                                              \
+    Status _s = (s);                                \
+    if (!_s.ok()) {                                 \
+      return _s;                                    \
+    }                                               \
+    process_external_cancellation();                \
+    if (cancelled()) {                              \
+      return Status_QueryError("Query cancelled."); \
+    }                                               \
   } while (false)
 #endif
 
@@ -63,7 +65,9 @@ namespace tiledb::sm {
     Status _s = (s);                                                \
     if (!_s.ok()) {                                                 \
       return {_s, std::nullopt};                                    \
-    } else if (storage_manager_->cancellation_in_progress()) {      \
+    }                                                               \
+    process_external_cancellation();                                \
+    if (cancelled()) {                                              \
       return {Status_QueryError("Query cancelled."), std::nullopt}; \
     }                                                               \
   } while (false)
