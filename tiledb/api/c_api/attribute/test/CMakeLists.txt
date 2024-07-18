@@ -28,6 +28,6 @@ include(unit_test)
 
 commence(unit_test capi_attribute)
   this_target_sources(unit_capi_attribute.cc)
-  this_target_object_libraries(capi_string)
+  this_target_object_libraries(capi_attribute_stub)
   this_target_object_libraries(capi_attribute_stub)
 conclude(unit_test)
