@@ -478,8 +478,10 @@ TEST_CASE(
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
     Subarray subarray(ctx, array);
+    subarray.set_config(cfg);
     subarray.add_range(0, 1, 4).add_range(0, 1, 4).add_range(1, 1, 4).add_range(
         1, 1, 4);
+    subarray.set_config(cfg);
     query.set_subarray(subarray)
         .set_layout(layout)
         .set_data_buffer("a", a_data)

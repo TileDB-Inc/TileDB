@@ -105,6 +105,7 @@ struct CSparseUnorderedWithDupsFx {
       uint8_t* a2_validity,
       uint64_t* a2_validity_size,
       uint64_t num_subarrays = 0,
+      tiledb_config_t* config = nullptr,
       tiledb_query_t** query_ret = nullptr,
       tiledb_array_t** array_ret = nullptr);
   void reset_config();
@@ -520,6 +521,7 @@ int32_t CSparseUnorderedWithDupsFx::read_strings(
     uint8_t* a2_validity,
     uint64_t* a2_validity_size,
     uint64_t num_subarrays,
+    tiledb_config_t* config,
     tiledb_query_t** query_ret,
     tiledb_array_t** array_ret) {
   // Open array for reading.
@@ -537,6 +539,10 @@ int32_t CSparseUnorderedWithDupsFx::read_strings(
   tiledb_subarray_t* subarray;
   rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
+  if (config != nullptr) {
+    rc = tiledb_subarray_set_config(ctx_, subarray, config);
+    CHECK(rc == TILEDB_OK);
+  }
 
   for (uint64_t i = 0; i < num_subarrays; i++) {
     // Create subarray for reading data.
@@ -1974,7 +1980,6 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
 
   // Try to read with every possible buffer sizes. When varying
   // buffer, the minimum should fit the number of dups at a minimum.
@@ -2013,6 +2018,7 @@ TEST_CASE_METHOD(
         a2_validity_r.data(),
         &a2_validity_r_size,
         num_dups,
+        config,
         &query,
         &array);
     CHECK(rc == TILEDB_OK);
@@ -2058,6 +2064,7 @@ TEST_CASE_METHOD(
     tiledb_array_free(&array);
     tiledb_query_free(&query);
   }
+  tiledb_config_free(&config);
 }
 
 TEST_CASE_METHOD(
@@ -2123,7 +2130,6 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
 
   tiledb_array_t* array;
   auto st = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -2145,6 +2151,8 @@ TEST_CASE_METHOD(
   st = tiledb_subarray_add_range(ctx_, subarray, 0, &start, &end, nullptr);
   CHECK(st == TILEDB_OK);
   st = tiledb_subarray_add_range(ctx_, subarray, 0, &start, &end_2, nullptr);
+  CHECK(st == TILEDB_OK);
+  st = tiledb_subarray_set_config(ctx_, subarray, config);
   CHECK(st == TILEDB_OK);
   st = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(st == TILEDB_OK);
@@ -2187,4 +2195,5 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb_config_free(&config);
 }

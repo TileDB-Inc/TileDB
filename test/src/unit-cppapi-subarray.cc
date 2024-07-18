@@ -1040,6 +1040,7 @@ TEST_CASE(
   subarray.add_range(0, row_range[0], row_range[1]);
   subarray.add_range(1, col_range0[0], col_range0[1]);
   subarray.add_range(1, col_range1[0], col_range1[1]);
+  subarray.set_config(cfg);
   query.set_subarray(subarray);
   query.set_layout(TILEDB_UNORDERED);
 
@@ -1173,6 +1174,7 @@ TEST_CASE(
       .set_data_buffer("a", data);
 
   // Submit query
+  subarray.set_config(cfg);
   query.set_subarray(subarray);
   auto st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);

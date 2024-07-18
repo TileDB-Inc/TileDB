@@ -436,12 +436,6 @@ class Subarray {
   void set_config(const QueryType query_type, const Config& config);
 
   /**
-   * Get the config of the writer
-   * @return Config
-   */
-  const Config* config() const;
-
-  /**
    * Sets the subarray using a pointer to raw range data that stores one range
    * per dimension.
    *
@@ -1509,9 +1503,6 @@ class Subarray {
   std::unordered_map<std::vector<uint8_t>, size_t, CoordsHasher>
       tile_coords_map_;
 
-  /** The config for query-level parameters only. */
-  Config config_;
-
   /** State of specific Config item needed from multiple locations. */
   bool err_on_range_oob_ = true;
 
@@ -1520,6 +1511,9 @@ class Subarray {
 
   /** Mutext to protect sorting ranges. */
   std::mutex ranges_sort_mtx_;
+
+  /** Merge overlapping ranges setting. */
+  bool merge_overlapping_ranges_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -1594,25 +1588,6 @@ class Subarray {
    * invocations.
    */
   void compute_relevant_fragment_tile_overlap(
-      ThreadPool* compute_tp,
-      SubarrayTileOverlap* tile_overlap,
-      ComputeRelevantTileOverlapCtx* fn_ctx);
-
-  /**
-   * Computes the tile overlap for all ranges on the given relevant fragment.
-   *
-   * @param meta The fragment metadat to focus on.
-   * @param frag_idx The fragment id.
-   * @param dense Whether the fragment is dense or sparse.
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param tile_overlap Mutated to store the computed tile overlap.
-   * @param fn_ctx An opaque context object to be used between successive
-   * invocations.
-   */
-  void compute_relevant_fragment_tile_overlap(
-      shared_ptr<FragmentMetadata> meta,
-      unsigned frag_idx,
-      bool dense,
       ThreadPool* compute_tp,
       SubarrayTileOverlap* tile_overlap,
       ComputeRelevantTileOverlapCtx* fn_ctx);

@@ -3227,7 +3227,6 @@ TEST_CASE_METHOD(
   tiledb_vfs_free(&vfs_);
   // reallocate with input config
   vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
-  tiledb_config_free(&config);
 
   // Open array
   tiledb_array_t* array;
@@ -3274,6 +3273,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_config(ctx_, subarray, config);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
@@ -3297,6 +3298,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb_config_free(&config);
 }
 
 TEST_CASE_METHOD(

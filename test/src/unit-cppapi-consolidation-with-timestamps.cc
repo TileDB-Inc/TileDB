@@ -1326,6 +1326,7 @@ TEST_CASE_METHOD(
   Subarray subarray(ctx_, array);
   subarray.add_range<uint64_t>(1, 2, 3);
   subarray.add_range<uint64_t>(1, 2, 3);
+  subarray.set_config(cfg);
   query.set_subarray(subarray);
 
   // Submit/finalize the query
