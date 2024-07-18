@@ -207,28 +207,6 @@ TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
     int32_t* has_dim) TILEDB_NOEXCEPT;
 
 /**
- * Dumps the info of a domain in ASCII form to some output (e.g.,
- * file or `stdout`).
- *
- * **Example:**
- *
- * The following prints the domain dump to the standard output.
- *
- * @code{.c}
- * tiledb_domain_dump(ctx, domain, stdout);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param domain The domain.
- * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_domain_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    FILE* out) TILEDB_NOEXCEPT;
-
-/**
  * Dumps the contents of a domain in ASCII form to the selected string output.
  *
  * The output string handle must be freed by the user after use.

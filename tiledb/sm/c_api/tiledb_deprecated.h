@@ -624,6 +624,72 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_get_fragment_name(
     uint32_t fid,
     const char** name) TILEDB_NOEXCEPT;
 
+/**
+ * Dumps the contents of an attribute in ASCII form to some output (e.g.,
+ * file or stdout).
+ *
+ * **Example:**
+ *
+ * The following prints the attribute dump to standard output.
+ *
+ * @code{.c}
+ * tiledb_attribute_dump(ctx, attr, stdout);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The attribute.
+ * @param out The output.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_attribute_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_attribute_t* attr,
+    FILE* out) TILEDB_NOEXCEPT;
+
+/**
+ * Dumps the contents of a dimension in ASCII form to some output (e.g.,
+ * file or stdout).
+ *
+ * **Example:**
+ *
+ * The following prints the dimension dump to standard output.
+ *
+ * @code{.c}
+ * tiledb_dimension_dump(ctx, dim, stdout);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dim The dimension.
+ * @param out The output.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_dimension_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    FILE* out) TILEDB_NOEXCEPT;
+
+/**
+ * Dumps the info of a domain in ASCII form to some output (e.g.,
+ * file or `stdout`).
+ *
+ * **Example:**
+ *
+ * The following prints the domain dump to the standard output.
+ *
+ * @code{.c}
+ * tiledb_domain_dump(ctx, domain, stdout);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param domain The domain.
+ * @param out The output.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_domain_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_domain_t* domain,
+    FILE* out) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif
