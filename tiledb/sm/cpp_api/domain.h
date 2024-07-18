@@ -155,6 +155,7 @@ class Domain {
     return 0;
   }
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
   /**
    * Dumps the domain in an ASCII representation to an output.
    *
@@ -165,6 +166,7 @@ class Domain {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_domain_dump(ctx.ptr().get(), domain_.get(), out));
   }
+#endif
 
   /** Returns the domain type. */
   tiledb_datatype_t type() const {
@@ -284,20 +286,6 @@ class Domain {
   std::shared_ptr<tiledb_domain_t> ptr() const {
     return domain_;
   }
-
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-  /**
-   * Dumps information about the domain in an ASCII representation to an
-   * output.
-   *
-   * @param out (Optional) File to dump output to. Defaults to `stdout`.
-   */
-  TILEDB_DEPRECATED
-  void dump(FILE* out = stdout) const {
-    ctx_.get().handle_error(
-        tiledb_domain_dump(ctx_.get().ptr().get(), domain_.get(), out));
-  }
-#endif
 
  private:
   /**
