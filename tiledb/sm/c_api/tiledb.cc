@@ -703,6 +703,7 @@ int32_t tiledb_array_schema_get_attribute_num(
 
 int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
+  ensure_cstream_handle_is_valid(out);
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
