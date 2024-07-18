@@ -887,8 +887,8 @@ class Config {
    *    **Default**: 524288 (512KB)
    * - `rest.capnp_traversal_limit` <br>
    *    CAPNP traversal limit used in the deserialization of messages(bytes)
-   * <br>
-   *    **Default**: 536870912 (512MB)
+   *    <br>
+   *    **Default**: 2147483648 (2GB)
    * - `rest.custom_headers.*` <br>
    *    (Optional) Prefix for custom headers on REST requests. For each custom
    *    header, use "rest.custom_headers.header_key" = "header_value" <br>
