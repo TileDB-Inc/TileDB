@@ -285,6 +285,20 @@ class Domain {
     return domain_;
   }
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
+  /**
+   * Dumps information about the domain in an ASCII representation to an
+   * output.
+   *
+   * @param out (Optional) File to dump output to. Defaults to `stdout`.
+   */
+  TILEDB_DEPRECATED
+  void dump(FILE* out = stdout) const {
+    ctx_.get().handle_error(
+        tiledb_domain_dump(ctx_.get().ptr().get(), domain_.get(), out));
+  }
+#endif
+
  private:
   /**
    * Returns the total number of cells in the domain.

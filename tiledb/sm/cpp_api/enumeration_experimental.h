@@ -314,6 +314,7 @@ class Enumeration {
     return ret;
   }
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
   /**
    * Dump a string representation of the Enumeration to the given FILE pointer.
    *
@@ -324,6 +325,7 @@ class Enumeration {
     ctx_.get().handle_error(tiledb_enumeration_dump(
         ctx_.get().ptr().get(), enumeration_.get(), out));
   }
+#endif
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
