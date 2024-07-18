@@ -323,9 +323,10 @@ class NDRectangle {
  * @param range_idx The range index.
  * @return A pair of the form (start, end).
  */
-inline template <>
-NDRectangle::tuple_ret<std::string>::type NDRectangle::range<std::string>(
-    const std::string& dim_name) {
+
+template <>
+inline NDRectangle::tuple_ret<std::string>::type
+NDRectangle::range<std::string>(const std::string& dim_name) {
   auto& ctx = ctx_.get();
   tiledb_range_t range;
   ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
