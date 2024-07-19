@@ -56,6 +56,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_operations.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/config/config.h"
@@ -489,49 +490,9 @@ int32_t tiledb_array_schema_load(
     throw CAPIStatusException("Failed to allocate TileDB array schema object");
   }
 
-  // Check array name
-  tiledb::sm::URI uri(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIStatusException("Failed to load array schema; Invalid array URI");
-  }
+  (*array_schema)->array_schema_ =
+      handle_load_uri(ctx->context(), sm::URI(array_uri));
 
-  if (uri.is_tiledb()) {
-    auto& rest_client = ctx->context().rest_client();
-    try {
-      auto array_schema_response = rest_client.post_array_schema_from_rest(
-          ctx->resources().config(), uri, 0, UINT64_MAX);
-      (*array_schema)->array_schema_ = std::get<0>(array_schema_response);
-    } catch (...) {
-      delete *array_schema;
-      throw;
-    }
-  } else {
-    // Create key
-    tiledb::sm::EncryptionKey key;
-    throw_if_not_ok(
-        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
-
-    // Load URIs from the array directory
-    optional<tiledb::sm::ArrayDirectory> array_dir;
-    try {
-      array_dir.emplace(
-          ctx->resources(),
-          uri,
-          0,
-          UINT64_MAX,
-          tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-    } catch (const std::logic_error& le) {
-      delete *array_schema;
-      throw CAPIStatusException(le.what());
-    }
-
-    auto tracker = ctx->resources().ephemeral_memory_tracker();
-    // Load latest array schema
-    auto array_schema_latest =
-        array_dir->load_array_schema_latest(key, tracker);
-
-    (*array_schema)->array_schema_ = array_schema_latest;
-  }
   return TILEDB_OK;
 }
 
@@ -543,8 +504,6 @@ int32_t tiledb_array_schema_load_with_options(
   ensure_context_is_valid(ctx);
   ensure_config_is_valid(config);
   ensure_output_pointer_is_valid(array_schema);
-  bool incl_enmrs = config->config().get<bool>(
-      "rest.load_enumerations_on_array_open", sm::Config::must_find);
 
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
@@ -554,65 +513,9 @@ int32_t tiledb_array_schema_load_with_options(
 
   // Check array name
   tiledb::sm::URI uri(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIStatusException("Failed to load array schema; Invalid array URI");
-  }
+  (*array_schema)->array_schema_ = handle_load_uri(
+      ctx->context(), uri, config ? &config->config() : nullptr);
 
-  if (uri.is_tiledb()) {
-    auto& rest_client = ctx->context().rest_client();
-    try {
-      auto array_schema_response = rest_client.post_array_schema_from_rest(
-          ctx->resources().config(), uri, 0, UINT64_MAX);
-      (*array_schema)->array_schema_ = std::get<0>(array_schema_response);
-    } catch (...) {
-      delete *array_schema;
-      throw;
-    }
-  } else {
-    // Create key
-    tiledb::sm::EncryptionKey key;
-    throw_if_not_ok(
-        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
-
-    // Load URIs from the array directory
-    optional<tiledb::sm::ArrayDirectory> array_dir;
-    try {
-      array_dir.emplace(
-          ctx->resources(),
-          uri,
-          0,
-          UINT64_MAX,
-          tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-    } catch (const std::logic_error& le) {
-      delete *array_schema;
-      throw CAPIStatusException(le.what());
-    }
-
-    auto tracker = ctx->resources().ephemeral_memory_tracker();
-
-    // Load latest array schema
-    auto&& array_schema_latest =
-        array_dir->load_array_schema_latest(key, tracker);
-
-    if (incl_enmrs) {
-      std::vector<std::string> enmr_paths_to_load;
-      auto enmr_names = array_schema_latest->get_enumeration_names();
-      for (auto& name : enmr_names) {
-        if (!array_schema_latest->is_enumeration_loaded(name)) {
-          auto& path = array_schema_latest->get_enumeration_path_name(name);
-          enmr_paths_to_load.emplace_back(path);
-        }
-      }
-
-      auto enmrs_loaded = array_dir->load_enumerations_from_paths(
-          enmr_paths_to_load, key, tracker);
-      for (auto& enmr : enmrs_loaded) {
-        array_schema_latest->store_enumeration(enmr);
-      }
-    }
-
-    (*array_schema)->array_schema_ = array_schema_latest;
-  }
   return TILEDB_OK;
 }
 

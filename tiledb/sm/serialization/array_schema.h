@@ -52,6 +52,7 @@ class Buffer;
 class ArraySchema;
 class Dimension;
 class MemoryTracker;
+class URI;
 enum class SerializationType : uint8_t;
 
 namespace serialization {

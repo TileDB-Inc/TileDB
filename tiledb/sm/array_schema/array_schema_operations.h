@@ -40,8 +40,11 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class ArraySchema;
+class Config;
+class Context;
 class ContextResources;
 class EncryptionKey;
+class URI;
 
 /* ********************************* */
 /*                API                */
@@ -65,6 +68,9 @@ void store_array_schema(
     ContextResources& resources,
     const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key);
+
+shared_ptr<ArraySchema> handle_load_uri(
+    const Context& ctx, const URI& uri, const Config* config = nullptr);
 
 }  // namespace tiledb::sm
 
