@@ -118,10 +118,10 @@ TEST_CASE_METHOD(
   ndrect.set_range(1, std::string("b"), std::string("db"));
 
   // Get and check ranges
-  std::array<std::string, 2> range = ndrect.range(0);
+  std::array<std::string, 2> range = ndrect.range<std::string>(0);
   CHECK(range[0] == "a");
   CHECK(range[1] == "c");
-  range = ndrect.range(1);
+  range = ndrect.range<std::string>(1);
   CHECK(range[0] == "b");
   CHECK(range[1] == "db");
 
@@ -134,10 +134,10 @@ TEST_CASE_METHOD(
   auto rect = current_domain.ndrectangle();
 
   // Get and check ranges
-  range = ndrect.range(0);
+  range = ndrect.range<std::string>(0);
   CHECK(range[0] == "a");
   CHECK(range[1] == "c");
-  range = ndrect.range(1);
+  range = ndrect.range<std::string>(1);
   CHECK(range[0] == "b");
   CHECK(range[1] == "db");
 }
