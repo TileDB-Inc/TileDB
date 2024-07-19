@@ -438,7 +438,7 @@ void DeletesFx::check_delete_conditions(
 
   // Load delete conditions.
   auto&& [delete_conditions, update_values] = load_delete_and_update_conditions(
-      ctx_.ptr().get()->resources(), array_ptr->opened_array());
+      ctx_.ptr().get()->resources(), *array_ptr->opened_array().get());
   REQUIRE(delete_conditions.size() == qcs.size());
 
   for (uint64_t i = 0; i < qcs.size(); i++) {

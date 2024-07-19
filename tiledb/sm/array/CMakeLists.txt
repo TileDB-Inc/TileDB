@@ -28,6 +28,32 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 #
+# The data- and I/O-oriented operations of class `Array` have been
+# intentionally separated to support two _future_ standalone object libraries:
+#   - `array`: data-oriented
+#   - `array_operations`: I/O-oriented
+# 
+# This design eliminates cyclic dependencies in the build, as each module has
+# its own dependency chain.
+# 
+# Note that neither object library has been implemented at present. Rather,
+# class `Array` is getting segregated by functionality to prepare for this 
+# future work. 
+# 
+# Though there is currently an object library named `array`, it will soon be
+# aptly renamed `array_directory`.
+# 
+# The `array` object library will be added in the near future.
+#
+# The `array_operations` object library is very specifically blocked by 
+# `StrategyBase::throw_if_cancelled`. At present, this function relies on 
+# `StorageManagerCanonical`, which is slated for removal. The `Query` class is 
+# undergoing maintenance to remove all dependencies on class `StorageManager`. 
+# Once `StorageManager` is removed and a standalone `StrategyBase` object 
+# library can be added, so should the `array_operations` object library. 
+#
+
+#
 # `array` object library
 #
 commence(object_library array)

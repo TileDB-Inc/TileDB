@@ -29,11 +29,6 @@
  *
  * This file implements the data-oriented operations on class Array.
  *
- * The data- and I/O-oriented operations of class `Array` have been
- * intentionally separated to support two _standalone_ object libraries.
- * This design eliminates cyclic dependencies in the build, as each module has
- * its own dependency chain.
- *
  */
 
 #include "tiledb/common/common.h"

@@ -27,14 +27,21 @@
  *
  * @section DESCRIPTION
  *
- * This file implements I/O operations which support the Array class.
+ * This file implements I/O operations which support class `Array`.
  *
- * The data- and I/O-oriented operations of class `Array` have been
- * intentionally separated to support two _standalone_ object libraries.
- * This design eliminates cyclic dependencies in the build, as each module has
- * its own dependency chain.
- * Note that the `array_operations` object library will not be implemented
- * until _after_ the `Query` object libraries on which it relies.
+ * Note that these functions are _non-members_ of class `Array`, and therefore
+ * do not need access to class member variables.
+ *
+ * These operations have been intentionally segregated from class `Array`
+ * to support a future standalone object library, `array_operations`,
+ * eliminating cyclic dependendencies in the build.
+ *
+ * This object library cannot yet be added, however, due to a dependence
+ * of `load_delete_and_update_conditions` on `StrategyBase::throw_if_cancelled`.
+ * This function relies on `StorageManagerCanonical`, which is slated for
+ * removal. Once all `Query` code is overhauled to remove this dependence,
+ * the `array_operations` module can be created.
+ *
  */
 
 #include "tiledb/sm/array/array_operations.h"
@@ -61,9 +68,9 @@ class ArrayOperationsException : public StatusException {
 
 tuple<std::vector<QueryCondition>, std::vector<std::vector<UpdateValue>>>
 load_delete_and_update_conditions(
-    ContextResources& resources, const shared_ptr<OpenedArray>& opened_array) {
+    ContextResources& resources, const OpenedArray& opened_array) {
   auto& locations =
-      opened_array->array_directory().delete_and_update_tiles_location();
+      opened_array.array_directory().delete_and_update_tiles_location();
   auto conditions = std::vector<QueryCondition>(locations.size());
   auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());
 
@@ -77,7 +84,7 @@ load_delete_and_update_conditions(
             resources,
             uri,
             locations[i].offset(),
-            *(opened_array->encryption_key()),
+            *(opened_array.encryption_key()),
             resources.ephemeral_memory_tracker());
 
         if (tiledb::sm::utils::parse::ends_with(
@@ -105,7 +112,7 @@ load_delete_and_update_conditions(
         }
 
         throw_if_not_ok(
-            conditions[i].check(opened_array->array_schema_latest()));
+            conditions[i].check(opened_array.array_schema_latest()));
         return Status::Ok();
       });
   throw_if_not_ok(status);

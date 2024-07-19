@@ -207,7 +207,7 @@ void UpdatesFx::check_update_conditions(
 
   // Load delete conditions.
   auto&& [conditions, update_values] = load_delete_and_update_conditions(
-      ctx_.ptr().get()->resources(), array_ptr->opened_array());
+      ctx_.ptr().get()->resources(), *array_ptr->opened_array().get());
   REQUIRE(conditions.size() == qcs.size());
 
   for (uint64_t i = 0; i < qcs.size(); i++) {

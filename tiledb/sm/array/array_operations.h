@@ -47,10 +47,6 @@ class OpenedArray;
 class QueryCondition;
 class UpdateValue;
 
-/* ********************************* */
-/*                API                */
-/* ********************************* */
-
 /**
  * Loads the delete and update conditions from storage.
  *
@@ -60,7 +56,7 @@ class UpdateValue;
  */
 tuple<std::vector<QueryCondition>, std::vector<std::vector<UpdateValue>>>
 load_delete_and_update_conditions(
-    ContextResources& resources, const shared_ptr<OpenedArray>& opened_array);
+    ContextResources& resources, const OpenedArray& opened_array);
 
 }  // namespace tiledb::sm
 
