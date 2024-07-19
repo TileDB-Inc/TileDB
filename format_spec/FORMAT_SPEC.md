@@ -53,4 +53,4 @@ title: Format Specification
    * [Consolidated Fragment Metadata File](./consolidated_fragment_metadata_file.md)
    * [Filter Pipeline](./filter_pipeline.md)
    * [Timestamped Name](./timestamped_name.md)
-   * [Vacuum Pipeline](./vacuum_file.md)
+   * [Vacuum File](./vacuum_file.md)
