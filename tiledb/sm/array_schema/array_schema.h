@@ -721,7 +721,7 @@ class ArraySchema {
   tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>
       enumeration_map_;
 
-  /** A map of Enumeration names to Enumeration URIs */
+  /** A map of Enumeration names to Enumeration filenames */
   tdb::pmr::unordered_map<std::string, std::string> enumeration_path_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
