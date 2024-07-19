@@ -55,8 +55,6 @@ class ArraySchemaEvolution;
 class SchemaEvolution;
 class FragmentMetadata;
 class MemoryTracker;
-class UpdateValue;
-class QueryCondition;
 enum class QueryType : uint8_t;
 
 /**
