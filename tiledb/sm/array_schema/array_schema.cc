@@ -753,6 +753,16 @@ bool ArraySchema::is_nullable(const std::string& name) const {
 //   dimension_label #1
 //   dimension_label #2
 //   ...
+// enumeration_num (uint32_t)
+//   enumeration_name_length #1 (uint32_t)
+//   enumeration_name_chars #1 (string)
+//   enumeration_filename_length #1 (uint32_t)
+//   enumeration_filename_chars #1 (string)
+//   enumeration_name_length #2 (uint32_t)
+//   enumeration_name_chars #2 (string)
+//   enumeration_filename_length #2 (uint32_t)
+//   enumeration_filename_chars #2 (string)
+//   ...
 // current_domain
 void ArraySchema::serialize(Serializer& serializer) const {
   // Write version, which is always the current version. Despite
