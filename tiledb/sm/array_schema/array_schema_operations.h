@@ -69,7 +69,14 @@ void store_array_schema(
     const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key);
 
-shared_ptr<ArraySchema> handle_load_uri(
+/**
+ * Handles loading an array schema from a URI.
+ *
+ * @param ctx TileDB Context.
+ * @param uri The URI of the array to load schema.
+ * @param config TileDB Config. If null, the context config will be used.
+ */
+shared_ptr<ArraySchema> load_array_schema(
     const Context& ctx, const URI& uri, const Config* config = nullptr);
 
 }  // namespace tiledb::sm

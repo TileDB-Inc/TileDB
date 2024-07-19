@@ -129,7 +129,7 @@ void store_array_schema(
   }
 }
 
-shared_ptr<ArraySchema> handle_load_uri(
+shared_ptr<ArraySchema> load_array_schema(
     const Context& ctx, const URI& uri, const Config* config) {
   // Check array name
   if (uri.is_invalid()) {

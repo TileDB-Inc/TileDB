@@ -491,7 +491,7 @@ int32_t tiledb_array_schema_load(
   }
 
   (*array_schema)->array_schema_ =
-      handle_load_uri(ctx->context(), sm::URI(array_uri));
+      load_array_schema(ctx->context(), sm::URI(array_uri));
 
   return TILEDB_OK;
 }
@@ -513,7 +513,7 @@ int32_t tiledb_array_schema_load_with_options(
 
   // Check array name
   tiledb::sm::URI uri(array_uri);
-  (*array_schema)->array_schema_ = handle_load_uri(
+  (*array_schema)->array_schema_ = load_array_schema(
       ctx->context(), uri, config ? &config->config() : nullptr);
 
   return TILEDB_OK;
