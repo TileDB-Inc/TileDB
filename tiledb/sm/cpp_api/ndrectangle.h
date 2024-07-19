@@ -226,47 +226,6 @@ class NDRectangle {
   }
 
   /**
-   * Retrieves a range for a given variable length string dimension index and
-   * range id.
-   *
-   * @param dim_idx The dimension index.
-   * @param range_idx The range index.
-   * @return A pair of the form (start, end).
-   */
-  std::array<std::string, 2> range(unsigned dim_idx) {
-    auto& ctx = ctx_.get();
-    tiledb_range_t range;
-
-    ctx.handle_error(tiledb_ndrectangle_get_range(
-        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
-
-    std::string start_str(static_cast<const char*>(range.min), range.min_size);
-    std::string end_str(static_cast<const char*>(range.max), range.max_size);
-
-    return {std::move(start_str), std::move(end_str)};
-  }
-
-  /**
-   * Retrieves a range for a given variable length string dimension index and
-   * range id.
-   *
-   * @param dim_name The dimension name.
-   * @param range_idx The range index.
-   * @return A pair of the form (start, end).
-   */
-  std::array<std::string, 2> range(const std::string& dim_name) {
-    auto& ctx = ctx_.get();
-    tiledb_range_t range;
-    ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
-        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
-
-    std::string start_str(static_cast<const char*>(range.min), range.min_size);
-    std::string end_str(static_cast<const char*>(range.max), range.max_size);
-
-    return {std::move(start_str), std::move(end_str)};
-  }
-
-  /**
    * Retrieves a range for a given dimension name. The template datatype must be
    * the same as that of the underlying array.
    *
@@ -325,6 +284,50 @@ class NDRectangle {
   /** An auxiliary deleter. */
   impl::Deleter deleter_;
 };
+
+/**
+ * Retrieves a range for a given variable length string dimension index and
+ * range id.
+ *
+ * @param dim_name The dimension name.
+ * @param range_idx The range index.
+ * @return A pair of the form (start, end).
+ */
+template <>
+inline std::array<std::string, 2> NDRectangle::range<std::string>(
+    const std::string& dim_name) {
+  auto& ctx = ctx_.get();
+  tiledb_range_t range;
+  ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
+      ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
+
+  std::string start_str(static_cast<const char*>(range.min), range.min_size);
+  std::string end_str(static_cast<const char*>(range.max), range.max_size);
+
+  return {std::move(start_str), std::move(end_str)};
+}
+
+/**
+ * Retrieves a range for a given variable length string dimension index and
+ * range id.
+ *
+ * @param dim_idx The dimension index.
+ * @param range_idx The range index.
+ * @return A pair of the form (start, end).
+ */
+template <>
+inline std::array<std::string, 2> NDRectangle::range(unsigned dim_idx) {
+  auto& ctx = ctx_.get();
+  tiledb_range_t range;
+
+  ctx.handle_error(tiledb_ndrectangle_get_range(
+      ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
+
+  std::string start_str(static_cast<const char*>(range.min), range.min_size);
+  std::string end_str(static_cast<const char*>(range.max), range.max_size);
+
+  return {std::move(start_str), std::move(end_str)};
+}
 
 }  // namespace tiledb
 
