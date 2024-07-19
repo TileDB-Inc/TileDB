@@ -47,15 +47,6 @@
 namespace tiledb {
 
 class NDRectangle {
-  template <class K, class Y = void>
-  struct tuple_ret {
-    using type = std::array<K, 2>;
-  };
-  template <class Y>
-  struct tuple_ret<std::string, Y> {
-    using type = std::array<std::string, 2>;
-  };
-
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -263,8 +254,8 @@ class NDRectangle {
    * @param dim_name The dimension name.
    * @return A duplex of the form (start, end).
    */
-  template <class T, class Y = void>
-  typename tuple_ret<T>::type range(const std::string& dim_name) {
+  template <class T>
+  std::array<T, 2> range(const std::string& dim_name) {
     auto& ctx = ctx_.get();
     tiledb_range_t range;
     ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
@@ -323,10 +314,9 @@ class NDRectangle {
  * @param range_idx The range index.
  * @return A pair of the form (start, end).
  */
-
 template <>
-inline NDRectangle::tuple_ret<std::string>::type
-NDRectangle::range<std::string>(const std::string& dim_name) {
+inline std::array<std::string, 2> NDRectangle::range<std::string>(
+    const std::string& dim_name) {
   auto& ctx = ctx_.get();
   tiledb_range_t range;
   ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
