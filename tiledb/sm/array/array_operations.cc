@@ -46,8 +46,6 @@
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
-#include <vector>
-
 namespace tiledb::sm {
 
 class ArrayOperationsException : public StatusException {

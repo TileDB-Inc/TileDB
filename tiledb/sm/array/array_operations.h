@@ -34,6 +34,8 @@
 #ifndef TILEDB_ARRAY_OPERATIONS_H
 #define TILEDB_ARRAY_OPERATIONS_H
 
+#include <vector>
+
 #include "tiledb/common/common.h"
 
 using namespace tiledb::common;
