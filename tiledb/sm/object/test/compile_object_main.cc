@@ -1,5 +1,5 @@
 /**
- * @file compile_fragment_metadata_main.cc
+ * @file compile_object_main.cc
  *
  * @section LICENSE
  *
@@ -26,20 +26,20 @@
  * THE SOFTWARE.
  */
 
-#include "../fragment_info.h"
-#include "../fragment_metadata.h"
-#include "../loaded_fragment_metadata.h"
-#include "../ondemand_fragment_metadata.h"
-#include "../v1v2preloaded_fragment_metadata.h"
+#include "../object.h"
+#include "../object_mutex.h"
+
+#include "tiledb/common/logger.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::sm;
 
 int main() {
-  (void)sizeof(tiledb::sm::FragmentMetadata);
-  (void)sizeof(tiledb::sm::FragmentInfo);
-  (void)sizeof(tiledb::sm::LoadedFragmentMetadata);
-  (void)sizeof(tiledb::sm::OndemandFragmentMetadata);
-  (void)sizeof(tiledb::sm::V1V2PreloadedFragmentMetadata);
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
+  object_move(resources, "old_path", "new_path");
 
+  std::lock_guard<std::mutex> lock{tiledb::sm::object_mtx};
   return 0;
 }

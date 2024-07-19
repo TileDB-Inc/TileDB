@@ -51,6 +51,7 @@ conclude(object_library)
 #
 list(APPEND SOURCES
     fragment_metadata.cc
+    fragment_info.cc
     loaded_fragment_metadata.cc
     ondemand_fragment_metadata.cc
     v1v2preloaded_fragment_metadata.cc
@@ -60,12 +61,14 @@ gather_sources(${SOURCES})
 commence(object_library fragment_metadata)
     this_target_sources(${SOURCES})
     this_target_object_libraries(
+        array_directory    
         array_schema    
         fragment_identifier
         generic_tile_io 
         ndrectangle 
         rectangle
         rtree
+        tiledb_crypto
         writer_tile
     )
 conclude(object_library)

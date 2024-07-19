@@ -966,8 +966,7 @@ load_consolidated_fragment_meta(
     const URI& uri,
     const EncryptionKey& enc_key,
     shared_ptr<MemoryTracker> memory_tracker) {
-  auto timer_se =
-      resources.stats().start_timer("sm_read_load_consolidated_frag_meta");
+  resources.stats().start_timer("sm_read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
@@ -1006,8 +1005,7 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
     const ArrayDirectory& array_dir,
     shared_ptr<MemoryTracker> memory_tracker,
     const EncryptionKey& enc_key) {
-  auto timer_se = resources.stats().start_timer(
-      "sm_load_array_schemas_and_fragment_metadata");
+  resources.stats().start_timer("sm_load_array_schemas_and_fragment_metadata");
 
   // Load array schemas
   auto tracker = resources.ephemeral_memory_tracker();
@@ -1018,8 +1016,7 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
       array_dir.load_array_schemas(enc_key, tracker);
 
   const auto filtered_fragment_uris = [&]() {
-    auto timer_se =
-        resources.stats().start_timer("sm_load_filtered_fragment_uris");
+    resources.stats().start_timer("sm_load_filtered_fragment_uris");
     return array_dir.filtered_fragment_uris(array_schema_latest->dense());
   }();
   const auto& meta_uris = array_dir.fragment_meta_uris();

@@ -35,14 +35,8 @@ include(object_library)
 # 
 # This design eliminates cyclic dependencies in the build, as each module has
 # its own dependency chain.
-# 
-# Note that neither object library has been implemented at present. Rather,
-# class `Array` is getting segregated by functionality to prepare for this 
-# future work. 
-# 
-# The `array` object library will be added in the near future.
 #
-# The `array_operations` object library is very specifically blocked by 
+# Note: The `array_operations` object library is very specifically blocked by 
 # `StrategyBase::throw_if_cancelled`. At present, this function relies on 
 # `StorageManagerCanonical`, which is slated for removal. The `Query` class is 
 # undergoing maintenance to remove all dependencies on class `StorageManager`. 
@@ -66,6 +60,20 @@ commence(object_library array_directory)
     if(TILEDB_STATS)
         this_target_compile_definitions(-DTILEDB_STATS)
     endif()
+conclude(object_library)
+
+#
+# `array` object library
+#
+commence(object_library array)
+    this_target_sources(array.cc consistency.cc)
+    this_target_object_libraries(
+        array_directory
+        array_schema_operations
+        fragment_metadata
+        metadata
+        object
+    )
 conclude(object_library)
 
 add_test_subdirectory()

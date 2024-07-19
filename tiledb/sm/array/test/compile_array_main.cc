@@ -1,5 +1,5 @@
 /**
- * @file compile_object_mutex_main.cc
+ * @file compile_array_main.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include "../object_mutex.h"
+#include "../array.h"
+#include "../consistency.h"
 
 int main() {
-  std::lock_guard<std::mutex> lock{tiledb::sm::object_mtx};
+  (void)sizeof(tiledb::sm::Array);
+  (void)sizeof(tiledb::sm::ConsistencyController);
   return 0;
 }
