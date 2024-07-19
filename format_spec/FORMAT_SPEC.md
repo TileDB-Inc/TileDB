@@ -40,6 +40,7 @@ title: Format Specification
 
 ## Table of Contents
 
+* [Format Version History](./history.md)
 * **Array**
    * [File hierarchy](./array_file_hierarchy.md)
    * [Array Schema](./array_schema.md)
