@@ -957,6 +957,10 @@ void write_sparse_v11(
  */
 void read_sparse_v11(
     tiledb_ctx_t* ctx, const std::string& array_name, uint64_t timestamp);
+
+void schema_equiv(
+    const sm::ArraySchema& schema1, const sm::ArraySchema& schema2);
+
 }  // namespace tiledb::test
 
 #endif

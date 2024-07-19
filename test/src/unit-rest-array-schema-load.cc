@@ -45,7 +45,6 @@ struct ArraySchemaLoadFx {
   ~ArraySchemaLoadFx() = default;
 
   void create_array();
-  void check_schema(const ArraySchema& schema) const;
 
   test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
@@ -71,7 +70,11 @@ TEST_CASE_METHOD(
       ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"),
       matcher);
 
-  check_schema(schema);
+  // Schema was constructed prior to creating the array, the array URI is empty.
+  // Set the schema's array_uri without opening the array.
+  schema_.ptr()->array_schema_->set_array_uri(sm::URI(uri_));
+  test::schema_equiv(
+      *schema.ptr()->array_schema_, *schema_.ptr()->array_schema_);
 }
 
 TEST_CASE_METHOD(
@@ -85,7 +88,8 @@ TEST_CASE_METHOD(
   REQUIRE_NOTHROW(
       ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"));
 
-  check_schema(schema);
+  test::schema_equiv(
+      *schema.ptr()->array_schema_, *schema_.ptr()->array_schema_);
 }
 
 ArraySchemaLoadFx::ArraySchemaLoadFx()
@@ -124,27 +128,4 @@ void ArraySchemaLoadFx::create_array() {
   schema_.add_attribute(attr2);
 
   Array::create(uri_, schema_);
-}
-
-void ArraySchemaLoadFx::check_schema(const ArraySchema& schema) const {
-  CHECK(schema.array_type() == schema_.array_type());
-  CHECK(schema.attributes().size() == schema_.attributes().size());
-  for (unsigned int i = 0; i < schema.attribute_num(); i++) {
-    auto a = schema_.attribute(i);
-    auto b = schema.attribute(i);
-    CHECK(a.cell_val_num() == b.cell_val_num());
-    CHECK(a.name() == b.name());
-    CHECK(a.type() == b.type());
-    CHECK(a.nullable() == b.nullable());
-    CHECK(
-        AttributeExperimental::get_enumeration_name(ctx_, a) ==
-        AttributeExperimental::get_enumeration_name(ctx_, b));
-  }
-  CHECK(schema.capacity() == schema_.capacity());
-  CHECK(schema.cell_order() == schema_.cell_order());
-  CHECK(schema.tile_order() == schema_.tile_order());
-  CHECK(schema.allows_dups() == schema_.allows_dups());
-  CHECK(
-      schema.ptr()->array_schema_->array_uri().to_string() ==
-      sm::URI(uri_).to_string());
 }

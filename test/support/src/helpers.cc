@@ -49,6 +49,7 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -1619,6 +1620,26 @@ void read_sparse_v11(
 
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+void schema_equiv(
+    const sm::ArraySchema& schema1, const sm::ArraySchema& schema2) {
+  CHECK(schema1.array_type() == schema2.array_type());
+  CHECK(schema1.attributes().size() == schema2.attributes().size());
+  for (unsigned int i = 0; i < schema2.attribute_num(); i++) {
+    auto a = schema2.attribute(i);
+    auto b = schema1.attribute(i);
+    CHECK(a->cell_val_num() == b->cell_val_num());
+    CHECK(a->name() == b->name());
+    CHECK(a->type() == b->type());
+    CHECK(a->nullable() == b->nullable());
+    CHECK(a->get_enumeration_name() == b->get_enumeration_name());
+  }
+  CHECK(schema1.capacity() == schema2.capacity());
+  CHECK(schema1.cell_order() == schema2.cell_order());
+  CHECK(schema1.tile_order() == schema2.tile_order());
+  CHECK(schema1.allows_dups() == schema2.allows_dups());
+  CHECK(schema1.array_uri().to_string() == schema2.array_uri().to_string());
 }
 
 template void check_subarray<int8_t>(
