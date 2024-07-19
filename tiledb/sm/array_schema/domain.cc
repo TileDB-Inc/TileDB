@@ -1170,8 +1170,6 @@ template uint64_t Domain::stride<double>(Layout subarray_layout) const;
 }  // namespace tiledb::sm
 
 std::ostream& operator<<(std::ostream& os, const tiledb::sm::Domain& domain) {
-  std::string tmp;
-
   for (unsigned i = 0; i < domain.dim_num(); i++) {
     os << std::endl;
     os << *domain.dimension_ptr(i);
