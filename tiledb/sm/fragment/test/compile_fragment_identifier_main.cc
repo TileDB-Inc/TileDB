@@ -1,11 +1,11 @@
 /**
- * @file compile_array_schema_main.cc
+ * @file compile_fragment_identifier_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,15 @@
  * THE SOFTWARE.
  */
 
-#include "../array_schema.h"
-#include "../array_schema_evolution.h"
-#include "../dimension_label.h"
+#include "../fragment_identifier.h"
+
+using namespace tiledb::sm;
 
 int main() {
-  (void)sizeof(tiledb::sm::ArraySchema);
-  (void)sizeof(tiledb::sm::ArraySchemaEvolution);
-  (void)sizeof(tiledb::sm::DimensionLabel);
+  FragmentID x(URI{});
+  (void)x.name();
+  (void)x.timestamp_range();
+  (void)x.name_version();
+  (void)x.array_format_version();
   return 0;
 }

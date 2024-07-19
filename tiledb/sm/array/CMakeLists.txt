@@ -40,9 +40,6 @@ include(object_library)
 # class `Array` is getting segregated by functionality to prepare for this 
 # future work. 
 # 
-# Though there is currently an object library named `array`, it will soon be
-# aptly renamed `array_directory`.
-# 
 # The `array` object library will be added in the near future.
 #
 # The `array_operations` object library is very specifically blocked by 
@@ -54,15 +51,15 @@ include(object_library)
 #
 
 #
-# `array` object library
+# `array_directory` object library
 #
-commence(object_library array)
+commence(object_library array_directory)
     this_target_sources(array_directory.cc)
     this_target_object_libraries(
         array_schema
         baseline
         context_resources
-        fragment
+        fragment_identifier
         generic_tile_io
         vfs
     )

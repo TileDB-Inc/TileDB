@@ -1,5 +1,5 @@
 /**
- * @file compile_fragment_main.cc
+ * @file compile_writer_tile_main.cc
  *
  * @section LICENSE
  *
@@ -26,15 +26,14 @@
  * THE SOFTWARE.
  */
 
-#include "../fragment_identifier.h"
+#include "../tile_metadata_generator.h"
+#include "../writer_tile_tuple.h"
 
 using namespace tiledb::sm;
 
 int main() {
-  FragmentID x(URI{});
-  (void)x.name();
-  (void)x.timestamp_range();
-  (void)x.name_version();
-  (void)x.array_format_version();
+  (void)sizeof(tiledb::sm::TileMetadataGenerator);
+  (void)sizeof(tiledb::sm::WriterTileTuple);
+
   return 0;
 }
