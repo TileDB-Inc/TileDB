@@ -130,7 +130,7 @@ void store_array_schema(
 }
 
 shared_ptr<ArraySchema> load_array_schema(
-    const Context& ctx, const URI& uri, const Config* config) {
+    const Context& ctx, const URI& uri, const Config& config) {
   // Check array name
   if (uri.is_invalid()) {
     throw std::runtime_error("Failed to load array schema; Invalid array URI");
@@ -138,8 +138,8 @@ shared_ptr<ArraySchema> load_array_schema(
 
   if (uri.is_tiledb()) {
     auto& rest_client = ctx.rest_client();
-    auto array_schema_response = rest_client.post_array_schema_from_rest(
-        config ? *config : ctx.resources().config(), uri, 0, UINT64_MAX);
+    auto array_schema_response =
+        rest_client.post_array_schema_from_rest(config, uri, 0, UINT64_MAX);
     return std::move(std::get<0>(array_schema_response));
   } else {
     // Create key
@@ -161,9 +161,10 @@ shared_ptr<ArraySchema> load_array_schema(
     auto&& array_schema_latest =
         array_dir->load_array_schema_latest(key, tracker);
 
-    bool incl_enums = config->get<bool>(
+    // Load enumerations if config option is set.
+    bool incl_enums = config.get<bool>(
         "rest.load_enumerations_on_array_open", Config::must_find);
-    if (config && incl_enums) {
+    if (incl_enums) {
       std::vector<std::string> enmr_paths_to_load;
       auto enmr_names = array_schema_latest->get_enumeration_names();
       for (auto& name : enmr_names) {

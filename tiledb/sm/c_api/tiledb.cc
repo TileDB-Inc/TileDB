@@ -490,8 +490,9 @@ int32_t tiledb_array_schema_load(
     throw CAPIStatusException("Failed to allocate TileDB array schema object");
   }
 
+  // Use a default constructed config to load the schema with default options.
   (*array_schema)->array_schema_ =
-      load_array_schema(ctx->context(), sm::URI(array_uri));
+      load_array_schema(ctx->context(), sm::URI(array_uri), sm::Config());
 
   return TILEDB_OK;
 }
@@ -511,10 +512,11 @@ int32_t tiledb_array_schema_load_with_options(
     throw CAPIStatusException("Failed to allocate TileDB array schema object");
   }
 
-  // Check array name
-  tiledb::sm::URI uri(array_uri);
+  // Use passed config or context config to load the schema with set options.
   (*array_schema)->array_schema_ = load_array_schema(
-      ctx->context(), uri, config ? &config->config() : nullptr);
+      ctx->context(),
+      sm::URI(array_uri),
+      config ? config->config() : ctx->config());
 
   return TILEDB_OK;
 }

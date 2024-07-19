@@ -77,7 +77,7 @@ void store_array_schema(
  * @param config TileDB Config. If null, the context config will be used.
  */
 shared_ptr<ArraySchema> load_array_schema(
-    const Context& ctx, const URI& uri, const Config* config = nullptr);
+    const Context& ctx, const URI& uri, const Config& config);
 
 }  // namespace tiledb::sm
 

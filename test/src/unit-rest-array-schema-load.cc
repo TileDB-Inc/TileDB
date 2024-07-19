@@ -58,11 +58,6 @@ TEST_CASE_METHOD(
     "[rest][array-schema][simple-load]") {
   create_array();
 
-  auto config = ctx_.config();
-  config.set("rest.load_enumerations_on_array_open", "false");
-  vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
-
   ArraySchema schema = Array::load_schema(ctx_, uri_);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Enumeration 'my_enum' is not loaded.");
@@ -70,7 +65,7 @@ TEST_CASE_METHOD(
       ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"),
       matcher);
 
-  // Schema was constructed prior to creating the array, the array URI is empty.
+  // schema_ was constructed prior to creating the array, so array URI is empty.
   // Set the schema's array_uri without opening the array.
   schema_.ptr()->array_schema_->set_array_uri(sm::URI(uri_));
   test::schema_equiv(
@@ -88,6 +83,9 @@ TEST_CASE_METHOD(
   REQUIRE_NOTHROW(
       ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"));
 
+  // schema_ was constructed prior to creating the array, so array URI is empty.
+  // Set the schema's array_uri without opening the array.
+  schema_.ptr()->array_schema_->set_array_uri(sm::URI(uri_));
   test::schema_equiv(
       *schema.ptr()->array_schema_, *schema_.ptr()->array_schema_);
 }
