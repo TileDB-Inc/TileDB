@@ -916,13 +916,13 @@ class Config {
    *    together with the open array <br>
    *    **Default**: true
    * - `rest.use_refactored_array_open` <br>
-   *    If true, the new, experimental REST routes and APIs for opening an array
-   *    will be used <br>
-   *    **Default**: false
+   *    If true, the new REST routes and APIs for opening an array will be used
+   *    <br>
+   *    **Default**: true
    * - `rest.use_refactored_array_open_and_query_submit` <br>
-   *    If true, the new, experimental REST routes and APIs for opening an array
-   *    and submitting a query will be used <br>
-   *    **Default**: false
+   *    If true, the new REST routes and APIs for opening an array and
+   *    submitting a query will be used <br>
+   *    **Default**: true
    * - `rest.curl.buffer_size` <br>
    *    Set curl buffer size for REST requests <br>
    *    **Default**: 524288 (512KB)
