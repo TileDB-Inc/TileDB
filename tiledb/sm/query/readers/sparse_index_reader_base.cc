@@ -385,7 +385,12 @@ Status SparseIndexReaderBase::load_initial_data() {
     // At this point, full memory budget is available.
     if (!array_memory_tracker_->set_budget(memory_budget_.total_budget())) {
       throw SparseIndexReaderBaseException(
-          "Cannot set array memory budget, already over limit.");
+          "Cannot set array memory budget (" +
+          std::to_string(memory_budget_.total_budget()) +
+          ") because it is larger than the available memory (" +
+          std::to_string(array_memory_tracker_->get_memory_available()) +
+          "). Total budget for array data (" +
+          std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
     }
 
     // Make sure there is no memory taken by the subarray.
@@ -450,7 +455,13 @@ Status SparseIndexReaderBase::load_initial_data() {
   if (!array_memory_tracker_->set_budget(
           memory_budget_.total_budget() * memory_budget_.ratio_array_data())) {
     throw SparseIndexReaderBaseException(
-        "Cannot set array memory budget, already over limit.");
+        "Cannot set array memory budget (" +
+        std::to_string(
+            memory_budget_.total_budget() * memory_budget_.ratio_array_data()) +
+        ") because it is larger than the available memory (" +
+        std::to_string(array_memory_tracker_->get_memory_available()) +
+        "). Total budget for array data (" +
+        std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
   }
 
   // Add var size dimensions to the list of tile var size to load vector.
