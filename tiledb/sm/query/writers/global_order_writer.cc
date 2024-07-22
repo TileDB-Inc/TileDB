@@ -52,6 +52,7 @@
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -1441,7 +1442,11 @@ uint64_t GlobalOrderWriter::num_tiles_per_row() {
     // other dimensions
     auto dim{array_schema_.dimension_ptr(d)};
     auto dim_dom = dim->domain();
-    ret *= dim->domain_range(dim_dom) / dim->tile_extent().rvalue_as<int32_t>();
+    auto l = [&](auto T) {
+      return static_cast<uint64_t>(dim->tile_extent().rvalue_as<decltype(T)>());
+    };
+
+    ret *= dim->domain_range(dim_dom) / apply_with_type(l, dim->type());
     // todo consider cases where the above calculation has a remainder. Also
     // consider other types
   }
@@ -1449,9 +1454,20 @@ uint64_t GlobalOrderWriter::num_tiles_per_row() {
 }
 
 NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
+  // if (disable_checks_consolidation_) {
+  //   auto expanded_subarray = subarray_.ndrange(0);
+  //   domain.expand_to_tiles(&expanded_subarray);
+  // }
+
   uint64_t tiles_per_row = num_tiles_per_row();
   auto dim_num = array_schema_.dim_num();
-  uint64_t cells_in_tile = array_schema_.domain().cell_num_per_tile();
+  auto dim{array_schema_.dimension_ptr(0)};
+
+  auto l = [&](auto T) {
+    return static_cast<uint64_t>(dim->tile_extent().rvalue_as<decltype(T)>());
+  };
+
+  uint64_t tile_extent = apply_with_type(l, dim->type());
   NDRange nd;
   nd.reserve(dim_num);
 
@@ -1466,9 +1482,8 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
   uint64_t rows_of_tiles_to_write = num / tiles_per_row;
 
   // Create the range for the index dim (first).
-  int start =
-      rows_written_ * cells_in_tile;  // todo start from the dim_dom start
-  int end = start + (rows_of_tiles_to_write * cells_in_tile) - 1;
+  int start = rows_written_ * tile_extent;  // todo start from the dim_dom start
+  int end = start + (rows_of_tiles_to_write * tile_extent) - 1;
   Range range(&start, &end, sizeof(int));
   nd.emplace_back(range);
 
