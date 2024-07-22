@@ -36,17 +36,17 @@
 
 namespace tiledb::sm {
 
-class QueryStateException : public tiledb::common::StatusException {
+class LocalQueryStateException : public tiledb::common::StatusException {
  public:
-  QueryStateException(std::string_view s)
-      : StatusException("QueryState", std::string(s)) {
+  LocalQueryStateException(std::string_view s)
+      : StatusException("LocalQueryState", std::string(s)) {
   }
 };
 
 LocalQueryStateMachine::LocalQueryStateMachine(LocalQueryState s)
     : state_(s) {
   if (!is_initial()) {
-    throw QueryStateException("Argument is not an initial state");
+    throw LocalQueryStateException("Argument is not an initial state");
   }
 }
 
@@ -54,16 +54,20 @@ LocalQueryStateMachine::LocalQueryStateMachine(LocalQueryState s)
  * A row in the transition table is a state indexed by events.
  */
 using transition_table_row = LocalQueryState[n_local_query_events];
-/*
+
+/**
  * A transition table is one row for each state.
  */
 using transition_table = transition_table_row[n_local_query_states];
 
 /*
- * GCC 10 does not support `using enum`, which would allow omitting all the
- * qualifiers in the transition table. Instead, we make do with a shorter alias.
+ * This alias is only necessary because GCC 10 does not support `using enum`,
+ * which would allow omitting all the qualifiers in the transition table.
+ * Instead, we make do with a shorter alias. The statement that should be here:
+ * ```
+ * using enum LocalQueryState;
+ * ```
  */
-// using enum LocalQueryState;
 using LQS = LocalQueryState;
 
 /**
@@ -73,8 +77,7 @@ constexpr transition_table local_query_tt{
     // uninitialized
     {
         LQS::everything_else,  // ready
-        LQS::success,  // finish. In due course this should be `error`, since it
-                       // should be impossible to complete a query without
+        LQS::error,    // finish. It is impossible to complete a query without
                        // initializing it.
         LQS::aborted,  // abort
         LQS::cancelled,  // cancel

@@ -221,8 +221,8 @@ constexpr size_t n_local_query_states = 6;
 enum class LocalQueryEvent { ready, finish, abort, cancel };
 
 /**
- * The number of local query states. This is the same as the number of
- * enumeration constants defined in `LocalQueryState`.
+ * The number of local query events. This is the same as the number of
+ * enumeration constants defined in `LocalQueryEvent`.
  */
 constexpr size_t n_local_query_events = 4;
 
@@ -231,20 +231,19 @@ constexpr size_t n_local_query_events = 4;
  *
  * @section Design
  *
+ * This state machine is a tracking machine that follows the execution of a
+ * query. There's no _a priori_ relationship between external events and the
+ * events of this state machine. Instead, the events are generated from within
+ * the query code.
+ *
  * There is no way of manually changing states through assignment. The only way
- * to get the state machine into a state is one of two ways:
+ * to get the state machine into a particular state is one of two ways:
  *   - Construction of a state machine in a permissible initial state.
  *   - Transitions in state caused by events.
  */
 class LocalQueryStateMachine {
-  /*
-   * Compensate for GCC 10
-   */
-  // using enum LocalQueryState;
-  using LQS = LocalQueryState;
-
   /**
-   * Mutex assure atomicity of state transition
+   * Mutex that protects atomicity of state transitions
    *
    * All accesses to `state`, even trivial ones, need to be serialized though
    * the mutex.
@@ -288,7 +287,7 @@ class LocalQueryStateMachine {
    * The default constructor is deleted.
    *
    * Deleting this constructor is a design choice. We do not yet, but will need
-   * to, constructor objects in different initial states depending on whether
+   * to, construct objects in different initial states depending on whether
    * they're new queries or queries resuming from suspension.
    *
    * @section Maturity
@@ -342,7 +341,7 @@ class LocalQueryStateMachine {
    * Predicate that the machine is in a cancelled state
    */
   bool is_cancelled() const {
-    return state() == LQS::cancelled;
+    return state() == LocalQueryState::cancelled;
   }
 };
 

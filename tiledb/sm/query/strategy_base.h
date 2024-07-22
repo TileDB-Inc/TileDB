@@ -327,7 +327,7 @@ class StrategyBase {
   Layout layout_;
 
   /**
-   * State machine of the query that under which this strategy is executing.
+   * State machine of the query under which this strategy is executing.
    *
    * Execution of query operation may be interrupted by asynchronous events that
    * are tracked through the state machine. Operations should poll the state

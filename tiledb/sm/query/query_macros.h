@@ -40,7 +40,7 @@ namespace tiledb::sm {
 #ifndef RETURN_CANCEL_OR_ERROR
 /**
  * Returns an error status if the given Status is not Status::Ok, or
- * if the StorageManager that owns this Query has requested cancellation.
+ * if the Context that owns this Query has requested cancellation.
  */
 #define RETURN_CANCEL_OR_ERROR(s)                   \
   do {                                              \
@@ -58,7 +58,7 @@ namespace tiledb::sm {
 #ifndef RETURN_CANCEL_OR_ERROR_TUPLE
 /**
  * Returns an error status if the given Status is not Status::Ok, or
- * if the StorageManager that owns this Query has requested cancellation.
+ * if the Context that owns this Query has requested cancellation.
  */
 #define RETURN_CANCEL_OR_ERROR_TUPLE(s)                             \
   do {                                                              \
