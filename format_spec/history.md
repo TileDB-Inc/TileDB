@@ -45,7 +45,7 @@ Introduced in TileDB 2.15
 Introduced in TileDB 2.14
 
 * The _Order_ field was added to [attributes](./array_schema.md#attribute).
-* When filtering UTF-8 strings with the dictionary or RLE filter, offsets buffers are passed to the filter unchanged and without any filtering on themselves.
+* Cell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary filter exists in the filter pipeline. They are instead encoded as part of the data tile.
 
 ## Version 16
 
@@ -79,6 +79,7 @@ Introduced in TileDB 2.8
 
 * The [array file hierarchy](./array_file_hierarchy.md) was updated to store fragments, commits and consolidated fragment metadata in separate subdirectories.
 * The extension of commit files was changed to `.wrt`.
+* Cell offsets in dimensions or attributes of ASCII string type are not written in the offset tiles, if the RLE filter exists in the filter pipeline. They are instead encoded as part of the data tile.
 
 ## Version 11
 
