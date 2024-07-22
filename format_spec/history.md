@@ -54,3 +54,50 @@ Introduced in TileDB 2.12
 * Deleting data from arrays is supported. Arrays can have [delete commit files](./delete_commit_file.md).
 * Updating data in arrays is supported. Arrays can have [update commit files](./update_commit_file.md).
 * Fragment metadata contain [tile processed conditions](./fragment.md#tile-processed-conditions).
+
+## Version 15
+
+Introduced in TileDB 2.11
+
+* Fragments can have delete metadata files. The _Includes delete metadata_ field was added to the [fragment metadata footer](./fragment.md#footer).
+
+## Version 14
+
+Introduced in TileDB 2.10
+
+* Fragments can have timestamp files. The _Includes timestamps_ field was added to the [fragment metadata footer](./fragment.md#footer).
+
+## Version 13
+
+Introduced in TileDB 2.9
+
+* The [dictionary filter](./filters/dictionary_encoding.md) was added.
+
+## Version 12
+
+Introduced in TileDB 2.8
+
+* The [array file hierarchy](./array_file_hierarchy.md) was updated to store fragments, commits and consolidated fragment metadata in separate subdirectories.
+* The extension of commit files was changed to `.wrt`.
+
+## Version 11
+
+Introduced in TileDB 2.7
+
+* Fragment metadata contain [metadata](./fragment.md#tile-mins-maxes) (min/max value, sum, null count) for each tile.
+
+## Version 10
+
+Introduced in TileDB 2.4
+
+* Arrays support schema evolution.
+    * Array schemas are stored in a `__schema` subdirectory, and have a [timestamped name](./timestamped_name.md).
+    * The _Array schema name_ field was added to the [fragment metadata footer](./fragment.md#footer).
+* The _Footer length_ field of the [fragment metadata footer](./fragment.md#footer) is always written.
+
+## Version 9
+
+Introduced in TileDB 2.3
+
+* [Data files](./fragment.md#data-file) are named by the index of their attribute or dimension.
+* The _URI_ fields of [Consolidated fragment metadata files](./consolidated_fragment_metadata_file.md) contain relative paths to the location of fragments in the array.
