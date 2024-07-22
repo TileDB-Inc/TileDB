@@ -288,8 +288,9 @@ class FilterPipeline {
       FilterPipeline* pipeline, const EncryptionKey& encryption_key);
 
   /**
-   * Checks if an attribute/dimension needs to be filtered in chunks or as a
-   * whole
+   * Checks if the offsets tiles of an attribute/dimension should be skipped
+   * from being written. This happens in filters that encode the offsets
+   * alongside the data.
    *
    * @param type Datatype of the input attribute/dimension
    * @param version Array schema version
