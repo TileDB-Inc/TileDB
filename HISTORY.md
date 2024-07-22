@@ -15,6 +15,7 @@
 * REST support for current domain. [#5136](https://github.com/TileDB-Inc/TileDB/pull/5136)
 * Disallow writing outside of the current domain. [#5165](https://github.com/TileDB-Inc/TileDB/pull/5165)
 * Current domain: disallow reading outside of current domain. [#5168](https://github.com/TileDB-Inc/TileDB/pull/5168)
+* Enable array open v2 and query v3 by default. [#5207](https://github.com/TileDB-Inc/TileDB/pull/5207)
 
 ## Improvements
 
@@ -32,6 +33,7 @@
 * Fix check for out of bounds dimension in Dimension::dimension_ptr. [#5094](https://github.com/TileDB-Inc/TileDB/pull/5094)
 * Fix array latest schema selection for same MS timestamps schemas. [#5143](https://github.com/TileDB-Inc/TileDB/pull/5143)
 * Fix serialization issue with schema evolution for query v3. [#5154](https://github.com/TileDB-Inc/TileDB/pull/5154)
+* Fix fragment consolidation to allow using absolute URIs. [#5135](https://github.com/TileDB-Inc/TileDB/pull/5135)
 
 ## Configuration changes
 
