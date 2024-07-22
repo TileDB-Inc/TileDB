@@ -33,6 +33,7 @@
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array/array_operations.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -329,10 +330,9 @@ Status Reader::load_initial_data() {
   }
 
   // Load delete conditions.
-  auto&& [st, conditions, update_values] =
-      array_->load_delete_and_update_conditions();
-  RETURN_CANCEL_OR_ERROR(st);
-  delete_and_update_conditions_ = std::move(*conditions);
+  auto&& [conditions, update_values] =
+      load_delete_and_update_conditions(resources_, *array_.get());
+  delete_and_update_conditions_ = conditions;
 
   // Set timestamps variables
   user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0 ||
