@@ -2154,7 +2154,7 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
 }
 
 void serialize_load_array_schema_response(
-    const ArraySchema&, SerializationType, Buffer&) {
+    const Array&, SerializationType, Buffer&) {
   throw ArraySchemaSerializationDisabledException();
 }
 

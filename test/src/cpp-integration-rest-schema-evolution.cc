@@ -37,22 +37,24 @@
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/rest/rest_client.h"
 
+#include <climits>
 #include <fstream>
 
 using namespace tiledb;
 
-static void create_array(const std::string& array_uri);
-static void write_first_fragment(const std::string& array_uri);
+static void create_array(const Context& ctx, const std::string& array_uri);
+static void write_first_fragment(
+    const Context& ctx, const std::string& array_uri);
 static uint64_t time_travel_destination();
-static void add_attr_b(const std::string& array_uri);
-static void write_second_fragment(const std::string& array_uri);
-static void read_without_time_travel(const std::string& array_uri);
-static void read_with_time_travel(const std::string& array_uri, uint64_t when);
+static void add_attr_b(const Context& ctx, const std::string& array_uri);
+static void write_second_fragment(
+    const Context& ctx, const std::string& array_uri);
+static void read_without_time_travel(
+    const Context& ctx, const std::string& array_uri);
+static void read_with_time_travel(
+    const Context& ctx, const std::string& array_uri, uint64_t when);
 
-void create_array(const std::string& array_uri) {
-  tiledb::test::VFSTestSetup vfs_test_setup;
-  tiledb::Context ctx{vfs_test_setup.ctx()};
-
+void create_array(const Context& ctx, const std::string& array_uri) {
   auto obj = tiledb::Object::object(ctx, array_uri);
   if (obj.type() != tiledb::Object::Type::Invalid) {
     tiledb::Object::remove(ctx, array_uri);
@@ -73,12 +75,10 @@ void create_array(const std::string& array_uri) {
   tiledb::Array::create(array_uri, schema);
 }
 
-void write_first_fragment(const std::string& array_uri) {
+void write_first_fragment(const Context& ctx, const std::string& array_uri) {
   std::vector<int32_t> d_data = {0, 1, 2, 3, 4};
   std::vector<int32_t> a_data = {5, 6, 7, 8, 9};
 
-  tiledb::test::VFSTestSetup vfs_test_setup;
-  tiledb::Context ctx{vfs_test_setup.ctx()};
   tiledb::Array array(ctx, array_uri, TILEDB_WRITE);
   tiledb::Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
@@ -101,9 +101,7 @@ uint64_t time_travel_destination() {
   return timepoint;
 }
 
-void add_attr_b(const std::string& array_uri) {
-  tiledb::test::VFSTestSetup vfs_test_setup;
-  tiledb::Context ctx{vfs_test_setup.ctx()};
+void add_attr_b(const Context& ctx, const std::string& array_uri) {
   auto attr = tiledb::Attribute::create<int32_t>(ctx, "b");
 
   tiledb::ArraySchemaEvolution ase(ctx);
@@ -111,13 +109,11 @@ void add_attr_b(const std::string& array_uri) {
   ase.array_evolve(array_uri);
 }
 
-void write_second_fragment(const std::string& array_uri) {
+void write_second_fragment(const Context& ctx, const std::string& array_uri) {
   std::vector<int32_t> d_data = {5, 6, 7, 8, 9};
   std::vector<int32_t> a_data = {10, 11, 12, 13, 14};
   std::vector<int32_t> b_data = {15, 16, 17, 18, 19};
 
-  tiledb::test::VFSTestSetup vfs_test_setup;
-  tiledb::Context ctx{vfs_test_setup.ctx()};
   tiledb::Array array(ctx, array_uri, TILEDB_WRITE);
   tiledb::Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED)
@@ -128,13 +124,12 @@ void write_second_fragment(const std::string& array_uri) {
   array.close();
 }
 
-void read_without_time_travel(const std::string& array_uri) {
+void read_without_time_travel(
+    const Context& ctx, const std::string& array_uri) {
   std::vector<int32_t> d_data(10);
   std::vector<int32_t> a_data(10);
   std::vector<int32_t> b_data(10);
 
-  tiledb::test::VFSTestSetup vfs_test_setup;
-  tiledb::Context ctx{vfs_test_setup.ctx()};
   tiledb::Array array(ctx, array_uri, TILEDB_READ);
   tiledb::Query query(ctx, array, TILEDB_READ);
   query.set_data_buffer("d", d_data)
@@ -155,13 +150,12 @@ void read_without_time_travel(const std::string& array_uri) {
   }
 }
 
-void read_with_time_travel(const std::string& array_uri, uint64_t when) {
+void read_with_time_travel(
+    const Context& ctx, const std::string& array_uri, uint64_t when) {
   std::vector<int32_t> d_data(10, INT_MAX);
   std::vector<int32_t> a_data(10, INT_MAX);
   std::vector<int32_t> b_data(10, INT_MAX);
 
-  tiledb::test::VFSTestSetup vfs_test_setup;
-  tiledb::Context ctx{vfs_test_setup.ctx()};
   tiledb::Array array(
       ctx,
       array_uri,
@@ -193,17 +187,18 @@ TEST_CASE(
     "[time-traveling][array-schema][bug][sc35424][rest]") {
   tiledb::test::VFSTestSetup vfs_test_setup;
   auto array_uri{vfs_test_setup.array_uri("test_time_traveling_schema")};
+  auto ctx = vfs_test_setup.ctx();
 
   // Test setup
-  create_array(array_uri);
-  write_first_fragment(array_uri);
+  create_array(ctx, array_uri);
+  write_first_fragment(ctx, array_uri);
   auto timepoint = time_travel_destination();
-  add_attr_b(array_uri);
-  write_second_fragment(array_uri);
+  add_attr_b(ctx, array_uri);
+  write_second_fragment(ctx, array_uri);
 
   // Check reads with and without time travel.
-  read_without_time_travel(array_uri);
-  read_with_time_travel(array_uri, timepoint);
+  read_without_time_travel(ctx, array_uri);
+  read_with_time_travel(ctx, array_uri, timepoint);
 }
 
 TEST_CASE(

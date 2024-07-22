@@ -126,11 +126,10 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
 TEST_CASE_METHOD(
     HandleLoadArraySchemaRequestFx,
     "tiledb_handle_load_array_schema_request - no enumerations",
-    "[request_handler][load_array_schema]") {
+    "[request_handler][load_array_schema][default]") {
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
-  REQUIRE(cfg_.set("rest.load_enumerations_on_array_open", "false").ok());
   auto schema_response =
       call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
   auto schema = std::get<0>(schema_response);
@@ -148,10 +147,11 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     HandleLoadArraySchemaRequestFx,
     "tiledb_handle_load_array_schema_request - load enumerations",
-    "[request_handler][load_array_schema][with-enumerations][default]") {
+    "[request_handler][load_array_schema][with-enumerations]") {
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
+  REQUIRE(cfg_.set("rest.load_enumerations_on_array_open", "true").ok());
   auto schema_response =
       call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
   auto schema = std::get<0>(schema_response);
@@ -173,6 +173,7 @@ TEST_CASE_METHOD(
     "tiledb_handle_load_array_schema_request - multiple schemas",
     "[request_handler][load_array_schema][schema-evolution]") {
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
+  std::string load_enums = GENERATE("true", "false");
 
   create_array();
 
@@ -181,18 +182,24 @@ TEST_CASE_METHOD(
   all_schemas.push_back(schema_add_attribute("c"));
   all_schemas.push_back(schema_add_attribute("d"));
 
+  REQUIRE(cfg_.set("rest.load_enumerations_on_array_open", load_enums).ok());
   auto schema_response =
       call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
   auto schema = std::get<0>(schema_response);
-  REQUIRE(schema->has_enumeration("enmr"));
-  REQUIRE(schema->get_loaded_enumeration_names().size() == 1);
-  REQUIRE(schema->get_loaded_enumeration_names()[0] == "enmr");
-  REQUIRE(schema->get_enumeration("enmr") != nullptr);
+  if (load_enums == "true") {
+    REQUIRE(schema->has_enumeration("enmr"));
+    REQUIRE(schema->get_loaded_enumeration_names().size() == 1);
+    REQUIRE(schema->get_loaded_enumeration_names()[0] == "enmr");
+    REQUIRE(schema->get_enumeration("enmr") != nullptr);
+  }
   // The latest schema should be equal to the last applied evolution.
   tiledb::test::schema_equiv(*schema, *all_schemas.back());
 
-  // Validate all array schemas returned from the request.
-  for (int i = 0; const auto& s : std::get<1>(schema_response)) {
+  // Validate schemas returned from the request in the order they were created.
+  auto r_all_schemas = std::get<1>(schema_response);
+  std::map<std::string, shared_ptr<ArraySchema>> resp(
+      r_all_schemas.begin(), r_all_schemas.end());
+  for (int i = 0; const auto& s : resp) {
     tiledb::test::schema_equiv(*s.second, *all_schemas[i++]);
   }
 }
@@ -468,7 +475,8 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::schema_add_attribute(
   tiledb::ArraySchemaEvolution ase(ctx);
   auto attr = tiledb::Attribute::create<int32_t>(ctx, attr_name);
   ase.add_attribute(attr);
-  auto evolved = ase.ptr()->array_schema_evolution_->evolve_schema(schema_);
+  // Evolve and update the original schema member variable.
+  schema_ = ase.ptr()->array_schema_evolution_->evolve_schema(schema_);
   // Apply the schema evolution.
   Array::evolve_array_schema(
       this->ctx_.resources(),
@@ -476,10 +484,8 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::schema_add_attribute(
       ase.ptr()->array_schema_evolution_,
       this->enc_key_);
 
-  // Update the original schema.
-  schema_ = evolved;
-  // Return the schema for validation.
-  return evolved;
+  // Return the new evolved schema for validation.
+  return schema_;
 }
 
 shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
