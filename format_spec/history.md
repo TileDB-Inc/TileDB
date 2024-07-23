@@ -8,7 +8,7 @@ title: Format version history
 
 Introduced in TileDB 2.25
 
-* The _Current domain_ field was added to [array schemas](./array_schema.md).
+* The _Current domain_ field was added to [array schemas](./array_schema.md#array-schema-file).
 
 ## Version 21
 
@@ -102,3 +102,38 @@ Introduced in TileDB 2.3
 
 * [Data files](./fragment.md#data-file) are named by the index of their attribute or dimension.
 * The _URI_ fields of [Consolidated fragment metadata files](./consolidated_fragment_metadata_file.md) contain relative paths to the location of fragments in the array.
+
+## Version 8
+
+Introduced in TileDB 2.2.3
+
+* [Data files](./fragment.md#data-file) are named by the name of their attribute or dimension, after percent encoding certain characters. These characters are `!#$%&'()*+,/:;=?@[]`, as specified in [RFC 3986](https://tools.ietf.org/html/rfc3986), as well as `"<>\|`, which are not allowed in Windows file names.
+
+## Version 7
+
+Introduced in TileDB 2.2
+
+* Attributes can be nullable.
+    * The _Nullable_ and _Fill value validity_ fields were added to [attributes](./array_schema.md#attribute).
+    * The _Validity filters_ field was added to [array schemas](./array_schema.md#array-schema-file).
+    * Fragment metadata contain validity [tile offsets](./fragment.md#tile-offsets).
+
+## Version 6
+
+Introduced in TileDB 2.1
+
+* The _Fill value_ field was added to [attributes](./array_schema.md#attribute).
+
+## Version 5
+
+Introduced in TileDB 2.0
+
+* Dimensions are stored in separate [data files](./fragment.md#data-file).
+* Sparse arrays can have string dimensions and dimensions with different datatypes.
+    * The _Dimension datatype_, _Cell val num_ and _Filters_ fields were added to [dimensions](./array_schema.md#dimension).
+    * The _Domain size_ field was added to [dimensions](./array_schema.md#dimension). The domain of a dimension can have a variable size.
+    * The _Domain datatype_ field was removed from [domains](./array_schema.md#domain).
+    * The [MBR](./fragment.md#mbr) structure has been updated to support variable-sized dimensions.
+    * The _Dimension number_ and _R-Tree datatype_ fields have been removed from [R-Trees](./fragment.md#r-tree).
+* The _Allows dups_ field was added to [array schemas](./array_schema.md#array-schema-file).
+* Committed fragments are indicated by the presence of an `.ok` file in the array's directory, with the same [timestamped name](./timestamped_name.md) as the fragment.
