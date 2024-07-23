@@ -140,13 +140,24 @@ class Stats {
 /* ****************************** */
 
 /**
- * Starts a timer for the input timer stat. The timer ends when the returned
- * `DurationInstrument` object is destroyed.
+ * Create a timer sentry object that's reported under this `Stats` object.
+ *
+ * The time begins during the execution of this function; more precisely, it
+ * begins with the construction of the returned instrument object. The timer
+ * ends when that object is destroyed.
+ *
+ * The return value of this function must be assigned to a variable in order to
+ * have any practical effect. If it were to exist only as a temporary, such as
+ * if casting the return value to `void`, the timer would end before the next
+ * statement began. The resulting datum would have a value very near to zero and
+ * would measure only the duration of the temporary object.
+ *
+ * @param stat The name under which the duration is to be reported
  */
 #ifdef TILEDB_STATS
-  DurationInstrument<Stats> start_timer(const std::string& stat);
+  [[nodiscard]] DurationInstrument<Stats> start_timer(const std::string& stat);
 #else
-  int start_timer(const std::string& stat);
+  [[nodiscard]] int start_timer(const std::string& stat);
 #endif
 
   /** Adds `count` to the input counter stat. */
