@@ -1448,8 +1448,7 @@ uint64_t GlobalOrderWriter::num_tiles_per_row(const Domain& domain) {
     };
 
     ret *= dim->domain_range(dim_dom) / apply_with_type(l, dim->type());
-    // todo consider cases where the above calculation has a remainder. Also
-    // consider other types
+    // todo consider cases where the above calculation has a remainder.
   }
   return ret;
 }
@@ -1492,8 +1491,13 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
   if (rows_written_ == 0) {
     // It means that the start has not been set yet. Set it to the minimum value
     // of the expanded domain for that dim
-    auto dim_dom_data = (const uint64_t*)dim_dom.data();
-    start_ = dim_dom_data[0];
+    auto ll = [&](auto T) {
+      auto dim_dom_data = (const decltype(T)*)dim_dom.data();
+      // todo this should be unsigned or signed
+      return static_cast<uint64_t>(dim_dom_data[0]);
+    };
+
+    start_ = apply_with_type(ll, dim->type());
   }
   uint64_t end = start_ + (rows_of_tiles_to_write * tile_extent) - 1;
 
