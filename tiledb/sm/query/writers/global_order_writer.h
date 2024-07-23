@@ -221,6 +221,12 @@ class GlobalOrderWriter : public WriterBase {
    */
   uint64_t rows_written_;
 
+  /**
+   * This is the start for the dim range in case we need to split in multiple
+   * fragments in Dense arrays
+   */
+  uint64_t start_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

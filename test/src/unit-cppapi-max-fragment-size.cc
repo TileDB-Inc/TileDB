@@ -613,12 +613,12 @@ TEST_CASE(
   cleanup();
 
   // Remove the array at the end of this test.
-  // ScopedExecutor deferred(cleanup);
+  ScopedExecutor deferred(cleanup);
 
   // Create an array with exactly 9 tiles and tile extend 1
   Domain domain(ctx);
   ArraySchema schema(ctx, TILEDB_DENSE);
-  auto d1 = tiledb::Dimension::create<int32_t>(ctx, "d1", {{0, 8}}, 3);
+  auto d1 = tiledb::Dimension::create<int32_t>(ctx, "d1", {{1, 9}}, 3);
   domain.add_dimension(d1);
 
   auto a1 = tiledb::Attribute::create<int32_t>(ctx, "a");
@@ -631,7 +631,7 @@ TEST_CASE(
 
   // Populate array with data from 1 to 9
   int value = 0;
-  for (int i = 0; i < 9; i += 3) {
+  for (int i = 1; i < 10; i += 3) {
     Array array(ctx, array_name, TILEDB_WRITE);
     Query query(ctx, array);
     query.set_layout(TILEDB_ROW_MAJOR);
@@ -649,7 +649,7 @@ TEST_CASE(
 
   Array array(ctx, array_name, TILEDB_READ);
   tiledb::Subarray sub(ctx, array);
-  sub.set_subarray({0, 8});
+  sub.set_subarray({1, 9});
   std::vector<int32_t> a(9);
   Query query(ctx, array, TILEDB_READ);
   query.set_subarray(sub).set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a);
@@ -674,7 +674,7 @@ TEST_CASE(
   // Read data to validate correctness
   Array array2(ctx, array_name, TILEDB_READ);
   tiledb::Subarray sub2(ctx, array2);
-  sub2.set_subarray({0, 8});
+  sub2.set_subarray({1, 9});
   std::vector<int32_t> a2(9);
   Query query2(ctx, array2, TILEDB_READ);
   query2.set_subarray(sub2)

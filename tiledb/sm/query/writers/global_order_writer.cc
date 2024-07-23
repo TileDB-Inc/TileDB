@@ -94,7 +94,8 @@ GlobalOrderWriter::GlobalOrderWriter(
     , processed_conditions_(processed_conditions)
     , fragment_size_(fragment_size)
     , current_fragment_size_(0)
-    , rows_written_(0) {
+    , rows_written_(0)
+    , start_(0) {
   // Check the layout is global order.
   if (layout_ != Layout::GLOBAL_ORDER) {
     throw GlobalOrderWriterException(
@@ -1463,16 +1464,6 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
 
   // Calculate how many tiles each row can hold
   uint64_t tiles_per_row = num_tiles_per_row(domain);
-  auto dim_num = domain.dim_num();
-  auto dim{domain.dimension_ptr(0)};
-
-  auto l = [&](auto T) {
-    return static_cast<uint64_t>(dim->tile_extent().rvalue_as<decltype(T)>());
-  };
-
-  uint64_t tile_extent = apply_with_type(l, dim->type());
-  NDRange nd;
-  nd.reserve(dim_num);
 
   if (num % tiles_per_row != 0) {
     throw GlobalOrderWriterException(
@@ -1484,13 +1475,33 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
   // Calculate how many rows we will write in the current fragment
   uint64_t rows_of_tiles_to_write = num / tiles_per_row;
 
-  // Create the range for the index dim (first).
-  int start = rows_written_ * tile_extent;
-  int end = start + (rows_of_tiles_to_write * tile_extent) - 1;
-  Range range(&start, &end, sizeof(int));
+  // Create NDRange object and reserve for dims
+  auto dim_num = domain.dim_num();
+  NDRange nd;
+  nd.reserve(dim_num);
+
+  // Calculate the range for the index dim (first).
+  auto dim{domain.dimension_ptr(0)};
+  auto dim_dom = dim->domain();
+  auto l = [&](auto T) {
+    return static_cast<uint64_t>(dim->tile_extent().rvalue_as<decltype(T)>());
+  };
+  uint64_t tile_extent = apply_with_type(l, dim->type());
+
+  // Calculate start and end
+  if (rows_written_ == 0) {
+    // It means that the start has not been set yet. Set it to the minimum value
+    // of the expanded domain for that dim
+    auto dim_dom_data = (const uint64_t*)dim_dom.data();
+    start_ = dim_dom_data[0];
+  }
+  uint64_t end = start_ + (rows_of_tiles_to_write * tile_extent) - 1;
+
+  // Add range
+  Range range(&start_, &end, sizeof(int));
   nd.emplace_back(range);
 
-  // Use the domain as ranges for the rest of the dims
+  // For the rest of the dims, use their domains as ranges. No split there.
   for (unsigned d = 1; d < dim_num; ++d) {
     // begin from second dim
     auto dim{array_schema_.dimension_ptr(d)};
@@ -1500,6 +1511,7 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
 
   // add rows written to the cache
   rows_written_ += rows_of_tiles_to_write;
+  start_ = end + 1;
 
   return nd;
 }
