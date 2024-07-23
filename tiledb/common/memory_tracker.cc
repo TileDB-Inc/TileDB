@@ -84,6 +84,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "ResultTileBitmap";
     case MemoryType::RTREE:
       return "RTree";
+    case MemoryType::SERIALIZATION_BUFFER:
+      return "SerializationBuffer";
     case MemoryType::TILE_DATA:
       return "TileData";
     case MemoryType::TILE_HILBERT_VALUES:
