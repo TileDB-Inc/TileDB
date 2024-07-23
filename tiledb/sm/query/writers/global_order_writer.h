@@ -403,9 +403,11 @@ class GlobalOrderWriter : public WriterBase {
    * Return the number of tiles a single row can hold. More specifically, the
    * number of tiles all dimensions except the first can hold.
    *
+   * @param domain The domain
+   *
    * @return Number of tiles.
    */
-  uint64_t num_tiles_per_row();
+  uint64_t num_tiles_per_row(const Domain& domain);
 
   /**
    * Close the current fragment and start a new one. The closed fragment will

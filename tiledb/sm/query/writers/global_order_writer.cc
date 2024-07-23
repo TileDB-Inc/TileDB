@@ -1432,15 +1432,15 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
   return tile_num - start;
 }
 
-uint64_t GlobalOrderWriter::num_tiles_per_row() {
-  auto dim_num = array_schema_.dim_num();
+uint64_t GlobalOrderWriter::num_tiles_per_row(const Domain& domain) {
+  auto dim_num = domain.dim_num();
   uint64_t ret = 1;
 
   for (unsigned d = 1; d < dim_num; ++d) {
     // Skip first dim. We want to calculate how many tiles can fit in one row.
     // To do that we skip the first dim and multiply the range / extend of the
     // other dimensions
-    auto dim{array_schema_.dimension_ptr(d)};
+    auto dim{domain.dimension_ptr(d)};
     auto dim_dom = dim->domain();
     auto l = [&](auto T) {
       return static_cast<uint64_t>(dim->tile_extent().rvalue_as<decltype(T)>());
@@ -1454,14 +1454,17 @@ uint64_t GlobalOrderWriter::num_tiles_per_row() {
 }
 
 NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
-  // if (disable_checks_consolidation_) {
-  //   auto expanded_subarray = subarray_.ndrange(0);
-  //   domain.expand_to_tiles(&expanded_subarray);
-  // }
+  // Expand domain to full tiles
+  auto& domain{array_schema_.domain()};
+  if (disable_checks_consolidation_) {
+    auto expanded_subarray = subarray_.ndrange(0);
+    domain.expand_to_tiles(&expanded_subarray);
+  }
 
-  uint64_t tiles_per_row = num_tiles_per_row();
-  auto dim_num = array_schema_.dim_num();
-  auto dim{array_schema_.dimension_ptr(0)};
+  // Calculate how many tiles each row can hold
+  uint64_t tiles_per_row = num_tiles_per_row(domain);
+  auto dim_num = domain.dim_num();
+  auto dim{domain.dimension_ptr(0)};
 
   auto l = [&](auto T) {
     return static_cast<uint64_t>(dim->tile_extent().rvalue_as<decltype(T)>());
@@ -1482,7 +1485,7 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
   uint64_t rows_of_tiles_to_write = num / tiles_per_row;
 
   // Create the range for the index dim (first).
-  int start = rows_written_ * tile_extent;  // todo start from the dim_dom start
+  int start = rows_written_ * tile_extent;
   int end = start + (rows_of_tiles_to_write * tile_extent) - 1;
   Range range(&start, &end, sizeof(int));
   nd.emplace_back(range);
