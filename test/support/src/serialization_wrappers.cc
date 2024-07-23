@@ -226,6 +226,7 @@ void tiledb_subarray_serialize(
 void tiledb_array_consolidation_request_wrapper(
     tiledb_ctx_t* ctx,
     tiledb_serialization_type_t serialize_type,
+    const std::string& array_uri,
     const std::vector<std::string>* fragment_uris_in,
     std::vector<std::string>* fragment_uris_out) {
   // Serialize and Deserialize
@@ -238,6 +239,7 @@ void tiledb_array_consolidation_request_wrapper(
 
   auto [config, fragment_uris_deser] =
       serialization::array_consolidation_request_deserialize(
+          array_uri,
           static_cast<tiledb::sm::SerializationType>(serialize_type),
           buffer->buffer());
 

@@ -94,14 +94,19 @@ void array_consolidation_request_to_capnp(
     auto fragment_list_builder =
         array_consolidation_request_builder->initFragments(
             fragment_uris->size());
-    for (size_t i = 0; i < fragment_uris->size(); i++) {
-      fragment_list_builder.set(i, (*fragment_uris)[i]);
+    size_t i = 0;
+    for (auto& fragment_uri : *fragment_uris) {
+      const auto& relative_fragment_uri =
+          serialize_array_uri_to_relative(URI(fragment_uri));
+      fragment_list_builder.set(i, relative_fragment_uri);
+      i++;
     }
   }
 }
 
 std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_from_capnp(
+    const std::string& array_uri,
     const capnp::ArrayConsolidationRequest::Reader&
         array_consolidation_request_reader) {
   auto config_reader = array_consolidation_request_reader.getConfig();
@@ -113,7 +118,8 @@ array_consolidation_request_from_capnp(
     auto fragment_reader = array_consolidation_request_reader.getFragments();
     fragment_uris.reserve(fragment_reader.size());
     for (const auto& fragment_uri : fragment_reader) {
-      fragment_uris.emplace_back(fragment_uri);
+      fragment_uris.emplace_back(deserialize_array_uri_to_absolute(
+          fragment_uri.cStr(), URI(array_uri)));
     }
 
     return {*decoded_config, fragment_uris};
@@ -180,7 +186,9 @@ void array_consolidation_request_serialize(
 
 std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer) {
+    const std::string& array_uri,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -196,7 +204,7 @@ array_consolidation_request_deserialize(
             array_consolidation_request_reader =
                 array_consolidation_request_builder.asReader();
         return array_consolidation_request_from_capnp(
-            array_consolidation_request_reader);
+            array_uri, array_consolidation_request_reader);
         break;
       }
       case SerializationType::CAPNP: {
@@ -209,7 +217,7 @@ array_consolidation_request_deserialize(
             array_consolidation_request_reader =
                 reader.getRoot<capnp::ArrayConsolidationRequest>();
         return array_consolidation_request_from_capnp(
-            array_consolidation_request_reader);
+            array_uri, array_consolidation_request_reader);
         break;
       }
       default: {
@@ -472,7 +480,8 @@ void array_consolidation_request_serialize(
 }
 
 std::pair<Config, std::optional<std::vector<std::string>>>
-array_consolidation_request_deserialize(SerializationType, const Buffer&) {
+array_consolidation_request_deserialize(
+    const std::string&, SerializationType, const Buffer&) {
   throw ConsolidationSerializationDisabledException();
 }
 
