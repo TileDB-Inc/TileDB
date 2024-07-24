@@ -7,14 +7,21 @@
 ## Deprecation announcements
 
 * The HDFS backend is no longer officially tested by TileDB. As announced before, it is scheduled to be removed in version 2.28, to be released in Q4 2024. [#5085](https://github.com/TileDB-Inc/TileDB/pull/5085)
-* Support for reading sparse fragments in dense arrays will be removed in version 2.27. Writting sparse fragments in dense arrays was removed in version 2.5. [#5116](https://github.com/TileDB-Inc/TileDB/pull/5116)
+* Support for reading sparse fragments in dense arrays will be removed in version 2.27. Writing sparse fragments in dense arrays was removed in version 2.5. [#5116](https://github.com/TileDB-Inc/TileDB/pull/5116)
 * Support for returning the same results multiple times in sparse reads when ranges overlap will be removed in version 2.27. This was possible by setting `sm.merge_overlapping_ranges_experimental` to `false`, but the default `true` behavior has been there since version 2.17.
 
 ## New features
 
+### Current domain
+
+* Add CurrentDomain API support. [#5041](https://github.com/TileDB-Inc/TileDB/pull/5041)
+* Current Domain CPP API implementation. [#5056](https://github.com/TileDB-Inc/TileDB/pull/5056)
 * REST support for current domain. [#5136](https://github.com/TileDB-Inc/TileDB/pull/5136)
 * Disallow writing outside of the current domain. [#5165](https://github.com/TileDB-Inc/TileDB/pull/5165)
-* Current domain: disallow reading outside of current domain. [#5168](https://github.com/TileDB-Inc/TileDB/pull/5168)
+* Disallow reading outside of current domain. [#5168](https://github.com/TileDB-Inc/TileDB/pull/5168)
+
+### Array open V2 and query V3
+
 * Enable array open v2 and query v3 by default. [#5207](https://github.com/TileDB-Inc/TileDB/pull/5207)
 
 ## Improvements
@@ -40,16 +47,6 @@
 * Add `vfs.s3.storage_class` config option to set the storage class of newly uploaded S3 objects. [#5053](https://github.com/TileDB-Inc/TileDB/pull/5053)
 * Add `rest.custom_headers.*` config option to set custom headers on REST requests. [#5104](https://github.com/TileDB-Inc/TileDB/pull/5104)
 * Add `rest.payer_namespace` config option to set the namespace to be charged for REST requests. [#5105](https://github.com/TileDB-Inc/TileDB/pull/5105)
-
-## API changes
-
-### C API
-
-* Add CurrentDomain API support. [#5041](https://github.com/TileDB-Inc/TileDB/pull/5041)
-
-### C++ API
-
-* Current Domain CPP API implementation. [#5056](https://github.com/TileDB-Inc/TileDB/pull/5056)
 
 ## Build System Changes
 
