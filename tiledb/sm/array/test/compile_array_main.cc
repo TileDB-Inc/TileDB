@@ -29,8 +29,21 @@
 #include "../array.h"
 #include "../consistency.h"
 
+#include "tiledb/common/logger.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
+
+using namespace tiledb::sm;
+
 int main() {
-  (void)sizeof(tiledb::sm::Array);
-  (void)sizeof(tiledb::sm::ConsistencyController);
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
+
+  ConsistencyController controller;
+  Array array(resources, URI{}, controller);
+
+  (void)array.is_empty();
+  (void)controller.is_open(URI("test"));
+
   return 0;
 }

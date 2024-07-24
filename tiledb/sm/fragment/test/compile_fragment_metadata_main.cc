@@ -32,14 +32,33 @@
 #include "../ondemand_fragment_metadata.h"
 #include "../v1v2preloaded_fragment_metadata.h"
 
+#include "tiledb/common/logger.h"
+#include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
+
 using namespace tiledb::sm;
 
 int main() {
-  (void)sizeof(tiledb::sm::FragmentMetadata);
-  (void)sizeof(tiledb::sm::FragmentInfo);
-  (void)sizeof(tiledb::sm::LoadedFragmentMetadata);
-  (void)sizeof(tiledb::sm::OndemandFragmentMetadata);
-  (void)sizeof(tiledb::sm::V1V2PreloadedFragmentMetadata);
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
+
+  FragmentInfo info(URI{}, resources);
+  (void)info.fragment_num();
+
+  FragmentMetadata meta(&resources, resources.ephemeral_memory_tracker(), 22);
+  (void)meta.cell_num();
+
+  LoadedFragmentMetadata* loaded = meta.loaded_metadata();
+  (void)loaded->free_tile_offsets();
+
+  EncryptionKey key;
+  OndemandFragmentMetadata ondemand(meta, resources.ephemeral_memory_tracker());
+  (void)ondemand.load_rtree(key);
+
+  V1V2PreloadedFragmentMetadata v1v2(
+      meta, resources.ephemeral_memory_tracker());
+  (void)v1v2.load_rtree(key);
 
   return 0;
 }

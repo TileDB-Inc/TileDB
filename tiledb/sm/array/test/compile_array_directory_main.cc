@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,18 @@
 
 #include "../array_directory.h"
 
+#include "tiledb/common/logger.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
+
+using namespace tiledb::sm;
+
 int main() {
-  (void)sizeof(tiledb::sm::ArrayDirectory);
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
+
+  ArrayDirectory x(resources, URI{});
+  (void)x.loaded();
+
   return 0;
 }
