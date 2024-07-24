@@ -137,3 +137,32 @@ Introduced in TileDB 2.0
     * The _Dimension number_ and _R-Tree datatype_ fields have been removed from [R-Trees](./fragment.md#r-tree).
 * The _Allows dups_ field was added to [array schemas](./array_schema.md#array-schema-file).
 * Committed fragments are indicated by the presence of an `.ok` file in the array's directory, with the same [timestamped name](./timestamped_name.md) as the fragment.
+
+## Version 4
+
+Introduced in TileDB 1.7
+
+> [!NOTE]
+> This version does not bring any changes to supported features in the storage format.
+
+## Version 3
+
+Introduced in TileDB 1.6
+
+* The structure of [fragment metadata files](./fragment.md#fragment-metadata-file) was overhauled.
+    * The [footer](./fragment.md#footer) and [R-Tree](./fragment.md#r-tree) structures were added.
+    * The _Bounding coords_ field was removed.
+    * The _MBRs_ field was removed. MBRs are now stored in the R-Tree.
+    * Structures other than the footer are wrapped in their own generic tiles.
+
+## Version 2
+
+Introduced in TileDB 1.5
+
+* Cell coordinate values of each dimension are always stored next to each other, regardless of whether they are filtered with a compression filter or not.
+
+## Version 1
+
+Introduced in TileDB 1.4
+
+* Initial version of the TileDB storage format.
