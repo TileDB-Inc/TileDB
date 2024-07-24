@@ -213,9 +213,8 @@ void Consolidator::fragments_consolidate(
   }
 
   if (array_uri.is_tiledb()) {
-    throw_if_not_ok(
-        storage_manager->resources().rest_client()->post_consolidation_to_rest(
-            array_uri, config, &fragment_uris));
+    throw_if_not_ok(resources.rest_client()->post_consolidation_to_rest(
+        array_uri, config, &fragment_uris));
   } else {
     // Check if array exists
     if (object_type(resources, array_uri) != ObjectType::ARRAY) {

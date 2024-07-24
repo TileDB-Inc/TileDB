@@ -1531,7 +1531,7 @@ Status RestClientRemote::ensure_json_null_delimited_string(Buffer* buffer) {
   return Status::Ok();
 }
 
-Status RestClient::post_consolidation_to_rest(
+Status RestClientRemote::post_consolidation_to_rest(
     const URI& uri,
     const Config& config,
     const std::vector<std::string>* fragment_uris) {

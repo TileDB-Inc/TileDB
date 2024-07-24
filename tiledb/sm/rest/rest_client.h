@@ -466,7 +466,8 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
-  inline virtual Status post_consolidation_to_rest(const URI&, const Config&, const std::vector<std::string>*) {
+  inline virtual Status post_consolidation_to_rest(
+      const URI&, const Config&, const std::vector<std::string>* = nullptr) {
     throw RestClientDisabledException();
   }
 
