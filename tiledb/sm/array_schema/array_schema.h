@@ -269,8 +269,8 @@ class ArraySchema {
   const FilterPipeline& coords_filters() const;
 
   /** Return the array current domain. */
-  inline const shared_ptr<CurrentDomain> current_domain() const {
-    return current_domain_;
+  inline const CurrentDomain& current_domain() const {
+    return *current_domain_;
   }
 
   /** True if the array is dense. */

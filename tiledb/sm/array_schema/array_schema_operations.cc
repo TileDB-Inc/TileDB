@@ -144,7 +144,7 @@ void serialize_array_schema(
   }
 
   // Serialize array current domain information
-  array_schema.current_domain()->serialize(serializer);
+  array_schema.current_domain().serialize(serializer);
 }
 
 /**
