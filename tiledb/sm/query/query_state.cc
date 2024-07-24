@@ -77,9 +77,9 @@ constexpr transition_table local_query_tt{
     // uninitialized
     {
         LQS::everything_else,  // ready
-        LQS::error,    // finish. It is impossible to complete a query without
-                       // initializing it.
-        LQS::aborted,  // abort
+        LQS::error,      // finish. It is impossible to complete a query without
+                         // initializing it.
+        LQS::aborted,    // abort
         LQS::cancelled,  // cancel
     },
     // everything_else
