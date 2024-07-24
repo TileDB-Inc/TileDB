@@ -1938,22 +1938,19 @@ void FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
 
 // ===== FORMAT =====
 //  bounding_coords_num (uint64_t)
-//  bounding_coords_#1 (void*) bounding_coords_#2 (void*) ...
+//  bounding_coords_#1 (dim_type[2][n_dims])
+//  bounding_coords_#2 (dim_type[2][n_dims])
+//  ...
+// Note: This version supports only dimensions domains with the same type
 void FragmentMetadata::load_bounding_coords(Deserializer& deserializer) {
   // Get number of bounding coordinates
-  uint64_t bounding_coords_num = 0;
-  bounding_coords_num = deserializer.read<uint64_t>();
+  uint64_t bounding_coords_num = deserializer.read<uint64_t>();
 
-  // Get bounding coordinates
-  // Note: This version supports only dimensions domains with the same type
   auto coord_size{array_schema_->domain().dimension_ptr(0)->coord_size()};
   auto dim_num = array_schema_->domain().dim_num();
   uint64_t bounding_coords_size = 2 * dim_num * coord_size;
-  bounding_coords_.resize(bounding_coords_num);
-  for (uint64_t i = 0; i < bounding_coords_num; ++i) {
-    bounding_coords_[i].resize(bounding_coords_size);
-    deserializer.read(&bounding_coords_[i][0], bounding_coords_size);
-  }
+  // Skip bounding coordinates. They are not actually being used.
+  deserializer.skip(bounding_coords_num * bounding_coords_size);
 }
 
 void FragmentMetadata::load_file_sizes(Deserializer& deserializer) {
