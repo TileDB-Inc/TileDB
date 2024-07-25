@@ -118,7 +118,8 @@ class DenseTileSubarray {
     }
   };
 
-  /** The type of the allocator. Required to make the type allocator-aware.
+  /**
+   * The type of the allocator. Required to make the type allocator-aware.
    *
    * uint8_t was arbitrarily chosen and does not matter; allocators can convert
    * between any types.
