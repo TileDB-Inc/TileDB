@@ -84,6 +84,7 @@ static uint64_t get_effective_memory_budget(
 
 Query::Query(
     ContextResources& resources,
+    CancellationSource cancellation_source,
     StorageManager* storage_manager,
     shared_ptr<Array> array,
     optional<std::string> fragment_name,
@@ -106,6 +107,7 @@ Query::Query(
           (type_ == QueryType::READ || array_schema_->dense()) ?
               Layout::ROW_MAJOR :
               Layout::UNORDERED)
+    , cancellation_source_(cancellation_source)
     , storage_manager_(storage_manager)
     , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
@@ -765,9 +767,13 @@ const std::vector<UpdateValue>& Query::update_values() const {
   return update_values_;
 }
 
-Status Query::cancel() {
+void Query::cancel() {
+  local_state_machine_.event(LocalQueryEvent::cancel);
   status_ = QueryStatus::FAILED;
-  return Status::Ok();
+}
+
+bool Query::cancelled() {
+  return local_state_machine_.is_cancelled();
 }
 
 Status Query::process() {
@@ -1761,7 +1767,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       resources_,
       array_->memory_tracker(),
       query_memory_tracker_,
-      storage_manager_,
+      local_state_machine_,
+      cancellation_source_,
       opened_array_,
       config_,
       memory_budget_,
