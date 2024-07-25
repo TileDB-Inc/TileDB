@@ -1,5 +1,5 @@
 /**
- * @file compile_array_main.cc
+ * @file compile_object_main.cc
  *
  * @section LICENSE
  *
@@ -26,8 +26,8 @@
  * THE SOFTWARE.
  */
 
-#include "../array.h"
-#include "../consistency.h"
+#include "../object.h"
+#include "../object_mutex.h"
 
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -38,12 +38,8 @@ int main() {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");
+  object_move(resources, "old_path", "new_path");
 
-  ConsistencyController controller;
-  Array array(resources, URI{}, controller);
-
-  (void)array.is_empty();
-  (void)controller.is_open(URI("test"));
-
+  std::lock_guard<std::mutex> lock{tiledb::sm::object_mtx};
   return 0;
 }

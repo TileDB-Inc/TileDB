@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,37 @@
  */
 
 #include "../array_schema.h"
+#include "../array_schema_evolution.h"
 #include "../dimension_label.h"
 
+#include "tiledb/common/memory_tracker.h"
+#include "tiledb/sm/enums/array_type.h"
+#include "tiledb/sm/enums/data_order.h"
+
+using namespace tiledb::sm;
+
 int main() {
-  (void)sizeof(tiledb::sm::ArraySchema);
-  (void)sizeof(tiledb::sm::DimensionLabel);
+  MemoryTrackerManager mem;
+  auto mem_tracker = mem.create_tracker();
+
+  ArraySchema schema(ArrayType::DENSE, mem_tracker);
+  (void)schema.allows_dups();
+
+  ArraySchemaEvolution schema_evolution(mem_tracker);
+  (void)schema_evolution.attribute_names_to_add();
+
+  DimensionLabel dim_label(
+      0,
+      "",
+      URI{},
+      "",
+      DataOrder::UNORDERED_DATA,
+      Datatype::INT32,
+      0,
+      make_shared<ArraySchema>(HERE(), schema),
+      false,
+      false);
+  (void)dim_label.is_external();
+
   return 0;
 }
