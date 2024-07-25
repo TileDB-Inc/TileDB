@@ -188,8 +188,8 @@ ArraySchema::ArraySchema(
     dim_map_[dim->name()] = dim;
   }
 
-  for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
-    (void)enmr_uri;
+  for (auto& [enmr_name, enmr_filename] : enumeration_path_map_) {
+    (void)enmr_filename;
     enumeration_map_[enmr_name] = nullptr;
   }
 
@@ -753,6 +753,16 @@ bool ArraySchema::is_nullable(const std::string& name) const {
 //   dimension_label #1
 //   dimension_label #2
 //   ...
+// enumeration_num (uint32_t)
+//   enumeration_name_length #1 (uint32_t)
+//   enumeration_name_chars #1 (string)
+//   enumeration_filename_length #1 (uint32_t)
+//   enumeration_filename_chars #1 (string)
+//   enumeration_name_length #2 (uint32_t)
+//   enumeration_name_chars #2 (string)
+//   enumeration_filename_length #2 (uint32_t)
+//   enumeration_filename_chars #2 (string)
+//   ...
 // current_domain
 void ArraySchema::serialize(Serializer& serializer) const {
   // Write version, which is always the current version. Despite
@@ -812,14 +822,14 @@ void ArraySchema::serialize(Serializer& serializer) const {
       utils::safe_integral_cast<size_t, uint32_t>(enumeration_map_.size());
 
   serializer.write<uint32_t>(enmr_num);
-  for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
+  for (auto& [enmr_name, enmr_filename] : enumeration_path_map_) {
     auto enmr_name_size = static_cast<uint32_t>(enmr_name.size());
     serializer.write<uint32_t>(enmr_name_size);
     serializer.write(enmr_name.data(), enmr_name_size);
 
-    auto enmr_uri_size = static_cast<uint32_t>(enmr_uri.size());
-    serializer.write<uint32_t>(enmr_uri_size);
-    serializer.write(enmr_uri.data(), enmr_uri_size);
+    auto enmr_filename_size = static_cast<uint32_t>(enmr_filename.size());
+    serializer.write<uint32_t>(enmr_filename_size);
+    serializer.write(enmr_filename.data(), enmr_filename_size);
   }
 
   // Serialize array current domain information
@@ -1367,11 +1377,11 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
       std::string enmr_name(
           deserializer.get_ptr<char>(enmr_name_size), enmr_name_size);
 
-      auto enmr_path_size = deserializer.read<uint32_t>();
-      std::string enmr_path_name(
-          deserializer.get_ptr<char>(enmr_path_size), enmr_path_size);
+      auto enmr_filename_size = deserializer.read<uint32_t>();
+      std::string enmr_filename(
+          deserializer.get_ptr<char>(enmr_filename_size), enmr_filename_size);
 
-      enumeration_path_map[enmr_name] = enmr_path_name;
+      enumeration_path_map[enmr_name] = enmr_filename;
     }
   }
 
