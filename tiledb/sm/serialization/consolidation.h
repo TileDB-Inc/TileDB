@@ -101,7 +101,7 @@ Status array_consolidation_request_serialize(
 Status array_consolidation_request_deserialize(
     Config** config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 /**
  * Serialize a consolidation plan request via Cap'n Proto.
@@ -126,7 +126,7 @@ void serialize_consolidation_plan_request(
  * @return the deserialized maximum fragment size
  */
 uint64_t deserialize_consolidation_plan_request(
-    SerializationType serialization_type, const Buffer& request);
+    SerializationType serialization_type, span<const char> request);
 
 /**
  * Serialize a consolidation plan response via Cap'n Proto.
@@ -149,7 +149,7 @@ void serialize_consolidation_plan_response(
  * @return the deserialized consolidation plan info
  */
 std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
-    SerializationType serialization_type, const Buffer& response);
+    SerializationType serialization_type, span<const char> response);
 
 }  // namespace serialization
 }  // namespace sm

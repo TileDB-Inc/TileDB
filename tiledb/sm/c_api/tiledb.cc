@@ -3025,7 +3025,7 @@ int32_t tiledb_deserialize_array(
     tiledb::sm::serialization::array_deserialize(
         (*array)->array_.get(),
         (tiledb::sm::SerializationType)serialize_type,
-        buffer->buffer(),
+        buffer->span(),
         ctx->resources(),
         memory_tracker);
   } catch (StatusException& e) {
@@ -3089,7 +3089,7 @@ int32_t tiledb_deserialize_array_schema(
     (*array_schema)->array_schema_ =
         tiledb::sm::serialization::array_schema_deserialize(
             (tiledb::sm::SerializationType)serialize_type,
-            buffer->buffer(),
+            buffer->span(),
             memory_tracker);
   } catch (...) {
     delete *array_schema;
@@ -3180,7 +3180,7 @@ int32_t tiledb_deserialize_array_open(
           tiledb::sm::serialization::array_open_deserialize(
               (*array)->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer()))) {
+              buffer->span()))) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;
@@ -3244,7 +3244,7 @@ int32_t tiledb_deserialize_array_schema_evolution(
           tiledb::sm::serialization::array_schema_evolution_deserialize(
               &((*array_schema_evolution)->array_schema_evolution_),
               (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer(),
+              buffer->span(),
               memory_tracker))) {
     delete *array_schema_evolution;
     *array_schema_evolution = nullptr;
@@ -3450,7 +3450,7 @@ int32_t tiledb_deserialize_array_nonempty_domain(
   bool is_empty_bool;
   throw_if_not_ok(tiledb::sm::serialization::nonempty_domain_deserialize(
       array->array_.get(),
-      buffer->buffer(),
+      buffer->span(),
       (tiledb::sm::SerializationType)serialize_type,
       nonempty_domain,
       &is_empty_bool));
@@ -3501,7 +3501,7 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
 
   throw_if_not_ok(tiledb::sm::serialization::nonempty_domain_deserialize(
       array->array_.get(),
-      buffer->buffer(),
+      buffer->span(),
       (tiledb::sm::SerializationType)serialize_type));
 
   return TILEDB_OK;
@@ -3550,7 +3550,7 @@ capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
   // Deserialize buffer
   auto [timestamp_start, timestamp_end] = tiledb::sm::serialization::
       deserialize_delete_fragments_timestamps_request(
-          (tiledb::sm::SerializationType)serialize_type, request->buffer());
+          (tiledb::sm::SerializationType)serialize_type, request->span());
 
   // Delete fragments
   try {
@@ -3579,7 +3579,7 @@ capi_return_t tiledb_handle_array_delete_fragments_list_request(
       tiledb::sm::serialization::deserialize_delete_fragments_list_request(
           array->array_->array_uri(),
           (tiledb::sm::SerializationType)serialize_type,
-          request->buffer());
+          request->span());
 
   // Delete fragments list
   try {
@@ -3645,7 +3645,7 @@ int32_t tiledb_deserialize_array_metadata(
       array->array_->unsafe_metadata(),
       array->array_->config(),
       (tiledb::sm::SerializationType)serialize_type,
-      buffer->buffer()));
+      buffer->span()));
 
   return TILEDB_OK;
 }
@@ -3694,7 +3694,7 @@ int32_t tiledb_deserialize_query_est_result_sizes(
       query->query_,
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
-      buffer->buffer()));
+      buffer->span()));
 
   return TILEDB_OK;
 }
@@ -3745,7 +3745,7 @@ int32_t tiledb_deserialize_config(
   throw_if_not_ok(tiledb::sm::serialization::config_deserialize(
       &new_config,
       (tiledb::sm::SerializationType)serialize_type,
-      buffer->buffer()));
+      buffer->span()));
   if (!new_config) {
     throw std::logic_error("Unexpected nullptr with OK status");
   }
@@ -3808,7 +3808,7 @@ int32_t tiledb_deserialize_fragment_info_request(
           tiledb::sm::serialization::fragment_info_request_deserialize(
               fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer()))) {
+              buffer->span()))) {
     return TILEDB_ERR;
   }
 
@@ -3880,7 +3880,7 @@ int32_t tiledb_deserialize_fragment_info(
               fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
               uri,
-              buffer->buffer(),
+              buffer->span(),
               memory_tracker))) {
     return TILEDB_ERR;
   }
@@ -3904,7 +3904,7 @@ capi_return_t tiledb_handle_load_array_schema_request(
   auto load_schema_req =
       tiledb::sm::serialization::deserialize_load_array_schema_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
-          request->buffer());
+          request->span());
 
   if (load_schema_req.include_enumerations()) {
     array->array_->load_all_enumerations();
@@ -3934,7 +3934,7 @@ capi_return_t tiledb_handle_load_enumerations_request(
   auto enumeration_names =
       tiledb::sm::serialization::deserialize_load_enumerations_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
-          request->buffer());
+          request->span());
   auto enumerations = array->array_->get_enumerations(enumeration_names);
 
   tiledb::sm::serialization::serialize_load_enumerations_response(
@@ -3965,7 +3965,7 @@ capi_return_t tiledb_handle_query_plan_request(
       array->array_);
   tiledb::sm::serialization::deserialize_query_plan_request(
       static_cast<tiledb::sm::SerializationType>(serialization_type),
-      request->buffer(),
+      request->span(),
       ctx->resources().compute_tp(),
       query);
   sm::QueryPlan plan(query);
@@ -4000,7 +4000,7 @@ capi_return_t tiledb_handle_consolidation_plan_request(
   auto fragment_size =
       tiledb::sm::serialization::deserialize_consolidation_plan_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
-          request->buffer());
+          request->span());
   sm::ConsolidationPlan plan(array->array_, fragment_size);
 
   tiledb::sm::serialization::serialize_consolidation_plan_response(

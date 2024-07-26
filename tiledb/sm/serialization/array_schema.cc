@@ -1241,7 +1241,7 @@ Status array_schema_serialize(
 
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
@@ -1354,7 +1354,7 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     const Dimension* dimension,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     void* nonempty_domain,
     bool* is_empty) {
@@ -1494,7 +1494,7 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     const Array* array,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     void* nonempty_domain,
     bool* is_empty) {
@@ -1627,7 +1627,7 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     Array* array,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type) {
   try {
     switch (serialize_type) {
@@ -1766,7 +1766,7 @@ Status max_buffer_sizes_serialize(
 
 Status max_buffer_sizes_deserialize(
     const ArraySchema& schema,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
@@ -2062,7 +2062,7 @@ Status array_schema_serialize(
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
-    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2072,7 +2072,8 @@ Status nonempty_domain_serialize(Array*, SerializationType, Buffer*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status nonempty_domain_deserialize(Array*, const Buffer&, SerializationType) {
+Status nonempty_domain_deserialize(
+    Array*, span<const char>, SerializationType) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2084,7 +2085,7 @@ Status nonempty_domain_serialize(
 }
 
 Status nonempty_domain_deserialize(
-    const Array*, const Buffer&, SerializationType, void*, bool*) {
+    const Array*, span<const char>, SerializationType, void*, bool*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2097,7 +2098,7 @@ Status max_buffer_sizes_serialize(
 
 Status max_buffer_sizes_deserialize(
     const ArraySchema&,
-    const Buffer&,
+    span<const char>,
     SerializationType,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
   return LOG_STATUS(Status_SerializationError(
@@ -2110,7 +2111,7 @@ void serialize_load_array_schema_request(
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
-    SerializationType, const Buffer&) {
+    SerializationType, span<const char>) {
   throw ArraySchemaSerializationDisabledException();
 }
 
@@ -2120,7 +2121,7 @@ void serialize_load_array_schema_response(
 }
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
-    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
   throw ArraySchemaSerializationDisabledException();
 }
 

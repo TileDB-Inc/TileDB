@@ -160,7 +160,7 @@ Status array_schema_serialize(
 
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker);
 
 Status nonempty_domain_serialize(
@@ -172,7 +172,7 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     const Array* array,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     void* nonempty_domain,
     bool* is_empty);
@@ -182,7 +182,7 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     Array* array,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type);
 
 Status max_buffer_sizes_serialize(
@@ -193,7 +193,7 @@ Status max_buffer_sizes_serialize(
 
 Status max_buffer_sizes_deserialize(
     const ArraySchema& schema,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
@@ -205,7 +205,7 @@ void serialize_load_array_schema_request(
     Buffer& data);
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
-    SerializationType serialization_type, const Buffer& data);
+    SerializationType serialization_type, span<const char> data);
 
 void serialize_load_array_schema_response(
     const ArraySchema& schema,

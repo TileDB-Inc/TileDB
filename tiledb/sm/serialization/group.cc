@@ -416,7 +416,7 @@ Status group_serialize(
 Status group_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -524,7 +524,7 @@ Status group_details_serialize(
 Status group_details_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -637,7 +637,7 @@ Status group_update_serialize(
 Status group_update_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -809,7 +809,7 @@ Status group_serialize(Group*, SerializationType, Buffer*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_deserialize(Group*, SerializationType, const Buffer&) {
+Status group_deserialize(Group*, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
@@ -819,7 +819,7 @@ Status group_details_serialize(Group*, SerializationType, Buffer*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_details_deserialize(Group*, SerializationType, const Buffer&) {
+Status group_details_deserialize(Group*, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
@@ -829,7 +829,7 @@ Status group_update_serialize(const Group*, SerializationType, Buffer*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_update_deserialize(Group*, SerializationType, const Buffer&) {
+Status group_update_deserialize(Group*, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

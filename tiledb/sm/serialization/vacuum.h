@@ -99,7 +99,7 @@ Status array_vacuum_request_serialize(
 Status array_vacuum_request_deserialize(
     Config** config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 }  // namespace serialization
 }  // namespace sm

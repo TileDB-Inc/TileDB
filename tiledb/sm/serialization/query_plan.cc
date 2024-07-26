@@ -358,7 +358,7 @@ void serialize_query_plan_request(
 }
 
 void deserialize_query_plan_request(
-    const SerializationType, const Buffer&, ThreadPool&, Query&) {
+    const SerializationType, span<const char>, ThreadPool&, Query&) {
   throw QueryPlanSerializationDisabledException();
 }
 
@@ -368,7 +368,7 @@ void serialize_query_plan_response(
 }
 
 QueryPlan deserialize_query_plan_response(
-    Query&, const SerializationType, const Buffer&) {
+    Query&, const SerializationType, span<const char>) {
   throw QueryPlanSerializationDisabledException();
 }
 

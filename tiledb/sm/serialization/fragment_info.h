@@ -133,7 +133,7 @@ Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker);
 
 /**
@@ -160,7 +160,7 @@ Status fragment_info_request_serialize(
 Status fragment_info_request_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 }  // namespace serialization
 }  // namespace sm

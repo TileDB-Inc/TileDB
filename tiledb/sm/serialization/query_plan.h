@@ -72,7 +72,7 @@ void serialize_query_plan_request(
  */
 void deserialize_query_plan_request(
     const SerializationType serialization_type,
-    const Buffer& request,
+    span<const char> request,
     ThreadPool& compute_tp,
     Query& query);
 
@@ -99,7 +99,7 @@ void serialize_query_plan_response(
 QueryPlan deserialize_query_plan_response(
     Query& query,
     const SerializationType serialization_type,
-    const Buffer& response);
+    span<const char> response);
 
 }  // namespace serialization
 }  // namespace tiledb::sm

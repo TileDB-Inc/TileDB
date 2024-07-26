@@ -130,7 +130,7 @@ void serialize_delete_fragments_timestamps_request(
 }
 
 std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
-    SerializationType serialize_type, const Buffer& serialized_buffer) {
+    SerializationType serialize_type, span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -265,7 +265,7 @@ void serialize_delete_fragments_list_request(
 std::vector<URI> deserialize_delete_fragments_list_request(
     const URI& array_uri,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -314,7 +314,7 @@ void serialize_delete_fragments_timestamps_request(
 }
 
 std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
-    SerializationType, const Buffer&) {
+    SerializationType, span<const char>) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");
 }
@@ -326,7 +326,7 @@ void serialize_delete_fragments_list_request(
 }
 
 std::vector<URI> deserialize_delete_fragments_list_request(
-    const URI&, SerializationType, const Buffer&) {
+    const URI&, SerializationType, span<const char>) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");
 }

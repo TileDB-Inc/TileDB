@@ -301,7 +301,7 @@ Status array_schema_evolution_serialize(
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution** array_schema_evolution,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {
   try {
     tdb_unique_ptr<ArraySchemaEvolution> decoded_array_schema_evolution =
@@ -372,7 +372,7 @@ Status array_schema_evolution_serialize(
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution**,
     SerializationType,
-    const Buffer&,
+    span<const char>,
     shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));

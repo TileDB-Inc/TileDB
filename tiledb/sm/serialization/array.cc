@@ -448,7 +448,7 @@ Status metadata_deserialize(
     Metadata* metadata,
     const Config& config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   if (metadata == nullptr)
     return LOG_STATUS(Status_SerializationError(
         "Error deserializing metadata; null metadata instance given."));
@@ -565,7 +565,7 @@ Status array_serialize(
 void array_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker) {
   try {
@@ -674,7 +674,7 @@ Status array_open_serialize(
 Status array_open_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -731,7 +731,7 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
 void array_deserialize(
     Array*,
     SerializationType,
-    const Buffer&,
+    span<const char>,
     ContextResources&,
     shared_ptr<MemoryTracker>) {
   throw ArraySerializationDisabledException();
@@ -741,7 +741,7 @@ Status array_open_serialize(const Array&, SerializationType, Buffer*) {
   throw ArraySerializationDisabledException();
 }
 
-Status array_open_deserialize(Array*, SerializationType, const Buffer&) {
+Status array_open_deserialize(Array*, SerializationType, span<const char>) {
   throw ArraySerializationDisabledException();
   ;
 }
@@ -751,7 +751,7 @@ Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
 }
 
 Status metadata_deserialize(
-    Metadata*, const Config&, SerializationType, const Buffer&) {
+    Metadata*, const Config&, SerializationType, const span<const char>) {
   throw ArraySerializationDisabledException();
 }
 

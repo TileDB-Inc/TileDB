@@ -146,7 +146,7 @@ Status array_serialize(
 void array_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker);
 
@@ -174,7 +174,7 @@ Status array_open_serialize(
 Status array_open_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 Status metadata_serialize(
     Metadata* metadata,
@@ -185,7 +185,7 @@ Status metadata_deserialize(
     Metadata* metadata,
     const Config& config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 }  // namespace serialization
 }  // namespace sm

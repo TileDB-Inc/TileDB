@@ -145,7 +145,7 @@ Status fragment_info_request_serialize(
 Status fragment_info_request_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -455,7 +455,7 @@ Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {
   if (fragment_info == nullptr)
     return LOG_STATUS(
@@ -532,7 +532,7 @@ Status fragment_info_deserialize(
     FragmentInfo*,
     SerializationType,
     const URI&,
-    const Buffer&,
+    span<const char>,
     shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
@@ -545,7 +545,7 @@ Status fragment_info_request_serialize(
 }
 
 Status fragment_info_request_deserialize(
-    FragmentInfo*, SerializationType, const Buffer&) {
+    FragmentInfo*, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

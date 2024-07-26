@@ -159,7 +159,7 @@ Status config_serialize(
 Status config_deserialize(
     Config** config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     tdb_unique_ptr<Config> decoded_config = nullptr;
 
@@ -217,7 +217,7 @@ Status config_serialize(const Config&, SerializationType, Buffer*, const bool) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status config_deserialize(Config**, SerializationType, const Buffer&) {
+Status config_deserialize(Config**, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

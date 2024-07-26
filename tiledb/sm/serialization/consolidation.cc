@@ -145,7 +145,7 @@ Status array_consolidation_request_serialize(
 Status array_consolidation_request_deserialize(
     Config** config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     tdb_unique_ptr<Config> decoded_config = nullptr;
 
@@ -442,7 +442,7 @@ Status array_consolidation_request_serialize(
 }
 
 Status array_consolidation_request_deserialize(
-    Config**, SerializationType, const Buffer&) {
+    Config**, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
@@ -453,7 +453,7 @@ void serialize_consolidation_plan_request(
 }
 
 uint64_t deserialize_consolidation_plan_request(
-    SerializationType, const Buffer&) {
+    SerializationType, span<const char>) {
   throw ConsolidationSerializationDisabledException();
 }
 
@@ -463,7 +463,7 @@ void serialize_consolidation_plan_response(
 }
 
 std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
-    SerializationType, const Buffer&) {
+    SerializationType, span<const char>) {
   throw ConsolidationSerializationDisabledException();
 }
 

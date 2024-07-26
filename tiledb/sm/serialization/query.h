@@ -212,7 +212,7 @@ Status query_est_result_size_deserialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 #ifdef TILEDB_SERIALIZATION
 

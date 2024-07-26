@@ -376,7 +376,7 @@ void serialize_load_enumerations_request(
 }
 
 std::vector<std::string> deserialize_load_enumerations_request(
-    SerializationType, const Buffer&) {
+    SerializationType, span<const char>) {
   throw EnumerationSerializationDisabledException();
 }
 
@@ -389,7 +389,7 @@ void serialize_load_enumerations_response(
 
 std::vector<shared_ptr<const Enumeration>>
 deserialize_load_enumerations_response(
-    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
   throw EnumerationSerializationDisabledException();
 }
 

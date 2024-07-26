@@ -126,7 +126,7 @@ Status array_vacuum_request_serialize(
 Status array_vacuum_request_deserialize(
     Config** config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     tdb_unique_ptr<Config> decoded_config = nullptr;
 
@@ -190,7 +190,7 @@ Status array_vacuum_request_serialize(
 }
 
 Status array_vacuum_request_deserialize(
-    Config**, SerializationType, const Buffer&) {
+    Config**, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

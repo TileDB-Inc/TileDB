@@ -75,7 +75,7 @@ Status config_serialize(
 Status config_deserialize(
     Config** config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb

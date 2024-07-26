@@ -81,7 +81,7 @@ void serialize_load_enumerations_request(
     Buffer& request);
 
 std::vector<std::string> deserialize_load_enumerations_request(
-    SerializationType serialization_type, const Buffer& request);
+    SerializationType serialization_type, span<const char> request);
 
 void serialize_load_enumerations_response(
     const std::vector<shared_ptr<const Enumeration>>& enumerations,
@@ -91,7 +91,7 @@ void serialize_load_enumerations_response(
 std::vector<shared_ptr<const Enumeration>>
 deserialize_load_enumerations_response(
     SerializationType serialization_type,
-    const Buffer& response,
+    span<const char> response,
     shared_ptr<MemoryTracker> memory_tracker);
 
 }  // namespace serialization

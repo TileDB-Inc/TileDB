@@ -57,7 +57,7 @@ void serialize_delete_fragments_timestamps_request(
     Buffer* serialized_buffer);
 
 std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
-    SerializationType serialize_type, const Buffer& serialized_buffer);
+    SerializationType serialize_type, span<const char> serialized_buffer);
 
 void serialize_delete_fragments_list_request(
     const Config& config,
@@ -68,7 +68,7 @@ void serialize_delete_fragments_list_request(
 std::vector<URI> deserialize_delete_fragments_list_request(
     const URI& array_uri,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 }  // namespace serialization
 }  // namespace tiledb::sm

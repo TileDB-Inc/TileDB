@@ -78,6 +78,10 @@ struct tiledb_buffer_handle_t
   [[nodiscard]] inline const tiledb::sm::Buffer& buffer() const {
     return buffer_;
   }
+
+  [[nodiscard]] inline span<const char> span() const {
+    return {reinterpret_cast<const char*>(buffer_.data()), buffer_.size()};
+  }
 };
 
 namespace tiledb::api {

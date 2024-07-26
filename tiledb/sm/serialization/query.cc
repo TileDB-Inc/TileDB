@@ -2777,7 +2777,7 @@ Status query_est_result_size_deserialize(
     Query* query,
     SerializationType serialize_type,
     bool,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -3202,7 +3202,7 @@ Status query_est_result_size_serialize(
 }
 
 Status query_est_result_size_deserialize(
-    Query*, SerializationType, bool, const Buffer&) {
+    Query*, SerializationType, bool, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
