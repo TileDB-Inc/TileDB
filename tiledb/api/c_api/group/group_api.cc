@@ -442,7 +442,7 @@ capi_return_t tiledb_deserialize_group(
   throw_if_not_ok(tiledb::sm::serialization::group_deserialize(
       &(group->group()),
       static_cast<tiledb::sm::SerializationType>(serialize_type),
-      buffer->span()));
+      *buffer));
 
   return TILEDB_OK;
 }
@@ -486,7 +486,7 @@ capi_return_t tiledb_deserialize_group_metadata(
       group->group().unsafe_metadata(),
       group->group().config(),
       static_cast<tiledb::sm::SerializationType>(serialize_type),
-      buffer->span()));
+      *buffer));
 
   return TILEDB_OK;
 }

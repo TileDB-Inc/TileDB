@@ -79,7 +79,7 @@ struct tiledb_buffer_handle_t
     return buffer_;
   }
 
-  [[nodiscard]] inline span<const char> span() const {
+  operator span<const char>() const& {
     return {reinterpret_cast<const char*>(buffer_.data()), buffer_.size()};
   }
 };

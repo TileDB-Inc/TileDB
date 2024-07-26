@@ -200,7 +200,7 @@ tiledb::sm::ConsolidationPlan CppConsolidationPlanFx::call_handler(
 
   auto fragments_per_node =
       tiledb::sm::serialization::deserialize_consolidation_plan_response(
-          stype, resp_buf->buffer());
+          stype, *resp_buf);
   // construct consolidation plan from the members we got from serialization
   return tiledb::sm::ConsolidationPlan(fragment_size, fragments_per_node);
 }
