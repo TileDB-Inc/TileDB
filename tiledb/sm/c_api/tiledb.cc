@@ -3295,7 +3295,7 @@ int32_t tiledb_deserialize_query(
   api::ensure_buffer_is_valid(buffer);
 
   throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
-      buffer->buffer(),
+      *buffer,
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
       nullptr,
@@ -3359,7 +3359,7 @@ int32_t tiledb_deserialize_query_and_array(
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_LOAD);
   throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
-      buffer->buffer(),
+      *buffer,
       (tiledb::sm::SerializationType)serialize_type,
       *(*array)->array_,
       ctx->resources(),
@@ -3392,7 +3392,7 @@ int32_t tiledb_deserialize_query_and_array(
   }
 
   throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
-      buffer->buffer(),
+      *buffer,
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
       nullptr,

@@ -125,6 +125,15 @@ class BufferBase {
    */
   Status read(void* destination, uint64_t offset, uint64_t nbytes);
 
+  /**
+   * Implicit conversion operator to span.
+   *
+   * @return A span to the buffer's whole data, without considering the offset.
+   */
+  operator span<const char>() const& {
+    return {static_cast<const char*>(data_), size_};
+  }
+
  protected:
   BufferBase();
   BufferBase(void* data, uint64_t size);

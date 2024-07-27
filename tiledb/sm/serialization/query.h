@@ -140,7 +140,7 @@ using CopyState =
  * @param memory_tracker Memory tracker to use for allocations.
  */
 Status array_from_query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     Array& array,
     ContextResources& resources,
@@ -176,7 +176,7 @@ Status query_serialize(
  * @param query Query to deserialize into
  */
 Status query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     bool clientside,
     CopyState* copy_state,

@@ -2277,7 +2277,7 @@ Status query_from_capnp(
 }
 
 Status array_from_query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     Array& array,
     ContextResources& resources,
@@ -2289,10 +2289,7 @@ Status array_from_query_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Query::Builder query_builder =
             message_builder.initRoot<capnp::Query>();
-        json.decode(
-            kj::StringPtr(
-                static_cast<const char*>(serialized_buffer.cur_data())),
-            query_builder);
+        json.decode(kj::StringPtr(serialized_buffer.data()), query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         array_from_capnp(
@@ -2301,7 +2298,7 @@ Status array_from_query_deserialize(
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
-        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.cur_data()))
+        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.data()))
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
@@ -2316,9 +2313,8 @@ Status array_from_query_deserialize(
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
-                    serialized_buffer.cur_data()),
-                (serialized_buffer.size() - serialized_buffer.offset()) /
-                    sizeof(::capnp::word)),
+                    serialized_buffer.data()),
+                serialized_buffer.size() / sizeof(::capnp::word)),
             readerOptions);
 
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
@@ -2499,7 +2495,7 @@ Status query_serialize(
 }
 
 Status do_query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     const SerializationContext context,
     CopyState* const copy_state,
@@ -2518,8 +2514,7 @@ Status do_query_deserialize(
         capnp::Query::Builder query_builder =
             message_builder.initRoot<capnp::Query>();
         json.decode(
-            kj::StringPtr(
-                static_cast<const char*>(serialized_buffer.cur_data())),
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
@@ -2533,7 +2528,7 @@ Status do_query_deserialize(
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
-        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.cur_data()))
+        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.data()))
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
@@ -2547,9 +2542,8 @@ Status do_query_deserialize(
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
-                    serialized_buffer.cur_data()),
-                (serialized_buffer.size() - serialized_buffer.offset()) /
-                    sizeof(::capnp::word)),
+                    serialized_buffer.data()),
+                serialized_buffer.size() / sizeof(::capnp::word)),
             readerOptions);
 
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
@@ -2583,7 +2577,7 @@ Status do_query_deserialize(
 }
 
 Status query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     bool clientside,
     CopyState* copy_state,
@@ -2596,10 +2590,8 @@ Status query_deserialize(
       query_serialize(query, serialize_type, clientside, &original_bufferlist));
 
   // The first buffer is always the serialized Query object.
-  tiledb::sm::Buffer* original_buffer;
-  RETURN_NOT_OK(original_bufferlist.get_buffer(
-      0, const_cast<const tiledb::sm::Buffer**>(&original_buffer)));
-  original_buffer->reset_offset();
+  const tiledb::sm::Buffer* original_buffer;
+  RETURN_NOT_OK(original_bufferlist.get_buffer(0, &original_buffer));
 
   // Similarly, we must create a copy of 'copy_state'.
   tdb_unique_ptr<CopyState> original_copy_state = nullptr;
@@ -3180,13 +3172,18 @@ Status query_serialize(Query*, SerializationType, bool, BufferList*) {
 }
 
 Status query_deserialize(
-    const Buffer&, SerializationType, bool, CopyState*, Query*, ThreadPool*) {
+    span<const char>,
+    SerializationType,
+    bool,
+    CopyState*,
+    Query*,
+    ThreadPool*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 
 Status array_from_query_deserialize(
-    const Buffer&,
+    span<const char>,
     SerializationType,
     Array&,
     ContextResources&,
