@@ -232,7 +232,7 @@ void serialize_load_enumerations_request(
 }
 
 std::vector<std::string> deserialize_load_enumerations_request(
-    SerializationType serialize_type, const Buffer& request) {
+    SerializationType serialize_type, span<const char> request) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -240,8 +240,7 @@ std::vector<std::string> deserialize_load_enumerations_request(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::LoadEnumerationsRequest::Builder builder =
             message_builder.initRoot<capnp::LoadEnumerationsRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(request.data())), builder);
+        json.decode(kj::StringPtr(request.data()), builder);
         capnp::LoadEnumerationsRequest::Reader reader = builder.asReader();
         return load_enumerations_request_from_capnp(reader);
       }
@@ -325,7 +324,7 @@ void serialize_load_enumerations_response(
 std::vector<shared_ptr<const Enumeration>>
 deserialize_load_enumerations_response(
     SerializationType serialize_type,
-    const Buffer& response,
+    span<const char> response,
     shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
@@ -334,8 +333,7 @@ deserialize_load_enumerations_response(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::LoadEnumerationsResponse::Builder builder =
             message_builder.initRoot<capnp::LoadEnumerationsResponse>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(response.data())), builder);
+        json.decode(kj::StringPtr(response.data(), response.size()), builder);
         capnp::LoadEnumerationsResponse::Reader reader = builder.asReader();
         return load_enumerations_response_from_capnp(reader, memory_tracker);
       }

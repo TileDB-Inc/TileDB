@@ -303,7 +303,7 @@ void serialize_consolidation_plan_request(
 }
 
 uint64_t deserialize_consolidation_plan_request(
-    SerializationType serialization_type, const Buffer& request) {
+    SerializationType serialization_type, span<const char> request) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -311,8 +311,7 @@ uint64_t deserialize_consolidation_plan_request(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::ConsolidationPlanRequest::Builder builder =
             message_builder.initRoot<capnp::ConsolidationPlanRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(request.data())), builder);
+        json.decode(kj::StringPtr(request.data()), builder);
         capnp::ConsolidationPlanRequest::Reader reader = builder.asReader();
         return consolidation_plan_request_from_capnp(reader);
       }
@@ -394,7 +393,7 @@ void serialize_consolidation_plan_response(
 }
 
 std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
-    SerializationType serialization_type, const Buffer& response) {
+    SerializationType serialization_type, span<const char> response) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -402,8 +401,7 @@ std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::ConsolidationPlanResponse::Builder builder =
             message_builder.initRoot<capnp::ConsolidationPlanResponse>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(response.data())), builder);
+        json.decode(kj::StringPtr(response.data()), builder);
         capnp::ConsolidationPlanResponse::Reader reader = builder.asReader();
         return consolidation_plan_response_from_capnp(reader);
       }

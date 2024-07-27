@@ -213,7 +213,7 @@ void serialize_query_plan_request(
 
 void deserialize_query_plan_request(
     const SerializationType serialization_type,
-    const Buffer& request,
+    span<const char> request,
     ThreadPool& compute_tp,
     Query& query) {
   try {
@@ -224,8 +224,7 @@ void deserialize_query_plan_request(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::QueryPlanRequest::Builder builder =
             message_builder.initRoot<capnp::QueryPlanRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(request.data())), builder);
+        json.decode(kj::StringPtr(request.data()), builder);
         capnp::QueryPlanRequest::Reader reader = builder.asReader();
         query_plan_request_from_capnp(reader, compute_tp, query);
         break;
@@ -311,7 +310,7 @@ void serialize_query_plan_response(
 QueryPlan deserialize_query_plan_response(
     Query& query,
     SerializationType serialization_type,
-    const Buffer& response) {
+    span<const char> response) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -319,8 +318,7 @@ QueryPlan deserialize_query_plan_response(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::QueryPlanResponse::Builder builder =
             message_builder.initRoot<capnp::QueryPlanResponse>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(response.data())), builder);
+        json.decode(kj::StringPtr(response.data()), builder);
         capnp::QueryPlanResponse::Reader reader = builder.asReader();
         return query_plan_response_from_capnp(reader, query);
       }

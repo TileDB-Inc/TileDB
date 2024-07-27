@@ -1910,7 +1910,7 @@ LoadArraySchemaRequest load_array_schema_request_from_capnp(
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
-    SerializationType serialization_type, const Buffer& data) {
+    SerializationType serialization_type, span<const char> data) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -1918,8 +1918,7 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
             message_builder.initRoot<capnp::LoadArraySchemaRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(data.data())), builder);
+        json.decode(kj::StringPtr(data.data()), builder);
         auto reader = builder.asReader();
         return load_array_schema_request_from_capnp(reader);
       }
@@ -2014,7 +2013,7 @@ shared_ptr<ArraySchema> load_array_schema_response_from_capnp(
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType serialization_type,
-    const Buffer& data,
+    span<const char> data,
     shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialization_type) {
@@ -2023,8 +2022,7 @@ shared_ptr<ArraySchema> deserialize_load_array_schema_response(
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
             message_builder.initRoot<capnp::LoadArraySchemaResponse>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(data.data())), builder);
+        json.decode(kj::StringPtr(data.data()), builder);
         auto reader = builder.asReader();
         return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
