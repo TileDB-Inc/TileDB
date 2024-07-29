@@ -111,8 +111,8 @@ class CurrentDomain {
   tiledb_current_domain_type_t type() const {
     tiledb_current_domain_type_t type;
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_current_domain_get_type(current_domain_.get(), &type));
+    ctx.handle_error(tiledb_current_domain_get_type(
+        ctx.ptr().get(), current_domain_.get(), &type));
     return type;
   }
 
@@ -126,7 +126,7 @@ class CurrentDomain {
   CurrentDomain& set_ndrectangle(const NDRectangle& ndrect) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_current_domain_set_ndrectangle(
-        current_domain_.get(), ndrect.ptr().get()));
+        ctx.ptr().get(), current_domain_.get(), ndrect.ptr().get()));
 
     return *this;
   }
@@ -140,8 +140,8 @@ class CurrentDomain {
   NDRectangle ndrectangle() const {
     tiledb_ndrectangle_t* nd;
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_current_domain_get_ndrectangle(current_domain_.get(), &nd));
+    ctx.handle_error(tiledb_current_domain_get_ndrectangle(
+        ctx.ptr().get(), current_domain_.get(), &nd));
     return NDRectangle(ctx, nd);
   }
 
@@ -153,8 +153,8 @@ class CurrentDomain {
   bool is_empty() const {
     uint32_t ret;
     auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_current_domain_get_is_empty(current_domain_.get(), &ret));
+    ctx.handle_error(tiledb_current_domain_get_is_empty(
+        ctx.ptr().get(), current_domain_.get(), &ret));
     return static_cast<bool>(ret);
   }
 

@@ -102,11 +102,7 @@ capi_return_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr) {
 }
 
 capi_return_t tiledb_ndrectangle_get_range_from_name(
-    tiledb_ctx_t* ctx,
-    tiledb_ndrectangle_t* ndr,
-    const char* name,
-    tiledb_range_t* range) {
-  ensure_context_is_valid(ctx);
+    tiledb_ndrectangle_t* ndr, const char* name, tiledb_range_t* range) {
   ensure_handle_is_valid(ndr);
   ensure_dim_name_is_valid(name);
   ensure_range_ptr_is_valid(range);
@@ -119,11 +115,7 @@ capi_return_t tiledb_ndrectangle_get_range_from_name(
 }
 
 capi_return_t tiledb_ndrectangle_get_range(
-    tiledb_ctx_t* ctx,
-    tiledb_ndrectangle_t* ndr,
-    uint32_t idx,
-    tiledb_range_t* range) {
-  ensure_context_is_valid(ctx);
+    tiledb_ndrectangle_t* ndr, uint32_t idx, tiledb_range_t* range) {
   ensure_handle_is_valid(ndr);
   ensure_range_ptr_is_valid(range);
 
@@ -134,11 +126,7 @@ capi_return_t tiledb_ndrectangle_get_range(
 }
 
 capi_return_t tiledb_ndrectangle_set_range_for_name(
-    tiledb_ctx_t* ctx,
-    tiledb_ndrectangle_t* ndr,
-    const char* name,
-    tiledb_range_t* range) {
-  ensure_context_is_valid(ctx);
+    tiledb_ndrectangle_t* ndr, const char* name, tiledb_range_t* range) {
   ensure_handle_is_valid(ndr);
   ensure_dim_name_is_valid(name);
   ensure_range_ptr_is_valid(range);
@@ -157,11 +145,7 @@ capi_return_t tiledb_ndrectangle_set_range_for_name(
 }
 
 capi_return_t tiledb_ndrectangle_set_range(
-    tiledb_ctx_t* ctx,
-    tiledb_ndrectangle_t* ndr,
-    uint32_t idx,
-    tiledb_range_t* range) {
-  ensure_context_is_valid(ctx);
+    tiledb_ndrectangle_t* ndr, uint32_t idx, tiledb_range_t* range) {
   ensure_handle_is_valid(ndr);
   ensure_range_ptr_is_valid(range);
 
@@ -179,6 +163,7 @@ capi_return_t tiledb_ndrectangle_set_range(
 
 }  // namespace tiledb::api
 
+using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
 using tiledb::api::api_entry_with_context;
 
@@ -191,8 +176,9 @@ CAPI_INTERFACE(
       ctx, domain, ndr);
 }
 
-CAPI_INTERFACE(ndrectangle_free, tiledb_ndrectangle_t** ndr) {
-  return api_entry_plain<tiledb::api::tiledb_ndrectangle_free>(ndr);
+CAPI_INTERFACE(
+    ndrectangle_free, tiledb_ctx_t* ctx, tiledb_ndrectangle_t** ndr) {
+  return api_entry_context<tiledb::api::tiledb_ndrectangle_free>(ctx, ndr);
 }
 
 CAPI_INTERFACE(
@@ -201,8 +187,7 @@ CAPI_INTERFACE(
     tiledb_ndrectangle_t* ndr,
     const char* name,
     tiledb_range_t* range) {
-  return api_entry_with_context<
-      tiledb::api::tiledb_ndrectangle_get_range_from_name>(
+  return api_entry_context<tiledb::api::tiledb_ndrectangle_get_range_from_name>(
       ctx, ndr, name, range);
 }
 
@@ -212,7 +197,7 @@ CAPI_INTERFACE(
     tiledb_ndrectangle_t* ndr,
     uint32_t idx,
     tiledb_range_t* range) {
-  return api_entry_with_context<tiledb::api::tiledb_ndrectangle_get_range>(
+  return api_entry_context<tiledb::api::tiledb_ndrectangle_get_range>(
       ctx, ndr, idx, range);
 }
 
@@ -222,8 +207,7 @@ CAPI_INTERFACE(
     tiledb_ndrectangle_t* ndr,
     const char* name,
     tiledb_range_t* range) {
-  return api_entry_with_context<
-      tiledb::api::tiledb_ndrectangle_set_range_for_name>(
+  return api_entry_context<tiledb::api::tiledb_ndrectangle_set_range_for_name>(
       ctx, ndr, name, range);
 }
 
@@ -233,6 +217,6 @@ CAPI_INTERFACE(
     tiledb_ndrectangle_t* ndr,
     uint32_t idx,
     tiledb_range_t* range) {
-  return api_entry_with_context<tiledb::api::tiledb_ndrectangle_set_range>(
+  return api_entry_context<tiledb::api::tiledb_ndrectangle_set_range>(
       ctx, ndr, idx, range);
 }

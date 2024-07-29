@@ -62,7 +62,7 @@ typedef struct tiledb_ndrectangle_handle_t tiledb_ndrectangle_t;
  * @code{.c}
  * tiledb_ndrectangle_t *ndr;
  * tiledb_ndrectangle_alloc(ctx, domain, &ndr);
- * tiledb_ndrectangle_free(&ndr);
+ * tiledb_ndrectangle_free(ctx, &ndr);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -83,14 +83,15 @@ TILEDB_EXPORT capi_return_t tiledb_ndrectangle_alloc(
  * @code{.c}
  * tiledb_ndrectangle_t *ndr;
  * tiledb_ndrectangle_alloc(ctx, domain, &ndr);
- * tiledb_ndrectangle_free(&ndr);
+ * tiledb_ndrectangle_free(ctx, &ndr);
  * @endcode
  *
+ * @param ctx The TileDB context
  * @param ndr The n-dimensional rectangle to be freed
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr)
-    TILEDB_NOEXCEPT;
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_free(
+    tiledb_ctx_t* ctx, tiledb_ndrectangle_t** ndr) TILEDB_NOEXCEPT;
 
 /**
  * Get the range set on an N-dimensional rectangle for a dimension name

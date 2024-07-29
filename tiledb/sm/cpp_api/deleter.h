@@ -118,11 +118,11 @@ class Deleter {
   }
 
   void operator()(tiledb_current_domain_t* p) const {
-    tiledb_current_domain_free(&p);
+    tiledb_current_domain_free(ctx_->ptr().get(), &p);
   }
 
   void operator()(tiledb_ndrectangle_t* p) const {
-    tiledb_ndrectangle_free(&p);
+    tiledb_ndrectangle_free(ctx_->ptr().get(), &p);
   }
 
   void operator()(tiledb_enumeration_t* p) const {
