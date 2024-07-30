@@ -238,10 +238,12 @@ size_t write_header_callback(
       const std::string header_value_domain =
           header_value_scheme_excl.substr(0, header_domain_end_pos);
 
-      const std::string redirection_value =
-          header_scheme + "://" + header_value_domain;
-      std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
-      (*pmHeader->redirect_uri_map)[*pmHeader->uri] = redirection_value;
+      if (pmHeader->should_cache_redirect) {
+        const std::string redirection_value =
+            header_scheme + "://" + header_value_domain;
+        std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
+        (*pmHeader->redirect_uri_map)[*pmHeader->uri] = redirection_value;
+      }
     }
   }
 
@@ -262,7 +264,8 @@ Status Curl::init(
     const Config* config,
     const std::unordered_map<std::string, std::string>& extra_headers,
     std::unordered_map<std::string, std::string>* const res_headers,
-    std::mutex* const res_mtx) {
+    std::mutex* const res_mtx,
+    bool should_cache_redirect) {
   if (config == nullptr)
     return LOG_STATUS(
         Status_RestError("Error initializing libcurl; config is null."));
@@ -272,6 +275,7 @@ Status Curl::init(
   extra_headers_ = extra_headers;
   headerData.redirect_uri_map = res_headers;
   headerData.redirect_uri_map_lock = res_mtx;
+  headerData.should_cache_redirect = should_cache_redirect;
 
   // See https://curl.haxx.se/libcurl/c/threadsafe.html
   CURLcode rc = curl_easy_setopt(curl_.get(), CURLOPT_NOSIGNAL, 1);

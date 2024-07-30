@@ -43,7 +43,8 @@
 
 using namespace tiledb::sm;
 
-TEST_CASE("CURL: Test curl's header parsing callback", "[curl]") {
+TEST_CASE(
+    "CURL: Test curl's header parsing callback", "[curl][redirect-caching]") {
   // Initialize data that in real life scenario would be initialized by
   // RestClient
   char res_data[] =
@@ -58,6 +59,7 @@ TEST_CASE("CURL: Test curl's header parsing callback", "[curl]") {
   std::unordered_map<std::string, std::string> redirect_meta_;
   userdata.redirect_uri_map = &redirect_meta_;
   userdata.redirect_uri_map_lock = &redirect_mtx_;
+  userdata.should_cache_redirect = true;
 
   size_t result = write_header_callback(&res_data, size, count, &userdata);
 
@@ -92,6 +94,35 @@ TEST_CASE("CURL: Test curl's header parsing callback", "[curl]") {
   CHECK(
       userdata.redirect_uri_map->find(ns_array)->second ==
       "tiledb://my_username");
+}
+
+TEST_CASE(
+    "CURL: Test curl is not caching the region when requested so",
+    "[curl][redirect-caching]") {
+  // Initialize data that in real life scenario would be initialized by
+  // RestClient
+  char res_data[] =
+      "Location: https://test.url.domain/v1/arrays/testns/test_arr";
+  size_t size = 1;
+  size_t count = sizeof(res_data);
+
+  HeaderCbData userdata;
+  std::string ns_array = "testns:test_arr";
+  userdata.uri = &ns_array;
+  std::mutex redirect_mtx_;
+  std::unordered_map<std::string, std::string> redirect_meta_;
+  userdata.redirect_uri_map = &redirect_meta_;
+  userdata.redirect_uri_map_lock = &redirect_mtx_;
+  userdata.should_cache_redirect = false;
+
+  size_t result = write_header_callback(&res_data, size, count, &userdata);
+
+  // The return value should be equal to size * count
+  CHECK(result == size * count);
+  // The uri is not mutated inside the callback function
+  CHECK(*userdata.uri == ns_array);
+  // The redirect map holds a record of ns_array key and redirection url value
+  CHECK(userdata.redirect_uri_map->count(ns_array) == 0);
 }
 
 TEST_CASE(
