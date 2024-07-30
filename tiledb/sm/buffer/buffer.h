@@ -35,6 +35,7 @@
 #define TILEDB_BUFFER_H
 
 #include <cinttypes>
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;
@@ -424,6 +425,131 @@ class ConstBuffer : public BufferBase {
   template <class T>
   inline T value() const {
     return ((const T*)(((const char*)data_) + offset_))[0];
+  }
+};
+
+/**
+ * Manages a byte buffer that is used for capnp (de)serialization.
+ *
+ * The buffer can be either owned by this class (happens in cases of
+ * serialization) or not (typically user-managed, happens in cases of
+ * deserialization).
+ *
+ * The buffer's content can be read from as a span of bytes. It cannot be
+ * modified, only replaced.
+ */
+class SerializationBuffer {
+ private:
+  /**
+   * Manages the memory of the buffer, if it is owned by this class.
+   *
+   * In the case of non-owned buffers, this vector is empty. The vector is not
+   * wrapped in an std::optional to avoid losing the allocator when reassigning
+   * between owned and non-owned buffers.
+   *
+   * @invariant Unless buffer_owner_ gets cleared to assign a non-owned buffer,
+   * after updating the content of buffer_owner_, buffer_ must be set to the
+   * memory pointed by buffer_owner_.
+   */
+  tdb::pmr::vector<char> buffer_owner_;
+
+  /**
+   * The buffer's content. In the case of owned buffers, this points to the
+   * same memory as buffer_owner_.
+   */
+  span<const char> buffer_;
+
+ public:
+  /** Marker type for non-owned buffer assign methods. */
+  class NonOwnedMarker {};
+
+  /** Singleton instance of NonOwnedMarker. */
+  static constexpr NonOwnedMarker NonOwned;
+
+  /**
+   * The type of the allocator used by the buffer. This is required to make the
+   * type allocator-aware.
+   */
+  using allocator_type = decltype(buffer_owner_)::allocator_type;
+
+  /**
+   * Constructor.
+   *
+   * @param alloc Optional allocator for owned buffers.
+   */
+  SerializationBuffer(allocator_type alloc = {})
+      : buffer_owner_(alloc)
+      , buffer_(buffer_owner_) {
+  }
+
+  /** Default copy constructor. */
+  SerializationBuffer(const SerializationBuffer&) = default;
+  /** Default copy assignment operator. */
+  SerializationBuffer& operator=(const SerializationBuffer&) = default;
+
+  /** Default move constructor. */
+  SerializationBuffer(SerializationBuffer&&) = default;
+  /** Default move assignment operator. */
+  SerializationBuffer& operator=(SerializationBuffer&&) = default;
+
+  /** Allocator-aware copy constructor. */
+  SerializationBuffer(const SerializationBuffer& other, allocator_type alloc)
+      : buffer_owner_(other.buffer_owner_, alloc)
+      , buffer_(buffer_owner_) {
+  }
+
+  /** Allocator-aware move constructor. */
+  SerializationBuffer(SerializationBuffer&& other, allocator_type alloc)
+      : buffer_owner_(std::move(other.buffer_owner_), alloc)
+      , buffer_(buffer_owner_) {
+  }
+
+  /**
+   * Returns the buffer's allocator. This is required to make the type
+   * allocator-aware.
+   */
+  inline allocator_type get_allocator() const noexcept {
+    return buffer_owner_.get_allocator();
+  }
+
+  /**
+   * Assigns a new owned buffer to the object.
+   *
+   * @param iter The iterator range to copy to the serialization buffer.
+   */
+  template <class Iter>
+  inline void assign(const Iter& iter) {
+    buffer_owner_.assign(std::cbegin(iter), std::cend(iter));
+    buffer_ = buffer_owner_;
+  }
+
+  /**
+   * Assigns a new non-owned buffer to the object.
+   *
+   * @param iter The iterator range to wrap in the serialization buffer.
+   */
+  template <class Iter>
+  inline void assign(NonOwnedMarker, const Iter& iter) {
+    // Clear vector and deallocate its buffer.
+    buffer_owner_.clear();
+    buffer_owner_.shrink_to_fit();
+    buffer_ = iter;
+  }
+
+  /**
+   * Assigns a new owned buffer to the object, and appends a null terminator.
+   */
+  template <class Iter>
+  inline void assign_null_terminated(const Iter& iter) {
+    buffer_owner_.reserve(
+        std::distance(std::cbegin(iter), std::cend(iter)) + 1);
+    buffer_owner_.assign(std::cbegin(iter), std::cend(iter));
+    buffer_owner_.push_back('\0');
+    buffer_ = buffer_owner_;
+  }
+
+  inline operator span<const char>() const& {
+    return buffer_;
   }
 };
 

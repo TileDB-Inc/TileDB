@@ -513,34 +513,23 @@ Status metadata_deserialize(
 Status array_serialize(
     Array* array,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer* serialized_buffer,
     const bool client_side) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Array::Builder ArrayBuilder = message.initRoot<capnp::Array>();
     RETURN_NOT_OK(array_to_capnp(array, &ArrayBuilder, client_side));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(ArrayBuilder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer->assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer->assign(protomessage.asChars());
         break;
       }
       default: {
