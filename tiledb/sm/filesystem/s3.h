@@ -69,6 +69,7 @@
 #include <aws/core/utils/threading/Executor.h>
 #include <aws/identity-management/auth/STSAssumeRoleCredentialsProvider.h>
 #include <aws/s3/S3Client.h>
+#include <aws/s3/S3ClientConfiguration.h>
 #include <aws/s3/model/CompleteMultipartUploadRequest.h>
 #include <aws/s3/model/CopyObjectRequest.h>
 #include <aws/s3/model/CreateBucketRequest.h>
@@ -354,21 +355,20 @@ class TileDBS3Client : public Aws::S3::S3Client {
  public:
   TileDBS3Client(
       const S3Parameters& s3_params,
-      const Aws::Client::ClientConfiguration& client_config,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
-      bool use_virtual_addressing)
-      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
+      const Aws::S3::S3ClientConfiguration& client_config)
+      : Aws::S3::S3Client(client_config)
       , params_(s3_params) {
   }
 
   TileDBS3Client(
       const S3Parameters& s3_params,
       const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
-      const Aws::Client::ClientConfiguration& client_config,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
-      bool use_virtual_addressing)
+      const Aws::S3::S3ClientConfiguration& client_config)
       : Aws::S3::S3Client(
-            creds, client_config, sign_payloads, use_virtual_addressing)
+            creds,
+            // Create default endpoint provider.
+            make_shared<Aws::S3::S3EndpointProvider>(HERE()),
+            client_config)
       , params_(s3_params) {
   }
 
@@ -1352,7 +1352,7 @@ class S3 : FilesystemBase {
   mutable std::mutex client_init_mtx_;
 
   /** Configuration object used to initialize the client. */
-  mutable shared_ptr<Aws::Client::ClientConfiguration> client_config_;
+  mutable shared_ptr<Aws::S3::S3ClientConfiguration> client_config_;
 
   /** The executor used by 'client_'. */
   mutable shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;

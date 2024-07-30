@@ -1348,7 +1348,7 @@ Status S3::init_client() const {
   // check for client configuration on create, which can be slow if aws is not
   // configured on a users systems due to ec2 metadata check
 
-  client_config_ = make_shared<Aws::Client::ClientConfiguration>(HERE());
+  client_config_ = make_shared<Aws::S3::S3ClientConfiguration>(HERE());
 
   s3_tp_executor_ = make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
 
@@ -1387,6 +1387,10 @@ Status S3::init_client() const {
       stats_,
       s3_params_.connect_max_tries_,
       s3_params_.connect_scale_factor_);
+
+  client_config.useVirtualAddressing = s3_params_.use_virtual_addressing_;
+  client_config.payloadSigningPolicy =
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never;
 
   // If the user says not to sign a request, use the
   // AnonymousAWSCredentialsProvider This is equivalent to --no-sign-request on
@@ -1492,20 +1496,11 @@ Status S3::init_client() const {
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
     if (credentials_provider_ == nullptr) {
-      client_ = make_shared<TileDBS3Client>(
-          HERE(),
-          s3_params_,
-          *client_config_,
-          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-          s3_params_.use_virtual_addressing_);
+      client_ =
+          make_shared<TileDBS3Client>(HERE(), s3_params_, *client_config_);
     } else {
       client_ = make_shared<TileDBS3Client>(
-          HERE(),
-          s3_params_,
-          credentials_provider_,
-          *client_config_,
-          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-          s3_params_.use_virtual_addressing_);
+          HERE(), s3_params_, credentials_provider_, *client_config_);
     }
   }
 
