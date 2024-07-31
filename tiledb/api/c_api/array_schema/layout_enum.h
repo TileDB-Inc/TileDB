@@ -1,8 +1,4 @@
 /*
- * @file   tiledb_deprecated.h
- *
- * @section LICENSE
- *
  * The MIT License
  *
  * @copyright Copyright (c) 2024 TileDB, Inc.
@@ -24,28 +20,28 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file declares the deprecated C API for TileDB.
  */
 
-#ifndef TILEDB_DEPRECATED_H
-#define TILEDB_DEPRECATED_H
+/**
+ * NOTE: The values of these enums are serialized to the array schema and/or
+ * fragment metadata. Therefore, the values below should never change,
+ * otherwise backwards compatibility breaks.
+ */
 
-#include <stdint.h>
-#include <stdio.h>
+// clang-format is disabled on the first enum so that we can manually indent it
+// properly.
 
-#include "tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
-
-#ifdef __cplusplus
-extern "C" {
+// clang-format off
+#ifdef TILEDB_LAYOUT_ENUM
+    /** Row-major layout */
+    TILEDB_LAYOUT_ENUM(ROW_MAJOR) = 0,
+    /** Column-major layout */
+    TILEDB_LAYOUT_ENUM(COL_MAJOR) = 1,
+    /** Global-order layout */
+    TILEDB_LAYOUT_ENUM(GLOBAL_ORDER) = 2,
+    /** Unordered layout */
+    TILEDB_LAYOUT_ENUM(UNORDERED) = 3,
+    /** Hilbert layout */
+    TILEDB_LAYOUT_ENUM(HILBERT) = 4,
 #endif
-
-// No deprecated APIs are declared at the moment.
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif  // TILEDB_DEPRECATED_H
+    // clang-format on

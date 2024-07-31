@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,33 +31,13 @@
 // clang-format is disabled on the first enum so that we can manually indent it
 // properly.
 // clang-format off
-#ifdef TILEDB_ARRAY_TYPE_ENUM
-    /** Dense array */
-    TILEDB_ARRAY_TYPE_ENUM(DENSE) = 0,
-    /** Sparse array */
-    TILEDB_ARRAY_TYPE_ENUM(SPARSE) = 1,
-#endif
-// clang-format on
-
-#ifdef TILEDB_LAYOUT_ENUM
-    /** Row-major layout */
-    TILEDB_LAYOUT_ENUM(ROW_MAJOR) = 0,
-    /** Column-major layout */
-    TILEDB_LAYOUT_ENUM(COL_MAJOR) = 1,
-    /** Global-order layout */
-    TILEDB_LAYOUT_ENUM(GLOBAL_ORDER) = 2,
-    /** Unordered layout */
-    TILEDB_LAYOUT_ENUM(UNORDERED) = 3,
-    /** Hilbert layout */
-    TILEDB_LAYOUT_ENUM(HILBERT) = 4,
-#endif
-
 #ifdef TILEDB_ENCRYPTION_TYPE_ENUM
     /** No encryption. */
     TILEDB_ENCRYPTION_TYPE_ENUM(NO_ENCRYPTION) = 0,
     /** AES-256-GCM encryption. */
     TILEDB_ENCRYPTION_TYPE_ENUM(AES_256_GCM) = 1,
 #endif
+// clang-format on
 
 #ifdef TILEDB_QUERY_STATUS_ENUM
     /** Query failed */

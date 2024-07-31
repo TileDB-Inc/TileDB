@@ -1,5 +1,5 @@
-/*
- * @file   tiledb_deprecated.h
+/**
+ * @file tiledb/api/c_api/array_schema/test/unit_capi_array_schema.cc
  *
  * @section LICENSE
  *
@@ -25,27 +25,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @section DESCRIPTION
- *
- * This file declares the deprecated C API for TileDB.
+ * Validates the arguments for the ArraySchema C API.
  */
 
-#ifndef TILEDB_DEPRECATED_H
-#define TILEDB_DEPRECATED_H
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>
+#include "../array_schema_api_external.h"
+#include "../array_schema_api_internal.h"
 
-#include <stdint.h>
-#include <stdio.h>
-
-#include "tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// No deprecated APIs are declared at the moment.
-
-#ifdef __cplusplus
+TEST_CASE("C API: unit_capi_array_schema", "[capi][array_schema]") {
+  REQUIRE(true);
 }
-#endif
-
-#endif  // TILEDB_DEPRECATED_H

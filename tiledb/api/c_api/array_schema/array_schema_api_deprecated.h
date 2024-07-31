@@ -1,5 +1,5 @@
-/*
- * @file   tiledb_deprecated.h
+/**
+ * @file tiledb/api/c_api/array_schema/array_schema_api_deprecated.h
  *
  * @section LICENSE
  *
@@ -27,25 +27,42 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the deprecated C API for TileDB.
+ * This file declares the deprecated array schema section of the TileDB C API.
  */
 
-#ifndef TILEDB_DEPRECATED_H
-#define TILEDB_DEPRECATED_H
+#ifndef TILEDB_CAPI_ARRAY_SCHEMA_DEPRECATED_H
+#define TILEDB_CAPI_ARRAY_SCHEMA_DEPRECATED_H
 
-#include <stdint.h>
-#include <stdio.h>
-
-#include "tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
+#include "../api_external_common.h"
+#include "array_schema_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// No deprecated APIs are declared at the moment.
+/**
+ * Dumps the array schema in ASCII format in the selected file output.
+ *
+ * **Example:**
+ *
+ * The following prints the array schema dump in standard output.
+ *
+ * @code{.c}
+ * tiledb_array_schema_dump(ctx, array_schema, stdout);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_schema The array schema.
+ * @param[out] out The output handle.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_array_schema_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    FILE* out) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // TILEDB_DEPRECATED_H
+#endif  // TILEDB_CAPI_ARRAY_SCHEMA_DEPRECATED_H

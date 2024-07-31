@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -206,7 +207,7 @@ void tiledb_subarray_serialize(
   tiledb_array_schema_t* array_schema = nullptr;
   tiledb_array_get_schema(ctx, array, &array_schema);
   REQUIRE(tiledb::sm::serialization::subarray_to_capnp(
-              *(array_schema->array_schema_), (*subarray)->subarray_, &builder)
+              *(array_schema->array_schema()), (*subarray)->subarray_, &builder)
               .ok());
   // Deserialize
   tiledb_subarray_t* deserialized_subarray;
