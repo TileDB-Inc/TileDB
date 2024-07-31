@@ -70,13 +70,14 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
         uint64_t t_start,
         uint64_t t_end,
         std::map<const DimType*, ResultSpaceTile<DimType>>&& result_space_tiles,
-        MemoryTracker& memory_tracker)
+        shared_ptr<MemoryTracker> memory_tracker)
         : t_start_(t_start)
         , t_end_(t_end)
+        , memory_tracker_(memory_tracker)
         , tile_subarrays_(
               t_end - t_start,
               subarray.dim_num(),
-              memory_tracker.get_resource(MemoryType::DENSE_TILE_SUBARRAY))
+              memory_tracker_->get_resource(MemoryType::DENSE_TILE_SUBARRAY))
         , result_space_tiles_(std::move(result_space_tiles)) {
       auto& tile_coords = subarray.tile_coords();
       throw_if_not_ok(
@@ -126,6 +127,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
 
     /** End tile to process. */
     uint64_t t_end_;
+
+    /** Memory tracker. */
+    shared_ptr<MemoryTracker> memory_tracker_;
 
     /** Tile subarrays. */
     tdb::pmr::vector<DenseTileSubarray<DimType>> tile_subarrays_;
