@@ -44,15 +44,15 @@ extern "C" {
 #endif
 
 /**
- * Gets timestamp range in an array schema evolution
+ * Gets timestamp range in an array schema
  *
  * **Example:**
  *
  * @code{.c}
  * uint64_t timestamp_lo = 0;
  * uint64_t timestamp_hi = 0;
- * tiledb_array_schema_evolution_timestamp_range(ctx,
- * array_schema_evolution, &timestamp_lo, &timestamp_hi);
+ * tiledb_array_schema_timestamp_range(
+ *      ctx, array_schema, &timestamp_lo, &timestamp_hi);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -99,7 +99,10 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_add_enumeration(
     tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
 
 /**
- * Sets the current domain on the array schema
+ * Sets the current domain on the array schema.
+ *
+ * @pre The schema is sparse. current_domain is not yet supported on dense
+ * arrays.
  *
  * **Example:**
  *
@@ -124,6 +127,9 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_set_current_domain(
  * creates an empty current domain if none was set.
  * It is the responsability of the caller to free the resources associated
  * with the current domain when the handle isn't needed anymore.
+ *
+ * @pre The schema is sparse. current_domain is not yet supported on dense
+ * arrays.
  *
  * **Example:**
  *

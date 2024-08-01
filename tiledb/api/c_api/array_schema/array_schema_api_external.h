@@ -72,7 +72,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_type_to_str(
     tiledb_array_type_t array_type, const char** str) TILEDB_NOEXCEPT;
 
 /**
- * Parses a array type from the given string.
+ * Parses an array type from the given string.
  *
  * @param[in] str String representation to parse
  * @param[out] array_type The parsed array type
@@ -203,6 +203,8 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_version(
 /**
  * Sets a domain for the array schema.
  *
+ * @pre The domain has at least one dimension set.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -269,7 +271,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_set_cell_order(
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_COL_MAJOR);
+ * tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_COL_MAJOR);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -502,8 +504,9 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_offsets_filter_list(
  *
  * @code{.c}
  * tiledb_filter_list_t* filter_list;
- * tiledb_array_schema_get_validity_filter_list(ctx, array_schema,
- * &filter_list); tiledb_filter_list_free(ctx, &filter_list);
+ * tiledb_array_schema_get_validity_filter_list(
+ *  ctx, array_schema, &filter_list);
+ * tiledb_filter_list_free(ctx, &filter_list);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -524,7 +527,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_validity_filter_list(
  * @code{.c}
  * tiledb_domain_t* domain;
  * tiledb_array_schema_get_domain(ctx, array_schema, &domain);
- * // Make sure to delete domain in the end
+ * tiledb_domain_free(&domain);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -590,7 +593,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_attribute_num(
  * @code{.c}
  * tiledb_attribute_t* attr;
  * tiledb_array_schema_get_attribute_from_index(ctx, array_schema, 0, &attr);
- * // Make sure to delete the retrieved attribute in the end.
+ * tiledb_attribute_free(&attr);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -610,19 +613,18 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_attribute_from_index(
  *
  * **Example:**
  *
- * The following retrieves the first attribute in the schema.
+ * The following retrieves the attribute named "a" in the schema.
  *
  * @code{.c}
  * tiledb_attribute_t* attr;
- * tiledb_array_schema_get_attribute_from_name(
- *     ctx, array_schema, "attr_0", &attr);
- * // Make sure to delete the retrieved attribute in the end.
+ * tiledb_array_schema_get_attribute_from_name(ctx, array_schema, "a", &attr);
+ * tiledb_attribute_free(&attr);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
  * @param[in] array_schema The array schema.
  * @param[in] name The name (key) of the attribute to retrieve.
- * @param[out] attr THe attribute object to retrieve.
+ * @param[out] attr The attribute object to retrieve.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_array_schema_get_attribute_from_name(

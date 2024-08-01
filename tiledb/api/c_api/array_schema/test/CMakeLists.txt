@@ -28,5 +28,10 @@ include(unit_test)
 
 commence(unit_test capi_array_schema)
   this_target_sources(unit_capi_array_schema.cc)
-  this_target_object_libraries(capi_array_schema_stub)
+  this_target_object_libraries(
+    capi_array_schema_stub 
+    capi_attribute_stub
+    capi_current_domain
+    capi_domain_stub
+  )
 conclude(unit_test)

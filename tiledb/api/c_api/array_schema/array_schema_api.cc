@@ -48,6 +48,11 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/rest/rest_client.h"
 
+// enumeration
+// string
+// memory_tracker
+// rest_client
+
 namespace tiledb::api {
 
 capi_return_t tiledb_array_type_to_str(
@@ -128,6 +133,7 @@ capi_return_t tiledb_array_schema_get_version(
 capi_return_t tiledb_array_schema_set_domain(
     tiledb_array_schema_t* array_schema, tiledb_domain_t* domain) {
   ensure_array_schema_is_valid(array_schema);
+  ensure_domain_is_valid(domain);
   throw_if_not_ok(array_schema->set_domain(domain->copy_domain()));
   return TILEDB_OK;
 }
@@ -247,7 +253,7 @@ capi_return_t tiledb_array_schema_load(
           UINT64_MAX,
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
-      tiledb_array_schema_t::break_handle(*array_schema);
+      delete *array_schema;
       throw CAPIException(
           "Failed to load array schema; " +
           Status_ArrayDirectoryError(le.what()).message());
@@ -344,6 +350,7 @@ capi_return_t tiledb_array_schema_get_attribute_num(
 
 capi_return_t tiledb_array_schema_dump(
     const tiledb_array_schema_t* array_schema, FILE* out) {
+  // Note: this API is deprecated.
   ensure_array_schema_is_valid(array_schema);
   ensure_cstream_handle_is_valid(out);
 
@@ -355,7 +362,6 @@ capi_return_t tiledb_array_schema_dump(
         "Error writing array schema " + array_schema->array_uri().to_string() +
         " to file");
   }
-
   return TILEDB_OK;
 }
 
