@@ -1145,7 +1145,7 @@ void IncompleteFx::check_sparse_unsplittable_complete() {
 TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, dense",
-    "[capi][incomplete][dense-incomplete][serialization][rest]") {
+    "[capi][incomplete][dense-incomplete][rest]") {
   create_dense_array();
   write_dense_full();
   check_dense_incomplete();
@@ -1159,7 +1159,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, sparse",
-    "[capi][incomplete][sparse][serialization][rest]") {
+    "[capi][incomplete][sparse][rest]") {
   create_sparse_array();
   write_sparse_full();
   check_sparse_incomplete();
@@ -1171,8 +1171,47 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     IncompleteFx,
     "C API: Test incomplete read queries, dense, serialized",
-    "[capi][incomplete][dense][serialization][rest]") {
+    "[capi][incomplete][dense][rest]") {
   create_dense_array();
   write_dense_full();
   check_dense_incomplete();
+}
+
+TEST_CASE_METHOD(
+    IncompleteFx,
+    "C API: Test incomplete read queries, sparse",
+    "[capi][incomplete][sparse][retries][sc-49128][rest]") {
+  // This test is testing CURL logic and only makes sense on REST-CI
+  if (!vfs_test_setup_.is_rest()) {
+    return;
+  }
+
+  // Force retries on successful requests to test that the buffers
+  // resetting in the retry logic works well
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  int rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "rest.retry_http_codes", "200", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "rest.retry_count", "1", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "rest.retry_initial_delay_ms", "5", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+
+  // Update the context with config
+  vfs_test_setup_.update_config(cfg);
+  ctx_ = vfs_test_setup_.ctx_c;
+  tiledb_config_free(&cfg);
+
+  create_sparse_array();
+  write_sparse_full();
+  check_sparse_incomplete();
+  check_sparse_until_complete();
+  check_sparse_unsplittable_overflow();
+  check_sparse_unsplittable_complete();
 }
