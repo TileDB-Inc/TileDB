@@ -39,6 +39,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/array_type.h"
+#include "tiledb/sm/enums/layout.h"
 
 using namespace tiledb::sm;
 
@@ -49,83 +50,24 @@ struct tiledb_array_schema_handle_t
   static constexpr std::string_view object_type_name{"array_schema"};
 
  private:
-  using array_schema_type = shared_ptr<tiledb::sm::ArraySchema>;
+  using array_schema_type = shared_ptr<ArraySchema>;
   array_schema_type array_schema_;
-
-  /**
-   * Size type for the number of attributes of an array and for attribute
-   * indices.
-   */
-  using attribute_size_type = unsigned int;
-
-  /**
-   * Size type for the number of dimension labels in an array and for
-   * label indices.
-   */
-  using dimension_label_size_type = unsigned int;
-
-  /**
-   * Size type for the number of dimensions of an array and for dimension
-   * indices.
-   *
-   * Note: This should be the same as `Domain::dimension_size_type`. We're
-   * not including `domain.h`, otherwise we'd use that definition here.
-   */
-  using dimension_size_type = unsigned int;
 
  public:
   explicit tiledb_array_schema_handle_t(
       ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker)
-      : array_schema_{make_shared<tiledb::sm::ArraySchema>(
-            HERE(), array_type, memory_tracker)} {
+      : array_schema_{
+            make_shared<ArraySchema>(HERE(), array_type, memory_tracker)} {
   }
 
-  explicit tiledb_array_schema_handle_t(
-      URI uri,
-      uint32_t version,
-      std::pair<uint64_t, uint64_t> timestamp_range,
-      std::string name,
-      ArrayType array_type,
-      bool allows_dups,
-      shared_ptr<Domain> domain,
-      Layout cell_order,
-      Layout tile_order,
-      uint64_t capacity,
-      std::vector<shared_ptr<const Attribute>> attributes,
-      std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
-      std::vector<shared_ptr<const Enumeration>> enumerations,
-      std::unordered_map<std::string, std::string> enumeration_path_map,
-      FilterPipeline cell_var_offsets_filters,
-      FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters,
-      shared_ptr<CurrentDomain> current_domain,
-      shared_ptr<MemoryTracker> memory_tracker)
-      : array_schema_{make_shared<tiledb::sm::ArraySchema>(
-            HERE(),
-            uri,
-            version,
-            timestamp_range,
-            name,
-            array_type,
-            allows_dups,
-            domain,
-            cell_order,
-            tile_order,
-            capacity,
-            attributes,
-            dimension_labels,
-            enumerations,
-            enumeration_path_map,
-            cell_var_offsets_filters,
-            cell_validity_filters,
-            coords_filters,
-            current_domain,
-            memory_tracker)} {
+  template <class... Args>
+  explicit tiledb_array_schema_handle_t(Args... args)
+      : array_schema_{
+            make_shared<ArraySchema>(HERE(), std::forward<Args>(args)...)} {
   }
 
   explicit tiledb_array_schema_handle_t(const ArraySchema& array_schema)
-      : array_schema_{
-            make_shared<tiledb::sm::ArraySchema>(HERE(), array_schema)} {
+      : array_schema_{make_shared<ArraySchema>(HERE(), array_schema)} {
   }
 
   /**
@@ -145,7 +87,7 @@ struct tiledb_array_schema_handle_t
   }
 
   void add_dimension_label(
-      dimension_size_type dim_id,
+      ArraySchema::dimension_size_type dim_id,
       const std::string& name,
       DataOrder label_order,
       Datatype label_type,
@@ -170,7 +112,7 @@ struct tiledb_array_schema_handle_t
     return array_schema_->array_uri();
   }
 
-  attribute_size_type attribute_num() const {
+  ArraySchema::attribute_size_type attribute_num() const {
     return array_schema_->attribute_num();
   }
 
@@ -198,7 +140,8 @@ struct tiledb_array_schema_handle_t
     return array_schema_->coords_filters();
   }
 
-  const DimensionLabel& dimension_label(dimension_label_size_type i) const {
+  const DimensionLabel& dimension_label(
+      ArraySchema::dimension_label_size_type i) const {
     return array_schema_->dimension_label(i);
   }
 
@@ -206,7 +149,7 @@ struct tiledb_array_schema_handle_t
     return array_schema_->dimension_label(name);
   }
 
-  const Dimension* dimension_ptr(dimension_size_type i) const {
+  const Dimension* dimension_ptr(ArraySchema::dimension_size_type i) const {
     return array_schema_->dimension_ptr(i);
   }
 
@@ -214,7 +157,7 @@ struct tiledb_array_schema_handle_t
     return array_schema_->dimension_ptr(name);
   }
 
-  dimension_label_size_type dim_label_num() const {
+  ArraySchema::dimension_label_size_type dim_label_num() const {
     return array_schema_->dim_label_num();
   }
 
@@ -279,7 +222,8 @@ struct tiledb_array_schema_handle_t
     return array_schema_->set_tile_order(tile_order);
   }
 
-  shared_ptr<const Attribute> shared_attribute(attribute_size_type id) const {
+  shared_ptr<const Attribute> shared_attribute(
+      ArraySchema::attribute_size_type id) const {
     return array_schema_->shared_attribute(id);
   }
 

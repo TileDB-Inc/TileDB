@@ -143,26 +143,6 @@ typedef enum {
 /* ****************************** */
 
 /**
- * Returns a string representation of the given layout.
- *
- * @param layout Layout
- * @param str Set to point to a constant string representation of the layout
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t
-tiledb_layout_to_str(tiledb_layout_t layout, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a layout from the given string.
- *
- * @param str String representation to parse
- * @param layout Set to the parsed layout
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_layout_from_str(
-    const char* str, tiledb_layout_t* layout) TILEDB_NOEXCEPT;
-
-/**
  * Returns a string representation of the given encryption type.
  *
  * @param encryption_type Encryption type

@@ -56,17 +56,14 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
-#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
-#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filesystem.h"
-#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/mime_type.h"
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/query_status.h"
@@ -136,20 +133,6 @@ namespace tiledb::api {
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-
-int32_t tiledb_layout_to_str(tiledb_layout_t layout, const char** str) {
-  const auto& strval = tiledb::sm::layout_str((tiledb::sm::Layout)layout);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_layout_from_str(const char* str, tiledb_layout_t* layout) {
-  tiledb::sm::Layout val = tiledb::sm::Layout::ROW_MAJOR;
-  if (!tiledb::sm::layout_enum(str, &val).ok())
-    return TILEDB_ERR;
-  *layout = (tiledb_layout_t)val;
-  return TILEDB_OK;
-}
 
 int32_t tiledb_encryption_type_to_str(
     tiledb_encryption_type_t encryption_type, const char** str) {
@@ -4166,14 +4149,6 @@ constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-
-CAPI_INTERFACE(layout_to_str, tiledb_layout_t layout, const char** str) {
-  return api_entry_plain<tiledb::api::tiledb_layout_to_str>(layout, str);
-}
-
-CAPI_INTERFACE(layout_from_str, const char* str, tiledb_layout_t* layout) {
-  return api_entry_plain<tiledb::api::tiledb_layout_from_str>(str, layout);
-}
 
 CAPI_INTERFACE(
     encryption_type_to_str,

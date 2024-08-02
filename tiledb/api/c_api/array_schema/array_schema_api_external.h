@@ -82,6 +82,26 @@ TILEDB_EXPORT capi_return_t tiledb_array_type_from_str(
     const char* str, tiledb_array_type_t* array_type) TILEDB_NOEXCEPT;
 
 /**
+ * Returns a string representation of the given layout.
+ *
+ * @param[in] layout Layout
+ * @param[out] str A constant string representation of the layout
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t
+tiledb_layout_to_str(tiledb_layout_t layout, const char** str) TILEDB_NOEXCEPT;
+
+/**
+ * Parses a layout from the given string.
+ *
+ * @param[in] str String representation to parse
+ * @param[out] layout The parsed layout
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_layout_from_str(
+    const char* str, tiledb_layout_t* layout) TILEDB_NOEXCEPT;
+
+/**
  * Creates a TileDB array schema object.
  *
  * **Example:**

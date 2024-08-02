@@ -89,10 +89,10 @@ TEST_CASE(
   capi_return_t rc;
   ordinary_array_schema x{};
   tiledb_attribute_t* attr{};
-  rc = tiledb_attribute_alloc(x.ctx, "a", TILEDB_INT32, &attr);
+  rc = tiledb_attribute_alloc(x.ctx(), "a", TILEDB_INT32, &attr);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
-    rc = tiledb_array_schema_add_attribute(x.ctx, x.schema, attr);
+    rc = tiledb_array_schema_add_attribute(x.ctx(), x.schema, attr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -100,11 +100,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_add_attribute(x.ctx, nullptr, attr);
+    rc = tiledb_array_schema_add_attribute(x.ctx(), nullptr, attr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null attribute") {
-    rc = tiledb_array_schema_add_attribute(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_add_attribute(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   REQUIRE_NOTHROW(tiledb_attribute_free(&attr));
@@ -117,7 +117,7 @@ TEST_CASE(
   capi_return_t rc;
   ordinary_array_schema x{TILEDB_DENSE};
   SECTION("success") {
-    rc = tiledb_array_schema_set_allows_dups(x.ctx, x.schema, 0);
+    rc = tiledb_array_schema_set_allows_dups(x.ctx(), x.schema, 0);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -125,7 +125,7 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_allows_dups(x.ctx, nullptr, 0);
+    rc = tiledb_array_schema_set_allows_dups(x.ctx(), nullptr, 0);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid allows_dups") {
@@ -133,7 +133,7 @@ TEST_CASE(
      * This API is applicable _only_ to sparse arrays.
      * As such, any non-zero value set on a dense array is considered invalid.
      */
-    rc = tiledb_array_schema_set_allows_dups(x.ctx, x.schema, 1);
+    rc = tiledb_array_schema_set_allows_dups(x.ctx(), x.schema, 1);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -145,7 +145,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   int allows_dups;
   SECTION("success") {
-    rc = tiledb_array_schema_get_allows_dups(x.ctx, x.schema, &allows_dups);
+    rc = tiledb_array_schema_get_allows_dups(x.ctx(), x.schema, &allows_dups);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -153,11 +153,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_allows_dups(x.ctx, nullptr, &allows_dups);
+    rc = tiledb_array_schema_get_allows_dups(x.ctx(), nullptr, &allows_dups);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null allows_dups") {
-    rc = tiledb_array_schema_get_allows_dups(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_allows_dups(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -169,7 +169,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   uint32_t version;
   SECTION("success") {
-    rc = tiledb_array_schema_get_version(x.ctx, x.schema, &version);
+    rc = tiledb_array_schema_get_version(x.ctx(), x.schema, &version);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -177,11 +177,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_version(x.ctx, nullptr, &version);
+    rc = tiledb_array_schema_get_version(x.ctx(), nullptr, &version);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null version") {
-    rc = tiledb_array_schema_get_version(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_version(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -192,13 +192,13 @@ TEST_CASE(
   capi_return_t rc;
   ordinary_array_schema x{};
   tiledb_domain_t* domain{};
-  rc = tiledb_domain_alloc(x.ctx, &domain);
+  rc = tiledb_domain_alloc(x.ctx(), &domain);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   ordinary_dimension_d1 dim;
-  rc = tiledb_domain_add_dimension(x.ctx, domain, dim.dimension);
+  rc = tiledb_domain_add_dimension(x.ctx(), domain, dim.dimension);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
-    rc = tiledb_array_schema_set_domain(x.ctx, x.schema, domain);
+    rc = tiledb_array_schema_set_domain(x.ctx(), x.schema, domain);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -206,11 +206,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_domain(x.ctx, nullptr, domain);
+    rc = tiledb_array_schema_set_domain(x.ctx(), nullptr, domain);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null domain") {
-    rc = tiledb_array_schema_set_domain(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_set_domain(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   REQUIRE_NOTHROW(tiledb_domain_free(&domain));
@@ -223,7 +223,7 @@ TEST_CASE(
   capi_return_t rc;
   ordinary_array_schema x{};
   SECTION("success") {
-    rc = tiledb_array_schema_set_capacity(x.ctx, x.schema, 1);
+    rc = tiledb_array_schema_set_capacity(x.ctx(), x.schema, 1);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -231,12 +231,12 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_capacity(x.ctx, nullptr, 1);
+    rc = tiledb_array_schema_set_capacity(x.ctx(), nullptr, 1);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid capacity") {
     /* The capacity may not be zero. */
-    rc = tiledb_array_schema_set_capacity(x.ctx, x.schema, 0);
+    rc = tiledb_array_schema_set_capacity(x.ctx(), x.schema, 0);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -248,7 +248,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_layout_t layout = TILEDB_ROW_MAJOR;
   SECTION("success") {
-    rc = tiledb_array_schema_set_cell_order(x.ctx, x.schema, layout);
+    rc = tiledb_array_schema_set_cell_order(x.ctx(), x.schema, layout);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -256,12 +256,13 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_cell_order(x.ctx, nullptr, layout);
+    rc = tiledb_array_schema_set_cell_order(x.ctx(), nullptr, layout);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid layout") {
     /* A cell order of TILEDB_UNORDERED is not yet supported. */
-    rc = tiledb_array_schema_set_cell_order(x.ctx, x.schema, TILEDB_UNORDERED);
+    rc =
+        tiledb_array_schema_set_cell_order(x.ctx(), x.schema, TILEDB_UNORDERED);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -273,7 +274,7 @@ TEST_CASE(
   ordinary_array_schema x{TILEDB_DENSE};
   tiledb_layout_t layout = TILEDB_ROW_MAJOR;
   SECTION("success") {
-    rc = tiledb_array_schema_set_tile_order(x.ctx, x.schema, layout);
+    rc = tiledb_array_schema_set_tile_order(x.ctx(), x.schema, layout);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -281,12 +282,13 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_tile_order(x.ctx, nullptr, layout);
+    rc = tiledb_array_schema_set_tile_order(x.ctx(), nullptr, layout);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid layout") {
     /* ordinary_array_schema is dense, which disallows unordered layouts. */
-    rc = tiledb_array_schema_set_tile_order(x.ctx, x.schema, TILEDB_UNORDERED);
+    rc =
+        tiledb_array_schema_set_tile_order(x.ctx(), x.schema, TILEDB_UNORDERED);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -299,7 +301,7 @@ TEST_CASE(
   uint64_t lo;
   uint64_t hi;
   SECTION("success") {
-    rc = tiledb_array_schema_timestamp_range(x.ctx, x.schema, &lo, &hi);
+    rc = tiledb_array_schema_timestamp_range(x.ctx(), x.schema, &lo, &hi);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -307,15 +309,15 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_timestamp_range(x.ctx, nullptr, &lo, &hi);
+    rc = tiledb_array_schema_timestamp_range(x.ctx(), nullptr, &lo, &hi);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null lo") {
-    rc = tiledb_array_schema_timestamp_range(x.ctx, x.schema, nullptr, &hi);
+    rc = tiledb_array_schema_timestamp_range(x.ctx(), x.schema, nullptr, &hi);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null hi") {
-    rc = tiledb_array_schema_timestamp_range(x.ctx, x.schema, &lo, nullptr);
+    rc = tiledb_array_schema_timestamp_range(x.ctx(), x.schema, &lo, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -328,7 +330,7 @@ TEST_CASE(
   tiledb_enumeration_t* enumeration;
   int32_t values[5] = {1, 2, 3, 4, 5};
   rc = tiledb_enumeration_alloc(
-      x.ctx,
+      x.ctx(),
       "enumeration",
       TILEDB_UINT32,
       1,
@@ -340,7 +342,7 @@ TEST_CASE(
       &enumeration);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
-    rc = tiledb_array_schema_add_enumeration(x.ctx, x.schema, enumeration);
+    rc = tiledb_array_schema_add_enumeration(x.ctx(), x.schema, enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -348,11 +350,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_add_enumeration(x.ctx, nullptr, enumeration);
+    rc = tiledb_array_schema_add_enumeration(x.ctx(), nullptr, enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null enumeration") {
-    rc = tiledb_array_schema_add_enumeration(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_add_enumeration(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   REQUIRE_NOTHROW(tiledb_enumeration_free(&enumeration));
@@ -365,10 +367,10 @@ TEST_CASE(
   capi_return_t rc;
   ordinary_array_schema x{};
   tiledb_filter_list_t* fl;
-  rc = tiledb_filter_list_alloc(x.ctx, &fl);
+  rc = tiledb_filter_list_alloc(x.ctx(), &fl);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
-    rc = tiledb_array_schema_set_coords_filter_list(x.ctx, x.schema, fl);
+    rc = tiledb_array_schema_set_coords_filter_list(x.ctx(), x.schema, fl);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -376,11 +378,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_coords_filter_list(x.ctx, nullptr, fl);
+    rc = tiledb_array_schema_set_coords_filter_list(x.ctx(), nullptr, fl);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null filter_list") {
-    rc = tiledb_array_schema_set_coords_filter_list(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_set_coords_filter_list(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   REQUIRE_NOTHROW(tiledb_filter_list_free(&fl));
@@ -393,10 +395,10 @@ TEST_CASE(
   capi_return_t rc;
   ordinary_array_schema x{};
   tiledb_filter_list_t* fl;
-  rc = tiledb_filter_list_alloc(x.ctx, &fl);
+  rc = tiledb_filter_list_alloc(x.ctx(), &fl);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
-    rc = tiledb_array_schema_set_offsets_filter_list(x.ctx, x.schema, fl);
+    rc = tiledb_array_schema_set_offsets_filter_list(x.ctx(), x.schema, fl);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -404,11 +406,12 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_offsets_filter_list(x.ctx, nullptr, fl);
+    rc = tiledb_array_schema_set_offsets_filter_list(x.ctx(), nullptr, fl);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null filter_list") {
-    rc = tiledb_array_schema_set_offsets_filter_list(x.ctx, x.schema, nullptr);
+    rc =
+        tiledb_array_schema_set_offsets_filter_list(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   REQUIRE_NOTHROW(tiledb_filter_list_free(&fl));
@@ -421,10 +424,10 @@ TEST_CASE(
   capi_return_t rc;
   ordinary_array_schema x{};
   tiledb_filter_list_t* fl;
-  rc = tiledb_filter_list_alloc(x.ctx, &fl);
+  rc = tiledb_filter_list_alloc(x.ctx(), &fl);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
-    rc = tiledb_array_schema_set_validity_filter_list(x.ctx, x.schema, fl);
+    rc = tiledb_array_schema_set_validity_filter_list(x.ctx(), x.schema, fl);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -432,11 +435,12 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_validity_filter_list(x.ctx, nullptr, fl);
+    rc = tiledb_array_schema_set_validity_filter_list(x.ctx(), nullptr, fl);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null filter_list") {
-    rc = tiledb_array_schema_set_validity_filter_list(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_set_validity_filter_list(
+        x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   REQUIRE_NOTHROW(tiledb_filter_list_free(&fl));
@@ -456,7 +460,7 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_check(x.ctx, nullptr);
+    rc = tiledb_array_schema_check(x.ctx(), nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -492,7 +496,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_array_type_t array_type;
   SECTION("success") {
-    rc = tiledb_array_schema_get_array_type(x.ctx, x.schema, &array_type);
+    rc = tiledb_array_schema_get_array_type(x.ctx(), x.schema, &array_type);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -500,11 +504,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_array_type(x.ctx, nullptr, &array_type);
+    rc = tiledb_array_schema_get_array_type(x.ctx(), nullptr, &array_type);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null array_type") {
-    rc = tiledb_array_schema_get_array_type(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_array_type(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -516,7 +520,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   uint64_t capacity;
   SECTION("success") {
-    rc = tiledb_array_schema_get_capacity(x.ctx, x.schema, &capacity);
+    rc = tiledb_array_schema_get_capacity(x.ctx(), x.schema, &capacity);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -524,11 +528,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_capacity(x.ctx, nullptr, &capacity);
+    rc = tiledb_array_schema_get_capacity(x.ctx(), nullptr, &capacity);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null capacity") {
-    rc = tiledb_array_schema_get_capacity(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_capacity(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -540,7 +544,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_layout_t cell_order;
   SECTION("success") {
-    rc = tiledb_array_schema_get_cell_order(x.ctx, x.schema, &cell_order);
+    rc = tiledb_array_schema_get_cell_order(x.ctx(), x.schema, &cell_order);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -548,11 +552,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_cell_order(x.ctx, nullptr, &cell_order);
+    rc = tiledb_array_schema_get_cell_order(x.ctx(), nullptr, &cell_order);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null cell_order") {
-    rc = tiledb_array_schema_get_cell_order(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_cell_order(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -564,7 +568,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_filter_list_t* fl;
   SECTION("success") {
-    rc = tiledb_array_schema_get_coords_filter_list(x.ctx, x.schema, &fl);
+    rc = tiledb_array_schema_get_coords_filter_list(x.ctx(), x.schema, &fl);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -572,11 +576,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_coords_filter_list(x.ctx, nullptr, &fl);
+    rc = tiledb_array_schema_get_coords_filter_list(x.ctx(), nullptr, &fl);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null filter_list") {
-    rc = tiledb_array_schema_get_coords_filter_list(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_coords_filter_list(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -588,7 +592,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_filter_list_t* fl;
   SECTION("success") {
-    rc = tiledb_array_schema_get_offsets_filter_list(x.ctx, x.schema, &fl);
+    rc = tiledb_array_schema_get_offsets_filter_list(x.ctx(), x.schema, &fl);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -596,11 +600,12 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_offsets_filter_list(x.ctx, nullptr, &fl);
+    rc = tiledb_array_schema_get_offsets_filter_list(x.ctx(), nullptr, &fl);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null filter_list") {
-    rc = tiledb_array_schema_get_offsets_filter_list(x.ctx, x.schema, nullptr);
+    rc =
+        tiledb_array_schema_get_offsets_filter_list(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -612,7 +617,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_filter_list_t* fl;
   SECTION("success") {
-    rc = tiledb_array_schema_get_validity_filter_list(x.ctx, x.schema, &fl);
+    rc = tiledb_array_schema_get_validity_filter_list(x.ctx(), x.schema, &fl);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -620,11 +625,12 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_validity_filter_list(x.ctx, nullptr, &fl);
+    rc = tiledb_array_schema_get_validity_filter_list(x.ctx(), nullptr, &fl);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null filter_list") {
-    rc = tiledb_array_schema_get_validity_filter_list(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_validity_filter_list(
+        x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -636,7 +642,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_domain_t* domain;
   SECTION("success") {
-    rc = tiledb_array_schema_get_domain(x.ctx, x.schema, &domain);
+    rc = tiledb_array_schema_get_domain(x.ctx(), x.schema, &domain);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -644,11 +650,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_domain(x.ctx, nullptr, &domain);
+    rc = tiledb_array_schema_get_domain(x.ctx(), nullptr, &domain);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null domain") {
-    rc = tiledb_array_schema_get_domain(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_domain(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -660,7 +666,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_layout_t tile_order;
   SECTION("success") {
-    rc = tiledb_array_schema_get_tile_order(x.ctx, x.schema, &tile_order);
+    rc = tiledb_array_schema_get_tile_order(x.ctx(), x.schema, &tile_order);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -668,11 +674,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_tile_order(x.ctx, nullptr, &tile_order);
+    rc = tiledb_array_schema_get_tile_order(x.ctx(), nullptr, &tile_order);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null tile_order") {
-    rc = tiledb_array_schema_get_tile_order(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_tile_order(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -684,7 +690,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   uint32_t attr_num;
   SECTION("success") {
-    rc = tiledb_array_schema_get_attribute_num(x.ctx, x.schema, &attr_num);
+    rc = tiledb_array_schema_get_attribute_num(x.ctx(), x.schema, &attr_num);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -692,11 +698,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_attribute_num(x.ctx, nullptr, &attr_num);
+    rc = tiledb_array_schema_get_attribute_num(x.ctx(), nullptr, &attr_num);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null attribute_num") {
-    rc = tiledb_array_schema_get_attribute_num(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_attribute_num(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -715,7 +721,7 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_dump_str(x.ctx, nullptr, &out);
+    rc = tiledb_array_schema_dump_str(x.ctx(), nullptr, &out);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   /*
@@ -730,8 +736,8 @@ TEST_CASE(
   ordinary_array_schema_with_attr x{};
   tiledb_attribute_t* attr;
   SECTION("success") {
-    rc =
-        tiledb_array_schema_get_attribute_from_index(x.ctx, x.schema, 0, &attr);
+    rc = tiledb_array_schema_get_attribute_from_index(
+        x.ctx(), x.schema, 0, &attr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -740,17 +746,18 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_attribute_from_index(x.ctx, nullptr, 0, &attr);
+    rc = tiledb_array_schema_get_attribute_from_index(
+        x.ctx(), nullptr, 0, &attr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid index") {
-    rc =
-        tiledb_array_schema_get_attribute_from_index(x.ctx, x.schema, 1, &attr);
+    rc = tiledb_array_schema_get_attribute_from_index(
+        x.ctx(), x.schema, 1, &attr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null attribute") {
     rc = tiledb_array_schema_get_attribute_from_index(
-        x.ctx, x.schema, 0, nullptr);
+        x.ctx(), x.schema, 0, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -763,7 +770,7 @@ TEST_CASE(
   tiledb_attribute_t* attr;
   SECTION("success") {
     rc = tiledb_array_schema_get_attribute_from_name(
-        x.ctx, x.schema, "a", &attr);
+        x.ctx(), x.schema, "a", &attr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -772,18 +779,18 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc =
-        tiledb_array_schema_get_attribute_from_name(x.ctx, nullptr, "a", &attr);
+    rc = tiledb_array_schema_get_attribute_from_name(
+        x.ctx(), nullptr, "a", &attr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid name") {
     rc = tiledb_array_schema_get_attribute_from_name(
-        x.ctx, x.schema, "b", &attr);
+        x.ctx(), x.schema, "b", &attr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null attribute") {
     rc = tiledb_array_schema_get_attribute_from_name(
-        x.ctx, x.schema, "a", nullptr);
+        x.ctx(), x.schema, "a", nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -795,7 +802,7 @@ TEST_CASE(
   ordinary_array_schema_with_attr x{};
   int32_t has_attr;
   SECTION("success") {
-    rc = tiledb_array_schema_has_attribute(x.ctx, x.schema, "a", &has_attr);
+    rc = tiledb_array_schema_has_attribute(x.ctx(), x.schema, "a", &has_attr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     CHECK(has_attr == 1);
   }
@@ -804,17 +811,17 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_has_attribute(x.ctx, nullptr, "a", &has_attr);
+    rc = tiledb_array_schema_has_attribute(x.ctx(), nullptr, "a", &has_attr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid name") {
     // Note: this test is successful, but has_attr will equate to false (0).
-    rc = tiledb_array_schema_has_attribute(x.ctx, x.schema, "b", &has_attr);
+    rc = tiledb_array_schema_has_attribute(x.ctx(), x.schema, "b", &has_attr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     CHECK(has_attr == 0);
   }
   SECTION("null has_attr") {
-    rc = tiledb_array_schema_has_attribute(x.ctx, x.schema, "a", nullptr);
+    rc = tiledb_array_schema_has_attribute(x.ctx(), x.schema, "a", nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -825,10 +832,10 @@ TEST_CASE(
   capi_return_t rc;
   ordinary_array_schema x{};
   tiledb_current_domain_t* cd{};
-  rc = tiledb_current_domain_create(x.ctx, &cd);
+  rc = tiledb_current_domain_create(x.ctx(), &cd);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
-    rc = tiledb_array_schema_set_current_domain(x.ctx, x.schema, cd);
+    rc = tiledb_array_schema_set_current_domain(x.ctx(), x.schema, cd);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -836,11 +843,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_set_current_domain(x.ctx, nullptr, cd);
+    rc = tiledb_array_schema_set_current_domain(x.ctx(), nullptr, cd);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null current_domain") {
-    rc = tiledb_array_schema_set_current_domain(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_set_current_domain(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   REQUIRE_NOTHROW(tiledb_current_domain_free(&cd));
@@ -854,7 +861,7 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_current_domain_t* cd;
   SECTION("success") {
-    rc = tiledb_array_schema_get_current_domain(x.ctx, x.schema, &cd);
+    rc = tiledb_array_schema_get_current_domain(x.ctx(), x.schema, &cd);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null context") {
@@ -862,11 +869,11 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_current_domain(x.ctx, nullptr, &cd);
+    rc = tiledb_array_schema_get_current_domain(x.ctx(), nullptr, &cd);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null current_domain") {
-    rc = tiledb_array_schema_get_current_domain(x.ctx, x.schema, nullptr);
+    rc = tiledb_array_schema_get_current_domain(x.ctx(), x.schema, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }

@@ -33,6 +33,7 @@
 #ifndef TILEDB_TESTSUPPORT_CAPI_ARRAY_SCHEMA_H
 #define TILEDB_TESTSUPPORT_CAPI_ARRAY_SCHEMA_H
 
+#include "testsupport_capi_context.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_external.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 
@@ -43,15 +44,11 @@ namespace tiledb::api::test_support {
  */
 class ordinary_array_schema {
  public:
-  tiledb_ctx_handle_t* ctx{nullptr};
+  ordinary_context context{};
   tiledb_array_schema_handle_t* schema{nullptr};
 
   ordinary_array_schema(tiledb_array_type_t array_type = TILEDB_SPARSE) {
-    auto rc = tiledb_ctx_alloc(nullptr, &ctx);
-    if (rc != TILEDB_OK) {
-      throw std::runtime_error("error creating test context");
-    }
-    rc = tiledb_array_schema_alloc(ctx, array_type, &schema);
+    auto rc = tiledb_array_schema_alloc(context.context, array_type, &schema);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test array_schema");
     }
@@ -63,7 +60,10 @@ class ordinary_array_schema {
 
   ~ordinary_array_schema() {
     tiledb_array_schema_free(&schema);
-    tiledb_ctx_free(&ctx);
+  }
+
+  [[nodiscard]] tiledb_ctx_handle_t* ctx() const {
+    return context.context;
   }
 };
 
@@ -73,11 +73,11 @@ struct ordinary_array_schema_with_attr : public ordinary_array_schema {
   ordinary_array_schema_with_attr(
       tiledb_array_type_t array_type = TILEDB_SPARSE)
       : ordinary_array_schema(array_type) {
-    auto rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &attr);
+    auto rc = tiledb_attribute_alloc(context.context, "a", TILEDB_INT32, &attr);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test attribute");
     }
-    rc = tiledb_array_schema_add_attribute(ctx, schema, attr);
+    rc = tiledb_array_schema_add_attribute(context.context, schema, attr);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error adding test attribute to test schema");
     }

@@ -48,11 +48,6 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/rest/rest_client.h"
 
-// enumeration
-// string
-// memory_tracker
-// rest_client
-
 namespace tiledb::api {
 
 capi_return_t tiledb_array_type_to_str(
@@ -70,6 +65,21 @@ capi_return_t tiledb_array_type_from_str(
     return TILEDB_ERR;
   }
   *array_type = (tiledb_array_type_t)val;
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_layout_to_str(tiledb_layout_t layout, const char** str) {
+  const auto& strval = tiledb::sm::layout_str((tiledb::sm::Layout)layout);
+  *str = strval.c_str();
+  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
+}
+
+capi_return_t tiledb_layout_from_str(const char* str, tiledb_layout_t* layout) {
+  tiledb::sm::Layout val = tiledb::sm::Layout::ROW_MAJOR;
+  if (!tiledb::sm::layout_enum(str, &val).ok()) {
+    return TILEDB_ERR;
+  }
+  *layout = (tiledb_layout_t)val;
   return TILEDB_OK;
 }
 
@@ -232,7 +242,6 @@ capi_return_t tiledb_array_schema_load(
     auto&& [st, array_schema_rest] =
         rest_client.get_array_schema_from_rest(uri);
     if (!st.ok()) {
-      delete *array_schema;
       throw CAPIException("Failed to load array schema; " + st.message());
     }
     *array_schema =
@@ -253,7 +262,6 @@ capi_return_t tiledb_array_schema_load(
           UINT64_MAX,
           tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
     } catch (const std::logic_error& le) {
-      delete *array_schema;
       throw CAPIException(
           "Failed to load array schema; " +
           Status_ArrayDirectoryError(le.what()).message());
@@ -481,6 +489,14 @@ CAPI_INTERFACE(
     array_type_from_str, const char* str, tiledb_array_type_t* array_type) {
   return api_entry_plain<tiledb::api::tiledb_array_type_from_str>(
       str, array_type);
+}
+
+CAPI_INTERFACE(layout_to_str, tiledb_layout_t layout, const char** str) {
+  return api_entry_plain<tiledb::api::tiledb_layout_to_str>(layout, str);
+}
+
+CAPI_INTERFACE(layout_from_str, const char* str, tiledb_layout_t* layout) {
+  return api_entry_plain<tiledb::api::tiledb_layout_from_str>(str, layout);
 }
 
 CAPI_INTERFACE(
