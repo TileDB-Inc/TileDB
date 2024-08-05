@@ -1555,9 +1555,9 @@ Status RestClientRemote::post_consolidation_to_rest(
 
 Status RestClientRemote::post_vacuum_to_rest(
     const URI& uri, const Config& config) {
-  Buffer buff;
+  SerializationBuffer buff;
   RETURN_NOT_OK(serialization::array_vacuum_request_serialize(
-      config, serialization_type_, &buff));
+      config, serialization_type_, buff));
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));

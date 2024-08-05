@@ -1800,33 +1800,22 @@ void serialize_load_array_schema_request(
     const Config& config,
     const LoadArraySchemaRequest& req,
     SerializationType serialization_type,
-    Buffer& data) {
+    SerializationBuffer& data) {
   try {
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::LoadArraySchemaRequest>();
     load_array_schema_request_to_capnp(builder, config, req);
 
-    data.reset_size();
-    data.reset_offset();
-
     switch (serialization_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        throw_if_not_ok(data.realloc(json_len + 1));
-        throw_if_not_ok(data.write(capnp_json.cStr(), json_len));
-        throw_if_not_ok(data.write(&nul, 1));
+        data.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        throw_if_not_ok(data.realloc(nbytes));
-        throw_if_not_ok(data.write(message_chars.begin(), nbytes));
+        data.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -1900,33 +1889,22 @@ void load_array_schema_response_to_capnp(
 void serialize_load_array_schema_response(
     const ArraySchema& schema,
     SerializationType serialization_type,
-    Buffer& data) {
+    SerializationBuffer& data) {
   try {
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::LoadArraySchemaResponse>();
     load_array_schema_response_to_capnp(builder, schema);
 
-    data.reset_size();
-    data.reset_offset();
-
     switch (serialization_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        throw_if_not_ok(data.realloc(json_len + 1));
-        throw_if_not_ok(data.write(capnp_json.cStr(), json_len));
-        throw_if_not_ok(data.write(&nul, 1));
+        data.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        throw_if_not_ok(data.realloc(nbytes));
-        throw_if_not_ok(data.write(message_chars.begin(), nbytes));
+        data.assign(protomessage.asChars());
         break;
       }
       default: {

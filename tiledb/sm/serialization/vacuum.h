@@ -86,7 +86,7 @@ Status array_vacuum_request_to_capnp(
 Status array_vacuum_request_serialize(
     const Config& config,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize vacuum request via Cap'n Proto
