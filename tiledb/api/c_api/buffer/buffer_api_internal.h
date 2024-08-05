@@ -81,10 +81,6 @@ struct tiledb_buffer_handle_t
   [[nodiscard]] inline const tiledb::sm::SerializationBuffer& buffer() const {
     return buffer_;
   }
-
-  operator span<const char>() const& {
-    return buffer_;
-  }
 };
 
 namespace tiledb::api {

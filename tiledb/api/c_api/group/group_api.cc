@@ -419,7 +419,7 @@ capi_return_t tiledb_serialize_group(
   auto st = tiledb::sm::serialization::group_serialize(
       &(group->group()),
       static_cast<tiledb::sm::SerializationType>(serialize_type),
-      &(buf->buffer()));
+      buf->buffer());
 
   if (!st.ok()) {
     tiledb_buffer_handle_t::break_handle(buf);
@@ -442,7 +442,7 @@ capi_return_t tiledb_deserialize_group(
   throw_if_not_ok(tiledb::sm::serialization::group_deserialize(
       &(group->group()),
       static_cast<tiledb::sm::SerializationType>(serialize_type),
-      *buffer));
+      buffer->buffer()));
 
   return TILEDB_OK;
 }
@@ -463,7 +463,7 @@ capi_return_t tiledb_serialize_group_metadata(
   auto st = tiledb::sm::serialization::metadata_serialize(
       metadata,
       static_cast<tiledb::sm::SerializationType>(serialize_type),
-      &(buf->buffer()));
+      buf->buffer());
 
   if (!st.ok()) {
     tiledb_buffer_handle_t::break_handle(buf);
@@ -486,7 +486,7 @@ capi_return_t tiledb_deserialize_group_metadata(
       group->group().unsafe_metadata(),
       group->group().config(),
       static_cast<tiledb::sm::SerializationType>(serialize_type),
-      *buffer));
+      buffer->buffer()));
 
   return TILEDB_OK;
 }
