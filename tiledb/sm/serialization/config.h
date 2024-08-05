@@ -61,7 +61,7 @@ namespace serialization {
 Status config_serialize(
     const Config& config,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side);
 
 /**

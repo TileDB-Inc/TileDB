@@ -116,7 +116,7 @@ Status fragment_info_request_to_capnp(
 Status fragment_info_serialize(
     const FragmentInfo& fragment_info,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side);
 
 /**
@@ -147,7 +147,7 @@ Status fragment_info_deserialize(
 Status fragment_info_request_serialize(
     const FragmentInfo& fragment_info,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize fragment info request via Cap'n Proto

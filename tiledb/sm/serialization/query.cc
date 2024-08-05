@@ -2718,7 +2718,7 @@ Status query_est_result_size_serialize(
     Query* query,
     SerializationType serialize_type,
     bool,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::EstimatedResultSize::Builder est_result_size_builder =
@@ -2730,23 +2730,12 @@ Status query_est_result_size_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(est_result_size_builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
-        break;
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-
-        // Write the serialized query estimated results
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default:
@@ -2994,7 +2983,7 @@ Status global_write_state_from_capnp(
             std::string_view{entry.getKey().cStr(), entry.getKey().size()};
 
         if (state.hasUploadId()) {
-          deserialized_state.upload_id = state.getUploadId();
+          deserialized_state.upload_id = state.getUploadId().cStr();
         }
         if (state.hasStatus()) {
           deserialized_state.status =
@@ -3193,7 +3182,7 @@ Status array_from_query_deserialize(
 }
 
 Status query_est_result_size_serialize(
-    Query*, SerializationType, bool, Buffer*) {
+    Query*, SerializationType, bool, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

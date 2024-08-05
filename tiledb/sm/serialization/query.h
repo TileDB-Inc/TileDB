@@ -196,7 +196,7 @@ Status query_est_result_size_serialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize estimated result sizes into the query object

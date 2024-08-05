@@ -64,7 +64,7 @@ namespace serialization {
 Status array_schema_evolution_serialize(
     ArraySchemaEvolution* array_schema_evolution,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side);
 
 /**

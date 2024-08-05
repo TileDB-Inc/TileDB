@@ -131,7 +131,7 @@ Status metadata_to_capnp(
 Status array_serialize(
     Array* array,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side);
 
 /**
@@ -161,7 +161,7 @@ void array_deserialize(
 Status array_open_serialize(
     const Array& array,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize an open array request via Cap'n Proto
@@ -179,7 +179,7 @@ Status array_open_deserialize(
 Status metadata_serialize(
     Metadata* metadata,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 Status metadata_deserialize(
     Metadata* metadata,

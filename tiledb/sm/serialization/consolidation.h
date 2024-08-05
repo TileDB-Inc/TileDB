@@ -88,7 +88,7 @@ Status array_consolidation_request_to_capnp(
 Status array_consolidation_request_serialize(
     const Config& config,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize consolidation request via Cap'n Proto
@@ -115,7 +115,7 @@ void serialize_consolidation_plan_request(
     uint64_t fragment_size,
     const Config& config,
     SerializationType serialization_type,
-    Buffer& request);
+    SerializationBuffer& request);
 
 /**
  * Deserialize a consolidation plan request via Cap'n Proto.
@@ -138,7 +138,7 @@ uint64_t deserialize_consolidation_plan_request(
 void serialize_consolidation_plan_response(
     const ConsolidationPlan& consolidation_plan,
     SerializationType serialization_type,
-    Buffer& response);
+    SerializationBuffer& response);
 
 /**
  * Deserialize a consolidation plan response via Cap'n Proto.

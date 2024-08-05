@@ -78,7 +78,7 @@ void serialize_load_enumerations_request(
     const Config& config,
     const std::vector<std::string>& enumeration_names,
     SerializationType serialization_type,
-    Buffer& request);
+    SerializationBuffer& request);
 
 std::vector<std::string> deserialize_load_enumerations_request(
     SerializationType serialization_type, span<const char> request);
@@ -86,7 +86,7 @@ std::vector<std::string> deserialize_load_enumerations_request(
 void serialize_load_enumerations_response(
     const std::vector<shared_ptr<const Enumeration>>& enumerations,
     SerializationType serialization_type,
-    Buffer& response);
+    SerializationBuffer& response);
 
 std::vector<shared_ptr<const Enumeration>>
 deserialize_load_enumerations_response(

@@ -92,7 +92,7 @@ Status array_consolidation_request_from_capnp(
 Status array_consolidation_request_serialize(
     const Config& config,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArrayConsolidationRequest::Builder ArrayConsolidationRequestBuilder =
@@ -100,27 +100,16 @@ Status array_consolidation_request_serialize(
     RETURN_NOT_OK(array_consolidation_request_to_capnp(
         config, &ArrayConsolidationRequestBuilder));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(ArrayConsolidationRequestBuilder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -254,34 +243,23 @@ void serialize_consolidation_plan_request(
     uint64_t fragment_size,
     const Config& config,
     SerializationType serialization_type,
-    Buffer& request) {
+    SerializationBuffer& request) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ConsolidationPlanRequest::Builder builder =
         message.initRoot<capnp::ConsolidationPlanRequest>();
     consolidation_plan_request_to_capnp(builder, config, fragment_size);
 
-    request.reset_size();
-    request.reset_offset();
-
     switch (serialization_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        throw_if_not_ok(request.realloc(json_len + 1));
-        throw_if_not_ok(request.write(capnp_json.cStr(), json_len));
-        throw_if_not_ok(request.write(&nul, 1));
+        request.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        throw_if_not_ok(request.realloc(nbytes));
-        throw_if_not_ok(request.write(message_chars.begin(), nbytes));
+        request.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -344,34 +322,23 @@ uint64_t deserialize_consolidation_plan_request(
 void serialize_consolidation_plan_response(
     const ConsolidationPlan& plan,
     SerializationType serialization_type,
-    Buffer& response) {
+    SerializationBuffer& response) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ConsolidationPlanResponse::Builder builder =
         message.initRoot<capnp::ConsolidationPlanResponse>();
     consolidation_plan_response_to_capnp(builder, plan);
 
-    response.reset_size();
-    response.reset_offset();
-
     switch (serialization_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        throw_if_not_ok(response.realloc(json_len + 1));
-        throw_if_not_ok(response.write(capnp_json.cStr(), json_len));
-        throw_if_not_ok(response.write(&nul, 1));
+        response.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        throw_if_not_ok(response.realloc(nbytes));
-        throw_if_not_ok(response.write(message_chars.begin(), nbytes));
+        response.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -434,7 +401,7 @@ std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
 #else
 
 Status array_consolidation_request_serialize(
-    const Config&, SerializationType, Buffer*) {
+    const Config&, SerializationType, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -446,7 +413,7 @@ Status array_consolidation_request_deserialize(
 }
 
 void serialize_consolidation_plan_request(
-    uint64_t, const Config&, SerializationType, Buffer&) {
+    uint64_t, const Config&, SerializationType, SerializationBuffer&) {
   throw ConsolidationSerializationDisabledException();
 }
 
@@ -456,7 +423,7 @@ uint64_t deserialize_consolidation_plan_request(
 }
 
 void serialize_consolidation_plan_response(
-    const ConsolidationPlan&, SerializationType, Buffer&) {
+    const ConsolidationPlan&, SerializationType, SerializationBuffer&) {
   throw ConsolidationSerializationDisabledException();
 }
 

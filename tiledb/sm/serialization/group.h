@@ -57,7 +57,9 @@ namespace serialization {
  * @return Status
  */
 Status group_serialize(
-    Group* group, SerializationType serialize_type, Buffer* serialized_buffer);
+    Group* group,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize a group via Cap'n proto
@@ -82,7 +84,9 @@ Status group_deserialize(
  * @return Status
  */
 Status group_details_serialize(
-    Group* group, SerializationType serialize_type, Buffer* serialized_buffer);
+    Group* group,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize a group details via Cap'n proto
@@ -109,7 +113,7 @@ Status group_details_deserialize(
 Status group_update_serialize(
     const Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize a group's update state via Cap'n proto
@@ -136,7 +140,7 @@ Status group_update_deserialize(
 Status group_create_serialize(
     const Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Serialize a group metadata for remote POSTING
@@ -152,7 +156,7 @@ Status group_create_serialize(
 Status group_metadata_serialize(
     Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     bool load);
 
 }  // namespace serialization

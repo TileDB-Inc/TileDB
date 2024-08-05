@@ -43,7 +43,6 @@
 using namespace tiledb::common;
 namespace tiledb::sm {
 
-class Buffer;
 class Config;
 enum class SerializationType : uint8_t;
 
@@ -54,7 +53,7 @@ void serialize_delete_fragments_timestamps_request(
     uint64_t start_timestamp,
     uint64_t end_timestamp,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
     SerializationType serialize_type, span<const char> serialized_buffer);
@@ -63,7 +62,7 @@ void serialize_delete_fragments_list_request(
     const Config& config,
     const std::vector<URI>& fragments,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 std::vector<URI> deserialize_delete_fragments_list_request(
     const URI& array_uri,

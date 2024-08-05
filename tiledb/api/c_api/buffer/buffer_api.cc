@@ -71,8 +71,10 @@ capi_return_t tiledb_buffer_get_data(
   ensure_output_pointer_is_valid(data);
   ensure_output_pointer_is_valid(num_bytes);
 
-  *data = buffer->buffer().data();
-  *num_bytes = buffer->buffer().size();
+  span<const char> span = buffer->buffer();
+
+  *data = const_cast<char*>(span.data());
+  *num_bytes = span.size();
 
   return TILEDB_OK;
 }
@@ -81,14 +83,9 @@ capi_return_t tiledb_buffer_set_data(
     tiledb_buffer_t* buffer, void* data, uint64_t size) {
   ensure_buffer_is_valid(buffer);
 
-  // Create a temporary Buffer object as a wrapper.
-  tiledb::sm::Buffer tmp_buffer(data, size);
-
-  // Swap with the given buffer.
-  buffer->buffer().swap(tmp_buffer);
-
-  // 'tmp_buffer' now destructs, freeing the old allocation (if any) of the
-  // given buffer.
+  buffer->buffer().assign(
+      tiledb::sm::SerializationBuffer::NonOwned,
+      span<char>(static_cast<char*>(data), size));
 
   return TILEDB_OK;
 }

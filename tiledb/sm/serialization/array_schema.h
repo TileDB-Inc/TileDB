@@ -155,7 +155,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
 Status array_schema_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side);
 
 shared_ptr<ArraySchema> array_schema_deserialize(
@@ -168,7 +168,7 @@ Status nonempty_domain_serialize(
     const void* nonempty_domain,
     bool is_empty,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 Status nonempty_domain_deserialize(
     const Array* array,
@@ -178,7 +178,9 @@ Status nonempty_domain_deserialize(
     bool* is_empty);
 
 Status nonempty_domain_serialize(
-    Array* array, SerializationType serialize_type, Buffer* serialized_buffer);
+    Array* array,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer);
 
 Status nonempty_domain_deserialize(
     Array* array,
@@ -189,7 +191,7 @@ Status max_buffer_sizes_serialize(
     Array* array,
     const void* subarray,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 Status max_buffer_sizes_deserialize(
     const ArraySchema& schema,
@@ -202,7 +204,7 @@ void serialize_load_array_schema_request(
     const Config& config,
     const LoadArraySchemaRequest& req,
     SerializationType serialization_type,
-    Buffer& data);
+    SerializationBuffer& data);
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType serialization_type, span<const char> data);
@@ -210,7 +212,7 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
 void serialize_load_array_schema_response(
     const ArraySchema& schema,
     SerializationType serialization_type,
-    Buffer& data);
+    SerializationBuffer& data);
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType serialization_type,

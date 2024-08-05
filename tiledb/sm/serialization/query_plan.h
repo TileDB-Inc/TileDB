@@ -60,7 +60,7 @@ void serialize_query_plan_request(
     const Config& config,
     Query& query,
     const SerializationType serialization_type,
-    Buffer& request);
+    SerializationBuffer& request);
 
 /**
  * Deserialize a Query Plan request to cap'n proto object
@@ -86,7 +86,7 @@ void deserialize_query_plan_request(
 void serialize_query_plan_response(
     const QueryPlan& query_plan,
     const SerializationType serialization_type,
-    Buffer& response);
+    SerializationBuffer& response);
 
 /**
  * Deserialize a Query Plan response from cap'n proto object
