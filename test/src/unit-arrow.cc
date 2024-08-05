@@ -437,7 +437,7 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
 #endif
 
   // do not use catch2 GENERATE here: it causes bad things to happen w/ python
-  uint64_t col_sizes[] = {0};  //,1,2,3,4,11,103};
+  uint64_t col_sizes[] = {0, 1, 2, 3, 4, 11, 103};
   for (auto sz : col_sizes) {
     test_for_column_size(sz);
   }
