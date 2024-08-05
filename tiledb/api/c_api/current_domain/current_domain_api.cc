@@ -107,6 +107,7 @@ capi_return_t tiledb_current_domain_get_type(
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
+using tiledb::api::api_entry_plain;
 using tiledb::api::api_entry_with_context;
 
 CAPI_INTERFACE(
@@ -117,12 +118,9 @@ CAPI_INTERFACE(
       ctx, current_domain);
 }
 
-CAPI_INTERFACE(
-    current_domain_free,
-    tiledb_ctx_t* ctx,
-    tiledb_current_domain_t** current_domain) {
-  return api_entry_context<tiledb::api::tiledb_current_domain_free>(
-      ctx, current_domain);
+CAPI_INTERFACE(current_domain_free, tiledb_current_domain_t** current_domain) {
+  return api_entry_plain<tiledb::api::tiledb_current_domain_free>(
+      current_domain);
 }
 
 CAPI_INTERFACE(

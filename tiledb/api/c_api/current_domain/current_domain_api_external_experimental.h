@@ -59,7 +59,7 @@ typedef struct tiledb_current_domain_handle_t tiledb_current_domain_t;
  * @code{.c}
  * tiledb_current_domain_t *current_domain;
  * tiledb_current_domain_create(ctx, &current_domain);
- * tiledb_current_domain_free(ctx, &current_domain);
+ * tiledb_current_domain_free(&current_domain);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -78,15 +78,13 @@ TILEDB_EXPORT capi_return_t tiledb_current_domain_create(
  * @code{.c}
  * tiledb_current_domain_t *current_domain;
  * tiledb_current_domain_create(ctx, &current_domain);
- * tiledb_current_domain_free(ctx, &current_domain);
+ * tiledb_current_domain_free(&current_domain);
  * @endcode
  *
- * @param ctx The TileDB context
  * @param current_domain The current domain to be freed
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_current_domain_free(
-    tiledb_ctx_t* ctx,
     tiledb_current_domain_t** current_domain) TILEDB_NOEXCEPT;
 
 /**

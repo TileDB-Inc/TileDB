@@ -176,9 +176,8 @@ CAPI_INTERFACE(
       ctx, domain, ndr);
 }
 
-CAPI_INTERFACE(
-    ndrectangle_free, tiledb_ctx_t* ctx, tiledb_ndrectangle_t** ndr) {
-  return api_entry_context<tiledb::api::tiledb_ndrectangle_free>(ctx, ndr);
+CAPI_INTERFACE(ndrectangle_free, tiledb_ndrectangle_t** ndr) {
+  return api_entry_plain<tiledb::api::tiledb_ndrectangle_free>(ndr);
 }
 
 CAPI_INTERFACE(
