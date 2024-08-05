@@ -13,15 +13,21 @@
  Evaluator<MemoryBudgetedCache<std::string, uint64_t, 2048>, decltype(f)> eval;
  eval(f, "key");
 */
+
+#ifndef TILEDB_COMMON_EVALUATOR_H
+#define TILEDB_COMMON_EVALUATOR_H
+
+#include <future>
+#include <list>
+
+namespace tiledb::common {
+
 template <class Key, class Value>
 class CachePolicyBase {
  public:
   using key_type = Key;
   using value_type = Value;
   using List = std::list<Key>;
-
-  using OndemandValue = std::shared_future<std::shared_ptr<Value>>;
-  using Cached_Entry = std::tuple<List::iterator, std::shared_ptr<Value>>;
 
   /**
    * Try to get an entry from the cache given a key or
@@ -31,15 +37,15 @@ class CachePolicyBase {
    * at the end of the internal LRU list.
    */
   template <class F>
-  shared_ptr<Value> operator()(F f, Key key) {
+  std::shared_ptr<Value> operator()(F f, Key key) {
     std::unique_lock<std::mutex> lock(mutex_);
 
     auto it = entries_.find(key);
     // Cache hit
     if (it != entries_.end()) {
-      lru_.erase(std::get<0>(it->second));
+      lru_.erase(it->second.lru_it);
       lru_.push_back(key);
-      return std::get<1>(it->second);
+      return it->second.value;
     }
 
     // Cache miss, but result is already in progress
@@ -68,11 +74,11 @@ class CachePolicyBase {
     lock.lock();
 
     // Enforce caching policy
-    shared_ptr<Value> evicted_value = enforce_policy(mem_usage);
+    std::shared_ptr<Value> evicted_value = enforce_policy(mem_usage);
 
     // Update the LRU list and the cache
     auto lru_it = lru_.emplace_back(key);
-    entries_.emplace(key, std::make_tuple(lru_it, value));
+    entries_.emplace(key, Cached_Entry(lru_it, value));
     promise.set_value(value);
 
     // Remove the inprogress entry
@@ -86,13 +92,7 @@ class CachePolicyBase {
     return value;
   }
 
- private:
-  /**
-   * Enforces the cache policy by evicting entries if necessary.
-   * This operation assumes the bookkeeping mutex is already locked.
-   */
-  virtual shared_ptr<Value> enforce_policy(size_t mem_usage) = 0;
-
+ protected:
   /**
    * Pops the head of the LRU list and removes the corresponding
    * entry from the cache.
@@ -101,14 +101,28 @@ class CachePolicyBase {
    * The evicted value is returned to the caller so that it can be
    * kept alive for as long as necessary.
    */
-  shared_ptr<Value> evict() {
+  std::shared_ptr<Value> evict() {
     auto key = lru_.front();
     auto it = entries_.find(key);
-    auto value = std::get<1>(it->second);
+    auto value = it->second.value;
     entries_.erase(it);
     lru_.pop_front();
     return value;
   }
+
+ private:
+  using OndemandValue = std::shared_future<std::shared_ptr<Value>>;
+  struct Cached_Entry {
+    typename List::iterator lru_it;
+    std::shared_ptr<Value> value;
+    Cached_Entry() = default;
+  };
+
+  /**
+   * Enforces the cache policy by evicting entries if necessary.
+   * This operation assumes the bookkeeping mutex is already locked.
+   */
+  virtual std::shared_ptr<Value> enforce_policy(size_t mem_usage) = 0;
 
   /**
    * Double linked list where the head is the least
@@ -135,17 +149,16 @@ class CachePolicyBase {
 };
 
 template <class Key, class Value>
-class NoCachePolicy : public CachePolicyBase<Key, Value> {
+class NoCachePolicy {
  public:
+  using key_type = Key;
+  using value_type = Value;
+
   NoCachePolicy() = default;
 
   template <class F>
-  virtual shared_ptr<Value> operator()(F f, Key key) override {
-    return f(key);
-  }
-
-  virtual shared_ptr<Value> enforce_policy(size_t mem_usage) override {
-    return nullptr;
+  std::shared_ptr<Value> operator()(F f, Key key) {
+    return std::get<1>(f(key));
   }
 };
 
@@ -156,10 +169,15 @@ class MaxEntriesCache : public CachePolicyBase<Key, Value> {
       : num_entries_(0) {
   }
 
-  virtual shared_ptr<Value> enforce_policy(
+  template <class F>
+  std::shared_ptr<Value> operator()(F f, Key key) {
+    return std::get<1>(f(key));
+  }
+
+  virtual std::shared_ptr<Value> enforce_policy(
       [[maybe_unused]] size_t mem_usage) override {
     if (num_entries_ == max_entries_) {
-      auto evicted_value = evict();
+      auto evicted_value = this->evict();
       --num_entries_;
       return evicted_value;
     }
@@ -169,19 +187,24 @@ class MaxEntriesCache : public CachePolicyBase<Key, Value> {
 
  private:
   size_t num_entries_;
-  static size_t max_entries_ = N;
+  static const size_t max_entries_ = N;
 };
 
-template <class Key, class Value, class N = 1024>
+template <class Key, class Value, size_t N = 1024>
 class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
  public:
   MemoryBudgetedCache()
       : memory_consumed_(0) {
   }
 
-  virtual shared_ptr<Value> enforce_policy(size_t mem_usage) override {
+  template <class F>
+  std::shared_ptr<Value> operator()(F f, Key key) {
+    return std::get<1>(f(key));
+  }
+
+  virtual std::shared_ptr<Value> enforce_policy(size_t mem_usage) override {
     if (memory_consumed_ + mem_usage > memory_budget_) {
-      auto evicted_value = evict();
+      auto evicted_value = this->evict();
       memory_consumed_ -= mem_usage;
       return evicted_value;
     }
@@ -192,7 +215,7 @@ class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
 
  private:
   /** The maximum amount of bytes managed by this cache */
-  static size_t memory_budget_ = N;
+  static const size_t memory_budget_ = N;
 
   /** The maximum amount of bytes currently consumed by this cache */
   size_t memory_consumed_;
@@ -201,8 +224,8 @@ class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
 template <class Policy, class F>
 class Evaluator {
  public:
-  using Key = Policy::key_type;
-  using Value = Policy::value_type;
+  using Key = typename Policy::key_type;
+  using Value = typename Policy::value_type;
 
   Evaluator()
       : caching_policy_{} {
@@ -220,3 +243,7 @@ class Evaluator {
  private:
   Policy caching_policy_;
 };
+
+}  // namespace tiledb::common
+
+#endif  // TILEDB_COMMON_EVALUATOR_H
