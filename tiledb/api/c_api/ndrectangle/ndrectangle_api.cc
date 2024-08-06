@@ -177,6 +177,36 @@ capi_return_t tiledb_ndrectangle_set_range(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_ndrectangle_get_dtype(
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    uint32_t idx,
+    tiledb_datatype_t* type) {
+  ensure_context_is_valid(ctx);
+  ensure_handle_is_valid(ndr);
+  ensure_output_pointer_is_valid(type);
+
+  *type = static_cast<tiledb_datatype_t>(ndr->ndrectangle()->range_dtype(idx));
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_ndrectangle_get_dtype_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    const char* name,
+    tiledb_datatype_t* type) {
+  ensure_context_is_valid(ctx);
+  ensure_handle_is_valid(ndr);
+  ensure_dim_name_is_valid(name);
+  ensure_output_pointer_is_valid(type);
+
+  *type = static_cast<tiledb_datatype_t>(
+      ndr->ndrectangle()->range_dtype_for_name(name));
+
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_plain;
@@ -235,4 +265,25 @@ CAPI_INTERFACE(
     tiledb_range_t* range) {
   return api_entry_with_context<tiledb::api::tiledb_ndrectangle_set_range>(
       ctx, ndr, idx, range);
+}
+
+CAPI_INTERFACE(
+    ndrectangle_get_dtype,
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    uint32_t idx,
+    tiledb_datatype_t* type) {
+  return api_entry_with_context<tiledb::api::tiledb_ndrectangle_get_dtype>(
+      ctx, ndr, idx, type);
+}
+
+CAPI_INTERFACE(
+    ndrectangle_get_dtype_from_name,
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    const char* name,
+    tiledb_datatype_t* type) {
+  return api_entry_with_context<
+      tiledb::api::tiledb_ndrectangle_get_dtype_from_name>(
+      ctx, ndr, name, type);
 }
