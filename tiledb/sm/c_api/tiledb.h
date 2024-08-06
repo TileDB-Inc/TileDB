@@ -55,6 +55,7 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/array/array_api_external.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_external.h"
 #include "tiledb/api/c_api/attribute/attribute_api_external.h"
 #include "tiledb/api/c_api/buffer/buffer_api_external.h"

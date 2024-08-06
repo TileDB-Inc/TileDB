@@ -466,30 +466,6 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C API: tiledb_array_schema_load argument validation",
-    "[capi][array_schema][load]") {
-  capi_return_t rc;
-  ordinary_context ctx{};
-  const char* array_uri = "array_uri";
-  tiledb_array_schema_handle_t* schema{};
-  /*
-   * No "success" section here; too much overhead to set up.
-   */
-  SECTION("null context") {
-    rc = tiledb_array_schema_load(nullptr, array_uri, &schema);
-    REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
-  }
-  SECTION("null array_uri") {
-    rc = tiledb_array_schema_load(ctx.context, nullptr, &schema);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("null schema") {
-    rc = tiledb_array_schema_load(ctx.context, array_uri, nullptr);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-}
-
-TEST_CASE(
     "C API: tiledb_array_schema_get_array_type argument validation",
     "[capi][array_schema]") {
   capi_return_t rc;
