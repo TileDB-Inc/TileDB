@@ -2503,7 +2503,8 @@ TEST_CASE_METHOD(
       tiledb_array_schema_get_current_domain(ctx_, schema, &crd) == TILEDB_OK);
 
   uint32_t is_empty = 0;
-  REQUIRE(tiledb_current_domain_get_is_empty(crd, &is_empty) == TILEDB_OK);
+  REQUIRE(
+      tiledb_current_domain_get_is_empty(ctx_, crd, &is_empty) == TILEDB_OK);
   CHECK(is_empty == 1);
 
   REQUIRE(tiledb_current_domain_free(&crd) == TILEDB_OK);
@@ -2537,7 +2538,7 @@ TEST_CASE_METHOD(
 
   tiledb_ndrectangle_t* ndr = nullptr;
   REQUIRE(tiledb_ndrectangle_alloc(ctx_, domain, &ndr) == TILEDB_OK);
-  REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_set_ndrectangle(ctx_, crd, ndr) == TILEDB_OK);
 
   REQUIRE(
       tiledb_array_schema_set_current_domain(ctx_, schema, crd) == TILEDB_OK);
@@ -2604,7 +2605,7 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_array_schema_get_current_domain(ctx_, schema, &crd) == TILEDB_OK);
 
-  REQUIRE(tiledb_current_domain_get_ndrectangle(crd, &ndr) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_get_ndrectangle(ctx_, crd, &ndr) == TILEDB_OK);
   tiledb_range_t outrange;
   REQUIRE(
       tiledb_ndrectangle_get_range_from_name(ctx_, ndr, "d1", &outrange) ==
@@ -2672,7 +2673,7 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_ndrectangle_set_range_for_name(ctx_, ndr, "d1", &range) ==
       TILEDB_OK);
-  REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_set_ndrectangle(ctx_, crd, ndr) == TILEDB_OK);
   REQUIRE(
       tiledb_array_schema_set_current_domain(ctx_, schema, crd) == TILEDB_OK);
 
@@ -2712,7 +2713,7 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_ndrectangle_set_range_for_name(ctx_, ndr, "d1", &range) ==
       TILEDB_OK);
-  REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_set_ndrectangle(ctx_, crd, ndr) == TILEDB_OK);
 
   REQUIRE(
       tiledb_array_schema_evolution_expand_current_domain(ctx_, evo, crd) ==
@@ -2752,7 +2753,7 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_array_schema_get_current_domain(ctx_, schema, &crd) == TILEDB_OK);
 
-  REQUIRE(tiledb_current_domain_get_ndrectangle(crd, &ndr) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_get_ndrectangle(ctx_, crd, &ndr) == TILEDB_OK);
   tiledb_range_t outrange;
   REQUIRE(
       tiledb_ndrectangle_get_range_from_name(ctx_, ndr, "d1", &outrange) ==

@@ -100,17 +100,34 @@ TEST_CASE_METHOD(
   crd = nullptr;
   CHECK(tiledb_current_domain_create(ctx, &crd) == TILEDB_OK);
 
-  CHECK(tiledb_current_domain_set_ndrectangle(nullptr, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_current_domain_set_ndrectangle(crd, nullptr) == TILEDB_ERR);
+  CHECK(
+      tiledb_current_domain_set_ndrectangle(nullptr, nullptr, nullptr) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(
+      tiledb_current_domain_set_ndrectangle(ctx, nullptr, nullptr) ==
+      TILEDB_ERR);
+  CHECK(tiledb_current_domain_set_ndrectangle(ctx, crd, nullptr) == TILEDB_ERR);
 
-  CHECK(tiledb_current_domain_get_ndrectangle(nullptr, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_current_domain_get_ndrectangle(crd, nullptr) == TILEDB_ERR);
+  CHECK(
+      tiledb_current_domain_get_ndrectangle(nullptr, nullptr, nullptr) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(
+      tiledb_current_domain_get_ndrectangle(ctx, nullptr, nullptr) ==
+      TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_ndrectangle(ctx, crd, nullptr) == TILEDB_ERR);
 
-  CHECK(tiledb_current_domain_get_is_empty(nullptr, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_current_domain_get_is_empty(crd, nullptr) == TILEDB_ERR);
+  CHECK(
+      tiledb_current_domain_get_is_empty(nullptr, nullptr, nullptr) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(
+      tiledb_current_domain_get_is_empty(ctx, nullptr, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_is_empty(ctx, crd, nullptr) == TILEDB_ERR);
 
-  CHECK(tiledb_current_domain_get_type(nullptr, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_current_domain_get_type(crd, nullptr) == TILEDB_ERR);
+  CHECK(
+      tiledb_current_domain_get_type(nullptr, nullptr, nullptr) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(tiledb_current_domain_get_type(ctx, nullptr, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_type(ctx, crd, nullptr) == TILEDB_ERR);
 
   tiledb_current_domain_free(&crd);
 }
@@ -126,22 +143,23 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_ndrectangle_alloc(ctx, domain_, &ndr) == TILEDB_OK);
 
   uint32_t is_empty = 0;
-  REQUIRE(tiledb_current_domain_get_is_empty(crd, &is_empty) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_get_is_empty(ctx, crd, &is_empty) == TILEDB_OK);
   CHECK(is_empty == 1);
 
   tiledb_current_domain_type_t type;
-  CHECK(tiledb_current_domain_get_type(crd, &type) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_type(ctx, crd, &type) == TILEDB_ERR);
 
-  REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_set_ndrectangle(ctx, crd, ndr) == TILEDB_OK);
 
-  REQUIRE(tiledb_current_domain_get_is_empty(crd, &is_empty) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_get_is_empty(ctx, crd, &is_empty) == TILEDB_OK);
   CHECK(is_empty == 0);
 
-  REQUIRE(tiledb_current_domain_get_type(crd, &type) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_get_type(ctx, crd, &type) == TILEDB_OK);
   CHECK(type == TILEDB_NDRECTANGLE);
 
   tiledb_ndrectangle_t* out_ndr = nullptr;
-  REQUIRE(tiledb_current_domain_get_ndrectangle(crd, &out_ndr) == TILEDB_OK);
+  REQUIRE(
+      tiledb_current_domain_get_ndrectangle(ctx, crd, &out_ndr) == TILEDB_OK);
   CHECK(out_ndr != nullptr);
 
   // Verify that they point to the same tiledb::sm::NDRectangle instance.
