@@ -67,11 +67,10 @@ capi_return_t tiledb_buffer_list_get_buffer(
   ensure_output_pointer_is_valid(buffer);
 
   // Get the underlying buffer
-  const tiledb::sm::Buffer* b;
-  throw_if_not_ok(buffer_list->buffer_list().get_buffer(buffer_idx, &b));
+  span<const char> b = buffer_list->buffer_list().get_buffer(buffer_idx);
 
   // Create a non-owning wrapper of the underlying buffer
-  *buffer = tiledb_buffer_handle_t::make_handle(b->data(), b->size());
+  *buffer = tiledb_buffer_handle_t::make_handle(b.data(), b.size());
 
   return TILEDB_OK;
 }
@@ -89,29 +88,16 @@ capi_return_t tiledb_buffer_list_flatten(
   ensure_buffer_list_is_valid(buffer_list);
   ensure_output_pointer_is_valid(buffer);
 
-  // Create a buffer instance
-  auto buf = tiledb_buffer_handle_t::make_handle();
-
-  // Resize the dest buffer
+  // Create a serialization buffer
   const auto nbytes = buffer_list->buffer_list().total_size();
-  auto st = buf->buffer().realloc(nbytes);
-  if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
+  tiledb::sm::SerializationBuffer buf(buffer_list->buffer_list().total_size());
 
   // Read all into the dest buffer
   buffer_list->buffer_list().reset_offset();
-  st = buffer_list->buffer_list().read(buf->buffer().data(), nbytes);
-  if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
+  throw_if_not_ok(
+      buffer_list->buffer_list().read(buf.owned_mutable_span().data(), nbytes));
 
-  // Set the result size
-  buf->buffer().set_size(nbytes);
-
-  *buffer = buf;
+  *buffer = tiledb_buffer_t::make_handle(std::move(buf));
 
   return TILEDB_OK;
 }

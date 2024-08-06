@@ -54,12 +54,17 @@ struct tiledb_buffer_handle_t
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
 
-  explicit tiledb_buffer_handle_t(void* data, uint64_t size)
+  explicit tiledb_buffer_handle_t(tiledb::sm::SerializationBuffer&& buffer)
+      : buffer_(std::move(buffer))
+      , datatype_(tiledb::sm::Datatype::UINT8) {
+  }
+
+  explicit tiledb_buffer_handle_t(const void* data, uint64_t size)
       : buffer_()
       , datatype_(tiledb::sm::Datatype::UINT8) {
     buffer_.assign(
         tiledb::sm::SerializationBuffer::NonOwned,
-        span<char>(static_cast<char*>(data), size));
+        span(static_cast<const char*>(data), size));
   }
 
   inline void set_datatype(tiledb::sm::Datatype datatype) {

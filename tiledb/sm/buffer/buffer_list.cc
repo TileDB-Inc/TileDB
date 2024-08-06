@@ -47,20 +47,18 @@ BufferList::BufferList()
     , offset_(0) {
 }
 
-Status BufferList::add_buffer(Buffer&& buffer) {
+Status BufferList::add_buffer(SerializationBuffer&& buffer) {
   buffers_.emplace_back(std::move(buffer));
   return Status::Ok();
 }
 
-Status BufferList::get_buffer(uint64_t index, const Buffer** buffer) const {
+const SerializationBuffer& BufferList::get_buffer(uint64_t index) const {
   if (index >= buffers_.size())
-    return LOG_STATUS(Status_BufferError(
+    throw BufferStatusException(
         "Cannot get buffer " + std::to_string(index) +
-        " from buffer list; index out of bounds."));
+        " from buffer list; index out of bounds.");
 
-  *buffer = &buffers_[index];
-
-  return Status::Ok();
+  return buffers_[index];
 }
 
 uint64_t BufferList::num_buffers() const {
@@ -92,8 +90,8 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
   for (size_t idx = current_buffer_index_;
        idx < buffers_.size() && bytes_left > 0;
        ++idx) {
-    Buffer& src = buffers_[idx];
-    src.set_offset(current_relative_offset_);
+    span<const char> src = buffers_[idx];
+    src = src.subspan(current_relative_offset_);
 
     // Read from buffer
     const uint64_t bytes_in_src = src.size() - current_relative_offset_;
@@ -101,7 +99,7 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
     // If the destination pointer is not null, then read into it
     // if it is null then we are just seeking
     if (dest_ptr != nullptr)
-      RETURN_NOT_OK(src.read(dest_ptr + dest_offset, bytes_from_src));
+      memcpy(dest_ptr + dest_offset, src.data(), bytes_from_src);
     bytes_left -= bytes_from_src;
     dest_offset += bytes_from_src;
 

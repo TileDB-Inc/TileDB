@@ -43,6 +43,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class BufferStatusException : public StatusException {
+ public:
+  explicit BufferStatusException(const std::string& msg)
+      : StatusException("Buffer", msg) {
+  }
+};
+
 class ConstBuffer;
 
 /* ****************************** */
@@ -477,7 +484,7 @@ class SerializationBuffer {
    *
    * @param alloc Optional allocator for owned buffers.
    */
-  SerializationBuffer(allocator_type alloc = {})
+  SerializationBuffer(const allocator_type& alloc = {})
       : buffer_owner_(alloc)
       , buffer_(buffer_owner_) {
   }
@@ -493,15 +500,45 @@ class SerializationBuffer {
   SerializationBuffer& operator=(SerializationBuffer&&) = default;
 
   /** Allocator-aware copy constructor. */
-  SerializationBuffer(const SerializationBuffer& other, allocator_type alloc)
+  SerializationBuffer(
+      const SerializationBuffer& other, const allocator_type& alloc)
       : buffer_owner_(other.buffer_owner_, alloc)
       , buffer_(buffer_owner_) {
   }
 
   /** Allocator-aware move constructor. */
-  SerializationBuffer(SerializationBuffer&& other, allocator_type alloc)
+  SerializationBuffer(SerializationBuffer&& other, const allocator_type& alloc)
       : buffer_owner_(std::move(other.buffer_owner_), alloc)
       , buffer_(buffer_owner_) {
+  }
+
+  /**
+   * Constructor for an owned buffer of a given size.
+   *
+   * The data is intended to be modified later with the owned_mutable_span()
+   * function.
+   *
+   * @param size The size of the buffer.
+   * @param alloc Optional allocator for the buffer.
+   */
+  SerializationBuffer(size_t size, const allocator_type& alloc = {})
+      : buffer_owner_(size, alloc)
+      , buffer_(buffer_owner_) {
+  }
+
+  /**
+   * Shorthand constructor for a non-owned buffer to a given pointer-size pair.
+   *
+   * @param data The data of the buffer.
+   * @param size The size of the buffer.
+   */
+  SerializationBuffer(
+      NonOwnedMarker,
+      const void* data,
+      size_t size,
+      const allocator_type& alloc = {})
+      : buffer_owner_(alloc)
+      , buffer_(static_cast<const char*>(data), size) {
   }
 
   /**
@@ -548,6 +585,36 @@ class SerializationBuffer {
     buffer_ = buffer_owner_;
   }
 
+  /**
+   * Gets the number of bytes in the buffer.
+   */
+  inline size_t size() const {
+    return buffer_.size();
+  }
+
+  /**
+   * Returns a mutable span to the buffer's whole data.
+   *
+   * This function must be called only on owned buffers, otherwise it will
+   * throw.
+   *
+   * The span returned by this function must not be used after one of the assign
+   * methods is called.
+   *
+   * @return A mutable span to the buffer's whole data.
+   */
+  inline span<char> owned_mutable_span() & {
+    if (buffer_owner_.empty())
+      throw BufferStatusException(
+          "Cannot get a mutable span of a non-owned buffer.");
+    return buffer_owner_;
+  }
+
+  /**
+   * Implicit conversion operator to span.
+   *
+   * @return A span to the buffer's whole data.
+   */
   inline operator span<const char>() const& {
     return buffer_;
   }

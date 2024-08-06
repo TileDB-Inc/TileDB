@@ -42,13 +42,6 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-class BufferStatusException : public StatusException {
- public:
-  explicit BufferStatusException(const std::string& msg)
-      : StatusException("Buffer", msg) {
-  }
-};
-
 /* ****************************** */
 /*          BufferBase            */
 /* ****************************** */
