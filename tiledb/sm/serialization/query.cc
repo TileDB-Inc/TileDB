@@ -2362,26 +2362,18 @@ Status query_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(query_builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        Buffer header;
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(header.realloc(json_len + 1));
-        RETURN_NOT_OK(header.write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(header.write(&nul, 1));
+        SerializationBuffer header;
+        header.assign_null_terminated(capnp_json);
         RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
         // TODO: At this point the buffer data should also be serialized.
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
 
         // Write the serialized query
-        Buffer header;
-        RETURN_NOT_OK(header.realloc(message_chars.size()));
-        RETURN_NOT_OK(
-            header.write(message_chars.begin(), message_chars.size()));
+        SerializationBuffer header;
+        header.assign(protomessage.asChars());
         RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
 
         // Concatenate buffers to end of message
@@ -2395,42 +2387,58 @@ Status query_serialize(
             if (buffer.buffer_var_size_ != nullptr &&
                 buffer.buffer_var_ != nullptr) {
               // Variable size buffers.
-              Buffer data;
-              Buffer var(buffer.buffer_var_, *buffer.buffer_var_size_);
+              SerializationBuffer data;
+              SerializationBuffer var(
+                  SerializationBuffer::NonOwned,
+                  buffer.buffer_var_,
+                  *buffer.buffer_var_size_);
 
               // If we are not appending offsets we can use non-owning
               // buffers.
               if (query_buffer_storage.has_value()) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                Buffer prepend_data(
-                    buffer_cache.buffer_.data(), buffer_cache.buffer_.size());
-                Buffer prepend_var_data(
+                SerializationBuffer prepend_data(
+                    SerializationBuffer::NonOwned,
+                    buffer_cache.buffer_.data(),
+                    buffer_cache.buffer_.size());
+                SerializationBuffer prepend_var_data(
+                    SerializationBuffer::NonOwned,
                     buffer_cache.buffer_var_.data(),
                     buffer_cache.buffer_var_.size());
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend_data)));
 
                 if (buffer_cache.buffer_.size() > 0) {
+                  data.assign(span(
+                      reinterpret_cast<const char*>(buffer.buffer_),
+                      *buffer.buffer_size_));
                   // Ensure ascending order for appended user offsets.
                   // Copy user offsets so we don't modify buffer in client
                   // code.
-                  throw_if_not_ok(
-                      data.write(buffer.buffer_, *buffer.buffer_size_));
+                  auto data_mut = data.owned_mutable_span();
                   uint64_t var_buffer_size = buffer_cache.buffer_var_.size();
                   for (uint64_t i = 0; i < data.size();
                        i += constants::cell_var_offset_size) {
-                    *static_cast<uint64_t*>(data.data(i)) += var_buffer_size;
+                    *reinterpret_cast<uint64_t*>(data_mut.data() + i) +=
+                        var_buffer_size;
                   }
+
                 } else {
-                  data = Buffer(buffer.buffer_, *buffer.buffer_size_);
+                  data = SerializationBuffer(
+                      SerializationBuffer::NonOwned,
+                      buffer.buffer_,
+                      *buffer.buffer_size_);
                 }
 
                 RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend_var_data)));
               } else {
-                data = Buffer(buffer.buffer_, *buffer.buffer_size_);
+                data = SerializationBuffer(
+                    SerializationBuffer::NonOwned,
+                    buffer.buffer_,
+                    *buffer.buffer_size_);
                 RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
               }
 
@@ -2438,13 +2446,18 @@ Status query_serialize(
             } else if (
                 buffer.buffer_size_ != nullptr && buffer.buffer_ != nullptr) {
               // Fixed size buffers.
-              Buffer data(buffer.buffer_, *buffer.buffer_size_);
+              SerializationBuffer data(
+                  SerializationBuffer::NonOwned,
+                  buffer.buffer_,
+                  *buffer.buffer_size_);
 
               if (query_buffer_storage != nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                Buffer prepend(
-                    buffer_cache.buffer_.data(), buffer_cache.buffer_.size());
+                SerializationBuffer prepend(
+                    SerializationBuffer::NonOwned,
+                    buffer_cache.buffer_.data(),
+                    buffer_cache.buffer_.size());
                 RETURN_NOT_OK(
                     serialized_buffer->add_buffer(std::move(prepend)));
               }
@@ -2457,14 +2470,16 @@ Status query_serialize(
 
             if (buffer.validity_vector_.buffer_size() != nullptr) {
               // Validity buffers.
-              Buffer data(
+              SerializationBuffer data(
+                  SerializationBuffer::NonOwned,
                   buffer.validity_vector_.buffer(),
                   *buffer.validity_vector_.buffer_size());
 
               if (query_buffer_storage != nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                Buffer prepend(
+                SerializationBuffer prepend(
+                    SerializationBuffer::NonOwned,
                     buffer_cache.buffer_validity_.data(),
                     buffer_cache.buffer_validity_.size());
                 RETURN_NOT_OK(
@@ -2590,8 +2605,7 @@ Status query_deserialize(
       query_serialize(query, serialize_type, clientside, &original_bufferlist));
 
   // The first buffer is always the serialized Query object.
-  const tiledb::sm::Buffer* original_buffer;
-  RETURN_NOT_OK(original_bufferlist.get_buffer(0, &original_buffer));
+  auto& original_buffer = original_bufferlist.get_buffer(0);
 
   // Similarly, we must create a copy of 'copy_state'.
   tdb_unique_ptr<CopyState> original_copy_state = nullptr;
@@ -2622,7 +2636,7 @@ Status query_deserialize(
     }
 
     const Status st2 = do_query_deserialize(
-        *original_buffer,
+        original_buffer,
         serialize_type,
         SerializationContext::BACKUP,
         copy_state,
