@@ -41,12 +41,12 @@
 using namespace tiledb::sm;
 
 TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
-  Buffer buff1, buff2;
+  SerializationBuffer buff1, buff2;
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
-  REQUIRE(buff1.write(data1, sizeof(data1)).ok());
-  REQUIRE(buff2.write(data2, sizeof(data2)).ok());
-  REQUIRE(buff1.data() != nullptr);
-  REQUIRE(buff2.data() != nullptr);
+  buff1.assign(span(data1, sizeof(data1)));
+  buff2.assign(span(data2, sizeof(data2)));
+  REQUIRE(static_cast<span<const char>>(buff1).data() != nullptr);
+  REQUIRE(static_cast<span<const char>>(buff2).data() != nullptr);
 
   BufferList buffer_list;
   REQUIRE(buffer_list.num_buffers() == 0);
@@ -56,17 +56,16 @@ TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
   REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
   REQUIRE(buffer_list.num_buffers() == 2);
   REQUIRE(buffer_list.total_size() == sizeof(data1) + sizeof(data2));
-  REQUIRE(buff1.data() == nullptr);
-  REQUIRE(buff2.data() == nullptr);
+  REQUIRE(static_cast<span<const char>>(buff1).data() == nullptr);
+  REQUIRE(static_cast<span<const char>>(buff2).data() == nullptr);
 
-  const Buffer *b1 = nullptr, *b2 = nullptr;
-  REQUIRE(buffer_list.get_buffer(0, &b1).ok());
-  REQUIRE(buffer_list.get_buffer(1, &b2).ok());
-  REQUIRE(!buffer_list.get_buffer(2, nullptr).ok());
-  REQUIRE(b1->size() == sizeof(data1));
-  REQUIRE(b2->size() == sizeof(data2));
-  REQUIRE(!std::memcmp(b1->data(), &data1[0], sizeof(data1)));
-  REQUIRE(!std::memcmp(b2->data(), &data2[0], sizeof(data2)));
+  span<const char> b1 = buffer_list.get_buffer(0);
+  span<const char> b2 = buffer_list.get_buffer(1);
+  REQUIRE_THROWS(buffer_list.get_buffer(2));
+  REQUIRE(b1.size() == sizeof(data1));
+  REQUIRE(b2.size() == sizeof(data2));
+  REQUIRE(!std::memcmp(b1.data(), &data1[0], sizeof(data1)));
+  REQUIRE(!std::memcmp(b2.data(), &data2[0], sizeof(data2)));
 }
 
 TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
@@ -77,10 +76,10 @@ TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
   REQUIRE(buffer_list.read(data, 0).ok());
   REQUIRE(buffer_list.read(nullptr, 0).ok());
 
-  Buffer buff1, buff2;
+  SerializationBuffer buff1, buff2;
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
-  REQUIRE(buff1.write(data1, sizeof(data1)).ok());
-  REQUIRE(buff2.write(data2, sizeof(data2)).ok());
+  buff1.assign(span(data1, sizeof(data1)));
+  buff2.assign(span(data2, sizeof(data2)));
   REQUIRE(buffer_list.add_buffer(std::move(buff1)).ok());
   REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
 

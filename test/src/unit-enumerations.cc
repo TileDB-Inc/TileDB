@@ -137,7 +137,7 @@ struct EnumerationFx {
   template <typename T>
   bool vec_cmp(std::vector<T> v1, std::vector<T> v2);
 
-  void flatten_buffer_list(BufferList& blist, Buffer& buf);
+  void flatten_buffer_list(BufferList& blist, SerializationBuffer& buf);
 
   void rm_array();
 
@@ -2922,17 +2922,17 @@ shared_ptr<ArraySchema> EnumerationFx::ser_des_array_schema(
     shared_ptr<const ArraySchema> schema,
     bool client_side,
     SerializationType stype) {
-  Buffer buf;
+  SerializationBuffer buf;
   throw_if_not_ok(serialization::array_schema_serialize(
-      *(schema.get()), stype, &buf, client_side));
+      *(schema.get()), stype, buf, client_side));
   return serialization::array_schema_deserialize(stype, buf, memory_tracker_);
 }
 
 shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
     ArraySchemaEvolution* ase, bool client_side, SerializationType stype) {
-  Buffer buf;
+  SerializationBuffer buf;
   throw_if_not_ok(serialization::array_schema_evolution_serialize(
-      ase, stype, &buf, client_side));
+      ase, stype, buf, client_side));
 
   ArraySchemaEvolution* ret;
   throw_if_not_ok(serialization::array_schema_evolution_deserialize(
@@ -2943,7 +2943,7 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 
 void EnumerationFx::ser_des_query(
     Query* q_in, Query* q_out, bool client_side, SerializationType stype) {
-  Buffer buf;
+  SerializationBuffer buf;
   BufferList blist;
 
   throw_if_not_ok(
@@ -2966,8 +2966,8 @@ void EnumerationFx::ser_des_array(
     Array* out,
     bool client_side,
     SerializationType stype) {
-  Buffer buf;
-  throw_if_not_ok(serialization::array_serialize(in, stype, &buf, client_side));
+  SerializationBuffer buf;
+  throw_if_not_ok(serialization::array_serialize(in, stype, buf, client_side));
   serialization::array_deserialize(
       out, stype, buf, ctx.resources(), memory_tracker_);
 }
@@ -3013,13 +3013,13 @@ bool EnumerationFx::vec_cmp(std::vector<T> v1, std::vector<T> v2) {
   return true;
 }
 
-void EnumerationFx::flatten_buffer_list(BufferList& blist, Buffer& buf) {
+void EnumerationFx::flatten_buffer_list(
+    BufferList& blist, SerializationBuffer& buf) {
   const auto nbytes = blist.total_size();
-  throw_if_not_ok(buf.realloc(nbytes));
+  buf = SerializationBuffer(nbytes, buf.get_allocator());
 
   blist.reset_offset();
-  throw_if_not_ok(blist.read(buf.data(), nbytes));
-  buf.set_size(nbytes);
+  throw_if_not_ok(blist.read(buf.owned_mutable_span().data(), nbytes));
 }
 
 void EnumerationFx::rm_array() {
