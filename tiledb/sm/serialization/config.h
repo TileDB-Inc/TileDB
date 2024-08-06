@@ -43,7 +43,7 @@ namespace tiledb {
 namespace sm {
 
 class Config;
-class Buffer;
+class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {

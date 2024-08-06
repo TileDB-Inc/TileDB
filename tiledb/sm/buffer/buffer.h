@@ -471,7 +471,7 @@ class SerializationBuffer {
   class NonOwnedMarker {};
 
   /** Singleton instance of NonOwnedMarker. */
-  static constexpr NonOwnedMarker NonOwned;
+  static constexpr NonOwnedMarker NonOwned{};
 
   /**
    * The type of the allocator used by the buffer. This is required to make the

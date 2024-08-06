@@ -50,7 +50,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class Array;
-class Buffer;
+class SerializationBuffer;
 class BufferList;
 class ContextResources;
 class Query;

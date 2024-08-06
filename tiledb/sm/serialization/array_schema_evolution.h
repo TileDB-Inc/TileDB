@@ -43,11 +43,11 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class Buffer;
 class ArraySchema;
 class ArraySchemaEvolution;
 class Dimension;
 class MemoryTracker;
+class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {

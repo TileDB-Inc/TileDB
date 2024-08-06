@@ -45,8 +45,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Buffer;
 class Config;
+class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
