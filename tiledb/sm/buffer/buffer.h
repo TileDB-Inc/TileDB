@@ -584,6 +584,9 @@ class SerializationBuffer {
    */
   template <class Iter>
   inline void assign(const Iter& iter) {
+    // Clear vector and deallocate its buffer.
+    buffer_owner_.clear();
+    buffer_owner_.shrink_to_fit();
     buffer_owner_.assign(std::cbegin(iter), std::cend(iter));
     buffer_ = buffer_owner_;
   }
@@ -606,6 +609,10 @@ class SerializationBuffer {
    */
   template <class Iter>
   inline void assign_null_terminated(const Iter& iter) {
+    // Clear vector and deallocate its buffer.
+    buffer_owner_.clear();
+    buffer_owner_.shrink_to_fit();
+    // Reserve enough space for the data and the null terminator.
     buffer_owner_.reserve(
         std::distance(std::cbegin(iter), std::cend(iter)) + 1);
     buffer_owner_.assign(std::cbegin(iter), std::cend(iter));
