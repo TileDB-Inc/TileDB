@@ -2362,9 +2362,8 @@ Status query_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(query_builder);
-        SerializationBuffer header;
+        SerializationBuffer& header = serialized_buffer->emplace_buffer();
         header.assign_null_terminated(capnp_json);
-        RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
         // TODO: At this point the buffer data should also be serialized.
         break;
       }
@@ -2372,9 +2371,8 @@ Status query_serialize(
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
 
         // Write the serialized query
-        SerializationBuffer header;
+        SerializationBuffer& header = serialized_buffer->emplace_buffer();
         header.assign(protomessage.asChars());
-        RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
 
         // Concatenate buffers to end of message
         if (serialize_buffers) {
@@ -2387,29 +2385,21 @@ Status query_serialize(
             if (buffer.buffer_var_size_ != nullptr &&
                 buffer.buffer_var_ != nullptr) {
               // Variable size buffers.
-              SerializationBuffer data;
-              SerializationBuffer var(
-                  SerializationBuffer::NonOwned,
-                  buffer.buffer_var_,
-                  *buffer.buffer_var_size_);
 
               // If we are not appending offsets we can use non-owning
               // buffers.
               if (query_buffer_storage.has_value()) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                SerializationBuffer prepend_data(
+
+                serialized_buffer->emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer_cache.buffer_.data(),
                     buffer_cache.buffer_.size());
-                SerializationBuffer prepend_var_data(
-                    SerializationBuffer::NonOwned,
-                    buffer_cache.buffer_var_.data(),
-                    buffer_cache.buffer_var_.size());
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(prepend_data)));
 
                 if (buffer_cache.buffer_.size() > 0) {
+                  SerializationBuffer& data =
+                      serialized_buffer->emplace_buffer();
                   data.assign(span(
                       reinterpret_cast<const char*>(buffer.buffer_),
                       *buffer.buffer_size_));
@@ -2425,44 +2415,43 @@ Status query_serialize(
                   }
 
                 } else {
-                  data = SerializationBuffer(
+                  serialized_buffer->emplace_buffer(
                       SerializationBuffer::NonOwned,
-                      buffer.buffer_,
+                      reinterpret_cast<const char*>(buffer.buffer_),
                       *buffer.buffer_size_);
                 }
 
-                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(prepend_var_data)));
+                serialized_buffer->emplace_buffer(
+                    SerializationBuffer::NonOwned,
+                    buffer_cache.buffer_var_.data(),
+                    buffer_cache.buffer_var_.size());
               } else {
-                data = SerializationBuffer(
+                serialized_buffer->emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer.buffer_,
                     *buffer.buffer_size_);
-                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
               }
 
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(var)));
+              serialized_buffer->emplace_buffer(
+                  SerializationBuffer::NonOwned,
+                  buffer.buffer_var_,
+                  *buffer.buffer_var_size_);
             } else if (
                 buffer.buffer_size_ != nullptr && buffer.buffer_ != nullptr) {
               // Fixed size buffers.
-              SerializationBuffer data(
-                  SerializationBuffer::NonOwned,
-                  buffer.buffer_,
-                  *buffer.buffer_size_);
-
               if (query_buffer_storage != nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                SerializationBuffer prepend(
+                serialized_buffer->emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer_cache.buffer_.data(),
                     buffer_cache.buffer_.size());
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(prepend)));
               }
 
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
+              serialized_buffer->emplace_buffer(
+                  SerializationBuffer::NonOwned,
+                  buffer.buffer_,
+                  *buffer.buffer_size_);
             } else {
               throw StatusException(Status_SerializationError(
                   "Unable to serialize invalid query buffers."));
@@ -2470,23 +2459,19 @@ Status query_serialize(
 
             if (buffer.validity_vector_.buffer_size() != nullptr) {
               // Validity buffers.
-              SerializationBuffer data(
-                  SerializationBuffer::NonOwned,
-                  buffer.validity_vector_.buffer(),
-                  *buffer.validity_vector_.buffer_size());
-
               if (query_buffer_storage != nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                SerializationBuffer prepend(
+                serialized_buffer->emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer_cache.buffer_validity_.data(),
                     buffer_cache.buffer_validity_.size());
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(prepend)));
               }
 
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
+              serialized_buffer->emplace_buffer(
+                  SerializationBuffer::NonOwned,
+                  buffer.validity_vector_.buffer(),
+                  *buffer.validity_vector_.buffer_size());
             }
           }
         }

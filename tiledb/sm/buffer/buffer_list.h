@@ -67,6 +67,16 @@ class BufferList {
   Status add_buffer(SerializationBuffer&& buffer);
 
   /**
+   * Constructs in place and adds a new SerializationBuffer to the list.
+   *
+   * @param args Arguments to pass to the SerializationBuffer constructor
+   * @return Reference to the new buffer instance
+   */
+  SerializationBuffer& emplace_buffer(auto&&... args) {
+    return buffers_.emplace_back(std::forward<decltype(args)>(args)...);
+  }
+
+  /**
    * Gets the SerializationBuffer in the list at the given index.
    *
    * @param index Index of buffer to get
