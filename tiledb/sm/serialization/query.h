@@ -159,7 +159,7 @@ Status query_serialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    BufferList* serialized_buffer);
+    BufferList& serialized_buffer);
 
 /**
  * Deserialize a query. This takes a buffer containing serialized query

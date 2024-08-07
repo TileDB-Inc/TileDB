@@ -791,7 +791,7 @@ Status RestClientRemote::post_query_submit(
   // Serialize query to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
-      query, serialization_type_, true, &serialized));
+      query, serialization_type_, true, serialized));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1021,7 +1021,7 @@ Status RestClientRemote::finalize_query_to_rest(const URI& uri, Query* query) {
   // Serialize data to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
-      query, serialization_type_, true, &serialized));
+      query, serialization_type_, true, serialized));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1076,7 +1076,7 @@ Status RestClientRemote::submit_and_finalize_query_to_rest(
   // Serialize query to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
-      query, serialization_type_, true, &serialized));
+      query, serialization_type_, true, serialized));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1204,7 +1204,7 @@ Status RestClientRemote::get_query_est_result_sizes(
   // Serialize query to send
   BufferList serialized;
   RETURN_NOT_OK(serialization::query_serialize(
-      query, serialization_type_, true, &serialized));
+      query, serialization_type_, true, serialized));
 
   // Init curl and form the URL
   Curl curlc(logger_);

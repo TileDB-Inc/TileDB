@@ -3274,7 +3274,7 @@ int32_t tiledb_serialize_query(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              &(*buffer_list)->buffer_list()))) {
+              (*buffer_list)->buffer_list()))) {
     tiledb_buffer_list_free(buffer_list);
     return TILEDB_ERR;
   }

@@ -2342,7 +2342,7 @@ Status query_serialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    BufferList* serialized_buffer) {
+    BufferList& serialized_buffer) {
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status_SerializationError(
         "Cannot serialize query; json format not supported."));
@@ -2362,8 +2362,7 @@ Status query_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(query_builder);
-        SerializationBuffer& header = serialized_buffer->emplace_buffer();
-        header.assign_null_terminated(capnp_json);
+        serialized_buffer.emplace_buffer().assign_null_terminated(capnp_json);
         // TODO: At this point the buffer data should also be serialized.
         break;
       }
@@ -2371,8 +2370,7 @@ Status query_serialize(
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
 
         // Write the serialized query
-        SerializationBuffer& header = serialized_buffer->emplace_buffer();
-        header.assign(protomessage.asChars());
+        serialized_buffer.emplace_buffer().assign(protomessage.asChars());
 
         // Concatenate buffers to end of message
         if (serialize_buffers) {
@@ -2392,14 +2390,14 @@ Status query_serialize(
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
 
-                serialized_buffer->emplace_buffer(
+                serialized_buffer.emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer_cache.buffer_.data(),
                     buffer_cache.buffer_.size());
 
                 if (buffer_cache.buffer_.size() > 0) {
                   SerializationBuffer& data =
-                      serialized_buffer->emplace_buffer();
+                      serialized_buffer.emplace_buffer();
                   data.assign(span(
                       reinterpret_cast<const char*>(buffer.buffer_),
                       *buffer.buffer_size_));
@@ -2415,24 +2413,24 @@ Status query_serialize(
                   }
 
                 } else {
-                  serialized_buffer->emplace_buffer(
+                  serialized_buffer.emplace_buffer(
                       SerializationBuffer::NonOwned,
                       reinterpret_cast<const char*>(buffer.buffer_),
                       *buffer.buffer_size_);
                 }
 
-                serialized_buffer->emplace_buffer(
+                serialized_buffer.emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer_cache.buffer_var_.data(),
                     buffer_cache.buffer_var_.size());
               } else {
-                serialized_buffer->emplace_buffer(
+                serialized_buffer.emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer.buffer_,
                     *buffer.buffer_size_);
               }
 
-              serialized_buffer->emplace_buffer(
+              serialized_buffer.emplace_buffer(
                   SerializationBuffer::NonOwned,
                   buffer.buffer_var_,
                   *buffer.buffer_var_size_);
@@ -2442,13 +2440,13 @@ Status query_serialize(
               if (query_buffer_storage != nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                serialized_buffer->emplace_buffer(
+                serialized_buffer.emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer_cache.buffer_.data(),
                     buffer_cache.buffer_.size());
               }
 
-              serialized_buffer->emplace_buffer(
+              serialized_buffer.emplace_buffer(
                   SerializationBuffer::NonOwned,
                   buffer.buffer_,
                   *buffer.buffer_size_);
@@ -2462,13 +2460,13 @@ Status query_serialize(
               if (query_buffer_storage != nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                serialized_buffer->emplace_buffer(
+                serialized_buffer.emplace_buffer(
                     SerializationBuffer::NonOwned,
                     buffer_cache.buffer_validity_.data(),
                     buffer_cache.buffer_validity_.size());
               }
 
-              serialized_buffer->emplace_buffer(
+              serialized_buffer.emplace_buffer(
                   SerializationBuffer::NonOwned,
                   buffer.validity_vector_.buffer(),
                   *buffer.validity_vector_.buffer_size());
@@ -2587,7 +2585,7 @@ Status query_deserialize(
   // to if we are unable to deserialize 'serialized_buffer'.
   BufferList original_bufferlist;
   RETURN_NOT_OK(
-      query_serialize(query, serialize_type, clientside, &original_bufferlist));
+      query_serialize(query, serialize_type, clientside, original_bufferlist));
 
   // The first buffer is always the serialized Query object.
   auto& original_buffer = original_bufferlist.get_buffer(0);
@@ -3154,7 +3152,7 @@ void ordered_dim_label_reader_from_capnp(
 
 #else
 
-Status query_serialize(Query*, SerializationType, bool, BufferList*) {
+Status query_serialize(Query*, SerializationType, bool, BufferList&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

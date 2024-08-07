@@ -2947,7 +2947,7 @@ void EnumerationFx::ser_des_query(
   BufferList blist;
 
   throw_if_not_ok(
-      serialization::query_serialize(q_in, stype, client_side, &blist));
+      serialization::query_serialize(q_in, stype, client_side, blist));
 
   flatten_buffer_list(blist, buf);
 
