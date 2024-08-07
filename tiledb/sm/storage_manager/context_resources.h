@@ -137,9 +137,9 @@ class ContextResources {
 
   /**
    * Return the serialization memory tracker.
-   * 
+   *
    * Use this tracker on serialization buffers.
-   * 
+   *
    * @return The serialization MemoryTracker.
    */
   shared_ptr<MemoryTracker> serialization_memory_tracker() const;
