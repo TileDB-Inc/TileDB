@@ -27,7 +27,7 @@
 include(unit_test)
 
 commence(unit_test buffer)
-    this_target_sources(main.cc unit_buffer.cc)
+    this_target_sources(main.cc unit_buffer.cc unit_serialization_buffer.cc)
     this_target_object_libraries(buffer)
 conclude(unit_test)
 
