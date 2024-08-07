@@ -91,7 +91,6 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
        idx < buffers_.size() && bytes_left > 0;
        ++idx) {
     span<const char> src = buffers_[idx];
-    src = src.subspan(current_relative_offset_);
 
     // Read from buffer
     const uint64_t bytes_in_src = src.size() - current_relative_offset_;
@@ -99,7 +98,10 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
     // If the destination pointer is not null, then read into it
     // if it is null then we are just seeking
     if (dest_ptr != nullptr)
-      memcpy(dest_ptr + dest_offset, src.data(), bytes_from_src);
+      memcpy(
+          dest_ptr + dest_offset,
+          src.data() + current_relative_offset_,
+          bytes_from_src);
     bytes_left -= bytes_from_src;
     dest_offset += bytes_from_src;
 
