@@ -87,8 +87,8 @@ struct ordinary_buffer_list {
     }
   }
   ~ordinary_buffer_list() {
-    tiledb_ctx_free(&ctx);
     tiledb_buffer_list_free(&buffer_list);
+    tiledb_ctx_free(&ctx);
   }
 };
 
