@@ -136,7 +136,7 @@ TEST_CASE(
   tiledb::sm::MemoryTrackerManager memory_tracker_manager;
   auto memory_tracker = memory_tracker_manager.create_tracker();
   auto resource = dynamic_cast<tiledb::sm::MemoryTrackerResource*>(
-      memory_tracker->get_resource(MemoryType::CONSOLIDATION_BUFFERS));
+      memory_tracker->get_resource(MemoryType::SERIALIZATION_BUFFER));
   REQUIRE(resource != nullptr);
   SerializationBuffer buff(resource);
 
