@@ -160,7 +160,8 @@ enum class MemoryTrackerType {
   QUERY_READ,
   QUERY_WRITE,
   REST_CLIENT,
-  SCHEMA_EVOLUTION
+  SCHEMA_EVOLUTION,
+  SERIALIZATION
 };
 
 /**

@@ -50,6 +50,7 @@ ContextResources::ContextResources(
     std::string stats_name)
     : memory_tracker_manager_(make_shared<MemoryTrackerManager>(HERE()))
     , ephemeral_memory_tracker_(memory_tracker_manager_->create_tracker())
+    , serialization_memory_tracker_(memory_tracker_manager_->create_tracker())
     , memory_tracker_reporter_(make_shared<MemoryTrackerReporter>(
           HERE(), config, memory_tracker_manager_))
     , config_(config)
@@ -65,6 +66,7 @@ ContextResources::ContextResources(
           *logger_.get(),
           create_memory_tracker())} {
   ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);
+  serialization_memory_tracker_->set_type(MemoryTrackerType::SERIALIZATION);
 
   /*
    * Explicitly register our `stats` object with the global.
@@ -84,6 +86,11 @@ shared_ptr<MemoryTracker> ContextResources::create_memory_tracker() const {
 
 shared_ptr<MemoryTracker> ContextResources::ephemeral_memory_tracker() const {
   return ephemeral_memory_tracker_;
+}
+
+shared_ptr<MemoryTracker> ContextResources::serialization_memory_tracker()
+    const {
+  return serialization_memory_tracker_;
 }
 
 }  // namespace tiledb::sm

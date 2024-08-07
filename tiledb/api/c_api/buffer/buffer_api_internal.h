@@ -49,8 +49,9 @@ struct tiledb_buffer_handle_t
   tiledb::sm::Datatype datatype_;
 
  public:
-  explicit tiledb_buffer_handle_t()
-      : buffer_()
+  explicit tiledb_buffer_handle_t(
+      decltype(buffer_)::allocator_type allocator = {})
+      : buffer_(allocator)
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
 

@@ -2957,7 +2957,9 @@ int32_t tiledb_serialize_array(
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3048,7 +3050,9 @@ int32_t tiledb_serialize_array_schema(
     return TILEDB_ERR;
 
   // Create buffer
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3113,7 +3117,9 @@ int32_t tiledb_serialize_array_open(
     return TILEDB_ERR;
   }
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3199,7 +3205,9 @@ int32_t tiledb_serialize_array_schema_evolution(
   if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3414,7 +3422,9 @@ int32_t tiledb_serialize_array_nonempty_domain(
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3470,7 +3480,9 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3517,7 +3529,9 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   // Serialize
   if (SAVE_ERROR_CATCH(
@@ -3600,7 +3614,9 @@ int32_t tiledb_serialize_array_metadata(
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   // Get metadata to serialize, this will load it if it does not exist
   sm::Metadata* metadata = nullptr;
@@ -3660,7 +3676,9 @@ int32_t tiledb_serialize_query_est_result_sizes(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3709,7 +3727,9 @@ int32_t tiledb_serialize_config(
 
   api::ensure_config_is_valid(config);
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3770,7 +3790,9 @@ int32_t tiledb_serialize_fragment_info_request(
     return TILEDB_ERR;
   }
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3826,7 +3848,9 @@ int32_t tiledb_serialize_fragment_info(
     return TILEDB_ERR;
   }
 
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   // Serialize
   if (SAVE_ERROR_CATCH(

@@ -140,6 +140,8 @@ std::string memory_tracker_type_to_str(MemoryTrackerType type) {
       return "RestClient";
     case MemoryTrackerType::SCHEMA_EVOLUTION:
       return "SchemaEvolution";
+    case MemoryTrackerType::SERIALIZATION:
+      return "Serialization";
   }
 
   auto val = std::to_string(static_cast<uint32_t>(type));
