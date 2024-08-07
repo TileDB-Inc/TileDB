@@ -3019,7 +3019,7 @@ void EnumerationFx::flatten_buffer_list(
   buf = SerializationBuffer(nbytes, buf.get_allocator());
 
   blist.reset_offset();
-  throw_if_not_ok(blist.read(buf.owned_mutable_span().data(), nbytes));
+  blist.read(buf.owned_mutable_span().data(), nbytes);
 }
 
 void EnumerationFx::rm_array() {

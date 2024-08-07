@@ -63,17 +63,17 @@ TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
   REQUIRE_THROWS(buffer_list.get_buffer(2));
   REQUIRE(b1.size() == sizeof(data1));
   REQUIRE(b2.size() == sizeof(data2));
-  REQUIRE(!std::memcmp(b1.data(), &data1[0], sizeof(data1)));
-  REQUIRE(!std::memcmp(b2.data(), &data2[0], sizeof(data2)));
+  REQUIRE_FALSE(std::memcmp(b1.data(), &data1[0], sizeof(data1)));
+  REQUIRE_FALSE(std::memcmp(b2.data(), &data2[0], sizeof(data2)));
 }
 
 TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
   BufferList buffer_list;
   auto data = static_cast<char*>(std::malloc(10));
 
-  REQUIRE(!buffer_list.read(data, 1).ok());
-  REQUIRE(buffer_list.read(data, 0).ok());
-  REQUIRE(buffer_list.read(nullptr, 0).ok());
+  REQUIRE_THROWS(buffer_list.read(data, 1));
+  REQUIRE_NOTHROW(buffer_list.read(data, 0));
+  REQUIRE_NOTHROW(buffer_list.read(nullptr, 0));
 
   SerializationBuffer buff1, buff2;
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
@@ -82,35 +82,35 @@ TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
   REQUIRE(buffer_list.add_buffer(std::move(buff1)).ok());
   REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
 
-  REQUIRE(buffer_list.read(data, 2).ok());
+  REQUIRE_NOTHROW(buffer_list.read(data, 2));
   REQUIRE(data[0] == 1);
   REQUIRE(data[1] == 2);
-  REQUIRE(buffer_list.read(data + 2, 2).ok());
+  REQUIRE_NOTHROW(buffer_list.read(data + 2, 2));
   REQUIRE(data[2] == 3);
   REQUIRE(data[3] == 4);
-  REQUIRE(buffer_list.read(data + 4, 3).ok());
+  REQUIRE_NOTHROW(buffer_list.read(data + 4, 3));
   REQUIRE(data[4] == 5);
   REQUIRE(data[5] == 6);
   REQUIRE(data[6] == 7);
-  REQUIRE(!buffer_list.read(data, 1).ok());
+  REQUIRE_THROWS(buffer_list.read(data, 1));
 
   std::memset(data, 0, 10);
   buffer_list.reset_offset();
-  REQUIRE(buffer_list.read(data, 7).ok());
+  REQUIRE_NOTHROW(buffer_list.read(data, 7));
   REQUIRE(!std::memcmp(data, &data1[0], sizeof(data1)));
   REQUIRE(!std::memcmp(data + 3, &data2[0], sizeof(data2)));
 
   uint64_t num_read = 0;
   std::memset(data, 0, 10);
   buffer_list.reset_offset();
-  REQUIRE(buffer_list.read_at_most(data, 2, &num_read).ok());
+  num_read = buffer_list.read_at_most(data, 2);
   REQUIRE(num_read == 2);
   REQUIRE(!std::memcmp(data, &data1[0], 2));
 
   num_read = 0;
   std::memset(data, 0, 10);
   buffer_list.reset_offset();
-  REQUIRE(buffer_list.read_at_most(data, 100, &num_read).ok());
+  num_read = buffer_list.read_at_most(data, 100);
   REQUIRE(num_read == 7);
   REQUIRE(!std::memcmp(data, &data1[0], sizeof(data1)));
   REQUIRE(!std::memcmp(data + 3, &data2[0], sizeof(data2)));
@@ -118,7 +118,7 @@ TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
   num_read = 0;
   std::memset(data, 0, 10);
   buffer_list.reset_offset();
-  REQUIRE(buffer_list.read_at_most(data, 0, &num_read).ok());
+  num_read = buffer_list.read_at_most(data, 0);
   REQUIRE(num_read == 0);
 
   std::free(data);

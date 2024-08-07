@@ -88,7 +88,7 @@ class BufferList {
    * @param nbytes The number of bytes to read.
    * @return Status
    */
-  Status read(void* dest, uint64_t nbytes);
+  void read(void* dest, uint64_t nbytes);
 
   /**
    * Similar to `Status read(void* dest, uint64_t nbytes)` but does not return
@@ -96,10 +96,9 @@ class BufferList {
    *
    * @param dest The buffer to read the data into.
    * @param nbytes The maximum number of bytes to read.
-   * @param bytes_read Will be set to the number of bytes actually read.
-   * @return Status
+   * @return The number of bytes actually read.
    */
-  Status read_at_most(void* dest, uint64_t nbytes, uint64_t* bytes_read);
+  uint64_t read_at_most(void* dest, uint64_t nbytes);
 
   /**
    * Seek to an offset, similar to lseek or fseek
@@ -118,9 +117,8 @@ class BufferList {
    *
    * @param offset Offset to seek to.
    * @param whence Location to seek from.
-   * @return Status
    */
-  Status seek(off_t offset, int whence);
+  void seek(off_t offset, int whence);
 
   /** Resets the current offset for reading. */
   void reset_offset();
@@ -160,16 +158,6 @@ class BufferList {
 
   /** The current global offset. */
   uint64_t offset_;
-
-  /**
-   * Reads from the current offset into the given destination.
-   *
-   * @param dest The buffer to read the data into. If null will perform seek.
-   * @param nbytes The number of bytes to read.
-   * @param bytes_read Set to the number of bytes actually read.
-   * @return Status
-   */
-  Status read(void* dest, uint64_t nbytes, uint64_t* bytes_read);
 };
 
 }  // namespace sm

@@ -94,8 +94,7 @@ capi_return_t tiledb_buffer_list_flatten(
 
   // Read all into the dest buffer
   buffer_list->buffer_list().reset_offset();
-  throw_if_not_ok(
-      buffer_list->buffer_list().read(buf.owned_mutable_span().data(), nbytes));
+  buffer_list->buffer_list().read(buf.owned_mutable_span().data(), nbytes);
 
   *buffer = tiledb_buffer_t::make_handle(std::move(buf));
 
