@@ -41,8 +41,10 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-BufferList::BufferList()
-    : current_buffer_index_(0)
+BufferList::BufferList(
+    const tdb::pmr::polymorphic_allocator<SerializationBuffer>& alloc)
+    : buffers_(alloc)
+    , current_buffer_index_(0)
     , current_relative_offset_(0)
     , offset_(0) {
 }

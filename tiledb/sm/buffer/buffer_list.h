@@ -35,6 +35,7 @@
 
 #include <vector>
 
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;
@@ -51,8 +52,16 @@ class SerializationBuffer;
  */
 class BufferList {
  public:
-  /** Constructor. */
-  BufferList();
+  /**
+   * Constructor.
+   *
+   * @param alloc Optional allocator for the serialization buffers.
+   */
+  BufferList(
+      const tdb::pmr::polymorphic_allocator<SerializationBuffer>& alloc = {});
+
+  // There is no need to implement the full allocator pattern in BufferList for
+  // now.
 
   /**
    * Adds the given buffer to the list.
@@ -60,6 +69,10 @@ class BufferList {
    * This BufferList takes ownership of the given SerializationBuffer instance
    * (which is why it takes an rvalue reference). This is to support efficient
    * appends without having to make potentially large memcpy calls.
+   *
+   * In order to avoid expensive copying of owned buffers, callers should ensure
+   * that buffer's allocator is the same as the allocator used to construct the
+   * BufferList.
    *
    * @param buffer The buffer to add
    * @return Status
@@ -69,7 +82,8 @@ class BufferList {
   /**
    * Constructs in place and adds a new SerializationBuffer to the list.
    *
-   * @param args Arguments to pass to the SerializationBuffer constructor
+   * @param args Arguments to pass to the SerializationBuffer constructor. Do
+   * not specify the allocator.
    * @return Reference to the new buffer instance
    */
   SerializationBuffer& emplace_buffer(auto&&... args) {
@@ -143,7 +157,7 @@ class BufferList {
    * @param current_relative_offset The current relative offset within the
    * current buffer.
    *
-   * */
+   */
   void set_offset(
       const size_t current_buffer_index,
       const uint64_t current_relative_offset);
@@ -158,7 +172,7 @@ class BufferList {
 
  private:
   /** The underlying list of SerializationBuffers. */
-  std::vector<SerializationBuffer> buffers_;
+  tdb::pmr::vector<SerializationBuffer> buffers_;
 
   /** The index of the buffer containing the current global offset. */
   size_t current_buffer_index_;

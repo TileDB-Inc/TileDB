@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/memory_tracker.h"
 
 #include "../buffer/buffer_api_internal.h"
 #include "buffer_list_api_external.h"
@@ -39,9 +40,13 @@
 
 namespace tiledb::api {
 
-capi_return_t tiledb_buffer_list_alloc(tiledb_buffer_list_t** buffer_list) {
+capi_return_t tiledb_buffer_list_alloc(
+    tiledb_ctx_handle_t* ctx, tiledb_buffer_list_t** buffer_list) {
+  ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(buffer_list);
-  *buffer_list = tiledb_buffer_list_handle_t::make_handle();
+  *buffer_list = tiledb_buffer_list_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
   return TILEDB_OK;
 }
 
@@ -105,10 +110,11 @@ capi_return_t tiledb_buffer_list_flatten(
 
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
+using tiledb::api::api_entry_with_context;
 
 CAPI_INTERFACE(
     buffer_list_alloc, tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
-  return api_entry_context<tiledb::api::tiledb_buffer_list_alloc>(
+  return api_entry_with_context<tiledb::api::tiledb_buffer_list_alloc>(
       ctx, buffer_list);
 }
 
