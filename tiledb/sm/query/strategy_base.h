@@ -37,8 +37,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 
 namespace tiledb::sm {
 
@@ -46,6 +46,7 @@ class OpenedArray;
 class ArraySchema;
 class IAggregator;
 enum class Layout : uint8_t;
+class LocalQueryStateMachine;
 class MemoryTracker;
 class Subarray;
 class QueryBuffer;
@@ -68,7 +69,8 @@ class StrategyParams {
       ContextResources& resources,
       shared_ptr<MemoryTracker> array_memory_tracker,
       shared_ptr<MemoryTracker> query_memory_tracker,
-      StorageManager* storage_manager,
+      LocalQueryStateMachine& query_state_machine,
+      CancellationSource cancellation_source,
       shared_ptr<OpenedArray> array,
       Config& config,
       optional<uint64_t> memory_budget,
@@ -82,7 +84,8 @@ class StrategyParams {
       : resources_(resources)
       , array_memory_tracker_(array_memory_tracker)
       , query_memory_tracker_(query_memory_tracker)
-      , storage_manager_(storage_manager)
+      , query_state_machine_(query_state_machine)
+      , cancellation_source_(cancellation_source)
       , array_(array)
       , config_(config)
       , memory_budget_(memory_budget)
@@ -115,10 +118,13 @@ class StrategyParams {
     return query_memory_tracker_;
   }
 
-  /** Return the storage manager. */
-  inline StorageManager* storage_manager() {
-    return storage_manager_;
-  };
+  inline LocalQueryStateMachine& query_state_machine() const {
+    return query_state_machine_;
+  }
+
+  inline CancellationSource cancellation_source() const {
+    return cancellation_source_;
+  }
 
   /** Return the array. */
   inline shared_ptr<OpenedArray> array() {
@@ -184,8 +190,11 @@ class StrategyParams {
   /** Query Memory tracker. */
   shared_ptr<MemoryTracker> query_memory_tracker_;
 
-  /** Storage manager. */
-  StorageManager* storage_manager_;
+  /** Query state machine */
+  LocalQueryStateMachine& query_state_machine_;
+
+  /** Cancellation source */
+  CancellationSource cancellation_source_;
 
   /** Array. */
   shared_ptr<OpenedArray> array_;
@@ -270,6 +279,11 @@ class StrategyBase {
   /** Sets the bitsize of offsets */
   Status set_offsets_bitsize(const uint32_t bitsize);
 
+  /**
+   * Cancel any ongoing processing at the next opportunity.
+   */
+  void cancel();
+
  protected:
   /* ********************************* */
   /*        PROTECTED ATTRIBUTES       */
@@ -312,8 +326,36 @@ class StrategyBase {
   /** The layout of the cells in the result of the subarray. */
   Layout layout_;
 
-  /** The storage manager. */
-  StorageManager* storage_manager_;
+  /**
+   * State machine of the query under which this strategy is executing.
+   *
+   * Execution of query operation may be interrupted by asynchronous events that
+   * are tracked through the state machine. Operations should poll the state
+   * machine periodically and cease processing if the query has been cancelled,
+   * for example, or is otherwise not in a state where processing should
+   * proceed.
+   *
+   * @section Maturity
+   *
+   * At present the state machine cannot be declared `const` because the
+   * cancellation event must be generated at the same point where the
+   * cancellation source is checked. When the cancellation source goes away,
+   * query code will only need to check the state and will no longer need to
+   * generate events.
+   */
+  LocalQueryStateMachine& query_state_machine_;
+
+  /**
+   * The source for external cancellation events.
+   *
+   * @section Maturity
+   *
+   * This is a transitional member variable. It's required at present because
+   * the presence of a cancellation is held at the context level and must be
+   * polled for. When cancellation is pushed down from the top, there will no
+   * longer be a need for this variable.
+   */
+  CancellationSource cancellation_source_;
 
   /** The query subarray (initially the whole domain by default). */
   Subarray& subarray_;
@@ -344,6 +386,19 @@ class StrategyBase {
    * Throws an exception if the query is cancelled.
    */
   void throw_if_cancelled() const;
+
+  /**
+   * Predicate function whether the query has been cancelled.
+   */
+  bool cancelled() const;
+
+  /**
+   * Process any pending external cancellation order.
+   *
+   * If there's a pending external cancellation, this function generates a
+   * `cancel` event on the local state machine of the query being processed.
+   */
+  void process_external_cancellation();
 };
 
 }  // namespace tiledb::sm

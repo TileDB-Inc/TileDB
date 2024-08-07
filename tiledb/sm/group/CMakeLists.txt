@@ -37,7 +37,7 @@ include(common NO_POLICY_SCOPE)
 add_library(group OBJECT group_directory.cc group.cc group_details.cc group_details_v1.cc group_details_v2.cc group_member.cc group_member_v1.cc group_member_v2.cc)
 target_link_libraries(group PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(group PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(group PUBLIC object_mutex $<TARGET_OBJECTS:object_mutex>)
+target_link_libraries(group PUBLIC object $<TARGET_OBJECTS:object>)
 
 #
 # Test-compile of object library ensures link-completeness

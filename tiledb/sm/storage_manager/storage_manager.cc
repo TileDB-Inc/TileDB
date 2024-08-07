@@ -116,7 +116,7 @@ Status StorageManagerCanonical::cancel_all_tasks() {
   return Status::Ok();
 }
 
-bool StorageManagerCanonical::cancellation_in_progress() {
+bool StorageManagerCanonical::cancellation_in_progress() const {
   std::unique_lock<std::mutex> lck(cancellation_in_progress_mtx_);
   return cancellation_in_progress_;
 }

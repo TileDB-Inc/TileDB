@@ -1,0 +1,52 @@
+/'
+Source for diagram generator at https://plantuml.com/plantuml
+'/
+
+@startuml
+title Local Query State Machine
+
+[*] --> uninitialized
+
+uninitialized : The initial query state from a C.41-noncompliant query.
+uninitialized : The "ready" event is only necessary to compensate for
+uninitialized : the existence of this state.
+uninitialized -down-> everything_else : ready
+uninitialized --> aborted : abort
+uninitialized --> cancelled : cancel
+uninitialized --> error : finish
+
+state everything_else {
+[*] --> initialized
+initialized -down-> processing: submit
+processing -right-> in_progress : suspend
+in_progress -left-> processing : submit
+}
+everything_else : This state represents an initialized query that has not yet
+everything_else : reached a final state. Its internal state is not yet modelled,
+everything_else : so the inner state machine should be treated as illustrative
+everything_else : only and not normative.
+everything_else --> everything_else : ready
+everything_else -down-> success : finish
+everything_else --> aborted : abort
+everything_else --> cancelled : cancel
+
+success : The query completed and has
+success : returned all its results.
+success --> success : ready, finish, cancel
+success --> error : abort
+
+aborted : The query failed to complete
+aborted : because of a resource failure.
+aborted --> aborted : ready, abort, cancel
+aborted --> error : finish
+
+cancelled : The query was cancelled by
+cancelled : the user before completion.
+cancelled --> cancelled : ready, cancel
+cancelled --> error : finish, abort
+
+error : The state machine was used
+error : incorrectly by query code.
+error --> error : ready, finish, abort, cancel
+
+@enduml

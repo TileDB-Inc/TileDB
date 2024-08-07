@@ -86,9 +86,10 @@ conclude(object_library)
 # for data-oriented array_schema functions.
 #
 commence(object_library array_schema)
-    this_target_sources(array_schema.cc dimension_label.cc)
+    this_target_sources(
+        array_schema.cc array_schema_evolution.cc dimension_label.cc)
     this_target_object_libraries(
-        attribute domain enumeration fragment current_domain time uri_format vfs)
+        attribute domain enumeration fragment_identifier current_domain time uri_format vfs)
 conclude(object_library)
 
 #

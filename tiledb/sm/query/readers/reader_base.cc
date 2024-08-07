@@ -496,7 +496,7 @@ void ReaderBase::load_processed_conditions() {
 
 Status ReaderBase::read_and_unfilter_attribute_tiles(
     const std::vector<NameToLoad>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles) {
   // The filtered data here contains the memory allocations for all of the
   // filtered data that is read by `read_attribute_tiles`. To prevent
   // modifications to the filter pipeline at the moment, the `result_tiles`
@@ -523,7 +523,7 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
 
 Status ReaderBase::read_and_unfilter_coordinate_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles) {
   // See the comment in 'read_and_unfilter_attribute_tiles' to get more
   // information about the lifetime of this object.
   auto filtered_data{read_coordinate_tiles(names, result_tiles)};
@@ -767,7 +767,7 @@ Status ReaderBase::post_process_unfiltered_tile(
 Status ReaderBase::unfilter_tiles(
     const std::string& name,
     const bool validity_only,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles) {
   const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
                                                          "unfilter_coord_tiles";
 

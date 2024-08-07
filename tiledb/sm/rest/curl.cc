@@ -238,10 +238,12 @@ size_t write_header_callback(
       const std::string header_value_domain =
           header_value_scheme_excl.substr(0, header_domain_end_pos);
 
-      const std::string redirection_value =
-          header_scheme + "://" + header_value_domain;
-      std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
-      (*pmHeader->redirect_uri_map)[*pmHeader->uri] = redirection_value;
+      if (pmHeader->should_cache_redirect) {
+        const std::string redirection_value =
+            header_scheme + "://" + header_value_domain;
+        std::unique_lock<std::mutex> rd_lck(*(pmHeader->redirect_uri_map_lock));
+        (*pmHeader->redirect_uri_map)[*pmHeader->uri] = redirection_value;
+      }
     }
   }
 
@@ -262,7 +264,8 @@ Status Curl::init(
     const Config* config,
     const std::unordered_map<std::string, std::string>& extra_headers,
     std::unordered_map<std::string, std::string>* const res_headers,
-    std::mutex* const res_mtx) {
+    std::mutex* const res_mtx,
+    bool should_cache_redirect) {
   if (config == nullptr)
     return LOG_STATUS(
         Status_RestError("Error initializing libcurl; config is null."));
@@ -272,6 +275,7 @@ Status Curl::init(
   extra_headers_ = extra_headers;
   headerData.redirect_uri_map = res_headers;
   headerData.redirect_uri_map_lock = res_mtx;
+  headerData.should_cache_redirect = should_cache_redirect;
 
   // See https://curl.haxx.se/libcurl/c/threadsafe.html
   CURLcode rc = curl_easy_setopt(curl_.get(), CURLOPT_NOSIGNAL, 1);
@@ -425,11 +429,13 @@ Status Curl::make_curl_request(
     stats::Stats* const stats,
     const char* url,
     CURLcode* curl_code,
+    BufferList* data,
     Buffer* returned_data) const {
   return make_curl_request_common(
       stats,
       url,
       curl_code,
+      data,
       &write_memory_callback,
       static_cast<void*>(returned_data));
 }
@@ -438,11 +444,13 @@ Status Curl::make_curl_request(
     stats::Stats* const stats,
     const char* url,
     CURLcode* curl_code,
+    BufferList* data,
     PostResponseCb&& cb) const {
   return make_curl_request_common(
       stats,
       url,
       curl_code,
+      data,
       &write_memory_callback_cb,
       static_cast<void*>(&cb));
 }
@@ -478,6 +486,7 @@ Status Curl::make_curl_request_common(
     stats::Stats* const stats,
     const char* const url,
     CURLcode* const curl_code,
+    BufferList* data,
     size_t (*write_cb)(void*, size_t, size_t, void*),
     void* const write_cb_arg) const {
   CURL* curl = curl_.get();
@@ -487,10 +496,26 @@ Status Curl::make_curl_request_common(
 
   *curl_code = CURLE_OK;
   uint64_t retry_delay = retry_initial_delay_ms_;
+
+  // Save the offsets before the request in case we need to retry
+  size_t current_buffer_index = 0;
+  uint64_t current_relative_offset = 0;
+  if (data != nullptr) {
+    std::tie(current_buffer_index, current_relative_offset) =
+        data->get_offset();
+  }
+
   // <= because the 0ths retry is actually the initial request
   for (uint8_t i = 0; i <= retry_count_; i++) {
     WriteCbState write_cb_state;
     write_cb_state.arg = write_cb_arg;
+
+    // If this is a retry we need to reset the offsets in the data buffer list
+    // to the initial position before the failed request so that we send the
+    // correct data.
+    if (data != nullptr && retry_count_ > 0) {
+      data->set_offset(current_buffer_index, current_relative_offset);
+    }
 
     /* set url to fetch */
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -548,7 +573,7 @@ Status Curl::make_curl_request_common(
     /* fetch the url */
     CURLcode tmp_curl_code = curl_easy_perform_instrumented(url, i);
 
-    bool retry;
+    bool retry = false;
     RETURN_NOT_OK(should_retry_based_on_http_status(&retry));
 
     /* If Curl call was successful (not http status, but no socket error, etc)
@@ -704,7 +729,7 @@ Status Curl::post_data(
     stats::Stats* const stats,
     const std::string& url,
     const SerializationType serialization_type,
-    const BufferList* data,
+    BufferList* data,
     Buffer* const returned_data,
     const std::string& res_uri) {
   struct curl_slist* headers;
@@ -714,7 +739,7 @@ Status Curl::post_data(
 
   CURLcode ret;
   headerData.uri = &res_uri;
-  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, data, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -728,7 +753,7 @@ Status Curl::post_data(
     stats::Stats* const stats,
     const std::string& url,
     const SerializationType serialization_type,
-    const BufferList* data,
+    BufferList* data,
     Buffer* const returned_data,
     PostResponseCb&& cb,
     const std::string& res_uri) {
@@ -737,7 +762,7 @@ Status Curl::post_data(
 
   CURLcode ret;
   headerData.uri = &res_uri;
-  auto st = make_curl_request(stats, url.c_str(), &ret, std::move(cb));
+  auto st = make_curl_request(stats, url.c_str(), &ret, data, std::move(cb));
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -749,7 +774,7 @@ Status Curl::post_data(
 
 Status Curl::post_data_common(
     const SerializationType serialization_type,
-    const BufferList* data,
+    BufferList* data,
     struct curl_slist** headers) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
@@ -771,7 +796,7 @@ Status Curl::post_data_common(
       set_content_type(serialization_type, headers),
       curl_slist_free_all(*headers));
 
-  /* HTTP PUT please */
+  /* HTTP POST please */
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
   curl_easy_setopt(
       curl, CURLOPT_READFUNCTION, buffer_list_read_memory_callback);
@@ -810,7 +835,7 @@ Status Curl::get_data(
 
   CURLcode ret;
   headerData.uri = &res_ns_uri;
-  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, nullptr, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -849,7 +874,7 @@ Status Curl::options(
 
   CURLcode ret;
   headerData.uri = &res_ns_uri;
-  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, nullptr, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -885,7 +910,7 @@ Status Curl::delete_data(
 
   CURLcode ret;
   headerData.uri = &res_uri;
-  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, nullptr, returned_data);
 
   // Erase record in case of de-registered array
   std::unique_lock<std::mutex> rd_lck(*(headerData.redirect_uri_map_lock));
@@ -903,7 +928,7 @@ Status Curl::patch_data(
     stats::Stats* const stats,
     const std::string& url,
     const SerializationType serialization_type,
-    const BufferList* data,
+    BufferList* data,
     Buffer* const returned_data,
     const std::string& res_uri) {
   struct curl_slist* headers;
@@ -911,7 +936,7 @@ Status Curl::patch_data(
 
   CURLcode ret;
   headerData.uri = &res_uri;
-  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, data, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -923,7 +948,7 @@ Status Curl::patch_data(
 
 Status Curl::patch_data_common(
     const SerializationType serialization_type,
-    const BufferList* data,
+    BufferList* data,
     struct curl_slist** headers) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
@@ -968,7 +993,7 @@ Status Curl::put_data(
     stats::Stats* const stats,
     const std::string& url,
     const SerializationType serialization_type,
-    const BufferList* data,
+    BufferList* data,
     Buffer* const returned_data,
     const std::string& res_uri) {
   struct curl_slist* headers;
@@ -976,7 +1001,7 @@ Status Curl::put_data(
 
   CURLcode ret;
   headerData.uri = &res_uri;
-  auto st = make_curl_request(stats, url.c_str(), &ret, returned_data);
+  auto st = make_curl_request(stats, url.c_str(), &ret, data, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);
 
@@ -988,7 +1013,7 @@ Status Curl::put_data(
 
 Status Curl::put_data_common(
     const SerializationType serialization_type,
-    const BufferList* data,
+    BufferList* data,
     struct curl_slist** headers) {
   CURL* curl = curl_.get();
   if (curl == nullptr)

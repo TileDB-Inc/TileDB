@@ -978,7 +978,10 @@ int32_t tiledb_query_alloc(
 
   // Create query
   (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
-      ctx->resources(), ctx->storage_manager(), array->array_);
+      ctx->resources(),
+      ctx->cancellation_source(),
+      ctx->storage_manager(),
+      array->array_);
   if ((*query)->query_ == nullptr) {
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
@@ -3378,7 +3381,10 @@ int32_t tiledb_deserialize_query_and_array(
 
   // Create query
   (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
-      ctx->resources(), ctx->storage_manager(), (*array)->array_);
+      ctx->resources(),
+      ctx->cancellation_source(),
+      ctx->storage_manager(),
+      (*array)->array_);
   if ((*query)->query_ == nullptr) {
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
@@ -3958,7 +3964,10 @@ capi_return_t tiledb_handle_query_plan_request(
   api::ensure_buffer_is_valid(response);
 
   tiledb::sm::Query query(
-      ctx->resources(), ctx->storage_manager(), array->array_);
+      ctx->resources(),
+      ctx->cancellation_source(),
+      ctx->storage_manager(),
+      array->array_);
   tiledb::sm::serialization::deserialize_query_plan_request(
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       request->buffer(),

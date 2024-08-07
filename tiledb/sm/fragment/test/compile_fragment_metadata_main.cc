@@ -1,5 +1,5 @@
 /**
- * @file compile_array_main.cc
+ * @file compile_fragment_metadata_main.cc
  *
  * @section LICENSE
  *
@@ -26,10 +26,14 @@
  * THE SOFTWARE.
  */
 
-#include "../array.h"
-#include "../consistency.h"
+#include "../fragment_info.h"
+#include "../fragment_metadata.h"
+#include "../loaded_fragment_metadata.h"
+#include "../ondemand_fragment_metadata.h"
+#include "../v1v2preloaded_fragment_metadata.h"
 
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::sm;
@@ -39,11 +43,22 @@ int main() {
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");
 
-  ConsistencyController controller;
-  Array array(resources, URI{}, controller);
+  FragmentInfo info(URI{}, resources);
+  (void)info.fragment_num();
 
-  (void)array.is_empty();
-  (void)controller.is_open(URI("test"));
+  FragmentMetadata meta(&resources, resources.ephemeral_memory_tracker(), 22);
+  (void)meta.cell_num();
+
+  LoadedFragmentMetadata* loaded = meta.loaded_metadata();
+  (void)loaded->free_tile_offsets();
+
+  EncryptionKey key;
+  OndemandFragmentMetadata ondemand(meta, resources.ephemeral_memory_tracker());
+  (void)ondemand.load_rtree(key);
+
+  V1V2PreloadedFragmentMetadata v1v2(
+      meta, resources.ephemeral_memory_tracker());
+  (void)v1v2.load_rtree(key);
 
   return 0;
 }
