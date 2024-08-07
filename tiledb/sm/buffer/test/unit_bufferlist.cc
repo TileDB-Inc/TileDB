@@ -69,7 +69,7 @@ TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
 
 TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
   BufferList buffer_list;
-  auto data = static_cast<char*>(std::malloc(10));
+  char data[10];
 
   REQUIRE_THROWS(buffer_list.read(data, 1));
   REQUIRE_NOTHROW(buffer_list.read(data, 0));
@@ -120,6 +120,4 @@ TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
   buffer_list.reset_offset();
   num_read = buffer_list.read_at_most(data, 0);
   REQUIRE(num_read == 0);
-
-  std::free(data);
 }
