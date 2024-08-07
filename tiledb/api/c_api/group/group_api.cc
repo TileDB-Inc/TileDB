@@ -32,6 +32,7 @@
  **/
 
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/group/group_details_v1.h"

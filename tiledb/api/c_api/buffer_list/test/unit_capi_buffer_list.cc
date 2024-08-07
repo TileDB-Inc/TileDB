@@ -192,10 +192,10 @@ TEST_CASE(
 TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
   // Create a testing buffer list
   tiledb::sm::BufferList buffer_list;
-  tiledb::sm::Buffer buff1, buff2;
+  tiledb::sm::SerializationBuffer buff1, buff2;
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
-  REQUIRE(buff1.write(data1, sizeof(data1)).ok());
-  REQUIRE(buff2.write(data2, sizeof(data2)).ok());
+  buff1.assign(span(data1, sizeof(data1)));
+  buff2.assign(span(data2, sizeof(data2)));
   REQUIRE(buffer_list.add_buffer(std::move(buff1)).ok());
   REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
 
