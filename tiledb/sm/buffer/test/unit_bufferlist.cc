@@ -1,11 +1,11 @@
 /**
- * @file unit-buffer.cc
+ * @file unit_bufferlist.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,9 +31,8 @@
  * Tests the `BufferList` class.
  */
 
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
-#include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>

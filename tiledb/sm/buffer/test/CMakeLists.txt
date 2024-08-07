@@ -30,3 +30,8 @@ commence(unit_test buffer)
     this_target_sources(main.cc unit_buffer.cc)
     this_target_object_libraries(buffer)
 conclude(unit_test)
+
+commence(unit_test buffer_list)
+    this_target_sources(main.cc unit_bufferlist.cc)
+    this_target_object_libraries(buffer_list)
+conclude(unit_test)
