@@ -106,17 +106,19 @@ TILEDB_EXPORT capi_return_t tiledb_current_domain_free(
  * range.max_size = sizeof(max);
  * tiledb_ndrectangle_set_range_for_name(ctx, ndr, "dim", &range);
  *
- * tiledb_current_domain_set_ndrectangle(current_domain, ndr);
+ * tiledb_current_domain_set_ndrectangle(ctx, current_domain, ndr);
  *
  * tiledb_ndrectangle_free(&ndr);
  * tiledb_current_domain_free(&current_domain);
  * @endcode
  *
+ * @param ctx A TileDB context
  * @param current_domain The current domain to modify
  * @param ndr The N-dimensional rectangle to be set
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_current_domain_set_ndrectangle(
+    tiledb_ctx_t* ctx,
     tiledb_current_domain_t* current_domain,
     tiledb_ndrectangle_t* ndr) TILEDB_NOEXCEPT;
 
@@ -131,14 +133,16 @@ TILEDB_EXPORT capi_return_t tiledb_current_domain_set_ndrectangle(
  *
  * @code{.c}
  * tiledb_ndrectangle_t *ndr;
- * tiledb_current_domain_get_ndrectangle(current_domain, &ndr);
+ * tiledb_current_domain_get_ndrectangle(ctx, current_domain, &ndr);
  * @endcode
  *
+ * @param ctx A TileDB context
  * @param current_domain The current domain to query
  * @param ndr The N-dimensional rectangle of the current domain
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_current_domain_get_ndrectangle(
+    tiledb_ctx_t* ctx,
     tiledb_current_domain_t* current_domain,
     tiledb_ndrectangle_t** ndr) TILEDB_NOEXCEPT;
 
@@ -149,14 +153,16 @@ TILEDB_EXPORT capi_return_t tiledb_current_domain_get_ndrectangle(
  *
  * @code{.c}
  * uint32_t empty = 0;
- * tiledb_current_domain_get_is_empty(current_domain, &empty);
+ * tiledb_current_domain_get_is_empty(ctx, current_domain, &empty);
  * @endcode
  *
+ * @param ctx A TileDB context
  * @param current_domain The current domain to query
  * @param is_empty True if nothing is set on the current domain
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_current_domain_get_is_empty(
+    tiledb_ctx_t* ctx,
     tiledb_current_domain_t* current_domain,
     uint32_t* is_empty) TILEDB_NOEXCEPT;
 
@@ -167,14 +173,16 @@ TILEDB_EXPORT capi_return_t tiledb_current_domain_get_is_empty(
  *
  * @code{.c}
  * tiledb_current_domain_type_t type;
- * tiledb_current_domain_get_type(current_domain, &type);
+ * tiledb_current_domain_get_type(ctx, current_domain, &type);
  * @endcode
  *
+ * @param ctx A TileDB context
  * @param current_domain The current domain to query
  * @param type The type of representation set on the current domain
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_current_domain_get_type(
+    tiledb_ctx_t* ctx,
     tiledb_current_domain_t* current_domain,
     tiledb_current_domain_type_t* type) TILEDB_NOEXCEPT;
 

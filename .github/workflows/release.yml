@@ -97,7 +97,7 @@ jobs:
         if: matrix.manylinux
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
       - name: Configure TileDB
         run: |
@@ -125,8 +125,8 @@ jobs:
         with:
           name: release
           path: |
-            build/tiledb/tiledb-*.tar.gz*
-            build/tiledb/tiledb-*.zip*
+            build/tiledb-*.tar.gz*
+            build/tiledb-*.zip*
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
@@ -201,9 +201,12 @@ jobs:
     needs: Publish-Release
     if: (failure() || cancelled()) && github.event_name != 'workflow_dispatch'
     steps:
+      # The open-issue action requires to clone the repository.
+      - name: Checkout TileDB
+        uses: actions/checkout@v4
       - name: Create Issue if Build Fails
         uses: TileDB-Inc/github-actions/open-issue@main
         with:
           name: Release failed
-          label: bug
+          label: release
           assignee: KiterLuc,teo-tsirpanis,davisp

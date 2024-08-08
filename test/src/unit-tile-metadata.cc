@@ -806,7 +806,7 @@ struct CPPVarTileMetadataFx {
       query.set_data_buffer("d", d);
     }
     query.set_offsets_buffer("a", a_offsets);
-    query.set_buffer("a", a_var);
+    query.set_data_buffer("a", a_var);
 
     if (nullable) {
       query.set_validity_buffer("a", a_val);

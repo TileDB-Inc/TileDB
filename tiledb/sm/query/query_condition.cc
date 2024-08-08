@@ -38,7 +38,6 @@
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 
 #include <algorithm>

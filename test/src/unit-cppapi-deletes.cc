@@ -37,6 +37,7 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array/array_operations.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/group.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -271,7 +272,11 @@ void DeletesFx::write_sparse_v11(uint64_t timestamp) {
   std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
 
   // Open array.
-  Array array(ctx_, array_name_.c_str(), TILEDB_WRITE, timestamp);
+  Array array(
+      ctx_,
+      array_name_.c_str(),
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   Query query(ctx_, array, TILEDB_WRITE);
@@ -432,15 +437,14 @@ void DeletesFx::check_delete_conditions(
   auto array_ptr = array->ptr()->array_;
 
   // Load delete conditions.
-  auto&& [st, delete_conditions, update_values] =
-      array_ptr->opened_array()->load_delete_and_update_conditions();
-  REQUIRE(st.ok());
-  REQUIRE(delete_conditions->size() == qcs.size());
+  auto&& [delete_conditions, update_values] = load_delete_and_update_conditions(
+      ctx_.ptr().get()->resources(), *array_ptr->opened_array().get());
+  REQUIRE(delete_conditions.size() == qcs.size());
 
   for (uint64_t i = 0; i < qcs.size(); i++) {
     // Compare to negated condition.
     auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
-    CHECK(tiledb::test::ast_equal(delete_conditions->at(i).ast(), cmp.ast()));
+    CHECK(tiledb::test::ast_equal(delete_conditions.at(i).ast(), cmp.ast()));
   }
 
   array->close();

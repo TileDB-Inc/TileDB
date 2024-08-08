@@ -271,6 +271,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
     const tiledb_dimension_t* dim,
     const void** tile_extent) TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Dumps the contents of a dimension in ASCII form to some output (e.g.,
  * file or stdout).
@@ -288,10 +289,11 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_dimension_dump(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_dimension_dump(
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     FILE* out) TILEDB_NOEXCEPT;
+#endif
 
 /**
  * Dumps the contents of a dimension in ASCII form to the selected string

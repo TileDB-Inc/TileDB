@@ -25,11 +25,7 @@
 # THE SOFTWARE.
 #
 
-if(TILEDB_VCPKG)
-  find_package(Clipp CONFIG REQUIRED)
-else()
-  find_package(Clipp_EP REQUIRED)
-endif()
+find_package(Clipp CONFIG REQUIRED)
 
 add_executable(tiledb-cli EXCLUDE_FROM_ALL
   src/commands/help_command.cc

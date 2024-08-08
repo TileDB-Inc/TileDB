@@ -35,7 +35,7 @@ gather_sources(${SOURCES})
 commence(object_library capi_attribute_stub)
   this_target_sources(${SOURCES})
   this_target_link_libraries(export)
-  this_target_object_libraries(capi_datatype capi_filter_list_stub)
+  this_target_object_libraries(capi_datatype capi_filter_list_stub capi_string)
   this_target_object_libraries(attribute)
 conclude(object_library)
 

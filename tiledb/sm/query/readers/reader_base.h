@@ -508,7 +508,7 @@ class ReaderBase : public StrategyBase {
    */
   Status read_and_unfilter_attribute_tiles(
       const std::vector<NameToLoad>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles);
 
   /**
    * Read and unfilter coordinate tiles.
@@ -520,7 +520,7 @@ class ReaderBase : public StrategyBase {
    */
   Status read_and_unfilter_coordinate_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles);
 
   /**
    * Concurrently executes across each name in `names` and each result tile
@@ -583,7 +583,7 @@ class ReaderBase : public StrategyBase {
   Status unfilter_tiles(
       const std::string& name,
       const bool validity_only,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles);
 
   /**
    * Unfilter a specific range of chunks in tile

@@ -84,6 +84,7 @@ static uint64_t get_effective_memory_budget(
 
 Query::Query(
     ContextResources& resources,
+    CancellationSource cancellation_source,
     StorageManager* storage_manager,
     shared_ptr<Array> array,
     optional<std::string> fragment_name,
@@ -106,6 +107,7 @@ Query::Query(
           (type_ == QueryType::READ || array_schema_->dense()) ?
               Layout::ROW_MAJOR :
               Layout::UNORDERED)
+    , cancellation_source_(cancellation_source)
     , storage_manager_(storage_manager)
     , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
@@ -765,9 +767,13 @@ const std::vector<UpdateValue>& Query::update_values() const {
   return update_values_;
 }
 
-Status Query::cancel() {
+void Query::cancel() {
+  local_state_machine_.event(LocalQueryEvent::cancel);
   status_ = QueryStatus::FAILED;
-  return Status::Ok();
+}
+
+bool Query::cancelled() {
+  return local_state_machine_.is_cancelled();
 }
 
 Status Query::process() {
@@ -1638,24 +1644,6 @@ Status Query::submit() {
   return Status::Ok();
 }
 
-Status Query::submit_async(
-    std::function<void(void*)> callback, void* callback_data) {
-  // Do not resubmit completed reads.
-  if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
-    callback(callback_data);
-    return Status::Ok();
-  }
-  init();
-  if (array_->is_remote())
-    return logger_->status(
-        Status_QueryError("Error in async query submission; async queries not "
-                          "supported for remote arrays."));
-
-  callback_ = callback;
-  callback_data_ = callback_data;
-  return storage_manager_->query_submit_async(this);
-}
-
 QueryStatus Query::status() const {
   return status_;
 }
@@ -1697,20 +1685,9 @@ bool Query::use_refactored_dense_reader(
     return false;
   }
 
-  // First check for legacy option
-  throw_if_not_ok(config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found));
-  // If the legacy/deprecated option is set use it over the new parameters
-  // This facilitates backwards compatibility
-  if (found) {
-    logger_->warn(
-        "sm.use_refactored_readers config option is deprecated.\nPlease use "
-        "'sm.query.dense.reader' with value of 'refactored' or 'legacy'");
-  } else {
-    const std::string& val = config_.get("sm.query.dense.reader", &found);
-    assert(found);
-    use_refactored_reader = val == "refactored";
-  }
+  const std::string& val = config_.get("sm.query.dense.reader", &found);
+  assert(found);
+  use_refactored_reader = val == "refactored";
 
   return use_refactored_reader && array_schema.dense() && all_dense;
 }
@@ -1725,22 +1702,10 @@ bool Query::use_refactored_sparse_global_order_reader(
     return false;
   }
 
-  // First check for legacy option
-  throw_if_not_ok(config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found));
-  // If the legacy/deprecated option is set use it over the new parameters
-  // This facilitates backwards compatibility
-  if (found) {
-    logger_->warn(
-        "sm.use_refactored_readers config option is deprecated.\nPlease use "
-        "'sm.query.sparse_global_order.reader' with value of 'refactored' or "
-        "'legacy'");
-  } else {
-    const std::string& val =
-        config_.get("sm.query.sparse_global_order.reader", &found);
-    assert(found);
-    use_refactored_reader = val == "refactored";
-  }
+  const std::string& val =
+      config_.get("sm.query.sparse_global_order.reader", &found);
+  assert(found);
+  use_refactored_reader = val == "refactored";
   return use_refactored_reader && !array_schema.dense() &&
          (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED);
 }
@@ -1755,22 +1720,10 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
     return false;
   }
 
-  // First check for legacy option
-  throw_if_not_ok(config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found));
-  // If the legacy/deprecated option is set use it over the new parameters
-  // This facilitates backwards compatibility
-  if (found) {
-    logger_->warn(
-        "sm.use_refactored_readers config option is deprecated.\nPlease use "
-        "'sm.query.sparse_unordered_with_dups.reader' with value of "
-        "'refactored' or 'legacy'");
-  } else {
-    const std::string& val =
-        config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
-    assert(found);
-    use_refactored_reader = val == "refactored";
-  }
+  const std::string& val =
+      config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
+  assert(found);
+  use_refactored_reader = val == "refactored";
 
   return use_refactored_reader && !array_schema.dense() &&
          layout == Layout::UNORDERED && array_schema.allows_dups();
@@ -1814,7 +1767,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       resources_,
       array_->memory_tracker(),
       query_memory_tracker_,
-      storage_manager_,
+      local_state_machine_,
+      cancellation_source_,
       opened_array_,
       config_,
       memory_budget_,

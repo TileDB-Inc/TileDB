@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,6 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
@@ -166,7 +165,9 @@ void allocate_query_buffers(tiledb::Query* const query) {
 
   bool has_ranges = false;
   for (uint64_t dim_idx = 0; dim_idx < schema.domain().ndim(); dim_idx++) {
-    if (query->range_num(dim_idx) > 0) {
+    Subarray subarray(query->ctx(), query->array());
+    query->update_subarray_from_query(&subarray);
+    if (subarray.range_num(dim_idx) > 0) {
       has_ranges = true;
       break;
     }

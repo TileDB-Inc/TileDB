@@ -100,22 +100,21 @@ The supported vcpkg base triplet values are:
 Once the build tree has been configured, you can build and install TileDB by running the following commands from the build tree:
 
 ```bash
-cmake --build . -j <num-procs>
-cmake --build . --target install-tiledb
+cmake --build . -j <num-procs> --target install
+cmake --build .
 ```
 
 If you are building with a multi-config generator (e.g., Visual Studio), you will have to specify the configuration to build with the `--config` option. Also you can directly invoke the underlying build tool:
 
 ```bash
-make -j4
-make install-tiledb
+make -j4 install
 ```
 
 The following are the most important targets:
 
 |Target|Description|
 |------|-----------|
-|`install-tiledb`|Installs the TileDB library and headers.|
+|`install`|Installs the TileDB library and headers.|
 |`check`|Builds and runs all TileDB tests.|
 |`examples`|Builds all TileDB examples.|
 
@@ -149,7 +148,7 @@ TileDB can be built with [clang sanitizers](https://clang.llvm.org/docs/AddressS
 ```bash
 cd TileDB && mkdir build-asan && cd build-asan
 ../bootstrap --enable-sanitizer=address --vcpkg-base-triplet=x64-linux
-make && make check
+make check
 ```
 
 > [!IMPORTANT]

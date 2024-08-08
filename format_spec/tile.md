@@ -185,7 +185,7 @@ The filter metadata for `TILEDB_FILTER_CHECKSUM_{MD5,SHA256}` has internal forma
 
 ### Encryption Filters
 
-If the array is **encrypted**, TileDB uses an extra internal filter `INTERNAL_FILTER_AES_256_GCM` for AES encryption.
+If the array is **encrypted**, TileDB uses an extra internal filter at the end of the pipeline for AES encryption.
 
 The encryption filter metadata have the following on-disk format:
 

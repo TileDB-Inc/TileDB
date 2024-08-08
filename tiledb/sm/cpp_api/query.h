@@ -1059,13 +1059,6 @@ class Query {
     return array_.get();
   }
 
-/* ********************************* */
-/*           DEPRECATED API          */
-/* ********************************* */
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-#include "query_deprecated.h"
-#endif  // TILEDB_REMOVE_DEPRECATIONS
-
  private:
   friend class QueryExperimental;
 
@@ -1159,75 +1152,6 @@ class Query {
     return cell_val_num == TILEDB_VAR_NUM;
   }
 
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-  /**
-   * Sets a buffer for a fixed-sized attribute.
-   *
-   * @param attr Attribute name
-   * @param buff Buffer array pointer with elements of the attribute type.
-   * @param nelements Number of array elements.
-   * @param element_size Size of array elements (in bytes).
-   **/
-  TILEDB_DEPRECATED Query& set_buffer(
-      const std::string& attr,
-      void* buff,
-      uint64_t nelements,
-      size_t element_size) {
-    auto ctx = ctx_.get();
-    size_t size = nelements * element_size;
-    buff_sizes_[attr] = std::tuple<uint64_t, uint64_t, uint64_t>(0, size, 0);
-    element_sizes_[attr] = element_size;
-    ctx.handle_error(tiledb_query_set_data_buffer(
-        ctx.ptr().get(),
-        query_.get(),
-        attr.c_str(),
-        buff,
-        &std::get<1>(buff_sizes_[attr])));
-    return *this;
-  }
-
-  /**
-   * Sets a buffer for a variable-sized attribute.
-   *
-   * @tparam T Attribute value type
-   * @param attr Attribute name
-   * @param offsets Offsets array pointer where a new element begins in the data
-   *        buffer.
-   * @param offsets_nelements Number of elements in offsets buffer.
-   * @param data Buffer array pointer with elements of the attribute type.
-   *        For variable sized attributes, the buffer should be flattened.
-   * @param data_nelements Number of array elements in data buffer.
-   * @param data_element_size Size of data array elements (in bytes).
-   **/
-  TILEDB_DEPRECATED Query& set_buffer(
-      const std::string& attr,
-      uint64_t* offsets,
-      uint64_t offset_nelements,
-      void* data,
-      uint64_t data_nelements,
-      size_t data_element_size) {
-    auto ctx = ctx_.get();
-    auto data_size = data_nelements * data_element_size;
-    auto offset_size = offset_nelements * sizeof(uint64_t);
-    element_sizes_[attr] = data_element_size;
-    buff_sizes_[attr] =
-        std::tuple<uint64_t, uint64_t, uint64_t>(offset_size, data_size, 0);
-    ctx.handle_error(tiledb_query_set_data_buffer(
-        ctx.ptr().get(),
-        query_.get(),
-        attr.c_str(),
-        data,
-        &std::get<1>(buff_sizes_[attr])));
-    ctx.handle_error(tiledb_query_set_offsets_buffer(
-        ctx.ptr().get(),
-        query_.get(),
-        attr.c_str(),
-        offsets,
-        &std::get<0>(buff_sizes_[attr])));
-    return *this;
-  }
-#endif  // TILEDB_REMOVE_DEPRECATIONS
-
   /**
    * Sets the data for a fixed/var-sized attribute/dimension.
    *
@@ -1262,98 +1186,6 @@ class Query {
         &std::get<1>(buff_sizes_[attr])));
     return *this;
   }
-
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-  /**
-   * Sets a buffer for a nullable, fixed-sized attribute.
-   *
-   * @param attr Attribute name
-   * @param data Buffer array pointer with elements of the attribute type.
-   * @param data_nelements Number of array elements.
-   * @param data_element_size Size of array elements (in bytes).
-   * @param validity_bytemap Buffer array pointer with validity bytemap values.
-   * @param validity_bytemap_nelements Number of validity bytemap elements.
-   **/
-  TILEDB_DEPRECATED Query& set_buffer_nullable(
-      const std::string& attr,
-      void* data,
-      uint64_t data_nelements,
-      size_t data_element_size,
-      uint8_t* validity_bytemap,
-      uint64_t validity_bytemap_nelements) {
-    auto ctx = ctx_.get();
-    size_t data_size = data_nelements * data_element_size;
-    size_t validity_size = validity_bytemap_nelements * sizeof(uint8_t);
-    buff_sizes_[attr] =
-        std::tuple<uint64_t, uint64_t, uint64_t>(0, data_size, validity_size);
-    element_sizes_[attr] = data_element_size;
-    ctx.handle_error(tiledb_query_set_data_buffer(
-        ctx.ptr().get(),
-        query_.get(),
-        attr.c_str(),
-        data,
-        &std::get<1>(buff_sizes_[attr])));
-    ctx.handle_error(tiledb_query_set_validity_buffer(
-        ctx.ptr().get(),
-        query_.get(),
-        attr.c_str(),
-        validity_bytemap,
-        &std::get<2>(buff_sizes_[attr])));
-    return *this;
-  }
-
-  /**
-   * Sets a buffer for a nullable, variable-sized attribute.
-   *
-   * @tparam T Attribute value type
-   * @param attr Attribute name
-   * @param offsets Offsets array pointer where a new element begins in the data
-   *        buffer.
-   * @param offsets_nelements Number of elements in offsets buffer.
-   * @param data Buffer array pointer with elements of the attribute type.
-   *        For variable sized attributes, the buffer should be flattened.
-   * @param data_nelements Number of array elements in data buffer.
-   * @param data_element_size Size of data array elements (in bytes).
-   * @param validity_bytemap Buffer array pointer with validity bytemap values.
-   * @param validity_bytemap_nelements Number of validity bytemap elements.
-   **/
-  TILEDB_DEPRECATED Query& set_buffer_nullable(
-      const std::string& attr,
-      uint64_t* offsets,
-      uint64_t offset_nelements,
-      void* data,
-      uint64_t data_nelements,
-      size_t data_element_size,
-      uint8_t* validity_bytemap,
-      uint64_t validity_bytemap_nelements) {
-    auto ctx = ctx_.get();
-    auto data_size = data_nelements * data_element_size;
-    auto offset_size = offset_nelements * sizeof(uint64_t);
-    size_t validity_size = validity_bytemap_nelements * sizeof(uint8_t);
-    element_sizes_[attr] = data_element_size;
-    buff_sizes_[attr] = std::tuple<uint64_t, uint64_t, uint64_t>(
-        offset_size, data_size, validity_size);
-    ctx.handle_error(tiledb_query_set_data_buffer(
-        ctx.ptr().get(),
-        query_.get(),
-        attr.c_str(),
-        data,
-        &std::get<1>(buff_sizes_[attr])));
-    ctx.handle_error(tiledb_query_set_offsets_buffer(
-        ctx.ptr().get(),
-        query_.get(),
-        attr.c_str(),
-        offsets,
-        &std::get<0>(buff_sizes_[attr])));
-    ctx.handle_error(tiledb_query_set_validity_buffer(
-        ctx.ptr().get(),
-        query_.get(),
-        attr.c_str(),
-        validity_bytemap,
-        &std::get<2>(buff_sizes_[attr])));
-    return *this;
-  }
-#endif  // TILEDB_REMOVE_DEPRECATIONS
 };
 
 /* ********************************* */

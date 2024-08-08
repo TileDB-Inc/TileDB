@@ -37,6 +37,7 @@
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -101,6 +102,10 @@ class Context {
   /** Pointer to the underlying storage manager. */
   inline const StorageManager* storage_manager() const {
     return &storage_manager_;
+  }
+
+  inline CancellationSource cancellation_source() const {
+    return CancellationSource(storage_manager());
   }
 
   [[nodiscard]] inline ContextResources& resources() const {

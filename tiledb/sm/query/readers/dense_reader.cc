@@ -38,7 +38,6 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/filtered_data.h"
@@ -388,7 +387,8 @@ Status DenseReader::dense_read() {
             subarray,
             t_start,
             t_end,
-            std::move(result_space_tiles));
+            std::move(result_space_tiles),
+            query_memory_tracker_);
 
     // Add the number of cells to process to subarray_end_cell.
     for (uint64_t t = t_start; t < t_end; t++) {

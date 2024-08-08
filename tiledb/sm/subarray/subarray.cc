@@ -49,9 +49,9 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/hash.h"
 #include "tiledb/sm/misc/parallel_functions.h"
+#include "tiledb/sm/misc/rectangle.h"
 #include "tiledb/sm/misc/resource_pool.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -88,7 +88,8 @@ Subarray::Subarray()
     , est_result_size_computed_(false)
     , relevant_fragments_(0)
     , coalesce_ranges_(true)
-    , ranges_sorted_(false) {
+    , ranges_sorted_(false)
+    , merge_overlapping_ranges_(true) {
 }
 
 Subarray::Subarray(
@@ -135,7 +136,8 @@ Subarray::Subarray(
     , est_result_size_computed_(false)
     , relevant_fragments_(opened_array->fragment_metadata().size())
     , coalesce_ranges_(coalesce_ranges)
-    , ranges_sorted_(false) {
+    , ranges_sorted_(false)
+    , merge_overlapping_ranges_(true) {
   add_default_ranges();
 }
 
@@ -515,17 +517,6 @@ void Subarray::add_range_var(
     throw SubarrayException("Cannot add range; Range must be variable-sized");
   }
 
-  // Get read_range_oob config setting
-  bool found = false;
-  std::string read_range_oob = config_.get("sm.read_range_oob", &found);
-  assert(found);
-
-  if (read_range_oob != "error" && read_range_oob != "warn") {
-    throw SubarrayException(
-        "Invalid value " + read_range_oob +
-        " for sm.read_range_obb. Acceptable values are 'error' or 'warn'.");
-  }
-
   // Add range
   this->add_range(
       dim_idx, Range(start, start_size, end, end_size), err_on_range_oob_);
@@ -841,7 +832,7 @@ uint64_t Subarray::tile_cell_num(const T* tile_coords) const {
     uint64_t cell_num_for_dim = 0;
     for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
       const auto& range = range_subset_[d][r];
-      utils::geometry::overlap(
+      rectangle::overlap(
           (const T*)range.data(),
           &tile_subarray[2 * d],
           1,
@@ -1053,7 +1044,9 @@ void Subarray::set_layout(Layout layout) {
 }
 
 void Subarray::set_config(const QueryType query_type, const Config& config) {
-  config_.inherit(config);
+  merge_overlapping_ranges_ = config.get<bool>(
+      "sm.merge_overlapping_ranges_experimental", Config::MustFindMarker());
+
   if (query_type == QueryType::READ) {
     bool found = false;
     std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
@@ -1065,10 +1058,6 @@ void Subarray::set_config(const QueryType query_type, const Config& config) {
     err_on_range_oob_ = read_range_oob_str == "error";
   }
 };
-
-const Config* Subarray::config() const {
-  return &config_;
-}
 
 void Subarray::set_coalesce_ranges(bool coalesce_ranges) {
   if (count_set_ranges()) {
@@ -1644,9 +1633,6 @@ void Subarray::sort_and_merge_ranges(ThreadPool* const compute_tp) {
   if (ranges_sorted_)
     return;
 
-  auto merge = config_.get<bool>(
-      "sm.merge_overlapping_ranges_experimental", Config::MustFindMarker());
-
   // Sort and conditionally merge ranges
   auto timer = stats_->start_timer("sort_and_merge_ranges");
   throw_if_not_ok(parallel_for(
@@ -1654,7 +1640,8 @@ void Subarray::sort_and_merge_ranges(ThreadPool* const compute_tp) {
       0,
       array_->array_schema_latest().dim_num(),
       [&](uint64_t dim_idx) {
-        range_subset_[dim_idx].sort_and_merge_ranges(compute_tp, merge);
+        range_subset_[dim_idx].sort_and_merge_ranges(
+            compute_tp, merge_overlapping_ranges_);
         return Status::Ok();
       }));
   ranges_sorted_ = true;
@@ -2354,6 +2341,7 @@ Subarray Subarray::clone() const {
   clone.est_result_size_ = est_result_size_;
   clone.max_mem_size_ = max_mem_size_;
   clone.original_range_idx_ = original_range_idx_;
+  clone.merge_overlapping_ranges_ = merge_overlapping_ranges_;
 
   return clone;
 }
@@ -2464,6 +2452,7 @@ void Subarray::swap(Subarray& subarray) {
   std::swap(est_result_size_, subarray.est_result_size_);
   std::swap(max_mem_size_, subarray.max_mem_size_);
   std::swap(original_range_idx_, subarray.original_range_idx_);
+  std::swap(merge_overlapping_ranges_, subarray.merge_overlapping_ranges_);
 }
 
 void Subarray::get_expanded_coordinates(
@@ -2566,45 +2555,39 @@ void Subarray::compute_relevant_fragment_tile_overlap(
 
   const auto& meta = array_->fragment_metadata();
 
-  auto status =
-      parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t i) {
-        const auto f = relevant_fragments_[i];
-        const auto dense = meta[f]->dense();
-        compute_relevant_fragment_tile_overlap(
-            meta[f], f, dense, compute_tp, tile_overlap, fn_ctx);
+  const auto num_threads = compute_tp->concurrency_level();
+  const auto ranges_per_thread =
+      (uint64_t)std::ceil((double)fn_ctx->range_len_ / num_threads);
+
+  auto status = parallel_for_2d(
+      compute_tp,
+      0,
+      relevant_fragments_.size(),
+      0,
+      num_threads,
+      [&](uint64_t i, uint64_t t) {
+        const auto frag_idx = relevant_fragments_[i];
+        const auto dense = meta[frag_idx]->dense();
+
+        const auto r_start =
+            fn_ctx->range_idx_offset_ + (t * ranges_per_thread);
+        const auto r_end =
+            fn_ctx->range_idx_offset_ +
+            std::min((t + 1) * ranges_per_thread - 1, fn_ctx->range_len_ - 1);
+        for (uint64_t r = r_start; r <= r_end; ++r) {
+          if (dense) {  // Dense fragment
+            *tile_overlap->at(frag_idx, r) = compute_tile_overlap(
+                r + tile_overlap->range_idx_start(), frag_idx);
+          } else {  // Sparse fragment
+            const auto& range =
+                this->ndrange(r + tile_overlap->range_idx_start());
+            meta[frag_idx]->loaded_metadata()->get_tile_overlap(
+                range, is_default_, tile_overlap->at(frag_idx, r));
+          }
+        }
+
         return Status::Ok();
       });
-  throw_if_not_ok(status);
-}
-
-void Subarray::compute_relevant_fragment_tile_overlap(
-    shared_ptr<FragmentMetadata> meta,
-    unsigned frag_idx,
-    bool dense,
-    ThreadPool* compute_tp,
-    SubarrayTileOverlap* tile_overlap,
-    ComputeRelevantTileOverlapCtx* fn_ctx) {
-  const auto num_threads = compute_tp->concurrency_level();
-  const auto range_num = fn_ctx->range_len_;
-
-  const auto ranges_per_thread =
-      (uint64_t)std::ceil((double)range_num / num_threads);
-  const auto status = parallel_for(compute_tp, 0, num_threads, [&](uint64_t t) {
-    const auto r_start = fn_ctx->range_idx_offset_ + (t * ranges_per_thread);
-    const auto r_end = fn_ctx->range_idx_offset_ +
-                       std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
-    for (uint64_t r = r_start; r <= r_end; ++r) {
-      if (dense) {  // Dense fragment
-        *tile_overlap->at(frag_idx, r) =
-            compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
-      } else {  // Sparse fragment
-        const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
-        meta->loaded_metadata()->get_tile_overlap(
-            range, is_default_, tile_overlap->at(frag_idx, r));
-      }
-    }
-    return Status::Ok();
-  });
   throw_if_not_ok(status);
 }
 
@@ -2691,7 +2674,7 @@ void Subarray::crop_to_tile_impl(const T* tile_coords, SubarrayT& ret) const {
     uint64_t i = 0;
     for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
       const auto& range = range_subset_[d][r];
-      utils::geometry::overlap(
+      rectangle::overlap(
           (const T*)range.data(),
           &tile_subarray[2 * d],
           1,

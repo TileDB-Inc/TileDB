@@ -362,7 +362,26 @@ Status FragmentConsolidator::consolidate_fragments(
   NDRange union_non_empty_domains;
   std::unordered_set<std::string> to_consolidate_set;
   for (auto& uri : fragment_uris) {
-    to_consolidate_set.emplace(uri);
+    if (uri.find('/') == std::string::npos) {
+      // The fragment URI is relative and does not contain the array URI.
+      to_consolidate_set.emplace(uri);
+    } else {
+      // The fragment URI is absolute and should contain the correct array URI.
+      URI fragment_uri(uri);
+      FragmentID frag_id(fragment_uri);
+
+      // Check for valid URI based on array format version.
+      auto fragments_dir = array_for_reads->array_directory().get_fragments_dir(
+          frag_id.array_format_version());
+      if (fragment_uri !=
+          fragments_dir.join_path(fragment_uri.last_path_part().c_str())) {
+        throw FragmentConsolidatorException(
+            "Failed request to consolidate an invalid fragment URI '" +
+            fragment_uri.to_string() + "' for array at '" +
+            URI(array_name).to_string() + "'");
+      }
+      to_consolidate_set.emplace(fragment_uri.last_path_part());
+    }
   }
 
   // Make sure all fragments to consolidate are present
@@ -384,7 +403,8 @@ Status FragmentConsolidator::consolidate_fragments(
 
   if (count != fragment_uris.size()) {
     throw FragmentConsolidatorException(
-        "Cannot consolidate; Not all fragments could be found");
+        "Cannot consolidate; Found " + std::to_string(count) + " of " +
+        std::to_string(fragment_uris.size()) + " required fragments.");
   }
 
   FragmentConsolidationWorkspace cw(consolidator_memory_tracker_);
@@ -670,6 +690,7 @@ Status FragmentConsolidator::create_queries(
   query_r = tdb_unique_ptr<Query>(tdb_new(
       Query,
       resources_,
+      CancellationSource(storage_manager_),
       storage_manager_,
       array_for_reads,
       nullopt,
@@ -701,6 +722,7 @@ Status FragmentConsolidator::create_queries(
   query_w = tdb_unique_ptr<Query>(tdb_new(
       Query,
       resources_,
+      CancellationSource(storage_manager_),
       storage_manager_,
       array_for_writes,
       fragment_name,

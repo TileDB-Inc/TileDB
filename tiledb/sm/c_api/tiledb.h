@@ -889,27 +889,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
     int32_t* has_attr) TILEDB_NOEXCEPT;
 
 /**
- * Dumps the array schema in ASCII format in the selected file output.
- *
- * **Example:**
- *
- * The following prints the array schema dump in standard output.
- *
- * @code{.c}
- * tiledb_array_schema_dump(ctx, array_schema, stdout);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param out The output handle.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    FILE* out) TILEDB_NOEXCEPT;
-
-/**
  * Dumps the array schema in ASCII format in the selected string output.
  *
  * The output string handle must be freed by the user after use.
@@ -2804,27 +2783,6 @@ TILEDB_EXPORT int32_t tiledb_array_create(
 TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
     TILEDB_NOEXCEPT;
 
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-/**
- * Note: This API is deprecated and replaced with tiledb_array_delete (above).
- *
- * Deletes all written array data.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_delete_array(ctx, array, "hdfs:///temp/my_array");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array to delete the data from.
- * @param uri The Array's URI.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_array(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
-#endif  // TILEDB_REMOVE_DEPRECATIONS
-
 /**
  * Upgrades an array to the latest format version.
  *
@@ -3676,7 +3634,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
  *
  * @code{.c}
  * tiledb_string_t* name;
- * tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
+ * tiledb_fragment_info_get_fragment_name_v2(ctx, fragment_info, 1, &name);
  * // Remember to free the string with tiledb_string_free when you are done with
  * // it.
  * @endcode

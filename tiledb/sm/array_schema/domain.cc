@@ -41,7 +41,6 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
@@ -1171,8 +1170,6 @@ template uint64_t Domain::stride<double>(Layout subarray_layout) const;
 }  // namespace tiledb::sm
 
 std::ostream& operator<<(std::ostream& os, const tiledb::sm::Domain& domain) {
-  std::string tmp;
-
   for (unsigned i = 0; i < domain.dim_num(); i++) {
     os << std::endl;
     os << *domain.dimension_ptr(i);

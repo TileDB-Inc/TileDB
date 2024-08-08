@@ -1,5 +1,5 @@
 /**
- * @file   auxiliary.h
+ * @file   array_schema_operations.h
  *
  * @section LICENSE
  *
@@ -27,20 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * This file defines auxiliary functions to support class ArraySchema.
- *
- * This file exists solely as an intermediary solution to resolve build issues
- * with `capi_context_stub` when migrating `store_array_schema` out of
- * `StorageManagerCanonical`. At present, there is an interdependency chain
- * with `generic_tile_io` which must be resolved before this function can be
- * placed into `class ArraySchema`. As such, this file is _intentionally_ left
- * out of the `array_schema` object library and _must_ remain that way.
+ * This file defines I/O operations which support class ArraySchema.
  */
 
-#ifndef TILEDB_AUXILIARY_ARRAY_SCHEMA_H
-#define TILEDB_AUXILIARY_ARRAY_SCHEMA_H
+#ifndef TILEDB_ARRAY_SCHEMA_OPERATIONS_H
+#define TILEDB_ARRAY_SCHEMA_OPERATIONS_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -55,7 +49,23 @@ class EncryptionKey;
 /* ********************************* */
 
 /**
+ * Serializes the array schema object into a buffer.
+ *
+ * @param serializer The object the array schema is serialized into.
+ * @param array_schema The array schema to be serialized.
+ */
+void serialize_array_schema(
+    Serializer& serializer, const ArraySchema& array_schema);
+
+/**
  * Stores an array schema into persistent storage.
+ *
+ * @section Maturity Notes
+ * This function currently implements defective behavior.
+ * Storing an array schema that does not have a URI attached to it should
+ * _not_ succeed. Users should be aware of this behavior and avoid storage of
+ * schemas with empty URIs.
+ * This defect is scheduled for fix asap, but must be documented in the interim.
  *
  * @param resources The context resources.
  * @param array_schema The array schema to be stored.
@@ -68,4 +78,4 @@ void store_array_schema(
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_AUXILIARY_ARRAY_SCHEMA_H
+#endif  // TILEDB_ARRAY_SCHEMA_OPERATIONS_H

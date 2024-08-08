@@ -33,7 +33,7 @@ gather_sources(${SOURCES})
 commence(object_library capi_enumeration_stub)
   this_target_sources(enumeration_api.cc)
   this_target_link_libraries(export)
-  this_target_object_libraries(capi_buffer_stub constants)
+  this_target_object_libraries(capi_buffer_stub capi_string constants)
   this_target_object_libraries(enumeration)
 conclude(object_library)
 

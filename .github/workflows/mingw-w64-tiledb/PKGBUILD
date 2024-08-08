@@ -34,24 +34,22 @@ build() {
     -DTILEDB_TESTS=OFF \
     -DTILEDB_S3=ON \
     -DCOMPILER_SUPPORTS_AVX2=OFF \
-    -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     -DTILEDB_WERROR=OFF \
     -DVCPKG_TARGET_TRIPLET=${vcpkg_triplet} \
     ..
   make
-  make -C tiledb
 
 # in a local environ, can build to demo/check for previously seen (windows event) handle leakge
 # apparently due to issues with mingw std library implementation.
 # note that with S3 enabled above, and minio not running, the aws sdk may fatally error on exit.
-#  make -C tiledb/test tiledb_unit # need the support lib built
-#  make -C tiledb/test/performance tiledb_explore_msys_handle_leakage
+#  make -C test tiledb_unit # need the support lib built
+#  make -C test/performance tiledb_explore_msys_handle_leakage
 #  . ../test/performance/msys_handle_leakage/trials.sh
 }
 
 package() {
   cd ${source_dir}/build-${MINGW_CHOST}
-  make DESTDIR="${pkgdir}" -C tiledb install
+  make DESTDIR="${pkgdir}" install
   # Copy vcpkg_installed to the mingw package.
   cp -r vcpkg_installed/${vcpkg_triplet}/. ${pkgdir}/${MINGW_ARCH}
 }

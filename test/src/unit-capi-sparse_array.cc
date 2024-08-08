@@ -5,8 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +48,6 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include "test/support/src/helpers.h"
 
@@ -3229,7 +3227,6 @@ TEST_CASE_METHOD(
   tiledb_vfs_free(&vfs_);
   // reallocate with input config
   vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
-  tiledb_config_free(&config);
 
   // Open array
   tiledb_array_t* array;
@@ -3276,6 +3273,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_config(ctx_, subarray, config);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
@@ -3299,6 +3298,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&subarray);
+  tiledb_config_free(&config);
 }
 
 TEST_CASE_METHOD(

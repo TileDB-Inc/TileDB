@@ -1,5 +1,5 @@
 /**
- * @file compile_object_mutex_main.cc
+ * @file tiledb/sm/array_schema/test/unit_array_schema_operations.cc
  *
  * @section LICENSE
  *
@@ -24,11 +24,32 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file contains unit tests for the array schema operations.
  */
 
-#include "../object_mutex.h"
+#include <tdb_catch.h>
 
-int main() {
-  std::lock_guard<std::mutex> lock{tiledb::sm::object_mtx};
-  return 0;
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_operations.h"
+#include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/enums/array_type.h"
+#include "tiledb/sm/storage_manager/context.h"
+
+using namespace tiledb::common;
+using namespace tiledb::sm;
+
+TEST_CASE(
+    "Array schema operations: store array schema",
+    "[!mayfail][array_schema_operations][store_array_schema]") {
+  Config config;
+  Context ctx(config);
+  auto schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, ctx.resources().ephemeral_memory_tracker());
+  EncryptionKey key;
+
+  // Note: This should fail because no URI has been set on the schema.
+  CHECK_THROWS(store_array_schema(ctx.resources(), schema, key));
 }

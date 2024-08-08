@@ -36,6 +36,7 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
@@ -117,32 +118,66 @@ class DenseTileSubarray {
     }
   };
 
+  /**
+   * The type of the allocator. Required to make the type allocator-aware.
+   *
+   * uint8_t was arbitrarily chosen and does not matter; allocators can convert
+   * between any types.
+   */
+  using allocator_type = tdb::pmr::polymorphic_allocator<uint8_t>;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   DenseTileSubarray() = delete;
 
-  DenseTileSubarray(unsigned dim_num)
-      : ranges_(dim_num) {
+  DenseTileSubarray(unsigned dim_num, const allocator_type& alloc = {})
+      : original_range_idx_(alloc)
+      , ranges_(dim_num, alloc) {
   }
+
+  /** Default copy constructor. */
+  DenseTileSubarray(const DenseTileSubarray&) = default;
+  /** Default move constructor. */
+  DenseTileSubarray(DenseTileSubarray&&) = default;
+
+  /** Allocator-aware copy constructor. */
+  DenseTileSubarray(const DenseTileSubarray& other, const allocator_type& alloc)
+      : original_range_idx_(other.original_range_idx_, alloc)
+      , ranges_(other.ranges_, alloc) {
+  }
+
+  /** Allocator-aware move constructor. */
+  DenseTileSubarray(DenseTileSubarray&& other, const allocator_type& alloc)
+      : original_range_idx_(std::move(other.original_range_idx_), alloc)
+      , ranges_(std::move(other.ranges_), alloc) {
+  }
+
+  /** Default copy-assign operator. */
+  DenseTileSubarray& operator=(const DenseTileSubarray&) = default;
+  /** Default move-assign operator. */
+  DenseTileSubarray& operator=(DenseTileSubarray&&) = default;
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
 
   /** Returns the orignal range indexes. */
-  inline const std::vector<std::vector<uint64_t>>& original_range_idx() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&
+  original_range_idx() const {
     return original_range_idx_;
   }
 
   /** Returns the ranges. */
-  inline const std::vector<std::vector<DenseTileRange>>& ranges() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<DenseTileRange>>& ranges()
+      const {
     return ranges_;
   }
 
   /** Returns the orignal range indexes to be modified. */
-  inline std::vector<std::vector<uint64_t>>& original_range_idx_unsafe() {
+  inline tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&
+  original_range_idx_unsafe() {
     return original_range_idx_;
   }
 
@@ -160,10 +195,10 @@ class DenseTileSubarray {
   /* ********************************* */
 
   /** Stores a vector of 1D ranges per dimension. */
-  std::vector<std::vector<uint64_t>> original_range_idx_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> original_range_idx_;
 
   /** Stores the ranges per dimension. */
-  std::vector<std::vector<DenseTileRange>> ranges_;
+  tdb::pmr::vector<tdb::pmr::vector<DenseTileRange>> ranges_;
 };
 
 /**
@@ -434,12 +469,6 @@ class Subarray {
 
   /** Sets config for query-level parameters only. */
   void set_config(const QueryType query_type, const Config& config);
-
-  /**
-   * Get the config of the writer
-   * @return Config
-   */
-  const Config* config() const;
 
   /**
    * Sets the subarray using a pointer to raw range data that stores one range
@@ -1509,9 +1538,6 @@ class Subarray {
   std::unordered_map<std::vector<uint8_t>, size_t, CoordsHasher>
       tile_coords_map_;
 
-  /** The config for query-level parameters only. */
-  Config config_;
-
   /** State of specific Config item needed from multiple locations. */
   bool err_on_range_oob_ = true;
 
@@ -1520,6 +1546,9 @@ class Subarray {
 
   /** Mutext to protect sorting ranges. */
   std::mutex ranges_sort_mtx_;
+
+  /** Merge overlapping ranges setting. */
+  bool merge_overlapping_ranges_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -1594,25 +1623,6 @@ class Subarray {
    * invocations.
    */
   void compute_relevant_fragment_tile_overlap(
-      ThreadPool* compute_tp,
-      SubarrayTileOverlap* tile_overlap,
-      ComputeRelevantTileOverlapCtx* fn_ctx);
-
-  /**
-   * Computes the tile overlap for all ranges on the given relevant fragment.
-   *
-   * @param meta The fragment metadat to focus on.
-   * @param frag_idx The fragment id.
-   * @param dense Whether the fragment is dense or sparse.
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param tile_overlap Mutated to store the computed tile overlap.
-   * @param fn_ctx An opaque context object to be used between successive
-   * invocations.
-   */
-  void compute_relevant_fragment_tile_overlap(
-      shared_ptr<FragmentMetadata> meta,
-      unsigned frag_idx,
-      bool dense,
       ThreadPool* compute_tp,
       SubarrayTileOverlap* tile_overlap,
       ComputeRelevantTileOverlapCtx* fn_ctx);

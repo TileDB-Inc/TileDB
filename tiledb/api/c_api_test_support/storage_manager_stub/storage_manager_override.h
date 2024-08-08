@@ -38,15 +38,10 @@
 #include "tiledb/sm/storage_manager/context_resources.h"
 
 namespace tiledb::common {
-class ThreadPool;
 class Logger;
 }  // namespace tiledb::common
-namespace tiledb::stats {
-class Stats;
-}
 namespace tiledb::sm {
 class Config;
-class VFS;
 
 class StorageManagerStub {
   Config config_;
@@ -54,14 +49,13 @@ class StorageManagerStub {
  public:
   static constexpr bool is_overriding_class = true;
   StorageManagerStub(
-      ContextResources&, std::shared_ptr<common::Logger>, const Config& config)
+      ContextResources&,
+      const std::shared_ptr<common::Logger>&,
+      const Config& config)
       : config_(config) {
   }
 
   inline Status cancel_all_tasks() {
-    return Status{};
-  }
-  inline Status set_tag(const std::string&, const std::string&) {
     return Status{};
   }
 };

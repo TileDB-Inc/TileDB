@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,6 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
 using namespace tiledb::test;
@@ -1041,6 +1040,7 @@ TEST_CASE(
   subarray.add_range(0, row_range[0], row_range[1]);
   subarray.add_range(1, col_range0[0], col_range0[1]);
   subarray.add_range(1, col_range1[0], col_range1[1]);
+  subarray.set_config(cfg);
   query.set_subarray(subarray);
   query.set_layout(TILEDB_UNORDERED);
 
@@ -1174,6 +1174,7 @@ TEST_CASE(
       .set_data_buffer("a", data);
 
   // Submit query
+  subarray.set_config(cfg);
   query.set_subarray(subarray);
   auto st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);

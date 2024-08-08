@@ -27,7 +27,7 @@
 include(common NO_POLICY_SCOPE)
 include(unit_test)
 
-find_package(Catch_EP REQUIRED)
+find_package(Catch2 REQUIRED)
 
 # Maturity
 #

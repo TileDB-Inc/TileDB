@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,14 +39,12 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
-#include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class MemFilesystem::FSNode {
  public:
@@ -686,5 +684,4 @@ Status MemFilesystem::lookup_node(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

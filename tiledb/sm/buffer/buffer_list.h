@@ -129,6 +129,26 @@ class BufferList {
   /** Returns the sum of sizes of all buffers in the list. */
   uint64_t total_size() const;
 
+  /**
+   * Sets the current offsets for reading.
+   *
+   * @param current_buffer_index The index of the current buffer in the list.
+   * @param current_relative_offset The current relative offset within the
+   * current buffer.
+   *
+   * */
+  void set_offset(
+      const size_t current_buffer_index,
+      const uint64_t current_relative_offset);
+
+  /**
+   * Returns the current offsets.
+   *
+   * @return The index of the current buffer in the list.
+   * @return The current relative offset within the current buffer.
+   */
+  std::tuple<size_t, uint64_t> get_offset() const;
+
  private:
   /** The underlying list of Buffers. */
   std::vector<Buffer> buffers_;

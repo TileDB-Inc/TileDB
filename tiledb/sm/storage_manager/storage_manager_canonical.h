@@ -61,16 +61,11 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class Array;
-class ArrayDirectory;
-class ArraySchema;
-class Consolidator;
-class EncryptionKey;
 class Query;
 
 enum class EncryptionType : uint8_t;
 
-/** The storage manager that manages pretty much everything in TileDB. */
+/** The storage manager that manages pretty much nothing in TileDB. */
 class StorageManagerCanonical {
  public:
   /* ********************************* */
@@ -80,23 +75,17 @@ class StorageManagerCanonical {
   /**
    * Complete, C.41-compliant constructor
    *
+   * The `resources` argument is only used for its `vfs()` member function. This
+   * is the VFS instance that's waited on in `cancel_all_tasks`.
+   *
+   *
+   * @param resources Resource object from associated context
    * @param config The configuration parameters.
    */
   StorageManagerCanonical(
       ContextResources& resources,
-      shared_ptr<Logger> logger,
+      const shared_ptr<Logger>& logger,
       const Config& config);
-
- private:
-  /**
-   * Initializes the storage manager. Only used in the constructor.
-   *
-   * TODO: Integrate what this function does into the constructor directly.
-   * TODO: Eliminate this function.
-   *
-   * @return Status
-   */
-  Status init();
 
  public:
   /** Destructor. */
@@ -109,34 +98,14 @@ class StorageManagerCanonical {
   /*                API                */
   /* ********************************* */
 
-  /**
-   * Pushes an async query to the queue.
-   *
-   * @param query The async query.
-   * @return Status
-   */
-  Status async_push_query(Query* query);
-
   /** Cancels all background tasks. */
   Status cancel_all_tasks();
 
   /** Returns true while all tasks are being cancelled. */
-  bool cancellation_in_progress();
+  bool cancellation_in_progress() const;
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
-
-  /**
-   * Submits a query for async execution.
-   *
-   * @param query The query to submit.
-   * @return Status
-   */
-  Status query_submit_async(Query* query);
-
-  [[nodiscard]] inline ContextResources& resources() const {
-    return resources_;
-  }
 
  private:
   /* ********************************* */
@@ -177,17 +146,16 @@ class StorageManagerCanonical {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** Context create resources object. */
-  ContextResources& resources_;
-
-  /** The class logger. */
-  shared_ptr<Logger> logger_;
+  /**
+   * VFS instance used in `cancel_all_tasks`.
+   */
+  VFS& vfs_;
 
   /** Set to true when tasks are being cancelled. */
   bool cancellation_in_progress_;
 
   /** Mutex protecting cancellation_in_progress_. */
-  std::mutex cancellation_in_progress_mtx_;
+  mutable std::mutex cancellation_in_progress_mtx_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;
@@ -200,10 +168,6 @@ class StorageManagerCanonical {
 
   /** Guards queries_in_progress_ counter. */
   std::condition_variable queries_in_progress_cv_;
-
-  /** Tracks all scheduled tasks that can be safely cancelled before execution.
-   */
-  CancelableTasks cancelable_tasks_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
