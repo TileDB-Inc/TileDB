@@ -74,7 +74,7 @@ void create_array() {
   tiledb_ndrectangle_set_range_for_name(ctx, ndrect, "d1", &range);
 
   // Assign the rectangle to the current domain
-  tiledb_current_domain_set_ndrectangle(current_domain, ndrect);
+  tiledb_current_domain_set_ndrectangle(ctx, current_domain, ndrect);
 
   // Create a single attribute "a" so each cell can store an integer
   tiledb_attribute_t* a;
@@ -119,21 +119,21 @@ void print_current_domain() {
 
   // Check if current domain is empty
   uint32_t is_empty;
-  tiledb_current_domain_get_is_empty(current_domain, &is_empty);
+  tiledb_current_domain_get_is_empty(ctx, current_domain, &is_empty);
 
   if (is_empty) {
     printf("Current domain: empty\n");
   } else {
     // Get current domain type
     tiledb_current_domain_type_t current_domain_type;
-    tiledb_current_domain_get_type(current_domain, &current_domain_type);
+    tiledb_current_domain_get_type(ctx, current_domain, &current_domain_type);
 
     if (current_domain_type == TILEDB_NDRECTANGLE) {
       printf("Current domain type: NDRECTANGLE\n");
 
       // Get the ND rectangle
       tiledb_ndrectangle_t* ndrect;
-      tiledb_current_domain_get_ndrectangle(current_domain, &ndrect);
+      tiledb_current_domain_get_ndrectangle(ctx, current_domain, &ndrect);
 
       tiledb_range_t range;
       tiledb_ndrectangle_get_range_from_name(ctx, ndrect, "d1", &range);
@@ -203,7 +203,7 @@ void expand_current_domain() {
   tiledb_ndrectangle_set_range_for_name(ctx, ndrect, "d1", &range);
 
   // Set the rectangle to the current domain
-  tiledb_current_domain_set_ndrectangle(new_current_domain, ndrect);
+  tiledb_current_domain_set_ndrectangle(ctx, new_current_domain, ndrect);
 
   // Expand the current domain
   tiledb_array_schema_evolution_expand_current_domain(

@@ -86,6 +86,7 @@ TILEDB_EXPORT capi_return_t tiledb_ndrectangle_alloc(
  * tiledb_ndrectangle_free(&ndr);
  * @endcode
  *
+ * @param ctx The TileDB context
  * @param ndr The n-dimensional rectangle to be freed
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */

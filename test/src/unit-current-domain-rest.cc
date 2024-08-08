@@ -128,7 +128,7 @@ void RestCurrentDomainFx::create_sparse_array(const std::string& array_name) {
       tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "d2", &range_var) ==
       TILEDB_OK);
 
-  REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_set_ndrectangle(ctx_c_, crd, ndr) == TILEDB_OK);
   REQUIRE(
       tiledb_array_schema_set_current_domain(ctx_c_, array_schema, crd) ==
       TILEDB_OK);
@@ -169,7 +169,8 @@ TEST_CASE_METHOD(
       tiledb_array_schema_get_current_domain(ctx_c_, schema, &crd) ==
       TILEDB_OK);
 
-  REQUIRE(tiledb_current_domain_get_ndrectangle(crd, &ndr) == TILEDB_OK);
+  REQUIRE(
+      tiledb_current_domain_get_ndrectangle(ctx_c_, crd, &ndr) == TILEDB_OK);
   tiledb_range_t outrange;
   tiledb_range_t outrange_var;
   REQUIRE(
@@ -239,7 +240,7 @@ TEST_CASE_METHOD(
       tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "d2", &range_var) ==
       TILEDB_OK);
 
-  REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
+  REQUIRE(tiledb_current_domain_set_ndrectangle(ctx_c_, crd, ndr) == TILEDB_OK);
   REQUIRE(
       tiledb_array_schema_evolution_expand_current_domain(ctx_c_, evo, crd) ==
       TILEDB_OK);
@@ -262,7 +263,8 @@ TEST_CASE_METHOD(
       tiledb_array_schema_get_current_domain(ctx_c_, schema, &crd) ==
       TILEDB_OK);
 
-  REQUIRE(tiledb_current_domain_get_ndrectangle(crd, &ndr) == TILEDB_OK);
+  REQUIRE(
+      tiledb_current_domain_get_ndrectangle(ctx_c_, crd, &ndr) == TILEDB_OK);
   tiledb_range_t outrange;
   REQUIRE(
       tiledb_ndrectangle_get_range_from_name(ctx_c_, ndr, "d1", &outrange) ==
