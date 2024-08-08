@@ -155,6 +155,11 @@ void print_current_domain() {
       tiledb_datatype_to_str(dtype, &dtype_str);
       printf("Range 0 dtype by name: %s\n", dtype_str);
 
+      // Get dim num
+      uint32_t ndim;
+      tiledb_ndrectangle_get_dim_num(ctx, ndrect, &ndim);
+      printf("Range 0 dtype by name: %d\n", ndim);
+
       // Clean up
       tiledb_ndrectangle_free(&ndrect);
     } else {

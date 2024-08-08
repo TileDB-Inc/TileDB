@@ -191,6 +191,17 @@ capi_return_t tiledb_ndrectangle_get_dtype_from_name(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_ndrectangle_get_dim_num(
+    tiledb_ctx_t* ctx, tiledb_ndrectangle_t* ndr, uint32_t* ndim) {
+  ensure_context_is_valid(ctx);
+  ensure_handle_is_valid(ndr);
+  ensure_output_pointer_is_valid(ndim);
+
+  *ndim = ndr->ndrectangle()->domain()->dim_num();
+
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
@@ -269,4 +280,13 @@ CAPI_INTERFACE(
   return api_entry_with_context<
       tiledb::api::tiledb_ndrectangle_get_dtype_from_name>(
       ctx, ndr, name, type);
+}
+
+CAPI_INTERFACE(
+    ndrectangle_get_dim_num,
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    uint32_t* ndim) {
+  return api_entry_with_context<tiledb::api::tiledb_ndrectangle_get_dim_num>(
+      ctx, ndr, ndim);
 }

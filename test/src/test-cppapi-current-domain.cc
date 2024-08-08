@@ -98,9 +98,12 @@ TEST_CASE_METHOD(
   CHECK(range[0] == 30);
   CHECK(range[1] == 40);
 
-  // CHECK range dtype
+  // Check range dtype
   CHECK(ndrect.range_dtype(0) == TILEDB_INT32);
   CHECK(ndrect.range_dtype("x") == TILEDB_INT32);
+
+  // Check ndim api
+  CHECK(ndrect.dim_num() == 2);
 }
 
 TEST_CASE_METHOD(

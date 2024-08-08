@@ -121,6 +121,9 @@ void print_current_domain(Context& ctx) {
   // Print datatype of range d1
   std::cout << "Current domain range 0 datatype: "
             << tiledb::impl::type_to_str(ndrect.range_dtype("d1")) << std::endl;
+
+  // Print dim num
+  std::cout << "Current domain dim num: " << ndrect.dim_num() << std::endl;
 }
 
 void expand_current_domain(Context& ctx) {

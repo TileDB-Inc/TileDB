@@ -284,6 +284,7 @@ class NDRectangle {
 
     return dtype;
   }
+
   /**
    * Get the data type of the range by name
    *
@@ -298,6 +299,21 @@ class NDRectangle {
         ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &dtype));
 
     return dtype;
+  }
+
+  /**
+   * Get the number of dimensions associated with the NDRectangle.
+   *
+   * @return The number of dimensions.
+   */
+  uint32_t dim_num() {
+    auto& ctx = ctx_.get();
+
+    uint32_t ndim;
+    ctx.handle_error(
+        tiledb_ndrectangle_get_dim_num(ctx.ptr().get(), ndrect_.get(), &ndim));
+
+    return ndim;
   }
 
  private:
