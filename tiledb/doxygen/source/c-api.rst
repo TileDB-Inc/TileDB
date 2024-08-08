@@ -334,8 +334,6 @@ Array Schema
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_has_attribute
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_schema_dump
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_dump_str
     :project: TileDB-C
 
@@ -362,8 +360,6 @@ Attribute
 .. doxygenfunction:: tiledb_attribute_get_cell_val_num
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_get_cell_size
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_attribute_dump
     :project: TileDB-C
 .. doxygenfunction:: tiledb_attribute_dump_str
     :project: TileDB-C
@@ -394,8 +390,6 @@ Domain
     :project: TileDB-C
 .. doxygenfunction:: tiledb_domain_has_dimension
     :project: TileDB-C
-.. doxygenfunction:: tiledb_domain_dump
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_domain_dump_str
     :project: TileDB-C
 
@@ -420,8 +414,6 @@ Dimension
 .. doxygenfunction:: tiledb_dimension_set_filter_list
     :project: TileDB-C
 .. doxygenfunction:: tiledb_dimension_get_tile_extent
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_dimension_dump
     :project: TileDB-C
 .. doxygenfunction:: tiledb_dimension_dump_str
     :project: TileDB-C

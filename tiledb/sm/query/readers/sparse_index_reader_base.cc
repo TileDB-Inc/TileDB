@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array/array_operations.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -340,10 +341,9 @@ Status SparseIndexReaderBase::load_initial_data() {
   const auto dim_num = array_schema_.dim_num();
 
   // Load delete conditions.
-  auto&& [st, conditions, update_values] =
-      array_->load_delete_and_update_conditions();
-  RETURN_CANCEL_OR_ERROR(st);
-  delete_and_update_conditions_ = std::move(*conditions);
+  auto&& [conditions, update_values] =
+      load_delete_and_update_conditions(resources_, *array_.get());
+  delete_and_update_conditions_ = conditions;
   bool make_timestamped_conditions = need_timestamped_conditions();
 
   if (make_timestamped_conditions) {
@@ -385,7 +385,10 @@ Status SparseIndexReaderBase::load_initial_data() {
     // At this point, full memory budget is available.
     if (!array_memory_tracker_->set_budget(memory_budget_.total_budget())) {
       throw SparseIndexReaderBaseException(
-          "Cannot set array memory budget, already over limit.");
+          "Cannot set array memory budget (" +
+          std::to_string(memory_budget_.total_budget()) +
+          ") because it is smaller than the current memory usage (" +
+          std::to_string(array_memory_tracker_->get_memory_usage()) + ").");
     }
 
     // Make sure there is no memory taken by the subarray.
@@ -450,7 +453,11 @@ Status SparseIndexReaderBase::load_initial_data() {
   if (!array_memory_tracker_->set_budget(
           memory_budget_.total_budget() * memory_budget_.ratio_array_data())) {
     throw SparseIndexReaderBaseException(
-        "Cannot set array memory budget, already over limit.");
+        "Cannot set array memory budget (" +
+        std::to_string(
+            memory_budget_.total_budget() * memory_budget_.ratio_array_data()) +
+        ") because it is smaller than the current memory usage (" +
+        std::to_string(array_memory_tracker_->get_memory_usage()) + ").");
   }
 
   // Add var size dimensions to the list of tile var size to load vector.

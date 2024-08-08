@@ -126,7 +126,8 @@ TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
   REQUIRE(st.ok());
 
   shared_ptr<Array> array_shared = std::move(array);
-  Query query(resources_, sm_.get(), array_shared);
+  Query query(
+      resources_, CancellationSource(sm_.get()), sm_.get(), array_shared);
   REQUIRE(query.set_layout(Layout::ROW_MAJOR).ok());
 
   stats::Stats stats("foo");

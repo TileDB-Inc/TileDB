@@ -97,6 +97,13 @@ TEST_CASE_METHOD(
   range = rect.range<int>(1);
   CHECK(range[0] == 30);
   CHECK(range[1] == 40);
+
+  // Check range dtype
+  CHECK(ndrect.range_dtype(0) == TILEDB_INT32);
+  CHECK(ndrect.range_dtype("x") == TILEDB_INT32);
+
+  // Check ndim api
+  CHECK(ndrect.dim_num() == 2);
 }
 
 TEST_CASE_METHOD(
@@ -118,10 +125,10 @@ TEST_CASE_METHOD(
   ndrect.set_range(1, std::string("b"), std::string("db"));
 
   // Get and check ranges
-  std::array<std::string, 2> range = ndrect.range(0);
+  std::array<std::string, 2> range = ndrect.range<std::string>(0);
   CHECK(range[0] == "a");
   CHECK(range[1] == "c");
-  range = ndrect.range(1);
+  range = ndrect.range<std::string>(1);
   CHECK(range[0] == "b");
   CHECK(range[1] == "db");
 
@@ -134,10 +141,10 @@ TEST_CASE_METHOD(
   auto rect = current_domain.ndrectangle();
 
   // Get and check ranges
-  range = ndrect.range(0);
+  range = ndrect.range<std::string>(0);
   CHECK(range[0] == "a");
   CHECK(range[1] == "c");
-  range = ndrect.range(1);
+  range = ndrect.range<std::string>(1);
   CHECK(range[0] == "b");
   CHECK(range[1] == "db");
 }

@@ -206,6 +206,7 @@ TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
     const char* name,
     int32_t* has_dim) TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Dumps the info of a domain in ASCII form to some output (e.g.,
  * file or `stdout`).
@@ -223,10 +224,11 @@ TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_domain_dump(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_domain_dump(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
     FILE* out) TILEDB_NOEXCEPT;
+#endif
 
 /**
  * Dumps the contents of a domain in ASCII form to the selected string output.

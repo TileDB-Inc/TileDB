@@ -54,6 +54,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "Attributes";
     case MemoryType::CONSOLIDATION_BUFFERS:
       return "ConsolidationBuffers";
+    case MemoryType::DENSE_TILE_SUBARRAY:
+      return "DenseTileSubarray";
     case MemoryType::DIMENSION_LABELS:
       return "DimensionLabels";
     case MemoryType::DIMENSIONS:

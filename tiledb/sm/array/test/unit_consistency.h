@@ -36,7 +36,6 @@
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
-#include "test/support/src/mem_helpers.h"
 
 #include "../array.h"
 #include "../consistency.h"
@@ -47,9 +46,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
-using namespace tiledb;
 using namespace tiledb::common;
-using namespace tiledb::sm;
 
 class ConsistencySentry;
 
