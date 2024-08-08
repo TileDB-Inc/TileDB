@@ -92,6 +92,9 @@ class CachePolicyBase {
     return value;
   }
 
+  // TODO: function comment, it needs to be reentrant, plus it should do RVO
+  // TODO:
+
  protected:
   /**
    * Pops the head of the LRU list and removes the corresponding
