@@ -106,6 +106,7 @@ capi_return_t tiledb_current_domain_get_type(
 
 }  // namespace tiledb::api
 
+using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
 using tiledb::api::api_entry_with_context;
 
@@ -124,32 +125,36 @@ CAPI_INTERFACE(current_domain_free, tiledb_current_domain_t** current_domain) {
 
 CAPI_INTERFACE(
     current_domain_set_ndrectangle,
+    tiledb_ctx_t* ctx,
     tiledb_current_domain_t* current_domain,
     tiledb_ndrectangle_t* ndr) {
-  return api_entry_plain<tiledb::api::tiledb_current_domain_set_ndrectangle>(
-      current_domain, ndr);
+  return api_entry_context<tiledb::api::tiledb_current_domain_set_ndrectangle>(
+      ctx, current_domain, ndr);
 }
 
 CAPI_INTERFACE(
     current_domain_get_ndrectangle,
+    tiledb_ctx_t* ctx,
     tiledb_current_domain_t* current_domain,
     tiledb_ndrectangle_t** ndr) {
-  return api_entry_plain<tiledb::api::tiledb_current_domain_get_ndrectangle>(
-      current_domain, ndr);
+  return api_entry_context<tiledb::api::tiledb_current_domain_get_ndrectangle>(
+      ctx, current_domain, ndr);
 }
 
 CAPI_INTERFACE(
     current_domain_get_is_empty,
+    tiledb_ctx_t* ctx,
     tiledb_current_domain_t* current_domain,
     uint32_t* is_empty) {
-  return api_entry_plain<tiledb::api::tiledb_current_domain_get_is_empty>(
-      current_domain, is_empty);
+  return api_entry_context<tiledb::api::tiledb_current_domain_get_is_empty>(
+      ctx, current_domain, is_empty);
 }
 
 CAPI_INTERFACE(
     current_domain_get_type,
+    tiledb_ctx_t* ctx,
     tiledb_current_domain_t* current_domain,
     tiledb_current_domain_type_t* type) {
-  return api_entry_plain<tiledb::api::tiledb_current_domain_get_type>(
-      current_domain, type);
+  return api_entry_context<tiledb::api::tiledb_current_domain_get_type>(
+      ctx, current_domain, type);
 }

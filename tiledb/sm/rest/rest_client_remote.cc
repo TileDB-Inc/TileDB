@@ -296,8 +296,12 @@ Status RestClientRemote::post_array_schema_to_rest(
   std::string array_ns, array_uri;
   RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
   const std::string cache_key = array_ns + ":" + array_uri;
-  RETURN_NOT_OK(
-      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  // We don't want to cache the URI used for array creation as it will
+  // always be hardcoded to the default server. After creation the REST
+  // server knows the right region to direct the request to, so client
+  // side caching should start from then on.
+  RETURN_NOT_OK(curlc.init(
+      config_, extra_headers_, &redirect_meta_, &redirect_mtx_, false));
   auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
                      curlc.url_escape(array_uri);
   Buffer returned_data;

@@ -1,5 +1,5 @@
 /**
- * @file compile_array_main.cc
+ * @file compile_fragment_identifier_main.cc
  *
  * @section LICENSE
  *
@@ -26,24 +26,15 @@
  * THE SOFTWARE.
  */
 
-#include "../array.h"
-#include "../consistency.h"
-
-#include "tiledb/common/logger.h"
-#include "tiledb/sm/storage_manager/context_resources.h"
+#include "../fragment_identifier.h"
 
 using namespace tiledb::sm;
 
 int main() {
-  Config config;
-  auto logger = make_shared<Logger>(HERE(), "foo");
-  ContextResources resources(config, logger, 1, 1, "");
-
-  ConsistencyController controller;
-  Array array(resources, URI{}, controller);
-
-  (void)array.is_empty();
-  (void)controller.is_open(URI("test"));
-
+  FragmentID x(URI{});
+  (void)x.name();
+  (void)x.timestamp_range();
+  (void)x.name_version();
+  (void)x.array_format_version();
   return 0;
 }

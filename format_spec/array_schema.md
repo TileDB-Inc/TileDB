@@ -54,6 +54,15 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Label 1 | [Dimension Label](#dimension_label) | First dimension label |
 | … | … | … |
 | Label N | [Dimension Label](#dimension_label) | Nth dimension label |
+| Num enumerations | `uint32_t` | Number of [enumerations](./enumeration.md) in the array |
+| Enumeration name length 1 | `uint32_t` | The number of characters in the enumeration 1 name |
+| Enumeration name 1 | `uint8_t[]` | The name of enumeration 1 |
+| Enumeration filename length 1 | `uint32_t` | The number of characters in the enumeration 1 file |
+| Enumeration filename 1 | `uint8_t[]` | The name of the file in the `__enumerations` subdirectory that conatins enumeration 1's data |
+| Enumeration name length N | `uint32_t` | The number of characters in the enumeration N name |
+| Enumeration name N | `uint8_t[]` | The name of enumeration N |
+| Enumeration filename length N | `uint32_t` | The number of characters in the enumeration N file |
+| Enumeration filename N | `uint8_t[]` | The name of the file in the `__enumerations` subdirectory that conatins enumeration N's data |
 | CurrentDomain | [CurrentDomain](./current_domain.md) | The array current domain |
 
 ## Domain

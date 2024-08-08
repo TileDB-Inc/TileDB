@@ -1,5 +1,5 @@
 /**
- * @file compile_object_mutex_main.cc
+ * @file compile_writer_tile_main.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,25 @@
  * THE SOFTWARE.
  */
 
-#include "../object_mutex.h"
+#include "../tile_metadata_generator.h"
+#include "../writer_tile_tuple.h"
+
+#include "tiledb/common/memory_tracker.h"
+#include "tiledb/sm/enums/array_type.h"
+
+using namespace tiledb::sm;
 
 int main() {
-  std::lock_guard<std::mutex> lock{tiledb::sm::object_mtx};
+  MemoryTrackerManager mem;
+  auto mem_tracker = mem.create_tracker();
+  ArraySchema schema(ArrayType::DENSE, mem_tracker);
+
+  WriterTileTuple writer(
+      schema, 0, false, false, 0, Datatype::ANY, mem_tracker);
+  (void)writer.var_size();
+
+  TileMetadataGenerator generator(Datatype::ANY, false, false, 0, 0);
+  (void)generator.process_full_tile(writer);
+
   return 0;
 }

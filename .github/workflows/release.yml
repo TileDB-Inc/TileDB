@@ -208,5 +208,5 @@ jobs:
         uses: TileDB-Inc/github-actions/open-issue@main
         with:
           name: Release failed
-          label: bug
+          label: release
           assignee: KiterLuc,teo-tsirpanis,davisp
