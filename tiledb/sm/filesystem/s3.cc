@@ -1447,7 +1447,12 @@ Status S3::init_client() const {
                 session_name,
                 external_id,
                 load_frequency,
-                make_shared<Aws::STS::STSClient>(HERE(), client_config));
+                make_shared<Aws::STS::STSClient>(
+                    HERE(),
+                    // client_config is an S3ClientConfiguration&, but gets
+                    // casted to ClientConfiguration and copied to the STS
+                    // client configuration.
+                    Aws::STS::STSClientConfiguration(client_config)));
         break;
       }
       case 7: {
@@ -1469,9 +1474,16 @@ Status S3::init_client() const {
             HERE(),
             Aws::Auth::GetConfigProfileName(),
             std::chrono::minutes(60),
-            [client_config](const auto& credentials) {
+            [config = this->client_config_](const auto& credentials) {
               return make_shared<Aws::STS::STSClient>(
-                  HERE(), credentials, client_config);
+                  HERE(),
+                  credentials,
+                  // Create default endpoint provider.
+                  make_shared<Aws::STS::STSEndpointProvider>(HERE()),
+                  // *config is an S3ClientConfiguration&, but gets
+                  // casted to ClientConfiguration and copied to the STS
+                  // client configuration.
+                  Aws::STS::STSClientConfiguration(*config));
             });
         break;
       }
