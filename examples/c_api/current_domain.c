@@ -143,6 +143,18 @@ void print_current_domain() {
           *(int*)range.min,
           *(int*)range.max);
 
+      // Get datatype of range
+      tiledb_datatype_t dtype;
+      tiledb_ndrectangle_get_dtype(ctx, ndrect, 0, &dtype);
+      const char* dtype_str;
+      tiledb_datatype_to_str(dtype, &dtype_str);
+      printf("Range 0 dtype: %s\n", dtype_str);
+
+      // Get datatype of range by name
+      tiledb_ndrectangle_get_dtype_from_name(ctx, ndrect, "d1", &dtype);
+      tiledb_datatype_to_str(dtype, &dtype_str);
+      printf("Range 0 dtype by name: %s\n", dtype_str);
+
       // Clean up
       tiledb_ndrectangle_free(&ndrect);
     } else {

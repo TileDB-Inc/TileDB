@@ -97,6 +97,10 @@ TEST_CASE_METHOD(
   range = rect.range<int>(1);
   CHECK(range[0] == 30);
   CHECK(range[1] == 40);
+
+  // CHECK range dtype
+  CHECK(ndrect.range_dtype(0) == TILEDB_INT32);
+  CHECK(ndrect.range_dtype("x") == TILEDB_INT32);
 }
 
 TEST_CASE_METHOD(
