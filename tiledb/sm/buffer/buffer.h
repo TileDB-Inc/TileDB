@@ -136,11 +136,14 @@ class BufferBase {
   /**
    * Implicit conversion operator to span.
    *
-   * @return A span to the buffer's whole data, without considering the offset.
+   * @return A span to the buffer's whole data.
    */
-  operator span<const char>() const& {
-    return {static_cast<const char*>(data_), size_};
-  }
+  operator span<const char>() const&;
+
+  /**
+   * Returns a span to the buffer's data after the offset.
+   */
+  span<const char> cur_span() const&;
 
  protected:
   BufferBase();

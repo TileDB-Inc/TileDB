@@ -134,6 +134,14 @@ Status BufferBase::read(
   return Status::Ok();
 }
 
+BufferBase::operator span<const char>() const& {
+  return {static_cast<const char*>(data()), size_};
+}
+
+span<const char> BufferBase::cur_span() const& {
+  return static_cast<span<const char>>(*this).subspan(offset_);
+}
+
 void BufferBase::assert_offset_is_valid(uint64_t offset) const {
   if (offset > size_) {
     throw std::out_of_range("BufferBase::set_offset");

@@ -979,7 +979,14 @@ size_t RestClientRemote::query_post_call_back(
       // data when deserializing read queries, this will return an
       // error status.
       st = serialization::query_deserialize(
-          *scratch, serialization_type_, true, copy_state, query, compute_tp_);
+          // Pass only the part of the buffer after the offset. The offset is
+          // important as we've been advancing it in the code.
+          scratch->cur_span(),
+          serialization_type_,
+          true,
+          copy_state,
+          query,
+          compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         return return_wrapper(bytes_processed);
