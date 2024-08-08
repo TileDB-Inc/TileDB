@@ -34,6 +34,7 @@
 #define TILEDB_ARRAY_SCHEMA_OPERATIONS_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -46,6 +47,15 @@ class EncryptionKey;
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+/**
+ * Serializes the array schema object into a buffer.
+ *
+ * @param serializer The object the array schema is serialized into.
+ * @param array_schema The array schema to be serialized.
+ */
+void serialize_array_schema(
+    Serializer& serializer, const ArraySchema& array_schema);
 
 /**
  * Stores an array schema into persistent storage.

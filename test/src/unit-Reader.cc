@@ -158,6 +158,7 @@ TEST_CASE_METHOD(
   uint64_t tmp_size = 0;
   Config config;
   Context context(config);
+  LocalQueryStateMachine lq_state_machine{LocalQueryState::uninitialized};
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
   buffers.emplace(
       "a", tiledb::sm::QueryBuffer(nullptr, nullptr, &tmp_size, &tmp_size));
@@ -173,7 +174,8 @@ TEST_CASE_METHOD(
       context.resources(),
       array.memory_tracker(),
       tracker_,
-      context.storage_manager(),
+      lq_state_machine,
+      CancellationSource(context.storage_manager()),
       array.opened_array(),
       config,
       nullopt,

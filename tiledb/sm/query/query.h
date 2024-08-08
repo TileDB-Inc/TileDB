@@ -49,12 +49,13 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
+#include "tiledb/sm/query/query_state.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/readers/aggregators/query_channel.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
@@ -138,15 +139,18 @@ class Query {
    * case the query will be used as writes and the given URI should be used
    * for the name of the new fragment to be created.
    *
-   * This is a transitional constructor in the sense that we are working
-   * on removing the dependency of the Query class on StorageManager.
-   * For now, we still need to keep the storage_manager argument, but once the
-   * dependency is gone, the signature will be
-   * Query(ContextResources&, shared_ptr<Array>, ...).
+   * @section Maturity
    *
-   * @note Array must be a properly opened array.
+   * This is a transitional constructor. There is still a `StorageManager`
+   * argument, and there is also a vestige of it with the `CancellationSource`
+   * argument. These argument now only pertain to job control of query with
+   * respect to its context. Once this facility is rewritten, these constructor
+   * argument may be dropped.
+   *
+   * @pre Array must be a properly opened array.
    *
    * @param resources The context resources.
+   * @param cancellation_source A source of external cancellation events
    * @param storage_manager Storage manager object.
    * @param array The array that is being queried.
    * @param fragment_uri The full URI for the new fragment. Only used for
@@ -158,6 +162,7 @@ class Query {
    */
   Query(
       ContextResources& resources,
+      CancellationSource cancellation_source,
       StorageManager* storage_manager,
       shared_ptr<Array> array,
       optional<std::string> fragment_name = nullopt,
@@ -314,12 +319,17 @@ class Query {
   QueryBuffer buffer(const std::string& name) const;
 
   /**
-   * Marks a query that has not yet been started as failed. This should not be
-   * called asynchronously to cancel an in-progress query; for that use the
-   * parent StorageManager's cancellation mechanism.
-   * @return Status
+   * Cancel a query.
+   *
+   * This does not immediately halt processing of a query, but does so at the
+   * first point where it checks in to see if it should continue processing.
    */
-  Status cancel();
+  void cancel();
+
+  /**
+   * Predicate function whether the query has been cancelled.
+   */
+  bool cancelled();
 
   /**
    * Finalizes the query, flushing all internal state.
@@ -925,6 +935,14 @@ class Query {
   /** The query memory tracker. */
   shared_ptr<MemoryTracker> query_memory_tracker_;
 
+  /**
+   * The state machine for processing local queries.
+   *
+   * At present this class combines both local and remote queries. This member
+   * variable is essentially unused for remote queries.
+   */
+  LocalQueryStateMachine local_state_machine_{LocalQueryState::uninitialized};
+
   /** A smart pointer to the array the query is associated with.
    * Ensures that the Array object exists as long as the Query object exists. */
   shared_ptr<Array> array_shared_;
@@ -961,6 +979,12 @@ class Query {
 
   /** The query status. */
   QueryStatus status_;
+
+  /**
+   * The cancellation source. This will be the last vestige of the storage
+   * manager.
+   */
+  CancellationSource cancellation_source_;
 
   /** The storage manager. */
   StorageManager* storage_manager_;

@@ -139,7 +139,7 @@ class TileCellSlabIter {
   uint64_t num_ranges_;
 
   /** Original range indexes. */
-  const std::vector<std::vector<uint64_t>>& original_range_idx_;
+  const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& original_range_idx_;
 
   /** Range info. */
   const std::vector<RangeInfo<T>>& range_info_;
@@ -191,8 +191,8 @@ class TileCellSlabIter {
    * ranges, after appropriately splitting them so that no range crosses
    * more that one tile.
    */
-  const std::vector<std::vector<typename DenseTileSubarray<T>::DenseTileRange>>&
-      ranges_;
+  const tdb::pmr::vector<
+      tdb::pmr::vector<typename DenseTileSubarray<T>::DenseTileRange>>& ranges_;
 
   /** Saved multiplication of tile extents in cell order. */
   std::vector<uint64_t> mult_extents_;

@@ -1,5 +1,5 @@
 /**
- * @file compile_array_main.cc
+ * @file cancellation_source
  *
  * @section LICENSE
  *
@@ -24,26 +24,31 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file declares `class CancellationSource`.
  */
 
-#include "../array.h"
-#include "../consistency.h"
+#ifndef TILEDB_CANCELLATION_SOURCE_H
+#define TILEDB_CANCELLATION_SOURCE_H
 
-#include "tiledb/common/logger.h"
-#include "tiledb/sm/storage_manager/context_resources.h"
+#include "storage_manager_declaration.h"
 
-using namespace tiledb::sm;
+namespace tiledb::sm {
 
-int main() {
-  Config config;
-  auto logger = make_shared<Logger>(HERE(), "foo");
-  ContextResources resources(config, logger, 1, 1, "");
+/**
+ * The cancellation source is, at present, a wrapper around `StorageManager`
+ * with a very restricted interface.
+ */
+class CancellationSource {
+  const StorageManager* sm_;
 
-  ConsistencyController controller;
-  Array array(resources, URI{}, controller);
+ public:
+  CancellationSource(const StorageManager* sm);
 
-  (void)array.is_empty();
-  (void)controller.is_open(URI("test"));
+  bool cancellation_in_progress() const;
+};
+}  // namespace tiledb::sm
 
-  return 0;
-}
+#endif  // TILEDB_CANCELLATION_SOURCE_H

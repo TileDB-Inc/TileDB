@@ -38,6 +38,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/query/query_state.h"
 
 namespace tiledb {
 namespace sm {
@@ -58,7 +59,8 @@ StrategyBase::StrategyBase(
     , config_(params.config())
     , buffers_(params.buffers())
     , layout_(params.layout())
-    , storage_manager_(params.storage_manager())
+    , query_state_machine_(params.query_state_machine())
+    , cancellation_source_(params.cancellation_source())
     , subarray_(params.subarray())
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
@@ -103,8 +105,22 @@ void StrategyBase::get_dim_attr_stats() const {
 }
 
 void StrategyBase::throw_if_cancelled() const {
-  if (storage_manager_->cancellation_in_progress()) {
+  if (cancellation_source_.cancellation_in_progress()) {
     throw QueryException("Query was cancelled");
+  }
+}
+
+void StrategyBase::cancel() {
+  query_state_machine_.event(LocalQueryEvent::cancel);
+}
+
+bool StrategyBase::cancelled() const {
+  return query_state_machine_.is_cancelled();
+}
+
+void StrategyBase::process_external_cancellation() {
+  if (cancellation_source_.cancellation_in_progress()) {
+    cancel();
   }
 }
 

@@ -28,8 +28,9 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 #
-# `object_mutex` object library
+# `object` object library
 #
-commence(object_library object_mutex)
-    this_target_sources(object_mutex.cc)
+commence(object_library object)
+    this_target_sources(object.cc object_mutex.cc)
+    this_target_object_libraries(baseline context_resources vfs)
 conclude(object_library)

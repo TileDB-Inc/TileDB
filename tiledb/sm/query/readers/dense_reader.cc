@@ -387,7 +387,8 @@ Status DenseReader::dense_read() {
             subarray,
             t_start,
             t_end,
-            std::move(result_space_tiles));
+            std::move(result_space_tiles),
+            query_memory_tracker_);
 
     // Add the number of cells to process to subarray_end_cell.
     for (uint64_t t = t_start; t < t_end; t++) {

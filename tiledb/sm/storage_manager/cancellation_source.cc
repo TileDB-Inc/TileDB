@@ -1,5 +1,5 @@
 /**
- * @file compile_fragment_main.cc
+ * @file cancellation_source.h
  *
  * @section LICENSE
  *
@@ -24,17 +24,27 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines `class CancellationSource`.
  */
 
-#include "../fragment_identifier.h"
+#include "cancellation_source.h"
+#include "storage_manager.h"
 
-using namespace tiledb::sm;
+namespace tiledb::sm {
 
-int main() {
-  FragmentID x(URI{});
-  (void)x.name();
-  (void)x.timestamp_range();
-  (void)x.name_version();
-  (void)x.array_format_version();
-  return 0;
+CancellationSource::CancellationSource(const StorageManager* sm)
+    : sm_(sm) {
+  if (sm_ == nullptr) {
+    throw std::invalid_argument(
+        "[CancellationSource] StorageManager argument may not be null");
+  }
 }
+
+bool CancellationSource::cancellation_in_progress() const {
+  return sm_->cancellation_in_progress();
+}
+
+}  // namespace tiledb::sm

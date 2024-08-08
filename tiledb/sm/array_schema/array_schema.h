@@ -268,6 +268,11 @@ class ArraySchema {
   /** Return the pipeline used for coordinates. */
   const FilterPipeline& coords_filters() const;
 
+  /** Return the array current domain. */
+  inline const CurrentDomain& current_domain() const {
+    return *current_domain_;
+  }
+
   /** True if the array is dense. */
   bool dense() const;
 
@@ -328,14 +333,6 @@ class ArraySchema {
 
   /** Returns true if the input name is nullable. */
   bool is_nullable(const std::string& name) const;
-
-  /**
-   * Serializes the array schema object into a buffer.
-   *
-   * @param serializer The object the array schema is serialized into.
-   * @return Status
-   */
-  void serialize(Serializer& serializer) const;
 
   /** Returns the tile order. */
   Layout tile_order() const;
@@ -595,6 +592,12 @@ class ArraySchema {
     return enumeration_map_;
   }
 
+  /** Returns the enumeration path map. */
+  inline const tdb::pmr::unordered_map<std::string, std::string>&
+  enumeration_path_map() const {
+    return enumeration_path_map_;
+  }
+
   /** Returns the dimension labels. */
   inline const tdb::pmr::vector<shared_ptr<const DimensionLabel>>&
   dimension_labels() const {
@@ -721,7 +724,7 @@ class ArraySchema {
   tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>
       enumeration_map_;
 
-  /** A map of Enumeration names to Enumeration URIs */
+  /** A map of Enumeration names to Enumeration filenames */
   tdb::pmr::unordered_map<std::string, std::string> enumeration_path_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
