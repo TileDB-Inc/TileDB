@@ -966,7 +966,6 @@ size_t RestClientRemote::query_post_call_back(
       // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
-      aux.reset_offset();
       st = serialization::query_deserialize(
           aux, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
@@ -1070,7 +1069,6 @@ Status RestClientRemote::finalize_query_to_rest(const URI& uri, Query* query) {
   }
 
   // Deserialize data returned
-  returned_data.reset_offset();
   return serialization::query_deserialize(
       returned_data, serialization_type_, true, nullptr, query, compute_tp_);
 }
