@@ -28,6 +28,8 @@
  * Tests for the random label generator.
  */
 
+#include <math.h>
+
 #include <test/support/tdb_catch.h>
 #include "../random_label.h"
 
@@ -36,8 +38,8 @@ using namespace tiledb::sm;
 
 size_t generate_labels(std::vector<std::string>& labels) {
   size_t labels_size = labels.size();
-  auto now = utils::time::timestamp_now_ms();
   size_t idx = 0;
+  auto now = utils::time::timestamp_now_ms();
   while ((utils::time::timestamp_now_ms()) < now + 100 && idx < labels_size) {
     labels[idx++] = random_label();
   }
@@ -46,21 +48,34 @@ size_t generate_labels(std::vector<std::string>& labels) {
 }
 
 void validate_labels(std::vector<std::string>& labels, size_t num_labels) {
-  // Given the label randomness and the fact that we're racing the processor,
-  // the best we can do here (for now) is assert that there's 10 ordered groups.
-  // In this manner, groups are defined as sharing the first 4 bytes.
+  /**
+   * When creating a random label, ordering is determined by the first 8 bytes.
+   * In this test, we are assuming the buffer overflow check works as expected,
+   * and no more than 16^8 labels are generated within a single millisecond.
+   *
+   * Given the label randomness, and the fact that we're racing the processor,
+   * the best we can do here (for now) is assert that there's at least 100
+   * ordered groups, as `generate_labels` generates approximately 100 labels per
+   * timestamp.
+   *
+   * A group is defined as sharing the first _n_ bytes, where n is calculated
+   * as the lowest number of bytes within the 8-byte counter which can contain
+   * the given num_labels.
+   */
+
+  size_t group_delimeter = ceil(log(num_labels) / log(16));
   uint64_t num_groups = 0;
   uint64_t this_group = 0;
   for (size_t i = 1; i < num_labels; i++) {
     bool match = true;
-    for (size_t j = 0; j < 4; j++) {
+    for (size_t j = 0; j < group_delimeter; j++) {
       if (labels[i - 1][j] != labels[i][j]) {
         match = false;
         break;
       }
     }
     if (!match) {
-      if (this_group > 10) {
+      if (this_group > 100) {
         num_groups += 1;
       }
       this_group = 0;
@@ -72,7 +87,7 @@ void validate_labels(std::vector<std::string>& labels, size_t num_labels) {
     this_group += 1;
   }
 
-  REQUIRE(num_groups > 10);
+  REQUIRE(num_groups > 100);
 }
 
 TEST_CASE(
