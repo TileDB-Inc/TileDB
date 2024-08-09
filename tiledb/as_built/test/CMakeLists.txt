@@ -29,5 +29,5 @@ commence(unit_test as_built)
   this_target_link_libraries(as_built)
   target_include_directories(
     unit_as_built PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
-  this_target_sources(main.cc unit_as_built.cc)
+  this_target_sources(unit_as_built.cc)
 conclude(unit_test)

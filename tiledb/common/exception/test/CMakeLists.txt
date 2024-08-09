@@ -29,5 +29,5 @@ include(unit_test)
 
 commence(unit_test exception)
     this_target_object_libraries(baseline)
-    this_target_sources(main.cc unit_exception.cc unit_status.cc)
+    this_target_sources(unit_exception.cc unit_status.cc)
 conclude(unit_test)

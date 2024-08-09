@@ -28,11 +28,11 @@ include(unit_test)
 
 commence(unit_test array)
     this_target_compile_definitions(-DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs/")
-    this_target_sources(main.cc unit_array_directory.cc)
+    this_target_sources(unit_array_directory.cc)
     this_target_link_libraries(array_directory)
 conclude(unit_test)
 
 commence(unit_test consistency)
-    this_target_sources(main.cc unit_consistency.cc)
+    this_target_sources(unit_consistency.cc)
     this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)

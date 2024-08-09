@@ -29,7 +29,6 @@ include(unit_test)
 commence(unit_test experimental)
     this_target_object_libraries(baseline)
     this_target_sources(
-        main.cc
         $<IF:$<BOOL:${TILEDB_EXPERIMENTAL_FEATURES}>,
           unit_is_experimental.cc,
           unit_is_not_experimental.cc>
@@ -37,7 +36,7 @@ commence(unit_test experimental)
 conclude(unit_test)
 
 commence(unit_test memory_tracker)
-    this_target_sources(main.cc unit_memory_tracker.cc unit_memory_tracker_types.cc)
+    this_target_sources(unit_memory_tracker.cc unit_memory_tracker_types.cc)
     this_target_object_libraries(baseline)
 conclude(unit_test)
 

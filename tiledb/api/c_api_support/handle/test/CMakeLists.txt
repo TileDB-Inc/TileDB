@@ -33,7 +33,6 @@ target_link_libraries(unit_capi_handle PUBLIC handle)
 
 # Sources for tests
 target_sources(unit_capi_handle PUBLIC
-    main.cc
     unit_handle.cc
 )
 

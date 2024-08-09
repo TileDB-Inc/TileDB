@@ -26,7 +26,7 @@
 include(unit_test)
 
 commence(unit_test query_plan)
-    this_target_sources(main.cc unit_query_plan.cc)
+    this_target_sources(unit_query_plan.cc)
     this_target_object_libraries(query_plan)
     if (NOT MSVC)
         target_compile_options(unit_query_plan PRIVATE -Wno-deprecated-declarations)

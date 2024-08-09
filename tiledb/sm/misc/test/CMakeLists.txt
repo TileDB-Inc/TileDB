@@ -31,7 +31,6 @@ commence(unit_test misc)
     # change to `this_target_include_directories` when available
     target_include_directories(unit_misc PRIVATE "${CMAKE_SOURCE_DIR}")
     this_target_sources(
-        main.cc
         unit_bytevecvalue.cc
         unit_hilbert.cc
         unit_integral_type_casts.cc

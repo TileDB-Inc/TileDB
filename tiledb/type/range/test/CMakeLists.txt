@@ -29,7 +29,7 @@ include(unit_test)
 
 commence(unit_test range)
     this_target_object_libraries(range)
-    this_target_sources(main.cc
+    this_target_sources(
         unit_check_range_is_subset.cc
         unit_check_range_is_valid.cc
         unit_crop_range.cc

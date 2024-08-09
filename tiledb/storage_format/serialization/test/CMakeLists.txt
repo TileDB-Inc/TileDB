@@ -28,5 +28,5 @@ include(unit_test)
 
 commence(unit_test serializers)
     target_include_directories(unit_serializers PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
-    this_target_sources(main.cc unit_serializers.cc)
+    this_target_sources(unit_serializers.cc)
 conclude(unit_test)

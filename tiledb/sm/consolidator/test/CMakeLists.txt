@@ -26,7 +26,7 @@
 include(unit_test)
 
 commence(unit_test consolidator)
-  this_target_sources(main.cc unit_fragment_consolidator.cc)
+  this_target_sources(unit_fragment_consolidator.cc)
 
   # Not actually testing a unit yet, but some things that ought to be units
   this_target_link_libraries(tiledb_test_support_lib)

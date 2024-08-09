@@ -27,7 +27,7 @@
 include(unit_test)
 
 commence(unit_test platform)
-    this_target_sources(main.cc unit_platform.cc)
+    this_target_sources(unit_platform.cc)
     this_target_compile_definitions(PLATFORM_OS_NAME="${CMAKE_SYSTEM_NAME}")
     this_target_object_libraries(platform)
 conclude(unit_test)

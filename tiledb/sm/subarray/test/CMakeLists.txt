@@ -28,11 +28,11 @@ include(unit_test)
 
 commence(unit_test range_subset)
     this_target_object_libraries(range_subset)
-    this_target_sources(main.cc unit_range_subset.cc)
+    this_target_sources(unit_range_subset.cc)
 conclude(unit_test)
 
 commence(unit_test add_ranges_list)
-    this_target_sources(main.cc unit_add_ranges_list.cc)
+    this_target_sources(unit_add_ranges_list.cc)
     this_target_link_libraries(TILEDB_CORE_OBJECTS)
     this_target_link_libraries(tiledb_test_support_lib)
     target_include_directories(unit_add_ranges_list PRIVATE

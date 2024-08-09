@@ -28,5 +28,5 @@ include(unit_test)
 
 commence(unit_test datum)
     this_target_object_libraries(datum)
-    this_target_sources(main.cc unit_dynamic_untyped_datum.cc)
+    this_target_sources(unit_dynamic_untyped_datum.cc)
 conclude(unit_test)

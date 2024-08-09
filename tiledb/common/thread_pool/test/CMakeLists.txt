@@ -32,5 +32,5 @@ commence(unit_test thread_pool)
     # either the unit test should be split apart or cancelable tasks be made
     # a part of the thread pool.
     this_target_object_libraries(cancelable_tasks)
-    this_target_sources(main.cc unit_thread_pool.cc)
+    this_target_sources(unit_thread_pool.cc)
 conclude(unit_test)

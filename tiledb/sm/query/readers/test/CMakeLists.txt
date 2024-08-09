@@ -27,6 +27,6 @@
 include(unit_test)
 
 commence(unit_test readers)
-    this_target_sources(main.cc unit_reader_base.cc)
+    this_target_sources(unit_reader_base.cc)
     this_target_object_libraries(baseline)
 conclude(unit_test)

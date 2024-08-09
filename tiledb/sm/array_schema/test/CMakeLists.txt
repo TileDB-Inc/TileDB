@@ -31,7 +31,6 @@ commence(unit_test array_schema)
     # should be `this_target_include_directories`, when available
     target_include_directories(unit_array_schema PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
     this_target_sources(
-        main.cc
         unit_array_schema.cc
         unit_attribute.cc
         unit_dimension.cc

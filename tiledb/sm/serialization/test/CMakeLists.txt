@@ -27,7 +27,7 @@
 include(unit_test)
 
 commence(unit_test capnp_utils)
-  this_target_sources(main.cc unit_capnp_utils.cc)
+  this_target_sources(unit_capnp_utils.cc)
   this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
 
   # Enable serialization
@@ -35,7 +35,7 @@ commence(unit_test capnp_utils)
 conclude(unit_test)
 
 commence(unit_test capnp_array_schema)
-  this_target_sources(main.cc unit_capnp_array_schema.cc)
+  this_target_sources(unit_capnp_array_schema.cc)
   this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB tiledb_test_support_lib)
 
   # Enable serialization
@@ -44,7 +44,7 @@ commence(unit_test capnp_array_schema)
 conclude(unit_test)
 
 commence(unit_test capnp_nonempty_domain)
-  this_target_sources(main.cc unit_capnp_nonempty_domain.cc)
+  this_target_sources(unit_capnp_nonempty_domain.cc)
   this_target_link_libraries(tiledb_test_support_lib)
 
   # Enable serialization

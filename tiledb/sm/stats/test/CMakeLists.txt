@@ -27,6 +27,6 @@
 include(unit_test)
 
 commence(unit_test stats)
-    this_target_sources(main.cc unit_duration_instrument.cc unit_stats.cc)
+    this_target_sources(unit_duration_instrument.cc unit_stats.cc)
     this_target_object_libraries(stats)
 conclude(unit_test)
