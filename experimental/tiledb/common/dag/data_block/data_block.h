@@ -41,8 +41,8 @@
 
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <vector>
-#include "external/include/span/span.hpp"
 #include "pool_allocator.h"
 
 namespace tiledb::common {
@@ -84,7 +84,7 @@ class DataBlockImpl {
    */
   using allocator_t = PoolAllocator<chunk_size_>;
   using storage_t = std::shared_ptr<std::byte>;
-  using span_t = tcb::span<std::byte>;
+  using span_t = std::span<std::byte>;
   using pointer_t = std::byte*;
 
   /**

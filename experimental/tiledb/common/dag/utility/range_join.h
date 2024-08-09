@@ -69,13 +69,12 @@
 #include <algorithm>
 #include <iterator>
 #include <numeric>
+#include <span>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
 #include "tiledb/common/util/detail/arrow_proxy.h"
-
-#include "external/include/span/span.hpp"
 
 namespace tiledb::common {
 
@@ -103,8 +102,8 @@ struct const_iterator_traits {
 };
 
 template <class T>
-struct const_iterator_traits<tcb::span<T>> {
-  using type = typename tcb::span<T>::iterator;
+struct const_iterator_traits<std::span<T>> {
+  using type = typename std::span<T>::iterator;
 };
 
 template <class T>

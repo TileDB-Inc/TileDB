@@ -83,11 +83,8 @@ using std::tuple;
 using std::nullopt;
 using std::optional;
 
-/*
- * Span implementation, similar to std::span of C++20
- */
-#include "external/include/span/span.hpp"
-using tcb::span;
+#include <span>
+using std::span;
 
 using std::size_t;
 

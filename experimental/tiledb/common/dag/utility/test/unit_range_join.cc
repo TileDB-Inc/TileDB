@@ -33,8 +33,8 @@
 
 #include <iostream>
 #include <list>
+#include <span>
 #include <vector>
-#include "external/include/span/span.hpp"
 
 #include <test/support/tdb_catch.h>
 #include "experimental/tiledb/common/dag/utility/range_join.h"
@@ -233,7 +233,7 @@ TEST_CASE("Join: Test vector of lists", "[join]") {
 TEST_CASE("Join: Test list of spans", "[join]") {
   std::vector<int> a{1, 2, 3, 4};
   std::vector<int> b{5, 6, 7, 8};
-  std::list<tcb::span<int>> d{tcb::span<int>{a}, tcb::span<int>{b}};
+  std::list<std::span<int>> d{std::span<int>{a}, std::span<int>{b}};
   auto e = join(d);
 
   SECTION("check c vs e, list") {
@@ -257,9 +257,9 @@ TEST_CASE("Join: Test list of spans", "[join]") {
 TEST_CASE("Join: Truncated list of spans", "[join]") {
   std::vector<int> a{1, 2, 3, 4};
   std::vector<int> b{5, 6, 7, 8};
-  std::list<tcb::span<int>> d{
-      tcb::span<int>{a.data(), a.size() - 1},
-      tcb::span<int>{b.data(), b.size() - 2}};
+  std::list<std::span<int>> d{
+      std::span<int>{a.data(), a.size() - 1},
+      std::span<int>{b.data(), b.size() - 2}};
   auto e = join(d);
 
   SECTION("check c vs e, list") {
@@ -402,8 +402,8 @@ void test_modifying_range_of_spans() {
   Inner b{5, 6, 7, 8};
   Inner c{1, 2, 3, 4, 5, 6, 7, 8};
 
-  Outer<tcb::span<int>, std::allocator<tcb::span<int>>> d{
-      tcb::span<int>{a.data(), a.size()}, tcb::span<int>{b.data(), b.size()}};
+  Outer<std::span<int>, std::allocator<std::span<int>>> d{
+      std::span<int>{a.data(), a.size()}, std::span<int>{b.data(), b.size()}};
   auto e = join(d);
 
   CHECK(e.size() == a.size() + b.size());
