@@ -31,7 +31,7 @@
  * Tests the specific values of C API enums.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/filter_type.h"
 

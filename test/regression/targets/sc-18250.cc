@@ -3,7 +3,7 @@
 #include <tiledb/tiledb.h>
 #include <tiledb/tiledb_serialization.h>
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 static const char* schema_str = R"rstr(
 {"arrayType":"dense","attributes":[{

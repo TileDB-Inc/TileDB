@@ -31,7 +31,7 @@
  * Tests the double delta compression.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
 #include "tiledb/sm/enums/datatype.h"

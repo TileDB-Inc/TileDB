@@ -28,8 +28,7 @@
  * @section DESCRIPTION
  */
 
-#define CATCH_CONFIG_MAIN
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../context_api_external.h"
 #include "../context_api_internal.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_context.h"

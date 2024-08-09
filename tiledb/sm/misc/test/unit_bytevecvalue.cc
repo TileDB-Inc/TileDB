@@ -36,7 +36,7 @@
 #include "test/support/src/ast_helpers.h"
 #include "tiledb/sm/misc/types.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 using namespace tiledb::sm;
 

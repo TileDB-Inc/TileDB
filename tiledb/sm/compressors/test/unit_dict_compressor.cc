@@ -30,7 +30,7 @@
  * Tests for the dictionary encoding of strings.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 
 #include "../dict_compressor.h"

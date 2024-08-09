@@ -30,7 +30,7 @@
  * This file defines tests for the CAPIString class of the TileDB C++ API.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/sm/cpp_api/capi_string.h"

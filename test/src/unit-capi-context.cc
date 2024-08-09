@@ -33,7 +33,7 @@
 #include <string>
 #include <thread>
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"

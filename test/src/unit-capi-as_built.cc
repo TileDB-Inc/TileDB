@@ -33,7 +33,7 @@
  * within the C API compilation unit.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "external/include/nlohmann/json.hpp"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 

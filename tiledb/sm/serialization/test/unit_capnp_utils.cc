@@ -32,7 +32,7 @@
 
 #include <capnp/message.h>
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
 #include "tiledb/sm/array_schema/attribute.h"

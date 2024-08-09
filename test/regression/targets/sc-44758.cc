@@ -5,7 +5,7 @@
 #include <tiledb/tiledb>
 #include <tiledb/tiledb_experimental>
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 using namespace tiledb;
 

@@ -30,7 +30,7 @@
  * This file defines a test `main()`
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <sstream>
 #include "../dynamic_typed_datum.h"
 using Datatype = tiledb::sm::Datatype;

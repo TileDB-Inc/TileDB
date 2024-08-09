@@ -31,7 +31,7 @@
  * from ranges.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 
 #include "tiledb/sm/enums/datatype.h"

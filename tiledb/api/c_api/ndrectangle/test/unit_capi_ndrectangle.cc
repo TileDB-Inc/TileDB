@@ -30,7 +30,7 @@
  * Tests the NDRectangle C API.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"

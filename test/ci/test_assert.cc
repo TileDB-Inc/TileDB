@@ -31,8 +31,7 @@
  * whether assertions are correctly enabled in build tree.
  */
 
-#define CATCH_CONFIG_MAIN
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <cassert>

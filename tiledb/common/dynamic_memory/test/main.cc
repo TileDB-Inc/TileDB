@@ -30,7 +30,6 @@
  * This file defines a test `main()`
  */
 
-#define CATCH_CONFIG_MAIN
 #include "unit_dynamic_memory.h"
 
 using namespace tiledb::common::detail;

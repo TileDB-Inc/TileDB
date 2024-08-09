@@ -33,7 +33,7 @@
 #include <cmath>
 #include <iostream>
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../../../common/common.h"
 #include "../../enums/filter_option.h"
 #include "../float_scaling_filter.h"

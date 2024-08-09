@@ -30,7 +30,7 @@
  * Tests the C++ API for checksum validation.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <fstream>
 #include "test/support/src/coords_workaround.h"
 #include "tiledb/sm/cpp_api/tiledb"

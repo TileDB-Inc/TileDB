@@ -36,7 +36,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/writers/dense_tiler.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
 using namespace tiledb;

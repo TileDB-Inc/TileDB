@@ -37,7 +37,7 @@
  *   should not be expected to compile.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"

@@ -34,7 +34,7 @@
 #include "test/support/src/serialization_wrappers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
 using namespace tiledb;

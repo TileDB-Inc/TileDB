@@ -30,7 +30,7 @@
  * Tests for class TileDomain.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "src/mem_helpers.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 

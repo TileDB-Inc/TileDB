@@ -29,8 +29,7 @@
  * Unit test for dimension label C-API
  */
 
-#define CATCH_CONFIG_MAIN
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../dimension_label_api_external.h"
 #include "../dimension_label_api_internal.h"
 

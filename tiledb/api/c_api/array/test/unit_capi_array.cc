@@ -28,8 +28,7 @@
  * Validates the arguments for the Array C API.
  */
 
-#define CATCH_CONFIG_MAIN
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/api/c_api_test_support/testsupport_capi_context.h"
 #include "tiledb/sm/c_api/tiledb.h"
 

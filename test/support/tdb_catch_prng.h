@@ -33,7 +33,7 @@
 #ifndef TILEDB_TDB_CATCH_PRNG_H
 #define TILEDB_TDB_CATCH_PRNG_H
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_get_random_seed.hpp>
 #include <catch2/reporters/catch_reporter_event_listener.hpp>
 

@@ -28,8 +28,7 @@
  * @section DESCRIPTION
  */
 
-#define CATCH_CONFIG_MAIN
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../filter_api_external.h"
 
 TEST_CASE("C API: tiledb_filter_alloc argument validation", "[capi][filter]") {

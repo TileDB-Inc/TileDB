@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../config_api_external.h"
 
 TEST_CASE("C API: tiledb_config_alloc argument validation", "[capi][config]") {

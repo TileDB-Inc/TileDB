@@ -3,7 +3,7 @@
 
 #include <tiledb/tiledb>
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 std::string array_name = "cpp_unit_array_24079";
 

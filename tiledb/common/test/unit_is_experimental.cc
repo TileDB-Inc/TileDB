@@ -31,7 +31,7 @@
  * `TILEDB_EXPERIMENTAL_FEATURES=ON`
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/common/common.h"
 
 using namespace tiledb::common;

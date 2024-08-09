@@ -33,7 +33,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/query/readers/reader_base.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 using namespace tiledb::sm;

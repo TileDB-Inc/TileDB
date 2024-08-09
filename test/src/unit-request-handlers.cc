@@ -33,7 +33,7 @@
 #ifdef TILEDB_SERIALIZATION
 
 #include <catch2/generators/catch_generators.hpp>
-#include "test/support/tdb_catch.h"
+#include <catch2/catch_test_macros.hpp>
 
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"

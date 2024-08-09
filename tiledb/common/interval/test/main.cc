@@ -32,7 +32,6 @@
  * support code within `unit_interval.h`.
  */
 
-#define CATCH_CONFIG_MAIN
 #include <cmath>
 #include "unit_interval.h"
 

@@ -31,7 +31,7 @@
 #include "../dynamic_memory.h"
 #include "tiledb/common/common-std.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <sstream>
 
 #ifndef TILEDB_COMMON_DYNAMIC_MEMORY_TEST_DYNAMIC_MEMORY_H

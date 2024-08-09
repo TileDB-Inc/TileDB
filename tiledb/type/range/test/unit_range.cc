@@ -30,7 +30,7 @@
  * This file tests the Range class
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 
 #include "tiledb/type/range/range.h"

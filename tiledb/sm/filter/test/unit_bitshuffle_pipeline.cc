@@ -33,7 +33,7 @@
  */
 
 #include <test/support/src/mem_helpers.h>
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../bitshuffle_filter.h"
 #include "filter_test_support.h"
 

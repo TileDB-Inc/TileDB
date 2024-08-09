@@ -31,7 +31,7 @@
  * Tests for TileDB's buffer C API.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../buffer_api_external.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 

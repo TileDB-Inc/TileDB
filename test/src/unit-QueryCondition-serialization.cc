@@ -42,7 +42,7 @@
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/query_condition.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
 using namespace tiledb::sm;

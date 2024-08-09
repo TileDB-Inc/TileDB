@@ -30,7 +30,7 @@
  * Tests the C API filter.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/constants.h"
 

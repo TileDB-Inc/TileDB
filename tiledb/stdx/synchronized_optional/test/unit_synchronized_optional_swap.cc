@@ -28,7 +28,7 @@
 
 #include <future>
 #include "../synchronized_optional.h"
-#include "test/support/tdb_catch.h"
+#include <catch2/catch_test_macros.hpp>
 
 using stdx::synchronized_optional;
 

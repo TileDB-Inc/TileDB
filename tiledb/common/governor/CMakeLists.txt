@@ -40,7 +40,6 @@ if (FALSE AND TILEDB_TESTS) # reserved for later
 
     # Sources for tests
     target_sources(unit_governor PUBLIC
-      test/main.cc
       test/unit_governor.cc
     )
 

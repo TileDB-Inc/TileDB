@@ -30,7 +30,7 @@
  * Tests for the storage format's uri manipulation APIs.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "../generate_uri.h"

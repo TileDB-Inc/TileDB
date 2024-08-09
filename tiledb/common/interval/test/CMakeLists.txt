@@ -28,7 +28,7 @@
 include(unit_test)
 
 commence(unit_test interval)
-this_target_sources(main.cc unit_interval_bound.cc
+this_target_sources(unit_interval_bound.cc
     unit_interval_constructors.cc unit_interval_operations.cc
     unit_interval_predicates.cc unit_interval_types.cc)
 conclude(unit_test)

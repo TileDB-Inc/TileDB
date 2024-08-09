@@ -32,7 +32,7 @@
 
 #ifdef TILEDB_STATS
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <tiledb/common/common.h>
 #include <tiledb/common/dynamic_memory/dynamic_memory.h>
 #include <tiledb/sm/stats/global_stats.h>

@@ -32,7 +32,7 @@
  * magic checks return same values using both embedded and external data.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/misc/mgc_dict.h"
 
 #include <memory.h>

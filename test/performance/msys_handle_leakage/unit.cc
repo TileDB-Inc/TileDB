@@ -114,7 +114,7 @@ after  70
 // clang-format on
 
 #define CATCH_CONFIG_RUNNER
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include <cstdlib>
 #include <iostream>

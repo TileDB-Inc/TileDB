@@ -36,7 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include "src/mem_helpers.h"
 

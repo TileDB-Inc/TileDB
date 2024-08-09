@@ -33,7 +33,7 @@
  *      execute these tests in CI, we should build this test as a separate unit.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 
 #include "test/support/src/vfs_helpers.h"

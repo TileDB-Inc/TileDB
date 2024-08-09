@@ -47,7 +47,7 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 

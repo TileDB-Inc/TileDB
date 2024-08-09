@@ -30,7 +30,7 @@
  * This file defines a test `main()`
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../fragment_consolidator.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"

@@ -30,14 +30,14 @@
  * Tests sort checks for fixed length ordered attributes.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 using namespace Catch::Matchers;
 
 #include <test/support/src/helpers.h>
 #include <test/support/src/vfs_helpers.h>
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/c_api/tiledb.h"

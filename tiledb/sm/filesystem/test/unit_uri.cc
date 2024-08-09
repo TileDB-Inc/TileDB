@@ -30,7 +30,7 @@
  * Tests the `URI` class.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/filesystem/uri.h"
 
 #ifdef _WIN32

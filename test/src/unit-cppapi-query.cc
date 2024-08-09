@@ -30,7 +30,7 @@
  * Tests the C++ API for query related functions.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "tiledb/sm/cpp_api/tiledb"

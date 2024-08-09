@@ -52,7 +52,7 @@
 #ifndef TILEDB_FILTERED_BUFFER_CHECKER_H
 #define TILEDB_FILTERED_BUFFER_CHECKER_H
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <vector>
 #include "tiledb/sm/tile/filtered_buffer.h"
 #include "tiledb/sm/tile/tile.h"

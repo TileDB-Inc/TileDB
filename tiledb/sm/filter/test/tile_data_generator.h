@@ -33,7 +33,7 @@
 #ifndef TILEDB_INPUT_TILE_TEST_DATA_H
 #define TILEDB_INPUT_TILE_TEST_DATA_H
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <algorithm>
 #include <numeric>
 #include <optional>

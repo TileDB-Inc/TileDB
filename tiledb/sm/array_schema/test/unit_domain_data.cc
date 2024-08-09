@@ -30,7 +30,7 @@
  * This file defines a test `main()`
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../domain_typed_data_view.h"
 #include "../dynamic_array.h"
 #include "src/mem_helpers.h"

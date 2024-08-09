@@ -3,7 +3,7 @@
 
 #include <tiledb/tiledb>
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE(
     "C++ API: Consolidation slowness in create_buffer with large number of "

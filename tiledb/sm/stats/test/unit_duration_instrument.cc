@@ -33,7 +33,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/stats/duration_instrument.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
 using namespace tiledb::sm;

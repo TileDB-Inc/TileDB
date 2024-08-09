@@ -30,7 +30,7 @@
  * Util Tests for C++ API.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/cpp_api/utils.h"
 
 using namespace tiledb;

@@ -41,7 +41,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
 using namespace tiledb::sm;

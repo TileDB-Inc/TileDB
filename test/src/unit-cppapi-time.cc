@@ -30,7 +30,7 @@
  * Tests the C++ API for time attributes.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;

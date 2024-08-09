@@ -31,7 +31,7 @@
  * Tests the datatype C API.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"

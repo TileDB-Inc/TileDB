@@ -37,7 +37,7 @@
 #include <sstream>
 #include <thread>
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "test/support/src/helpers.h"

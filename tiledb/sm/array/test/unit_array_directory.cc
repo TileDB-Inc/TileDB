@@ -34,7 +34,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
 using namespace tiledb::common;

@@ -33,7 +33,7 @@
 
 #include <test/support/src/helpers.h>
 #include <test/support/src/vfs_helpers.h>
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>

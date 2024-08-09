@@ -39,7 +39,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 #include <string>
 

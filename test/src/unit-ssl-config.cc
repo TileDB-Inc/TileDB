@@ -30,7 +30,7 @@
  * Tests for S3 SSL Configuration
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/platform/platform.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/filesystem.h"

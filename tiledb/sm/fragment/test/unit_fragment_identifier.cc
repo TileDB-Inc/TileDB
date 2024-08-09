@@ -30,7 +30,7 @@
  * This file tests the FragmentID class
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
 #include "tiledb/sm/fragment/fragment_identifier.h"

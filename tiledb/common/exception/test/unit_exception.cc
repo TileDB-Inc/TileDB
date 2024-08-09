@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../exception.h"
 
 using namespace tiledb::common;

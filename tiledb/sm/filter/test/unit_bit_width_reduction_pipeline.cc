@@ -35,7 +35,7 @@
 #include <random>
 
 #include <test/support/src/mem_helpers.h>
-#include <test/support/tdb_catch.h>
+#include <catch2/catch_test_macros.hpp>
 #include "../bit_width_reduction_filter.h"
 #include "filter_test_support.h"
 

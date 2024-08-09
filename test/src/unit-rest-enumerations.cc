@@ -31,7 +31,7 @@
  */
 
 #include "test/support/src/vfs_helpers.h"
-#include "test/support/tdb_catch.h"
+#include <catch2/catch_test_macros.hpp>
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
