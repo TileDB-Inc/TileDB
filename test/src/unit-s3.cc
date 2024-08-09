@@ -33,6 +33,7 @@
 #ifdef HAVE_S3
 
 #include <test/support/tdb_catch.h>
+#include <catch2/generators/catch_generators.hpp>
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
