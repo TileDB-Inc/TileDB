@@ -88,16 +88,9 @@ class DataFactory():
                                        for _ in range(col_size)]).astype("U0")
 
     # another version with some important cells set to empty
-    self.data['utf_string2'] = np.array([rand_utf8(np.random.randint(0, 100))
-                                       for _ in range(col_size)]).astype("U0")
-
-    utf_string2 = self.data['utf_string2']
-    for i in range(len(utf_string2)):
-        self.data['utf_string2'][i] = ''
-    range_start = len(utf_string2) - 1
-    range_end = len(utf_string2) % 3
-    for i in range(range_start, range_end, -1):
-        self.data['utf_string2'][i] = ''
+    utf_strings_with_empty = np.copy(self.data['utf_string1'])
+    utf_strings_with_empty[np.random.randint(0, col_size, size=col_size//2)] = ''
+    self.data['utf_string2'] = utf_strings_with_empty
 
     self.data['datetime_ns'] = rand_datetime64_array(col_size)
 
