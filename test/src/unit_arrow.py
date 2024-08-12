@@ -11,16 +11,10 @@ from numpy.testing import assert_array_equal
 #          Data generators                                                   #
 # ************************************************************************** #
 
-# python 2 vs 3 compatibility
-if sys.hexversion >= 0x3000000:
-    getchr = chr
-else:
-    getchr = unichr
-
 def gen_chr(max, printable=False):
     while True:
         # TODO we exclude 0x0 here because the key API does not embedded NULL
-        s = getchr(random.randrange(1, max))
+        s = chr(random.randrange(1, max))
         if printable and not s.isprintable():
             continue
         if len(s) > 0:
