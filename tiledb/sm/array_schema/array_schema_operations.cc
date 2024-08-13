@@ -36,8 +36,12 @@
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/config/config.h"
+#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/integral_type_casts.h"
+#include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
@@ -224,6 +228,63 @@ void store_array_schema(
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
     GenericTileIO::store_data(resources, abs_enmr_uri, tile, encryption_key);
+  }
+}
+
+shared_ptr<ArraySchema> load_array_schema(
+    const Context& ctx, const URI& uri, const Config& config) {
+  // Check array name
+  if (uri.is_invalid()) {
+    throw std::runtime_error("Failed to load array schema; Invalid array URI");
+  }
+
+  if (uri.is_tiledb()) {
+    auto& rest_client = ctx.rest_client();
+    auto&& [st, array_schema_response] =
+        rest_client.get_array_schema_from_rest(uri);
+    throw_if_not_ok(st);
+    return std::move(array_schema_response.value());
+  } else {
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    throw_if_not_ok(
+        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
+
+    // Load URIs from the array directory
+    optional<tiledb::sm::ArrayDirectory> array_dir;
+    array_dir.emplace(
+        ctx.resources(),
+        uri,
+        0,
+        UINT64_MAX,
+        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+
+    auto tracker = ctx.resources().ephemeral_memory_tracker();
+    // Load latest array schema
+    auto&& array_schema_latest =
+        array_dir->load_array_schema_latest(key, tracker);
+
+    // Load enumerations if config option is set.
+    bool incl_enums = config.get<bool>(
+        "rest.load_enumerations_on_array_open", Config::must_find);
+    if (incl_enums) {
+      std::vector<std::string> enmr_paths_to_load;
+      auto enmr_names = array_schema_latest->get_enumeration_names();
+      for (auto& name : enmr_names) {
+        if (!array_schema_latest->is_enumeration_loaded(name)) {
+          auto& path = array_schema_latest->get_enumeration_path_name(name);
+          enmr_paths_to_load.emplace_back(path);
+        }
+      }
+
+      auto enmrs_loaded = array_dir->load_enumerations_from_paths(
+          enmr_paths_to_load, key, tracker);
+      for (auto& enmr : enmrs_loaded) {
+        array_schema_latest->store_enumeration(enmr);
+      }
+    }
+
+    return std::move(array_schema_latest);
   }
 }
 
