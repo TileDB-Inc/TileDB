@@ -55,6 +55,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/fragments.h"
 
@@ -899,6 +900,12 @@ TEST_CASE_METHOD(
 
   create_dense_vector(array_name);
 
+  tiledb_array_schema_t* read_schema;
+  int rc = tiledb_array_schema_load(ctx_, array_name.c_str(), &read_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  REQUIRE(object_type(ctx_->resources(), URI(array_name)) == ObjectType::ARRAY);
+
   // ---- FIRST WRITE ----
   // Prepare cell buffers
   int buffer_a1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -906,7 +913,7 @@ TEST_CASE_METHOD(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
