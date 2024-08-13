@@ -740,6 +740,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If true, array non empty domain will be loaded and sent to server together
  *    with the open array <br>
  *    **Default**: true
+ * - `rest.load_enumerations_on_array_open` <br>
+ *    If true, enumerations will be loaded and sent to server together with
+ *    the open array.
+ *    **Default**: false
  * - `rest.use_refactored_array_open` <br>
  *    If true, the new REST routes and APIs for opening an array
  *    will be used <br>
