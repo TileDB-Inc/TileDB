@@ -3936,7 +3936,9 @@ capi_return_t tiledb_handle_load_enumerations_request(
       tiledb::sm::serialization::deserialize_load_enumerations_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
           request->buffer());
-  auto enumerations = array->array_->get_enumerations(enumeration_names);
+  auto enumerations = array->array_->get_enumerations(
+      enumeration_names,
+      array->array_->opened_array()->array_schema_latest_ptr());
 
   tiledb::sm::serialization::serialize_load_enumerations_response(
       enumerations,
