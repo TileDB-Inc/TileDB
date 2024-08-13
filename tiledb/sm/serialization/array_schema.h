@@ -52,22 +52,28 @@ class Buffer;
 class ArraySchema;
 class Dimension;
 class MemoryTracker;
+class URI;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
 
 class LoadArraySchemaRequest {
  public:
-  LoadArraySchemaRequest(bool include_enumerations = false)
-      : include_enumerations_(include_enumerations) {
+  explicit LoadArraySchemaRequest(const Config& config)
+      : config_(config) {
+  }
+
+  inline const Config& config() const {
+    return config_;
   }
 
   inline bool include_enumerations() const {
-    return include_enumerations_;
+    return config_.get<bool>(
+        "rest.load_enumerations_on_array_open", config_.must_find);
   }
 
  private:
-  bool include_enumerations_;
+  Config config_;
 };
 
 #ifdef TILEDB_SERIALIZATION
@@ -208,11 +214,13 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType serialization_type, const Buffer& data);
 
 void serialize_load_array_schema_response(
-    const ArraySchema& schema,
-    SerializationType serialization_type,
-    Buffer& data);
+    const Array& array, SerializationType serialization_type, Buffer& data);
 
-shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+deserialize_load_array_schema_response(
+    const URI& uri,
     SerializationType serialization_type,
     const Buffer& data,
     shared_ptr<MemoryTracker> memory_tracker);
