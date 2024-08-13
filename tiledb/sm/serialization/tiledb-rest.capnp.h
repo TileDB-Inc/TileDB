@@ -1667,7 +1667,7 @@ struct LoadArraySchemaRequest {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(83f094010132ff21, 1, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(83f094010132ff21, 0, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1684,7 +1684,7 @@ struct LoadArraySchemaResponse {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(ebe17f59ac9a1df1, 0, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(ebe17f59ac9a1df1, 0, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -14925,8 +14925,6 @@ class LoadArraySchemaRequest::Reader {
   inline bool hasConfig() const;
   inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
 
-  inline bool getIncludeEnumerations() const;
-
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -14975,9 +14973,6 @@ class LoadArraySchemaRequest::Builder {
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
   disownConfig();
-
-  inline bool getIncludeEnumerations();
-  inline void setIncludeEnumerations(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -15033,6 +15028,12 @@ class LoadArraySchemaResponse::Reader {
   inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader getSchema()
       const;
 
+  inline bool hasArraySchemasAll() const;
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>::Reader
+  getArraySchemasAll() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -15082,6 +15083,28 @@ class LoadArraySchemaResponse::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
   disownSchema();
 
+  inline bool hasArraySchemasAll();
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>::Builder
+  getArraySchemasAll();
+  inline void setArraySchemasAll(
+      ::tiledb::sm::serialization::capnp::Map<
+          ::capnp::Text,
+          ::tiledb::sm::serialization::capnp::ArraySchema>::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>::Builder
+  initArraySchemasAll();
+  inline void adoptArraySchemasAll(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+          ::capnp::Text,
+          ::tiledb::sm::serialization::capnp::ArraySchema>>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>>
+  disownArraySchemasAll();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -15104,6 +15127,10 @@ class LoadArraySchemaResponse::Pipeline {
   }
 
   inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline getSchema();
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>::Pipeline
+  getArraySchemasAll();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -33121,18 +33148,6 @@ LoadArraySchemaRequest::Builder::disownConfig() {
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline bool LoadArraySchemaRequest::Reader::getIncludeEnumerations() const {
-  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-
-inline bool LoadArraySchemaRequest::Builder::getIncludeEnumerations() {
-  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-inline void LoadArraySchemaRequest::Builder::setIncludeEnumerations(
-    bool value) {
-  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
-}
-
 inline bool LoadArraySchemaResponse::Reader::hasSchema() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -33184,6 +33199,80 @@ LoadArraySchemaResponse::Builder::disownSchema() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool LoadArraySchemaResponse::Reader::hasArraySchemasAll() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool LoadArraySchemaResponse::Builder::hasArraySchemasAll() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::
+    Map<::capnp::Text, ::tiledb::sm::serialization::capnp::ArraySchema>::Reader
+    LoadArraySchemaResponse::Reader::getArraySchemasAll() const {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>>::
+      get(_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::
+    Map<::capnp::Text, ::tiledb::sm::serialization::capnp::ArraySchema>::Builder
+    LoadArraySchemaResponse::Builder::getArraySchemasAll() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>>::
+      get(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::ArraySchema>::Pipeline
+LoadArraySchemaResponse::Pipeline::getArraySchemasAll() {
+  return ::tiledb::sm::serialization::capnp::
+      Map<::capnp::Text, ::tiledb::sm::serialization::capnp::ArraySchema>::
+          Pipeline(_typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void LoadArraySchemaResponse::Builder::setArraySchemasAll(
+    ::tiledb::sm::serialization::capnp::Map<
+        ::capnp::Text,
+        ::tiledb::sm::serialization::capnp::ArraySchema>::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>>::
+      set(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::
+    Map<::capnp::Text, ::tiledb::sm::serialization::capnp::ArraySchema>::Builder
+    LoadArraySchemaResponse::Builder::initArraySchemasAll() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>>::
+      init(_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void LoadArraySchemaResponse::Builder::adoptArraySchemasAll(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+        ::capnp::Text,
+        ::tiledb::sm::serialization::capnp::ArraySchema>>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::ArraySchema>>
+LoadArraySchemaResponse::Builder::disownArraySchemasAll() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::ArraySchema>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool QueryPlanRequest::Reader::hasConfig() const {
