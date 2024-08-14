@@ -347,12 +347,12 @@ capi_return_t tiledb_array_schema_get_attribute_from_index(
     errmsg << "Attribute index: " << index << " out of bounds given "
            << attribute_num << " attributes in array "
            << array_schema->array_uri().to_string();
-    throw CAPIStatusException(errmsg.str());
+    throw CAPIException(errmsg.str());
   }
 
   auto found_attr = array_schema->shared_attribute(index);
   if (!found_attr) {
-    throw CAPIStatusException("Attribute not found, but index is valid!");
+    throw CAPIException("Attribute not found, but index is valid!");
   }
   *attr = tiledb_attribute_handle_t::make_handle(found_attr);
   return TILEDB_OK;

@@ -54,12 +54,6 @@ struct tiledb_array_schema_handle_t
   array_schema_type array_schema_;
 
  public:
-  explicit tiledb_array_schema_handle_t(
-      ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker)
-      : array_schema_{
-            make_shared<ArraySchema>(HERE(), array_type, memory_tracker)} {
-  }
-
   template <class... Args>
   explicit tiledb_array_schema_handle_t(Args... args)
       : array_schema_{

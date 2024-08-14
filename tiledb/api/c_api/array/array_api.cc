@@ -50,7 +50,7 @@ capi_return_t tiledb_array_schema_load(
 
   auto uri = tiledb::sm::URI(array_uri);
   if (uri.is_invalid()) {
-    throw CAPIStatusException("Invalid input uri.");
+    throw CAPIException("Invalid input uri.");
   }
 
   if (uri.is_tiledb()) {

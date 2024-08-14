@@ -35,7 +35,7 @@ gather_sources(${SOURCES})
 commence(object_library capi_array_schema_stub)
   this_target_sources(${SOURCES})
   this_target_link_libraries(export)
-  this_target_object_libraries(array_directory array_schema)
+  this_target_object_libraries(array array_schema)
   this_target_object_libraries(capi_context_stub)
 conclude(object_library)
 
