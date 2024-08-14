@@ -804,6 +804,10 @@ void Array::encryption_type(
 
 shared_ptr<const Enumeration> Array::get_enumeration(
     const std::string& enumeration_name) {
+  if (!is_open_) {
+    throw ArrayException("Unable to load enumerations; Array is not open.");
+  }
+
   return get_enumerations(
       {enumeration_name}, opened_array_->array_schema_latest_ptr())[0];
 }
