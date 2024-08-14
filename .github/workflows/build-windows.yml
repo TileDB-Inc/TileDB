@@ -137,7 +137,7 @@ jobs:
       - name: Prevent vcpkg from building debug variants
         run: python $env:GITHUB_WORKSPACE/scripts/ci/patch_vcpkg_triplets.py
       - name: Install dependencies from pip
-        run: python -m pip install pybind11
+        run: python -m pip install pybind11[global]
 
       - name: Configure TileDB
         shell: pwsh
