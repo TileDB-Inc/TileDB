@@ -53,33 +53,6 @@ if (${TILEDB_ARROW_TESTS})
 
   message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
 
-  # If we can't find the pybind11 cmake config (not available in pypi yet)
-  # try to find with the current executable.
-  if (NOT ${pybind11_FOUND})
-    # Get the include arguments from the python executable (has "-I" compiler option)
-    execute_process(COMMAND  ${Python_EXECUTABLE} -m pybind11 --includes
-                    OUTPUT_VARIABLE CMD_PYBIND11_INCLUDE
-                    RESULT_VARIABLE CMD_PYBIND11_RESULT
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if (${CMD_PYBIND11_RESULT})
-      message(FATAL_ERROR "Unable to find pybind11 via cmake or 'python3 -m pybind11 --includes'")
-    endif()
-
-    # Convert args to list
-    separate_arguments(CMD_PARSED_INCLUDES NATIVE_COMMAND ${CMD_PYBIND11_INCLUDE})
-    # Remove the "-I" from each include
-    foreach(INCL_PATH IN LISTS CMD_PARSED_INCLUDES)
-      string(REPLACE "-I" "" INCL_PATH ${INCL_PATH})
-      list(APPEND PYBIND11_INCLUDE_DIRECTORIES ${INCL_PATH})
-    endforeach()
-
-    file(TO_CMAKE_PATH "${Python_SITELIB}" SAFE_Python_SITELIB)
-    set(pybind11_FOUND TRUE CACHE BOOL "pybind11 include path found")
-    add_library(pybind11::embed INTERFACE IMPORTED)
-    target_include_directories(pybind11::embed INTERFACE ${PYBIND11_INCLUDE_DIRECTORIES})
-    target_link_libraries(pybind11::embed INTERFACE Python::Python)
-    target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_SITELIB_PATH="${SAFE_Python_SITELIB}")
-  endif()
   file(TO_CMAKE_PATH ${CMAKE_CURRENT_BINARY_DIR} SAFE_CURRENT_BINARY_DIR)
   target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_UNIT_PATH="${SAFE_CURRENT_BINARY_DIR}")
 endif()
