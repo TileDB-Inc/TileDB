@@ -85,6 +85,9 @@ struct HeaderCbData {
 
   /** A pointer to the lock attached to the shared resource of the cache map */
   std::mutex* redirect_uri_map_lock;
+
+  /** True if the uri should be stored in URI cache map, false if not */
+  bool should_cache_redirect;
 };
 
 /**
@@ -128,7 +131,8 @@ class Curl {
       const Config* config,
       const std::unordered_map<std::string, std::string>& extra_headers,
       std::unordered_map<std::string, std::string>* res_headers,
-      std::mutex* res_mtx);
+      std::mutex* res_mtx,
+      bool should_cache_redirect = true);
 
   /**
    * Escapes the given URL.
