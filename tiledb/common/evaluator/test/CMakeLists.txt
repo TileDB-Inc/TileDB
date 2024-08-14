@@ -28,5 +28,5 @@ include(unit_test)
 
 commence(unit_test evaluator)
     this_target_object_libraries(baseline)
-    this_target_sources(main.cc unit_evaluator.cc)
+    this_target_sources(unit_evaluator.cc)
 conclude(unit_test)

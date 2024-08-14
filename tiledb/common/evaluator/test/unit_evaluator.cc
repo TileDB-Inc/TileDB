@@ -33,25 +33,24 @@
 using namespace tiledb::common;
 
 TEST_CASE("constructor", "[evaluator]") {
-  auto f = [](std::string key) {
-    return std::make_tuple(key.size(), std::make_shared<std::string>(key));
-  };
+  auto f = [](std::string key) { return key; };
 
   Evaluator<MaxEntriesCache<std::string, std::string, 3>, decltype(f)>
-      max_entries_eval;
-  max_entries_eval(f, "key");   // miss
-  max_entries_eval(f, "key");   // hit
-  max_entries_eval(f, "key2");  // miss
-  max_entries_eval(f, "key3");  // miss
-  max_entries_eval(f, "key4");  // evict
+      max_entries_eval(f);
+  max_entries_eval("key");   // miss
+  max_entries_eval("key");   // hit
+  max_entries_eval("key2");  // miss
+  max_entries_eval("key3");  // miss
+  max_entries_eval("key4");  // evict
 
-  Evaluator<NoCachePolicy<std::string, std::string>, decltype(f)> no_cache_eval;
-  no_cache_eval(f, "key");  // miss
-  no_cache_eval(f, "key");  // miss
+  Evaluator<ImmediateEvaluation<std::string, std::string>, decltype(f)>
+      no_cache_eval(f);
+  no_cache_eval("key");  // miss
+  no_cache_eval("key");  // miss
 
-  Evaluator<
-      MemoryBudgetedCache<std::string, std::string, 1024 * 1024>,
-      decltype(f)>
-      memory_budgeted_cache;
-  memory_budgeted_cache(f, "key");  // miss
+  auto size_fn = [](const std::string& val) { return val.size(); };
+
+  Evaluator<MemoryBudgetedCache<std::string, std::string>, decltype(f)>
+      memory_budgeted_cache(f, size_fn, static_cast<size_t>(1024));
+  memory_budgeted_cache("key");  // miss
 }
