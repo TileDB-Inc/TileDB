@@ -1,18 +1,35 @@
-/*
-  TODO:
-  - document shared_ptr is not necessary for the cache, it's part of the
-  initial design, might go away in the future.
-
- Usage:
- auto f = [](std::string key) {
-    return {sizeof(uint64_t), std::make_shared<uint64_t>(new uint64_t)};
- };
- Evaluator<MaxEntriesCache<std::string, uint64_t, 100>, decltype(f)> eval;
- eval(f, "key");
-
- Evaluator<MemoryBudgetedCache<std::string, uint64_t, 2048>, decltype(f)> eval;
- eval(f, "key");
-*/
+/**
+ * @file   tiledb/common/evaluator/evaluator.h
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2024 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines a function evaluator class and a set of caching policies
+ * that can be used to configure the evaluator's behavior.
+ */
 
 #ifndef TILEDB_COMMON_EVALUATOR_H
 #define TILEDB_COMMON_EVALUATOR_H
@@ -22,12 +39,22 @@
 
 namespace tiledb::common {
 
+/**
+ * Abstract class for caching policies.
+ * This contains most of the logic of the caching mechanism
+ * except budgeting which is policy specific.
+ *
+ * @tparam Key The type of key
+ * @tparam Value The type of value
+ */
 template <class Key, class Value>
 class CachePolicyBase {
  public:
   using key_type = Key;
   using value_type = Value;
+  using return_type = std::shared_ptr<Value>;
   using List = std::list<Key>;
+  using OndemandValue = std::shared_future<return_type>;
 
   /**
    * Try to get an entry from the cache given a key or
@@ -35,65 +62,68 @@ class CachePolicyBase {
    * and cache the value for future readers.
    * If the entry exists, this operation moves this entry
    * at the end of the internal LRU list.
+   *
+   * @tparam F The callback function type.
+   * @param f The callback function to evaluate.
+   * @param key The key to evaluate the callback on.
    */
   template <class F>
-  std::shared_ptr<Value> operator()(F f, Key key) {
-    std::unique_lock<std::mutex> lock(mutex_);
+  return_type operator()(F f, Key key) {
+    std::promise<return_type> promise;
+    std::pair<typename decltype(inprogress_)::iterator, bool> emplace_pair;
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
 
-    auto it = entries_.find(key);
-    // Cache hit
-    if (it != entries_.end()) {
-      lru_.erase(it->second.lru_it);
-      lru_.push_back(key);
-      return it->second.value;
+      auto it = entries_.find(key);
+      // Cache hit
+      if (it != entries_.end()) {
+        lru_.erase(it->second.lru_it);
+        lru_.push_back(key);
+        it->second.lru_it = std::prev(lru_.end());
+        return it->second.value;
+      }
+
+      // Cache miss, but result is already in progress
+      auto inprogress_it = inprogress_.find(key);
+      if (inprogress_it != inprogress_.end()) {
+        // Unlock the mutex before waiting
+        auto future_val = inprogress_it->second;
+        lock.unlock();
+
+        // Wait for the value to be ready
+        return future_val.get();
+      }
+
+      // Eval the callback and cache the result
+      // First let others know we're working on it
+      emplace_pair = inprogress_.emplace(key, promise.get_future().share());
     }
-
-    // Cache miss, but result is already in progress
-    auto inprogress_it = inprogress_.find(key);
-    if (inprogress_it != inprogress_.end()) {
-      // Unlock the mutex before waiting
-      auto future_val = inprogress_it->second;
-      lock.unlock();
-
-      // Wait for the value to be ready
-      return future_val.get();
-    }
-
-    // Eval the callback and cache the result
-    // First let others know we're working on it
-    std::promise<std::shared_ptr<Value>> promise;
-    auto emplace_pair = inprogress_.emplace(key, promise.get_future().share());
-
-    // Unlock the mutex before evaluating the callback
-    lock.unlock();
 
     // Then compute the value
-    auto [mem_usage, value] = f(key);
+    auto value = make_shared<value_type>(f(key));
 
-    // Aquire again the lock to update the cache
-    lock.lock();
+    // Aquire again the mutex to update the cache
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
 
-    // Enforce caching policy
-    std::shared_ptr<Value> evicted_value = enforce_policy(mem_usage);
+      // Enforce caching policy
+      auto evicted_value = enforce_policy(*value);
 
-    // Update the LRU list and the cache
-    auto lru_it = lru_.emplace_back(key);
-    entries_.emplace(key, Cached_Entry(lru_it, value));
-    promise.set_value(value);
+      // Update the LRU list and the cache
+      lru_.emplace_back(key);
+      entries_.emplace(key, Cached_Entry(std::prev(lru_.end()), value));
+      promise.set_value(value);
 
-    // Remove the inprogress entry
-    inprogress_.erase(emplace_pair.first);
+      // Remove the inprogress entry
+      inprogress_.erase(emplace_pair.first);
 
-    // Unlock the mutex before going out of scope so that the evicted value
-    // gets destroyed and deallocated ouside critical sections and we don't
-    // keep the lock longer than necessary.
-    lock.unlock();
+      // Unlock the mutex before going out of function scope so that the evicted
+      // value gets destroyed and deallocated ouside critical sections and we
+      // don't keep the lock longer than necessary.
+    }
 
     return value;
   }
-
-  // TODO: function comment, it needs to be reentrant, plus it should do RVO
-  // TODO:
 
  protected:
   /**
@@ -103,8 +133,10 @@ class CachePolicyBase {
    *
    * The evicted value is returned to the caller so that it can be
    * kept alive for as long as necessary.
+   *
+   * @return The evicted value.
    */
-  std::shared_ptr<Value> evict() {
+  return_type evict() {
     auto key = lru_.front();
     auto it = entries_.find(key);
     auto value = it->second.value;
@@ -114,18 +146,25 @@ class CachePolicyBase {
   }
 
  private:
-  using OndemandValue = std::shared_future<std::shared_ptr<Value>>;
+  /**
+   * Entry in the cache.
+   * It stores an iterator to the LRU list and the value.
+   */
   struct Cached_Entry {
     typename List::iterator lru_it;
-    std::shared_ptr<Value> value;
-    Cached_Entry() = default;
+    return_type value;
+    Cached_Entry() = delete;
+    Cached_Entry(typename List::iterator it, return_type v)
+        : lru_it(it)
+        , value(v) {
+    }
   };
 
   /**
    * Enforces the cache policy by evicting entries if necessary.
    * This operation assumes the bookkeeping mutex is already locked.
    */
-  virtual std::shared_ptr<Value> enforce_policy(size_t mem_usage) = 0;
+  virtual return_type enforce_policy(const Value& v) = 0;
 
   /**
    * Double linked list where the head is the least
@@ -151,34 +190,53 @@ class CachePolicyBase {
   std::mutex mutex_;
 };
 
+/**
+ * Passing this policy to the evaluator will configure it to
+ * always evaluate the callback function and never cache the results.
+ *
+ * @tparam Key The type of key
+ * @tparam Value The type of value
+ */
 template <class Key, class Value>
-class NoCachePolicy {
+class ImmediateEvaluation {
  public:
   using key_type = Key;
   using value_type = Value;
+  using return_type = std::shared_ptr<Value>;
 
-  NoCachePolicy() = default;
-
+  /**
+   * Evaluates the function and constructs a shared_ptr with the prduced value.
+   *
+   * @tparam F The callback function type.
+   * @param f The callback function to evaluate.
+   * @param key The key to evaluate the callback on.
+   */
   template <class F>
-  std::shared_ptr<Value> operator()(F f, Key key) {
-    return std::get<1>(f(key));
+  return_type operator()(F f, Key key) {
+    return make_shared<value_type>(f(key));
   }
 };
 
+/**
+ * Policy that enforces a maximum number of entries in the cache.
+ * Once the threshold is reached, the LRY entry is evicted making space
+ * for a new value to evaluate.
+ *
+ * This policy is useful for testing purposes.
+ *
+ * @tparam Key The type of key
+ * @tparam Value The type of value
+ */
 template <class Key, class Value, size_t N = 0>
 class MaxEntriesCache : public CachePolicyBase<Key, Value> {
  public:
+  using return_type = std::shared_ptr<Value>;
+
   MaxEntriesCache()
       : num_entries_(0) {
   }
 
-  template <class F>
-  std::shared_ptr<Value> operator()(F f, Key key) {
-    return std::get<1>(f(key));
-  }
-
-  virtual std::shared_ptr<Value> enforce_policy(
-      [[maybe_unused]] size_t mem_usage) override {
+  virtual return_type enforce_policy([[maybe_unused]] const Value& v) override {
     if (num_entries_ == max_entries_) {
       auto evicted_value = this->evict();
       --num_entries_;
@@ -193,19 +251,43 @@ class MaxEntriesCache : public CachePolicyBase<Key, Value> {
   static const size_t max_entries_ = N;
 };
 
-template <class Key, class Value, size_t N = 1024>
+/**
+ * Policy that enforces a memory budget for the cache.
+ * This is considered to be the production policy which should
+ * be used in all real use cases.
+ *
+ * The memory consumption is accounted using a user provided function
+ * which returns how much a value uses plus the overhead of a shared_ptr.
+ * In the near future, the evaluator will be extended with orthogonal
+ * memory allocation policies for the values so the accounting for
+ * shared_ptr overhead might be conditioned by these policies.
+ *
+ * The budget is enforced by evicting LRU entries from the cache.
+ *
+ * @tparam Key The type of key
+ * @tparam Value The type of value
+ */
+template <class Key, class Value>
 class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
  public:
-  MemoryBudgetedCache()
-      : memory_consumed_(0) {
-  }
+  using return_type = std::shared_ptr<Value>;
+  using SizeFn = std::function<size_t(const Value&)>;
 
-  template <class F>
-  std::shared_ptr<Value> operator()(F f, Key key) {
-    return std::get<1>(f(key));
+  MemoryBudgetedCache(SizeFn size_fn, size_t budget)
+      : size_fn_(size_fn)
+      , memory_budget_{budget}
+      , memory_consumed_(0) {
   }
-
-  virtual std::shared_ptr<Value> enforce_policy(size_t mem_usage) override {
+  /**
+   * Enforces the cache policy by evicting entries if necessary.
+   * This function takes the value produced by the callback
+   * to account its memory usage against the budget.
+   *
+   * @param v The value produced by the callback
+   * @return The evicted value if any.
+   */
+  virtual return_type enforce_policy(const Value& v) override {
+    auto mem_usage = sizeof(return_type) + size_fn_(v);
     if (memory_consumed_ + mem_usage > memory_budget_) {
       auto evicted_value = this->evict();
       memory_consumed_ -= mem_usage;
@@ -213,38 +295,66 @@ class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
     }
 
     memory_consumed_ += mem_usage;
-    return nullptr;
+    return return_type{};
   }
 
  private:
+  /** User provided function for calculating the size of a value */
+  SizeFn size_fn_;
+
   /** The maximum amount of bytes managed by this cache */
-  static const size_t memory_budget_ = N;
+  size_t memory_budget_;
 
   /** The maximum amount of bytes currently consumed by this cache */
   size_t memory_consumed_;
 };
 
+/**
+ * This class evaluates the result of a callback function on a key,
+ * caching might happen according to the policy specified.
+ *
+ * Any function that takes a key and returns a value can be passed here
+ * provided that the function is reentrant and does RVO so that the caching
+ * policy can construct efficiently the results it produces.
+ *
+ * @tparam Policy The caching policy to use.
+ * @tparam F The callback function type.
+ */
 template <class Policy, class F>
 class Evaluator {
  public:
   using Key = typename Policy::key_type;
   using Value = typename Policy::value_type;
+  using return_type = typename Policy::return_type;
 
-  Evaluator()
-      : caching_policy_{} {
+  /**
+   * Constructor.
+   *
+   * @tparam Args Argument types for the policy constructor.
+   * @param f The callback function to evaluate.
+   * @param args Arguments to pass to the policy constructor.
+   */
+  template <class... Args>
+  Evaluator(F f, Args&&... args)
+      : caching_policy_{std::forward<Args>(args)...}
+      , func_{f} {
   }
 
   /**
    * Evaluate callback on key and return the value.
    * According to the policy specified, the value might be fetched
    * directly from the cache or the callback might be executed to fetch it.
+   *
+   * @param key The key to evaluate the callback on.
+   * @return The value of the callback on the key.
    */
-  std::shared_ptr<Value> operator()(F f, Key key) {
-    return caching_policy_.template operator()<F>(f, key);
+  return_type operator()(Key key) {
+    return caching_policy_.template operator()<F>(func_, key);
   }
 
  private:
   Policy caching_policy_;
+  F func_;
 };
 
 }  // namespace tiledb::common
