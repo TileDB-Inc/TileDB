@@ -49,12 +49,12 @@ if (${TILEDB_ARROW_TESTS})
   # Tell CMake to prefer Python from the PATH
   set(Python_FIND_STRATEGY "LOCATION")
   find_package(Python COMPONENTS Interpreter Development REQUIRED)
-  find_package(pybind11)
+  find_package(pybind11 REQUIRED)
 
   message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
 
-  file(TO_CMAKE_PATH ${CMAKE_CURRENT_BINARY_DIR} SAFE_CURRENT_BINARY_DIR)
-  target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_UNIT_PATH="${SAFE_CURRENT_BINARY_DIR}")
+  # file(TO_CMAKE_PATH ${CMAKE_CURRENT_BINARY_DIR} SAFE_CURRENT_BINARY_DIR)
+  # target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_UNIT_PATH="${SAFE_CURRENT_BINARY_DIR}")
 endif()
 
 # Include TileDB core header directories
