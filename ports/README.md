@@ -26,13 +26,13 @@ $ git commit
 
 After copying the port, add an entry to the table below. You should also contribute your changes to vcpkg and/or the upstream package repository.
 
+For ease of review when patching existing ports, you are recommended to make one commit that copies the upstream port unchanged, and another commit that makes the changes you need.
+
 ## List of port overlays
 
-| Port                       | Reason                                                                                                  |
-|----------------------------|---------------------------------------------------------------------------------------------------------|
-| `libmagic`                 | Updating to the upstream port deferred due to failures.                                                 |
-| `pcre2`                    | To be removed alongside libmagic.                                                                       |
-| `azure-storage-common-cpp` | Patching to disable default features on libxml2 (https://github.com/Azure/azure-sdk-for-cpp/pull/5221). |
-| `libfaketime`              | Port does not yet exist upstream                                                                        |
-| `vcpkg-cmake-config`       | Patching to fix build issues with CMake 3.29.1. (https://github.com/microsoft/vcpkg/pull/38017)         |
-| `google-cloud-cpp`         | Patching to remove dependency on GMock. (https://github.com/microsoft/vcpkg/pull/39802)                 |
+| Port          | Reason                                                                                                                     |
+|---------------|----------------------------------------------------------------------------------------------------------------------------|
+| `aws-c-io`    | Patching to fix MinGW build failures. (https://github.com/awslabs/aws-c-io/pull/664)                                       |
+| `aws-sdk-cpp` | Patching to fix MinGW build failures, and to avoid building test-only SDKs (https://github.com/aws/aws-sdk-cpp/pull/3061). |
+| `libmagic`    | Updating to the upstream port deferred due to failures.                                                                    |
+| `libfaketime` | Port does not yet exist upstream                                                                                           |
