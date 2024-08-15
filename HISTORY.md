@@ -16,7 +16,6 @@
 ## Improvements
 
 * Added new functions to write schema dump to a string rather than stdout, so that non-console interactive environments such as Jupyter will be able to capture and print the output. [#5026](https://github.com/TileDB-Inc/TileDB/pull/5026)
-* The version of OpenSSL linked to the release artifacts was updated to 3.1.4, and moving forward will be synced to the vcpkg `builtin-baseline`. [#5174](https://github.com/TileDB-Inc/TileDB/pull/5174)
 * Improve dense read performance for small reads. [#5145](https://github.com/TileDB-Inc/TileDB/pull/5145)
 * Skip caching redirect uri on array create. [#5224](https://github.com/TileDB-Inc/TileDB/pull/5224)
 
@@ -40,6 +39,10 @@
 
 * Add ctx to CurrentDomain CAPI. [#5219](https://github.com/TileDB-Inc/TileDB/pull/5219)
 * Add new CAPIs to dump array schema, attribute, dimension, domain, enumeration and group to a string. [#5026](https://github.com/TileDB-Inc/TileDB/pull/5026)
+
+## Build System Changes
+
+* The version of OpenSSL linked to the release artifacts was updated to 3.1.4, and moving forward will be synced to the vcpkg `builtin-baseline`. [#5174](https://github.com/TileDB-Inc/TileDB/pull/5174)
 
 # TileDB v2.25.0 Release Notes
 
