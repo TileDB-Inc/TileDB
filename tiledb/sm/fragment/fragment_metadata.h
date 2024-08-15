@@ -853,9 +853,6 @@ class FragmentMetadata {
    */
   std::unordered_map<std::string, unsigned> idx_map_;
 
-  /** A vector storing the first and last coordinates of each tile. */
-  std::vector<std::vector<uint8_t>> bounding_coords_;
-
   /** True if the fragment is dense, and false if it is sparse. */
   bool dense_;
 
