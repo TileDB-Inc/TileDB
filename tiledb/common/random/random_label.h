@@ -100,6 +100,9 @@ class RandomLabelGenerator {
   /** Generate a random label with a timestamp. */
   RandomLabelWithTimestamp generate();
 
+  /** Generate a random label at the specified timestamp. */
+  RandomLabelWithTimestamp generate(uint64_t now);
+
  public:
   /** Generate a random label. */
   static RandomLabelWithTimestamp generate_random_label();

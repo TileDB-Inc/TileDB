@@ -44,10 +44,15 @@ RandomLabelGenerator::RandomLabelGenerator()
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
 RandomLabelWithTimestamp RandomLabelGenerator::generate() {
+  auto now = tiledb::sm::utils::time::timestamp_now_ms();
+  return generate(now);
+}
+
+RandomLabelWithTimestamp RandomLabelGenerator::generate(uint64_t now) {
   PRNG& prng = PRNG::get();
   std::lock_guard<std::mutex> lock(mtx_);
-  auto now = tiledb::sm::utils::time::timestamp_now_ms();
 
   // If no label has been generated this millisecond, generate a new one.
   if (now != prev_time_) {
