@@ -58,9 +58,9 @@ if (${TILEDB_ARROW_TESTS})
   if (NOT ${pybind11_FOUND})
     # Get the include arguments from the python executable (has "-I" compiler option)
     execute_process(COMMAND  ${Python_EXECUTABLE} -m pybind11 --includes
-                    OUTPUT_VARIABLE CMD_PYBIND11_INCLUDE
-                    RESULT_VARIABLE CMD_PYBIND11_RESULT
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+            OUTPUT_VARIABLE CMD_PYBIND11_INCLUDE
+            RESULT_VARIABLE CMD_PYBIND11_RESULT
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
     if (${CMD_PYBIND11_RESULT})
       message(FATAL_ERROR "Unable to find pybind11 via cmake or 'python3 -m pybind11 --includes'")
     endif()
