@@ -1,5 +1,9 @@
 # TileDB v2.26.0 Release Notes
 
+## Breaking behavior
+
+* The superbuild architecture of the build system has been removed and TileDB is a regular CMake project. Build commands of the form `make && make -C tiledb <targets>` will have to be replaced by `make <targets>`. [#5021](https://github.com/TileDB-Inc/TileDB/pull/5021)
+
 ## Breaking C API changes
 
 * All deprecated C and C++ APIs were removed. [#5146](https://github.com/TileDB-Inc/TileDB/pull/5146)
@@ -36,10 +40,6 @@
 ### C API
 
 * Add ctx to CurrentDomain CAPI. [#5219](https://github.com/TileDB-Inc/TileDB/pull/5219)
-
-## Build System Changes
-
-* The superbuild architecture of the build system has been removed and TileDB is a regular CMake project. Build commands of the form `make && make -C tiledb <targets>` will have to be replaced by `make <targets>`. [#5021](https://github.com/TileDB-Inc/TileDB/pull/5021)
 
 # TileDB v2.25.0 Release Notes
 
