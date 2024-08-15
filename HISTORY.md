@@ -2,7 +2,7 @@
 
 ## Breaking behavior
 
-* The superbuild architecture of the build system has been removed and TileDB is a regular CMake project. Build commands of the form `make && make -C tiledb <targets>` will have to be replaced by `make <targets>`. [#5021](https://github.com/TileDB-Inc/TileDB/pull/5021)
+* The superbuild architecture of the build system has been removed and TileDB is now a single-level CMake project. Build commands of the form `make && make -C tiledb <targets>` will have to be replaced by `make <targets>`. [#5021](https://github.com/TileDB-Inc/TileDB/pull/5021)
 
 ## Breaking C API changes
 
@@ -16,7 +16,7 @@
 
 ## Improvements
 
-* Output of `schema.dump()` in TileDB-Py is not captured by Jupyter. Replacing `dump` functions with `operator<<` overloads will give the ability to print the resulted string from Python. [#5026](https://github.com/TileDB-Inc/TileDB/pull/5026)
+* Added new functions to write schema dump to a string rather than stdout, so that non-console interactive environments such as Jupyter will be able to capture and print the output [#5026](https://github.com/TileDB-Inc/TileDB/pull/5026)
 * The version of OpenSSL linked to the release artifacts was updated to 3.1.4, and moving forward will be synced to the vcpkg `builtin-baseline`. [#5174](https://github.com/TileDB-Inc/TileDB/pull/5174)
 * Improve dense read performance for small reads. [#5145](https://github.com/TileDB-Inc/TileDB/pull/5145)
 * Skip caching redirect uri on array create. [#5224](https://github.com/TileDB-Inc/TileDB/pull/5224)
