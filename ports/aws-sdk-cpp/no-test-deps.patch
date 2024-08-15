@@ -1,0 +1,25 @@
+diff --git a/cmake/sdks.cmake b/cmake/sdks.cmake
+index 75283cdd1b6..71d383e3323 100644
+--- a/cmake/sdks.cmake
++++ b/cmake/sdks.cmake
+@@ -34,12 +34,14 @@ if(BUILD_ONLY)
+             endforeach()
+         endif()
+ 
+-        get_dependencies_for_test(${TARGET} DEPENDENCY_LIST)
+-        if(DEPENDENCY_LIST)
+-            STRING(REPLACE "," ";" LIST_RESULT ${DEPENDENCY_LIST})
+-            foreach(DEPENDENCY IN LISTS LIST_RESULT)
+-                list(APPEND SDK_DEPENDENCY_BUILD_LIST ${DEPENDENCY})
+-            endforeach()
++        if(ENABLE_TESTING)
++            get_dependencies_for_test(${TARGET} DEPENDENCY_LIST)
++            if(DEPENDENCY_LIST)
++                STRING(REPLACE "," ";" LIST_RESULT ${DEPENDENCY_LIST})
++                foreach(DEPENDENCY IN LISTS LIST_RESULT)
++                    list(APPEND SDK_DEPENDENCY_BUILD_LIST ${DEPENDENCY})
++                endforeach()
++            endif()
+         endif()
+     endforeach()
+     LIST(REMOVE_DUPLICATES SDK_BUILD_LIST)
