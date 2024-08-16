@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022-2023 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +51,9 @@ target_include_directories(export INTERFACE ${TILEDB_SOURCE_ROOT}/tiledb/sm/c_ap
 
 # `array`: no dependencies
 add_subdirectory(array)
+
+# `array_schema`: depends on `context`
+add_subdirectory(array_schema)
 
 # `buffer`: no dependencies
 add_subdirectory(buffer)

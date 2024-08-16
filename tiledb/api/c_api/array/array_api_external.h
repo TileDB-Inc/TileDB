@@ -1,5 +1,5 @@
-/*
- * @file   tiledb_deprecated.h
+/**
+ * @file tiledb/api/c_api/array/array_api_external.h
  *
  * @section LICENSE
  *
@@ -27,25 +27,45 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the deprecated C API for TileDB.
+ * This file declares the Array C API for TileDB.
  */
 
-#ifndef TILEDB_DEPRECATED_H
-#define TILEDB_DEPRECATED_H
+#ifndef TILEDB_CAPI_ARRAY_EXTERNAL_H
+#define TILEDB_CAPI_ARRAY_EXTERNAL_H
 
-#include <stdint.h>
-#include <stdio.h>
-
-#include "tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
+#include "../api_external_common.h"
+#include "../array_schema/array_schema_api_external.h"
+#include "../context/context_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// No deprecated APIs are declared at the moment.
+/**
+ * Retrieves the schema of an array from the disk, creating an array schema
+ * struct.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* array_schema;
+ * tiledb_array_schema_load(ctx, "s3://tiledb_bucket/my_array", &array_schema);
+ * // Make sure to free the array schema in the end
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_uri The array whose schema will be retrieved.
+ * @param[out] array_schema The array schema to be retrieved, or `NULL` upon
+ * error.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_load(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // TILEDB_DEPRECATED_H
+#endif  // TILEDB_CAPI_ARRAY_EXTERNAL_H

@@ -1,5 +1,5 @@
-/*
- * @file   tiledb_deprecated.h
+/**
+ * @file tiledb/api/c_api/array/array_api_internal.h
  *
  * @section LICENSE
  *
@@ -27,25 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the deprecated C API for TileDB.
+ * This file declares the internals of the array section of the C API.
  */
 
-#ifndef TILEDB_DEPRECATED_H
-#define TILEDB_DEPRECATED_H
+#ifndef TILEDB_CAPI_ARRAY_INTERNAL_H
+#define TILEDB_CAPI_ARRAY_INTERNAL_H
 
-#include <stdint.h>
-#include <stdio.h>
+#include "array_api_external.h"
 
-#include "tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
+#include "tiledb/common/common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// No deprecated APIs are declared at the moment.
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif  // TILEDB_DEPRECATED_H
+#endif  // TILEDB_CAPI_ARRAY_INTERNAL_H
