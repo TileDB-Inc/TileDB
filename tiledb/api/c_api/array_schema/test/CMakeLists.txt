@@ -1,9 +1,9 @@
 #
-# tiledb/api/c_api/array/CMakeLists.txt
+# tiledb/api/c_api/array_schema/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,19 +24,14 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-include(object_library)
+include(unit_test)
 
-list(APPEND SOURCES
-  array_api.cc
-)
-gather_sources(${SOURCES})
-
-commence(object_library capi_array_stub)
-  this_target_sources(${SOURCES})
-  this_target_link_libraries(export)
-  this_target_object_libraries(array)
-  this_target_object_libraries(capi_context_stub)
-conclude(object_library)
-
-add_test_subdirectory()
+commence(unit_test capi_array_schema)
+  this_target_sources(unit_capi_array_schema.cc)
+  this_target_object_libraries(
+    capi_array_schema_stub 
+    capi_attribute_stub
+    capi_current_domain
+    capi_domain_stub
+  )
+conclude(unit_test)

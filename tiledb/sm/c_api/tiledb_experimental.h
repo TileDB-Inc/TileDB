@@ -5,8 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +40,7 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/array_schema/array_schema_api_experimental.h"
 #include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
 #include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
@@ -338,110 +338,6 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_expand_current_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
     tiledb_current_domain_t* expanded_domain) TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*          ARRAY SCHEMA             */
-/* ********************************* */
-
-/**
- * Gets timestamp range in an array schema evolution
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t timestamp_lo = 0;
- * uint64_t timestamp_hi = 0;
- * tiledb_array_schema_evolution_timestamp_range(ctx,
- * array_schema_evolution, &timestamp_lo, &timestamp_hi);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema object.
- * @param lo The lower bound of timestamp range.
- * @param hi The upper bound of timestamp range.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    uint64_t* lo,
-    uint64_t* hi) TILEDB_NOEXCEPT;
-
-/**
- * Adds an enumeration to an array schema.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_enumeration_t* enumeration;
- * tiledb_enumeration_alloc(
- *     ctx,
- *     "enumeration_name",
- *     TILEDB_INT64,
- *     1,
- *     FALSE,
- *     data,
- *     data_size,
- *     nullptr,
- *     0,
- *     &enumeration);
- * tiledb_array_schema_add_enumeration(ctx, array_schema, enumeration);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param enumeration The enumeration to add with the attribute
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
-
-/**
- * Sets the current domain on the array schema
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_current_domain_t *current_domain;
- * tiledb_current_domain_create(ctx, &current_domain);
- * tiledb_array_schema_set_current_domain(ctx, array_schema, current_domain);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param current_domain The current domain to set on the schema
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_current_domain(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_current_domain_t* current_domain) TILEDB_NOEXCEPT;
-
-/**
- * Gets the current domain set on the array schema or
- * creates an empty current domain if none was set.
- * It is the responsability of the caller to free the resources associated
- * with the current domain when the handle isn't needed anymore.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_current_domain_t *current_domain;
- * tiledb_array_schema_get_current_domain(ctx, array_schema, &current_domain);
- * tiledb_current_domain_free(&current_domain);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param current_domain The current domain set on the schema
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_current_domain(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_current_domain_t** current_domain) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               ARRAY               */

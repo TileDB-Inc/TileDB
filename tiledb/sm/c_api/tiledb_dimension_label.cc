@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
  * THE SOFTWARE.
  */
 
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/attribute/attribute_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api/dimension_label/dimension_label_api_internal.h"
@@ -38,16 +39,13 @@
 namespace tiledb::api {
 
 capi_return_t tiledb_array_schema_add_dimension_label(
-    tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const uint32_t dim_index,
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) {
-  if (sanity_check(ctx, array_schema)) {
-    return TILEDB_ERR;
-  }
-  array_schema->array_schema_->add_dimension_label(
+  ensure_array_schema_is_valid(array_schema);
+  array_schema->add_dimension_label(
       dim_index,
       name,
       static_cast<tiledb::sm::DataOrder>(label_order),
@@ -56,17 +54,13 @@ capi_return_t tiledb_array_schema_add_dimension_label(
 }
 
 capi_return_t tiledb_array_schema_get_dimension_label_from_name(
-    tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_dimension_label_t** dim_label) {
-  if (sanity_check(ctx, array_schema)) {
-    return TILEDB_ERR;
-  }
+  ensure_array_schema_is_valid(array_schema);
   tiledb::api::ensure_output_pointer_is_valid(dim_label);
   *dim_label = tiledb_dimension_label_t::make_handle(
-      array_schema->array_schema_->array_uri(),
-      array_schema->array_schema_->dimension_label(label_name));
+      array_schema->array_uri(), array_schema->dimension_label(label_name));
   return TILEDB_OK;
 }
 
@@ -74,42 +68,39 @@ capi_return_t tiledb_array_schema_has_dimension_label(
     const tiledb_array_schema_t* array_schema,
     const char* name,
     int32_t* has_dim_label) {
-  bool is_dim_label = array_schema->array_schema_->is_dim_label(name);
+  ensure_array_schema_is_valid(array_schema);
+  bool is_dim_label = array_schema->is_dim_label(name);
   *has_dim_label = is_dim_label ? 1 : 0;
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_array_schema_set_dimension_label_filter_list(
-    tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_filter_list_t* filter_list) {
-  if (sanity_check(ctx, array_schema)) {
-    return TILEDB_ERR;
-  }
-  api::ensure_filter_list_is_valid(filter_list);
-  array_schema->array_schema_->set_dimension_label_filter_pipeline(
+  ensure_array_schema_is_valid(array_schema);
+  ensure_filter_list_is_valid(filter_list);
+  array_schema->set_dimension_label_filter_pipeline(
       label_name, filter_list->pipeline());
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
-    tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_datatype_t type,
     const void* tile_extent) {
-  if (sanity_check(ctx, array_schema)) {
-    return TILEDB_ERR;
-  }
-  array_schema->array_schema_->set_dimension_label_tile_extent(
+  ensure_array_schema_is_valid(array_schema);
+  array_schema->set_dimension_label_tile_extent(
       label_name, static_cast<tiledb::sm::Datatype>(type), tile_extent);
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_array_schema_get_dimension_label_num(
     tiledb_array_schema_t* array_schema, uint64_t* dim_label_num) {
-  *dim_label_num = array_schema->array_schema_->dim_label_num();
+  ensure_array_schema_is_valid(array_schema);
+  ensure_output_pointer_is_valid(dim_label_num);
+  *dim_label_num = array_schema->dim_label_num();
   return TILEDB_OK;
 }
 
@@ -117,10 +108,11 @@ capi_return_t tiledb_array_schema_get_dimension_label_from_index(
     tiledb_array_schema_t* array_schema,
     uint64_t dim_label_index,
     tiledb_dimension_label_t** dim_label) {
-  tiledb::api::ensure_output_pointer_is_valid(dim_label);
+  ensure_array_schema_is_valid(array_schema);
+  ensure_output_pointer_is_valid(dim_label);
   *dim_label = tiledb_dimension_label_t::make_handle(
-      array_schema->array_schema_->array_uri(),
-      array_schema->array_schema_->dimension_label(dim_label_index));
+      array_schema->array_uri(),
+      array_schema->dimension_label(dim_label_index));
   return TILEDB_OK;
 }
 
@@ -232,7 +224,8 @@ CAPI_INTERFACE(
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) {
-  return api_entry<tiledb::api::tiledb_array_schema_add_dimension_label>(
+  return api_entry_context<
+      tiledb::api::tiledb_array_schema_add_dimension_label>(
       ctx, array_schema, dim_index, name, label_order, label_type);
 }
 
@@ -242,7 +235,7 @@ CAPI_INTERFACE(
     tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_dimension_label_t** dim_label) {
-  return api_entry_with_context<
+  return api_entry_context<
       tiledb::api::tiledb_array_schema_get_dimension_label_from_name>(
       ctx, array_schema, label_name, dim_label);
 }
@@ -264,7 +257,7 @@ CAPI_INTERFACE(
     tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_filter_list_t* filter_list) {
-  return api_entry<
+  return api_entry_context<
       tiledb::api::tiledb_array_schema_set_dimension_label_filter_list>(
       ctx, array_schema, label_name, filter_list);
 }
@@ -276,7 +269,7 @@ CAPI_INTERFACE(
     const char* label_name,
     tiledb_datatype_t type,
     const void* tile_extent) {
-  return api_entry<
+  return api_entry_context<
       tiledb::api::tiledb_array_schema_set_dimension_label_tile_extent>(
       ctx, array_schema, label_name, type, tile_extent);
 }
