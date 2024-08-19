@@ -603,8 +603,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_check(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) TILEDB_NOEXCEPT;
 
 /**
- * Retrieves the schema of an array from the disk, creating an array schema
- * struct. The schema retrieved will always be the latest schema for the array.
+ * Retrieves the latest schema of an array from the disk, creating an array
+ * schema struct.
  *
  * **Example:**
  *
@@ -637,7 +637,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load(
  *
  * @code{.c}
  * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_load_with_options(
+ * tiledb_array_schema_load_with_config(
  *     ctx,
  *     config,
  *     "s3://tiledb_bucket/my_array",
@@ -651,7 +651,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load(
  * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_load_with_options(
+TILEDB_EXPORT int32_t tiledb_array_schema_load_with_config(
     tiledb_ctx_t* ctx,
     tiledb_config_t* config,
     const char* array_uri,

@@ -243,7 +243,7 @@ shared_ptr<ArraySchema> load_array_schema(
     auto&& [st, array_schema_response] =
         rest_client.get_array_schema_from_rest(uri);
     throw_if_not_ok(st);
-    return std::move(array_schema_response.value());
+    return std::move(array_schema_response).value();
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;

@@ -1850,6 +1850,9 @@ void load_array_schema_request_to_capnp(
     const LoadArraySchemaRequest& req) {
   auto config_builder = builder.initConfig();
   throw_if_not_ok(config_to_capnp(config, &config_builder));
+  // This boolean is only serialized to support clients using TileDB < 2.26.
+  // Future options should only be serialized within the Config object above.
+  builder.setIncludeEnumerations(req.include_enumerations());
 }
 
 void serialize_load_array_schema_request(
@@ -1907,6 +1910,8 @@ LoadArraySchemaRequest load_array_schema_request_from_capnp(
     capnp::LoadArraySchemaRequest::Reader& reader) {
   tdb_unique_ptr<Config> decoded_config = nullptr;
   throw_if_not_ok(config_from_capnp(reader.getConfig(), &decoded_config));
+  // We intentionally do not use the includeEnumerations field, as it is stored
+  // in the Config and set using the LoadArraySchemaRequest constructor.
   return LoadArraySchemaRequest(*decoded_config);
 }
 
