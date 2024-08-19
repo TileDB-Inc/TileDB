@@ -1437,29 +1437,16 @@ int32_t tiledb_array_get_open_timestamp_end(
 
 int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) {
   // Allocate an array object
-  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-  try {
-    array->array_ = make_shared<tiledb::sm::Array>(
-        HERE(), ctx->resources(), tiledb::sm::URI(uri));
-  } catch (std::bad_alloc&) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation error");
-    delete array;
-    array = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
+  tiledb::sm::Array array(ctx->resources(), tiledb::sm::URI(uri));
   // Open the array for exclusive modification
-  throw_if_not_ok(array->array_->open(
+  throw_if_not_ok(array.open(
       tiledb::sm::QueryType::MODIFY_EXCLUSIVE,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0));
 
   try {
-    array->array_->delete_array(tiledb::sm::URI(uri));
+    array.delete_array(tiledb::sm::URI(uri));
   } catch (std::exception& e) {
     auto st = Status_ArrayError(e.what());
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -1482,22 +1469,14 @@ capi_return_t tiledb_array_delete_fragments_v2(
   }
 
   // Allocate an array object
-  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-  try {
-    array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
-  } catch (...) {
-    delete array;
-    array = nullptr;
-    throw api::CAPIStatusException("Failed to create array");
-  }
+  tiledb::sm::Array array(ctx->resources(), uri);
 
   // Set array open timestamps
-  array->array_->set_timestamp_start(timestamp_start);
-  array->array_->set_timestamp_end(timestamp_end);
+  array.set_timestamp_start(timestamp_start);
+  array.set_timestamp_end(timestamp_end);
 
   // Open the array for exclusive modification
-  throw_if_not_ok(array->array_->open(
+  throw_if_not_ok(array.open(
       static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
       static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
       nullptr,
@@ -1505,18 +1484,14 @@ capi_return_t tiledb_array_delete_fragments_v2(
 
   // Delete fragments
   try {
-    array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
+    array.delete_fragments(uri, timestamp_start, timestamp_end);
   } catch (...) {
-    throw_if_not_ok(array->array_->close());
-    delete array;
-    array = nullptr;
+    throw_if_not_ok(array.close());
     throw api::CAPIStatusException("Failed to delete fragments");
   }
 
   // Close and delete the array
-  throw_if_not_ok(array->array_->close());
-  delete array;
-  array = nullptr;
+  throw_if_not_ok(array.close());
 
   return TILEDB_OK;
 }
@@ -1552,37 +1527,25 @@ capi_return_t tiledb_array_delete_fragments_list(
   }
 
   // Allocate an array object
-  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-  try {
-    array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
-  } catch (...) {
-    delete array;
-    array = nullptr;
-    throw api::CAPIStatusException("Failed to create array");
-  }
+  tiledb::sm::Array array(ctx->resources(), uri);
 
   // Open the array for exclusive modification
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+  throw_if_not_ok(array.open(
+      tiledb::sm::QueryType::MODIFY_EXCLUSIVE,
+      tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0));
 
   // Delete fragments list
   try {
-    array->array_->delete_fragments_list(uris);
+    array.delete_fragments_list(uris);
   } catch (...) {
-    throw_if_not_ok(array->array_->close());
-    delete array;
-    array = nullptr;
+    throw_if_not_ok(array.close());
     throw api::CAPIStatusException("Failed to delete fragments_list");
   }
 
   // Close the array
-  throw_if_not_ok(array->array_->close());
-  delete array;
-  array = nullptr;
+  throw_if_not_ok(array.close());
 
   return TILEDB_OK;
 }
