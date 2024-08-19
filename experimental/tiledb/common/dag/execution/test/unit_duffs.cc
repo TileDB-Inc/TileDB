@@ -29,6 +29,8 @@
  *
  */
 
+#include <numeric>
+
 #include "unit_duffs.h"
 #include "../duffs.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"

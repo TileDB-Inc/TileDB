@@ -32,6 +32,7 @@
 
 #include "unit_general_nodes.h"
 #include <future>
+#include <numeric>
 
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/nodes/detail/simple/mimo.h"

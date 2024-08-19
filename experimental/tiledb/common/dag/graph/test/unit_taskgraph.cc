@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  */
 
+#include <numeric>
+
 #include "unit_taskgraph.h"
 #include "experimental/tiledb/common/dag/execution/duffs.h"
 #include "experimental/tiledb/common/dag/graph/taskgraph.h"

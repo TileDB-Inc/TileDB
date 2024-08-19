@@ -32,6 +32,7 @@
 
 #include "unit_simple_nodes.h"
 #include <future>
+#include <numeric>
 #include <type_traits>
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
