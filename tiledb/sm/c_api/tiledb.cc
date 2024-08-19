@@ -460,7 +460,7 @@ int32_t tiledb_array_schema_load(
   ensure_output_pointer_is_valid(array_schema);
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
-    throw CAPIStatusException("Failed to allocate TileDB array schema object");
+    throw std::bad_alloc();
   }
 
   try {
@@ -475,7 +475,7 @@ int32_t tiledb_array_schema_load(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_load_with_options(
+int32_t tiledb_array_schema_load_with_config(
     tiledb_ctx_t* ctx,
     tiledb_config_t* config,
     const char* array_uri,
@@ -5000,12 +5000,12 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    array_schema_load_with_options,
+    array_schema_load_with_config,
     tiledb_ctx_t* ctx,
     tiledb_config_t* config,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
-  return api_entry<tiledb::api::tiledb_array_schema_load_with_options>(
+  return api_entry<tiledb::api::tiledb_array_schema_load_with_config>(
       ctx, config, array_uri, array_schema);
 }
 
