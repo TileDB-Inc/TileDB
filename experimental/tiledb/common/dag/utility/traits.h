@@ -2,8 +2,8 @@
 #define TILEDB_TRAITS_H
 
 #include <iterator>
-#include <span>
 #include <type_traits>
+#include "external/include/span/span.hpp"
 
 // An attempt to make a const span iterator.  Since span does not have a const
 // iterator, a joined span probably should not either.
@@ -94,7 +94,7 @@ struct is_span {
 };
 
 template <class T>
-struct is_span<std::span<T>> {
+struct is_span<tcb::span<T>> {
   constexpr static bool value = true;
 };
 
