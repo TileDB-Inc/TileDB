@@ -51,8 +51,9 @@ Introduced in TileDB 2.14
 
 Introduced in TileDB 2.12
 
-* Deleting data from arrays is supported. Arrays can have [delete commit files](./delete_commit_file.md).
-* Updating data in arrays is supported. Arrays can have [update commit files](./update_commit_file.md).
+* Arrays can have [delete commit files](./delete_commit_file.md).
+* Arrays can have [update commit files](./update_commit_file.md).
+    * The TileDB implementation currently supports writing update commit files as an experimental feature, but they are not yet considered when performing reads.
 * Fragment metadata contain [tile processed conditions](./fragment.md#tile-processed-conditions).
 
 ## Version 15
@@ -86,6 +87,7 @@ Introduced in TileDB 2.8
 Introduced in TileDB 2.7
 
 * Fragment metadata contain [metadata](./fragment.md#tile-mins-maxes) (min/max value, sum, null count) for each tile.
+* The TileDB implementation has been updated to never split cells when storing them in chunks.
 
 ## Version 10
 
