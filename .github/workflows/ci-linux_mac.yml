@@ -78,7 +78,7 @@ env:
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
   CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
   # Installing Python does not work on manylinux so disable Arrow tests.
-  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'x64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }} ${{ !inputs.manylinux && '--enable-arrow-tests' || '' }}"
+  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'x64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
   # Manylinux does not support Node 20 due to libc incompatibility. Temporarily opt out.
@@ -129,25 +129,10 @@ jobs:
           yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
 
-      # Need this for virtualenv and arrow tests if enabled
-      - name: 'Install Python'
-        uses: actions/setup-python@v4
-        if: ${{ !inputs.manylinux }}
-        with:
-          python-version: '3.9'
-          cache: 'pip'
-
       # This must happen after checkout, because checkout would remove the directory.
       - name: Install Ninja
         if: inputs.cmake_generator == 'Ninja'
         uses: seanmiddleditch/gha-setup-ninja@v4
-
-      - name: 'Set up Python dependencies'
-        if: ${{ !inputs.manylinux }}
-        run: |
-          set -e pipefail
-          python -m pip install --upgrade pip virtualenv
-          pip install pyarrow pybind11[global] numpy
 
       - name: 'Brew setup on macOS' # x-ref c8e49ba8f8b9ce
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
@@ -216,7 +201,7 @@ jobs:
           ./test/ci/test_assert -d yes
           ./test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/sm/filesystem/test/unit_vfs -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-          
+
           ctest -R tiledb_timing_unit | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           ###################################################

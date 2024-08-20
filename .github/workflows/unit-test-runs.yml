@@ -27,6 +27,19 @@ jobs:
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@v4
 
+      # Need this for virtualenv and arrow tests if enabled
+      - name: 'Install Python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: 'Set up Python dependencies'
+        run: |
+          set -e pipefail
+          python -m pip install --upgrade pip virtualenv
+          pip install pyarrow pybind11[global] numpy
+
       - name: Setup MSVC toolset
         uses: TheMrMilchmann/setup-msvc-dev@v3
         if: ${{ startsWith(matrix.os, 'windows-') }}
@@ -60,7 +73,8 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DTILEDB_SERIALIZATION=ON \
-            -DTILEDB_ASSERTIONS=ON
+            -DTILEDB_ASSERTIONS=ON \
+            -DTILEDB_ARROW_TESTS=ON
           # Build all unit tests
           cmake --build build --target tests -j4
 

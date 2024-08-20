@@ -35,11 +35,7 @@ if (TILEDB_ARROW_TESTS)
   set(Python_FIND_STRATEGY "LOCATION")
   find_package(Python COMPONENTS Interpreter Development REQUIRED)
   find_package(pybind11 REQUIRED)
-
   message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
-
-  file(TO_CMAKE_PATH ${CMAKE_CURRENT_BINARY_DIR} SAFE_CURRENT_BINARY_DIR)
-  target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_UNIT_PATH="${SAFE_CURRENT_BINARY_DIR}")
 endif()
 
 # Include TileDB core header directories
@@ -217,13 +213,6 @@ if (TILEDB_SERIALIZATION)
   )
 endif()
 
-if (TILEDB_ARROW_TESTS)
-  list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/unit-arrow.cc
-    ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
-  )
-endif()
-
 if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
@@ -236,8 +225,6 @@ add_executable(
   ${TILEDB_UNIT_TEST_SOURCES}
   "src/unit.cc"
 )
-
-add_dependencies(tiledb_unit tiledb_test_support_lib)
 
 target_compile_options(tiledb_unit PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
@@ -289,9 +276,6 @@ endif()
 
 if (TILEDB_ARROW_TESTS)
   target_link_libraries(tiledb_unit PRIVATE pybind11::embed)
-
-  # install the python helper next to the executable for import
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 endif()
 
 if (TILEDB_WEBP)
@@ -319,6 +303,42 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU
     set_target_properties(tiledb_unit PROPERTIES
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )
+endif()
+
+if (TILEDB_ARROW_TESTS)
+  add_executable(
+    unit_arrow EXCLUDE_FROM_ALL
+    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+    src/unit-arrow.cc
+    ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
+  )
+
+  target_link_libraries(unit_arrow
+    PUBLIC
+      TILEDB_CORE_OBJECTS_ILIB
+      TILEDB_CORE_OBJECTS
+      Catch2::Catch2WithMain
+      pybind11::embed
+      tiledb_test_support_lib
+      configuration_definitions
+  )
+
+  file(TO_CMAKE_PATH ${CMAKE_CURRENT_BINARY_DIR} SAFE_CURRENT_BINARY_DIR)
+  target_compile_definitions(unit_arrow PRIVATE -DTILEDB_PYTHON_UNIT_PATH="${SAFE_CURRENT_BINARY_DIR}")
+  # install the python helper next to the executable for import
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+
+  target_include_directories(
+    unit_arrow BEFORE PRIVATE
+      ${TILEDB_CORE_INCLUDE_DIR}
+      ${TILEDB_EXPORT_HEADER_DIR}
+  )
+
+  add_test(
+    NAME "unit_arrow"
+    COMMAND unit_arrow --durations=yes
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
 endif()
 
 # Only produce timing tests for UNIX based systems (faketime constraint)
