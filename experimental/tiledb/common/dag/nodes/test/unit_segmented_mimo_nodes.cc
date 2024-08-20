@@ -32,6 +32,8 @@
  * @todo: Need to get better syntax for Edge with shared_ptr
  */
 
+#include <numeric>
+
 #include "unit_segmented_mimo_nodes.h"
 
 #include "experimental/tiledb/common/dag/edge/edge.h"

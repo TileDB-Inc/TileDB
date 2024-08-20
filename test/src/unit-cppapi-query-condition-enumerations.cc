@@ -31,6 +31,7 @@
  */
 
 #include <limits>
+#include <numeric>
 #include <ostream>
 #include <random>
 

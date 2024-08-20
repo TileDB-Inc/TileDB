@@ -32,6 +32,7 @@
 
 #include <atomic>
 #include <future>
+#include <numeric>
 
 #include "unit_stop_source.h"
 
