@@ -217,6 +217,11 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
+# We want tests to continue as normal even as the API is changing,
+# so don't warn for deprecations, since they'll be escalated to errors.
+if (NOT MSVC)
+  add_compile_options(-Wno-deprecated-declarations)
+endif()
 
 # unit test executable
 add_executable(
@@ -227,12 +232,6 @@ add_executable(
 )
 
 target_compile_options(tiledb_unit PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-
-# We want tests to continue as normal even as the API is changing,
-# so don't warn for deprecations, since they'll be escalated to errors.
-if (NOT MSVC)
-  target_compile_options(tiledb_unit PRIVATE -Wno-deprecated-declarations)
-endif()
 
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
