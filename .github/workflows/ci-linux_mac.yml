@@ -147,7 +147,7 @@ jobs:
         run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
-          pip install pyarrow pybind11 numpy
+          pip install pyarrow pybind11[global] numpy
 
       - name: 'Brew setup on macOS' # x-ref c8e49ba8f8b9ce
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
