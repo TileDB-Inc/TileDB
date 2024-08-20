@@ -1786,12 +1786,6 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
   put_object_request.SetBody(stream);
   put_object_request.SetContentLength(length);
 
-  // we only want to hash once, and must do it after setting the body
-  auto md5_hash =
-      Aws::Utils::HashingUtils::CalculateMD5(*put_object_request.GetBody());
-
-  put_object_request.SetContentMD5(
-      Aws::Utils::HashingUtils::Base64Encode(md5_hash));
   put_object_request.SetContentType("application/octet-stream");
   put_object_request.SetBucket(aws_uri.GetAuthority());
   put_object_request.SetKey(aws_uri.GetPath());
@@ -1813,16 +1807,6 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
     throw S3Exception(
         std::string("Cannot write object '") + uri.c_str() +
         outcome_error_message(put_object_outcome));
-  }
-
-  // verify the MD5 hash of the result
-  // note the etag is hex-encoded not base64
-  Aws::StringStream md5_hex;
-  md5_hex << "\"" << Aws::Utils::HashingUtils::HexEncode(md5_hash) << "\"";
-  if (md5_hex.str() != put_object_outcome.GetResult().GetETag()) {
-    throw S3Exception(
-        "Object uploaded successfully, but MD5 hash does "
-        "not match result from server!' ");
   }
 
   throw_if_not_ok(wait_for_object_to_propagate(
@@ -1974,8 +1958,6 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
   upload_part_request.SetPartNumber(upload_part_num);
   upload_part_request.SetUploadId(upload_id);
   upload_part_request.SetBody(stream);
-  upload_part_request.SetContentMD5(Aws::Utils::HashingUtils::Base64Encode(
-      Aws::Utils::HashingUtils::CalculateMD5(*stream)));
   upload_part_request.SetContentLength(length);
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     upload_part_request.SetRequestPayer(request_payer_);

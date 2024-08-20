@@ -42,6 +42,7 @@
 #include <algorithm>
 #include <forward_list>
 #include <list>
+#include <numeric>
 
 /**
  * @todo Use proper checks for preprocessor directives to selectively include

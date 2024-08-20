@@ -76,9 +76,9 @@ copyright = '2023 TileDB, Inc'
 author = 'TileDB, Inc.'
 
 # The short X.Y version.
-version = '2.26'
+version = '2.27'
 # The full version, including alpha/beta/rc tags.
-release = '2.26.0'
+release = '2.27.0'
 
 # Breathe extension configuration.
 doxygen_xml_dir = os.path.join(TILEDB_BUILD_DIR, 'xml/')

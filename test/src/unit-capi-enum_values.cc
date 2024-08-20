@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "tiledb/api/c_api/array_schema/array_schema_api_external.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/filter_type.h"
 

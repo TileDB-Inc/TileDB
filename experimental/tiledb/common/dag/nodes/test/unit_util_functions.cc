@@ -33,6 +33,7 @@
 
 #include "unit_util_functions.h"
 #include <future>
+#include <numeric>
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/nodes.h"
