@@ -137,6 +137,10 @@ class CachePolicyBase {
    * @return The evicted value.
    */
   return_type evict() {
+    if (lru_.empty()) {
+      throw std::runtime_error("Cannot evict from an empty cache.");
+    }
+
     auto key = lru_.front();
     auto it = entries_.find(key);
     auto value = it->second.value;
@@ -145,7 +149,6 @@ class CachePolicyBase {
     return value;
   }
 
- private:
   /**
    * Entry in the cache.
    * It stores an iterator to the LRU list and the value.
@@ -186,6 +189,7 @@ class CachePolicyBase {
    */
   std::unordered_map<Key, Cached_Entry> entries_;
 
+ private:
   /** Bookkeeping lock */
   std::mutex mutex_;
 };
@@ -228,12 +232,16 @@ class ImmediateEvaluation {
  * @tparam Value The type of value
  */
 template <class Key, class Value, size_t N = 0>
-class MaxEntriesCache : public CachePolicyBase<Key, Value> {
+class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
  public:
   using return_type = std::shared_ptr<Value>;
 
   MaxEntriesCache()
       : num_entries_(0) {
+    if (N == 0) {
+      throw std::logic_error(
+          "The maximum number of entries must be greater than zero.");
+    }
   }
 
   virtual return_type enforce_policy([[maybe_unused]] const Value& v) override {
@@ -268,7 +276,7 @@ class MaxEntriesCache : public CachePolicyBase<Key, Value> {
  * @tparam Value The type of value
  */
 template <class Key, class Value>
-class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
+class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
  public:
   using return_type = std::shared_ptr<Value>;
   using SizeFn = std::function<size_t(const Value&)>;
@@ -277,6 +285,9 @@ class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
       : size_fn_(size_fn)
       , memory_budget_{budget}
       , memory_consumed_(0) {
+    if (budget == 0) {
+      throw std::logic_error("The memory budget must be greater than zero.");
+    }
   }
   /**
    * Enforces the cache policy by evicting entries if necessary.
@@ -289,8 +300,14 @@ class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
   virtual return_type enforce_policy(const Value& v) override {
     auto mem_usage = sizeof(return_type) + size_fn_(v);
     if (memory_consumed_ + mem_usage > memory_budget_) {
+      if (CachePolicyBase<Key, Value>::entries_.empty()) {
+        throw std::logic_error(
+            "The memory consumed by this value exceeds the budget of the "
+            "cache.");
+      }
       auto evicted_value = this->evict();
       memory_consumed_ -= mem_usage;
+      // memory_consumed_ -= (size_fn_(*evicted_value) + sizeof(return_type));
       return evicted_value;
     }
 
@@ -298,7 +315,7 @@ class MemoryBudgetedCache : public CachePolicyBase<Key, Value> {
     return return_type{};
   }
 
- private:
+ protected:
   /** User provided function for calculating the size of a value */
   SizeFn size_fn_;
 
@@ -352,7 +369,7 @@ class Evaluator {
     return caching_policy_.template operator()<F>(func_, key);
   }
 
- private:
+ protected:
   Policy caching_policy_;
   F func_;
 };
