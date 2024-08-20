@@ -28,22 +28,7 @@
 
 find_package(Catch2 REQUIRED)
 
-# Arrow integration test config and dependencies
-# Override from environment if not set in cache
-if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
-  if ($ENV{TILEDB_ARROW_TESTS})
-    message(STATUS "Enabling Apache Arrow integration test")
-    # Technically this would be an "option", but we want conditional override from ENV
-    set(TILEDB_ARROW_TESTS ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)" FORCE)
-    mark_as_advanced(TILEDB_ARROW_TESTS)
-  endif()
-endif()
-
-if (${TILEDB_ARROW_TESTS})
-  # Reworked FindPython was introducted in 3.12 with features used below
-  if (CMAKE_VERSION VERSION_LESS "3.12")
-    message(FATAL_ERROR "CMake >= 3.12 is required for TileDB Arrow Tests. (found ${CMAKE_VERSION})")
-  endif()
+if (TILEDB_ARROW_TESTS)
   # Tell CMake to check the Python registry entry last on Windows
   set(Python_FIND_REGISTRY "LAST")
   # Tell CMake to prefer Python from the PATH

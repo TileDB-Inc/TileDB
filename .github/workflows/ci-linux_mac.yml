@@ -72,14 +72,13 @@ env:
   CMAKE_GENERATOR: ${{ inputs.cmake_generator }}
   TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
   TILEDB_CI_OS: ${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'Linux' || 'macOS' }}
-  # Installing Python does not work on manylinux.
-  TILEDB_ARROW_TESTS: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
   TILEDB_MANYLINUX: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
   CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
-  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'x64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
+  # Installing Python does not work on manylinux so disable Arrow tests.
+  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'x64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }} ${{ !inputs.manylinux && '--enable-arrow-tests' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
   # Manylinux does not support Node 20 due to libc incompatibility. Temporarily opt out.

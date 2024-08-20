@@ -111,13 +111,8 @@ jobs:
           echo TDBLOCALAPPDATA=$env:LOCALAPPDATA >> "$env:GITHUB_ENV"
 
       - name: ARROW python needs
-        shell: bash
-        if: ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }}
-        run: |
-          set -e pipefail
-          if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
+        if: matrix.TILEDB_ARROW_TESTS == 'ON'
+        run: python -m pip install pyarrow numpy
 
       - name: Prepare git
         run: git config --global core.autocrlf false
@@ -169,6 +164,9 @@ jobs:
           if ($env:TILEDB_TOOLS -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableTools"
           }
+          if ($env:TILEDB_ARROW_TESTS -eq "ON") {
+            $bootstrapOptions = $bootstrapOptions + " -EnableArrowTests"
+          }
           $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
           if ($env:TILEDB_DEBUG -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
@@ -184,10 +182,6 @@ jobs:
           # }
           # if ($env:TILEDB_CI_TSAN -eq "ON") {
           #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
-          # }
-          # static already added above as initial default
-          # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
-          #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
           # }
           if ($env:TILEDB_WERROR -eq "OFF") {
             $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
