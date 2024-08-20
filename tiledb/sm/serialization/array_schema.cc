@@ -1909,7 +1909,11 @@ void serialize_load_array_schema_request(
 LoadArraySchemaRequest load_array_schema_request_from_capnp(
     capnp::LoadArraySchemaRequest::Reader& reader) {
   tdb_unique_ptr<Config> decoded_config = nullptr;
-  throw_if_not_ok(config_from_capnp(reader.getConfig(), &decoded_config));
+  if (reader.hasConfig()) {
+    throw_if_not_ok(config_from_capnp(reader.getConfig(), &decoded_config));
+  } else {
+    decoded_config.reset(tdb_new(Config));
+  }
   // We intentionally do not use the includeEnumerations field, as it is stored
   // in the Config and set using the LoadArraySchemaRequest constructor.
   return LoadArraySchemaRequest(*decoded_config);
