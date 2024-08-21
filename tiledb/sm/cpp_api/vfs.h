@@ -519,7 +519,8 @@ class VFS {
         ctx.ptr().get(), vfs_.get(), old_uri.c_str(), new_uri.c_str()));
   }
 
-  /** Touches a file with the input URI, i.e., creates a new empty file. */
+  /** Touches a file with the input URI, i.e., creates a new empty file if it
+   * does not already exist. */
   void touch(const std::string& uri) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(
