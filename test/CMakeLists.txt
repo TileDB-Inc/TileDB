@@ -28,16 +28,6 @@
 
 find_package(Catch2 REQUIRED)
 
-if (TILEDB_ARROW_TESTS)
-  # Tell CMake to check the Python registry entry last on Windows
-  set(Python_FIND_REGISTRY "LAST")
-  # Tell CMake to prefer Python from the PATH
-  set(Python_FIND_STRATEGY "LOCATION")
-  find_package(Python COMPONENTS Interpreter Development REQUIRED)
-  find_package(pybind11 REQUIRED)
-  message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
-endif()
-
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # Include the C API directory so that the C++ 'tiledb' file can directly
@@ -273,10 +263,6 @@ if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
-if (TILEDB_ARROW_TESTS)
-  target_link_libraries(tiledb_unit PRIVATE pybind11::embed)
-endif()
-
 if (TILEDB_WEBP)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
   find_package(ZLIB) # We need PNG to use our Zlib so that static link works correctly if applicable
@@ -305,6 +291,14 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU
 endif()
 
 if (TILEDB_ARROW_TESTS)
+  # Tell CMake to check the Python registry entry last on Windows
+  set(Python_FIND_REGISTRY "LAST")
+  # Tell CMake to prefer Python from the PATH
+  set(Python_FIND_STRATEGY "LOCATION")
+  find_package(Python COMPONENTS Interpreter Development REQUIRED)
+  find_package(pybind11 REQUIRED)
+  message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
+
   add_executable(
     unit_arrow EXCLUDE_FROM_ALL
     $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
