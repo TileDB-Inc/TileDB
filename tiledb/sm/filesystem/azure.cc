@@ -730,16 +730,25 @@ void Azure::touch(const URI& uri) const {
     throw AzureException(
         "Cannot create file; URI is a directory: " + uri.to_string());
   }
-  if (is_blob(uri)) {
-    return;
-  }
 
-  auto [container_name, blob_path] = parse_azure_uri(uri);
+  std::string container_name;
+  std::string blob_path;
+  RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
+
   try {
+    ::Azure::Core::IO::MemoryBodyStream stream(nullptr, 0);
+    ::Azure::Storage::Blobs::UploadBlockBlobOptions options;
+    // Set condition that the object does not exist.
+    options.AccessConditions.IfNoneMatch = ::Azure::ETag::Any();
+
     c.GetBlobContainerClient(container_name)
         .GetBlockBlobClient(blob_path)
-        .UploadFrom(nullptr, 0);
+        .Upload(stream, options);
   } catch (const ::Azure::Storage::StorageException& e) {
+    if (e.StatusCode == ::Azure::Core::Http::HttpStatusCode::Conflict) {
+      // Blob already exists.
+      return Status::Ok();
+    }
     throw AzureException(
         "Touch blob failed on: " + uri.to_string() + "; " + e.Message);
   }
