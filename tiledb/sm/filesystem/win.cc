@@ -159,10 +159,6 @@ Status Win::create_dir(const std::string& path) const {
 }
 
 Status Win::touch(const std::string& filename) const {
-  if (is_file(filename)) {
-    return Status::Ok();
-  }
-
   HANDLE file_h = CreateFile(
       filename.c_str(),
       GENERIC_WRITE,
@@ -178,6 +174,10 @@ Status Win::touch(const std::string& filename) const {
   tiledb::common::ScopedExecutor onexit1(closefileonexit);
   if (file_h == INVALID_HANDLE_VALUE) {
     auto gle = GetLastError();
+    if (gle == ERROR_FILE_EXISTS) {
+      // Do not fail if the file already exists.
+      return Status::Ok();
+    }
     return LOG_STATUS(Status_IOError(
         std::string("Failed to create file '") + filename + " (" +
         get_last_error_msg(gle, "CreateFile") + ")'"));
