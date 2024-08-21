@@ -40,6 +40,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 

@@ -407,6 +407,14 @@ Status FragmentConsolidator::consolidate_fragments(
         std::to_string(fragment_uris.size()) + " required fragments.");
   }
 
+  // In case we have a dense Array check that the fragments can be consolidated without data loss
+  if (array_for_reads->array_schema_latest().array_type() == ArrayType::DENSE) {
+    // pseudocode
+  // search every other fragment in this array
+    // if any of them overlaps in ranges AND its timestamp range falls between the range of the fragments to consolidate
+    // throw descriptive error
+  } 
+
   FragmentConsolidationWorkspace cw(consolidator_memory_tracker_);
 
   // Consolidate the selected fragments

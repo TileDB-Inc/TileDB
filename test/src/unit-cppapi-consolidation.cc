@@ -250,6 +250,44 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "C++ API: Test consolidation with wrong fragment list",
+    "[cppapi][consolidation][dstara]") {
+  std::string array_name = "cppapi_consolidation";
+  remove_array(array_name);
+
+  create_array(array_name);
+  write_array(array_name, {1, 2}, {1, 2});
+  write_array(array_name, {3, 3}, {3});
+  CHECK(tiledb::test::num_fragments(array_name) == 2);
+
+  read_array(array_name, {1, 3}, {1, 2, 3});
+
+  Context ctx;
+  Config config;
+  config.set("sm.consolidation.buffer_size", "1000");
+
+  FragmentInfo fragment_info(ctx, array_name);
+  fragment_info.load();
+  std::string fragment_name1 = fragment_info.fragment_uri(0);
+  std::string fragment_name2 = fragment_info.fragment_uri(1);
+  std::string short_fragment_name1 =
+      fragment_name1.substr(fragment_name1.find_last_of('/') + 1);
+  std::string short_fragment_name2 =
+      fragment_name2.substr(fragment_name2.find_last_of('/') + 1);
+
+  const char* fragment_uris[2] = {
+      short_fragment_name1.c_str(), short_fragment_name2.c_str()};
+
+  REQUIRE_NOTHROW(
+      Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
+  CHECK(tiledb::test::num_fragments(array_name) == 3);
+
+  read_array(array_name, {1, 3}, {1, 2, 3});
+
+  remove_array(array_name);
+}
+
+TEST_CASE(
     "C++ API: Test consolidation with timestamp and max domain",
     "[cppapi][consolidation][timestamp][maxdomain]") {
   Config cfg;
