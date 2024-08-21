@@ -288,7 +288,7 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
       }
     };
 
-    static constexpr auto tests = {
+    static auto tests = {
         TestCase(
             "1fded32d5999de4a76e0f8082108823aef60417e1896cf4218a2fa90f632ec8a",
             "1f3afa4711e9474f32e70462",
