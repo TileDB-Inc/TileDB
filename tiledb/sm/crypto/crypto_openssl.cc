@@ -48,20 +48,19 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status OpenSSL::get_random_bytes(unsigned num_bytes, Buffer* output) {
-  if (output->free_space() < num_bytes)
-    RETURN_NOT_OK(output->realloc(output->alloced_size() + num_bytes));
-
-  int rc = RAND_bytes((unsigned char*)output->cur_data(), num_bytes);
-  if (rc < 1) {
-    char err_msg[256];
-    ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
-    return Status_EncryptionError(
-        "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
+static Status get_random_bytes(span<uint8_t> buffer) {
+  while (!buffer.empty()) {
+    int num_bytes =
+        int(std::min(buffer.size(), size_t(std::numeric_limits<int>::max())));
+    int rc = RAND_bytes(buffer.data(), num_bytes);
+    if (rc < 1) {
+      char err_msg[256];
+      ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
+      return Status_EncryptionError(
+          "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
+    }
+    buffer = buffer.subspan(num_bytes);
   }
-  output->advance_size(num_bytes);
-  output->advance_offset(num_bytes);
-
   return Status::Ok();
 }
 
@@ -83,11 +82,11 @@ Status OpenSSL::encrypt_aes256gcm(
     RETURN_NOT_OK(output->realloc(output->alloced_size() + required_space));
 
   // Generate IV if the given IV buffer is null.
-  Buffer generated_iv;
+  std::array<unsigned char, Crypto::AES256GCM_IV_BYTES> generated_iv;
   int iv_len;
   unsigned char* iv_buf;
   if (iv == nullptr || iv->data() == nullptr) {
-    RETURN_NOT_OK(get_random_bytes(Crypto::AES256GCM_IV_BYTES, &generated_iv));
+    RETURN_NOT_OK(get_random_bytes(generated_iv));
     iv_len = (int)generated_iv.size();
     iv_buf = (unsigned char*)generated_iv.data();
   } else {

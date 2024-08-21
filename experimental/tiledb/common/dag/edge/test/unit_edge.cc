@@ -41,6 +41,7 @@
 #include "unit_edge.h"
 
 #include <future>
+#include <numeric>
 
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"

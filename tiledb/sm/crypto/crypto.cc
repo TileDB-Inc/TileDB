@@ -36,8 +36,10 @@
 
 #ifdef _WIN32
 #include "tiledb/sm/crypto/crypto_win32.h"
+using PlatformCrypto = tiledb::sm::Win32CNG;
 #else
 #include "tiledb/sm/crypto/crypto_openssl.h"
+using PlatformCrypto = tiledb::sm::OpenSSL;
 #endif
 
 using namespace tiledb::common;
@@ -89,11 +91,7 @@ Status Crypto::decrypt_aes256gcm(
     return LOG_STATUS(
         Status_EncryptionError("AES-256-GCM error; invalid tag."));
 
-#ifdef _WIN32
-  return Win32CNG::decrypt_aes256gcm(key, iv, tag, input, output);
-#else
-  return OpenSSL::decrypt_aes256gcm(key, iv, tag, input, output);
-#endif
+  return PlatformCrypto::decrypt_aes256gcm(key, iv, tag, input, output);
 }
 
 Status Crypto::md5(ConstBuffer* input, Buffer* output) {
@@ -107,11 +105,7 @@ Status Crypto::md5(
 
 Status Crypto::md5(
     const void* input, uint64_t input_read_size, Buffer* output) {
-#ifdef _WIN32
-  return Win32CNG::md5(input, input_read_size, output);
-#else
-  return OpenSSL::md5(input, input_read_size, output);
-#endif
+  return PlatformCrypto::md5(input, input_read_size, output);
 }
 
 Status Crypto::sha256(ConstBuffer* input, Buffer* output) {
@@ -125,11 +119,7 @@ Status Crypto::sha256(
 
 Status Crypto::sha256(
     const void* input, uint64_t input_read_size, Buffer* output) {
-#ifdef _WIN32
-  return Win32CNG::sha256(input, input_read_size, output);
-#else
-  return OpenSSL::sha256(input, input_read_size, output);
-#endif
+  return PlatformCrypto::sha256(input, input_read_size, output);
 }
 
 }  // namespace sm
