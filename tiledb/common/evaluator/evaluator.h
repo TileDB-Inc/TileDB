@@ -107,7 +107,7 @@ class CachePolicyBase {
       std::lock_guard<std::mutex> lock(mutex_);
 
       // Enforce caching policy
-      auto evicted_value = enforce_policy(*value);
+      enforce_policy(*value);
 
       // Update the LRU list and the cache
       lru_.emplace_back(key);
@@ -116,10 +116,6 @@ class CachePolicyBase {
 
       // Remove the inprogress entry
       inprogress_.erase(emplace_pair.first);
-
-      // Unlock the mutex before going out of function scope so that the evicted
-      // value gets destroyed and deallocated ouside critical sections and we
-      // don't keep the lock longer than necessary.
     }
 
     return value;
@@ -167,7 +163,7 @@ class CachePolicyBase {
    * Enforces the cache policy by evicting entries if necessary.
    * This operation assumes the bookkeeping mutex is already locked.
    */
-  virtual return_type enforce_policy(const Value& v) = 0;
+  virtual void enforce_policy(const Value& v) = 0;
 
   /**
    * Double linked list where the head is the least
@@ -244,14 +240,13 @@ class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
     }
   }
 
-  virtual return_type enforce_policy([[maybe_unused]] const Value& v) override {
+  virtual void enforce_policy([[maybe_unused]] const Value& v) override {
     if (num_entries_ == max_entries_) {
       auto evicted_value = this->evict();
       --num_entries_;
-      return evicted_value;
+      return;
     }
     ++num_entries_;
-    return nullptr;
   }
 
  private:
@@ -295,24 +290,22 @@ class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
    * to account its memory usage against the budget.
    *
    * @param v The value produced by the callback
-   * @return The evicted value if any.
    */
-  virtual return_type enforce_policy(const Value& v) override {
+  virtual void enforce_policy(const Value& v) override {
     auto mem_usage = sizeof(return_type) + size_fn_(v);
-    if (memory_consumed_ + mem_usage > memory_budget_) {
+    while (memory_consumed_ + mem_usage > memory_budget_) {
       if (CachePolicyBase<Key, Value>::entries_.empty()) {
         throw std::logic_error(
             "The memory consumed by this value exceeds the budget of the "
             "cache.");
       }
+
       auto evicted_value = this->evict();
-      memory_consumed_ -= mem_usage;
-      // memory_consumed_ -= (size_fn_(*evicted_value) + sizeof(return_type));
-      return evicted_value;
+      memory_consumed_ -= (size_fn_(*evicted_value) + sizeof(return_type));
     }
 
+    // acount for the new value added in the cache
     memory_consumed_ += mem_usage;
-    return return_type{};
   }
 
  protected:

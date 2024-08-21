@@ -152,7 +152,7 @@ TEST_CASE("Testing immediate evaluation", "[evaluator][immediate]") {
 }
 
 TEST_CASE("Ready cached items are stored properly", "[evaluator][entries]") {
-  auto f = [](std::string) { return "test"; };
+  auto f = [](std::string) { return std::string("test"); };
   WhiteBoxEvaluator<
       WhiteBoxMaxEntriesPolicy<std::string, std::string, 2>,
       decltype(f)>
@@ -181,7 +181,7 @@ TEST_CASE("Ready cached items are stored properly", "[evaluator][entries]") {
 }
 
 TEST_CASE("Testing LRU list is accurate", "[evaluator][lru]") {
-  auto f = [](std::string) { return "test"; };
+  auto f = [](std::string) { return std::string("test"); };
   WhiteBoxEvaluator<
       WhiteBoxMaxEntriesPolicy<std::string, std::string, 2>,
       decltype(f)>
@@ -222,7 +222,7 @@ TEST_CASE(
   std::promise<void> finish_I_promise;
   auto f = [&finish_I_promise](std::string) {
     finish_I_promise.get_future().wait();
-    return "test";
+    return std::string("test");
   };
   WhiteBoxEvaluator<
       WhiteBoxMaxEntriesPolicy<std::string, std::string, 2>,
@@ -266,7 +266,7 @@ TEST_CASE(
     } else {
       second_exec = true;
     }
-    return "test";
+    return std::string("test");
   };
 
   WhiteBoxEvaluator<
@@ -308,7 +308,7 @@ TEST_CASE(
 
 TEST_CASE("Memory budgeting policy is enforced", "[evaluator][memory_budget]") {
   size_t budget = 4096;
-  auto f = [](std::string) { return "test"; };
+  auto f = [](const std::string& key) { return key; };
   auto sizefn = [](const std::string& val) {
     return sizeof(std::string) + val.size();
   };
@@ -320,22 +320,70 @@ TEST_CASE("Memory budgeting policy is enforced", "[evaluator][memory_budget]") {
 
   CHECK(mem_budgeted_eval.policy().memory_consumed() == 0);
 
-  // TODO: unit size is incorrect here
-  size_t unit_size = sizeof(std::shared_ptr<std::string>) + sizefn("test");
-  for (size_t c = 0; c < budget; c += unit_size) {
-    mem_budgeted_eval("key" + std::to_string(c));
+  size_t num_entries = 0;
+  size_t c = 0;
+  std::string str = "key0";
+  size_t unit_size = sizeof(std::shared_ptr<std::string>) + sizefn(str);
+  while (c < budget - unit_size) {
+    str = "key" + std::to_string(c);
+    unit_size = sizeof(std::shared_ptr<std::string>) + sizefn(str);
+
+    mem_budgeted_eval(str);
     CHECK(mem_budgeted_eval.policy().memory_consumed() == c + unit_size);
+
+    ++num_entries;
+    c += unit_size;
   }
-  CHECK(mem_budgeted_eval.policy().entries_size() == budget / unit_size);
 
-  mem_budgeted_eval.policy().enforce_policy("test");
-  CHECK(mem_budgeted_eval.policy().entries_size() == budget / unit_size - 1);
+  // No eviction happened
+  CHECK(mem_budgeted_eval.policy().entries_size() == num_entries);
 
-  // Bring the memory consumption over the budget, trigger automatic eviction
-  mem_budgeted_eval("key");
-  mem_budgeted_eval("key");
-  CHECK(mem_budgeted_eval.policy().entries_size() == budget / unit_size);
-  CHECK(mem_budgeted_eval.policy().memory_consumed() == budget);
+  // str should be over budget, eviction should happen
+  str = "key" + std::to_string(c);
+  unit_size = sizeof(std::shared_ptr<std::string>) + sizefn(str);
+  std::string evicted_val = "key0";
+  size_t evicted_size =
+      sizeof(std::shared_ptr<std::string>) + sizefn(evicted_val);
+  mem_budgeted_eval(str);
+  CHECK(mem_budgeted_eval.policy().entries_size() == num_entries);
+  CHECK(
+      mem_budgeted_eval.policy().memory_consumed() ==
+      c + unit_size - evicted_size);
 
-  // TODO: test eviction of multiple entries until the new value fits
+  // The policy evicts multiple entries until the new value fits
+  str = std::string(unit_size, 'a');
+  mem_budgeted_eval(str);  // evicts 2 lru entries
+  CHECK(mem_budgeted_eval.policy().entries_size() == num_entries - 1);
+  CHECK(mem_budgeted_eval.policy().memory_consumed() <= budget);
+}
+
+TEST_CASE("Test various corner cases", "[evaluator][basic]") {
+  size_t budget = 0;
+  auto f = [](const std::string& key) { return key; };
+  auto sizefn = [](const std::string& val) {
+    return sizeof(std::string) + val.size();
+  };
+
+  auto matcher = Catch::Matchers::ContainsSubstring("greater than zero");
+  REQUIRE_THROWS_WITH(
+      static_cast<void>(WhiteBoxEvaluator<
+                        WhiteBoxMemoryBudgetPolicy<std::string, std::string>,
+                        decltype(f)>(f, sizefn, budget)),
+      matcher);
+
+  budget = 1;
+  WhiteBoxEvaluator<
+      WhiteBoxMemoryBudgetPolicy<std::string, std::string>,
+      decltype(f)>
+      mem_budgeted_eval(f, sizefn, budget);
+  auto matcher2 =
+      Catch::Matchers::ContainsSubstring("exceeds the budget of the cache");
+  REQUIRE_THROWS_WITH(mem_budgeted_eval("key"), matcher2);
+
+  auto matcher3 = Catch::Matchers::ContainsSubstring("greater than zero");
+  REQUIRE_THROWS_WITH(
+      static_cast<void>(WhiteBoxEvaluator<
+                        WhiteBoxMaxEntriesPolicy<std::string, std::string, 0>,
+                        decltype(f)>(f)),
+      matcher3);
 }
