@@ -34,10 +34,6 @@
 
 #include "tiledb/sm/misc/rectangle.h"
 
-#ifdef __linux__
-#include "tiledb/sm/filesystem/posix.h"
-#endif
-
 using namespace tiledb::common;
 
 namespace tiledb::sm::rectangle {
