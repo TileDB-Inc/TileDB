@@ -741,10 +741,20 @@ Status GCS::touch(const URI& uri) const {
   RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
-      object_metadata = client_->InsertObject(bucket_name, object_path, "");
+      object_metadata = client_->InsertObject(
+          bucket_name,
+          object_path,
+          "",
+          // An if-generation-match value of zero makes the request succeed only
+          // if the object does not exist.
+          // https://cloud.google.com/storage/docs/request-preconditions#special-case
+          google::cloud::storage::IfGenerationMatch(0));
 
   if (!object_metadata.ok()) {
-    const google::cloud::Status status = object_metadata.status();
+    const google::cloud::Status& status = object_metadata.status();
+    if (status.code() == google::cloud::StatusCode::kFailedPrecondition) {
+      return Status::Ok();
+    }
 
     throw GCSException(
         "Touch object failed on: " + uri.to_string() + " (" + status.message() +
