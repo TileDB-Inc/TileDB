@@ -1458,7 +1458,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
     uint64_t timestamp_end) {
   auto uri = tiledb::sm::URI(uri_str);
   if (uri.is_invalid()) {
-    throw api::CAPIException("Failed to delete fragments; Invalid input uri");
+    throw CAPIException("Failed to delete fragments; Invalid input uri");
   }
 
   // Allocate an array object
@@ -1480,6 +1480,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
     array->delete_fragments(uri, timestamp_start, timestamp_end);
   } catch (...) {
     throw_if_not_ok(array->close());
+    throw;
   }
 
   // Close and delete the array
@@ -1495,18 +1496,18 @@ capi_return_t tiledb_array_delete_fragments_list(
     const size_t num_fragments) {
   auto uri = tiledb::sm::URI(uri_str);
   if (uri.is_invalid()) {
-    throw api::CAPIException(
+    throw CAPIException(
         "Failed to delete_fragments_list; Invalid input uri");
   }
 
   if (num_fragments < 1) {
-    throw api::CAPIException(
+    throw CAPIException(
         "Failed to delete_fragments_list; Invalid input number of fragments");
   }
 
   for (size_t i = 0; i < num_fragments; i++) {
     if (tiledb::sm::URI(fragment_uris[i]).is_invalid()) {
-      throw api::CAPIException(
+      throw CAPIException(
           "Failed to delete_fragments_list; Invalid input fragment uri");
     }
   }
@@ -1533,6 +1534,7 @@ capi_return_t tiledb_array_delete_fragments_list(
     array->delete_fragments_list(uris);
   } catch (...) {
     throw_if_not_ok(array->close());
+    throw;
   }
 
   // Close the array
