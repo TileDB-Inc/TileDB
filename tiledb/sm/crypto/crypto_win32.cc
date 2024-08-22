@@ -35,6 +35,7 @@
 #include "tiledb/sm/crypto/crypto_win32.h"
 
 #include <algorithm>
+#include <array>
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
