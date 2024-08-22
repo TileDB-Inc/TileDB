@@ -1496,8 +1496,7 @@ capi_return_t tiledb_array_delete_fragments_list(
     const size_t num_fragments) {
   auto uri = tiledb::sm::URI(uri_str);
   if (uri.is_invalid()) {
-    throw CAPIException(
-        "Failed to delete_fragments_list; Invalid input uri");
+    throw CAPIException("Failed to delete_fragments_list; Invalid input uri");
   }
 
   if (num_fragments < 1) {
