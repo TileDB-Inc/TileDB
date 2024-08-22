@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
@@ -283,8 +283,8 @@ struct CPPFixedTileMetadataFx {
     CHECK(rc == TILEDB_OK);
 
     // Load fragment metadata.
-    auto frag_meta = array->array_->fragment_metadata();
-    auto& enc_key = array->array_->get_encryption_key();
+    auto frag_meta = array->fragment_metadata();
+    auto& enc_key = array->get_encryption_key();
     frag_meta[f]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
@@ -834,8 +834,8 @@ struct CPPVarTileMetadataFx {
     CHECK(rc == TILEDB_OK);
 
     // Load fragment metadata.
-    auto frag_meta = array->array_->fragment_metadata();
-    auto& enc_key = array->array_->get_encryption_key();
+    auto frag_meta = array->fragment_metadata();
+    auto& enc_key = array->get_encryption_key();
     frag_meta[f]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
@@ -1166,8 +1166,8 @@ struct CPPFixedTileMetadataPartialFx {
     CHECK(rc == TILEDB_OK);
 
     // Load fragment metadata.
-    auto frag_meta = array->array_->fragment_metadata();
-    auto& enc_key = array->array_->get_encryption_key();
+    auto frag_meta = array->fragment_metadata();
+    auto& enc_key = array->get_encryption_key();
     frag_meta[0]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
@@ -1346,8 +1346,8 @@ struct CPPVarTileMetadataPartialFx {
     CHECK(rc == TILEDB_OK);
 
     // Load fragment metadata.
-    auto frag_meta = array->array_->fragment_metadata();
-    auto& enc_key = array->array_->get_encryption_key();
+    auto frag_meta = array->fragment_metadata();
+    auto& enc_key = array->get_encryption_key();
     frag_meta[0]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
@@ -1514,8 +1514,8 @@ struct CPPTileMetadataStringDimFx {
     CHECK(rc == TILEDB_OK);
 
     // Load fragment metadata.
-    auto frag_meta = array->array_->fragment_metadata();
-    auto& enc_key = array->array_->get_encryption_key();
+    auto frag_meta = array->fragment_metadata();
+    auto& enc_key = array->get_encryption_key();
     frag_meta[0]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 

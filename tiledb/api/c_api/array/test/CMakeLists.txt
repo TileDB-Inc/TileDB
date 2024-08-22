@@ -24,20 +24,14 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
 include(unit_test)
 
-find_package(Catch2 REQUIRED)
-
-# Maturity
-#
-# This unit links against the whole library out of necessity. There's not
-# yet a _complete_ `array` C API handle object library. 
-#
 commence(unit_test capi_array)
   this_target_sources(unit_capi_array.cc)
-  this_target_link_libraries(export
-      TILEDB_CORE_OBJECTS_ILIB
-      TILEDB_CORE_OBJECTS)
+  this_target_object_libraries(
+    capi_array_stub
+    capi_array_schema_stub
+    capi_attribute_stub
+    capi_domain_stub
+  )
 conclude(unit_test)
-

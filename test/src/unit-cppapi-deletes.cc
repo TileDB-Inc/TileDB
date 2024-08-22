@@ -34,6 +34,7 @@
 #include "test/support/src/ast_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array_directory.h"
@@ -386,7 +387,7 @@ void DeletesFx::check_delete_conditions(
         TILEDB_READ,
         TemporalPolicy(TimeTravel, timestamp));
   }
-  auto array_ptr = array->ptr()->array_;
+  auto array_ptr = array->ptr();
 
   // Load delete conditions.
   auto&& [delete_conditions, update_values] = load_delete_and_update_conditions(
@@ -1658,7 +1659,7 @@ TEST_CASE_METHOD(
   const char* extraneous_fragments[1] = {extraneous_fragment.c_str()};
   REQUIRE_THROWS_WITH(
       Array::delete_fragments_list(ctx_, array_name_, extraneous_fragments, 1),
-      Catch::Matchers::ContainsSubstring("Failed to delete fragments_list"));
+      Catch::Matchers::ContainsSubstring("Failed to delete fragments list"));
   CHECK(tiledb::test::num_fragments(ctx_, array_name_) == 2);
 
   remove_sparse_array();

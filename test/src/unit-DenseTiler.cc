@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -209,7 +210,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -231,7 +232,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {6, 9};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -278,7 +279,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -315,7 +316,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 8};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -340,7 +341,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 8};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -390,7 +391,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -402,8 +403,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -417,8 +418,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -434,7 +435,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -446,8 +447,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -462,7 +463,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -474,8 +475,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -515,7 +516,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -527,8 +528,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -542,8 +543,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -584,7 +585,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {-2, 1};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -596,8 +597,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -611,8 +612,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -657,7 +658,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -680,7 +681,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -703,7 +704,7 @@ TEST_CASE_METHOD(
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -726,7 +727,7 @@ TEST_CASE_METHOD(
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
   tiledb::sm::Subarray subarray4(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -777,7 +778,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -800,7 +801,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {7, 9};
   int32_t sub2_1[] = {23, 27};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -823,7 +824,7 @@ TEST_CASE_METHOD(
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -846,7 +847,7 @@ TEST_CASE_METHOD(
   int32_t sub4_0[] = {7, 10};
   int32_t sub4_1[] = {23, 27};
   tiledb::sm::Subarray subarray4(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -897,7 +898,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -957,7 +958,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -984,7 +985,7 @@ TEST_CASE_METHOD(
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1048,7 +1049,7 @@ TEST_CASE_METHOD(
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
   tiledb::sm::Subarray subarray4(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1104,7 +1105,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1168,7 +1169,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1196,7 +1197,7 @@ TEST_CASE_METHOD(
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1256,7 +1257,7 @@ TEST_CASE_METHOD(
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
   tiledb::sm::Subarray subarray4(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1311,7 +1312,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1377,7 +1378,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1444,7 +1445,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1456,8 +1457,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1477,8 +1478,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1500,8 +1501,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile1_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1519,8 +1520,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile1_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1540,7 +1541,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1555,8 +1556,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1586,7 +1587,7 @@ TEST_CASE_METHOD(
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1601,8 +1602,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile3_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1622,8 +1623,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile3_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1645,8 +1646,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile3_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1664,8 +1665,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile3_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1685,7 +1686,7 @@ TEST_CASE_METHOD(
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
   tiledb::sm::Subarray subarray4(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1700,8 +1701,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile4_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1760,7 +1761,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1772,8 +1773,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1797,8 +1798,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1821,8 +1822,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile1_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1844,8 +1845,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile1_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1867,7 +1868,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1882,8 +1883,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1931,7 +1932,7 @@ TEST_CASE_METHOD(
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -1946,8 +1947,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile3_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1971,8 +1972,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile3_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1995,8 +1996,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile3_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2018,8 +2019,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile3_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2041,7 +2042,7 @@ TEST_CASE_METHOD(
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
   tiledb::sm::Subarray subarray4(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2056,8 +2057,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile4_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2137,7 +2138,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 9};
   int32_t sub1_1[] = {11, 20};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2149,8 +2150,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2166,8 +2167,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2217,7 +2218,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {1, 5};
   int32_t sub1_1[] = {8, 12};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2229,8 +2230,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2246,8 +2247,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2291,7 +2292,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2303,8 +2304,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2317,8 +2318,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2343,7 +2344,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2355,8 +2356,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2372,7 +2373,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2384,8 +2385,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2429,7 +2430,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub1[] = {3, 6};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2441,8 +2442,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0_a1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2452,8 +2453,8 @@ TEST_CASE_METHOD(
   std::vector<int32_t> c_data1_0_a1 = {fill_value, fill_value, 1, 2, 3};
   CHECK(check_tile<int32_t>(tile1_0_a1.fixed_tile(), c_data1_0_a1));
   WriterTileTuple tile1_0_a2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2466,8 +2467,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1_a1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2478,8 +2479,8 @@ TEST_CASE_METHOD(
       4, fill_value, fill_value, fill_value, fill_value};
   CHECK(check_tile<int32_t>(tile1_1_a1.fixed_tile(), c_data1_1_a1));
   WriterTileTuple tile1_1_a2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2499,7 +2500,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub2[] = {7, 10};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2511,8 +2512,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_a1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2522,8 +2523,8 @@ TEST_CASE_METHOD(
   std::vector<int32_t> c_data2_a1 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(tile2_a1.fixed_tile(), c_data2_a1));
   WriterTileTuple tile2_a2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2538,7 +2539,7 @@ TEST_CASE_METHOD(
   open_array(array_name, TILEDB_READ);
   int32_t sub3[] = {7, 10};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2550,8 +2551,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile3_a1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2561,8 +2562,8 @@ TEST_CASE_METHOD(
   std::vector<int32_t> c_data3_a1 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(tile3_a1.fixed_tile(), c_data3_a1));
   WriterTileTuple tile3_a2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2614,7 +2615,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2626,8 +2627,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2649,8 +2650,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2672,8 +2673,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile1_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2692,8 +2693,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile1_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2713,7 +2714,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2735,8 +2736,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2778,7 +2779,7 @@ TEST_CASE_METHOD(
   int32_t sub3_0[] = {4, 6};
   int32_t sub3_1[] = {18, 22};
   tiledb::sm::Subarray subarray3(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2800,8 +2801,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile3_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2823,8 +2824,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile3_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2846,8 +2847,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile3_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2866,8 +2867,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile3_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2887,7 +2888,7 @@ TEST_CASE_METHOD(
   int32_t sub4_0[] = {3, 5};
   int32_t sub4_1[] = {13, 18};
   tiledb::sm::Subarray subarray4(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::COL_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2909,8 +2910,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile4_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2987,7 +2988,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -2999,8 +3000,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3040,8 +3041,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3089,8 +3090,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile1_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3121,8 +3122,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile1_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3156,7 +3157,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -3176,8 +3177,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3329,7 +3330,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -3341,8 +3342,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3382,8 +3383,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3431,8 +3432,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile1_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3463,8 +3464,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile1_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3498,7 +3499,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -3538,8 +3539,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3692,7 +3693,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -3704,8 +3705,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3745,8 +3746,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3794,8 +3795,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile1_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3826,8 +3827,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile1_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3861,7 +3862,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -3902,8 +3903,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4041,7 +4042,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -4059,8 +4060,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4100,8 +4101,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4149,8 +4150,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile1_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4181,8 +4182,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile1_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4216,7 +4217,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -4245,8 +4246,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4384,7 +4385,7 @@ TEST_CASE_METHOD(
   int32_t sub1_0[] = {4, 6};
   int32_t sub1_1[] = {18, 22};
   tiledb::sm::Subarray subarray1(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -4402,8 +4403,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile1_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4443,8 +4444,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 1
   WriterTileTuple tile1_1(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4492,8 +4493,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 2
   WriterTileTuple tile1_2(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4524,8 +4525,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 3
   WriterTileTuple tile1_3(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4559,7 +4560,7 @@ TEST_CASE_METHOD(
   int32_t sub2_0[] = {3, 5};
   int32_t sub2_1[] = {13, 18};
   tiledb::sm::Subarray subarray2(
-      array_->array_.get(),
+      array_->array().get(),
       Layout::ROW_MAJOR,
       &test::g_helper_stats,
       test::g_helper_logger());
@@ -4588,8 +4589,8 @@ TEST_CASE_METHOD(
 
   // Test get tile 0
   WriterTileTuple tile2_0(
-      array_->array_->array_schema_latest(),
-      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
+      array_->array_schema_latest(),
+      array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,

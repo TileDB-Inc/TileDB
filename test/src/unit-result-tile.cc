@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,9 +30,9 @@
  * Tests for the ResultTile classes.
  */
 
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/misc/types.h"
 
 #include "test/support/src/helpers.h"
@@ -117,8 +117,8 @@ CResultTileFx::CResultTileFx()
   frag_md_ = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker_,
       false);
@@ -194,11 +194,11 @@ TEST_CASE_METHOD(
   uint64_t dim_idx = first_dim ? 0 : 1;
   uint64_t num_cells = 8;
 
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   FragmentMetadata frag_md(
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker_,
       true);
@@ -307,11 +307,11 @@ TEST_CASE_METHOD(
   uint64_t dim_idx = first_dim ? 0 : 1;
   uint64_t num_cells = 8;
 
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   FragmentMetadata frag_md(
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker_,
       true);

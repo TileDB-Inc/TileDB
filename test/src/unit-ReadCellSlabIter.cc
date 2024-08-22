@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,10 +32,10 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
 #include "tiledb/sm/query/legacy/reader.h"
 
@@ -242,11 +242,11 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 15}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Create result space tiles
@@ -261,8 +261,8 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -316,11 +316,11 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 15}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Create result space tiles
@@ -335,8 +335,8 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -390,11 +390,11 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 15, 3, 5, 11, 14}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Create result space tiles
@@ -413,8 +413,8 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        array_->array_->array_schema_latest_ptr(),
-        generate_fragment_uri(array_->array_.get()),
+        array_->array_schema_latest_ptr(),
+        generate_fragment_uri(array_->array().get()),
         std::make_pair<uint64_t, uint64_t>(0, 0),
         tiledb::test::create_test_memory_tracker(),
         true);
@@ -475,11 +475,11 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{3, 15, 18, 20}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Create result space tiles
@@ -496,8 +496,8 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        array_->array_->array_schema_latest_ptr(),
-        generate_fragment_uri(array_->array_.get()),
+        array_->array_schema_latest_ptr(),
+        generate_fragment_uri(array_->array().get()),
         std::make_pair<uint64_t, uint64_t>(0, 0),
         tiledb::test::create_test_memory_tracker(),
         true);
@@ -700,10 +700,10 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Create result space tiles
@@ -719,8 +719,8 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -886,10 +886,10 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Create result space tiles
@@ -905,8 +905,8 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -1085,10 +1085,10 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Create result space tiles
@@ -1104,8 +1104,8 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -1328,10 +1328,10 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
-  auto& array_schema = array_->array_->array_schema_latest();
+  auto& array_schema = array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{3, 5}, {2, 4, 5, 6}};
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Create result space tiles
@@ -1350,8 +1350,8 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        array_->array_->array_schema_latest_ptr(),
-        generate_fragment_uri(array_->array_.get()),
+        array_->array_schema_latest_ptr(),
+        generate_fragment_uri(array_->array().get()),
         std::make_pair<uint64_t, uint64_t>(0, 0),
         tiledb::test::create_test_memory_tracker(),
         true);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #ifdef _WIN32
@@ -128,7 +128,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {};
   Layout subarray_layout = Layout::GLOBAL_ORDER;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   ThreadPool tp(4);
   Config config;
   SubarrayPartitioner subarray_partitioner(

@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/ast_helpers.h"
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/array_operations.h"
@@ -203,7 +204,7 @@ void UpdatesFx::check_update_conditions(
         TILEDB_READ,
         TemporalPolicy(TimeTravel, timestamp));
   }
-  auto array_ptr = array->ptr()->array_;
+  auto array_ptr = array->ptr();
 
   // Load delete conditions.
   auto&& [conditions, update_values] = load_delete_and_update_conditions(
@@ -265,7 +266,7 @@ TEST_CASE("C++ API: Test setting an update value", "[cppapi][updates]") {
       ctx, query, "a", &val, sizeof(val));
 
   query.ptr()->query_->update_values()[0].check(
-      array.ptr()->array_->array_schema_latest());
+      array.ptr()->array_schema_latest());
 
   array.close();
 

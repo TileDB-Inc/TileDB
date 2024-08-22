@@ -32,6 +32,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
@@ -143,12 +144,7 @@ int array_serialize_wrapper(
 
   // Load array from the rest server
   rc = tiledb_deserialize_array(
-      ctx,
-      buff,
-      serialize_type,
-      0,
-      array->array_->array_uri().c_str(),
-      new_array);
+      ctx, buff, serialize_type, 0, array->array_uri().c_str(), new_array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up.

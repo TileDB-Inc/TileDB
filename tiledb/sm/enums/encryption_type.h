@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,13 +38,12 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Defines an encryption type. */
 enum class EncryptionType : uint8_t {
 #define TILEDB_ENCRYPTION_TYPE_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/array/encryption_type_enum.h"
 #undef TILEDB_ENCRYPTION_TYPE_ENUM
 };
 
@@ -75,7 +74,6 @@ inline tuple<Status, optional<EncryptionType>> encryption_type_enum(
   return {Status::Ok(), encryption_type};
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ENCRYPTION_TYPE_H

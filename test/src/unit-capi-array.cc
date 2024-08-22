@@ -44,6 +44,7 @@
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_external.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
@@ -2296,7 +2297,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Get a reference value to check against after deserialization
-  auto all_arrays = array->array_->array_schemas_all();
+  auto all_arrays = array->array_schemas_all();
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2310,9 +2311,9 @@ TEST_CASE_METHOD(
   // in array open v1 but with separate requests, so we simulate
   // this here by forcing metadata loading
   if (!array_v2) {
-    auto metadata = &array->array_->metadata();
+    auto metadata = &array->metadata();
     CHECK(metadata != nullptr);
-    array->array_->non_empty_domain();
+    array->non_empty_domain();
   }
 
   // Serialize array and deserialize into new_array
@@ -2330,7 +2331,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   // Check the retrieved array schema
-  auto& new_array_schema = new_array->array_->array_schema_latest();
+  auto& new_array_schema = new_array->array_schema_latest();
 
   auto cell_order = new_array_schema.cell_order();
   CHECK(cell_order == Layout::ROW_MAJOR);
@@ -2345,7 +2346,7 @@ TEST_CASE_METHOD(
   CHECK(ndim == 1);
 
   // Check all the retrieved arrays
-  auto all_arrays_new = new_array->array_->array_schemas_all();
+  auto all_arrays_new = new_array->array_schemas_all();
   CHECK(all_arrays.size() == all_arrays_new.size());
   CHECK(std::equal(
       all_arrays.begin(),
@@ -2354,14 +2355,14 @@ TEST_CASE_METHOD(
       [](auto a, auto b) { return a.first == b.first; }));
 
   // Check the retrieved non empty domain
-  auto non_empty_domain = new_array->array_->loaded_non_empty_domain();
+  auto non_empty_domain = new_array->loaded_non_empty_domain();
   CHECK(non_empty_domain.empty() == false);
 
   // Check the retrieved metadata
   Datatype type;
   const void* v_r;
   uint32_t v_num;
-  auto new_metadata = &new_array->array_->metadata();
+  auto new_metadata = &new_array->metadata();
   new_metadata->get("aaa", &type, &v_num, &v_r);
   CHECK(static_cast<tiledb_datatype_t>(type) == TILEDB_INT32);
   CHECK(v_num == 1);
@@ -2571,7 +2572,7 @@ TEST_CASE_METHOD(
   // Simulate serializing array_open request to Server and deserializing on
   // server side. First set the query_type that will be serialized
   auto query_type_w = QueryType::WRITE;
-  array->array_->set_query_type(query_type_w);
+  array->set_query_type(query_type_w);
   tiledb_array_t* deserialized_array_server = nullptr;
   // 1. Client -> Server : Send array_open_request (serialize)
   // 2. Server : Receive and deserialize array_open_request
@@ -2583,14 +2584,14 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Check that the original and de-serialized array have the same query type
-  REQUIRE(deserialized_array_server->array_->get_query_type() == query_type_w);
+  REQUIRE(deserialized_array_server->get_query_type() == query_type_w);
 
   // 3. Server: Open the array the request was received for in the requested
   // mode
   // This is needed in test, as the deserialized array has a dummy array_uri of
   // "deserialized_array" set instead of the original one. The Cloud side
   // already knows the array URI so it's not a problem in the real life scenario
-  deserialized_array_server->array_->set_array_uri(array->array_->array_uri());
+  deserialized_array_server->set_array_uri(array->array_uri());
   rc = tiledb_array_open(
       ctx_,
       deserialized_array_server,
@@ -2608,7 +2609,7 @@ TEST_CASE_METHOD(
       &buff);
   REQUIRE(rc == TILEDB_OK);
   tiledb::sm::serialization::array_deserialize(
-      array->array_.get(),
+      array->array().get(),
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
       ctx_->context().resources(),
@@ -2715,7 +2716,7 @@ TEST_CASE_METHOD(
   SECTION("delete_fragments") {
     // Serialize fragment timestamps and deserialize delete request
     tiledb::sm::serialization::serialize_delete_fragments_timestamps_request(
-        array->array_->config(),
+        array->config(),
         start_timestamp,
         end_timestamp,
         tiledb::sm::SerializationType::CAPNP,
@@ -2752,7 +2753,7 @@ TEST_CASE_METHOD(
 
     // Serialize fragments list and deserialize delete request
     tiledb::sm::serialization::serialize_delete_fragments_list_request(
-        array->array_->config(),
+        array->config(),
         fragments,
         tiledb::sm::SerializationType::CAPNP,
         buff->buffer());
