@@ -407,13 +407,48 @@ Status FragmentConsolidator::consolidate_fragments(
         std::to_string(fragment_uris.size()) + " required fragments.");
   }
 
-  // In case we have a dense Array check that the fragments can be consolidated without data loss
+  // Get timestamp bounds for the fragments we want to consolidate
+  uint64_t min_timestamp = std::numeric_limits<uint64_t>::max();
+  uint64_t max_timestamp = std::numeric_limits<uint64_t>::min();
+
+  // Iterate over the vector
+  for (const auto& item : to_consolidate) {
+    const auto& range = item.timestamp_range();
+
+    // Update min and max values
+    min_timestamp = std::min(min_timestamp, range.first);
+    max_timestamp = std::max(max_timestamp, range.second);
+  }
+
+  // Output the results
+  std::cout << "Minimum timestamp: " << min_timestamp << "\n";
+  std::cout << "Maximum timestamp: " << max_timestamp << "\n";
+
+  // In case we have a dense Array check that the fragments can be consolidated
+  // without data loss
   if (array_for_reads->array_schema_latest().array_type() == ArrayType::DENSE) {
-    // pseudocode
-  // search every other fragment in this array
-    // if any of them overlaps in ranges AND its timestamp range falls between the range of the fragments to consolidate
-    // throw descriptive error
-  } 
+    // Search every other fragment in this array if any of them overlaps in
+    // ranges and its timestamp range falls between the range of the fragments
+    // to consolidate throw error
+    for (auto& frag_info : frag_info_vec) {
+      // Ignore the fragments that are requested to be consolidated
+      auto uri = frag_info.uri().last_path_part();
+      if (to_consolidate_set.count(uri) != 0) {
+        continue;
+      }
+
+      // Check domain and timestamp overlap
+      if (domain.overlap(
+              union_non_empty_domains, frag_info.non_empty_domain())) {
+        auto timestamp_range{frag_info.timestamp_range()};
+        bool timestamp_before = !(timestamp_range.first > max_timestamp);
+        if (timestamp_before) {
+          throw FragmentConsolidatorException(
+              "Cannot consolidate; Invalid fragments");
+        }
+      }
+    }
+  }
 
   FragmentConsolidationWorkspace cw(consolidator_memory_tracker_);
 

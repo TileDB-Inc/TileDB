@@ -55,6 +55,20 @@ void create_array(const std::string& array_name) {
   Array::create(array_name, schema);
 }
 
+void create_array_2d(const std::string& array_name) {
+  Context ctx;
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{1, 10}}, 2);
+  auto d2 = Dimension::create<int>(ctx, "d2", {{1, 10}}, 2);
+  domain.add_dimensions(d1);
+  domain.add_dimensions(d2);
+  auto a = Attribute::create<int>(ctx, "a");
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attributes(a);
+  Array::create(array_name, schema);
+}
+
 void write_array(
     const std::string& array_name,
     const std::vector<int>& subarray,
@@ -255,21 +269,24 @@ TEST_CASE(
   std::string array_name = "cppapi_consolidation";
   remove_array(array_name);
 
-  create_array(array_name);
-  write_array(array_name, {1, 2}, {1, 2});
-  write_array(array_name, {3, 3}, {3});
-  CHECK(tiledb::test::num_fragments(array_name) == 2);
+  create_array_2d(array_name);
+  // order matters
+  write_array(array_name, {1, 3, 7, 9}, {1, 2, 3, 4, 5, 6, 7, 8, 9});
+  write_array(array_name, {2, 4, 2, 3}, {10, 11, 12, 13, 14, 15});
+  write_array(array_name, {3, 5, 4, 5}, {16, 17, 18, 19, 20, 21});
+  write_array(array_name, {7, 9, 6, 8}, {22, 23, 24, 25, 26, 27, 28, 29, 30});
+  // write_array(array_name, {7, 8, 3, 4}, {25, 26, 27, 28}); //this is ok
 
-  read_array(array_name, {1, 3}, {1, 2, 3});
+  CHECK(tiledb::test::num_fragments(array_name) == 4);
 
   Context ctx;
   Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
+  // config.set("sm.consolidation.buffer_size", "1000");
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
-  std::string fragment_name1 = fragment_info.fragment_uri(0);
-  std::string fragment_name2 = fragment_info.fragment_uri(1);
+  std::string fragment_name1 = fragment_info.fragment_uri(1);
+  std::string fragment_name2 = fragment_info.fragment_uri(3);
   std::string short_fragment_name1 =
       fragment_name1.substr(fragment_name1.find_last_of('/') + 1);
   std::string short_fragment_name2 =
@@ -278,11 +295,11 @@ TEST_CASE(
   const char* fragment_uris[2] = {
       short_fragment_name1.c_str(), short_fragment_name2.c_str()};
 
-  REQUIRE_NOTHROW(
+  REQUIRE_THROWS(
       Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
-  CHECK(tiledb::test::num_fragments(array_name) == 3);
+  // CHECK(tiledb::test::num_fragments(array_name) == 3);
 
-  read_array(array_name, {1, 3}, {1, 2, 3});
+  // read_array(array_name, {1, 3}, {1, 2, 3});
 
   remove_array(array_name);
 }
