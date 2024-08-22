@@ -420,10 +420,6 @@ Status FragmentConsolidator::consolidate_fragments(
     max_timestamp = std::max(max_timestamp, range.second);
   }
 
-  // Output the results
-  std::cout << "Minimum timestamp: " << min_timestamp << "\n";
-  std::cout << "Maximum timestamp: " << max_timestamp << "\n";
-
   // In case we have a dense Array check that the fragments can be consolidated
   // without data loss
   if (array_for_reads->array_schema_latest().array_type() == ArrayType::DENSE) {
@@ -444,7 +440,13 @@ Status FragmentConsolidator::consolidate_fragments(
         bool timestamp_before = !(timestamp_range.first > max_timestamp);
         if (timestamp_before) {
           throw FragmentConsolidatorException(
-              "Cannot consolidate; Invalid fragments");
+              "Cannot consolidate; The non-empty domain of the fragment with "
+              "URI: " +
+              uri +
+              " overlaps with the union of the non-empty domains of the "
+              "fragments selected for consolidation and was created before "
+              "these fragments. For more information refer to our "
+              "documentation on consolidation for Dense arrays.");
         }
       }
     }
