@@ -53,8 +53,6 @@ class CachePolicyBase {
   using key_type = Key;
   using value_type = Value;
   using return_type = std::shared_ptr<Value>;
-  using List = std::list<Key>;
-  using OndemandValue = std::shared_future<return_type>;
 
   /**
    * Try to get an entry from the cache given a key or
@@ -68,7 +66,7 @@ class CachePolicyBase {
    * @param key The key to evaluate the callback on.
    */
   template <class F>
-  return_type operator()(F f, Key key) {
+  return_type operator()(F f, const Key& key) {
     std::promise<return_type> promise;
     std::pair<typename decltype(inprogress_)::iterator, bool> emplace_pair;
     {
@@ -87,7 +85,8 @@ class CachePolicyBase {
       auto inprogress_it = inprogress_.find(key);
       if (inprogress_it != inprogress_.end()) {
         // Unlock the mutex before waiting
-        auto future_val = inprogress_it->second;
+        auto future_val = inprogress_it->second.value;
+        inprogress_it->second.num_readers++;
         lock.unlock();
 
         // Wait for the value to be ready
@@ -96,7 +95,8 @@ class CachePolicyBase {
 
       // Eval the callback and cache the result
       // First let others know we're working on it
-      emplace_pair = inprogress_.emplace(key, promise.get_future().share());
+      emplace_pair =
+          inprogress_.emplace(key, OndemandValue(promise.get_future().share()));
     }
 
     // Then compute the value
@@ -122,6 +122,7 @@ class CachePolicyBase {
   }
 
  protected:
+  using List = std::list<Key>;
   /**
    * Pops the head of the LRU list and removes the corresponding
    * entry from the cache.
@@ -132,7 +133,7 @@ class CachePolicyBase {
    *
    * @return The evicted value.
    */
-  return_type evict() {
+  return_type evict_lru() {
     if (lru_.empty()) {
       throw std::runtime_error("Cannot evict from an empty cache.");
     }
@@ -156,6 +157,16 @@ class CachePolicyBase {
     Cached_Entry(typename List::iterator it, return_type v)
         : lru_it(it)
         , value(v) {
+    }
+  };
+
+  struct OndemandValue {
+    std::shared_future<return_type> value;
+    uint32_t num_readers;
+    OndemandValue() = delete;
+    OndemandValue(const std::shared_future<return_type>& v)
+        : value(v)
+        , num_readers(0) {
     }
   };
 
@@ -185,8 +196,10 @@ class CachePolicyBase {
    */
   std::unordered_map<Key, Cached_Entry> entries_;
 
- private:
-  /** Bookkeeping lock */
+  /**
+   * Bookkeeping lock. This covers the atomocity of operations over the three
+   * containers above.
+   */
   std::mutex mutex_;
 };
 
@@ -212,7 +225,7 @@ class ImmediateEvaluation {
    * @param key The key to evaluate the callback on.
    */
   template <class F>
-  return_type operator()(F f, Key key) {
+  return_type operator()(F f, const Key& key) {
     return make_shared<value_type>(f(key));
   }
 };
@@ -227,7 +240,7 @@ class ImmediateEvaluation {
  * @tparam Key The type of key
  * @tparam Value The type of value
  */
-template <class Key, class Value, size_t N = 0>
+template <class Key, class Value, size_t N>
 class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
  public:
   using return_type = std::shared_ptr<Value>;
@@ -240,9 +253,9 @@ class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
     }
   }
 
-  virtual void enforce_policy([[maybe_unused]] const Value& v) override {
+  virtual void enforce_policy(const Value&) override {
     if (num_entries_ == max_entries_) {
-      auto evicted_value = this->evict();
+      auto evicted_value = this->evict_lru();
       --num_entries_;
       return;
     }
@@ -270,29 +283,47 @@ class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
  * @tparam Key The type of key
  * @tparam Value The type of value
  */
-template <class Key, class Value>
+
+template <
+    class Key,
+    class Value,
+    class SizeFn,
+    std::enable_if_t<
+        std::is_nothrow_invocable_r_v<
+            size_t,
+            SizeFn,
+            std::remove_cv_t<std::remove_reference_t<Value>>>,
+        bool> = true>
 class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
  public:
   using return_type = std::shared_ptr<Value>;
-  using SizeFn = std::function<size_t(const Value&)>;
 
   MemoryBudgetedCache(SizeFn size_fn, size_t budget)
       : size_fn_(size_fn)
       , memory_budget_{budget}
       , memory_consumed_(0) {
-    if (budget == 0) {
-      throw std::logic_error("The memory budget must be greater than zero.");
+    if (budget <= overhead_) {
+      throw std::logic_error(
+          "The memory budget must be greater than the minimum "
+          "memory overhead of the cache: " +
+          std::to_string(overhead_) + " bytes.");
     }
   }
   /**
    * Enforces the cache policy by evicting entries if necessary.
+   * Mass eviction might happen if the memory budget is low and the new
+   * value consumes a lot of memory. The algorithm for now is linear-time
+   * which should work ok when the cached values are of similar size, but we
+   * might need to change it in the future if it turns out value sizes are
+   * drastically different.
+   *
    * This function takes the value produced by the callback
    * to account its memory usage against the budget.
    *
    * @param v The value produced by the callback
    */
   virtual void enforce_policy(const Value& v) override {
-    auto mem_usage = sizeof(return_type) + size_fn_(v);
+    auto mem_usage = overhead_ + size_fn_(v);
     while (memory_consumed_ + mem_usage > memory_budget_) {
       if (CachePolicyBase<Key, Value>::entries_.empty()) {
         throw std::logic_error(
@@ -300,8 +331,8 @@ class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
             "cache.");
       }
 
-      auto evicted_value = this->evict();
-      memory_consumed_ -= (size_fn_(*evicted_value) + sizeof(return_type));
+      auto evicted_value = this->evict_lru();
+      memory_consumed_ -= (size_fn_(*evicted_value) + overhead_);
     }
 
     // acount for the new value added in the cache
@@ -317,6 +348,8 @@ class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
 
   /** The maximum amount of bytes currently consumed by this cache */
   size_t memory_consumed_;
+
+  static constexpr size_t overhead_ = sizeof(return_type);
 };
 
 /**
@@ -330,13 +363,19 @@ class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
  * @tparam Policy The caching policy to use.
  * @tparam F The callback function type.
  */
-template <class Policy, class F>
+template <
+    class Policy,
+    class F,
+    typename = std::enable_if_t<std::is_invocable_r_v<
+        typename Policy::value_type,
+        F,
+        typename Policy::key_type>>>
 class Evaluator {
- public:
   using Key = typename Policy::key_type;
   using Value = typename Policy::value_type;
   using return_type = typename Policy::return_type;
 
+ public:
   /**
    * Constructor.
    *
@@ -358,7 +397,7 @@ class Evaluator {
    * @param key The key to evaluate the callback on.
    * @return The value of the callback on the key.
    */
-  return_type operator()(Key key) {
+  return_type operator()(const Key& key) {
     return caching_policy_.template operator()<F>(func_, key);
   }
 

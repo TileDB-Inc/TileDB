@@ -24,6 +24,8 @@
 # THE SOFTWARE.
 #
 
+# This is a header-only component, an object library is not needed
+
 include(common NO_POLICY_SCOPE)
 
 add_test_subdirectory()

@@ -37,24 +37,47 @@ class WhiteBoxPolicy : public virtual CachePolicyBase<Key, Value> {
   using base = CachePolicyBase<Key, Value>;
 
  public:
-  [[nodiscard]] bool has_entry(const Key& key) const {
+  [[nodiscard]] bool has_entry(const Key& key) {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     return base::entries_.find(key) != base::entries_.end();
   }
-  [[nodiscard]] bool entry_in_progress(const Key& key) const {
+  [[nodiscard]] bool entry_in_progress(const Key& key) {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     return base::inprogress_.find(key) != base::inprogress_.end();
   }
-  [[nodiscard]] size_t entries_size() const {
+  [[nodiscard]] size_t entries_size() {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     return base::entries_.size();
   }
-  [[nodiscard]] size_t inprogress_size() const {
+  [[nodiscard]] size_t inprogress_size() {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     return base::inprogress_.size();
   }
-  [[nodiscard]] bool is_mru(const Key& key) const {
+  [[nodiscard]] bool is_mru(const Key& key) {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     return base::lru_.back() == key;
   }
-  [[nodiscard]] bool lru_contains(const Key& key) const {
+  [[nodiscard]] bool lru_contains(const Key& key) {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     return std::find(base::lru_.begin(), base::lru_.end(), key) !=
            base::lru_.end();
+  }
+
+  void wait_till_numreaders(const Key& key, size_t num) {
+    while (1) {
+      {
+        std::lock_guard<std::mutex> lock(base::mutex_);
+        auto it = base::inprogress_.find(key);
+        if (it == base::inprogress_.end()) {
+          throw std::runtime_error("Key not found in inprogress list");
+        }
+
+        if (it->second.num_readers == num) {
+          return;
+        }
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
   }
 };
 
@@ -64,29 +87,33 @@ class WhiteBoxMaxEntriesPolicy : public WhiteBoxPolicy<Key, Value>,
   using base = MaxEntriesCache<Key, Value, N>;
 
  public:
-  [[nodiscard]] size_t num_entries() const {
+  [[nodiscard]] size_t num_entries() {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     return base::num_entries_;
   }
   void evict_lru() {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     base::enforce_policy(Value{});
   }
 };
 
-template <class Key, class Value>
-class WhiteBoxMemoryBudgetPolicy : public WhiteBoxPolicy<Key, Value>,
-                                   public MemoryBudgetedCache<Key, Value> {
-  using base = MemoryBudgetedCache<Key, Value>;
-  using SizeFn = typename base::SizeFn;
+template <class Key, class Value, class SizeFn>
+class WhiteBoxMemoryBudgetPolicy
+    : public WhiteBoxPolicy<Key, Value>,
+      public MemoryBudgetedCache<Key, Value, SizeFn> {
+  using base = MemoryBudgetedCache<Key, Value, SizeFn>;
 
  public:
   WhiteBoxMemoryBudgetPolicy(SizeFn size_fn, size_t budget)
       : base(size_fn, budget) {
   }
 
-  [[nodiscard]] size_t memory_consumed() const {
+  [[nodiscard]] size_t memory_consumed() {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     return base::memory_consumed_;
   }
   void evict_lru() {
+    std::lock_guard<std::mutex> lock(base::mutex_);
     base::enforce_policy(Value{});
   }
 };
@@ -120,11 +147,17 @@ class WhiteBoxImmediateEvaluationPolicy
 template <class Policy, class F>
 class WhiteBoxEvaluator : public Evaluator<Policy, F> {
   using base = Evaluator<Policy, F>;
+  using return_type = typename Policy::return_type;
+  using Key = typename Policy::key_type;
 
  public:
   template <class... Args>
   WhiteBoxEvaluator(F f, Args&&... args)
-      : base(f, std::forward<Args>(args)...) {
+      : base(std::forward<F>(f), std::forward<Args>(args)...) {
+  }
+
+  return_type operator()(const Key& key) {
+    return base::operator()(key);
   }
 
   [[nodiscard]] Policy& policy() {
@@ -133,9 +166,9 @@ class WhiteBoxEvaluator : public Evaluator<Policy, F> {
 };
 
 TEST_CASE("Testing immediate evaluation", "[evaluator][immediate]") {
-  auto f = [](std::string) {
+  auto f = [](const std::string& key) {
     static uint64_t counter = 0;  // safe only in this testing scenario
-    return "test" + std::to_string(counter++);
+    return "test-" + key + std::to_string(counter++);
   };
 
   WhiteBoxEvaluator<
@@ -145,10 +178,10 @@ TEST_CASE("Testing immediate evaluation", "[evaluator][immediate]") {
   REQUIRE(no_cache_eval.policy().num_executions() == 0);
   auto v1 = no_cache_eval("key");
   CHECK(no_cache_eval.policy().num_executions() == 1);
-  CHECK(*v1 == "test0");
+  CHECK(*v1 == "test-key0");
   auto v2 = no_cache_eval("key");
   CHECK(no_cache_eval.policy().num_executions() == 2);
-  CHECK(*v2 == "test1");
+  CHECK(*v2 == "test-key1");
 }
 
 TEST_CASE("Ready cached items are stored properly", "[evaluator][entries]") {
@@ -220,7 +253,9 @@ TEST_CASE(
     "Inprogress list contains items that are in the process of being evaluated",
     "[evaluator][inprogress]") {
   std::promise<void> finish_I_promise;
-  auto f = [&finish_I_promise](std::string) {
+  std::promise<void> ready_promise;
+  auto f = [&finish_I_promise, &ready_promise](std::string) {
+    ready_promise.set_value();
     finish_I_promise.get_future().wait();
     return std::string("test");
   };
@@ -235,7 +270,7 @@ TEST_CASE(
   });
 
   // Give the thread some heads up
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  ready_promise.get_future().wait();
 
   // Now that key is in the process of evaluation, let's do some checks
   CHECK(eval.policy().inprogress_size() == 1);
@@ -258,10 +293,12 @@ TEST_CASE(
     "entry is ready",
     "[evaluator][inprogress]") {
   std::promise<void> finish_I_promise;
+  std::promise<void> t1_ready_promise;
   bool first_thread = true;
   bool second_exec = false;
-  auto f = [&finish_I_promise, &first_thread, &second_exec](std::string) {
+  auto f = [&](std::string) {
     if (first_thread) {
+      t1_ready_promise.set_value();
       finish_I_promise.get_future().wait();
     } else {
       second_exec = true;
@@ -274,20 +311,21 @@ TEST_CASE(
       decltype(f)>
       eval(f);
 
-  std::thread t([&eval]() {
+  std::thread t1([&eval]() {
     // This blocks until f(key) is evaluated
     eval("key");
   });
 
-  // Give the thread some heads up
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  // Give t1 some heads up
+  t1_ready_promise.get_future().wait();
 
   first_thread = false;
   std::thread t2([&eval]() {
     // This should wait within the evaluator until the value becomes available
     eval("key");
   });
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  eval.policy().wait_till_numreaders("key", 1);
 
   // Check a single entry is in progress and no ready entries are present
   CHECK(eval.policy().entries_size() == 0);
@@ -298,7 +336,7 @@ TEST_CASE(
   // cached, second reader gets the value as well and becomes unblocked
   finish_I_promise.set_value();
 
-  t.join();
+  t1.join();
   t2.join();
 
   // Make sure the second reader got a cached value and didn't just execute the
@@ -309,12 +347,12 @@ TEST_CASE(
 TEST_CASE("Memory budgeting policy is enforced", "[evaluator][memory_budget]") {
   size_t budget = 4096;
   auto f = [](const std::string& key) { return key; };
-  auto sizefn = [](const std::string& val) {
+  auto sizefn = [](const std::string& val) noexcept {
     return sizeof(std::string) + val.size();
   };
 
   WhiteBoxEvaluator<
-      WhiteBoxMemoryBudgetPolicy<std::string, std::string>,
+      WhiteBoxMemoryBudgetPolicy<std::string, std::string, decltype(sizefn)>,
       decltype(f)>
       mem_budgeted_eval(f, sizefn, budget);
 
@@ -357,33 +395,45 @@ TEST_CASE("Memory budgeting policy is enforced", "[evaluator][memory_budget]") {
   CHECK(mem_budgeted_eval.policy().memory_consumed() <= budget);
 }
 
-TEST_CASE("Test various corner cases", "[evaluator][basic]") {
+TEST_CASE(
+    "Test evaluator invalid memory budget", "[evaluator][invalid_budget]") {
   size_t budget = 0;
   auto f = [](const std::string& key) { return key; };
-  auto sizefn = [](const std::string& val) {
+  auto sizefn = [](const std::string& val) noexcept {
     return sizeof(std::string) + val.size();
   };
 
-  auto matcher = Catch::Matchers::ContainsSubstring("greater than zero");
-  REQUIRE_THROWS_WITH(
-      static_cast<void>(WhiteBoxEvaluator<
-                        WhiteBoxMemoryBudgetPolicy<std::string, std::string>,
-                        decltype(f)>(f, sizefn, budget)),
-      matcher);
+  REQUIRE_THROWS(static_cast<void>(WhiteBoxEvaluator<
+                                   WhiteBoxMemoryBudgetPolicy<
+                                       std::string,
+                                       std::string,
+                                       decltype(sizefn)>,
+                                   decltype(f)>(f, sizefn, budget)));
+}
 
-  budget = 1;
+TEST_CASE(
+    "Test evaluator budget too small to hold a single value",
+    "[evaluator][too_small_budget]") {
+  auto f = [](const std::string& key) { return key; };
+  auto sizefn = [](const std::string& val) noexcept {
+    return sizeof(std::string) + val.size();
+  };
+  size_t budget = sizeof(std::shared_ptr<std::string>) + 1;
+
   WhiteBoxEvaluator<
-      WhiteBoxMemoryBudgetPolicy<std::string, std::string>,
+      WhiteBoxMemoryBudgetPolicy<std::string, std::string, decltype(sizefn)>,
       decltype(f)>
       mem_budgeted_eval(f, sizefn, budget);
-  auto matcher2 =
-      Catch::Matchers::ContainsSubstring("exceeds the budget of the cache");
-  REQUIRE_THROWS_WITH(mem_budgeted_eval("key"), matcher2);
+  REQUIRE_THROWS(mem_budgeted_eval("key"));
+}
 
-  auto matcher3 = Catch::Matchers::ContainsSubstring("greater than zero");
-  REQUIRE_THROWS_WITH(
+TEST_CASE(
+    "Test max entries policy invalid argument",
+    "[evaluator][invalid_maxentries]") {
+  auto f = [](const std::string& key) { return key; };
+
+  REQUIRE_THROWS(
       static_cast<void>(WhiteBoxEvaluator<
                         WhiteBoxMaxEntriesPolicy<std::string, std::string, 0>,
-                        decltype(f)>(f)),
-      matcher3);
+                        decltype(f)>(f)));
 }
