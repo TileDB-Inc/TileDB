@@ -576,6 +576,10 @@ class SerializationBuffer {
     return buffer_owner_.get_allocator();
   }
 
+  /**
+   * Returns whether this class owns the underlying memory buffer and is
+   * responsible for freeing it.
+   */
   bool is_owned() const {
     return buffer_.data() == buffer_owner_.data();
   }
