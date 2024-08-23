@@ -40,16 +40,17 @@
 using namespace tiledb::sm;
 
 TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
-  SerializationBuffer buff1, buff2;
+  BufferList buffer_list{tdb::pmr::polymorphic_allocator<char>()};
+  REQUIRE(buffer_list.num_buffers() == 0);
+  REQUIRE(buffer_list.total_size() == 0);
+
+  SerializationBuffer buff1{buffer_list.get_allocator()},
+      buff2{buffer_list.get_allocator()};
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
   buff1.assign(span(data1, sizeof(data1)));
   buff2.assign(span(data2, sizeof(data2)));
   REQUIRE(static_cast<span<const char>>(buff1).data() != nullptr);
   REQUIRE(static_cast<span<const char>>(buff2).data() != nullptr);
-
-  BufferList buffer_list;
-  REQUIRE(buffer_list.num_buffers() == 0);
-  REQUIRE(buffer_list.total_size() == 0);
 
   REQUIRE(buffer_list.add_buffer(std::move(buff1)).ok());
   REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
@@ -68,14 +69,15 @@ TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
 }
 
 TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
-  BufferList buffer_list;
+  BufferList buffer_list{tdb::pmr::polymorphic_allocator<char>()};
   char data[10];
 
   REQUIRE_THROWS(buffer_list.read(data, 1));
   REQUIRE_NOTHROW(buffer_list.read(data, 0));
   REQUIRE_NOTHROW(buffer_list.read(nullptr, 0));
 
-  SerializationBuffer buff1, buff2;
+  SerializationBuffer buff1{buffer_list.get_allocator()},
+      buff2{buffer_list.get_allocator()};
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
   buff1.assign(span(data1, sizeof(data1)));
   buff2.assign(span(data2, sizeof(data2)));

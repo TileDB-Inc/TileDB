@@ -40,14 +40,14 @@ using namespace tiledb::sm;
 TEST_CASE(
     "SerializationBuffer: Test default constructor",
     "[serialization_buffer][default_constructor]") {
-  SerializationBuffer buff;
+  SerializationBuffer buff{tdb::pmr::polymorphic_allocator<char>()};
   CHECK(static_cast<span<const char>>(buff).empty());
 }
 
 TEST_CASE(
     "SerializationBuffer: Test owned buffer",
     "[serialization_buffer][owned_buffer]") {
-  SerializationBuffer buff;
+  SerializationBuffer buff{tdb::pmr::polymorphic_allocator<char>()};
   auto data = {'a', 'b', 'c', 'd'};
   buff.assign(data);
   CHECK(buff.is_owned());
@@ -85,7 +85,7 @@ TEST_CASE(
 TEST_CASE(
     "SerializationBuffer: Test non-owned buffer",
     "[serialization_buffer][non_owned]") {
-  SerializationBuffer buff;
+  SerializationBuffer buff{tdb::pmr::polymorphic_allocator<char>()};
   auto data = {'a', 'b', 'c', 'd'};
   buff.assign(SerializationBuffer::NonOwned, data);
   CHECK_FALSE(buff.is_owned());
@@ -120,7 +120,7 @@ TEST_CASE(
 TEST_CASE(
     "SerializationBuffer: Test owned null-terminated buffer",
     "[serialization_buffer][owned][null_terminated]") {
-  SerializationBuffer buff;
+  SerializationBuffer buff{tdb::pmr::polymorphic_allocator<char>()};
   std::string_view data = "abcd";
   buff.assign_null_terminated(data);
   span<const char> buff_span = buff;

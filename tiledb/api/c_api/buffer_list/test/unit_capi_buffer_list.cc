@@ -191,13 +191,12 @@ TEST_CASE(
 
 TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
   // Create a testing buffer list
-  tiledb::sm::BufferList buffer_list;
-  tiledb::sm::SerializationBuffer buff1, buff2;
+  tiledb::sm::BufferList buffer_list{tdb::pmr::polymorphic_allocator<char>{}};
+  auto& buff1 = buffer_list.emplace_buffer();
+  auto& buff2 = buffer_list.emplace_buffer();
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
   buff1.assign(span(data1, sizeof(data1)));
   buff2.assign(span(data2, sizeof(data2)));
-  REQUIRE(buffer_list.add_buffer(std::move(buff1)).ok());
-  REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
 
   ordinary_buffer_list x;
   x.buffer_list->set_buffer_list(buffer_list);
