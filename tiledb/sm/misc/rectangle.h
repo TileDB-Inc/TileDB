@@ -33,6 +33,7 @@
 #ifndef TILEDB_RECTANGLE_H
 #define TILEDB_RECTANGLE_H
 
+#include <array>
 #include <vector>
 
 #include "tiledb/common/status.h"

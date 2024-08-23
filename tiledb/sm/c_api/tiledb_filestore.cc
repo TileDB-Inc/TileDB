@@ -31,6 +31,7 @@
  * This file defines the C API of TileDB for filestore.
  **/
 
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/attribute/attribute_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
@@ -111,7 +112,6 @@ int32_t tiledb_filestore_schema_create(
     }
   }
 
-  *array_schema = new tiledb_array_schema_t;
   try {
     // Share ownership of the internal ArraySchema ptr
     // All other calls for adding domains, attributes, etc
@@ -119,9 +119,8 @@ int32_t tiledb_filestore_schema_create(
     // the cpp objects constructed here
     auto memory_tracker = context.resources().create_memory_tracker();
     memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
-    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-        HERE(), tiledb::sm::ArrayType::DENSE, memory_tracker);
-    auto& schema = (*array_schema)->array_schema_;
+    *array_schema = tiledb_array_schema_t::make_handle(
+        tiledb::sm::ArrayType::DENSE, memory_tracker);
 
     // Define the range of the dimension.
     uint64_t range_lo = 0;
@@ -160,13 +159,14 @@ int32_t tiledb_filestore_schema_create(
       attr->set_filter_pipeline(filter);
     }
 
-    throw_if_not_ok(schema->set_domain(domain));
-    throw_if_not_ok(schema->set_tile_order(tiledb::sm::Layout::ROW_MAJOR));
-    throw_if_not_ok(schema->set_cell_order(tiledb::sm::Layout::ROW_MAJOR));
-    throw_if_not_ok(schema->add_attribute(attr));
+    throw_if_not_ok((*array_schema)->set_domain(domain));
+    throw_if_not_ok(
+        (*array_schema)->set_tile_order(tiledb::sm::Layout::ROW_MAJOR));
+    throw_if_not_ok(
+        (*array_schema)->set_cell_order(tiledb::sm::Layout::ROW_MAJOR));
+    throw_if_not_ok((*array_schema)->add_attribute(attr));
   } catch (const std::exception& e) {
-    (*array_schema)->array_schema_ = nullptr;
-    delete *array_schema;
+    tiledb_array_schema_t::break_handle(*array_schema);
     throw api::CAPIStatusException(
         std::string("Internal TileDB uncaught exception; ") + e.what());
   }

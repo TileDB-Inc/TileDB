@@ -169,6 +169,7 @@ class NDRectangle {
   /**
    * Get the range for the dimension at idx
    *
+   * @param name The dimension index
    * @return The range of the dimension
    */
   const Range& get_range(uint32_t idx) const;
@@ -176,9 +177,26 @@ class NDRectangle {
   /**
    * Get the range for the dimension specified by name
    *
+   * @param name The name of the dimension
    * @return The range of the dimension
    */
   const Range& get_range_for_name(const std::string& name) const;
+
+  /**
+   * Get the data type of the range at idx
+   *
+   * @param idx The index of the range
+   * @return The range datatype
+   */
+  Datatype range_dtype(uint32_t idx) const;
+
+  /**
+   * Get the data type of the range at idx
+   *
+   * @param name The dimension name
+   * @return The range datatype
+   */
+  Datatype range_dtype_for_name(const std::string& name) const;
 
  private:
   /* ********************************* */

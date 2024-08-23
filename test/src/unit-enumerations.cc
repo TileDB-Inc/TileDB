@@ -30,6 +30,7 @@
  * Tests the C++ API for enumeration related functions.
  */
 
+#include <numeric>
 #include <sstream>
 
 #include "test/support/src/mem_helpers.h"

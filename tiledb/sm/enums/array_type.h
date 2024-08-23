@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,13 +39,12 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Defines the array type. */
 enum class ArrayType : uint8_t {
 #define TILEDB_ARRAY_TYPE_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/array_schema/array_type_enum.h"
 #undef TILEDB_ARRAY_TYPE_ENUM
 };
 
@@ -83,7 +82,6 @@ inline void ensure_array_type_is_valid(uint8_t array_type_enum) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_TYPE_H

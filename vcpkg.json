@@ -1,5 +1,5 @@
 {
-    "builtin-baseline": "72010900b7cee36cea77aebb97695095c9358eaf",
+    "builtin-baseline": "7aeffc91033ad35cc4e2c152f213a866ec6c11ac",
     "dependencies": [
         "bzip2",
         "libmagic",
@@ -17,12 +17,7 @@
             "description": "Support Azure Blob Storage",
             "dependencies": [
                 "azure-storage-blobs-cpp",
-                "azure-identity-cpp",
-                {
-                    "name": "libxml2",
-                    "default-features": false,
-                    "platform": "!windows"
-                }
+                "azure-identity-cpp"
             ]
         },
         "gcs": {
@@ -68,8 +63,8 @@
             "dependencies": [
                 "catch2",
                 {
-                  "name": "libfaketime",
-                  "platform": "!windows"
+                    "name": "libfaketime",
+                    "platform": "!windows"
                 }
             ]
         },

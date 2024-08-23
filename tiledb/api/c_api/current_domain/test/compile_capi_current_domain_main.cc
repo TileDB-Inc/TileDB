@@ -32,10 +32,10 @@
 int main() {
   tiledb_current_domain_create(nullptr, nullptr);
   tiledb_current_domain_free(nullptr);
-  tiledb_current_domain_set_ndrectangle(nullptr, nullptr);
-  tiledb_current_domain_get_ndrectangle(nullptr, nullptr);
-  tiledb_current_domain_get_is_empty(nullptr, nullptr);
-  tiledb_current_domain_get_type(nullptr, nullptr);
+  tiledb_current_domain_set_ndrectangle(nullptr, nullptr, nullptr);
+  tiledb_current_domain_get_ndrectangle(nullptr, nullptr, nullptr);
+  tiledb_current_domain_get_is_empty(nullptr, nullptr, nullptr);
+  tiledb_current_domain_get_type(nullptr, nullptr, nullptr);
 
   return 0;
 }

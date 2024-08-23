@@ -44,6 +44,7 @@
 #endif
 
 #include <test/support/tdb_catch.h>
+#include <numeric>
 
 using namespace tiledb;
 using namespace tiledb::test;

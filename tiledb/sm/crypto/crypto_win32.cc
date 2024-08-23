@@ -33,6 +33,9 @@
 #ifdef _WIN32
 
 #include "tiledb/sm/crypto/crypto_win32.h"
+
+#include <algorithm>
+#include <array>
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -47,27 +50,25 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status Win32CNG::get_random_bytes(unsigned num_bytes, Buffer* output) {
-  if (output->free_space() < num_bytes)
-    RETURN_NOT_OK(output->realloc(output->alloced_size() + num_bytes));
-
+static Status get_random_bytes(span<uint8_t> buffer) {
   BCRYPT_ALG_HANDLE alg_handle;
   if (!NT_SUCCESS(BCryptOpenAlgorithmProvider(
           &alg_handle, BCRYPT_RNG_ALGORITHM, nullptr, 0)))
     return Status_EncryptionError(
         "Win32CNG error; generating random bytes: error opening algorithm.");
 
-  if (!NT_SUCCESS(BCryptGenRandom(
-          alg_handle, (unsigned char*)output->cur_data(), num_bytes, 0))) {
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return Status_EncryptionError(
-        "Win32CNG error; generating random bytes: error generating bytes.");
+  while (!buffer.empty()) {
+    ULONG num_bytes = ULONG(
+        std::min(buffer.size(), size_t(std::numeric_limits<ULONG>::max())));
+    if (!NT_SUCCESS(BCryptGenRandom(alg_handle, buffer.data(), num_bytes, 0))) {
+      BCryptCloseAlgorithmProvider(alg_handle, 0);
+      return Status_EncryptionError(
+          "Win32CNG error; generating random bytes: error generating bytes.");
+    }
+    buffer = buffer.subspan(num_bytes);
   }
 
   BCryptCloseAlgorithmProvider(alg_handle, 0);
-
-  output->advance_size(num_bytes);
-  output->advance_offset(num_bytes);
 
   return Status::Ok();
 }
@@ -87,11 +88,11 @@ Status Win32CNG::encrypt_aes256gcm(
   // Generate IV if the given IV buffer is null.
   ULONG iv_len;
   unsigned char* iv_buf;
-  Buffer generated_iv;
+  std::array<unsigned char, Crypto::AES256GCM_IV_BYTES> generated_iv;
   if (iv == nullptr || iv->data() == nullptr) {
-    RETURN_NOT_OK(get_random_bytes(Crypto::AES256GCM_IV_BYTES, &generated_iv));
+    RETURN_NOT_OK(get_random_bytes(generated_iv));
     iv_len = (ULONG)generated_iv.size();
-    iv_buf = (unsigned char*)generated_iv.data();
+    iv_buf = generated_iv.data();
   } else {
     iv_len = (ULONG)iv->size();
     iv_buf = (unsigned char*)iv->data();
@@ -292,16 +293,6 @@ Status Win32CNG::decrypt_aes256gcm(
   BCryptCloseAlgorithmProvider(alg_handle, 0);
 
   return Status::Ok();
-}
-
-Status Win32CNG::md5(
-    const void* input, uint64_t input_read_size, Buffer* output) {
-  return hash_bytes(input, input_read_size, output, BCRYPT_MD5_ALGORITHM);
-}
-
-Status Win32CNG::sha256(
-    const void* input, uint64_t input_read_size, Buffer* output) {
-  return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALGORITHM);
 }
 
 Status Win32CNG::hash_bytes(

@@ -1,5 +1,5 @@
 /**
- * @file unit-crypto.cc
+ * @file unit_tiledb_crypto.cc
  *
  * @section LICENSE
  *
@@ -29,12 +29,33 @@
  * @section DESCRIPTION
  *
  * Tests the `Crypto` class
+ *
+ * @section Test plan
+ *
+ * The random number generator is tested by generating two 64-byte buffers with
+ * cryptographically random data and checking that their content is not the
+ * same. The probability of having the same content is vanishingly small.
+ *
+ * The algorithms are tested using official test vectors:
+ *
+ * AES-GCM test vectors are taken from gcmEncryptExtIV256.rsp, from "GCM Test
+ * Vectors (SP 800-38D)"
+ * (https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/cavp-testing-block-cipher-modes).
+ * We also test that modifying the ciphertext causes failures in decrypting it.
+ *
+ * MD5 test vectors are taken from RFC 1321's section A.5
+ * (https://www.ietf.org/rfc/rfc1321.txt)
+ *
+ * SHA-256 test vectors were taken from SHA256ShortMsg.rsp, from "SHA Test
+ * Vectors for Hashing Bit-Oriented Messages"
+ * (https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/Secure-Hashing)
  */
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
 
 #include <test/support/tdb_catch.h>
+#include <iomanip>
 #include <iostream>
 
 using namespace tiledb::sm;
@@ -214,28 +235,29 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
     // These are test vectors where:
     // Keylen = 256, IVlen = 96, PTlen = 408, AADlen = 0, Taglen = 128.
     struct TestCase {
-      char key[64 + 1];
-      char iv[24 + 1];
-      char pt[102 + 1];
-      char ct[102 + 1];
-      char tag[32 + 1];
+      span<const char, 64 + 1> key;
+      span<const char, 24 + 1> iv;
+      span<const char, 102 + 1> plaintext;
+      span<const char, 102 + 1> ciphertext;
+      span<const char, 32 + 1> tag;
 
-      TestCase(
-          const char* key_arg,
-          const char* iv_arg,
-          const char* pt_arg,
-          const char* ct_arg,
-          const char* tag_arg) {
-        std::memcpy(key, key_arg, sizeof(key));
-        std::memcpy(iv, iv_arg, sizeof(iv));
-        std::memcpy(pt, pt_arg, sizeof(pt));
-        std::memcpy(ct, ct_arg, sizeof(ct));
-        std::memcpy(tag, tag_arg, sizeof(tag));
+      constexpr TestCase(
+          decltype(key) key,
+          decltype(iv) iv,
+          decltype(plaintext) pt,
+          decltype(ciphertext) ct,
+          decltype(tag) tag)
+          : key(key)
+          , iv(iv)
+          , plaintext(pt)
+          , ciphertext(ct)
+          , tag(tag) {
       }
 
-      Buffer get_buffer(
-          unsigned buf_size, unsigned num_chars, const char* field) const {
+      static Buffer get_buffer(span<const char> field) {
         Buffer result;
+        auto num_chars = field.size() - 1;  // Exclude null terminator.
+        auto buf_size = num_chars / 2;
         REQUIRE(result.realloc(buf_size).ok());
         for (unsigned i = 0; i < num_chars; i += 2) {
           char byte_str[3] = {field[i], field[i + 1], '\0'};
@@ -246,27 +268,27 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
       }
 
       Buffer get_key() const {
-        return get_buffer(256 / 8, 64, key);
+        return get_buffer(key);
       }
 
       Buffer get_iv() const {
-        return get_buffer(96 / 8, 24, iv);
+        return get_buffer(iv);
       }
 
       Buffer get_plaintext() const {
-        return get_buffer(408 / 8, 102, pt);
-      }
-
-      Buffer get_tag() const {
-        return get_buffer(128 / 8, 32, tag);
+        return get_buffer(plaintext);
       }
 
       Buffer get_ciphertext() const {
-        return get_buffer(408 / 8, 102, ct);
+        return get_buffer(ciphertext);
+      }
+
+      Buffer get_tag() const {
+        return get_buffer(tag);
       }
     };
 
-    std::vector<TestCase> tests = {
+    static auto tests = {
         TestCase(
             "1fded32d5999de4a76e0f8082108823aef60417e1896cf4218a2fa90f632ec8a",
             "1f3afa4711e9474f32e70462",
@@ -493,50 +515,102 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
   }
 }
 
-TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
-  SECTION("- Basic") {
-    std::string expected_checksum = "e99a18c428cb38d5f260853678922e03";
-    std::string text_to_checksum = "abc123";
-    ConstBuffer input_buffer(
-        text_to_checksum.data(), text_to_checksum.length());
-    Buffer output_buffer;
-    CHECK(output_buffer.realloc(Crypto::MD5_DIGEST_BYTES).ok());
-    CHECK(Crypto::md5(&input_buffer, &output_buffer).ok());
+static std::string from_hex(const std::string_view& str) {
+  std::string output;
+  for (size_t i = 0; i < str.length(); i += 2) {
+    char byte_str[3] = {str[i], str[i + 1], '\0'};
+    output.push_back((uint8_t)std::strtoul(byte_str, nullptr, 16));
+  }
+  return output;
+}
 
-    unsigned char* digest =
-        reinterpret_cast<unsigned char*>(output_buffer.data());
-    char md5string[33];
-    for (uint64_t i = 0; i < output_buffer.alloced_size(); ++i) {
-      sprintf(&md5string[i * 2], "%02x", (unsigned int)digest[i]);
-    }
-    CHECK(
-        memcmp(
-            expected_checksum.data(), md5string, expected_checksum.length()) ==
-        0);
+static std::string to_hex(span<const uint8_t> data) {
+  std::stringstream ss;
+  for (size_t i = 0; i < data.size(); i++) {
+    ss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
+  }
+  return ss.str();
+}
+
+/**
+ * Test that the given input (optionally in hex) has the expected hash value in
+ * hex. The function is generic over the hash and the input size.
+ */
+template <Status hash(const void*, uint64_t, Buffer*), int digest_bytes>
+static void test_expected_hash_value(
+    const std::string_view& input,
+    const std::string_view& expected_value,
+    bool hex) {
+  REQUIRE(expected_value.length() == digest_bytes * 2);
+
+  const std::string& processed_input =
+      hex ? from_hex(input) : std::string{input};
+
+  Buffer hash_buf(digest_bytes);
+  CHECK(
+      (hash(processed_input.data(), processed_input.length(), &hash_buf)).ok());
+
+  // Compare the strings for a better error message in case of failure.
+  CHECK(
+      to_hex(
+          {(uint8_t*)hash_buf.data(),
+           static_cast<size_t>(hash_buf.alloced_size())}) == expected_value);
+}
+
+TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
+  auto test_md5 =
+      test_expected_hash_value<Crypto::md5, Crypto::MD5_DIGEST_BYTES>;
+  static const std::vector<std::pair<std::string_view, std::string_view>>
+      test_cases{
+          {"", "d41d8cd98f00b204e9800998ecf8427e"},
+          {"a", "0cc175b9c0f1b6a831c399e269772661"},
+          {"abc", "900150983cd24fb0d6963f7d28e17f72"},
+          {"message digest", "f96b697d7cb7938d525a2f31aaf161d0"},
+          {"abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b"},
+          {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+           "d174ab98d277d9f5a5611c2c9f419d9f"},
+          {"1234567890123456789012345678901234567890123456789012345678901234567"
+           "890"
+           "1234567890",
+           "57edf4a22be3c955ac49da2e2107b67a"}};
+
+  for (auto& [input, expected_hash] : test_cases) {
+    test_md5(input, expected_hash, false);
   }
 }
 
 TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
-  SECTION("- Basic") {
-    std::string expected_checksum =
-        "6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090";
-    std::string text_to_checksum = "abc123";
-    ConstBuffer input_buffer(
-        text_to_checksum.data(), text_to_checksum.length());
-    Buffer output_buffer;
-    CHECK(output_buffer.realloc(Crypto::SHA256_DIGEST_BYTES).ok());
-    CHECK(Crypto::sha256(&input_buffer, &output_buffer).ok());
+  auto test_sha256 =
+      test_expected_hash_value<Crypto::sha256, Crypto::SHA256_DIGEST_BYTES>;
+  std::vector<std::pair<std::string_view, std::string_view>> test_cases{
+      // Len = 0
+      {"", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+      // Len = 64
+      {"5738c929c4f4ccb6",
+       "963bb88f27f512777aab6c8b1a02c70ec0ad651d428f870036e1917120fb48bf"},
+      // Len = 128
+      {"0a27847cdc98bd6f62220b046edd762b",
+       "80c25ec1600587e7f28b18b1b18e3cdc89928e39cab3bc25e4d4a4c139bcedc4"},
+      // Len = 192
+      {"47991301156d1d977c0338efbcad41004133aefbca6bcf7e",
+       "feeb4b2b59fec8fdb1e55194a493d8c871757b5723675e93d3ac034b380b7fc9"},
+      // Len = 256
+      {"09fc1accc230a205e4a208e64a8f204291f581a12756392da4b8c0cf5ef02b95",
+       "4f44c1c7fbebb6f9601829f3897bfd650c56fa07844be76489076356ac1886a4"},
+      // Len = 384
+      {"4eef5107459bddf8f24fc7656fd4896da8711db50400c0164847f692b886ce8d7f4d67"
+       "395090b3534efd7b0d298da34b",
+       "7c5d14ed83dab875ac25ce7feed6ef837d58e79dc601fb3c1fca48d4464e8b83"},
+      // Len = 448
+      {"2d52447d1244d2ebc28650e7b05654bad35b3a68eedc7f8515306b496d75f3e73385dd"
+       "1b002625024b81a02f2fd6dffb6e6d561cb7d0bd7a",
+       "cfb88d6faf2de3a69d36195acec2e255e2af2b7d933997f348e09f6ce5758360"},
+      // Len = 512
+      {"5a86b737eaea8ee976a0a24da63e7ed7eefad18a101c1211e2b3650c5187c2a8a65054"
+       "7208251f6d4237e661c7bf4c77f335390394c37fa1a9f9be836ac28509",
+       "42e61e174fbb3897d6dd6cef3dd2802fe67b331953b06114a65c772859dfc1aa"}};
 
-    unsigned char* digest =
-        reinterpret_cast<unsigned char*>(output_buffer.data());
-    char shastring[65];
-    for (uint64_t i = 0; i < output_buffer.alloced_size(); ++i) {
-      sprintf(&shastring[i * 2], "%02x", (unsigned int)digest[i]);
-    }
-
-    CHECK(
-        memcmp(
-            expected_checksum.data(), shastring, expected_checksum.length()) ==
-        0);
+  for (auto& [input, expected_hash] : test_cases) {
+    test_sha256(input, expected_hash, true);
   }
 }

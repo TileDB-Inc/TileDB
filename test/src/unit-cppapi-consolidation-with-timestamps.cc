@@ -60,13 +60,11 @@ struct ConsolidationWithTimestampsFx {
   // Functions.
   void set_legacy();
   void create_sparse_array(bool allows_dups = false);
-  void create_sparse_array_v11();
   void write_sparse(
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp);
-  void write_sparse_v11(uint64_t timestamp);
   void consolidate_sparse(bool vacuum = false);
   void consolidate_sparse(
       uint64_t start_time, uint64_t end_time, bool vacuum = false);
@@ -149,18 +147,6 @@ void ConsolidationWithTimestampsFx::create_sparse_array(bool allows_dups) {
   Array::create(SPARSE_ARRAY_NAME, schema);
 }
 
-void ConsolidationWithTimestampsFx::create_sparse_array_v11() {
-  // Get the v11 sparse array.
-  std::string v11_arrays_dir =
-      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
-  REQUIRE(
-      tiledb_vfs_copy_dir(
-          ctx_.ptr().get(),
-          vfs_.ptr().get(),
-          v11_arrays_dir.c_str(),
-          SPARSE_ARRAY_NAME) == TILEDB_OK);
-}
-
 void ConsolidationWithTimestampsFx::write_sparse(
     std::vector<int> a1,
     std::vector<uint64_t> dim1,
@@ -179,40 +165,6 @@ void ConsolidationWithTimestampsFx::write_sparse(
   query.set_data_buffer("a1", a1);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
-
-  // Submit query
-  query.submit_and_finalize();
-
-  // Close array.
-  array.close();
-}
-
-void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
-  // Prepare cell buffers.
-  std::vector<int> buffer_a1{0, 1, 2, 3};
-  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
-  std::string buffer_var_a2("abbcccdddd");
-  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
-  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
-  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
-
-  // Open array.
-  Array array(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      TILEDB_WRITE,
-      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
-
-  // Create query.
-  Query query(ctx_, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_GLOBAL_ORDER);
-  query.set_data_buffer("a1", buffer_a1);
-  query.set_data_buffer(
-      "a2", (void*)buffer_var_a2.c_str(), buffer_var_a2.size());
-  query.set_offsets_buffer("a2", buffer_a2);
-  query.set_data_buffer("a3", buffer_a3);
-  query.set_data_buffer("d1", buffer_coords_dim1);
-  query.set_data_buffer("d2", buffer_coords_dim2);
 
   // Submit query
   query.submit_and_finalize();
@@ -517,12 +469,12 @@ TEST_CASE_METHOD(
   }
 
   remove_sparse_array();
-  create_sparse_array_v11();
+  test::create_sparse_array_v11(ctx_.ptr().get(), SPARSE_ARRAY_NAME);
   // Write first fragment.
-  write_sparse_v11(1);
+  test::write_sparse_v11(ctx_.ptr().get(), SPARSE_ARRAY_NAME, 1);
 
   // Write second fragment.
-  write_sparse_v11(3);
+  test::write_sparse_v11(ctx_.ptr().get(), SPARSE_ARRAY_NAME, 3);
 
   // Consolidate.
   consolidate_sparse();

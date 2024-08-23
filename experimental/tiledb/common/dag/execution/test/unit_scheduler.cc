@@ -36,6 +36,7 @@
 #include <atomic>
 #include <iostream>
 #include <map>
+#include <numeric>
 #include <type_traits>
 
 #include "unit_scheduler.h"
