@@ -879,7 +879,7 @@ class Query {
   /**
    * Returns true if the query has any aggregates on any channels
    */
-  bool has_aggregates() {
+  bool has_aggregates() const {
     // We only need to check the default channel for now
     return !default_channel_aggregates_.empty();
   }
@@ -1148,6 +1148,15 @@ class Query {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Return the layout that will be used to execute the query.
+   *
+   * This is usually set by the user but cen be overridden by TileDB in cases
+   * where the data order would not have an observable difference, like queries
+   * with only aggregates.
+   */
+  Layout effective_layout() const;
 
   /**
    * Create the strategy.
