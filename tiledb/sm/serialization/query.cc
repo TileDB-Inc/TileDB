@@ -2583,7 +2583,9 @@ Status query_deserialize(
     ThreadPool* compute_tp) {
   // Create an original, serialized copy of the 'query' that we will revert
   // to if we are unable to deserialize 'serialized_buffer'.
-  BufferList original_bufferlist;
+  BufferList original_bufferlist(
+      query->resources().serialization_memory_tracker()->get_resource(
+          MemoryType::SERIALIZATION_BUFFER));
   RETURN_NOT_OK(
       query_serialize(query, serialize_type, clientside, original_bufferlist));
 

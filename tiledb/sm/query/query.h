@@ -918,6 +918,13 @@ class Query {
    */
   RestClient* rest_client() const;
 
+  /**
+   * Returns the ContextResources associated to this query.
+   */
+  ContextResources& resources() const {
+    return resources_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

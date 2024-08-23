@@ -89,13 +89,18 @@ capi_return_t tiledb_buffer_list_get_total_size(
 }
 
 capi_return_t tiledb_buffer_list_flatten(
-    tiledb_buffer_list_t* buffer_list, tiledb_buffer_t** buffer) {
+    tiledb_ctx_handle_t* ctx,
+    tiledb_buffer_list_t* buffer_list,
+    tiledb_buffer_t** buffer) {
   ensure_buffer_list_is_valid(buffer_list);
   ensure_output_pointer_is_valid(buffer);
 
   // Create a serialization buffer
   const auto nbytes = buffer_list->buffer_list().total_size();
-  tiledb::sm::SerializationBuffer buf(buffer_list->buffer_list().total_size());
+  tiledb::sm::SerializationBuffer buf(
+      buffer_list->buffer_list().total_size(),
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   // Read all into the dest buffer
   buffer_list->buffer_list().reset_offset();
@@ -155,6 +160,6 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     tiledb_buffer_list_t* buffer_list,
     tiledb_buffer_t** buffer) {
-  return api_entry_context<tiledb::api::tiledb_buffer_list_flatten>(
+  return api_entry_with_context<tiledb::api::tiledb_buffer_list_flatten>(
       ctx, buffer_list, buffer);
 }

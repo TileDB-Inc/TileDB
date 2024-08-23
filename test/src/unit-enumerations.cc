@@ -2945,7 +2945,7 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 void EnumerationFx::ser_des_query(
     Query* q_in, Query* q_out, bool client_side, SerializationType stype) {
   SerializationBuffer buf;
-  BufferList blist;
+  BufferList blist{{}};
 
   throw_if_not_ok(
       serialization::query_serialize(q_in, stype, client_side, blist));

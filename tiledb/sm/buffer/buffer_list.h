@@ -55,10 +55,9 @@ class BufferList {
   /**
    * Constructor.
    *
-   * @param alloc Optional allocator for the serialization buffers.
+   * @param alloc Allocator for the serialization buffers.
    */
-  BufferList(
-      const tdb::pmr::polymorphic_allocator<SerializationBuffer>& alloc = {});
+  BufferList(const tdb::pmr::polymorphic_allocator<SerializationBuffer>& alloc);
 
   // There is no need to implement the full allocator pattern in BufferList for
   // now.

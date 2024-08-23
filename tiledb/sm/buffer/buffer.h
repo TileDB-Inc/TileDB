@@ -546,9 +546,9 @@ class SerializationBuffer {
    * function.
    *
    * @param size The size of the buffer.
-   * @param alloc Optional allocator for the buffer.
+   * @param alloc Allocator for the buffer.
    */
-  SerializationBuffer(size_t size, const allocator_type& alloc = {})
+  SerializationBuffer(size_t size, const allocator_type& alloc)
       : buffer_owner_(size, alloc)
       , buffer_(buffer_owner_) {
   }
@@ -563,7 +563,7 @@ class SerializationBuffer {
       NonOwnedMarker,
       const void* data,
       size_t size,
-      const allocator_type& alloc = {})
+      const allocator_type& alloc)
       : buffer_owner_(alloc)
       , buffer_(static_cast<const char*>(data), size) {
   }
