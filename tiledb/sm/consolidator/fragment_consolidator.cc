@@ -430,9 +430,13 @@ Status FragmentConsolidator::consolidate_fragments(
         continue;
       }
 
+      // Expand domain to full tiles
+      auto expanded_non_empty_domain = union_non_empty_domains;
+      domain.expand_to_tiles(&expanded_non_empty_domain);
+
       // Check domain and timestamp overlap
       if (domain.overlap(
-              union_non_empty_domains, frag_info.non_empty_domain())) {
+              expanded_non_empty_domain, frag_info.non_empty_domain())) {
         auto timestamp_range{frag_info.timestamp_range()};
         bool timestamp_before = !(timestamp_range.first > max_timestamp);
         if (timestamp_before) {
