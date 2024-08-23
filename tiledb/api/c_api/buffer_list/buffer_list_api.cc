@@ -75,7 +75,8 @@ capi_return_t tiledb_buffer_list_get_buffer(
   span<const char> b = buffer_list->buffer_list().get_buffer(buffer_idx);
 
   // Create a non-owning wrapper of the underlying buffer
-  *buffer = tiledb_buffer_handle_t::make_handle(b.data(), b.size());
+  *buffer = tiledb_buffer_handle_t::make_handle(
+      b.data(), b.size(), buffer_list->buffer_list().get_allocator());
 
   return TILEDB_OK;
 }

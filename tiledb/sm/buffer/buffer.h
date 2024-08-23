@@ -485,9 +485,9 @@ class SerializationBuffer {
   /**
    * Constructor.
    *
-   * @param alloc Optional allocator for owned buffers.
+   * @param alloc Allocator for owned buffers.
    */
-  SerializationBuffer(const allocator_type& alloc = {})
+  SerializationBuffer(const allocator_type& alloc)
       : buffer_owner_(alloc)
       , buffer_(buffer_owner_) {
   }

@@ -2923,7 +2923,7 @@ shared_ptr<ArraySchema> EnumerationFx::ser_des_array_schema(
     shared_ptr<const ArraySchema> schema,
     bool client_side,
     SerializationType stype) {
-  SerializationBuffer buf;
+  SerializationBuffer buf{tdb::pmr::polymorphic_allocator<char>{}};
   throw_if_not_ok(serialization::array_schema_serialize(
       *(schema.get()), stype, buf, client_side));
   return serialization::array_schema_deserialize(stype, buf, memory_tracker_);
@@ -2931,7 +2931,7 @@ shared_ptr<ArraySchema> EnumerationFx::ser_des_array_schema(
 
 shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
     ArraySchemaEvolution* ase, bool client_side, SerializationType stype) {
-  SerializationBuffer buf;
+  SerializationBuffer buf{tdb::pmr::polymorphic_allocator<char>{}};
   throw_if_not_ok(serialization::array_schema_evolution_serialize(
       ase, stype, buf, client_side));
 
@@ -2944,8 +2944,8 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 
 void EnumerationFx::ser_des_query(
     Query* q_in, Query* q_out, bool client_side, SerializationType stype) {
-  SerializationBuffer buf;
-  BufferList blist{{}};
+  SerializationBuffer buf{tdb::pmr::polymorphic_allocator<char>{}};
+  BufferList blist{buf.get_allocator()};
 
   throw_if_not_ok(
       serialization::query_serialize(q_in, stype, client_side, blist));
@@ -2967,7 +2967,7 @@ void EnumerationFx::ser_des_array(
     Array* out,
     bool client_side,
     SerializationType stype) {
-  SerializationBuffer buf;
+  SerializationBuffer buf{tdb::pmr::polymorphic_allocator<char>{}};
   throw_if_not_ok(serialization::array_serialize(in, stype, buf, client_side));
   serialization::array_deserialize(
       out, stype, buf, ctx.resources(), memory_tracker_);

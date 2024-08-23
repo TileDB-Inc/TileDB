@@ -49,8 +49,7 @@ struct tiledb_buffer_handle_t
   tiledb::sm::Datatype datatype_;
 
  public:
-  explicit tiledb_buffer_handle_t(
-      decltype(buffer_)::allocator_type allocator = {})
+  explicit tiledb_buffer_handle_t(decltype(buffer_)::allocator_type allocator)
       : buffer_(allocator)
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
@@ -60,8 +59,11 @@ struct tiledb_buffer_handle_t
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
 
-  explicit tiledb_buffer_handle_t(const void* data, uint64_t size)
-      : buffer_()
+  explicit tiledb_buffer_handle_t(
+      const void* data,
+      uint64_t size,
+      decltype(buffer_)::allocator_type allocator)
+      : buffer_(allocator)
       , datatype_(tiledb::sm::Datatype::UINT8) {
     buffer_.assign(
         tiledb::sm::SerializationBuffer::NonOwned,

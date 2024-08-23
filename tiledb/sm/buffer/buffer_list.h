@@ -63,6 +63,13 @@ class BufferList {
   // now.
 
   /**
+   * Returns the buffer list's allocator.
+   */
+  tdb::pmr::polymorphic_allocator<SerializationBuffer> get_allocator() const {
+    return buffers_.get_allocator();
+  }
+
+  /**
    * Adds the given buffer to the list.
    *
    * This BufferList takes ownership of the given SerializationBuffer instance
