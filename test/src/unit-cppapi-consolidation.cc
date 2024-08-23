@@ -269,24 +269,49 @@ TEST_CASE(
   std::string array_name = "cppapi_consolidation";
   remove_array(array_name);
 
-  create_array_2d(array_name);
-  // order matters
-  write_array(array_name, {1, 3, 7, 9}, {1, 2, 3, 4, 5, 6, 7, 8, 9});
-  write_array(array_name, {2, 4, 2, 3}, {10, 11, 12, 13, 14, 15});
-  write_array(array_name, {3, 5, 4, 5}, {16, 17, 18, 19, 20, 21});
-  write_array(array_name, {7, 9, 6, 8}, {22, 23, 24, 25, 26, 27, 28, 29, 30});
-  // write_array(array_name, {7, 8, 3, 4}, {25, 26, 27, 28}); //this is ok
-
-  CHECK(tiledb::test::num_fragments(array_name) == 4);
-
   Context ctx;
   Config config;
-  // config.set("sm.consolidation.buffer_size", "1000");
+  std::string fragment_name1;
+  std::string fragment_name2;
+  bool throws = false;
+  int32_t number_of_fragments_before_consolidation = 0;
 
-  FragmentInfo fragment_info(ctx, array_name);
-  fragment_info.load();
-  std::string fragment_name1 = fragment_info.fragment_uri(1);
-  std::string fragment_name2 = fragment_info.fragment_uri(3);
+  SECTION("Throws exception") {
+    throws = true;
+    create_array_2d(array_name);
+    // order matters
+    write_array(array_name, {1, 3, 7, 9}, {1, 2, 3, 4, 5, 6, 7, 8, 9});
+    write_array(array_name, {2, 4, 2, 3}, {10, 11, 12, 13, 14, 15});
+    write_array(array_name, {3, 5, 4, 5}, {16, 17, 18, 19, 20, 21});
+    write_array(array_name, {7, 9, 6, 8}, {22, 23, 24, 25, 26, 27, 28, 29, 30});
+
+    number_of_fragments_before_consolidation =
+        tiledb::test::num_fragments(array_name);
+    CHECK(number_of_fragments_before_consolidation == 4);
+
+    FragmentInfo fragment_info(ctx, array_name);
+    fragment_info.load();
+    fragment_name1 = fragment_info.fragment_uri(1);
+    fragment_name2 = fragment_info.fragment_uri(3);
+  }
+
+  SECTION("Does not throw exception") {
+    create_array_2d(array_name);
+    // order matters
+    write_array(array_name, {2, 4, 2, 3}, {10, 11, 12, 13, 14, 15});
+    write_array(array_name, {7, 9, 6, 8}, {22, 23, 24, 25, 26, 27, 28, 29, 30});
+    write_array(array_name, {7, 8, 3, 4}, {31, 32, 33, 34});  // this is ok
+
+    number_of_fragments_before_consolidation =
+        tiledb::test::num_fragments(array_name);
+    CHECK(number_of_fragments_before_consolidation == 3);
+
+    FragmentInfo fragment_info(ctx, array_name);
+    fragment_info.load();
+    fragment_name1 = fragment_info.fragment_uri(0);
+    fragment_name2 = fragment_info.fragment_uri(1);
+  }
+
   std::string short_fragment_name1 =
       fragment_name1.substr(fragment_name1.find_last_of('/') + 1);
   std::string short_fragment_name2 =
@@ -295,11 +320,17 @@ TEST_CASE(
   const char* fragment_uris[2] = {
       short_fragment_name1.c_str(), short_fragment_name2.c_str()};
 
-  REQUIRE_THROWS(
-      Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
-  // CHECK(tiledb::test::num_fragments(array_name) == 3);
+  if (throws) {
+    REQUIRE_THROWS(
+        Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
+  } else {
+    REQUIRE_NOTHROW(
+        Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
 
-  // read_array(array_name, {1, 3}, {1, 2, 3});
+    CHECK(
+        tiledb::test::num_fragments(array_name) ==
+        number_of_fragments_before_consolidation + 1);
+  }
 
   remove_array(array_name);
 }

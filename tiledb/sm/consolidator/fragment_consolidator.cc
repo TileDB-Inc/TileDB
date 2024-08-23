@@ -407,25 +407,22 @@ Status FragmentConsolidator::consolidate_fragments(
         std::to_string(fragment_uris.size()) + " required fragments.");
   }
 
-  // Get timestamp bounds for the fragments we want to consolidate
-  uint64_t min_timestamp = std::numeric_limits<uint64_t>::max();
-  uint64_t max_timestamp = std::numeric_limits<uint64_t>::min();
-
-  // Iterate over the vector
-  for (const auto& item : to_consolidate) {
-    const auto& range = item.timestamp_range();
-
-    // Update min and max values
-    min_timestamp = std::min(min_timestamp, range.first);
-    max_timestamp = std::max(max_timestamp, range.second);
-  }
-
   // In case we have a dense Array check that the fragments can be consolidated
   // without data loss
   if (array_for_reads->array_schema_latest().array_type() == ArrayType::DENSE) {
     // Search every other fragment in this array if any of them overlaps in
     // ranges and its timestamp range falls between the range of the fragments
     // to consolidate throw error
+
+    // First calculate the timestamp bounds
+    uint64_t max_timestamp = std::numeric_limits<uint64_t>::min();
+    for (const auto& item : to_consolidate) {
+      const auto& range = item.timestamp_range();
+      max_timestamp = std::max(max_timestamp, range.second);
+    }
+
+    // Now iterate all fragments and see if the consolidation can lead to data
+    // loss
     for (auto& frag_info : frag_info_vec) {
       // Ignore the fragments that are requested to be consolidated
       auto uri = frag_info.uri().last_path_part();
