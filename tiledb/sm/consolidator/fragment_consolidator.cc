@@ -408,7 +408,15 @@ Status FragmentConsolidator::consolidate_fragments(
   }
 
   // In case we have a dense Array check that the fragments can be consolidated
-  // without data loss
+  // without data loss. More specifically, if the union of the non-empty domains
+  // of the fragments which are selected for consolidation (which is equal to
+  // the non-empty domain of the resulting consolidated fragment) overlaps with
+  // any fragment created prior to this subset, then the subset is marked as
+  // non-consolidatable. Recall that the fragment that results from
+  // consolidating a subset of fragments containing at least one dense fragment
+  // is always a dense fragment. Therefore, empty regions in the non-emtpy
+  // domain of the consolidated fragment will be filled with special values.
+  // Those values may erroneously overwrite older valid cell values
   if (array_for_reads->array_schema_latest().array_type() == ArrayType::DENSE) {
     // Search every other fragment in this array if any of them overlaps in
     // ranges and its timestamp range falls between the range of the fragments

@@ -295,6 +295,24 @@ TEST_CASE(
     fragment_name2 = fragment_info.fragment_uri(3);
   }
 
+  SECTION("Throws exception because of overlap in extended domain") {
+    throws = true;
+    create_array_2d(array_name);
+    // order matters
+    write_array(array_name, {2, 4, 2, 3}, {1, 2, 3, 4, 5, 6});
+    write_array(array_name, {10, 10, 4, 4}, {16});
+    write_array(array_name, {7, 9, 6, 8}, {7, 8, 9, 10, 11, 12, 13, 14, 15});
+
+    number_of_fragments_before_consolidation =
+        tiledb::test::num_fragments(array_name);
+    CHECK(number_of_fragments_before_consolidation == 3);
+
+    FragmentInfo fragment_info(ctx, array_name);
+    fragment_info.load();
+    fragment_name1 = fragment_info.fragment_uri(0);
+    fragment_name2 = fragment_info.fragment_uri(2);
+  }
+
   SECTION("Does not throw exception") {
     create_array_2d(array_name);
     // order matters
