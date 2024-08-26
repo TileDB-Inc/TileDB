@@ -93,7 +93,11 @@ class WhiteBoxMaxEntriesPolicy : public WhiteBoxPolicy<Key, Value>,
   }
   void evict_lru() {
     std::lock_guard<std::mutex> lock(base::mutex_);
-    base::enforce_policy(Value{});
+    enforce_policy(Value{});
+  }
+
+  virtual void enforce_policy(const Value& v) override {
+    base::enforce_policy(v);
   }
 };
 
@@ -114,7 +118,11 @@ class WhiteBoxMemoryBudgetPolicy
   }
   void evict_lru() {
     std::lock_guard<std::mutex> lock(base::mutex_);
-    base::enforce_policy(Value{});
+    enforce_policy(Value{});
+  }
+
+  virtual void enforce_policy(const Value& v) override {
+    base::enforce_policy(v);
   }
 };
 
