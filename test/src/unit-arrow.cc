@@ -223,7 +223,7 @@ void allocate_query_buffers(tiledb::Query* const query) {
 
 };  // namespace
 
-void test_for_column_size(size_t col_size, const uint8_t offset) {
+void test_for_column_size(const size_t col_size, const uint8_t offset) {
   std::string uri(
       "test_arrow_io_" + std::to_string(col_size) + "_" +
       std::to_string(offset));
@@ -242,8 +242,8 @@ void test_for_column_size(size_t col_size, const uint8_t offset) {
   unit_arrow = py::module::import("unit_arrow");
 
   // this class generates random test data for each attribute
-  auto h_data_source =
-      unit_arrow.attr(("DataFactory" + std::to_string(offset)).c_str());
+  auto class_name = "DataFactory" + std::to_string(offset);
+  auto h_data_source = unit_arrow.attr(class_name.c_str());
   py_data_source = h_data_source(py::int_(col_size));
   py_data_names = py_data_source.attr("names");
   py_data_arrays = py_data_source.attr("arrays");
