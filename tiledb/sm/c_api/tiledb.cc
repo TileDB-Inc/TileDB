@@ -1772,7 +1772,6 @@ int32_t tiledb_array_consolidate_fragments(
     const char** fragment_uris,
     const uint64_t num_fragments,
     tiledb_config_t* config) {
-
   // Convert the list of fragments to a vector
   std::vector<std::string> uris;
   uris.reserve(num_fragments);
