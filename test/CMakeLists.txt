@@ -167,7 +167,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-compression-dd.cc
   src/unit-compression-delta.cc
   src/unit-compression-rle.cc
-  src/unit-crypto.cc
   src/unit-ctx.cc
   src/unit-current-domain-rest.cc
   src/unit-dense-reader.cc

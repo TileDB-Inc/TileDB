@@ -107,16 +107,6 @@ class OpenSSL {
    */
   static Status sha256(
       const void* input, uint64_t input_read_size, Buffer* output);
-
- private:
-  /**
-   * Generates a number of cryptographically random bytes.
-   *
-   * @param num_bytes Number of bytes to generate.
-   * @param output Buffer to store random bytes.
-   * @return Status
-   */
-  static Status get_random_bytes(unsigned num_bytes, Buffer* output);
 };
 
 }  // namespace sm

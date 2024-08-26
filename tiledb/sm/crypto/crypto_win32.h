@@ -41,6 +41,7 @@
 #include <windows.h>
 
 #include <bcrypt.h>
+
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;
@@ -101,7 +102,9 @@ class Win32CNG {
    * @return Status
    */
   static Status md5(
-      const void* input, uint64_t input_read_size, Buffer* output);
+      const void* input, uint64_t input_read_size, Buffer* output) {
+    return hash_bytes(input, input_read_size, output, BCRYPT_MD5_ALGORITHM);
+  }
 
   /**
    * Compute sha256 checksum of data
@@ -112,11 +115,14 @@ class Win32CNG {
    * @return Status
    */
   static Status sha256(
-      const void* input, uint64_t input_read_size, Buffer* output);
+      const void* input, uint64_t input_read_size, Buffer* output) {
+    return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALGORITHM);
+  }
 
+ private:
   /**
    *
-   * Compute a has using Win32CNG functions
+   * Compute a hash using Win32CNG functions
    *
    * @param input Plaintext to compute hash of
    * @param input_read_size size of input to read for hash
@@ -129,16 +135,6 @@ class Win32CNG {
       uint64_t input_read_size,
       Buffer* output,
       LPCWSTR hash_algorithm);
-
- private:
-  /**
-   * Generates a number of cryptographically random bytes.
-   *
-   * @param num_bytes Number of bytes to generate.
-   * @param output Buffer to store random bytes.
-   * @return Status
-   */
-  static Status get_random_bytes(unsigned num_bytes, Buffer* output);
 };
 
 }  // namespace sm
