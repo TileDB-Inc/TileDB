@@ -1480,7 +1480,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
     array->delete_fragments(uri, timestamp_start, timestamp_end);
   } catch (...) {
     throw_if_not_ok(array->close());
-    throw;
+    throw CAPIException("Failed to delete fragments");
   }
 
   // Close and delete the array
@@ -1533,7 +1533,7 @@ capi_return_t tiledb_array_delete_fragments_list(
     array->delete_fragments_list(uris);
   } catch (...) {
     throw_if_not_ok(array->close());
-    throw;
+    throw CAPIException("Failed to delete fragments_list");
   }
 
   // Close the array
