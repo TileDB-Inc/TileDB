@@ -91,7 +91,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_load(
  * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_load_with_config(
+TILEDB_EXPORT capi_return_t tiledb_array_schema_load_with_config(
     tiledb_ctx_t* ctx,
     tiledb_config_t* config,
     const char* array_uri,

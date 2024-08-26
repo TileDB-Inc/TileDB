@@ -43,7 +43,7 @@
 
 namespace tiledb::api {
 
-int32_t tiledb_array_schema_load(
+capi_return_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
@@ -58,7 +58,7 @@ int32_t tiledb_array_schema_load(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_load_with_config(
+capi_return_t tiledb_array_schema_load_with_config(
     tiledb_ctx_t* ctx,
     tiledb_config_t* config,
     const char* array_uri,
