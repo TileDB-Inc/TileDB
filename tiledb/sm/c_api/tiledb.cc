@@ -1672,7 +1672,6 @@ int32_t tiledb_array_get_schema(
   if (!st.ok()) {
     LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
-    tiledb_array_schema_t::break_handle(*array_schema);
     return TILEDB_ERR;
   }
   *array_schema = tiledb_array_schema_t::make_handle(array_schema_get.value());
@@ -2509,18 +2508,14 @@ int32_t tiledb_deserialize_array_schema(
   ensure_output_pointer_is_valid(array_schema);
 
   // Create array schema struct
-  try {
-    auto memory_tracker = ctx->resources().create_memory_tracker();
-    memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
-    auto shared_schema = tiledb::sm::serialization::array_schema_deserialize(
-        (tiledb::sm::SerializationType)serialize_type,
-        buffer->buffer(),
-        memory_tracker);
-    *array_schema = tiledb_array_schema_t::make_handle(shared_schema);
-  } catch (...) {
-    tiledb_array_schema_t::break_handle(*array_schema);
-    throw;
-  }
+  auto memory_tracker = ctx->resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
+  auto shared_schema = tiledb::sm::serialization::array_schema_deserialize(
+      (tiledb::sm::SerializationType)serialize_type,
+      buffer->buffer(),
+      memory_tracker);
+
+  *array_schema = tiledb_array_schema_t::make_handle(shared_schema);
 
   return TILEDB_OK;
 }
