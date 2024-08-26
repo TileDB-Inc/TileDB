@@ -1,11 +1,11 @@
 /**
- * @file   aggregates.c
+ * @file   sc-53334.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,8 +34,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <tiledb/tiledb.h>
-#include <tiledb/tiledb_experimental.h>
 #include <tiledb/tiledb>
+#include <tiledb/tiledb_experimental>
 #include <vector>
 
 #include <catch2/catch_template_test_macros.hpp>
@@ -130,25 +130,11 @@ struct MyArray {
     Query query(ctx, array);
     query.set_layout(TILEDB_UNORDERED);
 
-    // use C API to request min() as it does not appear to be in CPP API yet
-    {
-      auto c_ctx = ctx.ptr().get();
-      auto c_query = query.ptr().get();
-
-      tiledb_query_channel_t* default_channel;
-      tiledb_query_get_default_channel(c_ctx, c_query, &default_channel);
-
-      const tiledb_channel_operator_t* operator_min;
-      tiledb_channel_operator_min_get(c_ctx, &operator_min);
-      tiledb_channel_operation_t* min_a;
-      tiledb_create_unary_aggregate(c_ctx, c_query, operator_min, "a", &min_a);
-      tiledb_channel_apply_aggregate(c_ctx, default_channel, "Min", min_a);
-
-      tiledb_error_t* maybe_err = nullptr;
-      const int rc = tiledb_ctx_get_last_error(c_ctx, &maybe_err);
-      REQUIRE(rc == TILEDB_OK);
-      REQUIRE(maybe_err == nullptr);
-    }
+    QueryChannel default_channel =
+        QueryExperimental::get_default_channel(query);
+    ChannelOperation operation =
+        QueryExperimental::create_unary_aggregate<MinOperator>(query, "a");
+    default_channel.apply_aggregate("Min", operation);
 
     std::vector<AttributeValueType> min(1);
     query.set_data_buffer("Min", min);
@@ -182,7 +168,7 @@ TEST_CASE("SC-53334 min single value UINT8 works", "[bug][sc-53334]") {
 
 TEST_CASE(
     "SC-53334 min single value STRING_ASCII does not work",
-    "[regression][bug][sc-53334]") {
+    "[regression][bug][sc-53334][shouldFail]") {
   using MyArray = MyArray<TILEDB_STRING_ASCII>;
 
   Context ctx;
