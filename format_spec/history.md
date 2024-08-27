@@ -60,13 +60,13 @@ Introduced in TileDB 2.12
 
 Introduced in TileDB 2.11
 
-* Fragments can have delete metadata files. The _Includes delete metadata_ field was added to the [fragment metadata footer](./fragment.md#footer).
+* Consolidated fragments can have delete metadata files. The _Includes delete metadata_ field was added to the [fragment metadata footer](./fragment.md#footer).
 
 ## Version 14
 
 Introduced in TileDB 2.10
 
-* Fragments can have timestamp files. The _Includes timestamps_ field was added to the [fragment metadata footer](./fragment.md#footer).
+* Consolidated fragments can have timestamp files. The _Includes timestamps_ field was added to the [fragment metadata footer](./fragment.md#footer).
 
 ## Version 13
 
@@ -144,8 +144,7 @@ Introduced in TileDB 2.0
 
 Introduced in TileDB 1.7
 
-> [!NOTE]
-> This version does not bring any changes to supported features in the storage format.
+* Support for the [key-value store](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/1.6.3/tutorials/kv.html) object type was removed. Key-value stores have been superseded by sparse arrays.
 
 ## Version 3
 
