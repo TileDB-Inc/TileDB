@@ -1,3 +1,67 @@
+# TileDB v2.25.0 Release Notes
+
+## Announcements
+
+* TileDB 2.25, includes the new current domain feature which allows to specify an area of the domain that is considered to be active for sparse arrays.
+
+## Deprecation announcements
+
+* The HDFS backend is no longer officially tested by TileDB. As announced before, it is scheduled to be removed in version 2.28, to be released in Q4 2024. [#5085](https://github.com/TileDB-Inc/TileDB/pull/5085)
+* Support for reading sparse fragments in dense arrays will be removed in version 2.27. Writting sparse fragments in dense arrays was removed in version 2.5. [#5116](https://github.com/TileDB-Inc/TileDB/pull/5116)
+* Support for returning the same results multiple times in sparse reads when ranges overlap will be removed in version 2.27. This was possible by setting `sm.merge_overlapping_ranges_experimental` to `false`, but the default `true` behavior has been there since version 2.17.
+
+## New features
+
+* REST support for current domain. [#5136](https://github.com/TileDB-Inc/TileDB/pull/5136)
+* Disallow writing outside of the current domain. [#5165](https://github.com/TileDB-Inc/TileDB/pull/5165)
+* Current domain: disallow reading outside of current domain. [#5168](https://github.com/TileDB-Inc/TileDB/pull/5168)
+
+## Improvements
+
+* Improve memory consumption for tile structures in dense reader. [#5046](https://github.com/TileDB-Inc/TileDB/pull/5046)
+
+## Defects removed
+
+* Fail early when trying to add members with relative URIs in remote groups. [#5025](https://github.com/TileDB-Inc/TileDB/pull/5025)
+* Correct defective return value in `Posix::ls_with_sizes`. [#5037](https://github.com/TileDB-Inc/TileDB/pull/5037)
+* Prevent constructing attribute with invalid cell_val_num. [#4952](https://github.com/TileDB-Inc/TileDB/pull/4952)
+* Do not mask failures when listing a directory fails on POSIX. [#5043](https://github.com/TileDB-Inc/TileDB/pull/5043)
+* Fix write queries using `sm.var_offsets.extra_element=true`. [#5033](https://github.com/TileDB-Inc/TileDB/pull/5033)
+* Fix segfaults in WebP queries ran in parallel. [#5065](https://github.com/TileDB-Inc/TileDB/pull/5065)
+* Fix exceptions with message: ```unknown exception type; no further information```. [#5080](https://github.com/TileDB-Inc/TileDB/pull/5080)
+* Fix check for out of bounds dimension in Dimension::dimension_ptr. [#5094](https://github.com/TileDB-Inc/TileDB/pull/5094)
+* Fix array latest schema selection for same MS timestamps schemas. [#5143](https://github.com/TileDB-Inc/TileDB/pull/5143)
+* Fix serialization issue with schema evolution for query v3. [#5154](https://github.com/TileDB-Inc/TileDB/pull/5154)
+
+## Configuration changes
+
+* Add `vfs.s3.storage_class` config option to set the storage class of newly uploaded S3 objects. [#5053](https://github.com/TileDB-Inc/TileDB/pull/5053)
+* Add `rest.custom_headers.*` config option to set custom headers on REST requests. [#5104](https://github.com/TileDB-Inc/TileDB/pull/5104)
+* Add `rest.payer_namespace` config option to set the namespace to be charged for REST requests. [#5105](https://github.com/TileDB-Inc/TileDB/pull/5105)
+
+## API changes
+
+### C API
+
+* Add CurrentDomain API support. [#5041](https://github.com/TileDB-Inc/TileDB/pull/5041)
+
+### C++ API
+
+* Current Domain CPP API implementation. [#5056](https://github.com/TileDB-Inc/TileDB/pull/5056)
+
+## Build System Changes
+
+* Backwards compatibility with older CMake versions for libfaketime. [#5049](https://github.com/TileDB-Inc/TileDB/pull/5049)
+* Automatic downloading of vcpkg can be disabled by enabling the `TILEDB_DISABLE_AUTO_VCPKG` CMake option, in addition to setting the environment variable with trhe same name. [#5048](https://github.com/TileDB-Inc/TileDB/pull/5048)
+* Improve embedding of `magic.mgc` and allow compiling with any libmagic version. [#4989](https://github.com/TileDB-Inc/TileDB/pull/4989)
+
+## Internal Improvements
+
+* Implement actualize function that orders data underlying `alt_var_length_view` [#5087](https://github.com/TileDB-Inc/TileDB/pull/5087)
+* Implement a partitioning function to partition cells to fit into fixed size bins [#5092](https://github.com/TileDB-Inc/TileDB/pull/5092)
+* Implementation of a `chunk_view` class to provide a subset of C++23 chunk_view, suitable for supporting external sort. [#5035](https://github.com/TileDB-Inc/TileDB/pull/5035)
+* Tests that the chunks in a `chunk_view` can be separately sorted. [#5052](https://github.com/TileDB-Inc/TileDB/pull/5052)
+
 # TileDB v2.24.2 Release Notes
 
 ## Defects removed

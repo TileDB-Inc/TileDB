@@ -1627,8 +1627,8 @@ void schema_equiv(
   CHECK(schema1.array_type() == schema2.array_type());
   CHECK(schema1.attributes().size() == schema2.attributes().size());
   for (unsigned int i = 0; i < schema2.attribute_num(); i++) {
-    auto a = schema2.attribute(i);
-    auto b = schema1.attribute(i);
+    auto a = schema1.attribute(i);
+    auto b = schema2.attribute(i);
     CHECK(a->cell_val_num() == b->cell_val_num());
     CHECK(a->name() == b->name());
     CHECK(a->type() == b->type());

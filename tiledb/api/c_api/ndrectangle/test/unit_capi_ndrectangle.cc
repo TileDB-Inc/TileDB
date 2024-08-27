@@ -144,6 +144,33 @@ TEST_CASE_METHOD(
       tiledb_ndrectangle_set_range_for_name(ctx, ndr, "doesntexist", &range) ==
       TILEDB_ERR);
 
+  CHECK(
+      tiledb_ndrectangle_get_dtype(nullptr, nullptr, 0, nullptr) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(tiledb_ndrectangle_get_dtype(ctx, nullptr, 0, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_ndrectangle_get_dtype(ctx, ndr, 0, nullptr) == TILEDB_ERR);
+  tiledb_datatype_t dtype;
+  CHECK(tiledb_ndrectangle_get_dtype(ctx, ndr, 2, &dtype) == TILEDB_ERR);
+
+  CHECK(
+      tiledb_ndrectangle_get_dtype_from_name(
+          nullptr, nullptr, "dim1", nullptr) == TILEDB_INVALID_CONTEXT);
+  CHECK(
+      tiledb_ndrectangle_get_dtype_from_name(ctx, nullptr, "dim1", nullptr) ==
+      TILEDB_ERR);
+  CHECK(
+      tiledb_ndrectangle_get_dtype_from_name(ctx, ndr, "dim1", nullptr) ==
+      TILEDB_ERR);
+  CHECK(
+      tiledb_ndrectangle_get_dtype_from_name(ctx, ndr, "doesntexist", &dtype) ==
+      TILEDB_ERR);
+
+  CHECK(
+      tiledb_ndrectangle_get_dim_num(nullptr, nullptr, nullptr) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(tiledb_ndrectangle_get_dim_num(ctx, nullptr, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_ndrectangle_get_dim_num(ctx, ndr, nullptr) == TILEDB_ERR);
+
   REQUIRE(tiledb_ndrectangle_free(&ndr) == TILEDB_OK);
 }
 
@@ -185,6 +212,18 @@ TEST_CASE_METHOD(
   CHECK(range.min_size == out_range_d2.min_size);
   CHECK(std::memcmp(range.min, out_range_d2.min, range.min_size) == 0);
   CHECK(std::memcmp(range.max, out_range_d2.max, range.max_size) == 0);
+
+  tiledb_datatype_t dtype;
+  REQUIRE(tiledb_ndrectangle_get_dtype(ctx, ndr, 0, &dtype) == TILEDB_OK);
+  CHECK(dtype == TILEDB_UINT64);
+  REQUIRE(
+      tiledb_ndrectangle_get_dtype_from_name(ctx, ndr, "d1", &dtype) ==
+      TILEDB_OK);
+  CHECK(dtype == TILEDB_UINT64);
+
+  uint32_t ndim;
+  REQUIRE(tiledb_ndrectangle_get_dim_num(ctx, ndr, &ndim) == TILEDB_OK);
+  CHECK(ndim == 2);
 
   REQUIRE(tiledb_ndrectangle_free(&ndr) == TILEDB_OK);
 }

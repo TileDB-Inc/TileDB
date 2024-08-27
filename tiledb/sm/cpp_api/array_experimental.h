@@ -87,7 +87,7 @@ class ArrayExperimental {
     tiledb_array_schema_t* schema;
     Config config = ctx.config();
     config["rest.load_enumerations_on_array_open"] = "true";
-    ctx.handle_error(tiledb_array_schema_load_with_options(
+    ctx.handle_error(tiledb_array_schema_load_with_config(
         ctx.ptr().get(), config.ptr().get(), uri.c_str(), &schema));
     return ArraySchema(ctx, schema);
   }

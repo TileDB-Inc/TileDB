@@ -958,9 +958,14 @@ void write_sparse_v11(
 void read_sparse_v11(
     tiledb_ctx_t* ctx, const std::string& array_name, uint64_t timestamp);
 
+/**
+ * Helper function to test two array schemas are equivalent.
+ *
+ * @param schema1 Expected array schema.
+ * @param schema2 Actual array schema.
+ */
 void schema_equiv(
     const sm::ArraySchema& schema1, const sm::ArraySchema& schema2);
-
 }  // namespace tiledb::test
 
 #endif

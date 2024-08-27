@@ -805,6 +805,10 @@ void Array::encryption_type(
 
 shared_ptr<const Enumeration> Array::get_enumeration(
     const std::string& enumeration_name) {
+  if (!is_open_) {
+    throw ArrayException("Unable to load enumerations; Array is not open.");
+  }
+
   return get_enumerations(
       {enumeration_name}, opened_array_->array_schema_latest_ptr())[0];
 }
@@ -881,9 +885,8 @@ void Array::load_all_enumerations() {
     throw ArrayException("Unable to load all enumerations; Array is not open.");
   }
   // Load all enumerations, discarding the returned list of loaded enumerations.
-  for (auto schema : array_schemas_all()) {
-    get_enumerations(
-        array_schema_latest().get_enumeration_names(), schema.second);
+  for (const auto& schema : array_schemas_all()) {
+    get_enumerations(schema.second->get_enumeration_names(), schema.second);
   }
 }
 

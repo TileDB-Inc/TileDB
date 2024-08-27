@@ -9,7 +9,7 @@
 #ifndef CAPNP_VERSION
 #error \
     "CAPNP_VERSION is not defined, is capnp/generated-header-support.h missing?"
-#elif CAPNP_VERSION != 1000001
+#elif CAPNP_VERSION != 1000002
 #error \
     "Version mismatch between generated code and library headers.  You must use the same version of the Cap'n Proto compiler and library."
 #endif
@@ -1667,7 +1667,7 @@ struct LoadArraySchemaRequest {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(83f094010132ff21, 0, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(83f094010132ff21, 1, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -14925,6 +14925,8 @@ class LoadArraySchemaRequest::Reader {
   inline bool hasConfig() const;
   inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
 
+  inline bool getIncludeEnumerations() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -14973,6 +14975,9 @@ class LoadArraySchemaRequest::Builder {
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
   disownConfig();
+
+  inline bool getIncludeEnumerations();
+  inline void setIncludeEnumerations(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -33146,6 +33151,18 @@ LoadArraySchemaRequest::Builder::disownConfig() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool LoadArraySchemaRequest::Reader::getIncludeEnumerations() const {
+  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool LoadArraySchemaRequest::Builder::getIncludeEnumerations() {
+  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void LoadArraySchemaRequest::Builder::setIncludeEnumerations(
+    bool value) {
+  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool LoadArraySchemaResponse::Reader::hasSchema() const {

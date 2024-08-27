@@ -75,15 +75,16 @@ LoadedFragmentMetadata::LoadedFragmentMetadata(
 /*                API                */
 /* ********************************* */
 
-LoadedFragmentMetadata* LoadedFragmentMetadata::create(
+shared_ptr<LoadedFragmentMetadata> LoadedFragmentMetadata::create(
     FragmentMetadata& parent,
     shared_ptr<MemoryTracker> memory_tracker,
     format_version_t version) {
   if (version <= 2) {
-    return tdb_new(V1V2PreloadedFragmentMetadata, parent, memory_tracker);
+    return make_shared<V1V2PreloadedFragmentMetadata>(
+        HERE(), parent, memory_tracker);
   }
 
-  return tdb_new(OndemandFragmentMetadata, parent, memory_tracker);
+  return make_shared<OndemandFragmentMetadata>(HERE(), parent, memory_tracker);
 }
 
 uint64_t LoadedFragmentMetadata::persisted_tile_size(

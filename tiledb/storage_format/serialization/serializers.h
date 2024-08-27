@@ -185,6 +185,21 @@ class Deserializer {
   }
 
   /**
+   * Advances the deserializer's pointer by a specified number of bytes, without
+   * reading them.
+   *
+   * @param size number of bytes to skip.
+   */
+  void skip(storage_size_t size) {
+    if (size > size_) {
+      throw std::logic_error("Reading data past end of serialized data size.");
+    }
+
+    ptr_ += size;
+    size_ -= size;
+  }
+
+  /**
    * Return remaining number of bytes to deserialize.
    *
    * @return remaining unread bytes in deserializer.

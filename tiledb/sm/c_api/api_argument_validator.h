@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -80,17 +80,6 @@ inline void ensure_subarray_is_valid(const tiledb_subarray_t* p) {
   }
 }
 }  // namespace tiledb::api
-
-inline int32_t sanity_check(
-    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
-  if (array_schema == nullptr || array_schema->array_schema_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB array schema object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
 
 inline int32_t sanity_check(
     tiledb_ctx_t* ctx,

@@ -1,11 +1,7 @@
-/**
- * @file compile_crypto_main.cc
- *
- * @section LICENSE
- *
+/*
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +22,20 @@
  * THE SOFTWARE.
  */
 
-#include "../crypto.h"
+/**
+ * NOTE: The values of these enums are serialized to the array schema and/or
+ * fragment metadata. Therefore, the values below should never change,
+ * otherwise backwards compatibility breaks.
+ */
 
-int main() {
-  (void)sizeof(tiledb::sm::Crypto);
-  return 0;
-}
+// clang-format is disabled on the first enum so that we can manually indent it
+// properly.
+
+// clang-format off
+#ifdef TILEDB_ARRAY_TYPE_ENUM
+    /** Dense array */
+    TILEDB_ARRAY_TYPE_ENUM(DENSE) = 0,
+    /** Sparse array */
+    TILEDB_ARRAY_TYPE_ENUM(SPARSE) = 1,
+#endif
+    // clang-format on

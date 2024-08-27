@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,8 @@ using namespace Catch::Matchers;
 #include <test/support/src/helpers.h>
 #include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
+#include "tiledb/api/c_api/attribute/attribute_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -75,7 +77,7 @@ struct VarOrderedAttributeArrayFixture {
     // exposed in the C-API yet.
     auto attr = make_shared<sm::Attribute>(
         HERE(), "a", Datatype::STRING_ASCII, constants::var_num, order);
-    auto st = schema->array_schema_->add_attribute(attr);
+    auto st = schema->add_attribute(attr);
     REQUIRE(st.ok());
 
     // Create the array and clean-up.

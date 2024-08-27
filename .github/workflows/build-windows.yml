@@ -24,19 +24,16 @@ jobs:
         include:
           - environ: 'azure'
             TILEDB_AZURE: ON
-            TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_S3: OFF
             TILEDB_WEBP: OFF
           - environ: 's3'
             TILEDB_S3: ON
-            TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_AZURE: OFF
             TILEDB_WEBP: OFF
           - environ: 'gcs'
             TILEDB_GCS: ON
-            TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_AZURE: OFF
             TILEDB_S3: OFF
@@ -44,7 +41,6 @@ jobs:
           - environ: 'serialization'
             TILEDB_S3: OFF
             TILEDB_AZURE: OFF
-            TILEDB_ARROW_TESTS: OFF
             TILEDB_SERIALIZATION: ON
             TILEDB_WEBP: ON
 
@@ -57,7 +53,6 @@ jobs:
       TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
       TILEDB_GCS: ${{ matrix.TILEDB_GCS }} #gcs }}
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
-      TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
@@ -110,15 +105,6 @@ jobs:
           #but, it seems *we* can populate our own var from our actions, and access it in file upload...
           echo TDBLOCALAPPDATA=$env:LOCALAPPDATA >> "$env:GITHUB_ENV"
 
-      - name: ARROW python needs
-        shell: bash
-        if: ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }}
-        run: |
-          set -e pipefail
-          if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
-
       - name: Prepare git
         run: git config --global core.autocrlf false
 
@@ -167,6 +153,9 @@ jobs:
           if ($env:TILEDB_TOOLS -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableTools"
           }
+          if ($env:TILEDB_ARROW_TESTS -eq "ON") {
+            $bootstrapOptions = $bootstrapOptions + " -EnableArrowTests"
+          }
           $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
           if ($env:TILEDB_DEBUG -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
@@ -182,10 +171,6 @@ jobs:
           # }
           # if ($env:TILEDB_CI_TSAN -eq "ON") {
           #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
-          # }
-          # static already added above as initial default
-          # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
-          #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
           # }
           if ($env:TILEDB_WERROR -eq "OFF") {
             $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
@@ -256,7 +241,7 @@ jobs:
             }
             else { #using the node/npm already present in vm
               Write-Host "azurite: using vm install nodejs"
-               #this code path avoids overhead of download/expand/install of alternate nodejs/azurite.
+              #this code path avoids overhead of download/expand/install of alternate nodejs/azurite.
               npm install -g azurite
               Write-Host "done with 'npm install -g azurite'"
               $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
@@ -281,23 +266,23 @@ jobs:
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
-             Write-Host "Tests failed. tiledb_unit exit status: " $LastExitCocde
-             $host.SetShouldExit($LastExitCode)
+              Write-Host "Tests failed. tiledb_unit exit status: " $LastExitCocde
+              $host.SetShouldExit($LastExitCode)
           }
-          
+
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\sm\filesystem\test\unit_vfs -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
-             Write-Host "Tests failed. tiledb_vfs exit status: " $LastExitCocde
-             $host.SetShouldExit($LastExitCode)
+              Write-Host "Tests failed. tiledb_vfs exit status: " $LastExitCocde
+              $host.SetShouldExit($LastExitCode)
           }
 
           $cmds = "$env:BUILD_BUILDDIRECTORY\test\ci\test_assert.exe -d=yes"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
-             Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
-             $host.SetShouldExit($LastExitCode)
+            Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
+            $host.SetShouldExit($LastExitCode)
           }
       - name: Build examples
         shell: pwsh

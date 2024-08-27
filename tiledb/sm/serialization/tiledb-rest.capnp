@@ -1264,6 +1264,11 @@ struct LoadEnumerationsResponse {
 struct LoadArraySchemaRequest {
   config @0 :Config;
   # Config
+
+  includeEnumerations @1 :Bool;
+  # When true, include all enumeration data in the returned ArraySchema
+  # This field is only serialized for backwards compatibility. Future options
+  # that modify array schema load behavior should be handled within the Config.
 }
 
 struct LoadArraySchemaResponse {

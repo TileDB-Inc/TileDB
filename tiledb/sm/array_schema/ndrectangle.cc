@@ -167,6 +167,20 @@ const Range& NDRectangle::get_range_for_name(const std::string& name) const {
   return get_range(idx);
 }
 
+Datatype NDRectangle::range_dtype(uint32_t idx) const {
+  if (idx >= range_data_.size()) {
+    throw std::logic_error(
+        "The index does not correspond to a valid dimension in the "
+        "NDRectangle");
+  }
+  return domain()->dimension_ptr(idx)->type();
+}
+
+Datatype NDRectangle::range_dtype_for_name(const std::string& name) const {
+  auto idx = domain()->get_dimension_index(name);
+  return range_dtype(idx);
+}
+
 }  // namespace tiledb::sm
 
 std::ostream& operator<<(std::ostream& os, const tiledb::sm::NDRectangle& ndr) {

@@ -32,6 +32,7 @@
 
 #include "test/support/src/vfs_helpers.h"
 #include "test/support/tdb_catch.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -48,8 +49,8 @@ struct ArraySchemaLoadFx {
 
   test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
-  Context ctx_;
-  ArraySchema schema_;
+  tiledb::Context ctx_;
+  tiledb::ArraySchema schema_;
 };
 
 TEST_CASE_METHOD(
@@ -58,7 +59,7 @@ TEST_CASE_METHOD(
     "[rest][array-schema][simple-load]") {
   create_array();
 
-  ArraySchema schema = Array::load_schema(ctx_, uri_);
+  tiledb::ArraySchema schema = tiledb::Array::load_schema(ctx_, uri_);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Enumeration 'my_enum' is not loaded.");
   REQUIRE_THROWS_WITH(
@@ -67,9 +68,9 @@ TEST_CASE_METHOD(
 
   // schema_ was constructed prior to creating the array, so array URI is empty.
   // Set the schema's array_uri without opening the array.
-  schema_.ptr()->array_schema_->set_array_uri(sm::URI(uri_));
+  schema_.ptr()->array_schema()->set_array_uri(sm::URI(uri_));
   test::schema_equiv(
-      *schema.ptr()->array_schema_, *schema_.ptr()->array_schema_);
+      *schema.ptr()->array_schema(), *schema_.ptr()->array_schema());
 }
 
 TEST_CASE_METHOD(
@@ -78,16 +79,16 @@ TEST_CASE_METHOD(
     "[rest][array-schema][simple-load-with-enumerations]") {
   create_array();
 
-  ArraySchema schema =
+  tiledb::ArraySchema schema =
       ArrayExperimental::load_schema_with_enumerations(ctx_, uri_);
   REQUIRE_NOTHROW(
       ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"));
 
   // schema_ was constructed prior to creating the array, so array URI is empty.
   // Set the schema's array_uri without opening the array.
-  schema_.ptr()->array_schema_->set_array_uri(sm::URI(uri_));
+  schema_.ptr()->array_schema()->set_array_uri(sm::URI(uri_));
   test::schema_equiv(
-      *schema.ptr()->array_schema_, *schema_.ptr()->array_schema_);
+      *schema.ptr()->array_schema(), *schema_.ptr()->array_schema());
 }
 
 ArraySchemaLoadFx::ArraySchemaLoadFx()
@@ -108,22 +109,22 @@ void ArraySchemaLoadFx::create_array() {
   // dim = {1, 2, 3, 4, 5}
   // attr1 = {"fred", "wilma", "barney", "wilma", "fred"}
   // attr2 = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}
-  auto dim = Dimension::create<int>(ctx_, "dim", {{-100, 100}});
-  auto dom = Domain(ctx_);
+  auto dim = tiledb::Dimension::create<int>(ctx_, "dim", {{-100, 100}});
+  auto dom = tiledb::Domain(ctx_);
   dom.add_dimension(dim);
   schema_.set_domain(dom);
 
   // The list of string values in the attr1 enumeration
   std::vector<std::string> values = {"fred", "wilma", "barney", "pebbles"};
-  auto enmr = Enumeration::create(ctx_, "my_enum", values);
+  auto enmr = tiledb::Enumeration::create(ctx_, "my_enum", values);
   ArraySchemaExperimental::add_enumeration(ctx_, schema_, enmr);
 
-  auto attr1 = Attribute::create<int>(ctx_, "attr1");
+  auto attr1 = tiledb::Attribute::create<int>(ctx_, "attr1");
   AttributeExperimental::set_enumeration_name(ctx_, attr1, "my_enum");
   schema_.add_attribute(attr1);
 
-  auto attr2 = Attribute::create<float>(ctx_, "attr2");
+  auto attr2 = tiledb::Attribute::create<float>(ctx_, "attr2");
   schema_.add_attribute(attr2);
 
-  Array::create(uri_, schema_);
+  tiledb::Array::create(uri_, schema_);
 }

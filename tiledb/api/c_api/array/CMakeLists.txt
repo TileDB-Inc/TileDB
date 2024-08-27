@@ -25,5 +25,18 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
+
+list(APPEND SOURCES
+  array_api.cc
+)
+gather_sources(${SOURCES})
+
+commence(object_library capi_array_stub)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(array)
+  this_target_object_libraries(capi_context_stub)
+conclude(object_library)
 
 add_test_subdirectory()

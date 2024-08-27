@@ -86,6 +86,7 @@ TILEDB_EXPORT capi_return_t tiledb_ndrectangle_alloc(
  * tiledb_ndrectangle_free(&ndr);
  * @endcode
  *
+ * @param ctx The TileDB context
  * @param ndr The n-dimensional rectangle to be freed
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -197,6 +198,73 @@ TILEDB_EXPORT capi_return_t tiledb_ndrectangle_set_range(
     tiledb_ndrectangle_t* ndr,
     uint32_t idx,
     tiledb_range_t* range) TILEDB_NOEXCEPT;
+
+/**
+ * Get the TileDB datatype for dimension at idx from
+ * the N-dimensional rectangle passed as argument
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_datatype_t type;
+ * tiledb_ndrectangle_get_dtype(ctx, ndr, 1, &type);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param ndr The n-dimensional rectangle to be queried
+ * @param idx The index of the dimension
+ * @param type The datatype to be returned
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_get_dtype(
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    uint32_t idx,
+    tiledb_datatype_t* type) TILEDB_NOEXCEPT;
+
+/**
+ * Get the TileDB datatype for dimension name from
+ * the N-dimensional rectangle passed as argument
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_datatype_t type;
+ * tiledb_ndrectangle_get_dtype_from_name(ctx, ndr, "dim1", &type);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param ndr The n-dimensional rectangle to be queried
+ * @param name The dimension name
+ * @param type The datatype to be returned
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_get_dtype_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    const char* name,
+    tiledb_datatype_t* type) TILEDB_NOEXCEPT;
+
+/**
+ * Get the the number of dimensions of
+ * the N-dimensional rectangle passed as argument
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t ndim;
+ * tiledb_ndrectangle_get_dim_num(ctx, ndr, &ndim);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param ndr The n-dimensional rectangle to be queried
+ * @param ndim The number of dimensions to be returned
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_ndrectangle_get_dim_num(
+    tiledb_ctx_t* ctx,
+    tiledb_ndrectangle_t* ndr,
+    uint32_t* ndim) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
