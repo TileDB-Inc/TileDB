@@ -247,7 +247,7 @@ class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
 
   MaxEntriesCache()
       : num_entries_(0) {
-    if (N == 0) {
+    if constexpr (N == 0) {
       throw std::logic_error(
           "The maximum number of entries must be greater than zero.");
     }
