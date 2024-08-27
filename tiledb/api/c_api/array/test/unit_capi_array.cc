@@ -34,6 +34,7 @@
 #include "../array_api_experimental.h"
 #include "../array_api_external.h"
 #include "../array_api_internal.h"
+#include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_internal.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_array.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_context.h"
 

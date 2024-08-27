@@ -35,8 +35,8 @@
 
 #include "../api_external_common.h"
 #include "array_api_external.h"
+#include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 #ifdef __cplusplus
 extern "C" {

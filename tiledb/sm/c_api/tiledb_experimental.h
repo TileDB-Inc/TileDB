@@ -42,6 +42,7 @@
  */
 #include "tiledb/api/c_api/array/array_api_experimental.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_experimental.h"
+#include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_experimental.h"
 #include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
 #include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
@@ -98,13 +99,6 @@ tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) TILEDB_NOEXCEPT;
  */
 TILEDB_EXPORT capi_return_t tiledb_as_built_dump(tiledb_string_t** out)
     TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*      ARRAY SCHEMA EVOLUTION       */
-/* ********************************* */
-
-/** A TileDB array schema. */
-typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
 
 /**
  * Creates a TileDB schema evolution object.

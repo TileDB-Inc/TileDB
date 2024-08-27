@@ -36,7 +36,6 @@
 
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
@@ -52,10 +51,6 @@
 struct tiledb_subarray_t {
   tiledb::sm::Subarray* subarray_ = nullptr;
   bool is_allocated_ = false;
-};
-
-struct tiledb_array_schema_evolution_t {
-  tiledb::sm::ArraySchemaEvolution* array_schema_evolution_ = nullptr;
 };
 
 struct tiledb_query_t {
