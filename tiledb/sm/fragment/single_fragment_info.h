@@ -125,6 +125,7 @@ class SingleFragmentInfo {
 
     std::stringstream ss;
     ss << "  > URI: " << uri_.c_str() << "\n";
+    ss << "  > Schema name: " << array_schema_name_ << "\n";
     ss << "  > Type: " << (sparse_ ? "sparse" : "dense") << "\n";
     ss << "  > Non-empty domain: " << non_empty_domain_str(dim_types).c_str()
        << "\n";
