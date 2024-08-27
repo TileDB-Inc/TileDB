@@ -222,10 +222,27 @@ class GlobalOrderWriter : public WriterBase {
   uint64_t rows_written_;
 
   /**
+   * Counter for the number of tiles in the current row written. This is used
+   * only when the consolidation produces more than one fragment in Dense arrays
+   */
+  uint64_t tiles_in_current_row_;
+
+  /**
    * This is the start for the dim range in case we need to split in multiple
    * fragments in Dense arrays
    */
   uint64_t start_;
+
+  /**
+   * This is the start for the dim range in case we need to split in multiple
+   * fragments in Dense arrays
+   */
+  uint64_t end_;
+
+  /**
+   * NDRange in case we have a dense consolidation with split
+   */
+  NDRange nd_if_dense_split_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -401,9 +418,11 @@ class GlobalOrderWriter : public WriterBase {
    * Create new ndranges by splitting the first dimension based on the number of
    * tiles we need to write
    * @param num The number of tiles we need to write.
+   * @param reached_end_of_fragment True if we have reached the end of the
+   * current frag
    *
    */
-  NDRange ndranges_after_split(uint64_t num);
+  NDRange ndranges_after_split(uint64_t num, bool reached_end_of_fragment);
 
   /**
    * Return the number of tiles a single row can hold. More specifically, the

@@ -95,7 +95,10 @@ GlobalOrderWriter::GlobalOrderWriter(
     , fragment_size_(fragment_size)
     , current_fragment_size_(0)
     , rows_written_(0)
-    , start_(0) {
+    , tiles_in_current_row_(0)
+    , start_(0)
+    , end_(0)
+    , nd_if_dense_split_{} {
   // Check the layout is global order.
   if (layout_ != Layout::GLOBAL_ORDER) {
     throw GlobalOrderWriterException(
@@ -785,11 +788,16 @@ Status GlobalOrderWriter::global_write() {
     // Compute the number of tiles that will fit in this fragment.
     auto num = num_tiles_to_write(idx, tile_num, tiles);
 
-    if (tile_num != num && array_schema_.array_type() == ArrayType::DENSE) {
+    if (array_schema_.array_type() ==
+        ArrayType::DENSE) {  //&& this is consolidation
       // if it is a dense array and not all tiles can fit in the current
-      // fragment then we need to split the domain
-      NDRange new_nd = ndranges_after_split(num);
-      frag_meta->init_domain(new_nd);
+      // fragment then we need to split the domain, otherwise if all tiles can
+      // fit it means that we are in the middle of a write
+      nd_if_dense_split_ = ndranges_after_split(num, tile_num != num);
+    }
+
+    if (tile_num != num && !nd_if_dense_split_.empty()) {
+      frag_meta->init_domain(nd_if_dense_split_);
     }
 
     // If we're resuming a fragment write and the first tile doesn't fit into
@@ -1453,7 +1461,8 @@ uint64_t GlobalOrderWriter::num_tiles_per_row(const Domain& domain) {
   return ret;
 }
 
-NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
+NDRange GlobalOrderWriter::ndranges_after_split(
+    uint64_t num, bool reached_end_of_fragment) {
   // Expand domain to full tiles
   auto& domain{array_schema_.domain()};
   if (disable_checks_consolidation_) {
@@ -1464,15 +1473,20 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
   // Calculate how many tiles each row can hold
   uint64_t tiles_per_row = num_tiles_per_row(domain);
 
-  if (num % tiles_per_row != 0) {
+  // Calculate how many rows we will write in the current fragment
+  uint64_t rows_of_tiles_to_write =
+      (num - tiles_in_current_row_) / tiles_per_row;
+  uint64_t remainder_of_tiles = (num - tiles_in_current_row_) % tiles_per_row;
+  tiles_in_current_row_ = remainder_of_tiles;
+
+  // If we have not written a full row and we have reached the end of the
+  // fragment abort
+  if (tiles_in_current_row_ != 0 && reached_end_of_fragment) {
     throw GlobalOrderWriterException(
         "The target fragment size cannot be achieved. Please try using a "
         "different size, or there might be a misconfiguration in the array "
         "schema.");
   }
-
-  // Calculate how many rows we will write in the current fragment
-  uint64_t rows_of_tiles_to_write = num / tiles_per_row;
 
   // Create NDRange object and reserve for dims
   auto dim_num = domain.dim_num();
@@ -1498,8 +1512,13 @@ NDRange GlobalOrderWriter::ndranges_after_split(uint64_t num) {
     };
 
     start_ = apply_with_type(ll, dim->type());
+    end_ = apply_with_type(ll, dim->type());
   }
   uint64_t end = start_ + (rows_of_tiles_to_write * tile_extent) - 1;
+
+  if (tiles_in_current_row_ != 0 && !reached_end_of_fragment && end < end_) {
+    end++;
+  }
 
   // Add range
   Range range(&start_, &end, sizeof(int));
