@@ -3314,12 +3314,13 @@ capi_return_t tiledb_handle_load_array_schema_request(
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
+  ensure_context_is_valid(ctx);
   if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array paramter must be valid.");
+    throw CAPIStatusException("Array paramter must be valid.");
   }
-
-  api::ensure_buffer_is_valid(request);
-  api::ensure_buffer_is_valid(response);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(request);
+  ensure_buffer_is_valid(response);
 
   auto load_schema_req =
       tiledb::sm::serialization::deserialize_load_array_schema_request(
@@ -3331,7 +3332,7 @@ capi_return_t tiledb_handle_load_array_schema_request(
   }
 
   tiledb::sm::serialization::serialize_load_array_schema_response(
-      array->array_->array_schema_latest(),
+      *array->array_,
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       response->buffer());
 
@@ -3355,7 +3356,9 @@ capi_return_t tiledb_handle_load_enumerations_request(
       tiledb::sm::serialization::deserialize_load_enumerations_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
           request->buffer());
-  auto enumerations = array->array_->get_enumerations(enumeration_names);
+  auto enumerations = array->array_->get_enumerations(
+      enumeration_names,
+      array->array_->opened_array()->array_schema_latest_ptr());
 
   tiledb::sm::serialization::serialize_load_enumerations_response(
       enumerations,
