@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@ include(unit_test)
 commence(unit_test array)
     this_target_compile_definitions(-DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs/")
     this_target_sources(main.cc unit_array_directory.cc)
-    this_target_link_libraries(array)
+    this_target_link_libraries(array_directory)
 conclude(unit_test)
 
 commence(unit_test consistency)

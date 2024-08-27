@@ -36,6 +36,7 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
@@ -68,10 +69,15 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
         Subarray& subarray,
         uint64_t t_start,
         uint64_t t_end,
-        std::map<const DimType*, ResultSpaceTile<DimType>>&& result_space_tiles)
+        std::map<const DimType*, ResultSpaceTile<DimType>>&& result_space_tiles,
+        shared_ptr<MemoryTracker> memory_tracker)
         : t_start_(t_start)
         , t_end_(t_end)
-        , tile_subarrays_(t_end - t_start, subarray.dim_num())
+        , memory_tracker_(memory_tracker)
+        , tile_subarrays_(
+              t_end - t_start,
+              subarray.dim_num(),
+              memory_tracker_->get_resource(MemoryType::DENSE_TILE_SUBARRAY))
         , result_space_tiles_(std::move(result_space_tiles)) {
       auto& tile_coords = subarray.tile_coords();
       throw_if_not_ok(
@@ -122,8 +128,11 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
     /** End tile to process. */
     uint64_t t_end_;
 
+    /** Memory tracker. */
+    shared_ptr<MemoryTracker> memory_tracker_;
+
     /** Tile subarrays. */
-    std::vector<DenseTileSubarray<DimType>> tile_subarrays_;
+    tdb::pmr::vector<DenseTileSubarray<DimType>> tile_subarrays_;
 
     /** Result space tiles. */
     std::map<const DimType*, ResultSpaceTile<DimType>> result_space_tiles_;

@@ -110,6 +110,7 @@ namespace tiledb::sm {
 enum class MemoryType {
   ATTRIBUTES,
   CONSOLIDATION_BUFFERS,
+  DENSE_TILE_SUBARRAY,
   DIMENSION_LABELS,
   DIMENSIONS,
   DOMAINS,

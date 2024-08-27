@@ -32,7 +32,7 @@ find_package(Catch2 REQUIRED)
 # Maturity
 #
 # This unit links against the whole library out of necessity. There's not
-# yet an `array` object library, much less a C API handle one.
+# yet a _complete_ `array` C API handle object library. 
 #
 commence(unit_test capi_array)
   this_target_sources(unit_capi_array.cc)

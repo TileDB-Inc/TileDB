@@ -32,6 +32,7 @@
  */
 
 #include <future>
+#include <numeric>
 
 #include "unit_data_block.h"
 

@@ -53,7 +53,6 @@
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/integral_type_casts.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/type/apply_with_type.h"
@@ -188,8 +187,8 @@ ArraySchema::ArraySchema(
     dim_map_[dim->name()] = dim;
   }
 
-  for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
-    (void)enmr_uri;
+  for (auto& [enmr_name, enmr_filename] : enumeration_path_map_) {
+    (void)enmr_filename;
     enumeration_map_[enmr_name] = nullptr;
   }
 
@@ -734,98 +733,6 @@ bool ArraySchema::is_nullable(const std::string& name) const {
   return attr->nullable();
 }
 
-// ===== FORMAT =====
-// version (uint32_t)
-// allow_dups (bool)
-// array_type (uint8_t)
-// tile_order (uint8_t)
-// cell_order (uint8_t)
-// capacity (uint64_t)
-// coords_filters (see FilterPipeline::serialize)
-// cell_var_offsets_filters (see FilterPipeline::serialize)
-// cell_validity_filters (see FilterPipeline::serialize)
-// domain
-// attribute_num (uint32_t)
-//   attribute #1
-//   attribute #2
-//   ...
-// dimension_label_num (uint32_t)
-//   dimension_label #1
-//   dimension_label #2
-//   ...
-// current_domain
-void ArraySchema::serialize(Serializer& serializer) const {
-  // Write version, which is always the current version. Despite
-  // the in-memory `version_`, we will serialize every array schema
-  // as the latest version.
-  const format_version_t version = constants::format_version;
-  serializer.write<format_version_t>(version);
-
-  // Write allows_dups
-  serializer.write<uint8_t>(allows_dups_);
-
-  // Write array type
-  auto array_type = (uint8_t)array_type_;
-  serializer.write<uint8_t>(array_type);
-
-  // Write tile and cell order
-  auto tile_order = (uint8_t)tile_order_;
-  serializer.write<uint8_t>(tile_order);
-  auto cell_order = (uint8_t)cell_order_;
-  serializer.write<uint8_t>(cell_order);
-
-  // Write capacity
-  serializer.write<uint64_t>(capacity_);
-
-  // Write coords filters
-  coords_filters_.serialize(serializer);
-
-  // Write offsets filters
-  cell_var_offsets_filters_.serialize(serializer);
-
-  // Write validity filters
-  cell_validity_filters_.serialize(serializer);
-
-  // Write domain
-  domain_->serialize(serializer, version);
-
-  // Write attributes
-  auto attribute_num = (uint32_t)attributes_.size();
-  serializer.write<uint32_t>(attribute_num);
-  for (auto& attr : attributes_) {
-    attr->serialize(serializer, version);
-  }
-
-  // Write dimension labels
-  auto label_num = static_cast<uint32_t>(dimension_labels_.size());
-  if (label_num != dimension_labels_.size()) {
-    throw ArraySchemaException(
-        "Overflow when attempting to serialize label number.");
-  }
-  serializer.write<uint32_t>(label_num);
-  for (auto& label : dimension_labels_) {
-    label->serialize(serializer, version);
-  }
-
-  // Write Enumeration path map
-  auto enmr_num =
-      utils::safe_integral_cast<size_t, uint32_t>(enumeration_map_.size());
-
-  serializer.write<uint32_t>(enmr_num);
-  for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
-    auto enmr_name_size = static_cast<uint32_t>(enmr_name.size());
-    serializer.write<uint32_t>(enmr_name_size);
-    serializer.write(enmr_name.data(), enmr_name_size);
-
-    auto enmr_uri_size = static_cast<uint32_t>(enmr_uri.size());
-    serializer.write<uint32_t>(enmr_uri_size);
-    serializer.write(enmr_uri.data(), enmr_uri_size);
-  }
-
-  // Serialize array current domain information
-  current_domain_->serialize(serializer);
-}
-
 Layout ArraySchema::tile_order() const {
   return tile_order_;
 }
@@ -1367,11 +1274,11 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
       std::string enmr_name(
           deserializer.get_ptr<char>(enmr_name_size), enmr_name_size);
 
-      auto enmr_path_size = deserializer.read<uint32_t>();
-      std::string enmr_path_name(
-          deserializer.get_ptr<char>(enmr_path_size), enmr_path_size);
+      auto enmr_filename_size = deserializer.read<uint32_t>();
+      std::string enmr_filename(
+          deserializer.get_ptr<char>(enmr_filename_size), enmr_filename_size);
 
-      enumeration_path_map[enmr_name] = enmr_path_name;
+      enumeration_path_map[enmr_name] = enmr_filename;
     }
   }
 

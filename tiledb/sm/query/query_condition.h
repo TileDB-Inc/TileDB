@@ -33,8 +33,7 @@
 #ifndef TILEDB_QUERY_CONDITION_H
 #define TILEDB_QUERY_CONDITION_H
 
-#include "external/include/span/span.hpp"
-
+#include <span>
 #include <unordered_set>
 
 #include "tiledb/common/status.h"

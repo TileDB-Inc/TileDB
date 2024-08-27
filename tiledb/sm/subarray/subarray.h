@@ -36,6 +36,7 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
@@ -117,32 +118,66 @@ class DenseTileSubarray {
     }
   };
 
+  /**
+   * The type of the allocator. Required to make the type allocator-aware.
+   *
+   * uint8_t was arbitrarily chosen and does not matter; allocators can convert
+   * between any types.
+   */
+  using allocator_type = tdb::pmr::polymorphic_allocator<uint8_t>;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   DenseTileSubarray() = delete;
 
-  DenseTileSubarray(unsigned dim_num)
-      : ranges_(dim_num) {
+  DenseTileSubarray(unsigned dim_num, const allocator_type& alloc = {})
+      : original_range_idx_(alloc)
+      , ranges_(dim_num, alloc) {
   }
+
+  /** Default copy constructor. */
+  DenseTileSubarray(const DenseTileSubarray&) = default;
+  /** Default move constructor. */
+  DenseTileSubarray(DenseTileSubarray&&) = default;
+
+  /** Allocator-aware copy constructor. */
+  DenseTileSubarray(const DenseTileSubarray& other, const allocator_type& alloc)
+      : original_range_idx_(other.original_range_idx_, alloc)
+      , ranges_(other.ranges_, alloc) {
+  }
+
+  /** Allocator-aware move constructor. */
+  DenseTileSubarray(DenseTileSubarray&& other, const allocator_type& alloc)
+      : original_range_idx_(std::move(other.original_range_idx_), alloc)
+      , ranges_(std::move(other.ranges_), alloc) {
+  }
+
+  /** Default copy-assign operator. */
+  DenseTileSubarray& operator=(const DenseTileSubarray&) = default;
+  /** Default move-assign operator. */
+  DenseTileSubarray& operator=(DenseTileSubarray&&) = default;
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
 
   /** Returns the orignal range indexes. */
-  inline const std::vector<std::vector<uint64_t>>& original_range_idx() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&
+  original_range_idx() const {
     return original_range_idx_;
   }
 
   /** Returns the ranges. */
-  inline const std::vector<std::vector<DenseTileRange>>& ranges() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<DenseTileRange>>& ranges()
+      const {
     return ranges_;
   }
 
   /** Returns the orignal range indexes to be modified. */
-  inline std::vector<std::vector<uint64_t>>& original_range_idx_unsafe() {
+  inline tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&
+  original_range_idx_unsafe() {
     return original_range_idx_;
   }
 
@@ -160,10 +195,10 @@ class DenseTileSubarray {
   /* ********************************* */
 
   /** Stores a vector of 1D ranges per dimension. */
-  std::vector<std::vector<uint64_t>> original_range_idx_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> original_range_idx_;
 
   /** Stores the ranges per dimension. */
-  std::vector<std::vector<DenseTileRange>> ranges_;
+  tdb::pmr::vector<tdb::pmr::vector<DenseTileRange>> ranges_;
 };
 
 /**

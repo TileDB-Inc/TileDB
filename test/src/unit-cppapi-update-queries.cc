@@ -35,6 +35,7 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array/array_operations.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
@@ -205,16 +206,15 @@ void UpdatesFx::check_update_conditions(
   auto array_ptr = array->ptr()->array_;
 
   // Load delete conditions.
-  auto&& [st, conditions, update_values] =
-      array_ptr->opened_array()->load_delete_and_update_conditions();
-  REQUIRE(st.ok());
-  REQUIRE(conditions->size() == qcs.size());
+  auto&& [conditions, update_values] = load_delete_and_update_conditions(
+      ctx_.ptr().get()->resources(), *array_ptr->opened_array().get());
+  REQUIRE(conditions.size() == qcs.size());
 
   for (uint64_t i = 0; i < qcs.size(); i++) {
     // Compare to negated condition.
     auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
-    CHECK(tiledb::test::ast_equal(conditions->at(i).ast(), cmp.ast()));
-    auto& loaded_update_values = update_values->at(i);
+    CHECK(tiledb::test::ast_equal(conditions.at(i).ast(), cmp.ast()));
+    auto& loaded_update_values = update_values.at(i);
     for (uint64_t j = 0; j < uvs[i].size(); j++) {
       CHECK(uvs[i][j].field_name() == loaded_update_values[j].field_name());
     }

@@ -95,7 +95,7 @@ class LoadedFragmentMetadata {
    *     metadata corresponds to.
    * @param version The format version of the fragment
    */
-  static LoadedFragmentMetadata* create(
+  static shared_ptr<LoadedFragmentMetadata> create(
       FragmentMetadata& parent,
       shared_ptr<MemoryTracker> memory_tracker,
       format_version_t version);

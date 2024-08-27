@@ -37,6 +37,7 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array/array_operations.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/group.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -79,14 +80,12 @@ struct DeletesFx {
   void create_dir(const std::string& path);
   void create_simple_array(const std::string& path);
   void create_sparse_array(bool allows_dups = false, bool encrypt = false);
-  void create_sparse_array_v11();
   void write_sparse(
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp,
       bool encrypt = false);
-  void write_sparse_v11(uint64_t timestamp);
   std::vector<tiledb::Object> read_group(const tiledb::Group& group) const;
   void read_sparse(
       std::vector<int>& a1,
@@ -249,52 +248,6 @@ void DeletesFx::write_sparse(
   array->close();
 }
 
-void DeletesFx::create_sparse_array_v11() {
-  // Get the v11 sparse array.
-  std::string v11_arrays_dir =
-      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
-  REQUIRE(
-      tiledb_vfs_copy_dir(
-          ctx_.ptr().get(),
-          vfs_.ptr().get(),
-          v11_arrays_dir.c_str(),
-          array_name_.c_str()) == TILEDB_OK);
-}
-
-void DeletesFx::write_sparse_v11(uint64_t timestamp) {
-  // Prepare cell buffers.
-  std::vector<int> buffer_a1{0, 1, 2, 3};
-  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
-  std::string buffer_var_a2("abbcccdddd");
-  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
-  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
-  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
-
-  // Open array.
-  Array array(
-      ctx_,
-      array_name_.c_str(),
-      TILEDB_WRITE,
-      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
-
-  // Create query.
-  Query query(ctx_, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_GLOBAL_ORDER);
-  query.set_data_buffer("a1", buffer_a1);
-  query.set_data_buffer(
-      "a2", (void*)buffer_var_a2.c_str(), buffer_var_a2.size());
-  query.set_offsets_buffer("a2", buffer_a2);
-  query.set_data_buffer("a3", buffer_a3);
-  query.set_data_buffer("d1", buffer_coords_dim1);
-  query.set_data_buffer("d2", buffer_coords_dim2);
-
-  // Submit/finalize the query.
-  query.submit_and_finalize();
-
-  // Close array.
-  array.close();
-}
-
 std::vector<tiledb::Object> DeletesFx::read_group(
     const tiledb::Group& group) const {
   std::vector<tiledb::Object> ret;
@@ -436,15 +389,14 @@ void DeletesFx::check_delete_conditions(
   auto array_ptr = array->ptr()->array_;
 
   // Load delete conditions.
-  auto&& [st, delete_conditions, update_values] =
-      array_ptr->opened_array()->load_delete_and_update_conditions();
-  REQUIRE(st.ok());
-  REQUIRE(delete_conditions->size() == qcs.size());
+  auto&& [delete_conditions, update_values] = load_delete_and_update_conditions(
+      ctx_.ptr().get()->resources(), *array_ptr->opened_array().get());
+  REQUIRE(delete_conditions.size() == qcs.size());
 
   for (uint64_t i = 0; i < qcs.size(); i++) {
     // Compare to negated condition.
     auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
-    CHECK(tiledb::test::ast_equal(delete_conditions->at(i).ast(), cmp.ast()));
+    CHECK(tiledb::test::ast_equal(delete_conditions.at(i).ast(), cmp.ast()));
   }
 
   array->close();
@@ -1661,12 +1613,12 @@ TEST_CASE_METHOD(
   }
 
   remove_sparse_array();
-  create_sparse_array_v11();
+  test::create_sparse_array_v11(ctx_.ptr().get(), array_name_);
   // Write first fragment.
-  write_sparse_v11(1);
+  test::write_sparse_v11(ctx_.ptr().get(), array_name_, 1);
 
   // Write second fragment.
-  write_sparse_v11(3);
+  test::write_sparse_v11(ctx_.ptr().get(), array_name_, 3);
 
   // Consolidate.
   consolidate_sparse();
@@ -1947,8 +1899,8 @@ TEST_CASE_METHOD(
   auto array_name = array_name_ + "/";
 
   // Write to v11 array
-  create_sparse_array_v11();
-  write_sparse_v11(1);
+  test::create_sparse_array_v11(ctx_.ptr().get(), array_name_);
+  test::write_sparse_v11(ctx_.ptr().get(), array_name_, 1);
   std::string extraneous_file_path = array_name + "extraneous_file";
   vfs_.touch(extraneous_file_path);
 

@@ -52,11 +52,8 @@ namespace tiledb::sm {
 
 class ArraySchema;
 class ArraySchemaEvolution;
-class SchemaEvolution;
 class FragmentMetadata;
 class MemoryTracker;
-class UpdateValue;
-class QueryCondition;
 enum class QueryType : uint8_t;
 
 /**
@@ -214,17 +211,6 @@ class OpenedArray {
   inline bool is_remote() const {
     return is_remote_;
   }
-
-  /**
-   * Loads the delete and update conditions from storage.
-   *
-   * @return Status, vector of the conditions, vector of the update values.
-   */
-  tuple<
-      Status,
-      optional<std::vector<QueryCondition>>,
-      optional<std::vector<std::vector<UpdateValue>>>>
-  load_delete_and_update_conditions();
 
  private:
   /** The context resources. */

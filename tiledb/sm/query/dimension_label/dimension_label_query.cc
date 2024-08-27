@@ -58,7 +58,12 @@ DimensionLabelQuery::DimensionLabelQuery(
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
     optional<std::string> fragment_name)
-    : Query(resources, storage_manager, dim_label, fragment_name)
+    : Query(
+          resources,
+          CancellationSource(storage_manager),
+          storage_manager,
+          dim_label,
+          fragment_name)
     , dim_label_name_{dim_label_ref.name()} {
   switch (dim_label->get_query_type()) {
     case (QueryType::READ):
@@ -113,7 +118,12 @@ DimensionLabelQuery::DimensionLabelQuery(
     shared_ptr<Array> dim_label,
     const DimensionLabel& dim_label_ref,
     const std::vector<Range>& label_ranges)
-    : Query(resources, storage_manager, dim_label, nullopt)
+    : Query(
+          resources,
+          CancellationSource(storage_manager),
+          storage_manager,
+          dim_label,
+          nullopt)
     , dim_label_name_{dim_label_ref.name()}
     , index_data_{IndexDataCreate::make_index_data(
           array_schema().dimension_ptr(0)->type(),

@@ -26,7 +26,7 @@
 
 include(unit_test)
 
-commence(unit_test fragment)
+commence(unit_test fragment_identifier)
     this_target_sources(main.cc unit_fragment_identifier.cc)
-    this_target_link_libraries(fragment)
+    this_target_link_libraries(fragment_identifier)
 conclude(unit_test)

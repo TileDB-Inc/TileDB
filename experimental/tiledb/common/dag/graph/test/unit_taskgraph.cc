@@ -28,10 +28,12 @@
  * @section DESCRIPTION
  */
 
-#include "unit_taskgraph.h"
+#include <numeric>
+
 #include "experimental/tiledb/common/dag/execution/duffs.h"
 #include "experimental/tiledb/common/dag/graph/taskgraph.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
+#include "unit_taskgraph.h"
 
 using namespace tiledb::common;
 

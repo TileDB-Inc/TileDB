@@ -28,14 +28,49 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 #
-# `fragment` object library
+# Note: `fragment_identifier` and `fragment_metadata` have been separated in 
+# lieu of a single `fragment` object library. There's a lot of overhead in the 
+# `fragment_metadata` library that isn't necessary to build for modules 
+# requiring only the `fragment_identifier` library. As such, they are kept 
+# separate for the time being, though this may go away in the future.
 #
-commence(object_library fragment)
+
+#
+# `fragment_identifier` object library
+#
+commence(object_library fragment_identifier)
     this_target_sources(fragment_identifier.cc)
     this_target_object_libraries(baseline vfs)
     if(TILEDB_STATS)
         this_target_compile_definitions(-DTILEDB_STATS)
     endif()
+conclude(object_library)
+
+#
+# `fragment_metadata` object library
+#
+list(APPEND SOURCES
+    fragment_metadata.cc
+    fragment_info.cc
+    loaded_fragment_metadata.cc
+    ondemand_fragment_metadata.cc
+    v1v2preloaded_fragment_metadata.cc
+)
+gather_sources(${SOURCES})
+
+commence(object_library fragment_metadata)
+    this_target_sources(${SOURCES})
+    this_target_object_libraries(
+        array_directory    
+        array_schema    
+        fragment_identifier
+        generic_tile_io 
+        ndrectangle 
+        rectangle
+        rtree
+        tiledb_crypto
+        writer_tile
+    )
 conclude(object_library)
 
 add_test_subdirectory()

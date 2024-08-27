@@ -31,7 +31,7 @@ include(object_library)
 #
 commence(object_library uri_format)
     this_target_sources(parse_uri.cc generate_uri.cc)
-    this_target_object_libraries(baseline fragment time vfs)
+    this_target_object_libraries(baseline fragment_identifier time vfs)
 conclude(object_library)
 
 add_test_subdirectory()

@@ -173,3 +173,22 @@ TEMPLATE_TEST_CASE(
     REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
 }
+
+TEST_CASE("RangeOperations: Test is_valid_range for string_view", "[range]") {
+  SECTION("Test single point range is valid") {
+    Range range{"a", "a"};
+    REQUIRE_NOTHROW(check_range_is_valid<std::string_view>(range));
+  }
+  SECTION("Test standard range is valid") {
+    Range range{"abc", "def"};
+    REQUIRE_NOTHROW(check_range_is_valid<std::string_view>(range));
+  }
+  SECTION("Test empty range is invalid") {
+    Range range;
+    REQUIRE_THROWS(check_range_is_valid<std::string_view>(range));
+  }
+  SECTION("Test lower bound larger than upper bound is invalid") {
+    Range range{"def", "abc"};
+    REQUIRE_THROWS(check_range_is_valid<std::string_view>(range));
+  }
+}

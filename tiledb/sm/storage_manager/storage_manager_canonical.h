@@ -102,7 +102,7 @@ class StorageManagerCanonical {
   Status cancel_all_tasks();
 
   /** Returns true while all tasks are being cancelled. */
-  bool cancellation_in_progress();
+  bool cancellation_in_progress() const;
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
@@ -155,7 +155,7 @@ class StorageManagerCanonical {
   bool cancellation_in_progress_;
 
   /** Mutex protecting cancellation_in_progress_. */
-  std::mutex cancellation_in_progress_mtx_;
+  mutable std::mutex cancellation_in_progress_mtx_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;

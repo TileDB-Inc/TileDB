@@ -32,6 +32,7 @@
 
 #include "unit_ports.h"
 #include <future>
+#include <numeric>
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/policies.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"

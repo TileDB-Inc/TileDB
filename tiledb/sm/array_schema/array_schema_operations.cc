@@ -32,17 +32,120 @@
 
 #include "tiledb/sm/array_schema/array_schema_operations.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/current_domain.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/misc/integral_type_casts.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb::sm {
 
+/** Class for locally generated status exceptions. */
+class ArraySchemaOperationsException : public StatusException {
+ public:
+  explicit ArraySchemaOperationsException(const std::string& msg)
+      : StatusException("ArraySchemaOperations", msg) {
+  }
+};
+
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+// ===== FORMAT =====
+// version (uint32_t)
+// allow_dups (bool)
+// array_type (uint8_t)
+// tile_order (uint8_t)
+// cell_order (uint8_t)
+// capacity (uint64_t)
+// coords_filters (see FilterPipeline::serialize)
+// cell_var_offsets_filters (see FilterPipeline::serialize)
+// cell_validity_filters (see FilterPipeline::serialize)
+// domain
+// attribute_num (uint32_t)
+//   attribute #1
+//   attribute #2
+//   ...
+// dimension_label_num (uint32_t)
+//   dimension_label #1
+//   dimension_label #2
+//   ...
+// current_domain
+void serialize_array_schema(
+    Serializer& serializer, const ArraySchema& array_schema) {
+  // Write version, which is always the current version. Despite
+  // the in-memory `version_`, we will serialize every array schema
+  // as the latest version.
+  const format_version_t version = constants::format_version;
+  serializer.write<format_version_t>(version);
+
+  // Write allows_dups
+  serializer.write<uint8_t>(array_schema.allows_dups());
+
+  // Write array type
+  serializer.write<uint8_t>((uint8_t)array_schema.array_type());
+
+  // Write tile and cell order
+  serializer.write<uint8_t>((uint8_t)array_schema.tile_order());
+  serializer.write<uint8_t>((uint8_t)array_schema.cell_order());
+
+  // Write capacity
+  serializer.write<uint64_t>(array_schema.capacity());
+
+  // Write coords filters
+  array_schema.coords_filters().serialize(serializer);
+
+  // Write offsets filters
+  array_schema.cell_var_offsets_filters().serialize(serializer);
+
+  // Write validity filters
+  array_schema.cell_validity_filters().serialize(serializer);
+
+  // Write domain
+  array_schema.domain().serialize(serializer, version);
+
+  // Write attributes
+  auto attribute_num = (uint32_t)array_schema.attributes().size();
+  serializer.write<uint32_t>(attribute_num);
+  for (auto& attr : array_schema.attributes()) {
+    attr->serialize(serializer, version);
+  }
+
+  // Write dimension labels
+  auto dimension_labels = array_schema.dimension_labels();
+  auto label_num = static_cast<uint32_t>(dimension_labels.size());
+  if (label_num != dimension_labels.size()) {
+    throw ArraySchemaOperationsException(
+        "Overflow when attempting to serialize label number.");
+  }
+  serializer.write<uint32_t>(label_num);
+  for (auto& label : dimension_labels) {
+    label->serialize(serializer, version);
+  }
+
+  // Write Enumeration path map
+  auto enmr_num = utils::safe_integral_cast<size_t, uint32_t>(
+      array_schema.enumeration_map().size());
+
+  serializer.write<uint32_t>(enmr_num);
+  for (auto& [enmr_name, enmr_uri] : array_schema.enumeration_path_map()) {
+    auto enmr_name_size = static_cast<uint32_t>(enmr_name.size());
+    serializer.write<uint32_t>(enmr_name_size);
+    serializer.write(enmr_name.data(), enmr_name_size);
+
+    auto enmr_uri_size = static_cast<uint32_t>(enmr_uri.size());
+    serializer.write<uint32_t>(enmr_uri_size);
+    serializer.write(enmr_uri.data(), enmr_uri_size);
+  }
+
+  // Serialize array current domain information
+  array_schema.current_domain().serialize(serializer);
+}
 
 /**
  * Note: This function currently implements defective behavior.
@@ -59,13 +162,13 @@ void store_array_schema(
 
   // Serialize
   SizeComputationSerializer size_computation_serializer;
-  array_schema->serialize(size_computation_serializer);
+  serialize_array_schema(size_computation_serializer, *array_schema);
 
   auto tile{WriterTile::from_generic(
       size_computation_serializer.size(),
       resources.ephemeral_memory_tracker())};
   Serializer serializer(tile->data(), tile->size());
-  array_schema->serialize(serializer);
+  serialize_array_schema(serializer, *array_schema);
   resources.stats().add_counter("write_array_schema_size", tile->size());
 
   // Delete file if it exists already

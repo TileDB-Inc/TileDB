@@ -145,6 +145,16 @@ void BufferList::reset_offset() {
   current_relative_offset_ = 0;
 }
 
+void BufferList::set_offset(
+    const size_t current_buffer_index, const uint64_t current_relative_offset) {
+  current_buffer_index_ = current_buffer_index;
+  current_relative_offset_ = current_relative_offset;
+}
+
+std::tuple<size_t, uint64_t> BufferList::get_offset() const {
+  return {current_buffer_index_, current_relative_offset_};
+}
+
 uint64_t BufferList::total_size() const {
   uint64_t size = 0;
   for (const auto& b : buffers_)

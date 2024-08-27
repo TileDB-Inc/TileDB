@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -57,10 +57,6 @@ struct tiledb_array_t {
 struct tiledb_subarray_t {
   tiledb::sm::Subarray* subarray_ = nullptr;
   bool is_allocated_ = false;
-};
-
-struct tiledb_array_schema_t {
-  shared_ptr<tiledb::sm::ArraySchema> array_schema_;
 };
 
 struct tiledb_array_schema_evolution_t {

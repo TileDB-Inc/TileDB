@@ -27,14 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class Array.
+ * This file implements the data-oriented operations on class Array.
+ *
  */
 
 #include "tiledb/common/common.h"
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
-#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
@@ -54,7 +54,6 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/object/object_mutex.h"
-#include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -108,60 +107,6 @@ Array::Array(
 /* ********************************* */
 /*                API                */
 /* ********************************* */
-
-tuple<
-    Status,
-    optional<std::vector<QueryCondition>>,
-    optional<std::vector<std::vector<UpdateValue>>>>
-OpenedArray::load_delete_and_update_conditions() {
-  auto& locations = array_directory().delete_and_update_tiles_location();
-  auto conditions = std::vector<QueryCondition>(locations.size());
-  auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());
-
-  auto status = parallel_for(
-      &resources_.compute_tp(), 0, locations.size(), [&](size_t i) {
-        // Get condition marker.
-        auto& uri = locations[i].uri();
-
-        // Read the condition from storage.
-        auto tile = GenericTileIO::load(
-            resources_,
-            uri,
-            locations[i].offset(),
-            *(encryption_key()),
-            resources_.ephemeral_memory_tracker());
-
-        if (tiledb::sm::utils::parse::ends_with(
-                locations[i].condition_marker(),
-                tiledb::sm::constants::delete_file_suffix)) {
-          conditions[i] = tiledb::sm::deletes_and_updates::serialization::
-              deserialize_condition(
-                  i,
-                  locations[i].condition_marker(),
-                  tile->data(),
-                  tile->size());
-        } else if (tiledb::sm::utils::parse::ends_with(
-                       locations[i].condition_marker(),
-                       tiledb::sm::constants::update_file_suffix)) {
-          auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
-              deserialize_update_condition_and_values(
-                  i,
-                  locations[i].condition_marker(),
-                  tile->data(),
-                  tile->size());
-          conditions[i] = std::move(cond);
-          update_values[i] = std::move(uvs);
-        } else {
-          throw ArrayException("Unknown condition marker extension");
-        }
-
-        throw_if_not_ok(conditions[i].check(array_schema_latest()));
-        return Status::Ok();
-      });
-  throw_if_not_ok(status);
-
-  return {Status::Ok(), conditions, update_values};
-}
 
 void Array::evolve_array_schema(
     ContextResources& resources,
