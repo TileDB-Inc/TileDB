@@ -98,7 +98,7 @@ conclude(object_library)
 #
 commence(object_library array_schema_operations)
     this_target_sources(array_schema_operations.cc)
-    this_target_object_libraries(array_schema generic_tile_io tiledb_crypto)
+    this_target_object_libraries(array_directory array_schema generic_tile_io tiledb_crypto)
 conclude(object_library)
 
 add_test_subdirectory()

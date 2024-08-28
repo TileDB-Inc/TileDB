@@ -29,10 +29,12 @@
  *
  */
 
-#include "unit_duffs.h"
+#include <numeric>
+
 #include "../duffs.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
+#include "unit_duffs.h"
 
 using namespace tiledb::common;
 

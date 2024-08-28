@@ -36,6 +36,7 @@
 #include <cassert>
 #include <iostream>
 #include <map>
+#include <numeric>
 #include <tiledb/stdx/stop_token>
 #include <type_traits>
 

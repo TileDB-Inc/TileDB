@@ -1096,20 +1096,24 @@ TEST_CASE(
 
     // Check dump
     const auto ver = std::to_string(tiledb::sm::constants::format_version);
+    auto schema_name = fragment_info.array_schema_name(0);
     std::string dump_str =
         std::string("- Fragment num: 3\n") +
         "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
         "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
-        "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-        "  > Size: 3202\n" + "  > Cell num: 10\n" +
-        "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
+        "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
+        "  > Non-empty domain: [1, 6]\n" + "  > Size: 3202\n" +
+        "  > Cell num: 10\n" + "  > Timestamp range: [1, 1]\n" +
+        "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
-        "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
+        "  > URI: " + written_frag_uri_2 + "\n" +
+        "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
         "  > Non-empty domain: [1, 4]\n" + "  > Size: 3151\n" +
         "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
         "  > Format version: " + ver + "\n" +
         "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
-        "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
+        "  > URI: " + written_frag_uri_3 + "\n" +
+        "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
         "  > Non-empty domain: [5, 6]\n" + "  > Size: 3202\n" +
         "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
         "  > Format version: " + ver + "\n" +
