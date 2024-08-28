@@ -122,6 +122,31 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_alloc(
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**
+ * Creates a TileDB array schema object with specified creation time.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* array_schema;
+ * uint64_t t1 = 10;
+ * uint64_t t2 = 20;
+ * tiledb_array_schema_alloc_at_timestamp(ctx, TILEDB_DENSE, &array_schema, t1,
+ * t2);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_type The array type.
+ * @param[out] array_schema The TileDB array schema to be created.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_alloc_at_timestamp(
+    tiledb_ctx_t* ctx,
+    tiledb_array_type_t array_type,
+    tiledb_array_schema_t** array_schema,
+    uint64_t t1,
+    uint64_t t2);
+
+/**
  * Destroys an array schema, freeing associated memory.
  *
  * **Example:**
