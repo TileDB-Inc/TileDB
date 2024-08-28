@@ -3242,38 +3242,348 @@
     ]
   },
   {
-    "objectID": "format_spec/FORMAT_SPEC.html#history",
-    "href": "format_spec/FORMAT_SPEC.html#history",
-    "title": "Format Specification",
-    "section": "History",
-    "text": "History\n\n\n\nFormat version\nTileDB version\nDescription\n\n\n\n\n1\n1.4\nDecouple format and library version\n\n\n2\n1.5\nAlways split coordinate tiles\n\n\n3\n1.6\nParallelize fragment metadata loading\n\n\n4\n1.7\nRemove KV storage\n\n\n5\n2.0\nSplit coordinates into individual files\n\n\n6\n2.1\nImplement attribute fill values\n\n\n7\n2.2\nNullable attribute support\n\n\n8\n2.3\nPercent encode attribute/dimension file names\n\n\n9\n2.3\nName attribute/dimension files by index\n\n\n10\n2.4\nAdded array schema evolution\n\n\n11\n2.7\nStore integral cells, aka, don’t split cells across chunks\n\n\n12\n2.8\nNew array directory structure\n\n\n13\n2.9\nAdd dictionary filter\n\n\n14\n2.10\nConsolidation with timestamps, add has_timestamps to footer\n\n\n15\n2.11\nRemove consolidate with timestamps config\n\n\n16\n2.12\nImplement delete strategy\n\n\n17\n2.14\nAdd dimension labels and data order\n\n\n18\n2.15\nDimension Labels no longer experimental\n\n\n19\n2.16\nVac files now use relative URIs\n\n\n20\n2.17\nEnumerations\n\n\n21\n2.19\nTile metadata are now correctly calculated for nullable fixed size strings on dense arrays\n\n\n22\n2.25\nAdd array current domain",
-    "crumbs": [
-      "Format Specification"
-    ]
-  },
-  {
     "objectID": "format_spec/FORMAT_SPEC.html#table-of-contents",
     "href": "format_spec/FORMAT_SPEC.html#table-of-contents",
     "title": "Format Specification",
     "section": "Table of Contents",
-    "text": "Table of Contents\n\nArray\n\nFile hierarchy\nArray Schema\nFragment\nArray Metadata\nTile\nGeneric Tile\n\nGroup\n\nFile hierarchy\n\nOther\n\nConsolidated Fragment Metadata File\nFilter Pipeline\nTimestamped Name\nVacuum Pipeline",
+    "text": "Table of Contents\n\nArray\n\nFormat Version History\nFile hierarchy\nArray Schema\nFragment\nArray Metadata\nTile\nGeneric Tile\n\nGroup\n\nFile hierarchy\n\nOther\n\nConsolidated Fragment Metadata File\nFilter Pipeline\nTimestamped Name\nVacuum File",
     "crumbs": [
       "Format Specification"
     ]
   },
   {
-    "objectID": "format_spec/current_domain.html",
-    "href": "format_spec/current_domain.html",
-    "title": "Current Domain",
+    "objectID": "format_spec/group.html",
+    "href": "format_spec/group.html",
+    "title": "Group",
     "section": "",
-    "text": "The array current domain is stored within the Array Schema file. If a current domain is empty, only the version number and the empty flag are serialized to storage.\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nCurrent domain version number\n\n\nEmpty\nuint8_t\nWhether the current domain has a representation(e.g. NDRectangle) set or not\n\n\nType\nuint8_t\nThe type of current domain stored in this file\n\n\nNDRectangle\nMBR\nA hyperrectangle defined using 1DRange items for each dimension"
+    "text": "The current group format version (2) is a folder called __group located here:\nmy_group                       # Group folder\n    |  ...\n    |_ __group                 # Group folder\n        |_ &lt;timestamped_name&gt;  # Timestamped group file detailing members\n    |_ ...\nThe group folder can contain:\n\nAny number of group files with name &lt;timestamped_name&gt;.\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group\n\n\nNumber of Group Member\nuint32_t\nThe number of group members.\n\n\nGroup Member 1\nGroup Member\nFirst group member\n\n\n…\n…\n…\n\n\nGroup Member N\nGroup Member\nNth group member\n\n\n\n\n\n\nThe group member is the content inside a group.\nThe current group member format version is 2.\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group member\n\n\nObject type\nuint8_t\nObject type of the member\n\n\nRelative\nuint8_t\nIs the URI relative to the group\n\n\nURI length\nuint64_t\nNumber of characters in URI\n\n\nURI\nuint8_t[]\nURI character array\n\n\nName set\nuint8_t\nIs the name set\n\n\nName length\nuint64_t\nNumber of characters in name\n\n\nName\nuint8_t[]\nName character array\n\n\nDeleted\nuint8_t\nIs the member deleted"
   },
   {
-    "objectID": "format_spec/current_domain.html#main-structure",
-    "href": "format_spec/current_domain.html#main-structure",
-    "title": "Current Domain",
+    "objectID": "format_spec/group.html#group-file",
+    "href": "format_spec/group.html#group-file",
+    "title": "Group",
     "section": "",
-    "text": "The array current domain is stored within the Array Schema file. If a current domain is empty, only the version number and the empty flag are serialized to storage.\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nCurrent domain version number\n\n\nEmpty\nuint8_t\nWhether the current domain has a representation(e.g. NDRectangle) set or not\n\n\nType\nuint8_t\nThe type of current domain stored in this file\n\n\nNDRectangle\nMBR\nA hyperrectangle defined using 1DRange items for each dimension"
+    "text": "Field\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group\n\n\nNumber of Group Member\nuint32_t\nThe number of group members.\n\n\nGroup Member 1\nGroup Member\nFirst group member\n\n\n…\n…\n…\n\n\nGroup Member N\nGroup Member\nNth group member"
+  },
+  {
+    "objectID": "format_spec/group.html#group-member",
+    "href": "format_spec/group.html#group-member",
+    "title": "Group",
+    "section": "",
+    "text": "The group member is the content inside a group.\nThe current group member format version is 2.\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group member\n\n\nObject type\nuint8_t\nObject type of the member\n\n\nRelative\nuint8_t\nIs the URI relative to the group\n\n\nURI length\nuint64_t\nNumber of characters in URI\n\n\nURI\nuint8_t[]\nURI character array\n\n\nName set\nuint8_t\nIs the name set\n\n\nName length\nuint64_t\nNumber of characters in name\n\n\nName\nuint8_t[]\nName character array\n\n\nDeleted\nuint8_t\nIs the member deleted"
+  },
+  {
+    "objectID": "format_spec/group_file_hierarchy.html",
+    "href": "format_spec/group_file_hierarchy.html",
+    "title": "Group File Hierarchy",
+    "section": "",
+    "text": "A TileDB group is a folder with a single file in it:\nmy_group                       # Group folder\n    |_ __tiledb_group.tdb      # Empty group file\n    |_ __group                 # Group folder\n        |_ &lt;timestamped_name&gt;  # Timestamped group file detailing members\n    |_ __meta                  # group metadata folder\nFile __tiledb_group.tdb is empty and it is merely used to indicate that my_group is a TileDB group.\nInside the group folder, you can find the following:\n\nGroup details folder __group.\nGroup metadata folder __meta.",
+    "crumbs": [
+      "Format Specification",
+      "Group",
+      "Group File Hierarchy"
+    ]
+  },
+  {
+    "objectID": "format_spec/filters/float_scale.html",
+    "href": "format_spec/filters/float_scale.html",
+    "title": "Float Scaling Filter",
+    "section": "",
+    "text": "The float scale filter converts floating point type data to integer data after first shifting and scaling the data. It is a lossy filter that is often used in combination with other filters that perform well on integer data. The float scale filter stores its input data (with floating point type) as integer values for more compressed storage. For example, given data as a NumPy float64 array, with scale/offset parameters, and a specified byte width of 4: ``` data = np.random.rand(npts) data_b = data.view(np.float64) new_data_b = np.zeros(npts, dtype=np.int32) # byte width is 4 scale, offset\nfor i in range(0, len(data)): # round works like ’s round new_data_b[i] = round((data_b[i] - offset) / scale) ```\nOn read, the float scaling filter will reverse the scale factor and offset, restoring the original floating point data, with a potential loss of precision. Given the previous example: restored_data = np.zeros(npts, dtype=np.float64)    for i in range(0, len(data)):      restored_data[i] = (new_data_b[i] * scale) + offset\nHere’s a small example of the float scaling filter’s behavior on write, then read. Given the parameters scale = 0.25, offset = 10.0, and byte_size = 2, this is how the data is stored and retrieved.\n  input_data (double) = [10.0, 10.2500, 10.7540, 11.0001]\n  stored_data (16 bit integer) = [0, 1, 3, 4]\n  output_data (double) = [10.0, 10.2500, 10.7500, 11.0]\n\n\nThe filter enum value for the float scaling filter is 15 (TILEDB_FILTER_SCALE_FLOAT enum).\n\n\n\nThe input data layout will be an array of floating point numbers. The output data layout will be an array of integer numbers with the pre-specified byte width."
+  },
+  {
+    "objectID": "format_spec/filters/float_scale.html#float-scaling-filter",
+    "href": "format_spec/filters/float_scale.html#float-scaling-filter",
+    "title": "Float Scaling Filter",
+    "section": "",
+    "text": "The float scale filter converts floating point type data to integer data after first shifting and scaling the data. It is a lossy filter that is often used in combination with other filters that perform well on integer data. The float scale filter stores its input data (with floating point type) as integer values for more compressed storage. For example, given data as a NumPy float64 array, with scale/offset parameters, and a specified byte width of 4: ``` data = np.random.rand(npts) data_b = data.view(np.float64) new_data_b = np.zeros(npts, dtype=np.int32) # byte width is 4 scale, offset\nfor i in range(0, len(data)): # round works like ’s round new_data_b[i] = round((data_b[i] - offset) / scale) ```\nOn read, the float scaling filter will reverse the scale factor and offset, restoring the original floating point data, with a potential loss of precision. Given the previous example: restored_data = np.zeros(npts, dtype=np.float64)    for i in range(0, len(data)):      restored_data[i] = (new_data_b[i] * scale) + offset\nHere’s a small example of the float scaling filter’s behavior on write, then read. Given the parameters scale = 0.25, offset = 10.0, and byte_size = 2, this is how the data is stored and retrieved.\n  input_data (double) = [10.0, 10.2500, 10.7540, 11.0001]\n  stored_data (16 bit integer) = [0, 1, 3, 4]\n  output_data (double) = [10.0, 10.2500, 10.7500, 11.0]\n\n\nThe filter enum value for the float scaling filter is 15 (TILEDB_FILTER_SCALE_FLOAT enum).\n\n\n\nThe input data layout will be an array of floating point numbers. The output data layout will be an array of integer numbers with the pre-specified byte width."
+  },
+  {
+    "objectID": "format_spec/filters/delta.html",
+    "href": "format_spec/filters/delta.html",
+    "title": "Delta Filter",
+    "section": "",
+    "text": "The delta filter transforms integer type data by computing and storing the delta between consecutive elements.\n\n\nThe filter enum value for the delta filter is 19 (TILEDB_FILTER_DELTA enum).\n\n\n\nThe input data layout will be an array of integer numbers (each known as in_{n}, with n starting from 0). Their type (henceforth known as input_t) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the Reinterpret datatype field in the filter options.\nThe output data layout consists of the following fields:\n\n\n\nField\nType\nDescription\n\n\n\n\nn\nuint64_t\nNumber of values in the input data.\n\n\nin_0\ninput_t\nFirst input value.\n\n\ndelta_1\ninput_t\nValue of in_1 - in_0.\n\n\ndelta_n\ninput_t\nValue of in_n - in_{n - 1}."
+  },
+  {
+    "objectID": "format_spec/filters/delta.html#delta-filter",
+    "href": "format_spec/filters/delta.html#delta-filter",
+    "title": "Delta Filter",
+    "section": "",
+    "text": "The delta filter transforms integer type data by computing and storing the delta between consecutive elements.\n\n\nThe filter enum value for the delta filter is 19 (TILEDB_FILTER_DELTA enum).\n\n\n\nThe input data layout will be an array of integer numbers (each known as in_{n}, with n starting from 0). Their type (henceforth known as input_t) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the Reinterpret datatype field in the filter options.\nThe output data layout consists of the following fields:\n\n\n\nField\nType\nDescription\n\n\n\n\nn\nuint64_t\nNumber of values in the input data.\n\n\nin_0\ninput_t\nFirst input value.\n\n\ndelta_1\ninput_t\nValue of in_1 - in_0.\n\n\ndelta_n\ninput_t\nValue of in_n - in_{n - 1}."
+  },
+  {
+    "objectID": "format_spec/filters/xor.html",
+    "href": "format_spec/filters/xor.html",
+    "title": "XOR Filter",
+    "section": "",
+    "text": "The XOR filter applies the XOR operation sequentially to the input data, in chunks of 1-4 bytes, depending on the sizeof the attribute’s type representation. For example, given data as a NumPy int64 array:\ndata = np.random.rand(npts)\ndata_b = data.view(np.int64)\nfor i in range(1, len(data)):\n  data_b[i] = data_b[i] ^ data_b[i-1]\n\nFilter Enum Value\nThe filter enum value for the XOR filter is 16 (TILEDB_FILTER_XOR enum).\n\n\nInput and Output Layout\nThe input and output data layout is identical for the XOR filter."
+  },
+  {
+    "objectID": "format_spec/metadata.html",
+    "href": "format_spec/metadata.html",
+    "title": "Array Metadata",
+    "section": "",
+    "text": "The metadata is a folder called __meta located here:\nmy_array                            # array folder\n   |  ...\n   |_ __meta                        # metadata folder\n         |_ &lt;timestamped_name&gt;      # metadata file\n         |_ ...\n         |_ &lt;timestamped_name&gt;.vac  # vacuum file\n         |_ ...\nThe metadata folder can contain any number of timestamped: * metadata files * vacuum files * Note: the timestamped names do not include the format version."
+  },
+  {
+    "objectID": "format_spec/metadata.html#main-structure",
+    "href": "format_spec/metadata.html#main-structure",
+    "title": "Array Metadata",
+    "section": "",
+    "text": "The metadata is a folder called __meta located here:\nmy_array                            # array folder\n   |  ...\n   |_ __meta                        # metadata folder\n         |_ &lt;timestamped_name&gt;      # metadata file\n         |_ ...\n         |_ &lt;timestamped_name&gt;.vac  # vacuum file\n         |_ ...\nThe metadata folder can contain any number of timestamped: * metadata files * vacuum files * Note: the timestamped names do not include the format version."
+  },
+  {
+    "objectID": "format_spec/metadata.html#metadata-file",
+    "href": "format_spec/metadata.html#metadata-file",
+    "title": "Array Metadata",
+    "section": "Metadata File",
+    "text": "Metadata File\nThe metadata file consists of a single generic tile, containing multiple entries with the following data:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nKey length\nuint32_t\nThe length of the key.\n\n\nKey\nuint8_t[]\nThe key.\n\n\nDeletion\nuint8_t\n1/0 if it is a deletion/insertion.\n\n\nValue type\nuint8_t\nThe value data type. Present only if del is 0.\n\n\nNumber of values\nuint32_t\nThe number of values. Present only if del is 0.\n\n\nValue\nuint8_t[]\nThe value. Present only if del is 0."
+  },
+  {
+    "objectID": "format_spec/update_commit_file.html",
+    "href": "format_spec/update_commit_file.html",
+    "title": "Update Commit File",
+    "section": "",
+    "text": "A update commit file has name &lt;timestamped_name&gt;.upd and is located here:\nmy_array                              # array folder\n   |_ ....\n   |_ __commits                       # array commits folder\n         |_ &lt;timestamped_name&gt;.upd    # update commit file\n         |_ ...\nThere may be multiple such files in the array commits folder. Each update commit file contains a tile with a serialized update condition, which is a tree of nodes followed by update values, which is a list of values. Each node for the condition can be a value node or expression node. Expression nodes have the following on disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNode type\nuint8_t\n0 for expression node\n\n\nCombination op\nuint8_t\nAND(0), OR(1), NOT(2)\n\n\nNum children\nuint64_t[]\nNumber of child nodes\n\n\nChildren 1\nNODE\nchildren 1\n\n\n…\n…\n…\n\n\nChildren N\nNODE\nChildren N\n\n\n\nValue nodes have the following on disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNode type\nuint8_t\n1 for value node\n\n\nOp\nuint8_t\nLT(0), LE(1), GT(2), GE(3), EQ(4), NE(5)\n\n\nField name size\nuint32_t\nSize of the field name\n\n\nField name value\nuint8_t[]\nField name value\n\n\nValue size\nuint64_t\nValue size\n\n\nValue content\nuint8_t[]\nValue\n\n\n\nUpdate values are serialized in the following format: | Field | Type | Description | | :— | :— | :— | | Number of values | uint64_t | Number of values N | | Field name size 1 | uint64_t | Size of the field name for the first update value | | Field name value 1 | uint8_t[] | Field name value for the first update value | | Value size 1 | uint64_t | Value size for first update value | | Value content 1 | uint8_t[] | Value for first update value | | … | … | … | | Field name size N | uint64_t | Size of the field name for update value N | | Field name value N | uint8_t[] | Field name value for update value N | | Value size N | uint64_t | Value size for update value N | | Value content N | uint8_t[] | Value for update value N |"
+  },
+  {
+    "objectID": "format_spec/consolidated_fragment_metadata_file.html",
+    "href": "format_spec/consolidated_fragment_metadata_file.html",
+    "title": "Consolidated Fragment Metadata File",
+    "section": "",
+    "text": "A consolidated fragment metadata file has name &lt;timestamped_name&gt;.meta and is located here:\nmy_array                              # array folder\n   |_ ....\n   |_ __fragment_meta                 # array fragment metadata folder\n         |_ &lt;timestamped_name&gt;.meta   # consolidated fragment metadata file\n         |_ ...\nThere may be multiple such files in the array folder. Each consolidated fragment metadata file combines the metadata footers of a set of fragments. It has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 length\nuint64_t\nNumber of bytes in the string of URI 1\n\n\nURI 1\nuint8_t[]\nURI 1\n\n\nURI 1 offset\nuint64_t\nThe offset in the file where the URI 1 footer begins\n\n\n…\n…\n…\n\n\nURI N length\nuint64_t\nNumber of bytes in the string of URI N\n\n\nURI N\nuint8_t[]\nURI N\n\n\nURI N offset\nuint64_t\nThe offset in the file where the URI N footer begins\n\n\nURI 1 footer\nFooter\nSerialized footer of URI (fragment) 1\n\n\n…\n…\n…\n\n\nURI N footer\nFooter\nSerialized footer of URI (fragment) N",
+    "crumbs": [
+      "Format Specification",
+      "Other",
+      "Consolidated Fragment Metadata File"
+    ]
+  },
+  {
+    "objectID": "format_spec/array_file_hierarchy.html",
+    "href": "format_spec/array_file_hierarchy.html",
+    "title": "Array File Hierarchy",
+    "section": "",
+    "text": "An array is a folder with the following structure:\nmy_array                                # array folder\n    |_ __schema                         # array schema folder\n    |_ __fragments                      # array fragments folder\n          |_ &lt;timestamped_name&gt;         # fragment folder\n          |_ ...\n    |_ __commits                        # array commits folder\n          |_ &lt;timestamped_name&gt;.wrt     # fragment write file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.del     # delete commit file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.upd     # update commit file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.vac     # fragment vacuum file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.con     # consolidated commits file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.ign     # ignore file for consolidated commits file\n    |_ __fragment_meta                  \n          |_ &lt;timestamped_name&gt;.meta    # consol. fragment meta file\n          |_ ...                  \n    |_ __meta                           # array metadata folder\n    |_ __labels                         # dimension label folder\n\nInside the array folder, you can find the following:\n\nArray schema folder __schema.\nInside of a fragments folder, any number of fragment folders &lt;timestamped_name&gt;.\nInside of a commit folder, an empty file &lt;timestamped_name&gt;.wrt associated with every fragment folder &lt;timestamped_name&gt;, where &lt;timestamped_name&gt; is common for the folder and the WRT file. This is used to indicate that fragment &lt;timestamped_name&gt; has been committed (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.\nInside the same commit folder, any number of delete commit files of the form &lt;timestamped_name&gt;.del.\nInside the same commit folder, any number of update commit files of the form &lt;timestamped_name&gt;.upd.\nInside the same commit folder, any number of consolidated commits files of the form &lt;timestamped_name&gt;.con.\nInside the same commit folder, any number of ignore files of the form &lt;timestamped_name&gt;.ign.\nInside of a fragment metadata folder, any number of consolidated fragment metadata files of the form &lt;timestamped_name&gt;.meta.\nArray metadata folder __meta.\nInside of a labels folder, additional TileDB arrays storing dimension label data.",
+    "crumbs": [
+      "Format Specification",
+      "Array",
+      "Array File Hierarchy"
+    ]
+  },
+  {
+    "objectID": "format_spec/vacuum_file.html",
+    "href": "format_spec/vacuum_file.html",
+    "title": "Vacuum File",
+    "section": "",
+    "text": "A vacuum file has name [](./timestamped_name.md).vac` and can be located either in the array commit folder:\nmy_array                        # array folder\n   |_ ....\n   |_ __commits                 # array commit folder\n         |_ &lt;timestamped_name&gt;.vac   # vacuum file\nor in the array metadata folder:\nmy_array                        # array folder\n   |  ...            \n   | __meta                    # array metadata folder\n         | ...\n         | &lt;timestamped_name&gt;.vac  # vacuum file\n         | ...\nWhen located in the commits folder, it will include the URI of fragments (in the __fragments folder) that can be vacuumed. When located in the array metadata folder, it will include the URI or array metadata files that can be vacuumed.\nThe vacuum file is a simple text file where each line contains a URI string:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 followed by a new line character\nuint8_t[]\nURI 1 to be vacuumed\n\n\n…\n…\n…\n\n\nURI N followed by a new line character\nuint8_t[]\nURI N to be vacuumed",
+    "crumbs": [
+      "Format Specification",
+      "Other",
+      "Vacuum File"
+    ]
+  },
+  {
+    "objectID": "format_spec/consolidated_commits_file.html",
+    "href": "format_spec/consolidated_commits_file.html",
+    "title": "Consolidated Commits File",
+    "section": "",
+    "text": "A consolidated commits file has name &lt;timestamped_name&gt;.con and is located here:\nmy_array                              # array folder\n   |_ ....\n   |_ __commits                       # array commits folder\n         |_ &lt;timestamped_name&gt;.con    # consolidated commits file\n         |_ ...\nThere may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits, delete or update commits that will be considered together when opening an array. They are timestamped (with the smaller/bigger timestamp from contained elements) so that they might be filtered if the array open start/end time don’t intersect anything inside of the file, but any file where there is any intersection will be loaded. There are two situations when these files are added. The first one is when a user decides to improve the open performance of their array (by reducing the listing size) through commits consolidation. The second one is when a user has specified a maximum fragment size for consolidation and multiple fragments needed to be committed at once, this file format will be used so that an atomic file system operation can be performed to do so.\nWhen fragments that are included inside of a consolidated file are removed, either through vacuuming or other fragment deletion, an ignore file needs to be written so that those commits file can be ignored when opening an array and not cause unnecessary file system operations.\nThere are three types of objects that can be in the file: commits, deletes or updates. For each of those, the first field is the URI of the object, which determines the subsequent serialized content of the data block: - a URI ending with .ok or .wrt is a commit object containing only the fragment URI - a URI ending with .del is a delete object containing the serialized delete condition - a URI ending with .upd is an update object containing the serialized update condition\n\nFragment commit:\n\n\n\n\n\n\n\n\n\nField\nType\nExtension\nDescription\n\n\n\n\nCommit URI followed by a new line character\nuint8_t[]\n.ok, .wrt\nURI\n\n\n\n\n\nDelete commit (see delete commit file for the format of the serialized delete condition):\n\n\n\n\n\n\n\n\n\nField\nType\nExtension\nDescription\n\n\n\n\nURI followed by a new line character\nuint8_t[]\n.del\nURI\n\n\nSerialized delete condition tile size\nuint64_t\n\nDelete condition tile size\n\n\nSerialized delete condition tile\nuint8_t[]\n\nDelete condition tile\n\n\n\n\n\nUpdate commit (see update commit file for the format of the serialized update condition):\n\n\n\n\n\n\n\n\n\nField\nType\nExtension\nDescription\n\n\n\n\nURI followed by a new line character\nuint8_t[]\n.upd\nURI\n\n\nSerialized update condition tile size\nuint64_t\n\nUpdate condition tile size\n\n\nSerialized update condition tile\nuint8_t[]\n\nUpdate condition tile"
+  },
+  {
+    "objectID": "format_spec/ignore_file.html",
+    "href": "format_spec/ignore_file.html",
+    "title": "Ignore File",
+    "section": "",
+    "text": "A ignore file has name &lt;timestamped_name&gt;.ign and is located in the array commit or metadata folder:\nmy_array                           # array folder\n   |_ ....\n   |_ __commits                    # array commit folder\n         |_ &lt;timestamped_name&gt;.ign      # ignore file\nThe ignore file is a simple text file where each line contains a URI string. The URI is the relative URI based on the top level array URI.\nIgnored files are used to specify commit files that should be ignored. The timestamps for the file is used to identify the timestamp range that is included inside of the file (with the smaller/bigger timestamp from contained elements). That way if an array is opened at a time that doesn’t intersect the timestamp range of the file, it can be omitted. All ignore files that intersect the array open start/end times will be loaded when the array is opened. There are a few situations where those files are required, all linked to consolidated commits files. One of them is when fragments are vacuumed after consolidation. If any fragments were included a consolidated commits file, they now should be added to an ignore file so that the system doesn’t try to load that fragments. Another is when a fragment that is included in a consolidated commits file is deleted, it needs to be added to an ignore file so that the array can still be opened.\nOnce a new consolidated commits file get generated, it will not include any of the fragments that were deleted or vacuumed. At that point, the ignore files and the other consolidated commits files can be vacuumed.\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 followed by a new line character\nuint8_t[]\nURI 1 to be ignored\n\n\n…\n…\n…\n\n\nURI N followed by a new line character\nuint8_t[]\nURI N to be ignored"
+  },
+  {
+    "objectID": "external/blosc/README-VERSIONS.html",
+    "href": "external/blosc/README-VERSIONS.html",
+    "title": "",
+    "section": "",
+    "text": "The blosc files here were copied from release 1.21.0 of the c-blosc repository of the Blosc project. All we are using here is the byte shuffle code, so we do not have the library itself as an external dependency. We only use a selected subset of the sources; they are used without modification.\n\nhttps://github.com/Blosc/c-blosc\nhttps://github.com/Blosc/c-blosc/releases/tag/v1.21.0"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Public code docs",
+    "section": "",
+    "text": "This is public documentation of the code within this repository.",
+    "crumbs": [
+      "Public code docs"
+    ]
+  },
+  {
+    "objectID": "format_spec/timestamped_name.html",
+    "href": "format_spec/timestamped_name.html",
+    "title": "Timestamped Name",
+    "section": "",
+    "text": "A TileDB object may contain files with format &lt;timestamped_name&gt;.ext, as seen in array_file_hierarchy.md, for example.\nA &lt;timestamped_name&gt; has format __t1_t2_uuid[_v], where:"
+  },
+  {
+    "objectID": "format_spec/timestamped_name.html#format-history",
+    "href": "format_spec/timestamped_name.html#format-history",
+    "title": "Timestamped Name",
+    "section": "Format History",
+    "text": "Format History\nNote: The presence of [] is indicative of an optional parameter. | Format version | TileDB version | Timestamped name format | | :-: | :-: | :-: | | 1 - 2 | 1.4 - 1.5 | __uuid_t1[_t2] | | 3 - 4 | 1.6 - 1.7 | __t1_t2_uuid | | 5+ | 2.0+ | __t1_t2_uuid[_v] |"
+  },
+  {
+    "objectID": "format_spec/fragment.html",
+    "href": "format_spec/fragment.html",
+    "title": "Fragment",
+    "section": "",
+    "text": "A fragment metadata folder is called &lt;timestamped_name&gt;` and located here:\nmy_array                                    # array folder\n   |  ...\n   |_ __fragments                           # array fragments folder\n         |_ &lt;timestamped_name&gt;              # fragment folder\n         |      |_ __fragment_metadata.tdb  # fragment metadata\n         |      |_ a0.tdb                   # fixed-sized attribute \n         |      |_ a1.tdb                   # var-sized attribute (offsets) \n         |      |_ a1_var.tdb               # var-sized attribute (values)\n         |      |_ a2.tdb                   # fixed-sized nullable attribute\n         |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)\n         |      |_ ...      \n         |      |_ d0.tdb                   # fixed-sized dimension \n         |      |_ d1.tdb                   # var-sized dimension (offsets) \n         |      |_ d1_var.tdb               # var-sized dimension (values)\n         |      |_ ...      \n         |      |_ t.tdb                    # timestamp attribute\n         |      |_ ...  \n         |      |_ dt.tdb                   # delete timestamp attribute\n         |      |_ ...  \n         |      |_ dci.tdb                  # delete condition index attribute\n         |      |_ ...  \n        |_ ...  \nThere can be any number of fragments in an array. The fragment folder contains:\n\nA single fragment metadata file named __fragment_metadata.tdb.\nAny number of data files. For each fixed-sized attribute foo1 (or dimension bar1), there is a single data file a0.tdb (d0.tdb) containing the values along this attribute (dimension). For every var-sized attribute foo2 (or dimensions bar2), there are two data files; a1_var.tdb (d1_var.tdb) containing the var-sized values of the attribute (dimension) and a1.tdb (d1.tdb) containing the starting offsets of each value in a1_var.tdb (d1_var.rdb). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, foo3, will have an additional file a2_validity.tdb that contains its validity vector.\nThe names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.\nThe timestamp fixed attribute (t.tdb) is, for fragments consolidated with timestamps, the time at which a cell was added.\nThe delete timestamp fixed attribute (dt.tdb) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.\nThe delete condition Delete commit file index fixed attribute (dci.tdb) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of Tile Processed Conditions) that deleted the cell.",
+    "crumbs": [
+      "Format Specification",
+      "Array",
+      "Fragment"
+    ]
+  },
+  {
+    "objectID": "format_spec/fragment.html#main-structure",
+    "href": "format_spec/fragment.html#main-structure",
+    "title": "Fragment",
+    "section": "",
+    "text": "A fragment metadata folder is called &lt;timestamped_name&gt;` and located here:\nmy_array                                    # array folder\n   |  ...\n   |_ __fragments                           # array fragments folder\n         |_ &lt;timestamped_name&gt;              # fragment folder\n         |      |_ __fragment_metadata.tdb  # fragment metadata\n         |      |_ a0.tdb                   # fixed-sized attribute \n         |      |_ a1.tdb                   # var-sized attribute (offsets) \n         |      |_ a1_var.tdb               # var-sized attribute (values)\n         |      |_ a2.tdb                   # fixed-sized nullable attribute\n         |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)\n         |      |_ ...      \n         |      |_ d0.tdb                   # fixed-sized dimension \n         |      |_ d1.tdb                   # var-sized dimension (offsets) \n         |      |_ d1_var.tdb               # var-sized dimension (values)\n         |      |_ ...      \n         |      |_ t.tdb                    # timestamp attribute\n         |      |_ ...  \n         |      |_ dt.tdb                   # delete timestamp attribute\n         |      |_ ...  \n         |      |_ dci.tdb                  # delete condition index attribute\n         |      |_ ...  \n        |_ ...  \nThere can be any number of fragments in an array. The fragment folder contains:\n\nA single fragment metadata file named __fragment_metadata.tdb.\nAny number of data files. For each fixed-sized attribute foo1 (or dimension bar1), there is a single data file a0.tdb (d0.tdb) containing the values along this attribute (dimension). For every var-sized attribute foo2 (or dimensions bar2), there are two data files; a1_var.tdb (d1_var.tdb) containing the var-sized values of the attribute (dimension) and a1.tdb (d1.tdb) containing the starting offsets of each value in a1_var.tdb (d1_var.rdb). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, foo3, will have an additional file a2_validity.tdb that contains its validity vector.\nThe names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.\nThe timestamp fixed attribute (t.tdb) is, for fragments consolidated with timestamps, the time at which a cell was added.\nThe delete timestamp fixed attribute (dt.tdb) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.\nThe delete condition Delete commit file index fixed attribute (dci.tdb) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of Tile Processed Conditions) that deleted the cell.",
+    "crumbs": [
+      "Format Specification",
+      "Array",
+      "Fragment"
+    ]
+  },
+  {
+    "objectID": "format_spec/fragment.html#fragment-metadata-file",
+    "href": "format_spec/fragment.html#fragment-metadata-file",
+    "title": "Fragment",
+    "section": "Fragment Metadata File",
+    "text": "Fragment Metadata File\nThe fragment metadata file has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nR-Tree\nR-Tree\nThe serialized R-Tree\n\n\nTile offsets for attribute/dimension 1\nTile Offsets\nThe serialized on-disk tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nTile offsets for attribute/dimension N\nTile Offsets\nThe serialized on-disk tile offsets for attribute/dimension N\n\n\nVariable tile offsets for attribute/dimension 1\nTile Offsets\nThe serialized on-disk variable tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable tile offsets for attribute/dimension N\nTile Offsets\nThe serialized on-disk variable tile offsets for attribute/dimension N\n\n\nVariable tile sizes for attribute/dimension 1\nTile Sizes\nThe serialized in-memory variable tile sizes for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable tile sizes for attribute/dimension N\nTile Sizes\nThe serialized in-memory variable tile sizes for attribute/dimension N\n\n\nValidity tile offsets for attribute/dimension 1\nTile Offsets\nThe serialized on-disk validity tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nValidity tile offsets for attribute/dimension N\nTile Offsets\nThe serialized on-disk validity tile offsets for attribute/dimension N\n\n\nTile mins for attribute/dimension 1\nTile Mins/Maxes\nThe serialized mins for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable mins for attribute/dimension N\nTile Mins/Maxes\nThe serialized mins for attribute/dimension N\n\n\nTile maxes for attribute/dimension 1\nTile Mins/Maxes\nThe serialized maxes for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable maxes for attribute/dimension N\nTile Mins/Maxes\nThe serialized maxes for attribute/dimension N\n\n\nTile sums for attribute/dimension 1\nTile Sums\nThe serialized sums for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable sums for attribute/dimension N\nTile Sums\nThe serialized sums for attribute/dimension N\n\n\nTile null counts for attribute/dimension 1\nTile Null Count\nThe serialized null counts for attribute/dimension 1\n\n\n…\n…\n…\n\n\nTile null counts for attribute/dimension N\nTile Null Count\nThe serialized null counts for attribute/dimension N\n\n\nFragment min, max, sum, null count\nTile Fragment Min Max Sum Null Count\nThe serialized fragment min max sum null count\n\n\nProcessed conditions\nTile Processed Conditions\nThe serialized processed conditions\n\n\nMetadata footer\nFooter\nBasic metadata gathered in the footer\n\n\n\n\nR-Tree\nThe R-Tree is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nFanout\nuint32_t\nThe tree fanout\n\n\nNum levels\nuint32_t\nThe number of levels in the tree\n\n\nNum MBRs at level 1\nuint64_t\nThe number of MBRs at level 1\n\n\nMBR 1 at level 1\nMBR\nFirst MBR at level 1\n\n\n…\n…\n…\n\n\nMBR N at level 1\nMBR\nN-th MBR at level 1\n\n\n…\n…\n…\n\n\nNum MBRs at level L\nuint64_t\nThe number of MBRs at level L\n\n\nMBR 1 at level L\nMBR\nFirst MBR at level L\n\n\n…\n…\n…\n\n\nMBR N at level L\nMBR\nN-th MBR at level L\n\n\n\n\n\nMBR\nEach MBR entry has format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\n1D range for dimension 1\n1DRange\nThe 1-dimensional range for dimension 1\n\n\n…\n…\n…\n\n\n1D range for dimension D\n1DRange\nThe 1-dimensional range for dimension D\n\n\n\nFor fixed-sized dimensions, the 1DRange format is:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nRange minimum\nuint8_t\nThe minimum value with the same datatype as the dimension\n\n\nRange maximum\nuint8_t\nThe maximum value with the same datatype as the dimension\n\n\n\nFor var-sized dimensions, the 1DRange format is:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nRange length\nuint64_t\nThe number of bytes of the 1D range\n\n\nMinimum value length\nuint64_t\nThe number of bytes of the minimum value\n\n\nRange minimum\nuint8_t\nThe minimum (var-sized) value with the same datatype as the dimension\n\n\nRange maximum\nuint8_t\nThe maximum (var-sized) value with the same datatype as the dimension\n\n\n\n\n\nTile Offsets\nTile offsets refer to each on-disk data tile’s starting byte offset.\nTile offsets is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum tile offsets\nuint64_t\nNumber of tile offsets\n\n\nTile offset 1\nuint64_t\nOffset 1\n\n\n…\n…\n…\n\n\nTile offset N\nuint64_t\nOffset N\n\n\n\n\n\nTile Sizes\nThe tile size refers to the in-memory size.\nIt is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum tile sizes\nuint64_t\nNumber of tile sizes\n\n\nTile size 1\nuint64_t\nSize 1\n\n\n…\n…\n…\n\n\nTile size N\nuint64_t\nSize N\n\n\n\n\n\nTile Mins Maxes\nThe tile mins maxes is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\ntype\nValue 1 or Offset 1\n\n\n…\n…\n…\n\n\nValue N\ntype\nValue N or Offset N\n\n\nVar buffer size\nuint64_t\nVar buffer size\n\n\nVar buffer\nuint8_t\nVar buffer\n\n\n\n\n\nTile Sums\nThe tile sums is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\nuint64_t\nSum 1\n\n\n…\n…\n…\n\n\nValue N\nuint64_t\nSum N\n\n\n\n\n\nTile Null Count\nThe tile null count is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\nuint64_t\nCount 1\n\n\n…\n…\n…\n\n\nValue N\nuint64_t\nCount N\n\n\n\n\n\nTile Fragment Min Max Sum Null Count\nThe fragment min max sum null count is a generic tile with the following internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nMin size\nuint64_t\nSize of the min value for attribute/dimension 1\n\n\nMin value\nuint8_t\nBuffer for min value for attribute/dimension 1\n\n\nMax size\nuint64_t\nSize of the max value for attribute/dimension 1\n\n\nMax value\nuint8_t\nBuffer for max value for attribute/dimension 1\n\n\nSum\nuint64_t\nSum value for attribute/dimension 1\n\n\nNull count\nuint64_t\nNull count value for attribute/dimension 1\n\n\n…\n…\n…\n\n\nMin size\nuint64_t\nSize of the min value for attribute/dimension N\n\n\nMin value\nuint8_t\nBuffer for min value for attribute/dimension N\n\n\nMax size\nuint64_t\nSize of the max value for attribute/dimension N\n\n\nMax value\nuint8_t\nBuffer for max value for attribute/dimension N\n\n\nSum\nuint64_t\nSum value for attribute/dimension N\n\n\nNull count\nuint64_t\nNull count value for attribute/dimension N\n\n\n\n\n\nTile Processed Conditions\nThe processed conditions is a generic tile and is the list of delete/update conditions that have already been applied for this fragment and don’t need to be applied again, sorted by filename, with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum\nuint64_t\nNumber of processed conditions\n\n\nCondition size\nuint64_t\nCondition size 1\n\n\nCondition\nuint8_t\nCondition marker filename 1\n\n\n…\n…\n…\n\n\nCondition size\nuint64_t\nCondition size N\n\n\nCondition\nuint8_t\nCondition marker filename N\n\n\n\n\n\nFooter\nThe footer is a simple blob (i.e., not a generic tile) with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nFormat version number of the fragment\n\n\nArray schema name size\nuint64_t\nSize of the array schema name\n\n\nArray schema name\nstring\nArray schema name\n\n\nDense\nuint8_t\nWhether the array is dense (1) or not (0)\n\n\nNull non-empty domain\nuint8_t\nIndicates whether the non-empty domain is null (1) or not (0)\n\n\nNon-empty domain\nMBR\nAn MBR denoting the non-empty domain\n\n\nNumber of sparse tiles\nuint64_t\nNumber of sparse tiles\n\n\nLast tile cell num\nuint64_t\nFor sparse arrays, the number of cells in the last tile in the fragment\n\n\nIncludes timestamps\nuint8_t\nWhether the fragment includes timestamps (1) or not (0)\n\n\nIncludes delete metadata\nuint8_t\nWhether the fragment includes delete metadata (1) or not (0)\n\n\nFile sizes\nuint64_t[]\nThe size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file.\n\n\nFile var sizes\nuint64_t[]\nThe size in bytes of each var-length attribute/dimension file in the fragment.\n\n\nFile validity sizes\nuint64_t[]\nThe size in bytes of each attribute/dimension validity vector file in the fragment.\n\n\nR-Tree offset\nuint64_t\nThe offset to the generic tile storing the R-Tree in the metadata file.\n\n\nTile offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile offsets for attribute/dimension N\n\n\nTile var offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the variable tile offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile var offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the variable tile offsets for attribute/dimension N.\n\n\nTile var sizes offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the variable tile sizes for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile var sizes offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the variable tile sizes for attribute/dimension N.\n\n\nTile validity offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile validity offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile validity offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile validity offsets for attribute/dimension N\n\n\nTile mins offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile mins for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile mins offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile mins for attribute/dimension N\n\n\nTile maxes offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile maxes for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile maxes offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile maxes for attribute/dimension N\n\n\nTile sums offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile sums for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile sums offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile sums for attribute/dimension N\n\n\nTile null counts offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile null counts for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile null counts offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile null counts for attribute/dimension N\n\n\nFragment min max sum null count offset\nuint64_t\nThe offset to the generic tile storing the fragment min max sum null count data.\n\n\nProcessed conditions offset\nuint64_t\nThe offset to the generic tile storing the processed conditions.\n\n\nArray schema name size\nuint64_t\nThe total number of characters of the array schema name.\n\n\nArray schema name\nuint8_t[]\nThe array schema name.\n\n\nFooter length\nuint64_t\nSum of bytes of the above fields. Only present when there is at least one var-sized dimension.",
+    "crumbs": [
+      "Format Specification",
+      "Array",
+      "Fragment"
+    ]
+  },
+  {
+    "objectID": "format_spec/fragment.html#data-file",
+    "href": "format_spec/fragment.html#data-file",
+    "title": "Fragment",
+    "section": "Data File",
+    "text": "Data File\nThe on-disk format of each data file is:\n\n\n\nField\nType\nDescription\n\n\n\n\nTile 1\nTile\nThe data of tile 1\n\n\n…\n…\n…\n\n\nTile N\nTile\nThe data of tile N",
+    "crumbs": [
+      "Format Specification",
+      "Array",
+      "Fragment"
+    ]
+  },
+  {
+    "objectID": "format_spec/enumeration.html",
+    "href": "format_spec/enumeration.html",
+    "title": "Enumerations",
+    "section": "",
+    "text": "``my_array                                    # array folder    |  ...    |_ schema                      # ArraySchema directory named__schema|_ enumerations          # Enumeration directory named__enumerations|_ enumeration     # enumeration data with names__uuid_v`\nEnumeration data is stored in a subdirectory of the [array schema][./array_schema.md] directory. Enumerations are stored using [Generic Tiles][./generic_tile.md].\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nEnumerations version number\n\n\nDatatype\nuint8_t\nThe datatype of the enumeration values\n\n\nCell Val Num\nuint32_t\nThe cell val num of the enumeration values\n\n\nOrdered\nbool\nWhether the enumeration values should be considered ordered\n\n\nData Size\nuint64_t\nThe number of bytes used to store the values\n\n\nData\nuint8_t * Data Size\nThe data for the enumeration values\n\n\nOffsets Size\nuint64_t\nThe number of bytes used to store offsets if cell_var_num is TILEDB_VAR_NUM\n\n\nOffsets\nuint8_t * Offsets Size\nThe offsets data for the enumeration if cell_var_num is TILEDB_VAR_NUM"
+  },
+  {
+    "objectID": "format_spec/enumeration.html#main-structure",
+    "href": "format_spec/enumeration.html#main-structure",
+    "title": "Enumerations",
+    "section": "",
+    "text": "``my_array                                    # array folder    |  ...    |_ schema                      # ArraySchema directory named__schema|_ enumerations          # Enumeration directory named__enumerations|_ enumeration     # enumeration data with names__uuid_v`\nEnumeration data is stored in a subdirectory of the [array schema][./array_schema.md] directory. Enumerations are stored using [Generic Tiles][./generic_tile.md].\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nEnumerations version number\n\n\nDatatype\nuint8_t\nThe datatype of the enumeration values\n\n\nCell Val Num\nuint32_t\nThe cell val num of the enumeration values\n\n\nOrdered\nbool\nWhether the enumeration values should be considered ordered\n\n\nData Size\nuint64_t\nThe number of bytes used to store the values\n\n\nData\nuint8_t * Data Size\nThe data for the enumeration values\n\n\nOffsets Size\nuint64_t\nThe number of bytes used to store offsets if cell_var_num is TILEDB_VAR_NUM\n\n\nOffsets\nuint8_t * Offsets Size\nThe offsets data for the enumeration if cell_var_num is TILEDB_VAR_NUM"
+  },
+  {
+    "objectID": "format_spec/delete_commit_file.html",
+    "href": "format_spec/delete_commit_file.html",
+    "title": "Delete Commit File",
+    "section": "",
+    "text": "A delete commit file has name &lt;timestamped_name&gt;.del and is located here:\nmy_array                              # array folder\n   |_ ....\n   |_ __commits                       # array commits folder\n         |_ &lt;timestamped_name&gt;.del    # delete commit file\n         |_ ...\nThere may be multiple such files in the array commits folder. Each delete commit file contains a tile with a serialized delete condition, which is a tree of nodes. Each node can be a value node or expression node. Expression nodes have the following on disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNode type\nuint8_t\n0 for expression node\n\n\nCombination op\nuint8_t\nAND(0), OR(1), NOT(2)\n\n\nNum children\nuint64_t\nNumber of child nodes\n\n\nChildren 1\nNODE\nchildren 1\n\n\n…\n…\n…\n\n\nChildren N\nNODE\nChildren N\n\n\n\nValue nodes have the following on disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNode type\nuint8_t\n1 for value node\n\n\nOp\nuint8_t\nLT(0), LE(1), GT(2), GE(3), EQ(4), NE(5)\n\n\nField name size\nuint32_t\nSize of the field name\n\n\nField name value\nuint8_t[]\nField name value\n\n\nValue size\nuint64_t\nValue size\n\n\nValue content\nuint8_t[]\nValue"
+  },
+  {
+    "objectID": "format_spec/filter_pipeline.html",
+    "href": "format_spec/filter_pipeline.html",
+    "title": "Filter Pipeline",
+    "section": "",
+    "text": "The filter pipeline has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax chunk size\nuint32_t\nMaximum chunk size within a tile\n\n\nNum filters\nuint32_t\nNumber of filters in pipeline\n\n\nFilter 1\nFilter\nFirst filter\n\n\n…\n…\n…\n\n\nFilter N\nFilter\nNth filter\n\n\n\nFor var size data, the filter pipeline tries to fit integral cells in a chunk. It uses the following heuristic if the cell doesn’t fit:\n\nIf the chunk is not yet at 50% capacity, add the cell to the current chunk.\nIf the chunk is over 50% capacity and adding the cell would make it less than 150% of the maximum chunk size, add it to this chunk.\nElse, start a new chunk.",
+    "crumbs": [
+      "Format Specification",
+      "Other",
+      "Filter Pipeline"
+    ]
+  },
+  {
+    "objectID": "format_spec/filter_pipeline.html#main-structure",
+    "href": "format_spec/filter_pipeline.html#main-structure",
+    "title": "Filter Pipeline",
+    "section": "",
+    "text": "The filter pipeline has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax chunk size\nuint32_t\nMaximum chunk size within a tile\n\n\nNum filters\nuint32_t\nNumber of filters in pipeline\n\n\nFilter 1\nFilter\nFirst filter\n\n\n…\n…\n…\n\n\nFilter N\nFilter\nNth filter\n\n\n\nFor var size data, the filter pipeline tries to fit integral cells in a chunk. It uses the following heuristic if the cell doesn’t fit:\n\nIf the chunk is not yet at 50% capacity, add the cell to the current chunk.\nIf the chunk is over 50% capacity and adding the cell would make it less than 150% of the maximum chunk size, add it to this chunk.\nElse, start a new chunk.",
+    "crumbs": [
+      "Format Specification",
+      "Other",
+      "Filter Pipeline"
+    ]
+  },
+  {
+    "objectID": "format_spec/filter_pipeline.html#filter",
+    "href": "format_spec/filter_pipeline.html#filter",
+    "title": "Filter Pipeline",
+    "section": "Filter",
+    "text": "Filter\nThe filter has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nFilter type\nuint8_t\nType of filter (e.g. TILEDB_FILTER_BZIP2) – see below for values\n\n\nFilter options size\nuint32_t\nNumber of bytes in filter options – may be 0.\n\n\nFilter options\nFilter Options\nFilter options, specific to each filter. E.g. compression level for compression filters.\n\n\n\nTileDB supports the following filters. Each filter has a type, which also corresponds to a constant in the C API: * Compression * Gzip – TILEDB_FILTER_GZIP (1) * Zstandard – TILEDB_FILTER_ZSTD (2) * LZ4 – TILEDB_FILTER_LZ4 (3) * Run-length encoding – TILEDB_FILTER_RLE (4) * BZip2 – TILEDB_FILTER_BZIP2 (5) * Double-delta – TILEDB_FILTER_DOUBLE_DELTA (6) * Dictionary – TILEDB_FILTER_DICTIONARY (14) * Delta – TILEDB_FILTER_DELTA (19) * Bit-width Reduction – TILEDB_FILTER_BIT_WIDTH_REDUCTION (7) * Bit Shuffle – TILEDB_FILTER_BITSHUFFLE (8) * Byte Shuffle – TILEDB_FILTER_BYTESHUFFLE (9) * Positive Delta – TILEDB_FILTER_POSITIVE_DELTA (10) * Encryption * AES-256-GCM * Checksum * MD5 – TILEDB_FILTER_CHECKSUM_MD5 (12) * SHA-256 – TILEDB_FILTER_CHECKSUM_SHA256 (13) * Dictionary Encoding – TILEDB_FILTER_DICTIONARY (14) * Float Scale – TILEDB_FILTER_SCALE_FLOAT (15) * XOR – TILEDB_FILTER_XOR (16) * WEBP – TILEDB_FILTER_WEBP (18)\n\n[!NOTE] Encryption is implemented as a filter at the end of the pipeline, but the encryption filter is not directly selectable by the user, and does not appear in filter pipelines serialized to storage.",
+    "crumbs": [
+      "Format Specification",
+      "Other",
+      "Filter Pipeline"
+    ]
+  },
+  {
+    "objectID": "format_spec/filter_pipeline.html#filter-options",
+    "href": "format_spec/filter_pipeline.html#filter-options",
+    "title": "Filter Pipeline",
+    "section": "Filter Options",
+    "text": "Filter Options\nThe filter options are configuration parameters for the filters that do not change once the array schema has been created.\n\nMain Compressor Options\nFor the main compression filters (any of the filter types TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DICTIONARY}) the filter options have internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nCompressor type\nuint8_t\nType of compression (e.g. TILEDB_FILTER_BZIP2)\n\n\nCompression level\nint32_t\nCompression level used (ignored by some compressors).\n\n\n\n\n\nDelta Compressor Options\nFor the TILEDB_FILTER_DELTA and TILEDB_FILTER_DOUBLE_DELTA compression filters the filter options have internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nCompressor type\nuint8_t\nType of compression (e.g. TILEDB_FILTER_DELTA)\n\n\nCompression level\nint32_t\nIgnored\n\n\nReinterpret datatype\nuint8_t\nType to reinterpret data prior to compression.\n\n\n\n\n\nBit-width Reduction Options\nThe filter options for TILEDB_FILTER_BIT_WIDTH_REDUCTION has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nFloat Scale Filter Reduction Options\nThe filter options for TILEDB_FILTER_SCALE_FLOAT has internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nScale\ndouble\nScale parameter used for float scaling filter conversion\n\n\nOffset\ndouble\nOffset parameter used for float scaling filter conversion\n\n\nByte width\nuint64_t\nWidth of the stored integer data in bytes\n\n\n\n\n\nPositive Delta Options\nThe filter options for TILEDB_FILTER_POSITIVE_DELTA has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nOther Filter Options\nThe remaining filters (TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,XOR}) do not serialize any options.",
+    "crumbs": [
+      "Format Specification",
+      "Other",
+      "Filter Pipeline"
+    ]
+  },
+  {
+    "objectID": "format_spec/generic_tile.html",
+    "href": "format_spec/generic_tile.html",
+    "title": "Generic Tile",
+    "section": "",
+    "text": "The generic tile is a tile prepended with some extra header data, so that it can be used stand-alone without requiring extra information from the array schema. A generic tile has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nFormat version number of the generic tile\n\n\nPersisted size\nuint64_t\nPersisted (e.g. compressed) size of the tile\n\n\nTile size\nuint64_t\nIn-memory (e.g. uncompressed) size of the tile\n\n\nDatatype\nuint8_t\nDatatype of the tile\n\n\nCell size\nuint64_t\nCell size of the tile\n\n\nEncryption type\nuint8_t\nType of encryption used in filtering the tile\n\n\nFilter pipeline size\nuint32_t\nNumber of bytes in the serialized filter pipeline\n\n\nFilter pipeline\nFilter Pipeline\nFilter pipeline used to filter the tile\n\n\nTile data\nTile\nThe serialized tile data",
+    "crumbs": [
+      "Format Specification",
+      "Array",
+      "Generic Tile"
+    ]
+  },
+  {
+    "objectID": "format_spec/filters/double_delta.html",
+    "href": "format_spec/filters/double_delta.html",
+    "title": "Double Delta Filter",
+    "section": "",
+    "text": "The double delta filter compresses integer type data by first computing the delta between consecutive elements, then the delta between the deltas, and bit-packing the result.\n\n\nThe filter enum value for the double delta filter is 6 (TILEDB_FILTER_DOUBLE_DELTA enum).\n\n\n\nThe input data layout will be an array of integer numbers (each known as in_{n}, with n starting from 0). Their type (henceforth known as input_t) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the Reinterpret datatype field in the filter options.\nThe output data layout consists of the following fields:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nbitsize\nuint8_t\nMinimum number of bits required to represent any dd_n value.\n\n\nn\nuint64_t\nNumber of values in the input data.\n\n\nin_0\ninput_t\nFirst input value.\n\n\nin_1\ninput_t\nSecond input value.\n\n\nsign_2\nbit\nSign of (in_2 - in_1) - (in_1 - in_0).\n\n\ndd_2\nbit[bitsize]\nAbsolute value of (in_2 - in_1) - (in_1 - in_0).\n\n\n…\n…\n…\n\n\nsign_n\nbit\nSign of (in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2}).\n\n\ndd_n\nbit[bitsize]\nAbsolute value of (in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2}).\n\n\npad\nbit[((n - 2) * (bitsize + 1)) % 64]\nPadding to the next 64-bit boundary.\n\n\n\nIf bitsize was computed as equal to sizeof(input_t) * 8 - 1 (i.e. double delta compression would not have yielded any size savings), double delta compression is not applied and the input data will be added to the output stream unchanged, after bitsize and n, which are always written."
+  },
+  {
+    "objectID": "format_spec/filters/double_delta.html#double-delta-filter",
+    "href": "format_spec/filters/double_delta.html#double-delta-filter",
+    "title": "Double Delta Filter",
+    "section": "",
+    "text": "The double delta filter compresses integer type data by first computing the delta between consecutive elements, then the delta between the deltas, and bit-packing the result.\n\n\nThe filter enum value for the double delta filter is 6 (TILEDB_FILTER_DOUBLE_DELTA enum).\n\n\n\nThe input data layout will be an array of integer numbers (each known as in_{n}, with n starting from 0). Their type (henceforth known as input_t) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the Reinterpret datatype field in the filter options.\nThe output data layout consists of the following fields:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nbitsize\nuint8_t\nMinimum number of bits required to represent any dd_n value.\n\n\nn\nuint64_t\nNumber of values in the input data.\n\n\nin_0\ninput_t\nFirst input value.\n\n\nin_1\ninput_t\nSecond input value.\n\n\nsign_2\nbit\nSign of (in_2 - in_1) - (in_1 - in_0).\n\n\ndd_2\nbit[bitsize]\nAbsolute value of (in_2 - in_1) - (in_1 - in_0).\n\n\n…\n…\n…\n\n\nsign_n\nbit\nSign of (in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2}).\n\n\ndd_n\nbit[bitsize]\nAbsolute value of (in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2}).\n\n\npad\nbit[((n - 2) * (bitsize + 1)) % 64]\nPadding to the next 64-bit boundary.\n\n\n\nIf bitsize was computed as equal to sizeof(input_t) * 8 - 1 (i.e. double delta compression would not have yielded any size savings), double delta compression is not applied and the input data will be added to the output stream unchanged, after bitsize and n, which are always written."
+  },
+  {
+    "objectID": "format_spec/filters/webp.html",
+    "href": "format_spec/filters/webp.html",
+    "title": "WEBP Filter",
+    "section": "",
+    "text": "The WebP filter compresses image data using libwebp. The current input formats supported are RGB, RGBA, BGR, and BGRA. The colorspace format can be configured for this filter by setting the TILEDB_WEBP_INPUT_FORMAT filter option. Tile-based compression is determined by dimension extents. Extents equal to dimension bounds will compress the image in one pass.\nFor attributes, the WebP filter supports only the uint8_t data type. Dimension data types can be any two matching integral types, such as {uint32_t, uint32_t} or {int64_t, int64_t} for example.\n# Data from 2x3 pixel image\ninput = [[255,62,83, 149,43,67, 138,43,67]\n         [255,62,83, 149,43,67, 138,43,67]]\n# Ingest and read with lossless compression\noutput = [[255,62,83, 149,43,67, 138,43,67]\n          [255,62,83, 149,43,67, 138,43,67]]\n# Ingest and read with lossy compression\noutput = [[251,60,84, 148,51,61, 142,42,64]\n          [252,63,85, 150,46,67, 139,44,68]]\nThe figure below from WebP API documentation may help to understand the format of data passed to and read from the WebP filter.\n\nPhoto by Google licensed under CC BY 4.0\nUsing the figure above from WebP API documentation, height should correspond with dimension 0 upper bound, while stride corresponds with dimension 1 upper bound. The pixel width of the image is internally calculated based on colorspace format and tile extents.\nTile extents are used to configure tile-based compression. We should note that the maximum WebP image size is 16383x16383. Because of this, our extents can not exceed 16383 for dimension 0, and 16383 * pixel_depth for dimension 1. pixel_depth is defined by our colorspace format selection. RGB and BGR images have a depth of 3, while RGBA and BGRA have a depth of 4 for the additional alpha value provided for each pixel.\n\nFilter Enum Value\nThe filter enum value for the WEBP filter is 17 (TILEDB_FILTER_WEBP enum).\n\n\nInput and Output Layout\nInput is a single array of colorspace values in RGB, BGR, RGBA, or BGRA format. For RGB format we would expect the first pixel to store R, G, B values at input[0], input[1], and input[2] respectively, followed by the remaining pixels in the image. Ingesting a 10x10 image would expect 300 total input values for 10 rows of 30 colorspace values per-row.\nOutput is organized the same as input. If we compress an image with lossless enabled, all outputs match inputs exactly. If we instead use lossy compression with a quality of 0, output colorspace values will vary due to data lost during lossy WebP compression but the organization of the data remains the same."
+  },
+  {
+    "objectID": "format_spec/filters/dictionary_encoding.html",
+    "href": "format_spec/filters/dictionary_encoding.html",
+    "title": "Dictionary Encoding Filter",
+    "section": "",
+    "text": "The Dictionary Encoding filter compresses losslessly string data by creating a set of unique strings (called the dictionary) from the input data and substituting the string data on disk with their position in the dictionary. As an example in pseudocode:\ninput_data = [\"HG543232\", \"HG543232\", \"HG543232\", \"HG54\", \"HG54\", \"A\", \"HG543232\", \"HG54\"]\n# apply dictionary encoding -&gt;\ndictionary = [\"HG543232\", \"HG54\", \"A\"]\noutput_data = [0, 0, 0, 1, 1, 2, 0, 1]\n\nFilter Enum Value\nThe filter enum value for the Dictionary Encoding filter is 14 (TILEDB_FILTER_DICTIONARY enum).\n\n\nInput and Output Layout\n\nInput is an array of strings [str1|...|strN].\nOutput is an array of integers [num1|...|numN], that are actually the indices in the dictionary of the strings that appeared in input, in the order that they appeared. The integer datasize depends on the input and is chosen between uint8_t, uint16_t, uint32_t or uint64_t as the minimum datasize that can hold the size of the dictionary, aka the number of unique strings in input and stored in output metadata.\nOutput metadata are in the form: [output_datasize|dict_string_datasize|dictionary] where dictionary is in the form: [num_of_strings|size_str1|str1|...|size_strN|strN]. output_datasize refers to the chosen datasize of the integers in output while dict_string_datasize refers to the minimum integer size that can hold the maximum length string in input and is also chosen between uint8_t, uint16_t, uint32_t or uint64_t.\n\nAll the above integers are stored in big-endian format."
   },
   {
     "objectID": "format_spec/array_schema.html",
@@ -3372,338 +3682,179 @@
     ]
   },
   {
-    "objectID": "format_spec/filters/dictionary_encoding.html",
-    "href": "format_spec/filters/dictionary_encoding.html",
-    "title": "Dictionary Encoding Filter",
+    "objectID": "format_spec/current_domain.html",
+    "href": "format_spec/current_domain.html",
+    "title": "Current Domain",
     "section": "",
-    "text": "The Dictionary Encoding filter compresses losslessly string data by creating a set of unique strings (called the dictionary) from the input data and substituting the string data on disk with their position in the dictionary. As an example in pseudocode:\ninput_data = [\"HG543232\", \"HG543232\", \"HG543232\", \"HG54\", \"HG54\", \"A\", \"HG543232\", \"HG54\"]\n# apply dictionary encoding -&gt;\ndictionary = [\"HG543232\", \"HG54\", \"A\"]\noutput_data = [0, 0, 0, 1, 1, 2, 0, 1]\n\nFilter Enum Value\nThe filter enum value for the Dictionary Encoding filter is 14 (TILEDB_FILTER_DICTIONARY enum).\n\n\nInput and Output Layout\n\nInput is an array of strings [str1|...|strN].\nOutput is an array of integers [num1|...|numN], that are actually the indices in the dictionary of the strings that appeared in input, in the order that they appeared. The integer datasize depends on the input and is chosen between uint8_t, uint16_t, uint32_t or uint64_t as the minimum datasize that can hold the size of the dictionary, aka the number of unique strings in input and stored in output metadata.\nOutput metadata are in the form: [output_datasize|dict_string_datasize|dictionary] where dictionary is in the form: [num_of_strings|size_str1|str1|...|size_strN|strN]. output_datasize refers to the chosen datasize of the integers in output while dict_string_datasize refers to the minimum integer size that can hold the maximum length string in input and is also chosen between uint8_t, uint16_t, uint32_t or uint64_t.\n\nAll the above integers are stored in big-endian format."
+    "text": "The array current domain is stored within the Array Schema file. If a current domain is empty, only the version number and the empty flag are serialized to storage.\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nCurrent domain version number\n\n\nEmpty\nuint8_t\nWhether the current domain has a representation(e.g. NDRectangle) set or not\n\n\nType\nuint8_t\nThe type of current domain stored in this file\n\n\nNDRectangle\nMBR\nA hyperrectangle defined using 1DRange items for each dimension"
   },
   {
-    "objectID": "format_spec/filters/webp.html",
-    "href": "format_spec/filters/webp.html",
-    "title": "WEBP Filter",
+    "objectID": "format_spec/current_domain.html#main-structure",
+    "href": "format_spec/current_domain.html#main-structure",
+    "title": "Current Domain",
     "section": "",
-    "text": "The WebP filter compresses image data using libwebp. The current input formats supported are RGB, RGBA, BGR, and BGRA. The colorspace format can be configured for this filter by setting the TILEDB_WEBP_INPUT_FORMAT filter option. Tile-based compression is determined by dimension extents. Extents equal to dimension bounds will compress the image in one pass.\nFor attributes, the WebP filter supports only the uint8_t data type. Dimension data types can be any two matching integral types, such as {uint32_t, uint32_t} or {int64_t, int64_t} for example.\n# Data from 2x3 pixel image\ninput = [[255,62,83, 149,43,67, 138,43,67]\n         [255,62,83, 149,43,67, 138,43,67]]\n# Ingest and read with lossless compression\noutput = [[255,62,83, 149,43,67, 138,43,67]\n          [255,62,83, 149,43,67, 138,43,67]]\n# Ingest and read with lossy compression\noutput = [[251,60,84, 148,51,61, 142,42,64]\n          [252,63,85, 150,46,67, 139,44,68]]\nThe figure below from WebP API documentation may help to understand the format of data passed to and read from the WebP filter.\n\nPhoto by Google licensed under CC BY 4.0\nUsing the figure above from WebP API documentation, height should correspond with dimension 0 upper bound, while stride corresponds with dimension 1 upper bound. The pixel width of the image is internally calculated based on colorspace format and tile extents.\nTile extents are used to configure tile-based compression. We should note that the maximum WebP image size is 16383x16383. Because of this, our extents can not exceed 16383 for dimension 0, and 16383 * pixel_depth for dimension 1. pixel_depth is defined by our colorspace format selection. RGB and BGR images have a depth of 3, while RGBA and BGRA have a depth of 4 for the additional alpha value provided for each pixel.\n\nFilter Enum Value\nThe filter enum value for the WEBP filter is 17 (TILEDB_FILTER_WEBP enum).\n\n\nInput and Output Layout\nInput is a single array of colorspace values in RGB, BGR, RGBA, or BGRA format. For RGB format we would expect the first pixel to store R, G, B values at input[0], input[1], and input[2] respectively, followed by the remaining pixels in the image. Ingesting a 10x10 image would expect 300 total input values for 10 rows of 30 colorspace values per-row.\nOutput is organized the same as input. If we compress an image with lossless enabled, all outputs match inputs exactly. If we instead use lossy compression with a quality of 0, output colorspace values will vary due to data lost during lossy WebP compression but the organization of the data remains the same."
+    "text": "The array current domain is stored within the Array Schema file. If a current domain is empty, only the version number and the empty flag are serialized to storage.\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nCurrent domain version number\n\n\nEmpty\nuint8_t\nWhether the current domain has a representation(e.g. NDRectangle) set or not\n\n\nType\nuint8_t\nThe type of current domain stored in this file\n\n\nNDRectangle\nMBR\nA hyperrectangle defined using 1DRange items for each dimension"
   },
   {
-    "objectID": "format_spec/filters/double_delta.html",
-    "href": "format_spec/filters/double_delta.html",
-    "title": "Double Delta Filter",
+    "objectID": "format_spec/history.html",
+    "href": "format_spec/history.html",
+    "title": "Format version history",
     "section": "",
-    "text": "The double delta filter compresses integer type data by first computing the delta between consecutive elements, then the delta between the deltas, and bit-packing the result.\n\n\nThe filter enum value for the double delta filter is 6 (TILEDB_FILTER_DOUBLE_DELTA enum).\n\n\n\nThe input data layout will be an array of integer numbers (each known as in_{n}, with n starting from 0). Their type (henceforth known as input_t) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the Reinterpret datatype field in the filter options.\nThe output data layout consists of the following fields:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nbitsize\nuint8_t\nMinimum number of bits required to represent any dd_n value.\n\n\nn\nuint64_t\nNumber of values in the input data.\n\n\nin_0\ninput_t\nFirst input value.\n\n\nin_1\ninput_t\nSecond input value.\n\n\nsign_2\nbit\nSign of (in_2 - in_1) - (in_1 - in_0).\n\n\ndd_2\nbit[bitsize]\nAbsolute value of (in_2 - in_1) - (in_1 - in_0).\n\n\n…\n…\n…\n\n\nsign_n\nbit\nSign of (in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2}).\n\n\ndd_n\nbit[bitsize]\nAbsolute value of (in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2}).\n\n\npad\nbit[((n - 2) * (bitsize + 1)) % 64]\nPadding to the next 64-bit boundary.\n\n\n\nIf bitsize was computed as equal to sizeof(input_t) * 8 - 1 (i.e. double delta compression would not have yielded any size savings), double delta compression is not applied and the input data will be added to the output stream unchanged, after bitsize and n, which are always written."
+    "text": "Introduced in TileDB 2.25\n\nThe Current domain field was added to array schemas.\n\n\n\n\nIntroduced in TileDB 2.19\n\nThe TileDB implementation has been updated to fix computing tile metadata for nullable fixed-size strings on dense arrays.\n\n\n[!NOTE] This version does not contain any changes to the storage format, but was introduced as an indicator for implementations to not rely on tile metadata for nullable fixed-size strings on dense arrays on previous versions.\n\n\n\n\nIntroduced in TileDB 2.17\n\nArrays can have enumerations.\nThe bit-width reduction and positive delta filters are supported on data of date or time types.\nThe filter pipeline options for the double-delta filter contain the Reinterpret datatype field.\n\n\n\n\nIntroduced in TileDB 2.16\n\nVacuum files contain relative paths to the location of the array.\nThe filter pipeline options for the delta filter contain the Reinterpret datatype field.\n\n\n\n\nIntroduced in TileDB 2.15\n\nArrays can have dimension labels.\n\n\n\n\nIntroduced in TileDB 2.14\n\nThe Order field was added to attributes.\nCell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary filter exists in the filter pipeline. They are instead encoded as part of the data tile.\n\n\n\n\nIntroduced in TileDB 2.12\n\nArrays can have delete commit files.\nArrays can have update commit files.\n\nThe TileDB implementation currently supports writing update commit files as an experimental feature, but they are not yet considered when performing reads.\n\nFragment metadata contain tile processed conditions.\n\n\n\n\nIntroduced in TileDB 2.11\n\nConsolidated fragments can have delete metadata files. The Includes delete metadata field was added to the fragment metadata footer.\n\n\n\n\nIntroduced in TileDB 2.10\n\nConsolidated fragments can have timestamp files. The Includes timestamps field was added to the fragment metadata footer.\n\n\n\n\nIntroduced in TileDB 2.9\n\nThe dictionary filter was added.\n\n\n\n\nIntroduced in TileDB 2.8\n\nThe array file hierarchy was updated to store fragments, commits and consolidated fragment metadata in separate subdirectories.\nThe extension of commit files was changed to .wrt.\nCell offsets in dimensions or attributes of ASCII string type are not written in the offset tiles, if the RLE filter exists in the filter pipeline. They are instead encoded as part of the data tile.\n\n\n\n\nIntroduced in TileDB 2.7\n\nFragment metadata contain metadata (min/max value, sum, null count) for each tile.\nThe TileDB implementation has been updated to never split cells when storing them in chunks.\n\n\n\n\nIntroduced in TileDB 2.4\n\nArrays support schema evolution.\n\nArray schemas are stored in a __schema subdirectory, and have a timestamped name.\nThe Array schema name field was added to the fragment metadata footer.\n\nThe Footer length field of the fragment metadata footer is always written.\n\n\n\n\nIntroduced in TileDB 2.3\n\nData files are named by the index of their attribute or dimension.\nThe URI fields of Consolidated fragment metadata files contain relative paths to the location of fragments in the array.\n\n\n\n\nIntroduced in TileDB 2.2.3\n\nData files are named by the name of their attribute or dimension, after percent encoding certain characters. These characters are !#$%&'()*+,/:;=?@[], as specified in RFC 3986, as well as \"&lt;&gt;\\|, which are not allowed in Windows file names.\n\n\n\n\nIntroduced in TileDB 2.2\n\nAttributes can be nullable.\n\nThe Nullable and Fill value validity fields were added to attributes.\nThe Validity filters field was added to array schemas.\nFragment metadata contain validity tile offsets.\n\n\n\n\n\nIntroduced in TileDB 2.1\n\nThe Fill value field was added to attributes.\n\n\n\n\nIntroduced in TileDB 2.0\n\nDimensions are stored in separate data files.\nSparse arrays can have string dimensions and dimensions with different datatypes.\n\nThe Dimension datatype, Cell val num and Filters fields were added to dimensions.\nThe Domain size field was added to dimensions. The domain of a dimension can have a variable size.\nThe Domain datatype field was removed from domains.\nThe MBR structure has been updated to support variable-sized dimensions.\nThe Dimension number and R-Tree datatype fields have been removed from R-Trees.\n\nThe Allows dups field was added to array schemas.\nCommitted fragments are indicated by the presence of an .ok file in the array’s directory, with the same timestamped name as the fragment.\n\n\n\n\nIntroduced in TileDB 1.7\n\nSupport for the key-value store object type was removed. Key-value stores have been superseded by sparse arrays.\n\n\n\n\nIntroduced in TileDB 1.6\n\nThe structure of fragment metadata files was overhauled.\n\nThe footer and R-Tree structures were added.\nThe Bounding coords field was removed.\nThe MBRs field was removed. MBRs are now stored in the R-Tree.\nStructures other than the footer like tile offsets, sizes and metadata are wrapped in their own generic tiles. This allows loading them lazily and in parallel.\n\n\n\n\n\nIntroduced in TileDB 1.5\n\nCell coordinate values of each dimension are always stored next to each other, regardless of whether they are filtered with a compression filter or not.\n\n\n\n\nIntroduced in TileDB 1.4\n\nInitial version of the TileDB storage format."
   },
   {
-    "objectID": "format_spec/filters/double_delta.html#double-delta-filter",
-    "href": "format_spec/filters/double_delta.html#double-delta-filter",
-    "title": "Double Delta Filter",
+    "objectID": "format_spec/history.html#version-22",
+    "href": "format_spec/history.html#version-22",
+    "title": "Format version history",
     "section": "",
-    "text": "The double delta filter compresses integer type data by first computing the delta between consecutive elements, then the delta between the deltas, and bit-packing the result.\n\n\nThe filter enum value for the double delta filter is 6 (TILEDB_FILTER_DOUBLE_DELTA enum).\n\n\n\nThe input data layout will be an array of integer numbers (each known as in_{n}, with n starting from 0). Their type (henceforth known as input_t) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the Reinterpret datatype field in the filter options.\nThe output data layout consists of the following fields:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nbitsize\nuint8_t\nMinimum number of bits required to represent any dd_n value.\n\n\nn\nuint64_t\nNumber of values in the input data.\n\n\nin_0\ninput_t\nFirst input value.\n\n\nin_1\ninput_t\nSecond input value.\n\n\nsign_2\nbit\nSign of (in_2 - in_1) - (in_1 - in_0).\n\n\ndd_2\nbit[bitsize]\nAbsolute value of (in_2 - in_1) - (in_1 - in_0).\n\n\n…\n…\n…\n\n\nsign_n\nbit\nSign of (in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2}).\n\n\ndd_n\nbit[bitsize]\nAbsolute value of (in_n - in_{n - 1}) - (in_{n - 1} - in_{n - 2}).\n\n\npad\nbit[((n - 2) * (bitsize + 1)) % 64]\nPadding to the next 64-bit boundary.\n\n\n\nIf bitsize was computed as equal to sizeof(input_t) * 8 - 1 (i.e. double delta compression would not have yielded any size savings), double delta compression is not applied and the input data will be added to the output stream unchanged, after bitsize and n, which are always written."
+    "text": "Introduced in TileDB 2.25\n\nThe Current domain field was added to array schemas."
   },
   {
-    "objectID": "format_spec/generic_tile.html",
-    "href": "format_spec/generic_tile.html",
-    "title": "Generic Tile",
+    "objectID": "format_spec/history.html#version-21",
+    "href": "format_spec/history.html#version-21",
+    "title": "Format version history",
     "section": "",
-    "text": "The generic tile is a tile prepended with some extra header data, so that it can be used stand-alone without requiring extra information from the array schema. A generic tile has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nFormat version number of the generic tile\n\n\nPersisted size\nuint64_t\nPersisted (e.g. compressed) size of the tile\n\n\nTile size\nuint64_t\nIn-memory (e.g. uncompressed) size of the tile\n\n\nDatatype\nuint8_t\nDatatype of the tile\n\n\nCell size\nuint64_t\nCell size of the tile\n\n\nEncryption type\nuint8_t\nType of encryption used in filtering the tile\n\n\nFilter pipeline size\nuint32_t\nNumber of bytes in the serialized filter pipeline\n\n\nFilter pipeline\nFilter Pipeline\nFilter pipeline used to filter the tile\n\n\nTile data\nTile\nThe serialized tile data",
-    "crumbs": [
-      "Format Specification",
-      "Array",
-      "Generic Tile"
-    ]
+    "text": "Introduced in TileDB 2.19\n\nThe TileDB implementation has been updated to fix computing tile metadata for nullable fixed-size strings on dense arrays.\n\n\n[!NOTE] This version does not contain any changes to the storage format, but was introduced as an indicator for implementations to not rely on tile metadata for nullable fixed-size strings on dense arrays on previous versions."
   },
   {
-    "objectID": "format_spec/filter_pipeline.html",
-    "href": "format_spec/filter_pipeline.html",
-    "title": "Filter Pipeline",
+    "objectID": "format_spec/history.html#version-20",
+    "href": "format_spec/history.html#version-20",
+    "title": "Format version history",
     "section": "",
-    "text": "The filter pipeline has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax chunk size\nuint32_t\nMaximum chunk size within a tile\n\n\nNum filters\nuint32_t\nNumber of filters in pipeline\n\n\nFilter 1\nFilter\nFirst filter\n\n\n…\n…\n…\n\n\nFilter N\nFilter\nNth filter\n\n\n\nFor var size data, the filter pipeline tries to fit integral cells in a chunk. It uses the following heuristic if the cell doesn’t fit:\n\nIf the chunk is not yet at 50% capacity, add the cell to the current chunk.\nIf the chunk is over 50% capacity and adding the cell would make it less than 150% of the maximum chunk size, add it to this chunk.\nElse, start a new chunk.",
-    "crumbs": [
-      "Format Specification",
-      "Other",
-      "Filter Pipeline"
-    ]
+    "text": "Introduced in TileDB 2.17\n\nArrays can have enumerations.\nThe bit-width reduction and positive delta filters are supported on data of date or time types.\nThe filter pipeline options for the double-delta filter contain the Reinterpret datatype field."
   },
   {
-    "objectID": "format_spec/filter_pipeline.html#main-structure",
-    "href": "format_spec/filter_pipeline.html#main-structure",
-    "title": "Filter Pipeline",
+    "objectID": "format_spec/history.html#version-19",
+    "href": "format_spec/history.html#version-19",
+    "title": "Format version history",
     "section": "",
-    "text": "The filter pipeline has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax chunk size\nuint32_t\nMaximum chunk size within a tile\n\n\nNum filters\nuint32_t\nNumber of filters in pipeline\n\n\nFilter 1\nFilter\nFirst filter\n\n\n…\n…\n…\n\n\nFilter N\nFilter\nNth filter\n\n\n\nFor var size data, the filter pipeline tries to fit integral cells in a chunk. It uses the following heuristic if the cell doesn’t fit:\n\nIf the chunk is not yet at 50% capacity, add the cell to the current chunk.\nIf the chunk is over 50% capacity and adding the cell would make it less than 150% of the maximum chunk size, add it to this chunk.\nElse, start a new chunk.",
-    "crumbs": [
-      "Format Specification",
-      "Other",
-      "Filter Pipeline"
-    ]
+    "text": "Introduced in TileDB 2.16\n\nVacuum files contain relative paths to the location of the array.\nThe filter pipeline options for the delta filter contain the Reinterpret datatype field."
   },
   {
-    "objectID": "format_spec/filter_pipeline.html#filter",
-    "href": "format_spec/filter_pipeline.html#filter",
-    "title": "Filter Pipeline",
-    "section": "Filter",
-    "text": "Filter\nThe filter has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nFilter type\nuint8_t\nType of filter (e.g. TILEDB_FILTER_BZIP2) – see below for values\n\n\nFilter options size\nuint32_t\nNumber of bytes in filter options – may be 0.\n\n\nFilter options\nFilter Options\nFilter options, specific to each filter. E.g. compression level for compression filters.\n\n\n\nTileDB supports the following filters. Each filter has a type, which also corresponds to a constant in the C API: * Compression * Gzip – TILEDB_FILTER_GZIP (1) * Zstandard – TILEDB_FILTER_ZSTD (2) * LZ4 – TILEDB_FILTER_LZ4 (3) * Run-length encoding – TILEDB_FILTER_RLE (4) * BZip2 – TILEDB_FILTER_BZIP2 (5) * Double-delta – TILEDB_FILTER_DOUBLE_DELTA (6) * Dictionary – TILEDB_FILTER_DICTIONARY (14) * Delta – TILEDB_FILTER_DELTA (19) * Bit-width Reduction – TILEDB_FILTER_BIT_WIDTH_REDUCTION (7) * Bit Shuffle – TILEDB_FILTER_BITSHUFFLE (8) * Byte Shuffle – TILEDB_FILTER_BYTESHUFFLE (9) * Positive Delta – TILEDB_FILTER_POSITIVE_DELTA (10) * Encryption * AES-256-GCM * Checksum * MD5 – TILEDB_FILTER_CHECKSUM_MD5 (12) * SHA-256 – TILEDB_FILTER_CHECKSUM_SHA256 (13) * Dictionary Encoding – TILEDB_FILTER_DICTIONARY (14) * Float Scale – TILEDB_FILTER_SCALE_FLOAT (15) * XOR – TILEDB_FILTER_XOR (16) * WEBP – TILEDB_FILTER_WEBP (18)\n\n[!NOTE] Encryption is implemented as a filter at the end of the pipeline, but the encryption filter is not directly selectable by the user, and does not appear in filter pipelines serialized to storage.",
-    "crumbs": [
-      "Format Specification",
-      "Other",
-      "Filter Pipeline"
-    ]
-  },
-  {
-    "objectID": "format_spec/filter_pipeline.html#filter-options",
-    "href": "format_spec/filter_pipeline.html#filter-options",
-    "title": "Filter Pipeline",
-    "section": "Filter Options",
-    "text": "Filter Options\nThe filter options are configuration parameters for the filters that do not change once the array schema has been created.\n\nMain Compressor Options\nFor the main compression filters (any of the filter types TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DICTIONARY}) the filter options have internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nCompressor type\nuint8_t\nType of compression (e.g. TILEDB_FILTER_BZIP2)\n\n\nCompression level\nint32_t\nCompression level used (ignored by some compressors).\n\n\n\n\n\nDelta Compressor Options\nFor the TILEDB_FILTER_DELTA and TILEDB_FILTER_DOUBLE_DELTA compression filters the filter options have internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nCompressor type\nuint8_t\nType of compression (e.g. TILEDB_FILTER_DELTA)\n\n\nCompression level\nint32_t\nIgnored\n\n\nReinterpret datatype\nuint8_t\nType to reinterpret data prior to compression.\n\n\n\n\n\nBit-width Reduction Options\nThe filter options for TILEDB_FILTER_BIT_WIDTH_REDUCTION has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nFloat Scale Filter Reduction Options\nThe filter options for TILEDB_FILTER_SCALE_FLOAT has internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nScale\ndouble\nScale parameter used for float scaling filter conversion\n\n\nOffset\ndouble\nOffset parameter used for float scaling filter conversion\n\n\nByte width\nuint64_t\nWidth of the stored integer data in bytes\n\n\n\n\n\nPositive Delta Options\nThe filter options for TILEDB_FILTER_POSITIVE_DELTA has internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nMax window size\nuint32_t\nMaximum window size in bytes\n\n\n\n\n\nOther Filter Options\nThe remaining filters (TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,XOR}) do not serialize any options.",
-    "crumbs": [
-      "Format Specification",
-      "Other",
-      "Filter Pipeline"
-    ]
-  },
-  {
-    "objectID": "format_spec/delete_commit_file.html",
-    "href": "format_spec/delete_commit_file.html",
-    "title": "Delete Commit File",
+    "objectID": "format_spec/history.html#version-18",
+    "href": "format_spec/history.html#version-18",
+    "title": "Format version history",
     "section": "",
-    "text": "A delete commit file has name &lt;timestamped_name&gt;.del and is located here:\nmy_array                              # array folder\n   |_ ....\n   |_ __commits                       # array commits folder\n         |_ &lt;timestamped_name&gt;.del    # delete commit file\n         |_ ...\nThere may be multiple such files in the array commits folder. Each delete commit file contains a tile with a serialized delete condition, which is a tree of nodes. Each node can be a value node or expression node. Expression nodes have the following on disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNode type\nuint8_t\n0 for expression node\n\n\nCombination op\nuint8_t\nAND(0), OR(1), NOT(2)\n\n\nNum children\nuint64_t\nNumber of child nodes\n\n\nChildren 1\nNODE\nchildren 1\n\n\n…\n…\n…\n\n\nChildren N\nNODE\nChildren N\n\n\n\nValue nodes have the following on disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNode type\nuint8_t\n1 for value node\n\n\nOp\nuint8_t\nLT(0), LE(1), GT(2), GE(3), EQ(4), NE(5)\n\n\nField name size\nuint32_t\nSize of the field name\n\n\nField name value\nuint8_t[]\nField name value\n\n\nValue size\nuint64_t\nValue size\n\n\nValue content\nuint8_t[]\nValue"
+    "text": "Introduced in TileDB 2.15\n\nArrays can have dimension labels."
   },
   {
-    "objectID": "format_spec/enumeration.html",
-    "href": "format_spec/enumeration.html",
-    "title": "Enumerations",
+    "objectID": "format_spec/history.html#version-17",
+    "href": "format_spec/history.html#version-17",
+    "title": "Format version history",
     "section": "",
-    "text": "``my_array                                    # array folder    |  ...    |_ schema                      # ArraySchema directory named__schema|_ enumerations          # Enumeration directory named__enumerations|_ enumeration     # enumeration data with names__uuid_v`\nEnumeration data is stored in a subdirectory of the [array schema][./array_schema.md] directory. Enumerations are stored using [Generic Tiles][./generic_tile.md].\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nEnumerations version number\n\n\nDatatype\nuint8_t\nThe datatype of the enumeration values\n\n\nCell Val Num\nuint32_t\nThe cell val num of the enumeration values\n\n\nOrdered\nbool\nWhether the enumeration values should be considered ordered\n\n\nData Size\nuint64_t\nThe number of bytes used to store the values\n\n\nData\nuint8_t * Data Size\nThe data for the enumeration values\n\n\nOffsets Size\nuint64_t\nThe number of bytes used to store offsets if cell_var_num is TILEDB_VAR_NUM\n\n\nOffsets\nuint8_t * Offsets Size\nThe offsets data for the enumeration if cell_var_num is TILEDB_VAR_NUM"
+    "text": "Introduced in TileDB 2.14\n\nThe Order field was added to attributes.\nCell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary filter exists in the filter pipeline. They are instead encoded as part of the data tile."
   },
   {
-    "objectID": "format_spec/enumeration.html#main-structure",
-    "href": "format_spec/enumeration.html#main-structure",
-    "title": "Enumerations",
+    "objectID": "format_spec/history.html#version-16",
+    "href": "format_spec/history.html#version-16",
+    "title": "Format version history",
     "section": "",
-    "text": "``my_array                                    # array folder    |  ...    |_ schema                      # ArraySchema directory named__schema|_ enumerations          # Enumeration directory named__enumerations|_ enumeration     # enumeration data with names__uuid_v`\nEnumeration data is stored in a subdirectory of the [array schema][./array_schema.md] directory. Enumerations are stored using [Generic Tiles][./generic_tile.md].\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nEnumerations version number\n\n\nDatatype\nuint8_t\nThe datatype of the enumeration values\n\n\nCell Val Num\nuint32_t\nThe cell val num of the enumeration values\n\n\nOrdered\nbool\nWhether the enumeration values should be considered ordered\n\n\nData Size\nuint64_t\nThe number of bytes used to store the values\n\n\nData\nuint8_t * Data Size\nThe data for the enumeration values\n\n\nOffsets Size\nuint64_t\nThe number of bytes used to store offsets if cell_var_num is TILEDB_VAR_NUM\n\n\nOffsets\nuint8_t * Offsets Size\nThe offsets data for the enumeration if cell_var_num is TILEDB_VAR_NUM"
+    "text": "Introduced in TileDB 2.12\n\nArrays can have delete commit files.\nArrays can have update commit files.\n\nThe TileDB implementation currently supports writing update commit files as an experimental feature, but they are not yet considered when performing reads.\n\nFragment metadata contain tile processed conditions."
   },
   {
-    "objectID": "format_spec/fragment.html",
-    "href": "format_spec/fragment.html",
-    "title": "Fragment",
+    "objectID": "format_spec/history.html#version-15",
+    "href": "format_spec/history.html#version-15",
+    "title": "Format version history",
     "section": "",
-    "text": "A fragment metadata folder is called &lt;timestamped_name&gt;` and located here:\nmy_array                                    # array folder\n   |  ...\n   |_ __fragments                           # array fragments folder\n         |_ &lt;timestamped_name&gt;              # fragment folder\n         |      |_ __fragment_metadata.tdb  # fragment metadata\n         |      |_ a0.tdb                   # fixed-sized attribute \n         |      |_ a1.tdb                   # var-sized attribute (offsets) \n         |      |_ a1_var.tdb               # var-sized attribute (values)\n         |      |_ a2.tdb                   # fixed-sized nullable attribute\n         |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)\n         |      |_ ...      \n         |      |_ d0.tdb                   # fixed-sized dimension \n         |      |_ d1.tdb                   # var-sized dimension (offsets) \n         |      |_ d1_var.tdb               # var-sized dimension (values)\n         |      |_ ...      \n         |      |_ t.tdb                    # timestamp attribute\n         |      |_ ...  \n         |      |_ dt.tdb                   # delete timestamp attribute\n         |      |_ ...  \n         |      |_ dci.tdb                  # delete condition index attribute\n         |      |_ ...  \n        |_ ...  \nThere can be any number of fragments in an array. The fragment folder contains:\n\nA single fragment metadata file named __fragment_metadata.tdb.\nAny number of data files. For each fixed-sized attribute foo1 (or dimension bar1), there is a single data file a0.tdb (d0.tdb) containing the values along this attribute (dimension). For every var-sized attribute foo2 (or dimensions bar2), there are two data files; a1_var.tdb (d1_var.tdb) containing the var-sized values of the attribute (dimension) and a1.tdb (d1.tdb) containing the starting offsets of each value in a1_var.tdb (d1_var.rdb). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, foo3, will have an additional file a2_validity.tdb that contains its validity vector.\nThe names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.\nThe timestamp fixed attribute (t.tdb) is, for fragments consolidated with timestamps, the time at which a cell was added.\nThe delete timestamp fixed attribute (dt.tdb) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.\nThe delete condition Delete commit file index fixed attribute (dci.tdb) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of Tile Processed Conditions) that deleted the cell.",
-    "crumbs": [
-      "Format Specification",
-      "Array",
-      "Fragment"
-    ]
+    "text": "Introduced in TileDB 2.11\n\nConsolidated fragments can have delete metadata files. The Includes delete metadata field was added to the fragment metadata footer."
   },
   {
-    "objectID": "format_spec/fragment.html#main-structure",
-    "href": "format_spec/fragment.html#main-structure",
-    "title": "Fragment",
+    "objectID": "format_spec/history.html#version-14",
+    "href": "format_spec/history.html#version-14",
+    "title": "Format version history",
     "section": "",
-    "text": "A fragment metadata folder is called &lt;timestamped_name&gt;` and located here:\nmy_array                                    # array folder\n   |  ...\n   |_ __fragments                           # array fragments folder\n         |_ &lt;timestamped_name&gt;              # fragment folder\n         |      |_ __fragment_metadata.tdb  # fragment metadata\n         |      |_ a0.tdb                   # fixed-sized attribute \n         |      |_ a1.tdb                   # var-sized attribute (offsets) \n         |      |_ a1_var.tdb               # var-sized attribute (values)\n         |      |_ a2.tdb                   # fixed-sized nullable attribute\n         |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)\n         |      |_ ...      \n         |      |_ d0.tdb                   # fixed-sized dimension \n         |      |_ d1.tdb                   # var-sized dimension (offsets) \n         |      |_ d1_var.tdb               # var-sized dimension (values)\n         |      |_ ...      \n         |      |_ t.tdb                    # timestamp attribute\n         |      |_ ...  \n         |      |_ dt.tdb                   # delete timestamp attribute\n         |      |_ ...  \n         |      |_ dci.tdb                  # delete condition index attribute\n         |      |_ ...  \n        |_ ...  \nThere can be any number of fragments in an array. The fragment folder contains:\n\nA single fragment metadata file named __fragment_metadata.tdb.\nAny number of data files. For each fixed-sized attribute foo1 (or dimension bar1), there is a single data file a0.tdb (d0.tdb) containing the values along this attribute (dimension). For every var-sized attribute foo2 (or dimensions bar2), there are two data files; a1_var.tdb (d1_var.tdb) containing the var-sized values of the attribute (dimension) and a1.tdb (d1.tdb) containing the starting offsets of each value in a1_var.tdb (d1_var.rdb). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, foo3, will have an additional file a2_validity.tdb that contains its validity vector.\nThe names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.\nThe timestamp fixed attribute (t.tdb) is, for fragments consolidated with timestamps, the time at which a cell was added.\nThe delete timestamp fixed attribute (dt.tdb) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.\nThe delete condition Delete commit file index fixed attribute (dci.tdb) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of Tile Processed Conditions) that deleted the cell.",
-    "crumbs": [
-      "Format Specification",
-      "Array",
-      "Fragment"
-    ]
+    "text": "Introduced in TileDB 2.10\n\nConsolidated fragments can have timestamp files. The Includes timestamps field was added to the fragment metadata footer."
   },
   {
-    "objectID": "format_spec/fragment.html#fragment-metadata-file",
-    "href": "format_spec/fragment.html#fragment-metadata-file",
-    "title": "Fragment",
-    "section": "Fragment Metadata File",
-    "text": "Fragment Metadata File\nThe fragment metadata file has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nR-Tree\nR-Tree\nThe serialized R-Tree\n\n\nTile offsets for attribute/dimension 1\nTile Offsets\nThe serialized on-disk tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nTile offsets for attribute/dimension N\nTile Offsets\nThe serialized on-disk tile offsets for attribute/dimension N\n\n\nVariable tile offsets for attribute/dimension 1\nTile Offsets\nThe serialized on-disk variable tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable tile offsets for attribute/dimension N\nTile Offsets\nThe serialized on-disk variable tile offsets for attribute/dimension N\n\n\nVariable tile sizes for attribute/dimension 1\nTile Sizes\nThe serialized in-memory variable tile sizes for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable tile sizes for attribute/dimension N\nTile Sizes\nThe serialized in-memory variable tile sizes for attribute/dimension N\n\n\nValidity tile offsets for attribute/dimension 1\nTile Offsets\nThe serialized on-disk validity tile offsets for attribute/dimension 1\n\n\n…\n…\n…\n\n\nValidity tile offsets for attribute/dimension N\nTile Offsets\nThe serialized on-disk validity tile offsets for attribute/dimension N\n\n\nTile mins for attribute/dimension 1\nTile Mins/Maxes\nThe serialized mins for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable mins for attribute/dimension N\nTile Mins/Maxes\nThe serialized mins for attribute/dimension N\n\n\nTile maxes for attribute/dimension 1\nTile Mins/Maxes\nThe serialized maxes for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable maxes for attribute/dimension N\nTile Mins/Maxes\nThe serialized maxes for attribute/dimension N\n\n\nTile sums for attribute/dimension 1\nTile Sums\nThe serialized sums for attribute/dimension 1\n\n\n…\n…\n…\n\n\nVariable sums for attribute/dimension N\nTile Sums\nThe serialized sums for attribute/dimension N\n\n\nTile null counts for attribute/dimension 1\nTile Null Count\nThe serialized null counts for attribute/dimension 1\n\n\n…\n…\n…\n\n\nTile null counts for attribute/dimension N\nTile Null Count\nThe serialized null counts for attribute/dimension N\n\n\nFragment min, max, sum, null count\nTile Fragment Min Max Sum Null Count\nThe serialized fragment min max sum null count\n\n\nProcessed conditions\nTile Processed Conditions\nThe serialized processed conditions\n\n\nMetadata footer\nFooter\nBasic metadata gathered in the footer\n\n\n\n\nR-Tree\nThe R-Tree is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nFanout\nuint32_t\nThe tree fanout\n\n\nNum levels\nuint32_t\nThe number of levels in the tree\n\n\nNum MBRs at level 1\nuint64_t\nThe number of MBRs at level 1\n\n\nMBR 1 at level 1\nMBR\nFirst MBR at level 1\n\n\n…\n…\n…\n\n\nMBR N at level 1\nMBR\nN-th MBR at level 1\n\n\n…\n…\n…\n\n\nNum MBRs at level L\nuint64_t\nThe number of MBRs at level L\n\n\nMBR 1 at level L\nMBR\nFirst MBR at level L\n\n\n…\n…\n…\n\n\nMBR N at level L\nMBR\nN-th MBR at level L\n\n\n\n\n\nMBR\nEach MBR entry has format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\n1D range for dimension 1\n1DRange\nThe 1-dimensional range for dimension 1\n\n\n…\n…\n…\n\n\n1D range for dimension D\n1DRange\nThe 1-dimensional range for dimension D\n\n\n\nFor fixed-sized dimensions, the 1DRange format is:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nRange minimum\nuint8_t\nThe minimum value with the same datatype as the dimension\n\n\nRange maximum\nuint8_t\nThe maximum value with the same datatype as the dimension\n\n\n\nFor var-sized dimensions, the 1DRange format is:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nRange length\nuint64_t\nThe number of bytes of the 1D range\n\n\nMinimum value length\nuint64_t\nThe number of bytes of the minimum value\n\n\nRange minimum\nuint8_t\nThe minimum (var-sized) value with the same datatype as the dimension\n\n\nRange maximum\nuint8_t\nThe maximum (var-sized) value with the same datatype as the dimension\n\n\n\n\n\nTile Offsets\nTile offsets refer to each on-disk data tile’s starting byte offset.\nTile offsets is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum tile offsets\nuint64_t\nNumber of tile offsets\n\n\nTile offset 1\nuint64_t\nOffset 1\n\n\n…\n…\n…\n\n\nTile offset N\nuint64_t\nOffset N\n\n\n\n\n\nTile Sizes\nThe tile size refers to the in-memory size.\nIt is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum tile sizes\nuint64_t\nNumber of tile sizes\n\n\nTile size 1\nuint64_t\nSize 1\n\n\n…\n…\n…\n\n\nTile size N\nuint64_t\nSize N\n\n\n\n\n\nTile Mins Maxes\nThe tile mins maxes is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\ntype\nValue 1 or Offset 1\n\n\n…\n…\n…\n\n\nValue N\ntype\nValue N or Offset N\n\n\nVar buffer size\nuint64_t\nVar buffer size\n\n\nVar buffer\nuint8_t\nVar buffer\n\n\n\n\n\nTile Sums\nThe tile sums is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\nuint64_t\nSum 1\n\n\n…\n…\n…\n\n\nValue N\nuint64_t\nSum N\n\n\n\n\n\nTile Null Count\nThe tile null count is a generic tile with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum values\nuint64_t\nNumber of values\n\n\nValue 1\nuint64_t\nCount 1\n\n\n…\n…\n…\n\n\nValue N\nuint64_t\nCount N\n\n\n\n\n\nTile Fragment Min Max Sum Null Count\nThe fragment min max sum null count is a generic tile with the following internal format:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nMin size\nuint64_t\nSize of the min value for attribute/dimension 1\n\n\nMin value\nuint8_t\nBuffer for min value for attribute/dimension 1\n\n\nMax size\nuint64_t\nSize of the max value for attribute/dimension 1\n\n\nMax value\nuint8_t\nBuffer for max value for attribute/dimension 1\n\n\nSum\nuint64_t\nSum value for attribute/dimension 1\n\n\nNull count\nuint64_t\nNull count value for attribute/dimension 1\n\n\n…\n…\n…\n\n\nMin size\nuint64_t\nSize of the min value for attribute/dimension N\n\n\nMin value\nuint8_t\nBuffer for min value for attribute/dimension N\n\n\nMax size\nuint64_t\nSize of the max value for attribute/dimension N\n\n\nMax value\nuint8_t\nBuffer for max value for attribute/dimension N\n\n\nSum\nuint64_t\nSum value for attribute/dimension N\n\n\nNull count\nuint64_t\nNull count value for attribute/dimension N\n\n\n\n\n\nTile Processed Conditions\nThe processed conditions is a generic tile and is the list of delete/update conditions that have already been applied for this fragment and don’t need to be applied again, sorted by filename, with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNum\nuint64_t\nNumber of processed conditions\n\n\nCondition size\nuint64_t\nCondition size 1\n\n\nCondition\nuint8_t\nCondition marker filename 1\n\n\n…\n…\n…\n\n\nCondition size\nuint64_t\nCondition size N\n\n\nCondition\nuint8_t\nCondition marker filename N\n\n\n\n\n\nFooter\nThe footer is a simple blob (i.e., not a generic tile) with the following internal format:\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion number\nuint32_t\nFormat version number of the fragment\n\n\nArray schema name size\nuint64_t\nSize of the array schema name\n\n\nArray schema name\nstring\nArray schema name\n\n\nDense\nuint8_t\nWhether the array is dense (1) or not (0)\n\n\nNull non-empty domain\nuint8_t\nIndicates whether the non-empty domain is null (1) or not (0)\n\n\nNon-empty domain\nMBR\nAn MBR denoting the non-empty domain\n\n\nNumber of sparse tiles\nuint64_t\nNumber of sparse tiles\n\n\nLast tile cell num\nuint64_t\nFor sparse arrays, the number of cells in the last tile in the fragment\n\n\nIncludes timestamps\nuint8_t\nWhether the fragment includes timestamps (1) or not (0)\n\n\nIncludes delete metadata\nuint8_t\nWhether the fragment includes delete metadata (1) or not (0)\n\n\nFile sizes\nuint64_t[]\nThe size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file.\n\n\nFile var sizes\nuint64_t[]\nThe size in bytes of each var-length attribute/dimension file in the fragment.\n\n\nFile validity sizes\nuint64_t[]\nThe size in bytes of each attribute/dimension validity vector file in the fragment.\n\n\nR-Tree offset\nuint64_t\nThe offset to the generic tile storing the R-Tree in the metadata file.\n\n\nTile offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile offsets for attribute/dimension N\n\n\nTile var offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the variable tile offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile var offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the variable tile offsets for attribute/dimension N.\n\n\nTile var sizes offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the variable tile sizes for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile var sizes offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the variable tile sizes for attribute/dimension N.\n\n\nTile validity offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile validity offsets for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile validity offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile validity offsets for attribute/dimension N\n\n\nTile mins offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile mins for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile mins offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile mins for attribute/dimension N\n\n\nTile maxes offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile maxes for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile maxes offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile maxes for attribute/dimension N\n\n\nTile sums offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile sums for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile sums offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile sums for attribute/dimension N\n\n\nTile null counts offset for attribute/dimension 1\nuint64_t\nThe offset to the generic tile storing the tile null counts for attribute/dimension 1.\n\n\n…\n…\n…\n\n\nTile null counts offset for attribute/dimension N\nuint64_t\nThe offset to the generic tile storing the tile null counts for attribute/dimension N\n\n\nFragment min max sum null count offset\nuint64_t\nThe offset to the generic tile storing the fragment min max sum null count data.\n\n\nProcessed conditions offset\nuint64_t\nThe offset to the generic tile storing the processed conditions.\n\n\nArray schema name size\nuint64_t\nThe total number of characters of the array schema name.\n\n\nArray schema name\nuint8_t[]\nThe array schema name.\n\n\nFooter length\nuint64_t\nSum of bytes of the above fields. Only present when there is at least one var-sized dimension.",
-    "crumbs": [
-      "Format Specification",
-      "Array",
-      "Fragment"
-    ]
-  },
-  {
-    "objectID": "format_spec/fragment.html#data-file",
-    "href": "format_spec/fragment.html#data-file",
-    "title": "Fragment",
-    "section": "Data File",
-    "text": "Data File\nThe on-disk format of each data file is:\n\n\n\nField\nType\nDescription\n\n\n\n\nTile 1\nTile\nThe data of tile 1\n\n\n…\n…\n…\n\n\nTile N\nTile\nThe data of tile N",
-    "crumbs": [
-      "Format Specification",
-      "Array",
-      "Fragment"
-    ]
-  },
-  {
-    "objectID": "format_spec/timestamped_name.html",
-    "href": "format_spec/timestamped_name.html",
-    "title": "Timestamped Name",
+    "objectID": "format_spec/history.html#version-13",
+    "href": "format_spec/history.html#version-13",
+    "title": "Format version history",
     "section": "",
-    "text": "A TileDB object may contain files with format &lt;timestamped_name&gt;.ext, as seen in array_file_hierarchy.md, for example.\nA &lt;timestamped_name&gt; has format __t1_t2_uuid[_v], where:"
+    "text": "Introduced in TileDB 2.9\n\nThe dictionary filter was added."
   },
   {
-    "objectID": "format_spec/timestamped_name.html#format-history",
-    "href": "format_spec/timestamped_name.html#format-history",
-    "title": "Timestamped Name",
-    "section": "Format History",
-    "text": "Format History\nNote: The presence of [] is indicative of an optional parameter. | Format version | TileDB version | Timestamped name format | | :-: | :-: | :-: | | 1 - 2 | 1.4 - 1.5 | __uuid_t1[_t2] | | 3 - 4 | 1.6 - 1.7 | __t1_t2_uuid | | 5+ | 2.0+ | __t1_t2_uuid[_v] |"
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Public code docs",
+    "objectID": "format_spec/history.html#version-12",
+    "href": "format_spec/history.html#version-12",
+    "title": "Format version history",
     "section": "",
-    "text": "This is public documentation of the code within this repository.",
-    "crumbs": [
-      "Public code docs"
-    ]
+    "text": "Introduced in TileDB 2.8\n\nThe array file hierarchy was updated to store fragments, commits and consolidated fragment metadata in separate subdirectories.\nThe extension of commit files was changed to .wrt.\nCell offsets in dimensions or attributes of ASCII string type are not written in the offset tiles, if the RLE filter exists in the filter pipeline. They are instead encoded as part of the data tile."
   },
   {
-    "objectID": "external/blosc/README-VERSIONS.html",
-    "href": "external/blosc/README-VERSIONS.html",
-    "title": "",
+    "objectID": "format_spec/history.html#version-11",
+    "href": "format_spec/history.html#version-11",
+    "title": "Format version history",
     "section": "",
-    "text": "The blosc files here were copied from release 1.21.0 of the c-blosc repository of the Blosc project. All we are using here is the byte shuffle code, so we do not have the library itself as an external dependency. We only use a selected subset of the sources; they are used without modification.\n\nhttps://github.com/Blosc/c-blosc\nhttps://github.com/Blosc/c-blosc/releases/tag/v1.21.0"
+    "text": "Introduced in TileDB 2.7\n\nFragment metadata contain metadata (min/max value, sum, null count) for each tile.\nThe TileDB implementation has been updated to never split cells when storing them in chunks."
   },
   {
-    "objectID": "format_spec/ignore_file.html",
-    "href": "format_spec/ignore_file.html",
-    "title": "Ignore File",
+    "objectID": "format_spec/history.html#version-10",
+    "href": "format_spec/history.html#version-10",
+    "title": "Format version history",
     "section": "",
-    "text": "A ignore file has name &lt;timestamped_name&gt;.ign and is located in the array commit or metadata folder:\nmy_array                           # array folder\n   |_ ....\n   |_ __commits                    # array commit folder\n         |_ &lt;timestamped_name&gt;.ign      # ignore file\nThe ignore file is a simple text file where each line contains a URI string. The URI is the relative URI based on the top level array URI.\nIgnored files are used to specify commit files that should be ignored. The timestamps for the file is used to identify the timestamp range that is included inside of the file (with the smaller/bigger timestamp from contained elements). That way if an array is opened at a time that doesn’t intersect the timestamp range of the file, it can be omitted. All ignore files that intersect the array open start/end times will be loaded when the array is opened. There are a few situations where those files are required, all linked to consolidated commits files. One of them is when fragments are vacuumed after consolidation. If any fragments were included a consolidated commits file, they now should be added to an ignore file so that the system doesn’t try to load that fragments. Another is when a fragment that is included in a consolidated commits file is deleted, it needs to be added to an ignore file so that the array can still be opened.\nOnce a new consolidated commits file get generated, it will not include any of the fragments that were deleted or vacuumed. At that point, the ignore files and the other consolidated commits files can be vacuumed.\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 followed by a new line character\nuint8_t[]\nURI 1 to be ignored\n\n\n…\n…\n…\n\n\nURI N followed by a new line character\nuint8_t[]\nURI N to be ignored"
+    "text": "Introduced in TileDB 2.4\n\nArrays support schema evolution.\n\nArray schemas are stored in a __schema subdirectory, and have a timestamped name.\nThe Array schema name field was added to the fragment metadata footer.\n\nThe Footer length field of the fragment metadata footer is always written."
   },
   {
-    "objectID": "format_spec/consolidated_commits_file.html",
-    "href": "format_spec/consolidated_commits_file.html",
-    "title": "Consolidated Commits File",
+    "objectID": "format_spec/history.html#version-9",
+    "href": "format_spec/history.html#version-9",
+    "title": "Format version history",
     "section": "",
-    "text": "A consolidated commits file has name &lt;timestamped_name&gt;.con and is located here:\nmy_array                              # array folder\n   |_ ....\n   |_ __commits                       # array commits folder\n         |_ &lt;timestamped_name&gt;.con    # consolidated commits file\n         |_ ...\nThere may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits, delete or update commits that will be considered together when opening an array. They are timestamped (with the smaller/bigger timestamp from contained elements) so that they might be filtered if the array open start/end time don’t intersect anything inside of the file, but any file where there is any intersection will be loaded. There are two situations when these files are added. The first one is when a user decides to improve the open performance of their array (by reducing the listing size) through commits consolidation. The second one is when a user has specified a maximum fragment size for consolidation and multiple fragments needed to be committed at once, this file format will be used so that an atomic file system operation can be performed to do so.\nWhen fragments that are included inside of a consolidated file are removed, either through vacuuming or other fragment deletion, an ignore file needs to be written so that those commits file can be ignored when opening an array and not cause unnecessary file system operations.\nThere are three types of objects that can be in the file: commits, deletes or updates. For each of those, the first field is the URI of the object, which determines the subsequent serialized content of the data block: - a URI ending with .ok or .wrt is a commit object containing only the fragment URI - a URI ending with .del is a delete object containing the serialized delete condition - a URI ending with .upd is an update object containing the serialized update condition\n\nFragment commit:\n\n\n\n\n\n\n\n\n\nField\nType\nExtension\nDescription\n\n\n\n\nCommit URI followed by a new line character\nuint8_t[]\n.ok, .wrt\nURI\n\n\n\n\n\nDelete commit (see delete commit file for the format of the serialized delete condition):\n\n\n\n\n\n\n\n\n\nField\nType\nExtension\nDescription\n\n\n\n\nURI followed by a new line character\nuint8_t[]\n.del\nURI\n\n\nSerialized delete condition tile size\nuint64_t\n\nDelete condition tile size\n\n\nSerialized delete condition tile\nuint8_t[]\n\nDelete condition tile\n\n\n\n\n\nUpdate commit (see update commit file for the format of the serialized update condition):\n\n\n\n\n\n\n\n\n\nField\nType\nExtension\nDescription\n\n\n\n\nURI followed by a new line character\nuint8_t[]\n.upd\nURI\n\n\nSerialized update condition tile size\nuint64_t\n\nUpdate condition tile size\n\n\nSerialized update condition tile\nuint8_t[]\n\nUpdate condition tile"
+    "text": "Introduced in TileDB 2.3\n\nData files are named by the index of their attribute or dimension.\nThe URI fields of Consolidated fragment metadata files contain relative paths to the location of fragments in the array."
   },
   {
-    "objectID": "format_spec/vacuum_file.html",
-    "href": "format_spec/vacuum_file.html",
-    "title": "Vacuum File",
+    "objectID": "format_spec/history.html#version-8",
+    "href": "format_spec/history.html#version-8",
+    "title": "Format version history",
     "section": "",
-    "text": "A vacuum file has name [](./timestamped_name.md).vac` and can be located either in the array commit folder:\nmy_array                        # array folder\n   |_ ....\n   |_ __commits                 # array commit folder\n         |_ &lt;timestamped_name&gt;.vac   # vacuum file\nor in the array metadata folder:\nmy_array                        # array folder\n   |  ...            \n   | __meta                    # array metadata folder\n         | ...\n         | &lt;timestamped_name&gt;.vac  # vacuum file\n         | ...\nWhen located in the commits folder, it will include the URI of fragments (in the __fragments folder) that can be vaccumed. When located in the array metadata folder, it will include the URI or array metadata files that can be vaccumed.\nThe vacuum file is a simple text file where each line contains a URI string:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 followed by a new line character\nuint8_t[]\nURI 1 to be vacuumed\n\n\n…\n…\n…\n\n\nURI N followed by a new line character\nuint8_t[]\nURI N to be vacuumed",
-    "crumbs": [
-      "Format Specification",
-      "Other",
-      "Vacuum File"
-    ]
+    "text": "Introduced in TileDB 2.2.3\n\nData files are named by the name of their attribute or dimension, after percent encoding certain characters. These characters are !#$%&'()*+,/:;=?@[], as specified in RFC 3986, as well as \"&lt;&gt;\\|, which are not allowed in Windows file names."
   },
   {
-    "objectID": "format_spec/array_file_hierarchy.html",
-    "href": "format_spec/array_file_hierarchy.html",
-    "title": "Array File Hierarchy",
+    "objectID": "format_spec/history.html#version-7",
+    "href": "format_spec/history.html#version-7",
+    "title": "Format version history",
     "section": "",
-    "text": "An array is a folder with the following structure:\nmy_array                                # array folder\n    |_ __schema                         # array schema folder\n    |_ __fragments                      # array fragments folder\n          |_ &lt;timestamped_name&gt;         # fragment folder\n          |_ ...\n    |_ __commits                        # array commits folder\n          |_ &lt;timestamped_name&gt;.wrt     # fragment write file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.del     # delete commit file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.upd     # update commit file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.vac     # fragment vacuum file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.con     # consolidated commits file\n          |_ ...\n          |_ &lt;timestamped_name&gt;.ign     # ignore file for consolidated commits file\n    |_ __fragment_meta                  \n          |_ &lt;timestamped_name&gt;.meta    # consol. fragment meta file\n          |_ ...                  \n    |_ __meta                           # array metadata folder\n    |_ __labels                         # dimension label folder\n\nInside the array folder, you can find the following:\n\nArray schema folder __schema.\nInside of a fragments folder, any number of fragment folders &lt;timestamped_name&gt;.\nInside of a commit folder, an empty file &lt;timestamped_name&gt;.wrt associated with every fragment folder &lt;timestamped_name&gt;, where &lt;timestamped_name&gt; is common for the folder and the WRT file. This is used to indicate that fragment &lt;timestamped_name&gt; has been committed (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.\nInside the same commit folder, any number of delete commit files of the form &lt;timestamped_name&gt;.del.\nInside the same commit folder, any number of update commit files of the form &lt;timestamped_name&gt;.upd.\nInside the same commit folder, any number of consolidated commits files of the form &lt;timestamped_name&gt;.con.\nInside the same commit folder, any number of ignore files of the form &lt;timestamped_name&gt;.ign.\nInside of a fragment metadata folder, any number of consolidated fragment metadata files of the form &lt;timestamped_name&gt;.meta.\nArray metadata folder __meta.\nInside of a labels folder, additional TileDB arrays storing dimension label data.",
-    "crumbs": [
-      "Format Specification",
-      "Array",
-      "Array File Hierarchy"
-    ]
+    "text": "Introduced in TileDB 2.2\n\nAttributes can be nullable.\n\nThe Nullable and Fill value validity fields were added to attributes.\nThe Validity filters field was added to array schemas.\nFragment metadata contain validity tile offsets."
   },
   {
-    "objectID": "format_spec/consolidated_fragment_metadata_file.html",
-    "href": "format_spec/consolidated_fragment_metadata_file.html",
-    "title": "Consolidated Fragment Metadata File",
+    "objectID": "format_spec/history.html#version-6",
+    "href": "format_spec/history.html#version-6",
+    "title": "Format version history",
     "section": "",
-    "text": "A consolidated fragment metadata file has name &lt;timestamped_name&gt;.meta and is located here:\nmy_array                              # array folder\n   |_ ....\n   |_ __fragment_meta                 # array fragment metadata folder\n         |_ &lt;timestamped_name&gt;.meta   # consolidated fragment metadata file\n         |_ ...\nThere may be multiple such files in the array folder. Each consolidated fragment metadata file combines the metadata footers of a set of fragments. It has the following on-disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nURI 1 length\nuint64_t\nNumber of bytes in the string of URI 1\n\n\nURI 1\nuint8_t[]\nURI 1\n\n\nURI 1 offset\nuint64_t\nThe offset in the file where the URI 1 footer begins\n\n\n…\n…\n…\n\n\nURI N length\nuint64_t\nNumber of bytes in the string of URI N\n\n\nURI N\nuint8_t[]\nURI N\n\n\nURI N offset\nuint64_t\nThe offset in the file where the URI N footer begins\n\n\nURI 1 footer\nFooter\nSerialized footer of URI (fragment) 1\n\n\n…\n…\n…\n\n\nURI N footer\nFooter\nSerialized footer of URI (fragment) N",
-    "crumbs": [
-      "Format Specification",
-      "Other",
-      "Consolidated Fragment Metadata File"
-    ]
+    "text": "Introduced in TileDB 2.1\n\nThe Fill value field was added to attributes."
   },
   {
-    "objectID": "format_spec/update_commit_file.html",
-    "href": "format_spec/update_commit_file.html",
-    "title": "Update Commit File",
+    "objectID": "format_spec/history.html#version-5",
+    "href": "format_spec/history.html#version-5",
+    "title": "Format version history",
     "section": "",
-    "text": "A update commit file has name &lt;timestamped_name&gt;.upd and is located here:\nmy_array                              # array folder\n   |_ ....\n   |_ __commits                       # array commits folder\n         |_ &lt;timestamped_name&gt;.upd    # update commit file\n         |_ ...\nThere may be multiple such files in the array commits folder. Each update commit file contains a tile with a serialized update condition, which is a tree of nodes followed by update values, which is a list of values. Each node for the condition can be a value node or expression node. Expression nodes have the following on disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNode type\nuint8_t\n0 for expression node\n\n\nCombination op\nuint8_t\nAND(0), OR(1), NOT(2)\n\n\nNum children\nuint64_t[]\nNumber of child nodes\n\n\nChildren 1\nNODE\nchildren 1\n\n\n…\n…\n…\n\n\nChildren N\nNODE\nChildren N\n\n\n\nValue nodes have the following on disk format:\n\n\n\nField\nType\nDescription\n\n\n\n\nNode type\nuint8_t\n1 for value node\n\n\nOp\nuint8_t\nLT(0), LE(1), GT(2), GE(3), EQ(4), NE(5)\n\n\nField name size\nuint32_t\nSize of the field name\n\n\nField name value\nuint8_t[]\nField name value\n\n\nValue size\nuint64_t\nValue size\n\n\nValue content\nuint8_t[]\nValue\n\n\n\nUpdate values are serialized in the following format: | Field | Type | Description | | :— | :— | :— | | Number of values | uint64_t | Number of values N | | Field name size 1 | uint64_t | Size of the field name for the first update value | | Field name value 1 | uint8_t[] | Field name value for the first update value | | Value size 1 | uint64_t | Value size for first update value | | Value content 1 | uint8_t[] | Value for first update value | | … | … | … | | Field name size N | uint64_t | Size of the field name for update value N | | Field name value N | uint8_t[] | Field name value for update value N | | Value size N | uint64_t | Value size for update value N | | Value content N | uint8_t[] | Value for update value N |"
+    "text": "Introduced in TileDB 2.0\n\nDimensions are stored in separate data files.\nSparse arrays can have string dimensions and dimensions with different datatypes.\n\nThe Dimension datatype, Cell val num and Filters fields were added to dimensions.\nThe Domain size field was added to dimensions. The domain of a dimension can have a variable size.\nThe Domain datatype field was removed from domains.\nThe MBR structure has been updated to support variable-sized dimensions.\nThe Dimension number and R-Tree datatype fields have been removed from R-Trees.\n\nThe Allows dups field was added to array schemas.\nCommitted fragments are indicated by the presence of an .ok file in the array’s directory, with the same timestamped name as the fragment."
   },
   {
-    "objectID": "format_spec/metadata.html",
-    "href": "format_spec/metadata.html",
-    "title": "Array Metadata",
+    "objectID": "format_spec/history.html#version-4",
+    "href": "format_spec/history.html#version-4",
+    "title": "Format version history",
     "section": "",
-    "text": "The metadata is a folder called __meta located here:\nmy_array                            # array folder\n   |  ...\n   |_ __meta                        # metadata folder\n         |_ &lt;timestamped_name&gt;      # metadata file\n         |_ ...\n         |_ &lt;timestamped_name&gt;.vac  # vacuum file\n         |_ ...\nThe metadata folder can contain any number of timestamped: * metadata files * vacuum files * Note: the timestamped names do not include the format version."
+    "text": "Introduced in TileDB 1.7\n\nSupport for the key-value store object type was removed. Key-value stores have been superseded by sparse arrays."
   },
   {
-    "objectID": "format_spec/metadata.html#main-structure",
-    "href": "format_spec/metadata.html#main-structure",
-    "title": "Array Metadata",
+    "objectID": "format_spec/history.html#version-3",
+    "href": "format_spec/history.html#version-3",
+    "title": "Format version history",
     "section": "",
-    "text": "The metadata is a folder called __meta located here:\nmy_array                            # array folder\n   |  ...\n   |_ __meta                        # metadata folder\n         |_ &lt;timestamped_name&gt;      # metadata file\n         |_ ...\n         |_ &lt;timestamped_name&gt;.vac  # vacuum file\n         |_ ...\nThe metadata folder can contain any number of timestamped: * metadata files * vacuum files * Note: the timestamped names do not include the format version."
+    "text": "Introduced in TileDB 1.6\n\nThe structure of fragment metadata files was overhauled.\n\nThe footer and R-Tree structures were added.\nThe Bounding coords field was removed.\nThe MBRs field was removed. MBRs are now stored in the R-Tree.\nStructures other than the footer like tile offsets, sizes and metadata are wrapped in their own generic tiles. This allows loading them lazily and in parallel."
   },
   {
-    "objectID": "format_spec/metadata.html#metadata-file",
-    "href": "format_spec/metadata.html#metadata-file",
-    "title": "Array Metadata",
-    "section": "Metadata File",
-    "text": "Metadata File\nThe metadata file consists of a single generic tile, containing multiple entries with the following data:\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nKey length\nuint32_t\nThe length of the key.\n\n\nKey\nuint8_t[]\nThe key.\n\n\nDeletion\nuint8_t\n1/0 if it is a deletion/insertion.\n\n\nValue type\nuint8_t\nThe value data type. Present only if del is 0.\n\n\nNumber of values\nuint32_t\nThe number of values. Present only if del is 0.\n\n\nValue\nuint8_t[]\nThe value. Present only if del is 0."
-  },
-  {
-    "objectID": "format_spec/filters/xor.html",
-    "href": "format_spec/filters/xor.html",
-    "title": "XOR Filter",
+    "objectID": "format_spec/history.html#version-2",
+    "href": "format_spec/history.html#version-2",
+    "title": "Format version history",
     "section": "",
-    "text": "The XOR filter applies the XOR operation sequentially to the input data, in chunks of 1-4 bytes, depending on the sizeof the attribute’s type representation. For example, given data as a NumPy int64 array:\ndata = np.random.rand(npts)\ndata_b = data.view(np.int64)\nfor i in range(1, len(data)):\n  data_b[i] = data_b[i] ^ data_b[i-1]\n\nFilter Enum Value\nThe filter enum value for the XOR filter is 16 (TILEDB_FILTER_XOR enum).\n\n\nInput and Output Layout\nThe input and output data layout is identical for the XOR filter."
+    "text": "Introduced in TileDB 1.5\n\nCell coordinate values of each dimension are always stored next to each other, regardless of whether they are filtered with a compression filter or not."
   },
   {
-    "objectID": "format_spec/filters/delta.html",
-    "href": "format_spec/filters/delta.html",
-    "title": "Delta Filter",
+    "objectID": "format_spec/history.html#version-1",
+    "href": "format_spec/history.html#version-1",
+    "title": "Format version history",
     "section": "",
-    "text": "The delta filter transforms integer type data by computing and storing the delta between consecutive elements.\n\n\nThe filter enum value for the delta filter is 19 (TILEDB_FILTER_DELTA enum).\n\n\n\nThe input data layout will be an array of integer numbers (each known as in_{n}, with n starting from 0). Their type (henceforth known as input_t) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the Reinterpret datatype field in the filter options.\nThe output data layout consists of the following fields:\n\n\n\nField\nType\nDescription\n\n\n\n\nn\nuint64_t\nNumber of values in the input data.\n\n\nin_0\ninput_t\nFirst input value.\n\n\ndelta_1\ninput_t\nValue of in_1 - in_0.\n\n\ndelta_n\ninput_t\nValue of in_n - in_{n - 1}."
-  },
-  {
-    "objectID": "format_spec/filters/delta.html#delta-filter",
-    "href": "format_spec/filters/delta.html#delta-filter",
-    "title": "Delta Filter",
-    "section": "",
-    "text": "The delta filter transforms integer type data by computing and storing the delta between consecutive elements.\n\n\nThe filter enum value for the delta filter is 19 (TILEDB_FILTER_DELTA enum).\n\n\n\nThe input data layout will be an array of integer numbers (each known as in_{n}, with n starting from 0). Their type (henceforth known as input_t) is inferred from the output type of the previous filter, or the tile’s datatype if this is the first filter in the pipeline, but can be overriden by the Reinterpret datatype field in the filter options.\nThe output data layout consists of the following fields:\n\n\n\nField\nType\nDescription\n\n\n\n\nn\nuint64_t\nNumber of values in the input data.\n\n\nin_0\ninput_t\nFirst input value.\n\n\ndelta_1\ninput_t\nValue of in_1 - in_0.\n\n\ndelta_n\ninput_t\nValue of in_n - in_{n - 1}."
-  },
-  {
-    "objectID": "format_spec/filters/float_scale.html",
-    "href": "format_spec/filters/float_scale.html",
-    "title": "Float Scaling Filter",
-    "section": "",
-    "text": "The float scale filter converts floating point type data to integer data after first shifting and scaling the data. It is a lossy filter that is often used in combination with other filters that perform well on integer data. The float scale filter stores its input data (with floating point type) as integer values for more compressed storage. For example, given data as a NumPy float64 array, with scale/offset parameters, and a specified byte width of 4: ``` data = np.random.rand(npts) data_b = data.view(np.float64) new_data_b = np.zeros(npts, dtype=np.int32) # byte width is 4 scale, offset\nfor i in range(0, len(data)): # round works like ’s round new_data_b[i] = round((data_b[i] - offset) / scale) ```\nOn read, the float scaling filter will reverse the scale factor and offset, restoring the original floating point data, with a potential loss of precision. Given the previous example: restored_data = np.zeros(npts, dtype=np.float64)    for i in range(0, len(data)):      restored_data[i] = (new_data_b[i] * scale) + offset\nHere’s a small example of the float scaling filter’s behavior on write, then read. Given the parameters scale = 0.25, offset = 10.0, and byte_size = 2, this is how the data is stored and retrieved.\n  input_data (double) = [10.0, 10.2500, 10.7540, 11.0001]\n  stored_data (16 bit integer) = [0, 1, 3, 4]\n  output_data (double) = [10.0, 10.2500, 10.7500, 11.0]\n\n\nThe filter enum value for the float scaling filter is 15 (TILEDB_FILTER_SCALE_FLOAT enum).\n\n\n\nThe input data layout will be an array of floating point numbers. The output data layout will be an array of integer numbers with the pre-specified byte width."
-  },
-  {
-    "objectID": "format_spec/filters/float_scale.html#float-scaling-filter",
-    "href": "format_spec/filters/float_scale.html#float-scaling-filter",
-    "title": "Float Scaling Filter",
-    "section": "",
-    "text": "The float scale filter converts floating point type data to integer data after first shifting and scaling the data. It is a lossy filter that is often used in combination with other filters that perform well on integer data. The float scale filter stores its input data (with floating point type) as integer values for more compressed storage. For example, given data as a NumPy float64 array, with scale/offset parameters, and a specified byte width of 4: ``` data = np.random.rand(npts) data_b = data.view(np.float64) new_data_b = np.zeros(npts, dtype=np.int32) # byte width is 4 scale, offset\nfor i in range(0, len(data)): # round works like ’s round new_data_b[i] = round((data_b[i] - offset) / scale) ```\nOn read, the float scaling filter will reverse the scale factor and offset, restoring the original floating point data, with a potential loss of precision. Given the previous example: restored_data = np.zeros(npts, dtype=np.float64)    for i in range(0, len(data)):      restored_data[i] = (new_data_b[i] * scale) + offset\nHere’s a small example of the float scaling filter’s behavior on write, then read. Given the parameters scale = 0.25, offset = 10.0, and byte_size = 2, this is how the data is stored and retrieved.\n  input_data (double) = [10.0, 10.2500, 10.7540, 11.0001]\n  stored_data (16 bit integer) = [0, 1, 3, 4]\n  output_data (double) = [10.0, 10.2500, 10.7500, 11.0]\n\n\nThe filter enum value for the float scaling filter is 15 (TILEDB_FILTER_SCALE_FLOAT enum).\n\n\n\nThe input data layout will be an array of floating point numbers. The output data layout will be an array of integer numbers with the pre-specified byte width."
-  },
-  {
-    "objectID": "format_spec/group_file_hierarchy.html",
-    "href": "format_spec/group_file_hierarchy.html",
-    "title": "Group File Hierarchy",
-    "section": "",
-    "text": "A TileDB group is a folder with a single file in it:\nmy_group                       # Group folder\n    |_ __tiledb_group.tdb      # Empty group file\n    |_ __group                 # Group folder\n        |_ &lt;timestamped_name&gt;  # Timestamped group file detailing members\n    |_ __meta                  # group metadata folder\nFile __tiledb_group.tdb is empty and it is merely used to indicate that my_group is a TileDB group.\nInside the group folder, you can find the following:\n\nGroup details folder __group.\nGroup metadata folder __meta.",
-    "crumbs": [
-      "Format Specification",
-      "Group",
-      "Group File Hierarchy"
-    ]
-  },
-  {
-    "objectID": "format_spec/group.html",
-    "href": "format_spec/group.html",
-    "title": "Group",
-    "section": "",
-    "text": "The current group format version (2) is a folder called __group located here:\nmy_group                       # Group folder\n    |  ...\n    |_ __group                 # Group folder\n        |_ &lt;timestamped_name&gt;  # Timestamped group file detailing members\n    |_ ...\nThe group folder can contain:\n\nAny number of group files with name &lt;timestamped_name&gt;.\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group\n\n\nNumber of Group Member\nuint32_t\nThe number of group members.\n\n\nGroup Member 1\nGroup Member\nFirst group member\n\n\n…\n…\n…\n\n\nGroup Member N\nGroup Member\nNth group member\n\n\n\n\n\n\nThe group member is the content inside a group.\nThe current group member format version is 2.\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group member\n\n\nObject type\nuint8_t\nObject type of the member\n\n\nRelative\nuint8_t\nIs the URI relative to the group\n\n\nURI length\nuint64_t\nNumber of characters in URI\n\n\nURI\nuint8_t[]\nURI character array\n\n\nName set\nuint8_t\nIs the name set\n\n\nName length\nuint64_t\nNumber of characters in name\n\n\nName\nuint8_t[]\nName character array\n\n\nDeleted\nuint8_t\nIs the member deleted"
-  },
-  {
-    "objectID": "format_spec/group.html#group-file",
-    "href": "format_spec/group.html#group-file",
-    "title": "Group",
-    "section": "",
-    "text": "Field\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group\n\n\nNumber of Group Member\nuint32_t\nThe number of group members.\n\n\nGroup Member 1\nGroup Member\nFirst group member\n\n\n…\n…\n…\n\n\nGroup Member N\nGroup Member\nNth group member"
-  },
-  {
-    "objectID": "format_spec/group.html#group-member",
-    "href": "format_spec/group.html#group-member",
-    "title": "Group",
-    "section": "",
-    "text": "The group member is the content inside a group.\nThe current group member format version is 2.\n\n\n\nField\nType\nDescription\n\n\n\n\nVersion\nuint32_t\nFormat version number of the group member\n\n\nObject type\nuint8_t\nObject type of the member\n\n\nRelative\nuint8_t\nIs the URI relative to the group\n\n\nURI length\nuint64_t\nNumber of characters in URI\n\n\nURI\nuint8_t[]\nURI character array\n\n\nName set\nuint8_t\nIs the name set\n\n\nName length\nuint64_t\nNumber of characters in name\n\n\nName\nuint8_t[]\nName character array\n\n\nDeleted\nuint8_t\nIs the member deleted"
+    "text": "Introduced in TileDB 1.4\n\nInitial version of the TileDB storage format."
   },
   {
     "objectID": "format_spec/tile.html",

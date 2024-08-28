@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Format Specification</title>
+<title>Format version history</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -30,8 +30,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../format_spec/array_file_hierarchy.html" rel="next">
-<link href="../index.html" rel="prev">
 <link href="../images/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -74,7 +72,7 @@ ul.task-list li input[type="checkbox"] {
 <link rel="stylesheet" href="../quarto-materials/tiledb.css">
 </head>
 
-<body class="nav-sidebar floating nav-fixed">
+<body class="nav-fixed">
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
@@ -109,155 +107,41 @@ ul.task-list li input[type="checkbox"] {
 </div>
       </div> <!-- /container-fluid -->
     </nav>
-  <nav class="quarto-secondary-nav">
-    <div class="container-fluid d-flex">
-      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
-        <i class="bi bi-layout-text-sidebar-reverse"></i>
-      </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../format_spec/FORMAT_SPEC.html">Format Specification</a></li></ol></nav>
-        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
-        </a>
-    </div>
-  </nav>
 </header>
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
-    <div class="sidebar-menu-container"> 
-    <ul class="list-unstyled mt-1">
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../index.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Public code docs</span></a>
-  </div>
-</li>
-        <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a href="../format_spec/FORMAT_SPEC.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Format Specification</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
- <span class="menu-text">Array</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/array_file_hierarchy.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Array File Hierarchy</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/array_schema.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Array Schema</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/fragment.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Fragment</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/tile.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Tile</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/generic_tile.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Generic Tile</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
- <span class="menu-text">Group</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/group_file_hierarchy.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Group File Hierarchy</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-          <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
- <span class="menu-text">Other</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/consolidated_fragment_metadata_file.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Consolidated Fragment Metadata File</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/filter_pipeline.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Filter Pipeline</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../format_spec/vacuum_file.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Vacuum File</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-      </ul>
-  </li>
-        <li class="sidebar-item sidebar-item-section">
-      <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
- <span class="menu-text">Developer Docs</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
-      </div>
-      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../doc/dev/style/index.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Style Guide</span></a>
-  </div>
-</li>
-      </ul>
-  </li>
-    </ul>
-    </div>
-</nav>
-<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
         <nav id="TOC" role="doc-toc" class="toc-active">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#table-of-contents" id="toc-table-of-contents" class="nav-link active" data-scroll-target="#table-of-contents">Table of Contents</a></li>
+  <li><a href="#format-version-history" id="toc-format-version-history" class="nav-link active" data-scroll-target="#format-version-history">Format Version History</a>
+  <ul class="collapse">
+  <li><a href="#version-22" id="toc-version-22" class="nav-link" data-scroll-target="#version-22">Version 22</a></li>
+  <li><a href="#version-21" id="toc-version-21" class="nav-link" data-scroll-target="#version-21">Version 21</a></li>
+  <li><a href="#version-20" id="toc-version-20" class="nav-link" data-scroll-target="#version-20">Version 20</a></li>
+  <li><a href="#version-19" id="toc-version-19" class="nav-link" data-scroll-target="#version-19">Version 19</a></li>
+  <li><a href="#version-18" id="toc-version-18" class="nav-link" data-scroll-target="#version-18">Version 18</a></li>
+  <li><a href="#version-17" id="toc-version-17" class="nav-link" data-scroll-target="#version-17">Version 17</a></li>
+  <li><a href="#version-16" id="toc-version-16" class="nav-link" data-scroll-target="#version-16">Version 16</a></li>
+  <li><a href="#version-15" id="toc-version-15" class="nav-link" data-scroll-target="#version-15">Version 15</a></li>
+  <li><a href="#version-14" id="toc-version-14" class="nav-link" data-scroll-target="#version-14">Version 14</a></li>
+  <li><a href="#version-13" id="toc-version-13" class="nav-link" data-scroll-target="#version-13">Version 13</a></li>
+  <li><a href="#version-12" id="toc-version-12" class="nav-link" data-scroll-target="#version-12">Version 12</a></li>
+  <li><a href="#version-11" id="toc-version-11" class="nav-link" data-scroll-target="#version-11">Version 11</a></li>
+  <li><a href="#version-10" id="toc-version-10" class="nav-link" data-scroll-target="#version-10">Version 10</a></li>
+  <li><a href="#version-9" id="toc-version-9" class="nav-link" data-scroll-target="#version-9">Version 9</a></li>
+  <li><a href="#version-8" id="toc-version-8" class="nav-link" data-scroll-target="#version-8">Version 8</a></li>
+  <li><a href="#version-7" id="toc-version-7" class="nav-link" data-scroll-target="#version-7">Version 7</a></li>
+  <li><a href="#version-6" id="toc-version-6" class="nav-link" data-scroll-target="#version-6">Version 6</a></li>
+  <li><a href="#version-5" id="toc-version-5" class="nav-link" data-scroll-target="#version-5">Version 5</a></li>
+  <li><a href="#version-4" id="toc-version-4" class="nav-link" data-scroll-target="#version-4">Version 4</a></li>
+  <li><a href="#version-3" id="toc-version-3" class="nav-link" data-scroll-target="#version-3">Version 3</a></li>
+  <li><a href="#version-2" id="toc-version-2" class="nav-link" data-scroll-target="#version-2">Version 2</a></li>
+  <li><a href="#version-1" id="toc-version-1" class="nav-link" data-scroll-target="#version-1">Version 1</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -266,7 +150,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Format Specification</h1>
+<h1 class="title">Format version history</h1>
 </div>
 
 
@@ -283,42 +167,206 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p><strong>Notes:</strong></p>
+<section id="format-version-history" class="level1">
+<h1>Format Version History</h1>
+<section id="version-22" class="level2">
+<h2 class="anchored" data-anchor-id="version-22">Version 22</h2>
+<p>Introduced in TileDB 2.25</p>
 <ul>
-<li><p>The current TileDB format version number is <strong>22</strong> (<code>uint32_t</code>).</p></li>
-<li><p>Data written by TileDB and referenced in this document is <strong>little-endian</strong> with the following exceptions:</p>
+<li>The <em>Current domain</em> field was added to <a href="../format_spec/array_schema.html#array-schema-file">array schemas</a>.</li>
+</ul>
+</section>
+<section id="version-21" class="level2">
+<h2 class="anchored" data-anchor-id="version-21">Version 21</h2>
+<p>Introduced in TileDB 2.19</p>
 <ul>
-<li><a href="../format_spec/filters/dictionary_encoding.html">Dictionary filter</a></li>
-<li>RLE filter</li>
+<li>The TileDB implementation has been updated to fix computing <a href="../format_spec/fragment.html#tile-mins-maxes">tile metadata</a> for nullable fixed-size strings on dense arrays.</li>
+</ul>
+<blockquote class="blockquote">
+<p>[!NOTE] This version does not contain any changes to the storage format, but was introduced as an indicator for implementations to not rely on tile metadata for nullable fixed-size strings on dense arrays on previous versions.</p>
+</blockquote>
+</section>
+<section id="version-20" class="level2">
+<h2 class="anchored" data-anchor-id="version-20">Version 20</h2>
+<p>Introduced in TileDB 2.17</p>
+<ul>
+<li>Arrays can have <a href="../format_spec/enumeration.html">enumerations</a>.</li>
+<li>The bit-width reduction and positive delta filters are supported on data of date or time types.</li>
+<li>The <a href="../format_spec/filter_pipeline.html#filter-options">filter pipeline options</a> for the double-delta filter contain the <em>Reinterpret datatype</em> field.</li>
+</ul>
+</section>
+<section id="version-19" class="level2">
+<h2 class="anchored" data-anchor-id="version-19">Version 19</h2>
+<p>Introduced in TileDB 2.16</p>
+<ul>
+<li><a href="../format_spec/vacuum_file.html">Vacuum files</a> contain relative paths to the location of the array.</li>
+<li>The <a href="../format_spec/filter_pipeline.html#filter-options">filter pipeline options</a> for the delta filter contain the <em>Reinterpret datatype</em> field.</li>
+</ul>
+</section>
+<section id="version-18" class="level2">
+<h2 class="anchored" data-anchor-id="version-18">Version 18</h2>
+<p>Introduced in TileDB 2.15</p>
+<ul>
+<li>Arrays can have <a href="../format_spec/array_schema.html#dimension-label">dimension labels</a>.</li>
+</ul>
+</section>
+<section id="version-17" class="level2">
+<h2 class="anchored" data-anchor-id="version-17">Version 17</h2>
+<p>Introduced in TileDB 2.14</p>
+<ul>
+<li>The <em>Order</em> field was added to <a href="../format_spec/array_schema.html#attribute">attributes</a>.</li>
+<li>Cell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary filter exists in the filter pipeline. They are instead encoded as part of the data tile.</li>
+</ul>
+</section>
+<section id="version-16" class="level2">
+<h2 class="anchored" data-anchor-id="version-16">Version 16</h2>
+<p>Introduced in TileDB 2.12</p>
+<ul>
+<li>Arrays can have <a href="../format_spec/delete_commit_file.html">delete commit files</a>.</li>
+<li>Arrays can have <a href="../format_spec/update_commit_file.html">update commit files</a>.
+<ul>
+<li>The TileDB implementation currently supports writing update commit files as an experimental feature, but they are not yet considered when performing reads.</li>
+</ul></li>
+<li>Fragment metadata contain <a href="../format_spec/fragment.html#tile-processed-conditions">tile processed conditions</a>.</li>
+</ul>
+</section>
+<section id="version-15" class="level2">
+<h2 class="anchored" data-anchor-id="version-15">Version 15</h2>
+<p>Introduced in TileDB 2.11</p>
+<ul>
+<li>Consolidated fragments can have delete metadata files. The <em>Includes delete metadata</em> field was added to the <a href="../format_spec/fragment.html#footer">fragment metadata footer</a>.</li>
+</ul>
+</section>
+<section id="version-14" class="level2">
+<h2 class="anchored" data-anchor-id="version-14">Version 14</h2>
+<p>Introduced in TileDB 2.10</p>
+<ul>
+<li>Consolidated fragments can have timestamp files. The <em>Includes timestamps</em> field was added to the <a href="../format_spec/fragment.html#footer">fragment metadata footer</a>.</li>
+</ul>
+</section>
+<section id="version-13" class="level2">
+<h2 class="anchored" data-anchor-id="version-13">Version 13</h2>
+<p>Introduced in TileDB 2.9</p>
+<ul>
+<li>The <a href="../format_spec/filters/dictionary_encoding.html">dictionary filter</a> was added.</li>
+</ul>
+</section>
+<section id="version-12" class="level2">
+<h2 class="anchored" data-anchor-id="version-12">Version 12</h2>
+<p>Introduced in TileDB 2.8</p>
+<ul>
+<li>The <a href="../format_spec/array_file_hierarchy.html">array file hierarchy</a> was updated to store fragments, commits and consolidated fragment metadata in separate subdirectories.</li>
+<li>The extension of commit files was changed to <code>.wrt</code>.</li>
+<li>Cell offsets in dimensions or attributes of ASCII string type are not written in the offset tiles, if the RLE filter exists in the filter pipeline. They are instead encoded as part of the data tile.</li>
+</ul>
+</section>
+<section id="version-11" class="level2">
+<h2 class="anchored" data-anchor-id="version-11">Version 11</h2>
+<p>Introduced in TileDB 2.7</p>
+<ul>
+<li>Fragment metadata contain <a href="../format_spec/fragment.html#tile-mins-maxes">metadata</a> (min/max value, sum, null count) for each tile.</li>
+<li>The TileDB implementation has been updated to never split cells when storing them in chunks.</li>
+</ul>
+</section>
+<section id="version-10" class="level2">
+<h2 class="anchored" data-anchor-id="version-10">Version 10</h2>
+<p>Introduced in TileDB 2.4</p>
+<ul>
+<li>Arrays support schema evolution.
+<ul>
+<li>Array schemas are stored in a <code>__schema</code> subdirectory, and have a <a href="../format_spec/timestamped_name.html">timestamped name</a>.</li>
+<li>The <em>Array schema name</em> field was added to the <a href="../format_spec/fragment.html#footer">fragment metadata footer</a>.</li>
+</ul></li>
+<li>The <em>Footer length</em> field of the <a href="../format_spec/fragment.html#footer">fragment metadata footer</a> is always written.</li>
+</ul>
+</section>
+<section id="version-9" class="level2">
+<h2 class="anchored" data-anchor-id="version-9">Version 9</h2>
+<p>Introduced in TileDB 2.3</p>
+<ul>
+<li><a href="../format_spec/fragment.html#data-file">Data files</a> are named by the index of their attribute or dimension.</li>
+<li>The <em>URI</em> fields of <a href="../format_spec/consolidated_fragment_metadata_file.html">Consolidated fragment metadata files</a> contain relative paths to the location of fragments in the array.</li>
+</ul>
+</section>
+<section id="version-8" class="level2">
+<h2 class="anchored" data-anchor-id="version-8">Version 8</h2>
+<p>Introduced in TileDB 2.2.3</p>
+<ul>
+<li><a href="../format_spec/fragment.html#data-file">Data files</a> are named by the name of their attribute or dimension, after percent encoding certain characters. These characters are <code>!#$%&amp;'()*+,/:;=?@[]</code>, as specified in <a href="https://tools.ietf.org/html/rfc3986">RFC 3986</a>, as well as <code>"&lt;&gt;\|</code>, which are not allowed in Windows file names.</li>
+</ul>
+</section>
+<section id="version-7" class="level2">
+<h2 class="anchored" data-anchor-id="version-7">Version 7</h2>
+<p>Introduced in TileDB 2.2</p>
+<ul>
+<li>Attributes can be nullable.
+<ul>
+<li>The <em>Nullable</em> and <em>Fill value validity</em> fields were added to <a href="../format_spec/array_schema.html#attribute">attributes</a>.</li>
+<li>The <em>Validity filters</em> field was added to <a href="../format_spec/array_schema.html#array-schema-file">array schemas</a>.</li>
+<li>Fragment metadata contain validity <a href="../format_spec/fragment.html#tile-offsets">tile offsets</a>.</li>
 </ul></li>
 </ul>
-<section id="table-of-contents" class="level2">
-<h2 class="anchored" data-anchor-id="table-of-contents">Table of Contents</h2>
+</section>
+<section id="version-6" class="level2">
+<h2 class="anchored" data-anchor-id="version-6">Version 6</h2>
+<p>Introduced in TileDB 2.1</p>
 <ul>
-<li><strong>Array</strong>
+<li>The <em>Fill value</em> field was added to <a href="../format_spec/array_schema.html#attribute">attributes</a>.</li>
+</ul>
+</section>
+<section id="version-5" class="level2">
+<h2 class="anchored" data-anchor-id="version-5">Version 5</h2>
+<p>Introduced in TileDB 2.0</p>
 <ul>
-<li><a href="../format_spec/history.html">Format Version History</a></li>
-<li><a href="../format_spec/array_file_hierarchy.html">File hierarchy</a></li>
-<li><a href="../format_spec/array_schema.html">Array Schema</a></li>
-<li><a href="../format_spec/fragment.html">Fragment</a></li>
-<li><a href="../format_spec/metadata.html">Array Metadata</a></li>
-<li><a href="../format_spec/tile.html">Tile</a></li>
-<li><a href="../format_spec/generic_tile.html">Generic Tile</a></li>
+<li>Dimensions are stored in separate <a href="../format_spec/fragment.html#data-file">data files</a>.</li>
+<li>Sparse arrays can have string dimensions and dimensions with different datatypes.
+<ul>
+<li>The <em>Dimension datatype</em>, <em>Cell val num</em> and <em>Filters</em> fields were added to <a href="../format_spec/array_schema.html#dimension">dimensions</a>.</li>
+<li>The <em>Domain size</em> field was added to <a href="../format_spec/array_schema.html#dimension">dimensions</a>. The domain of a dimension can have a variable size.</li>
+<li>The <em>Domain datatype</em> field was removed from <a href="../format_spec/array_schema.html#domain">domains</a>.</li>
+<li>The <a href="../format_spec/fragment.html#mbr">MBR</a> structure has been updated to support variable-sized dimensions.</li>
+<li>The <em>Dimension number</em> and <em>R-Tree datatype</em> fields have been removed from <a href="../format_spec/fragment.html#r-tree">R-Trees</a>.</li>
 </ul></li>
-<li><strong>Group</strong>
+<li>The <em>Allows dups</em> field was added to <a href="../format_spec/array_schema.html#array-schema-file">array schemas</a>.</li>
+<li>Committed fragments are indicated by the presence of an <code>.ok</code> file in the array’s directory, with the same <a href="../format_spec/timestamped_name.html">timestamped name</a> as the fragment.</li>
+</ul>
+</section>
+<section id="version-4" class="level2">
+<h2 class="anchored" data-anchor-id="version-4">Version 4</h2>
+<p>Introduced in TileDB 1.7</p>
 <ul>
-<li><a href="../format_spec/group_file_hierarchy.html">File hierarchy</a></li>
-</ul></li>
-<li><strong>Other</strong>
+<li>Support for the <a href="https://tiledb-inc-tiledb.readthedocs-hosted.com/en/1.6.3/tutorials/kv.html">key-value store</a> object type was removed. Key-value stores have been superseded by sparse arrays.</li>
+</ul>
+</section>
+<section id="version-3" class="level2">
+<h2 class="anchored" data-anchor-id="version-3">Version 3</h2>
+<p>Introduced in TileDB 1.6</p>
 <ul>
-<li><a href="../format_spec/consolidated_fragment_metadata_file.html">Consolidated Fragment Metadata File</a></li>
-<li><a href="../format_spec/filter_pipeline.html">Filter Pipeline</a></li>
-<li><a href="../format_spec/timestamped_name.html">Timestamped Name</a></li>
-<li><a href="../format_spec/vacuum_file.html">Vacuum File</a></li>
+<li>The structure of <a href="../format_spec/fragment.html#fragment-metadata-file">fragment metadata files</a> was overhauled.
+<ul>
+<li>The <a href="../format_spec/fragment.html#footer">footer</a> and <a href="../format_spec/fragment.html#r-tree">R-Tree</a> structures were added.</li>
+<li>The <em>Bounding coords</em> field was removed.</li>
+<li>The <em>MBRs</em> field was removed. MBRs are now stored in the R-Tree.</li>
+<li>Structures other than the footer like tile offsets, sizes and metadata are wrapped in their own generic tiles. This allows loading them lazily and in parallel.</li>
 </ul></li>
+</ul>
+</section>
+<section id="version-2" class="level2">
+<h2 class="anchored" data-anchor-id="version-2">Version 2</h2>
+<p>Introduced in TileDB 1.5</p>
+<ul>
+<li>Cell coordinate values of each dimension are always stored next to each other, regardless of whether they are filtered with a compression filter or not.</li>
+</ul>
+</section>
+<section id="version-1" class="level2">
+<h2 class="anchored" data-anchor-id="version-1">Version 1</h2>
+<p>Introduced in TileDB 1.4</p>
+<ul>
+<li>Initial version of the TileDB storage format.</li>
 </ul>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -742,18 +790,6 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   }
 });
 </script>
-<nav class="page-navigation">
-  <div class="nav-page nav-page-previous">
-      <a href="../index.html" class="pagination-link" aria-label="Public code docs">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Public code docs</span>
-      </a>          
-  </div>
-  <div class="nav-page nav-page-next">
-      <a href="../format_spec/array_file_hierarchy.html" class="pagination-link" aria-label="Array File Hierarchy">
-        <span class="nav-page-text">Array File Hierarchy</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
-  </div>
-</nav>
 </div> <!-- /content -->
 
 
