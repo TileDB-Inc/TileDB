@@ -283,6 +283,10 @@ Status Win::remove_dir(const std::string& path) const {
   }
 }
 
+bool Win::remove_dir_if_empty(const std::string& path) const {
+  return std::filesystem::remove({path});
+}
+
 Status Win::remove_file(const std::string& path) const {
   if (!DeleteFile(path.c_str())) {
     return LOG_STATUS(Status_IOError(std::string(

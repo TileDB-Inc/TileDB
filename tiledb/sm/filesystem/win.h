@@ -104,9 +104,17 @@ class Win {
   Status remove_dir(const std::string& path) const;
 
   /**
+   * Removes a given empty directory.
+   * 
+   * @param path The path of the directory.
+   * @return true if the directory was removed, false otherwise.
+   */
+  bool remove_dir_if_empty(const std::string& path) const;
+
+  /**
    * Removes a given path.
    *
-   * @param path The path of the file / empty directory to be deleted.
+   * @param path The path of the file to be deleted.
    * @return Status
    */
   Status remove_file(const std::string& path) const;
