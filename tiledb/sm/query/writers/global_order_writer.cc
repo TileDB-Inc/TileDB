@@ -1524,6 +1524,7 @@ NDRange GlobalOrderWriter::ndranges_after_split(
   }
   uint64_t end = start_ + (rows_of_tiles_to_write * tile_extent) - 1;
 
+  // if there is a remainder it means we need one more row
   if (tiles_in_current_row_ != 0 && !reached_end_of_fragment && end < end_ &&
       moved_row) {
     end++;
