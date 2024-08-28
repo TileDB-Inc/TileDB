@@ -101,7 +101,11 @@ class ArraySchema {
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    */
-  ArraySchema(ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker);
+  ArraySchema(
+      ArrayType array_type,
+      shared_ptr<MemoryTracker> memory_tracker,
+      std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
+          std::nullopt);
 
   /** Constructor with std::vector attributes.
    * @param uri The URI of the array schema file.
