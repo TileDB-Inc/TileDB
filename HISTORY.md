@@ -18,6 +18,7 @@
 * Added new functions to write schema dump to a string rather than stdout, so that non-console interactive environments such as Jupyter will be able to capture and print the output. [#5026](https://github.com/TileDB-Inc/TileDB/pull/5026)
 * Improve dense read performance for small reads. [#5145](https://github.com/TileDB-Inc/TileDB/pull/5145)
 * Skip caching redirect uri on array create. [#5224](https://github.com/TileDB-Inc/TileDB/pull/5224)
+* Add serialization and API changes for post_array_schema_from_rest. [#5261](https://github.com/TileDB-Inc/TileDB/pull/5261)
 
 ## Deprecations
 
