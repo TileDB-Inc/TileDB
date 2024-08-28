@@ -17,7 +17,7 @@ Introduced in TileDB 2.19
 * The TileDB implementation has been updated to fix computing [tile metadata](./fragment.md#tile-mins-maxes) for nullable fixed-size strings on dense arrays.
 
 > [!NOTE]
-> This version does not contain any changes to the storage format, but was introduced as an indicator for implementations to not rely on tile metadata under certain circumstances on previous versions.
+> This version does not contain any changes to the storage format, but was introduced as an indicator for implementations to not rely on tile metadata for nullable fixed-size strings on dense arrays on previous versions.
 
 ## Version 20
 
