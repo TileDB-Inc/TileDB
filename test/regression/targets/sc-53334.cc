@@ -168,7 +168,7 @@ TEST_CASE("SC-53334 min single value UINT8 works", "[bug][sc-53334]") {
 
 TEST_CASE(
     "SC-53334 min single value STRING_ASCII does not work",
-    "[regression][bug][sc-53334][shouldFail]") {
+    "[regression][bug][sc-53334][!shouldfail]") {
   using MyArray = MyArray<TILEDB_STRING_ASCII>;
 
   Context ctx;
