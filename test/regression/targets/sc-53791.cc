@@ -120,7 +120,7 @@ bool array_exists(Context& ctx, const char* uri) {
 
 TEST_CASE(
     "SC-53791 var value TILEDB_UINT64 does not work",
-    "[regression][bug][sc-53791][shouldFail]") {
+    "[regression][bug][sc-53791][!shouldfail]") {
   Context ctx;
   std::string uri("sc-53791-uint64-var");
 
