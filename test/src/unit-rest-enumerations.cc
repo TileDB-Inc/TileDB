@@ -206,3 +206,5 @@ void RESTEnumerationFx::create_array(const std::string& array_name) {
   query.finalize();
   array.close();
 }
+
+// XXX TOUCH

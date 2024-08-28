@@ -117,9 +117,9 @@ class ArraySchema : public Schema {
       ctx.handle_error(tiledb_array_schema_alloc_at_timestamp(
           ctx.ptr().get(),
           type,
-          &schema,
           timestamp_range.value().first,
-          timestamp_range.value().second));
+          timestamp_range.value().second,
+          &schema));
     } else {
       ctx.handle_error(
           tiledb_array_schema_alloc(ctx.ptr().get(), type, &schema));

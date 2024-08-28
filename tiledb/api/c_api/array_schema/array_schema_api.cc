@@ -98,9 +98,9 @@ capi_return_t tiledb_array_schema_alloc(
 capi_return_t tiledb_array_schema_alloc_at_timestamp(
     tiledb_ctx_t* ctx,
     tiledb_array_type_t array_type,
-    tiledb_array_schema_t** array_schema,
     uint64_t t1,
-    uint64_t t2) {
+    uint64_t t2,
+    tiledb_array_schema_t** array_schema) {
   ensure_output_pointer_is_valid(array_schema);
 
   // Create ArraySchema object
@@ -480,12 +480,12 @@ CAPI_INTERFACE(
     array_schema_alloc_at_timestamp,
     tiledb_ctx_t* ctx,
     tiledb_array_type_t array_type,
-    tiledb_array_schema_t** array_schema,
     uint64_t t1,
-    uint64_t t2) {
+    uint64_t t2,
+    tiledb_array_schema_t** array_schema) {
   return api_entry_with_context<
       tiledb::api::tiledb_array_schema_alloc_at_timestamp>(
-      ctx, array_type, array_schema, t1, t2);
+      ctx, array_type, t1, t2, array_schema);
 }
 
 CAPI_INTERFACE_VOID(array_schema_free, tiledb_array_schema_t** array_schema) {
