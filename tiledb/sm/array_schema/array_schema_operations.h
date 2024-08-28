@@ -41,8 +41,11 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class ArraySchema;
+class Config;
+class Context;
 class ContextResources;
 class EncryptionKey;
+class URI;
 
 /* ********************************* */
 /*                API                */
@@ -75,6 +78,16 @@ void store_array_schema(
     ContextResources& resources,
     const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key);
+
+/**
+ * Handles loading an array schema from a URI.
+ *
+ * @param ctx TileDB Context.
+ * @param uri The URI of the array to load schema.
+ * @param config TileDB Config. If null, the context config will be used.
+ */
+shared_ptr<ArraySchema> load_array_schema(
+    const Context& ctx, const URI& uri, const Config& config);
 
 }  // namespace tiledb::sm
 

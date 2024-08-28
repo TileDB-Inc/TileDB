@@ -9797,17 +9797,17 @@ const ::capnp::_::RawSchema s_83f094010132ff21 = {
   1, 2, i_83f094010132ff21, nullptr, nullptr, { &s_83f094010132ff21, nullptr, nullptr, 0, 0, nullptr }, false
 };
 #endif  // !CAPNP_LITE
-static const ::capnp::_::AlignedData<35> b_ebe17f59ac9a1df1 = {
+static const ::capnp::_::AlignedData<69> b_ebe17f59ac9a1df1 = {
   {   0,   0,   0,   0,   5,   0,   6,   0,
     241,  29, 154, 172,  89, 127, 225, 235,
      18,   0,   0,   0,   1,   0,   0,   0,
     127, 216, 135, 181,  36, 146, 125, 181,
-      1,   0,   7,   0,   0,   0,   0,   0,
+      2,   0,   7,   0,   0,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
      21,   0,   0,   0,  82,   1,   0,   0,
      41,   0,   0,   0,   7,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
-     37,   0,   0,   0,  63,   0,   0,   0,
+     37,   0,   0,   0, 119,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
     116, 105, 108, 101, 100,  98,  45, 114,
@@ -9817,15 +9817,49 @@ static const ::capnp::_::AlignedData<35> b_ebe17f59ac9a1df1 = {
      97,  82, 101, 115, 112, 111, 110, 115,
     101,   0,   0,   0,   0,   0,   0,   0,
       0,   0,   0,   0,   1,   0,   1,   0,
-      4,   0,   0,   0,   3,   0,   4,   0,
+      8,   0,   0,   0,   3,   0,   4,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
       0,   0,   1,   0,   0,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
-     13,   0,   0,   0,  58,   0,   0,   0,
+     41,   0,   0,   0,  58,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
-      8,   0,   0,   0,   3,   0,   1,   0,
-     20,   0,   0,   0,   2,   0,   1,   0,
+     36,   0,   0,   0,   3,   0,   1,   0,
+     48,   0,   0,   0,   2,   0,   1,   0,
+      1,   0,   0,   0,   1,   0,   0,   0,
+      0,   0,   1,   0,   1,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     45,   0,   0,   0, 130,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     44,   0,   0,   0,   3,   0,   1,   0,
+    128,   0,   0,   0,   2,   0,   1,   0,
     115,  99, 104, 101, 109,  97,   0,   0,
+     16,   0,   0,   0,   0,   0,   0,   0,
+    254, 150, 226, 152,  47, 227,  29, 215,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     16,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     97, 114, 114,  97, 121,  83,  99, 104,
+    101, 109,  97, 115,  65, 108, 108,   0,
+     16,   0,   0,   0,   0,   0,   0,   0,
+    140, 113, 113, 174, 148, 193, 121, 241,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   1,   0,
+      1,   0,   0,   0,  31,   0,   0,   0,
+      4,   0,   0,   0,   2,   0,   1,   0,
+    140, 113, 113, 174, 148, 193, 121, 241,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      1,   0,   0,   0,  39,   0,   0,   0,
+      8,   0,   0,   0,   1,   0,   1,   0,
+      1,   0,   0,   0,   0,   0,   0,   0,
+      8,   0,   0,   0,   3,   0,   1,   0,
+      1,   0,   0,   0,   0,   0,   0,   0,
+     16,   0,   0,   0,   3,   0,   1,   0,
+     12,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
      16,   0,   0,   0,   0,   0,   0,   0,
     254, 150, 226, 152,  47, 227,  29, 215,
       0,   0,   0,   0,   0,   0,   0,   0,
@@ -9838,12 +9872,16 @@ static const ::capnp::_::AlignedData<35> b_ebe17f59ac9a1df1 = {
 #if !CAPNP_LITE
 static const ::capnp::_::RawSchema* const d_ebe17f59ac9a1df1[] = {
   &s_d71de32f98e296fe,
+  &s_f179c194ae71718c,
 };
-static const uint16_t m_ebe17f59ac9a1df1[] = {0};
-static const uint16_t i_ebe17f59ac9a1df1[] = {0};
+static const uint16_t m_ebe17f59ac9a1df1[] = {1, 0};
+static const uint16_t i_ebe17f59ac9a1df1[] = {0, 1};
+KJ_CONSTEXPR(const) ::capnp::_::RawBrandedSchema::Dependency bd_ebe17f59ac9a1df1[] = {
+  { 16777217,  ::tiledb::sm::serialization::capnp::Map< ::capnp::Text,  ::tiledb::sm::serialization::capnp::ArraySchema>::_capnpPrivate::brand() },
+};
 const ::capnp::_::RawSchema s_ebe17f59ac9a1df1 = {
-  0xebe17f59ac9a1df1, b_ebe17f59ac9a1df1.words, 35, d_ebe17f59ac9a1df1, m_ebe17f59ac9a1df1,
-  1, 1, i_ebe17f59ac9a1df1, nullptr, nullptr, { &s_ebe17f59ac9a1df1, nullptr, nullptr, 0, 0, nullptr }, false
+  0xebe17f59ac9a1df1, b_ebe17f59ac9a1df1.words, 69, d_ebe17f59ac9a1df1, m_ebe17f59ac9a1df1,
+  2, 2, i_ebe17f59ac9a1df1, nullptr, nullptr, { &s_ebe17f59ac9a1df1, nullptr, bd_ebe17f59ac9a1df1, 0, sizeof(bd_ebe17f59ac9a1df1) / sizeof(bd_ebe17f59ac9a1df1[0]), nullptr }, true
 };
 #endif  // !CAPNP_LITE
 static const ::capnp::_::AlignedData<49> b_e06f571aa93eb314 = {

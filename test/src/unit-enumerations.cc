@@ -1122,6 +1122,69 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "Array - Load All Enumerations - All Schemas",
+    "[enumeration][array][load-all-enumerations][all-schemas]") {
+  create_array();
+  auto array = get_array(QueryType::READ);
+  auto schema = array->array_schema_latest_ptr();
+  REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
+  std::string schema_name_1 = schema->name();
+
+  // Evolve once to add an enumeration.
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
+  std::vector<std::string> var_values{"one", "two", "three"};
+  auto var_enmr = create_enumeration(
+      var_values, false, Datatype::STRING_ASCII, "ase_var_enmr");
+  ase->add_enumeration(var_enmr);
+  auto attr4 = make_shared<Attribute>(HERE(), "attr4", Datatype::UINT16);
+  attr4->set_enumeration_name("ase_var_enmr");
+  CHECK_NOTHROW(ase->evolve_schema(schema));
+  // Apply evolution to the array and reopen.
+  CHECK_NOTHROW(Array::evolve_array_schema(
+      ctx_.resources(), uri_, ase.get(), array->get_encryption_key()));
+  CHECK(array->reopen().ok());
+  CHECK_NOTHROW(array->load_all_enumerations());
+  auto all_schemas = array->array_schemas_all();
+  schema = array->array_schema_latest_ptr();
+  std::string schema_name_2 = schema->name();
+
+  // Check all schemas.
+  CHECK(all_schemas[schema_name_1]->is_enumeration_loaded("test_enmr") == true);
+  CHECK(all_schemas[schema_name_2]->is_enumeration_loaded("test_enmr") == true);
+  CHECK(
+      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
+
+  // Evolve a second time to drop an enumeration.
+  ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
+  ase->drop_enumeration("test_enmr");
+  ase->drop_attribute("attr1");
+  CHECK_NOTHROW(ase->evolve_schema(schema));
+  // Apply evolution to the array and reopen.
+  CHECK_NOTHROW(Array::evolve_array_schema(
+      ctx_.resources(), uri_, ase.get(), array->get_encryption_key()));
+  CHECK(array->reopen().ok());
+  CHECK_NOTHROW(array->load_all_enumerations());
+  all_schemas = array->array_schemas_all();
+  schema = array->array_schema_latest_ptr();
+  std::string schema_name_3 = schema->name();
+
+  // Check all schemas.
+  CHECK(all_schemas[schema_name_1]->is_enumeration_loaded("test_enmr") == true);
+  CHECK(all_schemas[schema_name_2]->is_enumeration_loaded("test_enmr") == true);
+  CHECK(
+      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
+  CHECK_THROWS_WITH(
+      all_schemas[schema_name_3]->is_enumeration_loaded("test_enmr"),
+      Catch::Matchers::ContainsSubstring("No enumeration named"));
+  CHECK(
+      all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "Array - Load All Enumerations - Repeated",
     "[enumeration][array][load-all-enumerations][repeated]") {
   create_array();

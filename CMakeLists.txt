@@ -521,6 +521,9 @@ if (TILEDB_TESTS)
   add_dependencies(tests tiledb_unit)
   add_dependencies(tests tiledb_regression)
   add_dependencies(tests test_assert)
+  if(TILEDB_ARROW_TESTS)
+    add_dependencies(tests unit_arrow)
+  endif()
 
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
