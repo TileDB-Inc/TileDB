@@ -113,10 +113,7 @@ static std::pair<uint64_t, uint64_t> query_null_count(
   return std::make_pair(count[0], null_count[0]);
 }
 
-bool array_exists(Context& ctx, const char* uri) {
-  auto object = tiledb::Object::object(ctx, uri);
-  return (object.type() == tiledb::Object::Type::Array);
-}
+bool array_exists(Context& ctx, const char* uri);
 
 TEST_CASE(
     "SC-53791 var value TILEDB_UINT64 does not work",
