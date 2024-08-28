@@ -28,6 +28,7 @@
 
 #include <chrono>
 #include <climits>
+#include <numeric>
 #include <thread>
 
 #include <tiledb/tiledb>
