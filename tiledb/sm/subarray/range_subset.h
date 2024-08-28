@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -169,7 +169,10 @@ struct MergeStrategy<
           tail->start_as<T>() <= head_end;
 
       if (can_merge) {
-        head->set_end_fixed(tail->end_fixed());
+        // Only update the end if the merging end is greater.
+        if (tail->end_fixed() > head->end_fixed()) {
+          head->set_end_fixed(tail->end_fixed());
+        }
         merged_cells++;
       } else {
         head++;
