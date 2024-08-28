@@ -1621,6 +1621,26 @@ void read_sparse_v11(
   tiledb_query_free(&query);
 }
 
+void schema_equiv(
+    const sm::ArraySchema& schema1, const sm::ArraySchema& schema2) {
+  CHECK(schema1.array_type() == schema2.array_type());
+  CHECK(schema1.attributes().size() == schema2.attributes().size());
+  for (unsigned int i = 0; i < schema2.attribute_num(); i++) {
+    auto a = schema1.attribute(i);
+    auto b = schema2.attribute(i);
+    CHECK(a->cell_val_num() == b->cell_val_num());
+    CHECK(a->name() == b->name());
+    CHECK(a->type() == b->type());
+    CHECK(a->nullable() == b->nullable());
+    CHECK(a->get_enumeration_name() == b->get_enumeration_name());
+  }
+  CHECK(schema1.capacity() == schema2.capacity());
+  CHECK(schema1.cell_order() == schema2.cell_order());
+  CHECK(schema1.tile_order() == schema2.tile_order());
+  CHECK(schema1.allows_dups() == schema2.allows_dups());
+  CHECK(schema1.array_uri().to_string() == schema2.array_uri().to_string());
+}
+
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(

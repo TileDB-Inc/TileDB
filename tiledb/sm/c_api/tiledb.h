@@ -603,8 +603,8 @@ TILEDB_EXPORT int32_t tiledb_array_schema_check(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) TILEDB_NOEXCEPT;
 
 /**
- * Retrieves the schema of an array from the disk, creating an array schema
- * struct.
+ * Retrieves the latest schema of an array from the disk, creating an array
+ * schema struct.
  *
  * **Example:**
  *
@@ -621,6 +621,39 @@ TILEDB_EXPORT int32_t tiledb_array_schema_check(
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves the schema of an array, creating an array schema struct. Options to
+ * load additional features are read from the provided tiledb_config_t*
+ * instance. If the provided config is nullptr, the config from `ctx` is used
+ * instead.
+ *
+ * Currently supported options to be read from the config:
+ *  - rest.load_enumerations_on_array_open - boolean
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_schema_t* array_schema;
+ * tiledb_array_schema_load_with_config(
+ *     ctx,
+ *     config,
+ *     "s3://tiledb_bucket/my_array",
+ *     &array_schema);
+ * // Make sure to free the array schema in the end
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param config The TileDB config.
+ * @param array_uri The array whose schema will be retrieved.
+ * @param array_schema The array schema to be retrieved, or `NULL` upon error.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_load_with_config(
+    tiledb_ctx_t* ctx,
+    tiledb_config_t* config,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
