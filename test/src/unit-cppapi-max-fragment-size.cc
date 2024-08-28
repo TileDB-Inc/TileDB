@@ -506,7 +506,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Setting max_fragment_size in Dense consolidation",
-    "[global-order-writer]") {
+    "[global-order-writer][max-frag-size-consolidation]") {
   std::string array_name = "cpp_max_fragment_size_bug";
   Context ctx;
 
@@ -599,7 +599,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Setting max_fragment_size in Dense consolidation one dim",
-    "[global-order-writer]") {
+    "[global-order-writer][max-frag-size-consolidation]") {
   std::string array_name = "cpp_max_fragment_size_bug";
   Context ctx;
 

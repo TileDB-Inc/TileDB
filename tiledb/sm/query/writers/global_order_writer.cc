@@ -1476,7 +1476,15 @@ NDRange GlobalOrderWriter::ndranges_after_split(
   // Calculate how many rows we will write in the current fragment
   uint64_t rows_of_tiles_to_write =
       (num - tiles_in_current_row_) / tiles_per_row;
-  uint64_t remainder_of_tiles = (num - tiles_in_current_row_) % tiles_per_row;
+  uint64_t remainder_of_tiles = 0;
+  bool moved_row = true;
+
+  if (rows_of_tiles_to_write == 0) {
+    remainder_of_tiles += num;
+    moved_row = false;
+  } else {
+    remainder_of_tiles = (num - tiles_in_current_row_) % tiles_per_row;
+  }
   tiles_in_current_row_ = remainder_of_tiles;
 
   // If we have not written a full row and we have reached the end of the
@@ -1516,7 +1524,8 @@ NDRange GlobalOrderWriter::ndranges_after_split(
   }
   uint64_t end = start_ + (rows_of_tiles_to_write * tile_extent) - 1;
 
-  if (tiles_in_current_row_ != 0 && !reached_end_of_fragment && end < end_) {
+  if (tiles_in_current_row_ != 0 && !reached_end_of_fragment && end < end_ &&
+      moved_row) {
     end++;
   }
 
