@@ -157,7 +157,7 @@ struct tiledb_array_handle_t
       const char* key,
       tiledb::sm::Datatype* value_type,
       uint32_t* value_num,
-      const void** value) {
+      const void** value) const {
     array_->get_metadata(key, value_type, value_num, value);
   }
 
@@ -167,7 +167,7 @@ struct tiledb_array_handle_t
       uint32_t* key_len,
       tiledb::sm::Datatype* value_type,
       uint32_t* value_num,
-      const void** value) {
+      const void** value) const {
     array_->get_metadata(index, key, key_len, value_type, value_num, value);
   }
 
@@ -212,23 +212,22 @@ struct tiledb_array_handle_t
   }
 
   void non_empty_domain_from_index(unsigned idx, void* domain, bool* is_empty) {
-    return array_->non_empty_domain_from_index(idx, domain, is_empty);
+    array_->non_empty_domain_from_index(idx, domain, is_empty);
   }
 
   void non_empty_domain_from_name(
       std::string_view field_name, void* domain, bool* is_empty) {
-    return array_->non_empty_domain_from_name(field_name, domain, is_empty);
+    array_->non_empty_domain_from_name(field_name, domain, is_empty);
   }
 
   void non_empty_domain_var_from_index(
       unsigned idx, void* start, void* end, bool* is_empty) {
-    return array_->non_empty_domain_var_from_index(idx, start, end, is_empty);
+    array_->non_empty_domain_var_from_index(idx, start, end, is_empty);
   }
 
   void non_empty_domain_var_from_name(
       std::string_view field_name, void* start, void* end, bool* is_empty) {
-    return array_->non_empty_domain_var_from_name(
-        field_name, start, end, is_empty);
+    array_->non_empty_domain_var_from_name(field_name, start, end, is_empty);
   }
 
   void non_empty_domain_var_size_from_index(
@@ -242,7 +241,7 @@ struct tiledb_array_handle_t
       uint64_t* start_size,
       uint64_t* end_size,
       bool* is_empty) {
-    return array_->non_empty_domain_var_size_from_name(
+    array_->non_empty_domain_var_size_from_name(
         field_name, start_size, end_size, is_empty);
   }
 
