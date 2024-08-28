@@ -407,7 +407,7 @@ Status FragmentConsolidator::consolidate_fragments(
         std::to_string(fragment_uris.size()) + " required fragments.");
   }
 
-  // In case we have a dense Array check that the fragments can be consolidated
+  // In case we have a dense array check that the fragments can be consolidated
   // without data loss. More specifically, if the union of the non-empty domains
   // of the fragments which are selected for consolidation (which is equal to
   // the non-empty domain of the resulting consolidated fragment) overlaps with
@@ -416,7 +416,7 @@ Status FragmentConsolidator::consolidate_fragments(
   // consolidating a subset of fragments containing at least one dense fragment
   // is always a dense fragment. Therefore, empty regions in the non-emtpy
   // domain of the consolidated fragment will be filled with special values.
-  // Those values may erroneously overwrite older valid cell values
+  // Those values may erroneously overwrite older valid cell values.
   if (array_for_reads->array_schema_latest().array_type() == ArrayType::DENSE) {
     // Search every other fragment in this array if any of them overlaps in
     // ranges and its timestamp range falls between the range of the fragments
@@ -443,20 +443,19 @@ Status FragmentConsolidator::consolidate_fragments(
       domain.expand_to_tiles(&expanded_non_empty_domain);
 
       // Check domain and timestamp overlap
-      if (domain.overlap(
+      auto timestamp_range{frag_info.timestamp_range()};
+      bool timestamp_before = !(timestamp_range.first > max_timestamp);
+      if (timestamp_before &&
+          domain.overlap(
               expanded_non_empty_domain, frag_info.non_empty_domain())) {
-        auto timestamp_range{frag_info.timestamp_range()};
-        bool timestamp_before = !(timestamp_range.first > max_timestamp);
-        if (timestamp_before) {
-          throw FragmentConsolidatorException(
-              "Cannot consolidate; The non-empty domain of the fragment with "
-              "URI: " +
-              uri +
-              " overlaps with the union of the non-empty domains of the "
-              "fragments selected for consolidation and was created before "
-              "these fragments. For more information refer to our "
-              "documentation on consolidation for Dense arrays.");
-        }
+        throw FragmentConsolidatorException(
+            "Cannot consolidate; The non-empty domain of the fragment with "
+            "URI: " +
+            uri +
+            " overlaps with the union of the non-empty domains of the "
+            "fragments selected for consolidation and was created before "
+            "these fragments. For more information refer to our "
+            "documentation on consolidation for Dense arrays.");
       }
     }
   }

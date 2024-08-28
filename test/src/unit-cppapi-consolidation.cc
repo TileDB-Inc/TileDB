@@ -265,7 +265,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test consolidation with wrong fragment list",
-    "[cppapi][consolidation][dstara]") {
+    "[cppapi][consolidation][fragment_list_consolidation]") {
   std::string array_name = "cppapi_consolidation";
   remove_array(array_name);
 
@@ -339,8 +339,10 @@ TEST_CASE(
       short_fragment_name1.c_str(), short_fragment_name2.c_str()};
 
   if (throws) {
-    REQUIRE_THROWS(
-        Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
+    REQUIRE_THROWS_WITH(
+        Array::consolidate(ctx, array_name, fragment_uris, 2, &config),
+        Catch::Matchers::ContainsSubstring(
+            "Cannot consolidate; The non-empty domain of the fragment"));
   } else {
     REQUIRE_NOTHROW(
         Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
