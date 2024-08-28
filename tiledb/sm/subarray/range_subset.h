@@ -170,7 +170,7 @@ struct MergeStrategy<
 
       if (can_merge) {
         // Only update the end if the merging end is greater.
-        if (tail->end_fixed() > head->end_fixed()) {
+        if (tail->end_as<T>() > head->end_as<T>()) {
           head->set_end_fixed(tail->end_fixed());
         }
         merged_cells++;
