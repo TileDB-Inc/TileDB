@@ -71,8 +71,6 @@ capi_return_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
-  // Create array schema
-  ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(array_schema);
 
   // Use a default constructed config to load the schema with default options.
@@ -87,8 +85,7 @@ capi_return_t tiledb_array_schema_load_with_config(
     tiledb_config_t* config,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
-  ensure_context_is_valid(ctx);
-  ensure_config_is_valid(config);
+  ensure_config_is_valid_if_present(config);
   ensure_output_pointer_is_valid(array_schema);
 
   // Use passed config or context config to load the schema with set options.

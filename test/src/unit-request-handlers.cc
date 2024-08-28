@@ -35,6 +35,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
+#include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_internal.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"

@@ -66,6 +66,42 @@ TEST_CASE(
   CHECK(schema == nullptr);
 }
 
+TEST_CASE(
+    "C API: tiledb_array_schema_load_with_config argument validation",
+    "[capi][array]") {
+  capi_return_t rc;
+  ordinary_context ctx{};
+  tiledb_config_t* config{};
+  tiledb_array_schema_t* schema{};
+  /*
+   * No "success" section here; too much overhead to set up.
+   */
+  SECTION("null context") {
+    rc = tiledb_array_schema_load_with_config(
+        nullptr, config, TEST_URI, &schema);
+    REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
+  }
+  SECTION("null config") {
+    // Note: a null config is actually valid and will use the context's config.
+    // This test case merely fails without the proper overhead setup.
+    rc = tiledb_array_schema_load_with_config(
+        ctx.context, nullptr, TEST_URI, &schema);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null uri") {
+    rc = tiledb_array_schema_load_with_config(
+        ctx.context, config, nullptr, &schema);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null schema") {
+    rc = tiledb_array_schema_load_with_config(
+        ctx.context, config, TEST_URI, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  REQUIRE_NOTHROW(tiledb_array_schema_free(&schema));
+  CHECK(schema == nullptr);
+}
+
 TEST_CASE("C API: tiledb_array_alloc argument validation", "[capi][array]") {
   capi_return_t rc;
   ordinary_context ctx{};
