@@ -84,35 +84,6 @@ void FragmentInfo::expand_anterior_ndrange(
   domain.expand_ndrange(range, &anterior_ndrange_);
 }
 
-void FragmentInfo::dump(FILE* out) const {
-  ensure_loaded();
-  if (out == nullptr)
-    out = stdout;
-
-  auto fragment_num = this->fragment_num();
-
-  std::stringstream ss;
-  ss << "- Fragment num: " << fragment_num << "\n";
-  ss << "- Unconsolidated metadata num: " << unconsolidated_metadata_num_
-     << "\n";
-  ss << "- To vacuum num: " << to_vacuum_.size() << "\n";
-
-  if (!to_vacuum_.empty()) {
-    ss << "- To vacuum URIs:\n";
-    for (const auto& v : to_vacuum_)
-      ss << "  > " << v.c_str() << "\n";
-  }
-
-  fprintf(out, "%s", ss.str().c_str());
-
-  for (uint32_t fid = 0; fid < fragment_num; ++fid) {
-    auto meta = single_fragment_info_vec_[fid].meta();
-    auto dim_types = meta->dim_types();
-    fprintf(out, "- Fragment #%u:\n", fid + 1);
-    single_fragment_info_vec_[fid].dump(dim_types, out);
-  }
-}
-
 Status FragmentInfo::get_dense(uint32_t fid, int32_t* dense) const {
   ensure_loaded();
   if (dense == nullptr)
@@ -1203,3 +1174,31 @@ Status FragmentInfo::replace(
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FragmentInfo& fragment_info) {
+  auto fragment_num = fragment_info.fragment_num();
+
+  os << "- Fragment num: " << fragment_num << "\n";
+  os << "- Unconsolidated metadata num: "
+     << fragment_info.unconsolidated_metadata_num() << "\n";
+
+  auto to_vacuum = fragment_info.to_vacuum();
+  os << "- To vacuum num: " << to_vacuum.size() << "\n";
+
+  if (!to_vacuum.empty()) {
+    os << "- To vacuum URIs:\n";
+    for (const auto& v : to_vacuum)
+      os << "  > " << v.c_str() << "\n";
+  }
+
+  auto single_fragment_info_vec = fragment_info.single_fragment_info_vec();
+  for (uint32_t fid = 0; fid < fragment_num; ++fid) {
+    auto meta = single_fragment_info_vec[fid].meta();
+    auto dim_types = meta->dim_types();
+    os << "- Fragment #" << fid + 1 << ":\n";
+    os << single_fragment_info_vec[fid].dump_single_fragment_info(dim_types);
+  }
+
+  return os;
+}

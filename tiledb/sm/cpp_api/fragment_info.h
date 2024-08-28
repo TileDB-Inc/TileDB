@@ -101,6 +101,11 @@ class FragmentInfo {
     return impl::convert_to_string(&name).value();
   }
 
+  /** Returns the context that the fragment info belongs to. */
+  const Context& context() const {
+    return ctx_;
+  }
+
   /**
    * Retrieves the non-empty domain of the fragment with the given index
    * on the given dimension index.
@@ -403,17 +408,20 @@ class FragmentInfo {
     return std::string(uri_c);
   }
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
   /**
    * Dumps the fragment info in an ASCII representation to an output.
    *
    * @param out (Optional) File to dump output to. Defaults to `nullptr`
    * which will lead to selection of `stdout`.
    */
+  TILEDB_DEPRECATED
   void dump(FILE* out = nullptr) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_fragment_info_dump(ctx.ptr().get(), fragment_info_.get(), out));
   }
+#endif
 
   /** Returns the C TileDB context object. */
   std::shared_ptr<tiledb_fragment_info_t> ptr() const {
@@ -434,6 +442,22 @@ class FragmentInfo {
   /** The C TileDB fragment info object. */
   std::shared_ptr<tiledb_fragment_info_t> fragment_info_;
 };
+
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+/** Get a string representation of fragment info. */
+inline std::ostream& operator<<(std::ostream& os, const FragmentInfo& fi) {
+  tiledb_string_t* tdb_string;
+  auto& ctx = fi.context();
+  ctx.handle_error(tiledb_fragment_info_dump_str(
+      ctx.ptr().get(), fi.ptr().get(), &tdb_string));
+
+  os << impl::convert_to_string(&tdb_string).value();
+
+  return os;
+}
 
 }  // namespace tiledb
 

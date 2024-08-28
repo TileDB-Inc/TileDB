@@ -119,10 +119,8 @@ class SingleFragmentInfo {
   }
 
   /** Dumps the single fragment info in ASCII format in the selected output. */
-  void dump(const std::vector<Datatype>& dim_types, FILE* out) const {
-    if (out == nullptr)
-      out = stdout;
-
+  std::string dump_single_fragment_info(
+      const std::vector<Datatype>& dim_types) const {
     std::stringstream ss;
     ss << "  > URI: " << uri_.c_str() << "\n";
     ss << "  > Schema name: " << array_schema_name_ << "\n";
@@ -137,7 +135,7 @@ class SingleFragmentInfo {
     ss << "  > Has consolidated metadata: "
        << (has_consolidated_footer_ ? "yes" : "no") << "\n";
 
-    fprintf(out, "%s", ss.str().c_str());
+    return ss.str();
   }
 
   /** Returns `true` if the fragment is sparse. */
