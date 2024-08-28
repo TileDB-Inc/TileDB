@@ -39,6 +39,8 @@
 
 * Add ctx to CurrentDomain CAPI. [#5219](https://github.com/TileDB-Inc/TileDB/pull/5219)
 * Add new CAPIs to dump array schema, attribute, dimension, domain, enumeration and group to a string. [#5026](https://github.com/TileDB-Inc/TileDB/pull/5026)
+* Add serialization and API changes for post_array_schema_from_rest. [#5261](https://github.com/TileDB-Inc/TileDB/pull/5261)
+* Add tiledb_array_schema_load_with_config C API to load the schema of an array with configuration. [#5261](https://github.com/TileDB-Inc/TileDB/pull/5261)
 
 ## Build System Changes
 
