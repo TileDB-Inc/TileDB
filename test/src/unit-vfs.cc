@@ -711,19 +711,21 @@ TEST_CASE("VFS: Test remove_dir_if_empty", "[vfs][remove-dir-if-empty]") {
   ThreadPool tp(1);
   VFS vfs{&g_helper_stats, &tp, &tp, Config{}};
 
-  std::string path = local_path() + "remove_dir_if_empty/";
-  std::string subdir = path + "subdir/";
-  std::string file1 = path + "file1";
+  std::string path = local_path();
+  std::string dir = path + "remove_dir_if_empty/";
+  std::string subdir = dir + "subdir/";
+  std::string file1 = dir + "file1";
 
   // Create directories and files
   require_tiledb_ok(vfs.create_dir(URI(path)));
+  require_tiledb_ok(vfs.create_dir(URI(dir)));
   require_tiledb_ok(vfs.create_dir(URI(subdir)));
   require_tiledb_ok(vfs.touch(URI(file1)));
 
   // Check that remove_dir_if_empty fails for non-empty directories
-  vfs.remove_dir_if_empty(URI(path));
+  vfs.remove_dir_if_empty(URI(dir));
   bool exists;
-  require_tiledb_ok(vfs.is_dir(URI(path), &exists));
+  require_tiledb_ok(vfs.is_dir(URI(dir), &exists));
   CHECK(exists);
 
   // Check that it succeeds for empty directories
@@ -733,9 +735,12 @@ TEST_CASE("VFS: Test remove_dir_if_empty", "[vfs][remove-dir-if-empty]") {
 
   // Empty the directory and try again
   require_tiledb_ok(vfs.remove_file(URI(file1)));
-  vfs.remove_dir_if_empty(URI(path));
-  require_tiledb_ok(vfs.is_dir(URI(path), &exists));
+  vfs.remove_dir_if_empty(URI(dir));
+  require_tiledb_ok(vfs.is_dir(URI(dir), &exists));
   CHECK_FALSE(exists);
+
+  // Clean up
+  require_tiledb_ok(vfs.remove_dir(URI(path)));
 }
 
 #ifdef HAVE_AZURE
