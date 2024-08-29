@@ -440,8 +440,8 @@ Status FragmentConsolidator::consolidate_fragments(
       }
 
       // Expand domain to full tiles
-      auto expanded_non_empty_domain = union_non_empty_domains;
-      domain.expand_to_tiles(&expanded_non_empty_domain);
+      auto expanded_union_non_empty_domains = union_non_empty_domains;
+      domain.expand_to_tiles(&expanded_union_non_empty_domains);
 
       // Check domain and timestamp overlap. Do timestamp check first as it is
       // cheaper. We compare the current fragment's start timestamp against the
@@ -450,7 +450,7 @@ Status FragmentConsolidator::consolidate_fragments(
       bool timestamp_before = !(timestamp_range.first > max_timestamp);
       if (timestamp_before &&
           domain.overlap(
-              expanded_non_empty_domain, frag_info.non_empty_domain())) {
+              expanded_union_non_empty_domains, frag_info.non_empty_domain())) {
         throw FragmentConsolidatorException(
             "Cannot consolidate; The non-empty domain of the fragment with "
             "URI: " +
