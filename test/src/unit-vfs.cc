@@ -707,6 +707,37 @@ TEST_CASE(
   }
 }
 
+TEST_CASE("VFS: Test remove_dir_if_empty", "[vfs][remove-dir-if-empty]") {
+  ThreadPool tp(1);
+  VFS vfs{&g_helper_stats, &tp, &tp, Config{}};
+
+  std::string path = local_path() + "remove_dir_if_empty/";
+  std::string subdir = path + "subdir/";
+  std::string file1 = path + "file1";
+
+  // Create directories and files
+  require_tiledb_ok(vfs.create_dir(URI(path)));
+  require_tiledb_ok(vfs.create_dir(URI(subdir)));
+  require_tiledb_ok(vfs.touch(URI(file1)));
+
+  // Check that remove_dir_if_empty fails for non-empty directories
+  vfs.remove_dir_if_empty(URI(path));
+  bool exists;
+  require_tiledb_ok(vfs.is_dir(URI(path), &exists));
+  CHECK(exists);
+
+  // Check that it succeeds for empty directories
+  vfs.remove_dir_if_empty(URI(subdir));
+  require_tiledb_ok(vfs.is_dir(URI(subdir), &exists));
+  CHECK_FALSE(exists);
+
+  // Empty the directory and try again
+  require_tiledb_ok(vfs.remove_file(URI(file1)));
+  vfs.remove_dir_if_empty(URI(path));
+  require_tiledb_ok(vfs.is_dir(URI(path), &exists));
+  CHECK_FALSE(exists);
+}
+
 #ifdef HAVE_AZURE
 TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
   // Test the construction of Azure Blob Storage URIs from account name and SAS
