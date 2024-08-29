@@ -3978,6 +3978,7 @@ int32_t tiledb_fragment_info_dump_str(
     tiledb_string_t** out) {
   if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
+  ensure_output_pointer_is_valid(out);
 
   std::stringstream ss;
   ss << *fragment_info->fragment_info_;
