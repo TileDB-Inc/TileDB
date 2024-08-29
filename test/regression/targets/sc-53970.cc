@@ -118,7 +118,7 @@ void write_array(const std::string& array_uri) {
   Query query(ctx, array, TILEDB_WRITE);
 
   std::vector<int64_t> dim = {0, -8672700570587565350};
-  std::vector<float> attr = {1507468.6, -0};
+  std::vector<float> attr = {1507468.6f, -0.0f};
 
   query.set_layout(TILEDB_UNORDERED)
       .set_data_buffer("dim", dim)
