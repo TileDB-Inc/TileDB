@@ -26,9 +26,6 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * When run, this program will create a simple 2D sparse array, write some data
- * to it in global order, and read the data back with aggregates.
  */
 
 #include <stdio.h>
