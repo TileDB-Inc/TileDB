@@ -694,15 +694,16 @@ Status fragment_metadata_to_capnp(
   // TODO: Can this be done better? Does this make a lot of copies?
   SizeComputationSerializer size_computation_serializer;
   frag_meta.loaded_metadata()->rtree().serialize(size_computation_serializer);
+  if (size_computation_serializer.size() != 0) {
+    std::vector<uint8_t> buff(size_computation_serializer.size());
+    Serializer serializer(buff.data(), buff.size());
+    frag_meta.loaded_metadata()->rtree().serialize(serializer);
 
-  std::vector<uint8_t> buff(size_computation_serializer.size());
-  Serializer serializer(buff.data(), buff.size());
-  frag_meta.loaded_metadata()->rtree().serialize(serializer);
-
-  auto vec = kj::Vector<uint8_t>();
-  vec.addAll(
-      kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
-  frag_meta_builder->setRtree(vec.asPtr());
+    auto vec = kj::Vector<uint8_t>();
+    vec.addAll(
+        kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
+    frag_meta_builder->setRtree(vec.asPtr());
+  }
 
   auto gt_offsets_builder = frag_meta_builder->initGtOffsets();
   generic_tile_offsets_to_capnp(
