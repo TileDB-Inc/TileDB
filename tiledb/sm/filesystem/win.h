@@ -105,7 +105,7 @@ class Win {
 
   /**
    * Removes a given empty directory.
-   * 
+   *
    * @param path The path of the directory.
    * @return true if the directory was removed, false otherwise.
    */
