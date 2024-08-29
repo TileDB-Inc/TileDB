@@ -326,6 +326,49 @@ TEST_CASE(
     fragment_name2 = fragment_info.fragment_uri(2);
   }
 
+  SECTION(
+      "Throws exception because of overlap with already consolidated "
+      "fragment") {
+    throws = true;
+    create_array_2d(array_name);
+    // order matters
+    // In this case we request to consolidate frag1 and frag3. Before this main
+    // consolidation we run another secondary consolidation between frag2 and
+    // frag4. The consolidated frag2_frag4 has been created after frag3 but its
+    // start timestamp is older than frag3's start timestamp so the first
+    // condition to abort the consolidation is satisfied. Frag2_frag4's domain
+    // intersects with the union of the domains of the selected fragments for
+    // consolidation(frag1, frag3), so the second condition is also satisfied.
+    // An exception is expected.
+    write_array(array_name, {2, 4, 2, 3}, {10, 11, 12, 13, 14, 15});
+    write_array(array_name, {8, 9, 3, 4}, {32, 33, 34, 35});
+    write_array(array_name, {7, 9, 6, 8}, {22, 23, 24, 25, 26, 27, 28, 29, 30});
+    write_array(array_name, {7, 8, 3, 4}, {31, 32, 33, 34});
+
+    FragmentInfo fragment_info(ctx, array_name);
+    fragment_info.load();
+    fragment_name1 = fragment_info.fragment_uri(1);
+    fragment_name2 = fragment_info.fragment_uri(3);
+
+    std::string short_fragment_name1 =
+        fragment_name1.substr(fragment_name1.find_last_of('/') + 1);
+    std::string short_fragment_name2 =
+        fragment_name2.substr(fragment_name2.find_last_of('/') + 1);
+
+    const char* fragment_uris[2] = {
+        short_fragment_name1.c_str(), short_fragment_name2.c_str()};
+
+    REQUIRE_NOTHROW(
+        Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
+
+    fragment_name1 = fragment_info.fragment_uri(0);
+    fragment_name2 = fragment_info.fragment_uri(2);
+
+    number_of_fragments_before_consolidation =
+        tiledb::test::num_fragments(array_name);
+    CHECK(number_of_fragments_before_consolidation == 5);
+  }
+
   SECTION("Does not throw exception") {
     create_array_2d(array_name);
     // order matters
