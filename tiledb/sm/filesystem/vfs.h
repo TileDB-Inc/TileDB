@@ -414,6 +414,8 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * Removes a given empty directory. No exceptions are raised if the directory
    * was not empty.
    *
+   * This function does nothing when the URI points to an object store.
+   *
    * @param uri The uri of the directory to be removed
    */
   void remove_dir_if_empty(const URI& uri) const;
