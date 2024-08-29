@@ -1197,7 +1197,7 @@ std::ostream& operator<<(
     auto meta = single_fragment_info_vec[fid].meta();
     auto dim_types = meta->dim_types();
     os << "- Fragment #" << fid + 1 << ":\n";
-    os << single_fragment_info_vec[fid].dump_single_fragment_info(dim_types);
+    single_fragment_info_vec[fid].dump_single_fragment_info(os, dim_types);
   }
 
   return os;
