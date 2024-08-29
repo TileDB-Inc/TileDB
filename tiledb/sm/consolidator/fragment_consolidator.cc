@@ -422,7 +422,8 @@ Status FragmentConsolidator::consolidate_fragments(
     // ranges and its timestamp range falls between the range of the fragments
     // to consolidate throw error
 
-    // First calculate the timestamp bounds
+    // First calculate the max timestamp among the fragments which are selected
+    // for consolidation and use it as an upper bound.
     uint64_t max_timestamp = std::numeric_limits<uint64_t>::min();
     for (const auto& item : to_consolidate) {
       const auto& range = item.timestamp_range();
@@ -442,7 +443,9 @@ Status FragmentConsolidator::consolidate_fragments(
       auto expanded_non_empty_domain = union_non_empty_domains;
       domain.expand_to_tiles(&expanded_non_empty_domain);
 
-      // Check domain and timestamp overlap
+      // Check domain and timestamp overlap. Do timestamp check first as it is
+      // cheaper. We compare the current fragment's start timestamp against the
+      // upper bound we calculated previously.
       auto timestamp_range{frag_info.timestamp_range()};
       bool timestamp_before = !(timestamp_range.first > max_timestamp);
       if (timestamp_before &&

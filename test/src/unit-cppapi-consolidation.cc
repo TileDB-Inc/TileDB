@@ -280,6 +280,12 @@ TEST_CASE(
     throws = true;
     create_array_2d(array_name);
     // order matters
+    // In this case we request to consolidate frag2 and frag4. We can see that
+    // frag1 has been created prior to frag3 so the first condition to abort
+    // the consolidation is satisfied. Additionally, frag1's
+    // domain intersects with the union of the domains of the
+    // selected fragments for consolidation(frag2, frag4), so the second
+    // condition is also satisfied. An exception is expected.
     write_array(array_name, {1, 3, 7, 9}, {1, 2, 3, 4, 5, 6, 7, 8, 9});
     write_array(array_name, {2, 4, 2, 3}, {10, 11, 12, 13, 14, 15});
     write_array(array_name, {3, 5, 4, 5}, {16, 17, 18, 19, 20, 21});
@@ -299,6 +305,13 @@ TEST_CASE(
     throws = true;
     create_array_2d(array_name);
     // order matters
+    // In this case we request to consolidate frag1 and frag3. We can see that
+    // frag2 has been created prior to frag3 so the first condition to abort
+    // the consolidation is satisfied. Additionally, even though frag2's
+    // domain does not directly intersect with the union of the domains of the
+    // selected fragments for consolidation(frag1, frag3), it intersects with
+    // their expanded domain(Full tiles) because the tile extend is set to 2 and
+    // the domain range is 1-10.
     write_array(array_name, {2, 4, 2, 3}, {1, 2, 3, 4, 5, 6});
     write_array(array_name, {10, 10, 4, 4}, {16});
     write_array(array_name, {7, 9, 6, 8}, {7, 8, 9, 10, 11, 12, 13, 14, 15});
@@ -316,9 +329,14 @@ TEST_CASE(
   SECTION("Does not throw exception") {
     create_array_2d(array_name);
     // order matters
+    // In this case we request to consolidate frag1 and frag2. We can see that
+    // frag3 has not been created prior to frag3 so the first condition to abort
+    // the consolidation is not satisfied. Frag3's domain intersects with the
+    // union of the domains of the selected fragments for consolidation(frag1,
+    // frag2), so the second condition is satisfied. An exception is expected.
     write_array(array_name, {2, 4, 2, 3}, {10, 11, 12, 13, 14, 15});
     write_array(array_name, {7, 9, 6, 8}, {22, 23, 24, 25, 26, 27, 28, 29, 30});
-    write_array(array_name, {7, 8, 3, 4}, {31, 32, 33, 34});  // this is ok
+    write_array(array_name, {7, 8, 3, 4}, {31, 32, 33, 34});
 
     number_of_fragments_before_consolidation =
         tiledb::test::num_fragments(array_name);
