@@ -76,6 +76,56 @@ jobs:
       build_only: true
       bootstrap_args: '--enable-hdfs --enable-static-tiledb --disable-werror'
 
+  test_static_linkage:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            triplet: x64-linux
+          - os: windows-2019
+            triplet: x64-windows
+          - os: macos-13
+            triplet: x64-osx
+          - os: macos-latest
+            triplet: x64-osx
+      fail-fast: false
+    name: ${{ matrix.os }} - Static Linkage
+
+    steps:
+      - name: Print env
+        run: printenv
+
+      - name: Checkout TileDB `dev`
+        uses: actions/checkout@v4
+
+      - name: Configure TileDB CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DTILEDB_WERROR=ON \
+            -DTILEDB_S3=ON \
+            -DTILEDB_GCS=ON \
+            -DTILEDB_AZURE=ON \
+            -DTILEDB_SERIALIZATION=ON \
+            -DTILEDB_TESTS=OFF \
+            -DBUILD_SHARED_LIBS=OFF
+
+      - name: Build TileDB
+        run: cmake --build build -j2 --config Release --target tiledb
+
+      - name: Install TileDB
+        run: cmake --install build --config Release --prefix dist
+
+      - name: Configure CMake example
+        run: cmake -B examples/cmake_project/build -S examples/cmake_project -DCMAKE_PREFIX_PATH=./dist;./build/vcpkg_installed/${{ matrix.triplet }}
+
+      - name: Build CMake example
+        run: cmake --build examples/cmake_project/build -j2 --config Release
+
+      - name: Run CMake example
+        run: examples/cmake_project/build/Release/tiledb_example
+
   create_issue_on_fail:
     permissions:
       issues: write
@@ -83,6 +133,7 @@ jobs:
     needs:
       - test
       - test_hdfs_build
+      - test_static_linkage
     if: failure() || cancelled()
     steps:
       - name: Checkout TileDB `dev`

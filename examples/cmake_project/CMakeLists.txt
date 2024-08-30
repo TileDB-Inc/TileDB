@@ -42,12 +42,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #   list(APPEND CMAKE_PREFIX_PATH "/path/to/TileDB-installation")
 find_package(TileDB 
   ${TILEDB_VERSION} EXACT
+  CONFIG
   REQUIRED
   )
 
 # Set up the example program.
 add_executable(ExampleExe "src/main.cc")
 
-# Link the example program with the TileDB shared library.
+# Link the example program with the TileDB library.
 # This also configures include paths to find the TileDB headers.
 target_link_libraries(ExampleExe TileDB::tiledb)
