@@ -621,7 +621,8 @@ Status read_state_from_capnp(
     const capnp::ReadState::Reader& read_state_reader,
     Query* query,
     Reader* reader,
-    ThreadPool* compute_tp bool client_side) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto read_state = reader->read_state();
 
   read_state->overflowed_ = read_state_reader.getOverflowed();
@@ -2175,7 +2176,7 @@ Status query_from_capnp(
           query,
           dynamic_cast<DenseReader*>(query->strategy()),
           compute_tp,
-          client_side));
+          context == SerializationContext::CLIENT));
     } else {
       auto reader_reader = query_reader.getReader();
       RETURN_NOT_OK(reader_from_capnp(
@@ -2183,7 +2184,7 @@ Status query_from_capnp(
           query,
           dynamic_cast<Reader*>(query->strategy()),
           compute_tp,
-          client_side));
+          context == SerializationContext::CLIENT));
     }
   } else if (query_type == QueryType::WRITE) {
     auto writer_reader = query_reader.getWriter();
