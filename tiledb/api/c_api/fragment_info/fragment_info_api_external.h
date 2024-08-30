@@ -40,8 +40,8 @@
 extern "C" {
 #endif
 
-/** A fragment info object. */
-typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
+/** C API carrier for a TileDB fragment info object. */
+typedef struct tiledb_fragment_info_handle_t tiledb_fragment_info_t;
 
 #ifdef __cplusplus
 }

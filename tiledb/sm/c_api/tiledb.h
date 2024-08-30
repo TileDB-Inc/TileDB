@@ -2000,12 +2000,12 @@ TILEDB_EXPORT int32_t tiledb_heap_profiler_enable(
  * tiledb_fragment_info_alloc(ctx, "array_uri", &fragment_info);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param array_uri The array URI.
- * @param fragment_info The fragment info object to be created and populated.
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_uri The array URI.
+ * @param[out] fragment_info The fragment info object to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_alloc(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_alloc(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_fragment_info_t** fragment_info) TILEDB_NOEXCEPT;
@@ -2019,7 +2019,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_alloc(
  * tiledb_fragment_info_free(&fragment_info);
  * @endcode
  *
- * @param fragment_info The fragment info object to be freed.
+ * @param[in] fragment_info The fragment info object to be freed.
  */
 TILEDB_EXPORT void tiledb_fragment_info_free(
     tiledb_fragment_info_t** fragment_info) TILEDB_NOEXCEPT;
@@ -2041,9 +2041,13 @@ TILEDB_EXPORT void tiledb_fragment_info_free(
  *
  * tiledb_fragment_info_load(ctx, fragment_info);
  * @endcode
-
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] config The config to be set.
+ *
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_set_config(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_set_config(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     tiledb_config_t* config) TILEDB_NOEXCEPT;
@@ -2059,12 +2063,12 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_set_config(
  * // Make sure to free the retrieved config
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param config The config to be retrieved.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[out] config The config to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_config(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_config(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     tiledb_config_t** config) TILEDB_NOEXCEPT;
@@ -2078,11 +2082,11 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_config(
  * tiledb_fragment_info_load(ctx, fragment_info);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_load(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
 
 /**
@@ -2093,18 +2097,17 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
  * @code{.c}
  * tiledb_string_t* name;
  * tiledb_fragment_info_get_fragment_name_v2(ctx, fragment_info, 1, &name);
- * // Remember to free the string with tiledb_string_free when you are done with
- * // it.
+ * // Remember to free the string using tiledb_string_free when done with it.
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param name A pointer to a ::tiledb_string_t* that will hold the fragment's
- * // name.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] name A pointer to a ::tiledb_string_t* that will hold the
+ * fragment's name.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_name_v2(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_fragment_name_v2(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2120,12 +2123,12 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_name_v2(
  * tiledb_fragment_info_get_fragment_num(ctx, fragment_info, &fragment_num);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fragment_num The number of fragments to retrieve.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[out] fragment_num The number of fragments to retrieve.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_num(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_fragment_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t* fragment_num) TILEDB_NOEXCEPT;
@@ -2140,13 +2143,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_num(
  * tiledb_fragment_info_get_fragment_uri(ctx, fragment_info, 1, &uri);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param uri The fragment URI to be retrieved.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] uri The fragment URI to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_uri(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_fragment_uri(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2162,13 +2165,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_uri(
  * tiledb_fragment_info_get_fragment_size(ctx, fragment_info, 1, &size);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param size The fragment size to be retrieved.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] size The fragment size to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_size(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_fragment_size(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2184,13 +2187,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_fragment_size(
  * tiledb_fragment_info_get_dense(ctx, fragment_info, 1, &dense);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param dense `1` if the fragment is dense.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] dense `1` if the fragment is dense.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_dense(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_dense(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2206,13 +2209,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_dense(
  * tiledb_fragment_info_get_sparse(ctx, fragment_info, 1, &sparse);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param sparse `1` if the fragment is sparse.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] sparse `1` if the fragment is sparse.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_sparse(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_sparse(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2225,18 +2228,18 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_sparse(
  *
  * @code{.c}
  * uint64_t start, end;
- * tiledb_fragment_info_get_timestamp_range(ctx, fragment_info, 1, &start,
- * &end);
+ * tiledb_fragment_info_get_timestamp_range(
+ *     ctx, fragment_info, 1, &start, &end);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param start The start of the timestamp range to be retrieved.
- * @param end The end of the timestamp range to be retrieved.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] start The start of the timestamp range to be retrieved.
+ * @param[out] end The end of the timestamp range to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_timestamp_range(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2255,15 +2258,16 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_timestamp_range(
  *     ctx, fragment_info, 0, 0, domain);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param did The dimension index, following the order as it was defined
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[in] did The dimension index, following the order as it was defined
  *      in the domain of the array schema.
- * @param domain The domain to be retrieved.
+ * @param[out] domain The domain to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_from_index(
+TILEDB_EXPORT capi_return_t
+tiledb_fragment_info_get_non_empty_domain_from_index(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2282,14 +2286,14 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_from_index(
  *     ctx, fragment_info, 0, "d1", domain);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param dim_name The dimension name.
- * @param domain The domain to be retrieved.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[in] dim_name The dimension name.
+ * @param[out] domain The domain to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_from_name(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_non_empty_domain_from_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2306,20 +2310,20 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_from_name(
  * uint64_t start_size, end_size;
  * tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
  *     ctx, fragment_info, 0, &start_size, &end_size);
- * // If non-empty domain range is `[aa, dddd]`, then `start_size = 2`
- * // and `end_size = 4`.
+ * // If non-empty domain range is `[aa, dddd]`,
+ * // then `start_size = 2`, and `end_size = 4`.
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment information object.
- * @param fid The fragment index.
- * @param did The dimension index, following the order as it was defined
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment information object.
+ * @param[in] fid The fragment index.
+ * @param[in] did The dimension index, following the order as it was defined
  *      in the domain of the array schema.
- * @param start_size The size in bytes of the start range.
- * @param end_size The size in bytes of the end range.
+ * @param[out] start_size The size in bytes of the start range.
+ * @param[out] end_size The size in bytes of the end range.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT capi_return_t
 tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
@@ -2338,19 +2342,19 @@ tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
  * uint64_t start_size, end_size;
  * tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
  *     ctx, fragment_info, "d", &start_size, &end_size);
- * // If non-empty domain range is `[aa, dddd]`, then `start_size = 2`
- * // and `end_size = 4`.
+ * // If non-empty domain range is `[aa, dddd]`,
+ * // then `start_size = 2`, and `end_size = 4`.
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment information object.
- * @param fid The fragment index.
- * @param dim_name The dimension name.
- * @param start_size The size in bytes of the start range.
- * @param end_size The size in bytes of the end range.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment information object.
+ * @param[in] fid The fragment index.
+ * @param[in] dim_name The dimension name.
+ * @param[out] start_size The size in bytes of the start range.
+ * @param[out] end_size The size in bytes of the end range.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t
+TILEDB_EXPORT capi_return_t
 tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
@@ -2379,16 +2383,17 @@ tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
  *     ctx, fragment_info, 0, 0, start, end);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The fragment index.
- * @param did The dimension index, following the order as it was defined
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The fragment index.
+ * @param[in] did The dimension index, following the order as it was defined
  *      in the domain of the array schema.
- * @param start The domain range start to set.
- * @param end The domain range end to set.
+ * @param[out] start The domain range start to set.
+ * @param[out] end The domain range end to set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_index(
+TILEDB_EXPORT capi_return_t
+tiledb_fragment_info_get_non_empty_domain_var_from_index(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2416,15 +2421,16 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_index(
  *     ctx, fragment_info, 0, "d", start, end);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The fragment index.
- * @param dim_name The dimension name.
- * @param start The domain range start to set.
- * @param end The domain range end to set.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The fragment index.
+ * @param[in] dim_name The dimension name.
+ * @param[out] start The domain range start to set.
+ * @param[out] end The domain range end to set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
+TILEDB_EXPORT capi_return_t
+tiledb_fragment_info_get_non_empty_domain_var_from_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2434,9 +2440,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
 
 /**
  * Retrieves the number of MBRs from the fragment.
- *
  * In the case of sparse fragments, this is the number of physical tiles.
- *
  * Dense fragments do not contain MBRs.
  *
  * **Example:**
@@ -2446,13 +2450,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
  * tiledb_fragment_info_get_mbr_num(ctx, fragment_info, 0, &mbr_num);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param mbr_num The number of MBRs to be retrieved.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] mbr_num The number of MBRs to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_num(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2468,16 +2472,16 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_num(
  * tiledb_fragment_info_get_mbr_from_index(ctx, fragment_info, 0, 0, 0, mbr);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param mid The mbr of the fragment of interest.
- * @param did The dimension index, following the order as it was defined
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[in] mid The mbr of the fragment of interest.
+ * @param[in] did The dimension index, following the order as it was defined
  *      in the domain of the array schema.
- * @param mbr The mbr to be retrieved.
+ * @param[out] mbr The mbr to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_index(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_from_index(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2495,15 +2499,15 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_index(
  * tiledb_fragment_info_get_mbr_from_name(ctx, fragment_info, 0, 0, "d1", mbr);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param mid The mbr of the fragment of interest.
- * @param dim_name The dimension name.
- * @param mbr The mbr to be retrieved.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[in] mid The mbr of the fragment of interest.
+ * @param[in] dim_name The dimension name.
+ * @param[out] mbr The mbr to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_name(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_from_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2521,21 +2525,21 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_from_name(
  * uint64_t start_size, end_size;
  * tiledb_fragment_info_get_mbr_var_size_from_index(
  *     ctx, fragment_info, 0, 0, 0, &start_size, &end_size);
- * // If non-empty domain range is `[aa, dddd]`, then `start_size = 2`
- * // and `end_size = 4`.
+ * // If non-empty domain range is `[aa, dddd]`,
+ * // then `start_size = 2`, and `end_size = 4`.
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment information object.
- * @param fid The fragment index.
-   @param mid The mbr of the fragment of interest.
- * @param did The dimension index, following the order as it was defined
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment information object.
+ * @param[in] fid The fragment index.
+   @param[in] mid The mbr of the fragment of interest.
+ * @param[in] did The dimension index, following the order as it was defined
  *      in the domain of the array schema.
- * @param start_size The size in bytes of the start range.
- * @param end_size The size in bytes of the end range.
+ * @param[out] start_size The size in bytes of the start range.
+ * @param[out] end_size The size in bytes of the end range.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_size_from_index(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_var_size_from_index(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2554,20 +2558,20 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_size_from_index(
  * uint64_t start_size, end_size;
  * tiledb_fragment_info_get_mbr_var_size_from_name(
  *     ctx, fragment_info, 0, 0, "d1", &start_size, &end_size);
- * // If non-empty domain range is `[aa, dddd]`, then `start_size = 2`
- * // and `end_size = 4`.
+ * // If non-empty domain range is `[aa, dddd]`,
+ * // then `start_size = 2`, and `end_size = 4`.
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment information object.
- * @param fid The fragment index.
- * @param mid The mbr of the fragment of interest.
- * @param dim_name The dimension name.
- * @param start_size The size in bytes of the start range.
- * @param end_size The size in bytes of the end range.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment information object.
+ * @param[in] fid The fragment index.
+ * @param[in] mid The mbr of the fragment of interest.
+ * @param[in] dim_name The dimension name.
+ * @param[out] start_size The size in bytes of the start range.
+ * @param[out] end_size The size in bytes of the end range.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_size_from_name(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_var_size_from_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2596,17 +2600,17 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_size_from_name(
  *     ctx, fragment_info, 0, 0, 0, start, end);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The fragment index.
- * @param mid The mbr of the fragment of interest.
- * @param did The dimension index, following the order as it was defined
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The fragment index.
+ * @param[in] mid The mbr of the fragment of interest.
+ * @param[in] did The dimension index, following the order as it was defined
  *      in the domain of the array schema.
- * @param start The domain range start to set.
- * @param end The domain range end to set.
+ * @param[out] start The domain range start to set.
+ * @param[out] end The domain range end to set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_from_index(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_var_from_index(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2635,16 +2639,16 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_from_index(
  *     ctx, fragment_info, 0, 0, "d1", start, end);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The fragment index.
- * @param mid The mbr of the fragment of interest.
- * @param dim_name The dimension name.
- * @param start The domain range start to set.
- * @param end The domain range end to set.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The fragment index.
+ * @param[in] mid The mbr of the fragment of interest.
+ * @param[in] dim_name The dimension name.
+ * @param[out] start The domain range start to set.
+ * @param[out] end The domain range end to set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_from_name(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_mbr_var_from_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2672,13 +2676,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_mbr_var_from_name(
  * tiledb_fragment_info_get_cell_num(ctx, fragment_info, 0, &cell_num);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param cell_num The number of cells to be retrieved.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] cell_num The number of cells to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_cell_num(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_cell_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2694,13 +2698,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_cell_num(
  * tiledb_fragment_info_get_version(ctx, fragment_info, 0, &version);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param version The format version to be retrieved.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] version The format version to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_version(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_version(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2716,13 +2720,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_version(
  * tiledb_fragment_info_has_consolidated_metadata(ctx, fragment_info, 0, &has);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param has True if the fragment has consolidated metadata.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] has True if the fragment has consolidated metadata.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_has_consolidated_metadata(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_has_consolidated_metadata(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2735,16 +2739,18 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_has_consolidated_metadata(
  *
  * @code{.c}
  * uint32_t unconsolidated;
- * tiledb_fragment_info_get_unconsolidated_metadata_num(ctx, fragment_info,
- * &unconsolidated);
+ * tiledb_fragment_info_get_unconsolidated_metadata_num(
+ *      ctx, fragment_info, &unconsolidated);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param unconsolidated The number of fragments with unconsolidated metadata.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[out] unconsolidated The number of fragments with unconsolidated
+ * metadata.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_unconsolidated_metadata_num(
+TILEDB_EXPORT capi_return_t
+tiledb_fragment_info_get_unconsolidated_metadata_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t* unconsolidated) TILEDB_NOEXCEPT;
@@ -2759,12 +2765,12 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_unconsolidated_metadata_num(
  * tiledb_fragment_info_get_to_vacuum_num(ctx, fragment_info, &to_vacuum_num);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param to_vacuum_num The number of fragments to vacuum.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[out] to_vacuum_num The number of fragments to vacuum.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_to_vacuum_num(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_to_vacuum_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t* to_vacuum_num) TILEDB_NOEXCEPT;
@@ -2779,13 +2785,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_to_vacuum_num(
  * tiledb_fragment_info_get_to_vacuum_uri(ctx, fragment_info, 1, &uri);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment to vacuum of interest.
- * @param uri The fragment URI to be retrieved.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment to vacuum of interest.
+ * @param[out] uri The fragment URI to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_to_vacuum_uri(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_to_vacuum_uri(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2801,13 +2807,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_to_vacuum_uri(
  * tiledb_fragment_info_get_array_schema(ctx, fragment_info, 0, &array_schema);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param array_schema The array schema to be retrieved.
+ * @param[in] ctx The TileDB context
+ * @param[in] fragment_info The fragment info object.
+ * @param[in] fid The index of the fragment of interest.
+ * @param[out] array_schema The array schema to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_array_schema(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2829,7 +2835,7 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema(
  * @param[out] schema_name The schema name.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema_name(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_get_array_schema_name(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
@@ -2846,12 +2852,12 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_array_schema_name(
  * tiledb_fragment_info_dump(ctx, fragment_info, stdout);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param out The output.
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[out] out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_fragment_info_dump(
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_dump(
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
     FILE* out) TILEDB_NOEXCEPT;
