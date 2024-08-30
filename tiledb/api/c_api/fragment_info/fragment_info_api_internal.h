@@ -69,7 +69,7 @@ struct tiledb_fragment_info_handle_t
     return fragment_info_;
   }
 
-  const Config& config() const {
+  const tiledb::sm::Config& config() const {
     return fragment_info_->config();
   }
 
