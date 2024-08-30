@@ -22,7 +22,7 @@ my_array                        # array folder
          | ...
 ```
 
-When located in the commits folder, it will include the URI of fragments (in the `__fragments` folder) that can be vaccumed. When located in the array metadata folder, it will include the URI or array metadata files that can be vaccumed.
+When located in the commits folder, it will include the URI of fragments (in the `__fragments` folder) that can be vacuumed. When located in the array metadata folder, it will include the URI or array metadata files that can be vacuumed.
 
 The vacuum file is a simple text file where each line contains a URI string:
 

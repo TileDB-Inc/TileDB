@@ -759,8 +759,6 @@ void ArrowExporter::export_(
   if (bufferinfo.is_var) {
     buffers = {nullptr, bufferinfo.offsets, bufferinfo.data};
   } else {
-    cpp_schema = new CPPArrowSchema(
-        name, arrow_fmt.fmt_, std::nullopt, arrow_flags, {}, {});
     buffers = {nullptr, bufferinfo.data};
   }
   cpp_schema->export_ptr(schema);

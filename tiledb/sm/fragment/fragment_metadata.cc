@@ -2040,7 +2040,7 @@ void FragmentMetadata::load_has_timestamps(Deserializer& deserializer) {
 // ===== FORMAT =====
 // has_delete_meta (char)
 void FragmentMetadata::load_has_delete_meta(Deserializer& deserializer) {
-  // Get includes timestamps
+  // Get includes delete metadata
   has_delete_meta_ = deserializer.read<char>();
 
   // Rebuild index map
