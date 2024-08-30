@@ -326,9 +326,9 @@ void array_from_capnp(
       // pass the right schema to deserialize fragment metadata
       throw_if_not_ok(
           fragment_metadata_from_capnp(schema, frag_meta_reader, meta));
-      if (client_side) {
-        meta->loaded_metadata()->set_rtree_loaded();
-      }
+      // if (client_side) {
+      //   meta->loaded_metadata()->set_rtree_loaded();
+      // }
       fragment_metadata.emplace_back(meta);
     }
     array->set_fragment_metadata(std::move(fragment_metadata));
