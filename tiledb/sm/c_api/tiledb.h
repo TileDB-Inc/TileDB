@@ -71,6 +71,7 @@
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_external.h"
+#include "tiledb/api/c_api/fragment_info/fragment_info_api_external.h"
 #include "tiledb/api/c_api/group/group_api_external.h"
 #include "tiledb/api/c_api/object/object_api_external.h"
 #include "tiledb/api/c_api/query/query_api_external.h"
@@ -218,9 +219,6 @@ typedef struct tiledb_subarray_t tiledb_subarray_t;
 
 /** A TileDB query condition object. */
 typedef struct tiledb_query_condition_t tiledb_query_condition_t;
-
-/** A fragment info object. */
-typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
 /** A consolidation plan object. */
 typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;

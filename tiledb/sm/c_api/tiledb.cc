@@ -49,6 +49,7 @@
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
+#include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/as_built/as_built.h"
