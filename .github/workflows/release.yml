@@ -71,6 +71,7 @@ jobs:
             -DTILEDB_WEBP=ON \
             -DTILEDB_TESTS=OFF \
             -DVCPKG_TARGET_TRIPLET=arm64-linux-release \
+            || cat /home/runner/work/TileDB/TileDB/build/vcpkg-bootstrap.log \
             && cmake --build build --config Release --target package \
             && cp build/tiledb-*.tar.gz* /artifacts
       - run: ls -al ${PWD}/artifacts
