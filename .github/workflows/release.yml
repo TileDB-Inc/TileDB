@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-arm64, macos-x86_64, linux-x86_64, linux-x86_64-noavx2, windows-x86_64]
+        platform: [macos-arm64, macos-x86_64, linux-x86_64, linux-x86_64-noavx2, linux-aarch64, windows-x86_64]
         include:
           - platform: windows-x86_64
             os: windows-2019
@@ -54,6 +54,10 @@ jobs:
             os: ubuntu-20.04
             cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
             triplet: x64-linux-release
+            manylinux: true
+          - platform: linux-aarch64
+            os: ubuntu-20.04
+            triplet: aarch64-linux-release
             manylinux: true
           - platform: macos-x86_64
             os: macos-12
