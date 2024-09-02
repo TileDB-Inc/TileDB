@@ -641,15 +641,8 @@ void ArrowImporter::import_(
       data_nbytes =
           static_cast<uint64_t*>(p_offsets)[num_offsets] * typeinfo.elem_size;
     } else {
-      uint32_t* offs32 = static_cast<uint32_t*>(p_offsets);
-      data_nbytes = offs32[num_offsets] * typeinfo.elem_size;
-
-      // in the 'small' case convert 32 bit offsets to 64 bit offsets
-      std::vector<int32_t> curroffsets(offs32, offs32 + num_offsets + 1);
-      uint64_t* offs64 = static_cast<uint64_t*>(p_offsets);
-      for (uint64_t i = 0; i <= num_offsets; i++) {
-        offs64[i] = static_cast<uint64_t>(curroffsets[i]);
-      }
+      data_nbytes =
+          static_cast<uint32_t*>(p_offsets)[num_offsets] * typeinfo.elem_size;
     }
 
     // Set the TileDB buffer, adding `1` to `num_offsets` to account for
