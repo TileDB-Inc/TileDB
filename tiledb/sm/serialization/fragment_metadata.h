@@ -85,6 +85,15 @@ void fragment_meta_sizes_offsets_to_capnp(
     capnp::FragmentMetadata::Builder* frag_meta_builder);
 
 /**
+ * Serializes FragmentMetadata's RTree to Cap'n Proto message
+ *
+ * @param rtree RTREE to serialize
+ * @param frag_meta_builder cap'n proto class
+ */
+void rtree_to_capnp(
+    const RTree& rtree, capnp::FragmentMetadata::Builder* frag_meta_builder);
+
+/**
  * Convert Fragment Metadata to Cap'n Proto message
  *
  * @param frag_meta fragment metadata to serialize
