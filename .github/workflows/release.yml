@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - dev
@@ -57,7 +58,7 @@ jobs:
             manylinux: true
           - platform: linux-aarch64
             os: ubuntu-20.04
-            triplet: aarch64-linux-release
+            triplet: arm64-linux-release
             manylinux: true
           - platform: macos-x86_64
             os: macos-12
