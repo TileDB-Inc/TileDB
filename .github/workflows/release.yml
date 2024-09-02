@@ -58,6 +58,9 @@ jobs:
             yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
             echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
           run: |
+            make --version \
+            ninja --version \
+            gcc --version \
             cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=ON \
@@ -71,7 +74,6 @@ jobs:
             -DTILEDB_WEBP=ON \
             -DTILEDB_TESTS=OFF \
             -DVCPKG_TARGET_TRIPLET=arm64-linux-release \
-            || cat /home/runner/work/TileDB/TileDB/build/vcpkg-bootstrap.log \
             && cmake --build build --config Release --target package \
             && cp build/tiledb-*.tar.gz* /artifacts
       - run: ls -al ${PWD}/artifacts
