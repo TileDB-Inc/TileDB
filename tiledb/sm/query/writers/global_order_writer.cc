@@ -96,9 +96,14 @@ GlobalOrderWriter::GlobalOrderWriter(
     , current_fragment_size_(0)
     , rows_written_(0)
     , tiles_in_current_row_(0)
+    , tiles_written_(0)
+    , tiles_since_last_split_(0)
+    , u_start_(0)
     , start_(0)
+    , u_end_(0)
     , end_(0)
-    , nd_if_dense_split_{} {
+    , nd_if_dense_split_{}
+    , dense_with_split_(false) {
   // Check the layout is global order.
   if (layout_ != Layout::GLOBAL_ORDER) {
     throw GlobalOrderWriterException(
@@ -787,23 +792,26 @@ Status GlobalOrderWriter::global_write() {
 
     // Compute the number of tiles that will fit in this fragment.
     auto num = num_tiles_to_write(idx, tile_num, tiles);
+    bool is_dense = array_schema_.array_type() == ArrayType::DENSE;
+    bool is_last_range = false;
 
-    if (array_schema_.array_type() ==
-        ArrayType::DENSE) {  //&& this is consolidation
-      // if it is a dense array and not all tiles can fit in the current
-      // fragment then we need to split the domain, otherwise if all tiles can
-      // fit it means that we are in the middle of a write
-      nd_if_dense_split_ = ndranges_after_split(num, tile_num != num);
+    if (is_dense && disable_checks_consolidation_) {
+      // if it is a dense array during consolidation and not all tiles can fit
+      // in the current fragment then we need to split the domain, otherwise if
+      // all tiles can fit it means that we are in the middle of a write
+      nd_if_dense_split_ = ndranges_after_split(num, tile_num, is_last_range);
     }
 
-    if (tile_num != num && !nd_if_dense_split_.empty()) {
+    if ((!nd_if_dense_split_.empty() && num != tile_num) ||
+        (is_last_range && dense_with_split_)) {
       frag_meta->init_domain(nd_if_dense_split_);
+      dense_with_split_ = true;
     }
 
     // If we're resuming a fragment write and the first tile doesn't fit into
     // the previous fragment, we need to start a new fragment and recalculate
     // the number of tiles to write.
-    if (current_fragment_size_ > 0 && num == 0) {
+    if (current_fragment_size_ > 0 && num == 0 && !dense_with_split_) {
       RETURN_CANCEL_OR_ERROR(start_new_fragment());
       num = num_tiles_to_write(idx, tile_num, tiles);
     }
@@ -1462,33 +1470,47 @@ uint64_t GlobalOrderWriter::num_tiles_per_row(const Domain& domain) {
 }
 
 NDRange GlobalOrderWriter::ndranges_after_split(
-    uint64_t num, bool reached_end_of_fragment) {
+    uint64_t num, uint64_t tile_num, bool& is_last_range) {
   // Expand domain to full tiles
+  bool reached_end_of_fragment = tile_num != num;
   auto& domain{array_schema_.domain()};
   if (disable_checks_consolidation_) {
     auto expanded_subarray = subarray_.ndrange(0);
     domain.expand_to_tiles(&expanded_subarray);
   }
 
+  tiles_written_ += num;
+  tiles_since_last_split_ += num;
+
   // Calculate how many tiles each row can hold
   uint64_t tiles_per_row = num_tiles_per_row(domain);
 
   // Calculate how many rows we will write in the current fragment
-  uint64_t rows_of_tiles_to_write =
-      (num - tiles_in_current_row_) / tiles_per_row;
-  uint64_t remainder_of_tiles = 0;
-  bool moved_row = true;
+  uint64_t rows_of_tiles_to_write = 0;
 
-  if (rows_of_tiles_to_write == 0) {
-    remainder_of_tiles += num;
-    moved_row = false;
-  } else {
-    remainder_of_tiles = (num - tiles_in_current_row_) % tiles_per_row;
+  if (num != 0) {
+    rows_of_tiles_to_write = (num - tiles_in_current_row_) / tiles_per_row;
   }
-  tiles_in_current_row_ = remainder_of_tiles;
 
   // If we have not written a full row and we have reached the end of the
   // fragment abort
+
+  // set vars
+  uint64_t remainder_of_tiles = 0;
+
+  // Calculate how many tiles we have in the current row
+  if (rows_of_tiles_to_write == 0) {
+    remainder_of_tiles += num;
+  } else {
+    remainder_of_tiles = (num - tiles_in_current_row_) % tiles_per_row;
+  }
+  tiles_in_current_row_ += remainder_of_tiles;
+
+  if (tiles_in_current_row_ == tiles_per_row) {
+    tiles_in_current_row_ = 0;
+  }
+
+  // If we have finished the write in the middle of the row, throw
   if (tiles_in_current_row_ != 0 && reached_end_of_fragment) {
     throw GlobalOrderWriterException(
         "The target fragment size cannot be achieved. Please try using a "
@@ -1513,25 +1535,41 @@ NDRange GlobalOrderWriter::ndranges_after_split(
   if (rows_written_ == 0) {
     // It means that the start has not been set yet. Set it to the minimum value
     // of the expanded domain for that dim
-    auto ll = [&](auto T) {
-      auto dim_dom_data = (const decltype(T)*)dim_dom.data();
-      // todo this should be unsigned or signed
-      return static_cast<uint64_t>(dim_dom_data[0]);
+    auto ll = [&](auto T, size_t index) {
+      // Return a pair. The domain can be signed or unsigned
+      auto dim_dom_data = dim_dom.typed_data<decltype(T)>()[index];
+      int64_t ret_s = static_cast<int64_t>(dim_dom_data);
+      uint64_t ret_u = static_cast<uint64_t>(dim_dom_data);
+      return std::make_pair(ret_s, ret_u);
     };
 
-    start_ = apply_with_type(ll, dim->type());
-    end_ = apply_with_type(ll, dim->type());
+    // based on whether the dim is signed or unsigned assign the proper vars
+    if (datatype_is_unsigned(dim->type())) {
+      u_start_ = apply_with_type(ll, dim->type(), 0).second;
+      u_end_ = apply_with_type(ll, dim->type(), 1).second;
+    } else {
+      start_ = apply_with_type(ll, dim->type(), 0).first;
+      end_ = apply_with_type(ll, dim->type(), 1).first;
+    }
   }
-  uint64_t end = start_ + (rows_of_tiles_to_write * tile_extent) - 1;
 
-  // if there is a remainder it means we need one more row
-  if (tiles_in_current_row_ != 0 && !reached_end_of_fragment && end < end_ &&
-      moved_row) {
-    end++;
+  // Use 'auto' to temporarily use the cached signed or unsigned start_ and end_
+  // values
+  auto start_to_use = datatype_is_unsigned(dim->type()) ? u_start_ : start_;
+  auto end_to_use = datatype_is_unsigned(dim->type()) ? u_end_ : end_;
+
+  auto end =
+      start_to_use + ((tiles_since_last_split_ / tiles_per_row) * tile_extent);
+  if (tiles_since_last_split_ % tiles_per_row == 0 && end != start_to_use) {
+    // We are at the finish of the row, subtract 1 from the end so that
+    // we dont go to the next range
+    end--;
   }
+
+  rows_written_ = tiles_written_ / tiles_per_row;
 
   // Add range
-  Range range(&start_, &end, sizeof(int));
+  Range range(&start_to_use, &end, sizeof(int));
   nd.emplace_back(range);
 
   // For the rest of the dims, use their domains as ranges. No split there.
@@ -1543,8 +1581,19 @@ NDRange GlobalOrderWriter::ndranges_after_split(
   }
 
   // add rows written to the cache
-  rows_written_ += rows_of_tiles_to_write;
-  start_ = end + 1;
+  if (tile_num != num) {
+    if (datatype_is_unsigned(dim->type())) {
+      u_start_ = end + 1;
+      end = u_start_;
+    } else {
+      start_ = end + 1;
+      end = start_;
+    }
+
+    tiles_since_last_split_ = 0;
+  }
+
+  is_last_range = end == end_to_use;
 
   return nd;
 }

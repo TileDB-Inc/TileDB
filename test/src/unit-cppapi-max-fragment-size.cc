@@ -519,6 +519,15 @@ TEST_CASE(
 
   cleanup();
 
+  bool more_than_one_loop = false;
+  SECTION("More than one loop write") {
+    more_than_one_loop = true;
+  }
+
+  SECTION("One loop write") {
+    more_than_one_loop = false;
+  }
+
   // Remove the array at the end of this test.
   ScopedExecutor deferred(cleanup);
 
@@ -573,6 +582,11 @@ TEST_CASE(
   // the creation of two new fragments.
   tiledb::Config cfg;
   cfg.set("sm.consolidation.max_fragment_size", "150");
+  cfg.set("sm.consolidation.buffer_size", "10000");  // speed up consolidation
+  if (more_than_one_loop) {
+    cfg.set("sm.consolidation.buffer_size", "10");
+  }
+
   ctx = Context(cfg);
   Array::consolidate(ctx, array_name);
   Array::vacuum(ctx, array_name);
@@ -664,6 +678,7 @@ TEST_CASE(
   // the creation of two new fragments.
   tiledb::Config cfg;
   cfg.set("sm.consolidation.max_fragment_size", "80");
+  cfg.set("sm.consolidation.buffer_size", "10000");  // speed up consolidation
   ctx = Context(cfg);
   Array::consolidate(ctx, array_name);
   Array::vacuum(ctx, array_name);
