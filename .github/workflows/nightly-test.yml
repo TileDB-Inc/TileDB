@@ -127,7 +127,7 @@ jobs:
       - test
       - test_hdfs_build
       - test_static_linkage
-    if: failure() || cancelled()
+    if: github.event_name == 'schedule' && (failure() || cancelled())
     steps:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v3
