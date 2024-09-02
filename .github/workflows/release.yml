@@ -145,7 +145,7 @@ jobs:
         if: matrix.manylinux
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd ninja
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
       - name: Configure TileDB
         run: |
