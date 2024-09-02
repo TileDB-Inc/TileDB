@@ -198,8 +198,9 @@ void CppAggregatesFx<T>::run_all_combinations(std::function<void()> fn) {
               // Filter invalid combination. The legacy reader does not support
               // aggregates, and we cannot automatically switch to unordered
               // reads if we are requesting both the aggregates and the data.
-              if (!dense_ && request_data && layout != TILEDB_UNORDERED)
+              if (request_data && layout != TILEDB_UNORDERED) {
                 continue;
+              }
               layout_ = layout;
               fn();
             }
@@ -1452,8 +1453,9 @@ TEST_CASE_METHOD(
           // Filter invalid combination. The legacy reader does not support
           // aggregates, and we cannot automatically switch to unordered
           // reads if we are requesting both the aggregates and the data.
-          if (!dense_ && request_data && layout != TILEDB_UNORDERED)
+          if (request_data && layout != TILEDB_UNORDERED) {
             continue;
+          }
           layout_ = layout;
           Query query(ctx_, array, TILEDB_READ);
 
@@ -2066,8 +2068,9 @@ TEST_CASE_METHOD(
           // Filter invalid combination. The legacy reader does not support
           // aggregates, and we cannot automatically switch to unordered
           // reads if we are requesting both the aggregates and the data.
-          if (!dense_ && request_data && layout != TILEDB_UNORDERED)
+          if (request_data && layout != TILEDB_UNORDERED) {
             continue;
+          }
           layout_ = layout;
           Query query(ctx_, array, TILEDB_READ);
 
@@ -2169,8 +2172,9 @@ TEST_CASE_METHOD(
         // Filter invalid combination. The legacy reader does not support
         // aggregates, and we cannot automatically switch to unordered
         // reads if we are requesting both the aggregates and the data.
-        if (!dense_ && layout != TILEDB_UNORDERED)
+        if (layout != TILEDB_UNORDERED) {
           continue;
+        }
         layout_ = layout;
         Query query(ctx_, array, TILEDB_READ);
 
