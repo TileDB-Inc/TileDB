@@ -41,7 +41,7 @@ static void write_array(const std::string& array_uri);
 
 TEST_CASE(
     "Subarray range expansion bug",
-    "[bug][sc53970][subarray-range-expansion][!shouldfail]") {
+    "[bug][sc53970][subarray-range-expansion]") {
   std::string array_uri = "test_array_schema_dump";
 
   // Test setup
