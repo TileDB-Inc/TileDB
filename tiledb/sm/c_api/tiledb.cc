@@ -3916,7 +3916,29 @@ int32_t tiledb_fragment_info_dump(
     tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info, FILE* out) {
   if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
-  fragment_info->fragment_info_->dump(out);
+
+  std::stringstream ss;
+  ss << *fragment_info->fragment_info_;
+  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  if (r != ss.str().size()) {
+    throw CAPIException("Error writing fragment info to output stream");
+  }
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_dump_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_string_t** out) {
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
+    return TILEDB_ERR;
+  ensure_output_pointer_is_valid(out);
+
+  std::stringstream ss;
+  ss << *fragment_info->fragment_info_;
+  *out = tiledb_string_handle_t::make_handle(ss.str());
+
   return TILEDB_OK;
 }
 
@@ -6083,6 +6105,15 @@ CAPI_INTERFACE(
     const tiledb_fragment_info_t* fragment_info,
     FILE* out) {
   return api_entry<tiledb::api::tiledb_fragment_info_dump>(
+      ctx, fragment_info, out);
+}
+
+CAPI_INTERFACE(
+    fragment_info_dump_str,
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_string_handle_t** out) {
+  return api_entry<tiledb::api::tiledb_fragment_info_dump_str>(
       ctx, fragment_info, out);
 }
 
