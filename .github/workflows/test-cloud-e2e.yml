@@ -1,0 +1,107 @@
+name: End-to-End cloud service tests
+on:
+  workflow_dispatch:
+    inputs:
+      run_azure:
+        description: 'Run Azure tests'
+        required: true
+        default: true
+        type: boolean
+  push:
+    branches:
+      - dev
+      - release-*
+
+env:
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  azure:
+    runs-on: ubuntu-latest
+    if: inputs.run_azure != 'false'
+    environment: azure-e2e-test
+    env:
+      bootstrap_args: --enable-azure --enable-ccache
+    permissions:
+      id-token: write # Get OIDC token for authentication to Azure
+    name: Azure
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Configure required environment variables for vcpkg to use
+      # GitHub's Action Cache
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Prevent vpckg from building debug variants
+        run: python ./scripts/ci/patch_vcpkg_triplets.py
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: 'Configure libtiledb'
+        id: configure
+        shell: bash
+        run: |
+          set -e pipefail
+
+          # Show CMake Version
+          cmake --version
+
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
+
+      - name: 'Build libtiledb'
+        id: build
+        shell: bash
+        run: |
+          set -e pipefail
+
+          #####################################################
+          # Build libtiledb using previous bootstrap
+
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+
+      - name: 'Az CLI login'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 'Test libtiledb'
+        id: test
+        shell: bash
+        env:
+          # Allow forks to specify different values.
+          AZURE_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT || 'tiledbci' }}
+          TILEDB_VFS_E2E_TEST_FILE: ${{ vars.AZURE_E2E_TEST_FILE || 'azure://tiledb/test.txt' }}
+        run: |
+          set -e pipefail
+
+          cd $GITHUB_WORKSPACE/build
+
+          ###################################################
+          # Run tests
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          ./test/tiledb_unit -d yes "[vfs-e2e]" | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+      - name: 'Test status check'
+        run: |
+          # tiledb_unit is configured to set a  variable TILEDB_CI_SUCCESS=1
+          # following the test run. If this variable is not set, the build should fail.
+          # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
+          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+            exit 1;
+          fi
+
+      - name: "Print log files (failed build only)"
+        run: |
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+        if: ${{ failure() }} # only run this job if the build step failed

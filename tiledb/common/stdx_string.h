@@ -43,7 +43,7 @@ namespace tiledb::stdx::string {
  * @param prefix The prefix string to be tested.
  * @return `true` if `value` starts with `prefix`; `false` otherwise.
  */
-bool starts_with(const std::string& value, const std::string& prefix);
+bool starts_with(std::string_view value, std::string_view prefix);
 
 /**
  * Checks if a string ends with a certain suffix.
@@ -55,7 +55,7 @@ bool starts_with(const std::string& value, const std::string& prefix);
  * @param suffix The suffix to be tested.
  * @return `true` if `value` ends with `suffix`; `false` otherwise.
  */
-bool ends_with(const std::string& value, const std::string& suffix);
+bool ends_with(std::string_view value, std::string_view suffix);
 
 /**
  * Returns the size of the common prefix between `a` and `b`.
@@ -64,7 +64,7 @@ bool ends_with(const std::string& value, const std::string& suffix);
  *      a[0..n) == b[0..n)  (These ranges are empty if n == 0.)
  *      n == length of a or n == length of b or a[n] != b[n]
  */
-size_t common_prefix_size(const std::string_view& a, const std::string_view& b);
+size_t common_prefix_size(std::string_view a, std::string_view b);
 
 }  // namespace tiledb::stdx::string
 
@@ -72,10 +72,10 @@ size_t common_prefix_size(const std::string_view& a, const std::string_view& b);
  * Functions forwarded into the legacy namespace.
  */
 namespace tiledb::sm::utils::parse {
-inline bool starts_with(const std::string& value, const std::string& prefix) {
+inline bool starts_with(std::string_view value, std::string_view prefix) {
   return tiledb::stdx::string::starts_with(value, prefix);
 }
-inline bool ends_with(const std::string& value, const std::string& suffix) {
+inline bool ends_with(std::string_view value, std::string_view suffix) {
   return tiledb::stdx::string::ends_with(value, suffix);
 }
 }  // namespace tiledb::sm::utils::parse

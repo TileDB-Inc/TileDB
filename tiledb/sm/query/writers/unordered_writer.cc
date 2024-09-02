@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,12 +44,9 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
@@ -58,12 +55,11 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-class UnorderWriterStatusException : public StatusException {
+class UnorderWriterException : public StatusException {
  public:
-  explicit UnorderWriterStatusException(const std::string& message)
+  explicit UnorderWriterException(const std::string& message)
       : StatusException("UnorderWriter", message) {
   }
 };
@@ -75,54 +71,43 @@ class UnorderWriterStatusException : public StatusException {
 UnorderedWriter::UnorderedWriter(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
+    StrategyParams& params,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
     std::unordered_set<std::string>& written_buffers,
     bool remote_query,
-    optional<std::string> fragment_name,
-    bool skip_checks_serialization)
+    optional<std::string> fragment_name)
     : WriterBase(
           stats,
           logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout,
+          params,
           written_fragment_info,
           false,
           coords_info,
           remote_query,
-          fragment_name,
-          skip_checks_serialization)
+          fragment_name)
     , frag_uri_(std::nullopt)
+    , cell_pos_(query_memory_tracker_->get_resource(MemoryType::WRITER_DATA))
     , written_buffers_(written_buffers)
     , is_coords_pass_(true) {
   // Check the layout is unordered.
-  if (layout != Layout::UNORDERED) {
-    throw UnorderWriterStatusException(
+  if (layout_ != Layout::UNORDERED) {
+    throw UnorderWriterException(
         "Failed to initialize UnorderedWriter; The unordered writer does not "
         "support layout " +
-        layout_str(layout));
+        layout_str(layout_));
   }
 
   // Check the array is sparse.
   if (array_schema_.dense()) {
-    throw UnorderWriterStatusException(
+    throw UnorderWriterException(
         "Failed to initialize UnorderedWriter; The unordered "
         "writer does not support dense arrays.");
   }
 
   // Check no ordered attributes.
   if (array_schema_.has_ordered_attributes()) {
-    throw UnorderWriterStatusException(
+    throw UnorderWriterException(
         "Failed to initialize UnorderedWriter; The unordered writer does not "
         "support ordered attributes.");
   }
@@ -166,7 +151,7 @@ Status UnorderedWriter::finalize() {
 
   if (written_buffers_.size() <
       array_schema_.dim_num() + array_schema_.attribute_num()) {
-    throw UnorderWriterStatusException("Not all buffers already written");
+    throw UnorderWriterException("Not all buffers already written");
   }
 
   return Status::Ok();
@@ -181,9 +166,9 @@ std::string UnorderedWriter::name() {
 
 Status UnorderedWriter::alloc_frag_meta() {
   // Alloc FragmentMetadata object.
-  frag_meta_ = make_shared<FragmentMetadata>(HERE());
+  frag_meta_ = this->create_fragment_metadata();
   // Used in serialization when FragmentMetadata is built from ground up.
-  frag_meta_->set_storage_manager(storage_manager_);
+  frag_meta_->set_context_resources(&resources_);
 
   return Status::Ok();
 }
@@ -194,7 +179,7 @@ Status UnorderedWriter::alloc_frag_meta() {
 
 void UnorderedWriter::clean_up() {
   if (frag_uri_.has_value()) {
-    throw_if_not_ok(storage_manager_->vfs()->remove_dir(frag_uri_.value()));
+    throw_if_not_ok(resources_.vfs().remove_dir(frag_uri_.value()));
   }
 }
 
@@ -230,10 +215,7 @@ Status UnorderedWriter::check_coord_dups() const {
   }
 
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      1,
-      coords_info_.coords_num_,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -289,7 +271,7 @@ Status UnorderedWriter::check_coord_dups() const {
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
+  RETURN_NOT_OK_ELSE(status, logger_->error(status.message()));
 
   return Status::Ok();
 }
@@ -323,10 +305,7 @@ Status UnorderedWriter::compute_coord_dups() {
 
   std::mutex mtx;
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      1,
-      coords_info_.coords_num_,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -386,7 +365,7 @@ Status UnorderedWriter::compute_coord_dups() {
 }
 
 Status UnorderedWriter::prepare_tiles(
-    std::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
   auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute tiles
@@ -394,17 +373,20 @@ Status UnorderedWriter::prepare_tiles(
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (written_buffers_.count(name) == 0) {
-      (*tiles).emplace(name, WriterTileTupleVector());
+      tiles->emplace(
+          std::piecewise_construct,
+          std::forward_as_tuple(name),
+          std::forward_as_tuple(query_memory_tracker_));
     }
   }
 
   // Prepare tiles for all attributes and coordinates
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
-        const auto& name = tiles_it->first;
-        RETURN_CANCEL_OR_ERROR(prepare_tiles(name, &((*tiles)[name])));
+        throw_if_not_ok(prepare_tiles(tiles_it->first, &(tiles_it->second)));
+        throw_if_cancelled();
         return Status::Ok();
       });
 
@@ -441,8 +423,14 @@ Status UnorderedWriter::prepare_tiles_fixed(
   // Initialize tiles
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTileTuple(
-        array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
+    tiles->emplace_back(
+        array_schema_,
+        cell_num_per_tile,
+        false,
+        nullable,
+        cell_size,
+        type,
+        query_memory_tracker_);
   }
 
   // Write all cells one by one
@@ -455,13 +443,13 @@ Status UnorderedWriter::prepare_tiles_fixed(
         cell_idx = 0;
       }
 
-      RETURN_NOT_OK(tile_it->fixed_tile().write(
-          buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size));
+      tile_it->fixed_tile().write(
+          buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size);
       if (nullable)
-        RETURN_NOT_OK(tile_it->validity_tile().write(
+        tile_it->validity_tile().write(
             buffer_validity + cell_pos_[i] * constants::cell_validity_size,
             cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
     }
   } else {
     for (uint64_t i = 0; i < cell_num; ++i) {
@@ -473,13 +461,13 @@ Status UnorderedWriter::prepare_tiles_fixed(
         cell_idx = 0;
       }
 
-      RETURN_NOT_OK(tile_it->fixed_tile().write(
-          buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size));
+      tile_it->fixed_tile().write(
+          buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size);
       if (nullable)
-        RETURN_NOT_OK(tile_it->validity_tile().write(
+        tile_it->validity_tile().write(
             buffer_validity + cell_pos_[i] * constants::cell_validity_size,
             cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       ++cell_idx;
     }
   }
@@ -512,8 +500,14 @@ Status UnorderedWriter::prepare_tiles_var(
   // Initialize tiles
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTileTuple(
-        array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
+    tiles->emplace_back(
+        array_schema_,
+        cell_num_per_tile,
+        true,
+        nullable,
+        cell_size,
+        type,
+        query_memory_tracker_);
   }
 
   // Write all cells one by one
@@ -530,8 +524,8 @@ Status UnorderedWriter::prepare_tiles_var(
       }
 
       // Write offset.
-      RETURN_NOT_OK(tile_it->offset_tile().write(
-          &offset, cell_idx * sizeof(offset), sizeof(offset)));
+      tile_it->offset_tile().write(
+          &offset, cell_idx * sizeof(offset), sizeof(offset));
 
       // Write var-sized value(s).
       auto buff_offset =
@@ -542,16 +536,15 @@ Status UnorderedWriter::prepare_tiles_var(
               prepare_buffer_offset(
                   buffer, cell_pos_[i] + 1, attr_datatype_size) -
                   buff_offset;
-      RETURN_NOT_OK(tile_it->var_tile().write_var(
-          buffer_var + buff_offset, offset, var_size));
+      tile_it->var_tile().write_var(buffer_var + buff_offset, offset, var_size);
       offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        RETURN_NOT_OK(tile_it->validity_tile().write(
+        tile_it->validity_tile().write(
             buffer_validity + cell_pos_[i],
             cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
     }
   } else {
@@ -567,8 +560,8 @@ Status UnorderedWriter::prepare_tiles_var(
       }
 
       // Write offset.
-      RETURN_NOT_OK(tile_it->offset_tile().write(
-          &offset, cell_idx * sizeof(offset), sizeof(offset)));
+      tile_it->offset_tile().write(
+          &offset, cell_idx * sizeof(offset), sizeof(offset));
 
       // Write var-sized value(s).
       auto buff_offset =
@@ -579,16 +572,15 @@ Status UnorderedWriter::prepare_tiles_var(
               prepare_buffer_offset(
                   buffer, cell_pos_[i] + 1, attr_datatype_size) -
                   buff_offset;
-      RETURN_NOT_OK(tile_it->var_tile().write_var(
-          buffer_var + buff_offset, offset, var_size));
+      tile_it->var_tile().write_var(buffer_var + buff_offset, offset, var_size);
       offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        RETURN_NOT_OK(tile_it->validity_tile().write(
+        tile_it->validity_tile().write(
             buffer_validity + cell_pos_[i],
             cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
 
       ++cell_idx;
@@ -621,7 +613,7 @@ Status UnorderedWriter::sort_coords() {
   DomainBuffersView domain_buffs{array_schema_, buffers_};
   if (cell_order != Layout::HILBERT) {  // Row- or col-major
     parallel_sort(
-        storage_manager_->compute_tp(),
+        &resources_.compute_tp(),
         cell_pos_.begin(),
         cell_pos_.end(),
         GlobalCmpQB(domain, domain_buffs));
@@ -629,7 +621,7 @@ Status UnorderedWriter::sort_coords() {
     std::vector<uint64_t> hilbert_values(coords_info_.coords_num_);
     RETURN_NOT_OK(calculate_hilbert_values(domain_buffs, hilbert_values));
     parallel_sort(
-        storage_manager_->compute_tp(),
+        &resources_.compute_tp(),
         cell_pos_.begin(),
         cell_pos_.end(),
         HilbertCmpQB(domain, domain_buffs, hilbert_values));
@@ -645,15 +637,14 @@ Status UnorderedWriter::unordered_write() {
 
   if (written_buffers_.size() >=
       array_schema_.dim_num() + array_schema_.attribute_num()) {
-    throw UnorderWriterStatusException("All buffers already written");
+    throw UnorderWriterException("All buffers already written");
   }
 
   if (is_coords_pass_) {
     for (ArraySchema::dimension_size_type d = 0; d < array_schema_.dim_num();
          d++) {
       if (buffers_.count(array_schema_.dimension_ptr(d)->name()) == 0) {
-        throw UnorderWriterStatusException(
-            "All dimension buffers should be set");
+        throw UnorderWriterException("All dimension buffers should be set");
       }
     }
 
@@ -670,14 +661,15 @@ Status UnorderedWriter::unordered_write() {
     }
 
     // Create new fragment
-    frag_meta_ = make_shared<FragmentMetadata>(HERE());
+    frag_meta_ = this->create_fragment_metadata();
     RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta_));
   }
 
   frag_uri_ = frag_meta_->fragment_uri();
 
   // Prepare tiles
-  std::unordered_map<std::string, WriterTileTupleVector> tiles;
+  tdb::pmr::unordered_map<std::string, WriterTileTupleVector> tiles(
+      query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_tiles(&tiles));
 
   // No tiles
@@ -695,7 +687,7 @@ Status UnorderedWriter::unordered_write() {
   auto tile_num = it->second.size();
   if (is_coords_pass_) {
     // Set the number of tiles in the metadata
-    throw_if_not_ok(frag_meta_->set_num_tiles(tile_num));
+    frag_meta_->set_num_tiles(tile_num);
 
     stats_->add_counter("tile_num", tile_num);
     stats_->add_counter("cell_num", cell_pos_.size());
@@ -732,8 +724,7 @@ Status UnorderedWriter::unordered_write() {
     // The following will make the fragment visible
     URI commit_uri =
         array_->array_directory().get_commit_uri(frag_uri_.value());
-
-    RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
+    throw_if_not_ok(resources_.vfs().touch(commit_uri));
 
     // Clear some data to prevent it from being serialized.
     cell_pos_.clear();
@@ -745,5 +736,4 @@ Status UnorderedWriter::unordered_write() {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

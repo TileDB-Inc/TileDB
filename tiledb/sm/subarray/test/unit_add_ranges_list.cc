@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,13 @@
 #endif
 #include <tiledb/sm/array/array.h>
 #include <tiledb/sm/array_schema/dimension.h>
+#include <tiledb/sm/enums/array_type.h>
 #include <tiledb/sm/enums/encryption_type.h>
 #include <tiledb/sm/storage_manager/context.h>
 #include <tiledb/sm/subarray/subarray.h>
 
 #include <test/support/src/helpers.h>
+#include <test/support/src/mem_helpers.h>
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -51,14 +53,23 @@ using namespace tiledb::type;
 TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   // Setup an Array needed to construct the Subarray for testing
   // add_ranges_list.
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::shared_ptr<tiledb::sm::Dimension> sp_dim1 =
-      make_shared<tiledb::sm::Dimension>(HERE(), "d1", Datatype::INT64);
+      make_shared<tiledb::sm::Dimension>(
+          HERE(),
+          "d1",
+          Datatype::INT64,
+          tiledb::test::get_test_memory_tracker());
   std::shared_ptr<tiledb::sm::Dimension> sp_dim2 =
-      make_shared<tiledb::sm::Dimension>(HERE(), "d2", Datatype::INT64);
+      make_shared<tiledb::sm::Dimension>(
+          HERE(),
+          "d2",
+          Datatype::INT64,
+          tiledb::test::get_test_memory_tracker());
   uint64_t tile_extents[] = {2, 2};
   std::vector<std::shared_ptr<tiledb::sm::Dimension>> dims{sp_dim1, sp_dim2};
   std::shared_ptr<tiledb::sm::Domain> sp_dom = make_shared<tiledb::sm::Domain>(
-      HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
+      HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker);
   uint64_t local_DIM_DOMAIN[4] = {1, 12, 1, 12};
   CHECK(sp_dim1->set_domain(&local_DIM_DOMAIN[0]).ok());
   CHECK(sp_dim2->set_domain(&local_DIM_DOMAIN[2]).ok());
@@ -66,20 +77,21 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   CHECK(sp_dim2->set_tile_extent(&tile_extents[1]).ok());
   std::shared_ptr<tiledb::sm::Attribute> sp_attrib =
       make_shared<tiledb::sm::Attribute>(HERE(), "a1", Datatype::INT32);
-  tiledb::sm::Domain dom{Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR};
+  tiledb::sm::Domain dom{
+      Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker};
   std::shared_ptr<tiledb::sm::ArraySchema> sp_as =
-      make_shared<tiledb::sm::ArraySchema>(HERE());
+      make_shared<tiledb::sm::ArraySchema>(
+          HERE(),
+          tiledb::sm::ArrayType::DENSE,
+          tiledb::test::create_test_memory_tracker());
   CHECK(sp_as->set_domain(sp_dom).ok());
   CHECK(sp_as->add_attribute(sp_attrib).ok());
-  // sp_as->add_dimension();
   tiledb::sm::Config cfg;
   tiledb::sm::Context ctx(cfg);
-  tiledb::sm::Array a(tiledb::sm::URI{"mem://junk"}, ctx.storage_manager());
-  a.set_array_schema_latest(sp_as);
-  // a.create();
+  tiledb::sm::Array a(ctx.resources(), tiledb::sm::URI{"mem://junk"});
   tiledb::sm::EncryptionKey ek;
   CHECK(ek.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0).ok());
-  CHECK(ctx.storage_manager()->array_create(a.array_uri(), sp_as, ek).ok());
+  tiledb::sm::Array::create(ctx.resources(), a.array_uri(), sp_as, ek);
   CHECK(a.open(
              tiledb::sm::QueryType::READ,
              tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -89,11 +101,7 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
 
   // The Subarray used to test add_ranges_list.
   tiledb::sm::Subarray sa(
-      &a,
-      &test::g_helper_stats,
-      test::g_helper_logger(),
-      true,
-      ctx.storage_manager());
+      &a, &test::g_helper_stats, test::g_helper_logger(), true);
 
   // Add ranges
   // NOTE: The type used here for the range needs to match the type used for the
@@ -101,17 +109,17 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   // underneath add_ranges_list to determine the size of the values being
   // iterated over.
   uint64_t ranges[] = {1, 2, 4, 5, 7, 8, 10, 11};
-  CHECK(sa.add_ranges_list(0, ranges, 8).ok());
-  CHECK(sa.add_ranges_list(1, ranges, 8).ok());
+  CHECK_NOTHROW(sa.add_ranges_list(0, ranges, 8));
+  CHECK_NOTHROW(sa.add_ranges_list(1, ranges, 8));
   uint64_t range_num;
-  CHECK(sa.get_range_num(0, &range_num).ok());
+  CHECK_NOTHROW(sa.get_range_num(0, &range_num));
   CHECK(range_num == 4);
 
   // Check ranges
   for (uint32_t dim_idx = 0; dim_idx < 1; dim_idx++) {
     for (uint32_t idx = 0; idx < range_num; idx++) {
       const void *start, *end;
-      CHECK(sa.get_range(dim_idx, idx, &start, &end).ok());
+      CHECK_NOTHROW(sa.get_range(dim_idx, idx, &start, &end));
       CHECK(*(uint64_t*)start == ranges[idx * 2]);
       CHECK(*(uint64_t*)end == ranges[idx * 2 + 1]);
     }

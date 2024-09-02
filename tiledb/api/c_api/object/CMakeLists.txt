@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ gather_sources(${SOURCES})
 #
 # Maturity Warning: `capi_object` can't be a full object library unit the
 # `StorageManager` dependency is removed. Note that the test-compile is
-# commented out. This is the reason that it hasn't been converted to use the
+# absent. This is the reason that it hasn't been converted to use the
 # `object_library` environment for CMake.
 #
 add_library(capi_object OBJECT ${SOURCES})
@@ -47,13 +47,5 @@ target_link_libraries(capi_object PUBLIC export)
 target_link_libraries(capi_object PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(capi_object PUBLIC constants $<TARGET_OBJECTS:constants>)
 target_link_libraries(capi_object PUBLIC exception_wrapper $<TARGET_OBJECTS:exception_wrapper>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-# add_executable(compile_capi_object EXCLUDE_FROM_ALL)
-# target_link_libraries(compile_capi_object PRIVATE capi_object)
-# target_sources(compile_capi_object PRIVATE test/compile_capi_object_main.cc)
-# add_dependencies(all_link_complete compile_capi_object)
 
 add_test_subdirectory()

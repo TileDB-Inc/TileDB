@@ -42,27 +42,6 @@
 namespace tiledb {
 namespace impl {
 
-/**
- * @cond
- * Doxygen is disabled for this function, as it conflicts with the C
- * API function of the same name.
- *
- * Submits a TileDB query in asynchronous mode.
- *
- * @param ctx The TileDB context.
- * @param query The query to be submitted.
- * @param callback A pointer to a std::function<void(void*)>.
- * The function is copied.
- * @param callback_data Data to pass callback
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_query_submit_async_func(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    void* callback_func,
-    void* callback_data = nullptr) noexcept;
-/** @endcond */
-
 inline size_t type_size(tiledb_datatype_t type) {
   return tiledb_datatype_size(type);
 }

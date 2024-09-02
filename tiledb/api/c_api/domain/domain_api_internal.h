@@ -35,6 +35,10 @@
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/array_schema/domain.h"
 
+namespace tiledb::sm {
+class MemoryTracker;
+}
+
 struct tiledb_domain_handle_t
     : public tiledb::api::CAPIHandle<tiledb_domain_handle_t> {
  private:
@@ -54,8 +58,9 @@ struct tiledb_domain_handle_t
    * `class Domain` is principally a container for `Dimension` objects. Domain
    * handles are first constructed as empty containers.
    */
-  tiledb_domain_handle_t()
-      : domain_{make_shared<tiledb::sm::Domain>(HERE())} {
+  explicit tiledb_domain_handle_t(
+      shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+      : domain_{make_shared<tiledb::sm::Domain>(HERE(), memory_tracker)} {
   }
 
   /**
@@ -112,9 +117,8 @@ struct tiledb_domain_handle_t
     return b;
   }
 
-  void dump(FILE* out) const {
-    domain_->dump(out);
-  }
+  friend std::ostream& operator<<(
+      std::ostream& os, const tiledb_domain_handle_t& domain);
 };
 
 /**

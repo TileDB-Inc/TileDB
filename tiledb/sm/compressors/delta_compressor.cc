@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,10 +43,14 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-const uint64_t Delta::OVERHEAD = 17;
+class DeltaCompressorException : public StatusException {
+ public:
+  explicit DeltaCompressorException(const std::string& message)
+      : StatusException("DeltaCompressor", message) {
+  }
+};
 
 /* ****************************** */
 /*               API              */
@@ -56,6 +60,8 @@ void Delta::compress(
     Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       Delta::compress<std::byte>(input_buffer, output_buffer);
       break;
     case Datatype::INT8:
@@ -121,12 +127,11 @@ void Delta::compress(
       break;
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      throw StatusException(
-          Status_CompressionError("Cannot compress tile with Delta; Float "
-                                  "datatypes are not supported"));
+      throw DeltaCompressorException(
+          "Compression is not yet supported for float datatypes.");
     default:
-      throw StatusException(Status_CompressionError(
-          "Cannot compress tile with Delta; Unsupported datatype"));
+      throw DeltaCompressorException(
+          "Compression failed; Unsupported datatype");
   }
 }
 
@@ -136,6 +141,8 @@ void Delta::decompress(
     PreallocatedBuffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       Delta::decompress<std::byte>(input_buffer, output_buffer);
       break;
     case Datatype::INT8:
@@ -201,12 +208,11 @@ void Delta::decompress(
       break;
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      throw StatusException(
-          Status_CompressionError("Cannot decompress tile with Delta; Float "
-                                  "datatypes are not supported"));
+      throw DeltaCompressorException(
+          "Decompression is not yet supported for float datatypes.");
     default:
-      throw StatusException(Status_CompressionError(
-          "Cannot compress tile with Delta; Unsupported datatype"));
+      throw DeltaCompressorException(
+          "Decompression failed; Unsupported datatype");
   }
 }
 
@@ -303,5 +309,4 @@ template void Delta::decompress<int64_t>(
 template void Delta::decompress<uint64_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
-};  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

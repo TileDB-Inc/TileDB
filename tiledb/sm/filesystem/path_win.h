@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@
 #include <vector>
 
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "uri.h"
@@ -61,7 +61,7 @@ std::string uri_from_path(const std::string& path);
  * @param path The URI to convert.
  * @status A Windows path.
  */
-std::string path_from_uri(const std::string& uri);
+std::string path_from_uri(std::string_view uri);
 
 /**
  * Converts any '/' to '\\' (single-backslash) and returns the

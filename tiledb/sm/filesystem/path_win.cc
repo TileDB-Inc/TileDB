@@ -69,10 +69,12 @@ std::string uri_from_path(const std::string& path) {
   return str_uri;
 }
 
-std::string path_from_uri(const std::string& uri) {
-  if (uri.length() == 0) {
+std::string path_from_uri(std::string_view uri_view) {
+  if (uri_view.length() == 0) {
     return "";
   }
+
+  std::string uri(uri_view);
 
   std::string uri_with_scheme =
       (stdx::string::starts_with(uri, "file://") ||

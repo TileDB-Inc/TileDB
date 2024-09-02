@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/constants.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
@@ -44,8 +44,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -63,7 +62,7 @@ URI::URI(const char* path)
     : URI((path == nullptr) ? std::string("") : std::string(path)) {
 }
 
-URI::URI(const std::string& path) {
+URI::URI(std::string_view path) {
   if (path.empty())
     uri_ = "";
   else if (URI::is_file(path))
@@ -76,7 +75,7 @@ URI::URI(const std::string& path) {
     uri_ = "";
 }
 
-URI::URI(const std::string& path, const bool& get_abs) {
+URI::URI(std::string_view path, const bool& get_abs) {
   if (path.empty()) {
     uri_ = "";
   } else if (URI::is_file(path)) {
@@ -111,7 +110,7 @@ URI URI::add_trailing_slash() const {
 }
 
 URI URI::remove_trailing_slash() const {
-  if (uri_.back() == '/') {
+  if (!uri_.empty() && uri_.back() == '/') {
     std::string uri_str = uri_;
     uri_str.pop_back();
     return URI(uri_str);
@@ -132,7 +131,7 @@ bool URI::is_invalid() const {
   return uri_.empty();
 }
 
-bool URI::is_file(const std::string& path) {
+bool URI::is_file(std::string_view path) {
 #ifdef _WIN32
   return utils::parse::starts_with(path, "file://") ||
          path.find("://") == std::string::npos;
@@ -142,7 +141,7 @@ bool URI::is_file(const std::string& path) {
 #endif
 }
 
-bool URI::contains(const std::string_view& str) const {
+bool URI::contains(std::string_view str) const {
   return uri_.find(str, 0) != std::string::npos;
 }
 
@@ -151,13 +150,13 @@ bool URI::is_file() const {
   return is_file(uri_);
 #else
   // Observed: semantics here differ from sibling
-  // is_file(const std::string& path), here is missing
+  // is_file(std::string_view path), here is missing
   // additional check using "://".
   return utils::parse::starts_with(uri_, "file:///");
 #endif
 }
 
-bool URI::is_hdfs(const std::string& path) {
+bool URI::is_hdfs(std::string_view path) {
   return utils::parse::starts_with(path, "hdfs://");
 }
 
@@ -165,7 +164,7 @@ bool URI::is_hdfs() const {
   return utils::parse::starts_with(uri_, "hdfs://");
 }
 
-bool URI::is_s3(const std::string& path) {
+bool URI::is_s3(std::string_view path) {
   return utils::parse::starts_with(path, "s3://") ||
          utils::parse::starts_with(path, "http://") ||
          utils::parse::starts_with(path, "https://");
@@ -177,7 +176,7 @@ bool URI::is_s3() const {
          utils::parse::starts_with(uri_, "https://");
 }
 
-bool URI::is_azure(const std::string& path) {
+bool URI::is_azure(std::string_view path) {
   return utils::parse::starts_with(path, "azure://");
 }
 
@@ -185,7 +184,7 @@ bool URI::is_azure() const {
   return utils::parse::starts_with(uri_, "azure://");
 }
 
-bool URI::is_gcs(const std::string& path) {
+bool URI::is_gcs(std::string_view path) {
   return utils::parse::starts_with(path, "gcs://") ||
          utils::parse::starts_with(path, "gs://");
 }
@@ -195,7 +194,7 @@ bool URI::is_gcs() const {
          utils::parse::starts_with(uri_, "gs://");
 }
 
-bool URI::is_memfs(const std::string& path) {
+bool URI::is_memfs(std::string_view path) {
   return utils::parse::starts_with(path, "mem://");
 }
 
@@ -203,7 +202,7 @@ bool URI::is_memfs() const {
   return utils::parse::starts_with(uri_, "mem://");
 }
 
-bool URI::is_tiledb(const std::string& path) {
+bool URI::is_tiledb(std::string_view path) {
   return utils::parse::starts_with(path, "tiledb://");
 }
 
@@ -240,7 +239,7 @@ Status URI::get_rest_components(
 }
 
 std::optional<URI> URI::get_fragment_name() const {
-  auto to_find = "/" + sm::constants::array_fragments_dir_name + "/";
+  auto to_find = "/" + constants::array_fragments_dir_name + "/";
   auto pos = uri_.find(to_find);
   if (pos == std::string::npos) {
     // Unable to find '/__fragments/' anywhere.
@@ -326,7 +325,11 @@ std::string URI::to_path(const std::string& uri) {
 }
 
 std::string URI::backend_name() const {
-  return uri_.substr(0, uri_.find_first_of(':'));
+  if (is_tiledb(uri_)) {
+    return "";
+  } else {
+    return uri_.substr(0, uri_.find_first_of(':'));
+  }
 }
 
 std::string URI::to_path() const {
@@ -335,6 +338,10 @@ std::string URI::to_path() const {
 
 std::string URI::to_string() const {
   return uri_;
+}
+
+URI::operator std::string_view() const noexcept {
+  return std::string_view(uri_);
 }
 
 bool URI::operator==(const URI& uri) const {
@@ -353,5 +360,4 @@ bool URI::operator>(const URI& uri) const {
   return uri_ > uri.uri_;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

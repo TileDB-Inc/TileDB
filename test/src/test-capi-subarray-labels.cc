@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
@@ -103,7 +104,7 @@ class SampleLabelledArrayTestFixture : public TemporaryDirectoryFixture {
 
     // Check array schema and number of dimension labels.
     require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
-    auto dim_label_num = array_schema->array_schema_->dim_label_num();
+    auto dim_label_num = array_schema->dim_label_num();
     REQUIRE(dim_label_num == 2);
 
     // Create array and free array schema.

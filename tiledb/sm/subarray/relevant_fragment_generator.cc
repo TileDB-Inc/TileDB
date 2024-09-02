@@ -46,12 +46,14 @@ namespace tiledb {
 namespace sm {
 
 RelevantFragmentGenerator::RelevantFragmentGenerator(
-    const Array& array, const Subarray& subarray, stats::Stats* stats)
+    const shared_ptr<OpenedArray> opened_array,
+    const Subarray& subarray,
+    stats::Stats* stats)
     : stats_(stats)
-    , array_(array)
+    , array_(opened_array)
     , subarray_(subarray) {
-  auto dim_num = array_.array_schema_latest().dim_num();
-  auto fragment_num = array_.fragment_metadata().size();
+  auto dim_num = array_->array_schema_latest().dim_num();
+  auto fragment_num = array_->fragment_metadata().size();
 
   // Create a fragment bytemap for each dimension. Each
   // non-zero byte represents an overlap between a fragment
@@ -94,59 +96,48 @@ bool RelevantFragmentGenerator::update_range_coords(
 RelevantFragments RelevantFragmentGenerator::compute_relevant_fragments(
     ThreadPool* const compute_tp) {
   auto timer_se = stats_->start_timer("compute_relevant_frags");
-  auto dim_num = array_.array_schema_latest().dim_num();
-  auto fragment_num = array_.fragment_metadata().size();
+  auto dim_num = array_->array_schema_latest().dim_num();
+  auto fragment_num = array_->fragment_metadata().size();
+  const auto meta = array_->fragment_metadata();
 
   // Populate the fragment bytemap for each dimension in parallel.
-  throw_if_not_ok(parallel_for(compute_tp, 0, dim_num, [&](const uint32_t d) {
-    if (subarray_.is_default(d))
-      return Status::Ok();
+  throw_if_not_ok(parallel_for_2d(
+      compute_tp,
+      0,
+      dim_num,
+      0,
+      fragment_num,
+      [&](const uint32_t d, const uint64_t f) {
+        if (subarray_.is_default(d)) {
+          return Status::Ok();
+        }
 
-    return compute_relevant_fragments_for_dim(
-        compute_tp,
-        d,
-        fragment_num,
-        start_coords_,
-        end_coords_,
-        &fragment_bytemaps_[d]);
-  }));
+        // We're done when we have already determined fragment `f` to
+        // be relevant for this dimension.
+        if (fragment_bytemaps_[d][f] == 1) {
+          return Status::Ok();
+        }
+
+        auto dim{array_->array_schema_latest().dimension_ptr(d)};
+
+        // The fragment `f` is relevant to this dimension's fragment bytemap
+        // if it overlaps with any range between the start and end coordinates
+        // on this dimension.
+        const type::Range& frag_range = meta[f]->non_empty_domain()[d];
+        for (uint64_t r = start_coords_[d]; r <= end_coords_[d]; ++r) {
+          const type::Range& query_range = subarray_.ranges_for_dim(d)[r];
+
+          if (dim->overlap(frag_range, query_range)) {
+            fragment_bytemaps_[d][f] = 1;
+            break;
+          }
+        }
+
+        return Status::Ok();
+      }));
 
   // Recalculate relevant fragments.
   return RelevantFragments(dim_num, fragment_num, fragment_bytemaps_);
-}
-
-Status RelevantFragmentGenerator::compute_relevant_fragments_for_dim(
-    ThreadPool* const compute_tp,
-    const dimension_size_type dim_idx,
-    const size_t fragment_num,
-    const std::vector<uint64_t>& start_coords,
-    const std::vector<uint64_t>& end_coords,
-    std::vector<uint8_t>* const frag_bytemap) const {
-  const auto meta = array_.fragment_metadata();
-  auto dim{array_.array_schema_latest().dimension_ptr(dim_idx)};
-
-  return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
-    // We're done when we have already determined fragment `f` to
-    // be relevant for this dimension.
-    if ((*frag_bytemap)[f] == 1) {
-      return Status::Ok();
-    }
-
-    // The fragment `f` is relevant to this dimension's fragment bytemap
-    // if it overlaps with any range between the start and end coordinates
-    // on this dimension.
-    const type::Range& frag_range = meta[f]->non_empty_domain()[dim_idx];
-    for (uint64_t r = start_coords[dim_idx]; r <= end_coords[dim_idx]; ++r) {
-      const type::Range& query_range = subarray_.ranges_for_dim(dim_idx)[r];
-
-      if (dim->overlap(frag_range, query_range)) {
-        (*frag_bytemap)[f] = 1;
-        break;
-      }
-    }
-
-    return Status::Ok();
-  });
 }
 
 }  // namespace sm

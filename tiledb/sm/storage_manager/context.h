@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,14 +34,18 @@
 #define TILEDB_CONTEXT_H
 
 #include "tiledb/common/exception/exception.h"
-#include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <mutex>
+
+namespace tiledb::common {
+class Logger;
+}
 
 using namespace tiledb::common;
 
@@ -100,6 +104,10 @@ class Context {
     return &storage_manager_;
   }
 
+  inline CancellationSource cancellation_source() const {
+    return CancellationSource(storage_manager());
+  }
+
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }
@@ -112,6 +120,21 @@ class Context {
   /** Returns the thread pool for io-bound tasks. */
   [[nodiscard]] inline ThreadPool* io_tp() const {
     return &(resources_.io_tp());
+  }
+
+  [[nodiscard]] inline RestClient& rest_client() const {
+    auto x = resources_.rest_client();
+    if (!x) {
+      throw std::runtime_error(
+          "Failed to retrieve RestClient; the underlying instance is null and "
+          "may not have been configured.");
+    }
+    return *(x.get());
+  }
+
+  [[nodiscard]] inline bool has_rest_client() const {
+    auto x = resources_.rest_client();
+    return bool(x);
   }
 
  private:
@@ -189,9 +212,8 @@ class Context {
    * Initializes global and local logger.
    *
    * @param config The configuration parameters.
-   * @return Status
    */
-  Status init_loggers(const Config& config);
+  void init_loggers(const Config& config);
 };
 
 }  // namespace tiledb::sm

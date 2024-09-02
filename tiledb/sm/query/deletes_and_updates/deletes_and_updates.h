@@ -54,15 +54,8 @@ class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
   DeletesAndUpdates(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      std::vector<UpdateValue>& update_values,
-      bool skip_checks_serialization = false);
+      StrategyParams& params,
+      std::vector<UpdateValue>& update_values);
 
   /** Destructor. */
   ~DeletesAndUpdates();

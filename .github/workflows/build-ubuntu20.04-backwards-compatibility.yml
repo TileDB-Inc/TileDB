@@ -26,7 +26,7 @@ jobs:
       # Need this for virtualenv and arrow tests if enabled
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.8'
+          python-version: '3.9'
       - run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
@@ -46,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: tiledb_unit
-          path: ${{ github.workspace }}/build/tiledb/test/tiledb_unit
+          path: ${{ github.workspace }}/build/test/tiledb_unit
           retention-days: 1
 
   test:
@@ -59,7 +59,7 @@ jobs:
           - ubuntu-20.04
         # Note: v2_1_0 arrays were never created so its currently skipped
         # Note: This matrix is used to set the value of TILEDB_COMPATIBILITY_VERSION
-        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1", "v2_10_0", "v2_11_0", "v2_12_0", "v2_13_0", "v2_14_0", "v2_15_0", "v2_16_0"]
+        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1", "v2_10_0", "v2_11_0", "v2_12_3", "v2_13_2", "v2_14_0", "v2_15_0", "v2_16_3", "v2_17_5", "v2_18_3", "v2_19_1", "v2_20_1", "v2_21_1", "v2_22_0", "v2_23_0", "v2_24_0", "v2_25_0"]
     timeout-minutes: 30
     name: ${{ matrix.tiledb_version }}
     steps:
@@ -69,10 +69,20 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: tiledb_unit
-          path: ${{ github.workspace }}/build/tiledb/test/
+          path: ${{ github.workspace }}/build/test/
 
       - name: Update tiledb_unit permissions
-        run: chmod +x $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit
+        run: chmod +x $GITHUB_WORKSPACE/build/test/tiledb_unit
+
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: 'Test backward compatibility'
         id: test
@@ -96,7 +106,7 @@ jobs:
 
 
           # Bypass Catch2 Framework stdout interception with awk on test output
-          $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          $GITHUB_WORKSPACE/build/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
       - name: 'Test status check'
         run: |

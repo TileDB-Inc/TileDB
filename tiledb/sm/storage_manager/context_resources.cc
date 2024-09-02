@@ -31,17 +31,12 @@
  */
 
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/rest/rest_client.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
-
-#ifdef TILEDB_SERIALIZATION
-constexpr bool TILEDB_SERIALIZATION_ENABLED = true;
-#else
-constexpr bool TILEDB_SERIALIZATION_ENABLED = false;
-#endif
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -53,12 +48,24 @@ ContextResources::ContextResources(
     size_t compute_thread_count,
     size_t io_thread_count,
     std::string stats_name)
-    : config_(config)
+    : memory_tracker_manager_(make_shared<MemoryTrackerManager>(HERE()))
+    , ephemeral_memory_tracker_(memory_tracker_manager_->create_tracker())
+    , memory_tracker_reporter_(make_shared<MemoryTrackerReporter>(
+          HERE(), config, memory_tracker_manager_))
+    , config_(config)
     , logger_(logger)
     , compute_tp_(compute_thread_count)
     , io_tp_(io_thread_count)
     , stats_(make_shared<stats::Stats>(HERE(), stats_name))
-    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config) {
+    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config)
+    , rest_client_{RestClientFactory::make(
+          *(stats_.get()),
+          config_,
+          compute_tp(),
+          *logger_.get(),
+          create_memory_tracker())} {
+  ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);
+
   /*
    * Explicitly register our `stats` object with the global.
    */
@@ -68,15 +75,15 @@ ContextResources::ContextResources(
     throw std::logic_error("Logger must not be nullptr");
   }
 
-  if constexpr (TILEDB_SERIALIZATION_ENABLED) {
-    auto server_address = config_.get<std::string>("rest.server_address");
-    if (server_address) {
-      auto client = tdb::make_shared<RestClient>(HERE());
-      auto st = client->init(&stats(), &config_, &compute_tp(), logger_);
-      throw_if_not_ok(st);
-      rest_client_ = client;
-    }
-  }
+  memory_tracker_reporter_->start();
+}
+
+shared_ptr<MemoryTracker> ContextResources::create_memory_tracker() const {
+  return memory_tracker_manager_->create_tracker();
+}
+
+shared_ptr<MemoryTracker> ContextResources::ephemeral_memory_tracker() const {
+  return ephemeral_memory_tracker_;
 }
 
 }  // namespace tiledb::sm

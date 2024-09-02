@@ -1,6 +1,9 @@
 name: build-docs
 on:
   push:
+    branches:
+      - dev
+      - 'release-*'
     paths-ignore:
       - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
@@ -18,13 +21,15 @@ on:
       - '**/.md'
       - 'tiledb/doxygen/source/*'
       - 'tiledb/sm/c_api/tiledb_version.h'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     name: Build Docs
+    env:
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
     steps:
       - uses: actions/checkout@v3
       - name: 'Print env'
@@ -38,10 +43,17 @@ jobs:
           printenv
         shell: bash
 
+      - name: Set environment variables for vcpkg binary caching
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
       - name: Set up Python
         uses: actions/setup-python@v4
 
-      - name: Install Doxygen (linux only)
+      - name: Install Doxygen
         run: |
           set -e pipefail
           sudo apt-get update
@@ -49,12 +61,10 @@ jobs:
           sudo apt-get install -y  doxygen
           pip install virtualenv
         shell: bash
-        if: ${{ runner.os == 'Linux' }}
 
-      - name: Build Doxygen Docs (linux only)'
+      - name: Build Doxygen Docs
         run: |
           # Build the documentation (this does not deploy to RTD).
           cd $GITHUB_WORKSPACE/tiledb/doxygen;
           ./local-build.sh;
         shell: bash
-        if: ${{ runner.os == 'Linux' }}

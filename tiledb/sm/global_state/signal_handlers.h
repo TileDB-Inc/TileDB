@@ -35,8 +35,6 @@
 
 #include <cinttypes>
 
-#include "tiledb/common/status.h"
-
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -58,10 +56,8 @@ class SignalHandlers {
 
   /**
    * Initialize the signal handlers.
-   *
-   * @return Status
    */
-  Status initialize();
+  void initialize();
 
   /**
    * Returns true if a signal has been received. This will only return true on

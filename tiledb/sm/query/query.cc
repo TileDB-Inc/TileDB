@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,9 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -63,36 +65,50 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-/** Class for query status exceptions. */
-class QueryStatusException : public StatusException {
- public:
-  explicit QueryStatusException(const std::string& msg)
-      : StatusException("Query", msg) {
-  }
-};
+/**
+ * Gets the effective memory budget for a query. This will be memory_budget if
+ * set, otherwise the value "sm.mem.total_budget" from config.
+ */
+static uint64_t get_effective_memory_budget(
+    const Config& config, optional<uint64_t> memory_budget) {
+  return memory_budget ?
+             *memory_budget :
+             config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+}
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
 Query::Query(
+    ContextResources& resources,
+    CancellationSource cancellation_source,
     StorageManager* storage_manager,
     shared_ptr<Array> array,
-    optional<std::string> fragment_name)
-    : array_shared_(array)
+    optional<std::string> fragment_name,
+    optional<uint64_t> memory_budget)
+    : resources_(resources)
+    , stats_(resources_.stats().create_child("Query"))
+    , logger_(resources_.logger()->clone("Query", ++logger_id_))
+    , query_memory_tracker_(resources_.memory_tracker_manager().create_tracker(
+          get_effective_memory_budget(resources_.config(), memory_budget),
+          [stats = stats_]() {
+            stats->add_counter("memory_budget_exceeded", 1);
+          }))
+    , array_shared_(array)
     , array_(array_shared_.get())
+    , opened_array_(array->opened_array())
     , array_schema_(array->array_schema_latest_ptr())
+    , config_(resources_.config())
     , type_(array_->get_query_type())
     , layout_(
           (type_ == QueryType::READ || array_schema_->dense()) ?
               Layout::ROW_MAJOR :
               Layout::UNORDERED)
+    , cancellation_source_(cancellation_source)
     , storage_manager_(storage_manager)
-    , stats_(storage_manager_->stats()->create_child("Query"))
-    , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
     , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
@@ -109,8 +125,16 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
-    , query_remote_buffer_storage_(std::nullopt) {
+    , memory_budget_(memory_budget)
+    , query_remote_buffer_storage_(std::nullopt)
+    , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
   assert(array->is_open());
+
+  if (array->get_query_type() == QueryType::READ) {
+    query_memory_tracker_->set_type(MemoryTrackerType::QUERY_READ);
+  } else {
+    query_memory_tracker_->set_type(MemoryTrackerType::QUERY_WRITE);
+  }
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
 
@@ -125,11 +149,8 @@ Query::Query(
   callback_data_ = nullptr;
   status_ = QueryStatus::UNINITIALIZED;
 
-  if (storage_manager != nullptr)
-    config_ = storage_manager->config();
-
   // Set initial subarray configuration
-  subarray_.set_config(config_);
+  subarray_.set_config(type_, config_);
 
   rest_scratch_ = make_shared<Buffer>(HERE());
 }
@@ -148,180 +169,130 @@ Query::~Query() {
 /*               API              */
 /* ****************************** */
 
-Status Query::get_est_result_size(const char* name, uint64_t* size) {
-  if (type_ != QueryType::READ) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Operation currently "
-        "only unsupported for read queries"));
+void Query::field_require_array_fixed(
+    const std::string_view origin, std::string_view field_name) {
+  if (!array_schema_->is_field(field_name.data())) {
+    throw QueryException(
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not an array field");
   }
-
-  if (name == nullptr) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Name cannot be null"));
+  if (array_schema_->var_size(field_name.data())) {
+    throw QueryException(
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not fixed-sized");
   }
-
-  if (name == constants::coords &&
-      !array_schema_->domain().all_dims_same_type()) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Not applicable to zipped "
-        "coordinates in arrays with heterogeneous domain"));
-  }
-
-  if (name == constants::coords && !array_schema_->domain().all_dims_fixed()) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Not applicable to zipped "
-        "coordinates in arrays with domains with variable-sized dimensions"));
-  }
-
-  if (array_schema_->is_nullable(name)) {
-    return logger_->status(Status_QueryError(
-        std::string(
-            "Cannot get estimated result size; Input attribute/dimension '") +
-        name + "' is nullable"));
-  }
-
-  if (array_->is_remote() && !subarray_.est_result_size_computed()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr) {
-      return logger_->status(
-          Status_QueryError("Error in query estimate result size; remote "
-                            "array with no rest client."));
-    }
-
-    RETURN_NOT_OK(
-        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
-  }
-
-  return subarray_.get_est_result_size_internal(
-      name, size, &config_, storage_manager_->compute_tp());
 }
 
-Status Query::get_est_result_size(
-    const char* name, uint64_t* size_off, uint64_t* size_val) {
+void Query::field_require_array_variable(
+    const std::string_view origin, std::string_view field_name) {
+  if (!array_schema_->is_field(field_name.data())) {
+    throw QueryException(
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not an array field");
+  }
+  if (!array_schema_->var_size(field_name.data())) {
+    throw QueryException(
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not variable-sized");
+  }
+}
+
+void Query::field_require_array_nullable(
+    const std::string_view origin, std::string_view field_name) {
+  if (!array_schema_->attribute(field_name.data())) {
+    throw QueryException(
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not the name of an attribute");
+  }
+  if (!array_schema_->is_nullable(field_name.data())) {
+    throw QueryException(
+        std::string{origin} + ": attribute '" + std::string{field_name} +
+        "' is not nullable");
+  }
+}
+
+void Query::field_require_array_nonnull(
+    const std::string_view origin, std::string_view field_name) {
+  if (array_schema_->is_nullable(field_name.data())) {
+    throw QueryException(
+        std::string(origin) + ": field '" + std::string(field_name) +
+        "' is not a nonnull array field");
+  }
+}
+
+constexpr std::string_view origin_est_result_size{
+    "query estimated result size"};
+
+FieldDataSize Query::internal_est_result_size(std::string_view field_name) {
   if (type_ != QueryType::READ) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Operation currently "
-        "only supported for read queries"));
+    throw QueryException(
+        std::string{origin_est_result_size} +
+        ": operation currently supported only for read queries");
   }
-
-  if (array_schema_->is_nullable(name)) {
-    return logger_->status(Status_QueryError(
-        std::string(
-            "Cannot get estimated result size; Input attribute/dimension '") +
-        name + "' is nullable"));
-  }
-
   if (array_->is_remote() && !subarray_.est_result_size_computed()) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
-      return logger_->status(
-          Status_QueryError("Error in query estimate result size; remote "
-                            "array with no rest client."));
+      throw QueryException(
+          "Error in query estimate result size; "
+          "remote array with no rest client.");
     }
-
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
-
   return subarray_.get_est_result_size(
-      name, size_off, size_val, &config_, storage_manager_->compute_tp());
+      field_name, &config_, &resources_.compute_tp());
 }
 
-Status Query::get_est_result_size_nullable(
-    const char* name, uint64_t* size_val, uint64_t* size_validity) {
-  if (type_ != QueryType::READ) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Operation currently "
-        "only supported for read queries"));
-  }
-
-  if (name == nullptr) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Name cannot be null"));
-  }
-
-  if (!array_schema_->attribute(name)) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Nullable API is only"
-        "applicable to attributes"));
-  }
-
-  if (!array_schema_->is_nullable(name)) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get estimated result size; Input attribute '") +
-        name + "' is not nullable"));
-  }
-
-  if (array_->is_remote() && !subarray_.est_result_size_computed()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr) {
-      return logger_->status(
-          Status_QueryError("Error in query estimate result size; remote "
-                            "array with no rest client."));
+FieldDataSize Query::get_est_result_size_fixed_nonnull(
+    std::string_view field_name) {
+  field_require_array_fixed(origin_est_result_size, field_name);
+  if (field_name == constants::coords) {
+    if (!array_schema_->domain().all_dims_same_type()) {
+      throw QueryException(
+          std::string{origin_est_result_size} +
+          ": not applicable to zipped coordinates "
+          "in arrays with heterogeneous domain");
     }
-
-    RETURN_NOT_OK(
-        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+    if (!array_schema_->domain().all_dims_fixed()) {
+      throw QueryException(
+          std::string{origin_est_result_size} +
+          ": not applicable to zipped coordinates "
+          "in arrays with domains with variable-sized dimensions");
+    }
   }
-
-  return subarray_.get_est_result_size_nullable(
-      name, size_val, size_validity, &config_, storage_manager_->compute_tp());
+  field_require_array_nonnull(origin_est_result_size, field_name);
+  return internal_est_result_size(field_name);
 }
 
-Status Query::get_est_result_size_nullable(
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val,
-    uint64_t* size_validity) {
-  if (type_ != QueryType::READ) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Operation currently "
-        "only supported for read queries"));
-  }
+FieldDataSize Query::get_est_result_size_variable_nonnull(
+    std::string_view field_name) {
+  field_require_array_variable(origin_est_result_size, field_name);
+  field_require_array_nonnull(origin_est_result_size, field_name);
+  return internal_est_result_size(field_name);
+}
 
-  if (!array_schema_->attribute(name)) {
-    return logger_->status(Status_QueryError(
-        "Cannot get estimated result size; Nullable API is only"
-        "applicable to attributes"));
-  }
+FieldDataSize Query::get_est_result_size_fixed_nullable(
+    std::string_view field_name) {
+  field_require_array_fixed(origin_est_result_size, field_name);
+  field_require_array_nullable(origin_est_result_size, field_name);
+  return internal_est_result_size(field_name);
+}
 
-  if (!array_schema_->is_nullable(name)) {
-    return logger_->status(Status_QueryError(
-        std::string("Cannot get estimated result size; Input attribute '") +
-        name + "' is not nullable"));
-  }
-
-  if (array_->is_remote() && !subarray_.est_result_size_computed()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr) {
-      return logger_->status(
-          Status_QueryError("Error in query estimate result size; remote "
-                            "array with no rest client."));
-    }
-
-    RETURN_NOT_OK(
-        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
-  }
-
-  return subarray_.get_est_result_size_nullable(
-      name,
-      size_off,
-      size_val,
-      size_validity,
-      &config_,
-      storage_manager_->compute_tp());
+FieldDataSize Query::get_est_result_size_variable_nullable(
+    std::string_view field_name) {
+  field_require_array_variable(origin_est_result_size, field_name);
+  field_require_array_nullable(origin_est_result_size, field_name);
+  return internal_est_result_size(field_name);
 }
 
 std::unordered_map<std::string, Subarray::ResultSize>
 Query::get_est_result_size_map() {
-  return subarray_.get_est_result_size_map(
-      &config_, storage_manager_->compute_tp());
+  return subarray_.get_est_result_size_map(&config_, &resources_.compute_tp());
 }
 
 std::unordered_map<std::string, Subarray::MemorySize>
 Query::get_max_mem_size_map() {
-  return subarray_.get_max_mem_size_map(
-      &config_, storage_manager_->compute_tp());
+  return subarray_.get_max_mem_size_map(&config_, &resources_.compute_tp());
 }
 
 Status Query::get_written_fragment_num(uint32_t* num) const {
@@ -417,6 +388,16 @@ std::vector<std::string> Query::dimension_label_buffer_names() const {
   return ret;
 }
 
+std::vector<std::string> Query::aggregate_buffer_names() const {
+  std::vector<std::string> buffer_names;
+  buffer_names.reserve(aggregate_buffers_.size());
+
+  for (const auto& buffer : aggregate_buffers_) {
+    buffer_names.push_back(buffer.first);
+  }
+  return buffer_names;
+}
+
 std::vector<std::string> Query::unwritten_buffer_names() const {
   std::vector<std::string> ret;
   for (auto& name : buffer_names()) {
@@ -445,6 +426,12 @@ QueryBuffer Query::buffer(const std::string& name) const {
     if (buf != label_buffers_.end()) {
       return buf->second;
     }
+  } else if (is_aggregate(name)) {
+    // Aggregate buffer
+    auto buf = aggregate_buffers_.find(name);
+    if (buf != aggregate_buffers_.end()) {
+      return buf->second;
+    }
   } else {
     // Attribute or dimension
     auto buf = buffers_.find(name);
@@ -459,59 +446,60 @@ QueryBuffer Query::buffer(const std::string& name) const {
 
 Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED ||
-      status_ == QueryStatus::INITIALIZED) {
+      (status_ == QueryStatus::INITIALIZED && !array_->is_remote())) {
     return Status::Ok();
   }
 
   if (array_->is_remote() && type_ == QueryType::WRITE) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return logger_->status(Status_QueryError(
-          "Error in query finalize; remote array with no rest client."));
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw QueryException(
+          "Failed to finalize query; remote array with no rest client.");
+    }
 
     if (layout_ == Layout::GLOBAL_ORDER) {
-      return logger_->status(Status_QueryError(
-          "Error in query finalize; remote global order writes are only "
-          "allowed to call submit_and_finalize to submit the last tile"));
+      throw QueryException(
+          "Failed to finalize query; remote global order writes are only "
+          "allowed to call submit_and_finalize to submit the last tile");
     }
     return rest_client->finalize_query_to_rest(array_->array_uri(), this);
   }
 
-  RETURN_NOT_OK(strategy_->finalize());
+  throw_if_not_ok(strategy_->finalize());
 
-  copy_aggregates_data_to_user_buffer();
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
 
 Status Query::submit_and_finalize() {
   if (type_ != QueryType::WRITE || layout_ != Layout::GLOBAL_ORDER) {
-    return logger_->status(
-        Status_QueryError("Error in query submit_and_finalize; Call valid only "
-                          "in global_order writes."));
+    throw QueryException(
+        "Failed to submit and finalize query; Call valid only in global_order "
+        "writes.");
   }
 
   // Check attribute/dimensions buffers completeness before query submits
-  RETURN_NOT_OK(check_buffers_correctness());
+  throw_if_not_ok(check_buffers_correctness());
 
   if (array_->is_remote()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return logger_->status(
-          Status_QueryError("Error in query submit_and_finalize; remote array "
-                            "with no rest client."));
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw QueryException(
+          "Failed to submit and finalize query; remote array with no rest "
+          "client.");
+    }
 
     if (status_ == QueryStatus::UNINITIALIZED) {
-      RETURN_NOT_OK(create_strategy());
+      throw_if_not_ok(create_strategy());
     }
     return rest_client->submit_and_finalize_query_to_rest(
         array_->array_uri(), this);
   }
 
   init();
-  RETURN_NOT_OK(storage_manager_->query_submit(this));
+  throw_if_not_ok(storage_manager_->query_submit(this));
 
-  RETURN_NOT_OK(strategy_->finalize());
+  throw_if_not_ok(strategy_->finalize());
   status_ = QueryStatus::COMPLETED;
 
   return Status::Ok();
@@ -680,14 +668,14 @@ void Query::init() {
       status_ == QueryStatus::INITIALIZED) {
     // Check if the array got closed
     if (array_ == nullptr || !array_->is_open()) {
-      throw QueryStatusException(
+      throw QueryException(
           "Cannot init query; The associated array is not open");
     }
 
     // Check if the array got re-opened with a different query type
     QueryType array_query_type{array_->get_query_type()};
     if (array_query_type != type_) {
-      throw QueryStatusException(
+      throw QueryException(
           "Cannot init query; Associated array query type does not match "
           "query type: (" +
           query_type_str(array_query_type) + " != " + query_type_str(type_) +
@@ -699,14 +687,14 @@ void Query::init() {
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
       if (condition_.has_value()) {
-        throw QueryStatusException(
+        throw QueryException(
             "Cannot init query; Using query conditions and dimension labels "
             "together is not supported.");
       }
 
       // Check the layout is valid.
       if (layout_ == Layout::GLOBAL_ORDER) {
-        throw QueryStatusException(
+        throw QueryException(
             "Cannot init query; The global order layout is not supported "
             "when querying dimension labels");
       }
@@ -718,7 +706,7 @@ void Query::init() {
       if (!only_dim_label_query() && type_ == QueryType::READ &&
           !array_schema_->dense() && array_schema_->dim_num() > 1 &&
           !label_buffers_.empty()) {
-        throw QueryStatusException(
+        throw QueryException(
             "Cannot initialize query; Reading dimension label data is not "
             "yet supported on sparse arrays with multiple dimensions.");
       }
@@ -726,6 +714,7 @@ void Query::init() {
       // Initialize the dimension label queries.
       dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
           ArrayDimensionLabelQueries,
+          resources_,
           storage_manager_,
           array_,
           subarray_,
@@ -778,9 +767,13 @@ const std::vector<UpdateValue>& Query::update_values() const {
   return update_values_;
 }
 
-Status Query::cancel() {
+void Query::cancel() {
+  local_state_machine_.event(LocalQueryEvent::cancel);
   status_ = QueryStatus::FAILED;
-  return Status::Ok();
+}
+
+bool Query::cancelled() {
+  return local_state_machine_.is_cancelled();
 }
 
 Status Query::process() {
@@ -811,6 +804,7 @@ Status Query::process() {
 
     if (!only_dim_label_query()) {
       if (strategy_ != nullptr) {
+        // The strategy destructor should reset its own Stats object here
         dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
         strategy_ = nullptr;
       }
@@ -840,15 +834,43 @@ Status Query::process() {
     }
 
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
-        0,
-        enmr_names.size(),
-        [&](const uint64_t i) {
+        &resources_.compute_tp(), 0, enmr_names.size(), [&](const uint64_t i) {
           array_->get_enumeration(enmr_names[i]);
           return Status::Ok();
         }));
 
     condition_->rewrite_enumeration_conditions(array_schema());
+  }
+
+  if (type_ == QueryType::READ) {
+    auto cd = array_schema_->get_current_domain();
+    if (!cd->empty()) {
+      // See if any data was written outside of the current domain.
+      bool all_ned_contained_in_current_domain = true;
+      for (auto& meta : fragment_metadata_) {
+        if (!cd->includes(meta->non_empty_domain())) {
+          all_ned_contained_in_current_domain = false;
+        }
+      }
+
+      for (Domain::dimension_size_type d = 0; d < array_schema_->dim_num();
+           d++) {
+        if (subarray_.is_set(d)) {
+          // Make sure all ranges are contained in the current domain.
+          for (auto& range : subarray_.ranges_for_dim(d)) {
+            if (!cd->includes(d, range)) {
+              throw QueryException(
+                  "A range was set outside of the current domain.");
+            }
+          }
+        } else if (!all_ned_contained_in_current_domain) {
+          // Add ranges to make sure all data read is contained in the current
+          // domain.
+          auto range_copy = cd->ndrectangle()->get_range(d);
+          subarray_.add_range(d, std::move(range_copy));
+        }
+      }
+    }
   }
 
   // Update query status.
@@ -901,6 +923,7 @@ Status Query::reset_strategy_with_layout(
     Layout layout, bool force_legacy_reader) {
   force_legacy_reader_ = force_legacy_reader;
   if (strategy_ != nullptr) {
+    // The strategy destructor should reset its own Stats object here
     dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
     strategy_ = nullptr;
   }
@@ -955,10 +978,13 @@ void Query::set_processed_conditions(
 
 void Query::set_config(const Config& config) {
   if (!remote_query_ && status_ != QueryStatus::UNINITIALIZED) {
-    throw QueryStatusException(
+    throw QueryException(
         "[set_config] Cannot set config after initialization.");
   }
   config_.inherit(config);
+
+  query_memory_tracker_->refresh_memory_budget(
+      get_effective_memory_budget(config_, memory_budget_));
 
   // Refresh memory budget configuration.
   if (strategy_ != nullptr) {
@@ -968,7 +994,7 @@ void Query::set_config(const Config& config) {
   // Set subarray's config for backwards compatibility
   // Users expect the query config to effect the subarray based on existing
   // behavior before subarray was exposed directly
-  subarray_.set_config(config_);
+  subarray_.set_config(type_, config_);
 }
 
 Status Query::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
@@ -1023,13 +1049,13 @@ Status Query::set_data_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw QueryStatusException("[set_data_buffer] Unsupported query type.");
+      throw QueryException("[set_data_buffer] Unsupported query type.");
     }
 
     const bool exists = label_buffers_.find(name) != label_buffers_.end();
     if (status_ != QueryStatus::UNINITIALIZED && !exists &&
         !serialization_allow_new_attr) {
-      throw QueryStatusException(
+      throw QueryException(
           "[set_data_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
     }
@@ -1044,7 +1070,8 @@ Status Query::set_data_buffer(
 
   // If this is an aggregate buffer, set it and return.
   if (is_aggregate(name)) {
-    const bool is_var = default_channel_aggregates_[name]->var_sized();
+    const bool is_var =
+        default_channel_aggregates_[name]->aggregation_var_sized();
     if (!is_var) {
       // Fixed size data buffer
       aggregate_buffers_[name].set_data_buffer(buffer, buffer_size);
@@ -1138,6 +1165,15 @@ Status Query::set_data_buffer(
   return Status::Ok();
 }
 
+std::optional<shared_ptr<IAggregator>> Query::get_aggregate(
+    std::string output_field_name) const {
+  auto it = default_channel_aggregates_.find(output_field_name);
+  if (it == default_channel_aggregates_.end()) {
+    return nullopt;
+  }
+  return it->second;
+}
+
 Status Query::set_offsets_buffer(
     const std::string& name,
     uint64_t* const buffer_offsets,
@@ -1163,13 +1199,12 @@ Status Query::set_offsets_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw QueryStatusException(
-          "[set_offsets_buffer] Unsupported query type.");
+      throw QueryException("[set_offsets_buffer] Unsupported query type.");
     }
 
     // Check the dimension label is in fact variable length.
     if (!array_schema_->dimension_label(name).is_var()) {
-      throw QueryStatusException(
+      throw QueryException(
           "[set_offsets_buffer] Input dimension label '" + name +
           "' is fixed-sized");
     }
@@ -1178,7 +1213,7 @@ Status Query::set_offsets_buffer(
     const bool exists = label_buffers_.find(name) != label_buffers_.end();
     if (status_ != QueryStatus::UNINITIALIZED && !exists &&
         !serialization_allow_new_attr) {
-      throw QueryStatusException(
+      throw QueryException(
           "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
     }
@@ -1236,6 +1271,17 @@ Status Query::set_offsets_buffer(
     // Check number of coordinates
     uint64_t coords_num =
         *buffer_offsets_size / constants::cell_var_offset_size;
+
+    const bool offsets_extra_element_ =
+        config_.get<bool>("sm.var_offsets.extra_element", Config::must_find);
+
+    if (offsets_extra_element_) {
+      // the offsets buffer has `ncoords + 1` elements so that each coordinate
+      // is given by `[offset[i], offset[i + 1])` instead of using the length
+      // to determine the last
+      --coords_num;
+    }
+
     if (coord_offsets_buffer_is_set_ &&
         coords_num != coords_info_.coords_num_ && name == offsets_buffer_name_)
       return logger_->status(Status_QueryError(
@@ -1342,8 +1388,8 @@ Status Query::set_est_result_size(
     return LOG_STATUS(Status_SerializationError(
         "Cannot set estimated result size; Unsupported query type."));
   }
-
-  return subarray_.set_est_result_size(est_result_size, max_mem_size);
+  subarray_.set_est_result_size(est_result_size, max_mem_size);
+  return Status::Ok();
 }
 
 Status Query::set_layout(Layout layout) {
@@ -1462,7 +1508,7 @@ void Query::set_subarray(const void* subarray) {
     case QueryType::WRITE:
     case QueryType::MODIFY_EXCLUSIVE:
       if (!array_schema_->dense()) {
-        throw QueryStatusException(
+        throw QueryException(
             "[set_subarray] Setting a subarray is not supported on "
             "sparse writes.");
       }
@@ -1470,7 +1516,7 @@ void Query::set_subarray(const void* subarray) {
 
     default:
 
-      throw QueryStatusException(
+      throw QueryException(
           "[set_subarray] Setting a subarray is not supported for query type "
           "'" +
           query_type_str(type_) + "'.");
@@ -1478,13 +1524,13 @@ void Query::set_subarray(const void* subarray) {
 
   // Check this isn't an already initialized query using dimension labels.
   if (status_ != QueryStatus::UNINITIALIZED) {
-    throw QueryStatusException(
+    throw QueryException(
         "[set_subarray] Setting a subarray on an already initialized  "
         "query is not supported.");
   }
 
   // Set the subarray.
-  throw_if_not_ok(subarray_.set_subarray(subarray));
+  subarray_.set_subarray(subarray);
 }
 
 const Subarray* Query::subarray() const {
@@ -1505,14 +1551,14 @@ void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
     case QueryType::WRITE:
     case QueryType::MODIFY_EXCLUSIVE:
       if (!array_schema_->dense()) {
-        throw QueryStatusException(
+        throw QueryException(
             "[set_subarray] Setting a subarray is not supported on "
             "sparse writes.");
       }
       break;
 
     default:
-      throw QueryStatusException(
+      throw QueryException(
           "[set_subarray] Setting a subarray is not supported for query type "
           "'" +
           query_type_str(type_) + "'.");
@@ -1520,7 +1566,7 @@ void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
 
   // Check the query has not been initialized.
   if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
-    throw QueryStatusException(
+    throw QueryException(
         "[set_subarray] Setting a subarray on an already initialized "
         "query is not supported.");
   }
@@ -1537,7 +1583,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   if (!subarray.empty()) {
     auto dim_num = array_schema_->dim_num();
     for (unsigned d = 0; d < dim_num; ++d)
-      RETURN_NOT_OK(sub.add_range_unsafe(d, subarray[d]));
+      sub.add_range_unsafe(d, subarray[d]);
   }
 
   assert(layout_ == sub.layout());
@@ -1559,22 +1605,23 @@ Status Query::submit() {
   // Make sure fragment size is only set for global order.
   if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
       (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
-    throw QueryStatusException(
+    throw QueryException(
         "[submit] Fragment size is only supported for global order writes.");
   }
 
   // Check attribute/dimensions buffers completeness before query submits
-  RETURN_NOT_OK(check_buffers_correctness());
+  throw_if_not_ok(check_buffers_correctness());
 
   if (array_->is_remote()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return logger_->status(Status_QueryError(
-          "Error in query submission; remote array with no rest client."));
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw QueryException(
+          "Failed to submit query; remote array with no rest client.");
+    }
 
     if (status_ == QueryStatus::UNINITIALIZED && !only_dim_label_query() &&
         !subarray_.has_label_ranges()) {
-      RETURN_NOT_OK(create_strategy());
+      throw_if_not_ok(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.
       // If we cache an entire write a query may be uninitialized for N submits.
@@ -1584,34 +1631,17 @@ Status Query::submit() {
       }
     }
 
-    RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
+    throw_if_not_ok(
+        rest_client->submit_query_to_rest(array_->array_uri(), this));
 
     reset_coords_markers();
     return Status::Ok();
   }
   init();
-  RETURN_NOT_OK(storage_manager_->query_submit(this));
+  throw_if_not_ok(storage_manager_->query_submit(this));
 
   reset_coords_markers();
   return Status::Ok();
-}
-
-Status Query::submit_async(
-    std::function<void(void*)> callback, void* callback_data) {
-  // Do not resubmit completed reads.
-  if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
-    callback(callback_data);
-    return Status::Ok();
-  }
-  init();
-  if (array_->is_remote())
-    return logger_->status(
-        Status_QueryError("Error in async query submission; async queries not "
-                          "supported for remote arrays."));
-
-  callback_ = callback;
-  callback_data_ = callback_data;
-  return storage_manager_->query_submit_async(this);
 }
 
 QueryStatus Query::status() const {
@@ -1637,6 +1667,10 @@ stats::Stats* Query::stats() const {
   return stats_;
 }
 
+void Query::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
+}
+
 shared_ptr<Buffer> Query::rest_scratch() const {
   return rest_scratch_;
 }
@@ -1651,20 +1685,9 @@ bool Query::use_refactored_dense_reader(
     return false;
   }
 
-  // First check for legacy option
-  throw_if_not_ok(config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found));
-  // If the legacy/deprecated option is set use it over the new parameters
-  // This facilitates backwards compatibility
-  if (found) {
-    logger_->warn(
-        "sm.use_refactored_readers config option is deprecated.\nPlease use "
-        "'sm.query.dense.reader' with value of 'refactored' or 'legacy'");
-  } else {
-    const std::string& val = config_.get("sm.query.dense.reader", &found);
-    assert(found);
-    use_refactored_reader = val == "refactored";
-  }
+  const std::string& val = config_.get("sm.query.dense.reader", &found);
+  assert(found);
+  use_refactored_reader = val == "refactored";
 
   return use_refactored_reader && array_schema.dense() && all_dense;
 }
@@ -1679,22 +1702,10 @@ bool Query::use_refactored_sparse_global_order_reader(
     return false;
   }
 
-  // First check for legacy option
-  throw_if_not_ok(config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found));
-  // If the legacy/deprecated option is set use it over the new parameters
-  // This facilitates backwards compatibility
-  if (found) {
-    logger_->warn(
-        "sm.use_refactored_readers config option is deprecated.\nPlease use "
-        "'sm.query.sparse_global_order.reader' with value of 'refactored' or "
-        "'legacy'");
-  } else {
-    const std::string& val =
-        config_.get("sm.query.sparse_global_order.reader", &found);
-    assert(found);
-    use_refactored_reader = val == "refactored";
-  }
+  const std::string& val =
+      config_.get("sm.query.sparse_global_order.reader", &found);
+  assert(found);
+  use_refactored_reader = val == "refactored";
   return use_refactored_reader && !array_schema.dense() &&
          (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED);
 }
@@ -1709,29 +1720,17 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
     return false;
   }
 
-  // First check for legacy option
-  throw_if_not_ok(config_.get<bool>(
-      "sm.use_refactored_readers", &use_refactored_reader, &found));
-  // If the legacy/deprecated option is set use it over the new parameters
-  // This facilitates backwards compatibility
-  if (found) {
-    logger_->warn(
-        "sm.use_refactored_readers config option is deprecated.\nPlease use "
-        "'sm.query.sparse_unordered_with_dups.reader' with value of "
-        "'refactored' or 'legacy'");
-  } else {
-    const std::string& val =
-        config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
-    assert(found);
-    use_refactored_reader = val == "refactored";
-  }
+  const std::string& val =
+      config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
+  assert(found);
+  use_refactored_reader = val == "refactored";
 
   return use_refactored_reader && !array_schema.dense() &&
          layout == Layout::UNORDERED && array_schema.allows_dups();
 }
 
-tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
-  return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
+bool Query::non_overlapping_ranges() {
+  return subarray_.non_overlapping_ranges(&resources_.compute_tp());
 }
 
 bool Query::is_dense() const {
@@ -1764,6 +1763,22 @@ bool Query::is_aggregate(std::string output_field_name) const {
 /* ****************************** */
 
 Status Query::create_strategy(bool skip_checks_serialization) {
+  auto params = StrategyParams(
+      resources_,
+      array_->memory_tracker(),
+      query_memory_tracker_,
+      local_state_machine_,
+      cancellation_source_,
+      opened_array_,
+      config_,
+      memory_budget_,
+      buffers_,
+      aggregate_buffers_,
+      subarray_,
+      layout_,
+      condition_,
+      default_channel_aggregates_,
+      skip_checks_serialization);
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       if (!array_schema_->dense()) {
@@ -1775,17 +1790,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           OrderedWriter,
           stats_->create_child("Writer"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
+          params,
           written_fragment_info_,
           coords_info_,
           remote_query_,
-          fragment_name_,
-          skip_checks_serialization));
+          fragment_name_));
     } else if (layout_ == Layout::UNORDERED) {
       if (array_schema_->dense()) {
         return Status_QueryError(
@@ -1796,37 +1805,25 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           UnorderedWriter,
           stats_->create_child("Writer"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
+          params,
           written_fragment_info_,
           coords_info_,
           written_buffers_,
           remote_query_,
-          fragment_name_,
-          skip_checks_serialization));
+          fragment_name_));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           GlobalOrderWriter,
           stats_->create_child("Writer"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
+          params,
           fragment_size_,
           written_fragment_info_,
           disable_checks_consolidation_,
           processed_conditions_,
           coords_info_,
           remote_query_,
-          fragment_name_,
-          skip_checks_serialization));
+          fragment_name_));
     } else {
       return Status_QueryError(
           "Cannot create strategy; unsupported layout " + layout_str(layout_));
@@ -1837,132 +1834,75 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       all_dense &= frag_md->dense();
     }
 
+    // We are going to deprecate dense arrays with sparse fragments in 2.27 but
+    // log a warning for now.
+    if (array_schema_->dense() && !all_dense) {
+      LOG_WARN(
+          "This dense array contains sparse fragments. Support for reading "
+          "sparse fragments in dense arrays will be removed in TileDB version "
+          "2.27 to be released in September 2024. To make sure this array "
+          "continues to work after an upgrade to version 2.27 or later, please "
+          "consolidate the sparse fragments using a TileDB version 2.26 or "
+          "earlier.");
+    }
+
     if (is_dimension_label_ordered_read_) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedDimLabelReader,
           stats_->create_child("Reader"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          aggregate_buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          default_channel_aggregates_,
-          dimension_label_increasing_,
-          skip_checks_serialization));
+          params,
+          dimension_label_increasing_));
     } else if (use_refactored_sparse_unordered_with_dups_reader(
                    layout_, *array_schema_)) {
-      auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
-      RETURN_NOT_OK(st);
-
-      if (*non_overlapping_ranges || !subarray_.is_set() ||
+      if (Query::non_overlapping_ranges() || !subarray_.is_set() ||
           subarray_.range_num() == 1) {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint8_t>,
             stats_->create_child("Reader"),
             logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            aggregate_buffers_,
-            subarray_,
-            layout_,
-            condition_,
-            default_channel_aggregates_,
-            skip_checks_serialization));
+            params));
       } else {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint64_t>,
             stats_->create_child("Reader"),
             logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            aggregate_buffers_,
-            subarray_,
-            layout_,
-            condition_,
-            default_channel_aggregates_,
-            skip_checks_serialization));
+            params));
       }
     } else if (
         use_refactored_sparse_global_order_reader(layout_, *array_schema_) &&
         !array_schema_->dense() &&
         (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
-      auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
-      RETURN_NOT_OK(st);
-
-      if (*non_overlapping_ranges || !subarray_.is_set() ||
+      if (Query::non_overlapping_ranges() || !subarray_.is_set() ||
           subarray_.range_num() == 1) {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseGlobalOrderReader<uint8_t>,
             stats_->create_child("Reader"),
             logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            aggregate_buffers_,
-            subarray_,
-            layout_,
-            condition_,
-            default_channel_aggregates_,
-            consolidation_with_timestamps_,
-            skip_checks_serialization));
+            params,
+            consolidation_with_timestamps_));
       } else {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseGlobalOrderReader<uint64_t>,
             stats_->create_child("Reader"),
             logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            aggregate_buffers_,
-            subarray_,
-            layout_,
-            condition_,
-            default_channel_aggregates_,
-            consolidation_with_timestamps_,
-            skip_checks_serialization));
+            params,
+            consolidation_with_timestamps_));
       }
     } else if (use_refactored_dense_reader(*array_schema_, all_dense)) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           DenseReader,
           stats_->create_child("Reader"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          aggregate_buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          default_channel_aggregates_,
-          skip_checks_serialization,
+          params,
           remote_query_));
     } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
           stats_->create_child("Reader"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          aggregate_buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          default_channel_aggregates_,
-          skip_checks_serialization,
+          params,
           remote_query_));
     }
   } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
@@ -1970,15 +1910,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         DeletesAndUpdates,
         stats_->create_child("Deletes"),
         logger_,
-        storage_manager_,
-        array_,
-        config_,
-        buffers_,
-        subarray_,
-        layout_,
-        condition_,
-        update_values_,
-        skip_checks_serialization));
+        params,
+        update_values_));
   } else {
     return logger_->status(
         Status_QueryError("Cannot create strategy; unsupported query type"));
@@ -2059,7 +1992,7 @@ Status Query::check_buffer_names() {
       for (unsigned d = 0; d < array_schema_->dim_num(); d++) {
         auto dim = array_schema_->dimension_ptr(d);
         if (buffers_.count(dim->name()) == 0) {
-          throw QueryStatusException(
+          throw QueryException(
               "[check_buffer_names] Dimension buffer " + dim->name() +
               " is not set");
         }
@@ -2182,16 +2115,14 @@ void Query::reset_coords_markers() {
 }
 
 void Query::copy_aggregates_data_to_user_buffer() {
-  if (array_->is_remote() && !default_channel_aggregates_.empty()) {
-    throw QueryStatusException(
-        "Cannot submit query; Query aggregates are not supported in REST yet");
-  }
-
   for (auto& default_channel_aggregate : default_channel_aggregates_) {
     default_channel_aggregate.second->copy_to_user_buffer(
         default_channel_aggregate.first, aggregate_buffers_);
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+RestClient* Query::rest_client() const {
+  return resources_.rest_client().get();
+}
+
+}  // namespace tiledb::sm

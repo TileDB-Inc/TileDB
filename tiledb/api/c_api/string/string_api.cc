@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@
 namespace tiledb::api {
 
 capi_return_t tiledb_string_view(
-    tiledb_string_t* s, const char** data, size_t* length) {
+    tiledb_string_handle_t* s, const char** data, size_t* length) {
   ensure_string_is_valid(s);
   ensure_output_pointer_is_valid(data);
   ensure_output_pointer_is_valid(length);
@@ -56,12 +56,12 @@ capi_return_t tiledb_string_free(tiledb_string_handle_t** s) {
 
 }  // namespace tiledb::api
 
-capi_return_t tiledb_string_view(
-    tiledb_string_t* s, const char** data, size_t* length) noexcept {
+CAPI_INTERFACE(
+    string_view, tiledb_string_handle_t* s, const char** data, size_t* length) {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_string_view>(
       s, data, length);
 }
 
-capi_return_t tiledb_string_free(tiledb_string_handle_t** s) noexcept {
+CAPI_INTERFACE(string_free, tiledb_string_handle_t** s) {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_string_free>(s);
 }

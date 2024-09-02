@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,8 +32,8 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
 #include <vector>
@@ -44,10 +44,6 @@ using namespace tiledb::test;
 
 class NullableArrayCppFx {
  public:
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-
   template <typename T>
   struct test_dim_t {
     test_dim_t(
@@ -113,12 +109,6 @@ class NullableArrayCppFx {
     vector<uint8_t>* validity_bytemap_;
   };
 
-  /** Constructor. */
-  NullableArrayCppFx();
-
-  /** Destructor. */
-  ~NullableArrayCppFx();
-
   /**
    * Creates, writes, and reads nullable attributes.
    *
@@ -139,19 +129,6 @@ class NullableArrayCppFx {
  private:
   /** The C++ API context object. */
   Context ctx_;
-
-  /** The C++ API VFS object. */
-  VFS vfs_;
-
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
-  /**
-   * Removes a directory using `vfs_`.
-   *
-   * @param path The directory path.
-   */
-  void remove_dir(const string& path);
 
   /**
    * Creates a TileDB array.
@@ -199,18 +176,6 @@ class NullableArrayCppFx {
       const vector<uint64_t>& subarray);
 };
 
-NullableArrayCppFx::NullableArrayCppFx()
-    : vfs_(ctx_) {
-}
-
-NullableArrayCppFx::~NullableArrayCppFx() {
-}
-
-void NullableArrayCppFx::remove_dir(const string& path) {
-  if (vfs_.is_dir(path))
-    vfs_.remove_dir(path);
-}
-
 template <typename DIM_T, typename ATTR_T>
 void NullableArrayCppFx::create_array(
     const string& array_name,
@@ -219,8 +184,6 @@ void NullableArrayCppFx::create_array(
     const vector<test_attr_t<ATTR_T>>& test_attrs,
     const tiledb_layout_t cell_order,
     const tiledb_layout_t tile_order) {
-  remove_dir(array_name);
-
   // Create the domain.
   Domain domain(ctx_);
 
@@ -298,14 +261,11 @@ void NullableArrayCppFx::write(
   }
 
   // Submit query
-  auto rc = submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
-  REQUIRE(rc == TILEDB_OK);
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query.submit_and_finalize();
+  } else {
+    query.submit();
+  }
 
   // Clean up
   array.close();
@@ -353,7 +313,9 @@ void NullableArrayCppFx::read(
   }
 
   // Set the subarray to read.
-  query.set_subarray(subarray);
+  Subarray sub(ctx_, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub);
 
   // Submit the query.
   REQUIRE(query.submit() == Query::Status::COMPLETE);
@@ -372,7 +334,9 @@ void NullableArrayCppFx::do_2d_nullable_test(
     const tiledb_layout_t cell_order,
     const tiledb_layout_t tile_order,
     const tiledb_layout_t write_order) {
-  const string array_name = "cpp_2d_nullable_array";
+  VFSTestSetup vfs_test_setup{};
+  ctx_ = vfs_test_setup.ctx();
+  auto array_name{vfs_test_setup.array_uri("cpp_2d_nullable_array")};
 
   // Skip row-major and col-major writes for sparse arrays.
   if (array_type == TILEDB_SPARSE &&
@@ -552,29 +516,16 @@ void NullableArrayCppFx::do_2d_nullable_test(
         expected_a3_read_buffer_validity.data(),
         a3_read_buffer_validity.size()));
   }
-
-  remove_dir(array_name);
 }
 
 TEST_CASE_METHOD(
     NullableArrayCppFx,
     "C++ API: Test 2D array with nullable attributes",
-    "[cppapi][2d][nullable]") {
+    "[cppapi][2d][nullable][rest]") {
   vector<test_attr_t<uint64_t>> attrs;
   attrs.emplace_back("a1", false /* var */, true /* nullable */);
   attrs.emplace_back("a2", false /* var */, true /* nullable */);
   attrs.emplace_back("a3", true /* var */, true /* nullable */);
-
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-  SECTION("serialization enabled global order write") {
-#ifdef TILEDB_SERIALIZATION
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-#endif
-  }
-
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t<uint64_t>> test_attrs(attrs.begin(), attr_iter + 1);
     for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {

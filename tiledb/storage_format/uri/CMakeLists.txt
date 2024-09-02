@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,5 +31,7 @@ include(object_library)
 #
 commence(object_library uri_format)
     this_target_sources(parse_uri.cc generate_uri.cc)
-    this_target_object_libraries(baseline time uuid vfs)
+    this_target_object_libraries(baseline fragment_identifier time vfs)
 conclude(object_library)
+
+add_test_subdirectory()

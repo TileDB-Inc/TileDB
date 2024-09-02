@@ -1,5 +1,5 @@
 /**
- * @file   unit-capi-empty-var-length.cc
+ * @file   unit-empty-var-length.cc
  *
  * @section LICENSE
  *
@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
@@ -39,6 +40,7 @@
 #include <iostream>
 
 using namespace tiledb::test;
+using namespace tiledb;
 
 float buffer_a1[4] = {0.0f, 0.1f, 0.2f, 0.3f};
 int32_t buffer_a4[4] = {1, 2, 3, 4};
@@ -59,30 +61,25 @@ uint64_t UTF8_OFFSET_4_FOR_EMPTY =
     sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
 
 struct StringEmptyFx {
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
+  VFSTestSetup vfs_test_setup_;
+  tiledb_ctx_t* ctx;
+  StringEmptyFx();
   void create_array(const std::string& array_name);
-  void delete_array(const std::string& array_name);
   void read_array(const std::string& array_name);
   void write_array(const std::string& array_name);
 };
 
+StringEmptyFx::StringEmptyFx()
+    : ctx(vfs_test_setup_.ctx_c) {
+}
+
 // Create a simple dense 1D array with three string attributes
 void StringEmptyFx::create_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
   // Create dimensions
   uint64_t dim_domain[] = {1, 8};
   uint64_t tile_extent = 2;
   tiledb_dimension_t* d1;
-  rc = tiledb_dimension_alloc(
+  int rc = tiledb_dimension_alloc(
       ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extent, &d1);
   REQUIRE(rc == TILEDB_OK);
 
@@ -162,15 +159,9 @@ void StringEmptyFx::create_array(const std::string& array_name) {
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-  tiledb_ctx_free(&ctx);
 }
 
 void StringEmptyFx::write_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
   // Prepare buffers
   uint64_t buffer_a1_size = sizeof(buffer_a1);
   uint64_t buffer_a1_offsets[] = {
@@ -227,7 +218,7 @@ void StringEmptyFx::write_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -267,13 +258,7 @@ void StringEmptyFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -283,26 +268,21 @@ void StringEmptyFx::write_array(const std::string& array_name) {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
   std::free(buffer_a2);
   std::free(buffer_a3);
 }
 
 void StringEmptyFx::read_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
@@ -310,8 +290,13 @@ void StringEmptyFx::read_array(const std::string& array_name) {
 
   // Set subarray
   uint64_t subarray[] = {1, 5};
-  rc = tiledb_query_set_subarray(ctx, query, subarray);
-  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_alloc(ctx, array, &sub);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Set buffer
   uint64_t buffer_d1_size = 1024;
@@ -395,13 +380,7 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -446,7 +425,6 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
   std::free(buffer_d1);
   std::free(buffer_a1_off);
   std::free(buffer_a1_val);
@@ -458,51 +436,23 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   std::free(buffer_a4_val);
 }
 
-void StringEmptyFx::delete_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Remove array
-  tiledb_object_t type;
-  rc = tiledb_object_type(ctx, array_name.c_str(), &type);
-  REQUIRE(rc == TILEDB_OK);
-  if (type == TILEDB_ARRAY) {
-    rc = tiledb_object_remove(ctx, array_name.c_str());
-    REQUIRE(rc == TILEDB_OK);
-  }
-
-  // Clean up
-  tiledb_ctx_free(&ctx);
-}
-
 TEST_CASE_METHOD(
-    StringEmptyFx, "C API: Test empty support", "[capi][empty-var-length]") {
-  std::string array_name = "empty_string";
-
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  delete_array(array_name);
+    StringEmptyFx,
+    "C API: Test empty support",
+    "[capi][empty-var-length][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("empty_string");
   create_array(array_name);
   write_array(array_name);
   read_array(array_name);
-  delete_array(array_name);
 }
 
 struct StringEmptyFx2 {
+  VFSTestSetup vfs_test_setup_;
+  Context ctx;
+  StringEmptyFx2();
   void create_array(const std::string& array_name);
   void write_array(const std::string& array_name);
   void read_array(const std::string& array_name);
-  void delete_array(const std::string& array_name);
 
   std::vector<uint64_t> offsets = {
       0, 4, 8, 11, 13, 14, 14, 17, 21, 24, 24, 24, 27, 32, 35, 38};
@@ -513,10 +463,10 @@ struct StringEmptyFx2 {
       '$',    'e', '1',    '\x17', ' ',    '1', '\x14', '('};
 };
 
-void StringEmptyFx2::create_array(const std::string& array_name) {
-  using namespace tiledb;
-  Context ctx;
+StringEmptyFx2::StringEmptyFx2()
+    : ctx(vfs_test_setup_.ctx()){};
 
+void StringEmptyFx2::create_array(const std::string& array_name) {
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<uint64_t>(ctx, "__dim_0", {0, 3}, 1));
   domain.add_dimension(Dimension::create<uint64_t>(ctx, "__dim_1", {0, 3}, 1));
@@ -528,19 +478,10 @@ void StringEmptyFx2::create_array(const std::string& array_name) {
   attr.set_cell_val_num(TILEDB_VAR_NUM);
   schema.add_attribute(attr);
 
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
   Array::create(array_name, schema);
 }
 
 void StringEmptyFx2::write_array(const std::string& array_name) {
-  using namespace tiledb;
-
-  auto cfg = tiledb::Config();
-  auto ctx = tiledb::Context(cfg);
-
   auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
 
   Query query(ctx, array, TILEDB_WRITE);
@@ -555,11 +496,6 @@ void StringEmptyFx2::write_array(const std::string& array_name) {
 }
 
 void StringEmptyFx2::read_array(const std::string& array_name) {
-  using namespace tiledb;
-
-  auto cfg = tiledb::Config();
-  auto ctx = tiledb::Context(cfg);
-
   std::vector<uint64_t> r_offsets(16);
   std::vector<char> r_data(38);
 
@@ -568,8 +504,10 @@ void StringEmptyFx2::read_array(const std::string& array_name) {
   query.set_data_buffer("", r_data);
   query.set_offsets_buffer("", r_offsets);
 
-  query.add_range(0, (uint64_t)0, (uint64_t)3);
-  query.add_range(1, (uint64_t)0, (uint64_t)3);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, (uint64_t)0, (uint64_t)3);
+  subarray.add_range(1, (uint64_t)0, (uint64_t)3);
+  query.set_subarray(subarray);
 
   query.submit();
 
@@ -577,47 +515,36 @@ void StringEmptyFx2::read_array(const std::string& array_name) {
   REQUIRE(r_data == StringEmptyFx2::data);
 }
 
-void StringEmptyFx2::delete_array(const std::string& array_name) {
-  using namespace tiledb;
-
-  auto cfg = tiledb::Config();
-  auto ctx = tiledb::Context(cfg);
-
-  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
-    Object::remove(ctx, array_name);
-  }
-}
-
 TEST_CASE_METHOD(
     StringEmptyFx2,
     "C++ API: Test empty support",
-    "[cppapi][empty-var-length]") {
-  std::string array_name = "empty_string2";
-  delete_array(array_name);
+    "[cppapi][empty-var-length][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("empty_string2");
   create_array(array_name);
   write_array(array_name);
   read_array(array_name);
-  delete_array(array_name);
 }
 
 struct StringEmptyFx3 {
+  VFSTestSetup vfs_test_setup_;
+  Context ctx;
+  StringEmptyFx3();
   std::vector<uint64_t> offsets = {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   std::vector<char> data = {'\0'};
 };
 
+StringEmptyFx3::StringEmptyFx3()
+    : ctx(vfs_test_setup_.ctx()){};
+
 TEST_CASE_METHOD(
     StringEmptyFx3,
     "C++ API: Test var-length string only empty",
-    "[cppapi][empty-var-length]") {
-  using namespace tiledb;
-
-  std::string array_name = "empty_string3";
+    "[cppapi][empty-var-length][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("empty_string3");
 
   // create
   {
-    Context ctx;
-
     Domain domain(ctx);
     domain.add_dimension(
         Dimension::create<uint64_t>(ctx, "__dim_0", {0, 3}, 1));
@@ -631,18 +558,11 @@ TEST_CASE_METHOD(
     attr.set_cell_val_num(TILEDB_VAR_NUM);
     schema.add_attribute(attr);
 
-    VFS vfs(ctx);
-    if (vfs.is_dir(array_name)) {
-      vfs.remove_dir(array_name);
-    }
     Array::create(array_name, schema);
   }
 
   // write
   {
-    auto cfg = tiledb::Config();
-    auto ctx = tiledb::Context(cfg);
-
     auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
 
     Query query(ctx, array, TILEDB_WRITE);
@@ -656,9 +576,6 @@ TEST_CASE_METHOD(
 
   // read whole array
   {
-    auto cfg = tiledb::Config();
-    auto ctx = tiledb::Context(cfg);
-
     std::vector<uint64_t> r_offsets(16);
     std::vector<char> r_data(16);
 
@@ -667,8 +584,10 @@ TEST_CASE_METHOD(
     query.set_data_buffer("", r_data);
     query.set_offsets_buffer("", r_offsets);
 
-    query.add_range(0, (uint64_t)0, (uint64_t)3);
-    query.add_range(1, (uint64_t)0, (uint64_t)3);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, (uint64_t)0, (uint64_t)3);
+    subarray.add_range(1, (uint64_t)0, (uint64_t)3);
+    query.set_subarray(subarray);
 
     query.submit();
 
@@ -684,9 +603,6 @@ TEST_CASE_METHOD(
   // 0s and the data buffer is empty in this case because all of
   // the queried cells are empty.
   {
-    auto cfg = tiledb::Config();
-    auto ctx = tiledb::Context(cfg);
-
     std::vector<uint64_t> r_offsets(4);
     std::vector<char> r_data(4);
 
@@ -695,8 +611,10 @@ TEST_CASE_METHOD(
     query.set_data_buffer("", r_data);
     query.set_offsets_buffer("", r_offsets);
 
-    query.add_range(0, (uint64_t)0, (uint64_t)1);
-    query.add_range(1, (uint64_t)1, (uint64_t)2);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, (uint64_t)0, (uint64_t)1);
+    subarray.add_range(1, (uint64_t)1, (uint64_t)2);
+    query.set_subarray(subarray);
 
     query.submit();
 
@@ -708,10 +626,5 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> q2_result_offsets = {0, 0, 0, 0};
     REQUIRE(r_offsets == q2_result_offsets);
     REQUIRE(r_data[0] == StringEmptyFx3::data[0]);
-  }
-
-  Context ctx;
-  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
-    Object::remove(ctx, array_name);
   }
 }

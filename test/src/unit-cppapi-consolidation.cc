@@ -63,7 +63,9 @@ void write_array(
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray(subarray);
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub);
   query.set_data_buffer("a", values);
   query.submit();
   array.close();
@@ -77,7 +79,9 @@ void read_array(
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray(subarray);
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub);
   std::vector<int> values(10);
   query.set_data_buffer("a", values);
   query.submit();
@@ -120,7 +124,11 @@ TEST_CASE(
   remove_array(array_name);
 
   // Create array
-  Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.mem.consolidation.buffers_weight"] = "1";
+  cfg["sm.mem.consolidation.reader_weight"] = "5000";
+  cfg["sm.mem.consolidation.writer_weight"] = "5000";
+  Context ctx(cfg);
   Domain domain(ctx);
   auto d = Dimension::create<int>(ctx, "d1", {{10, 110}}, 50);
   domain.add_dimensions(d);
@@ -196,6 +204,44 @@ TEST_CASE(
   Config config;
   config["sm.consolidation.buffer_size"] = "4";
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
+  CHECK(tiledb::test::num_fragments(array_name) == 3);
+
+  read_array(array_name, {1, 3}, {1, 2, 3});
+
+  remove_array(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Test consolidation with fragment list",
+    "[cppapi][consolidation]") {
+  std::string array_name = "cppapi_consolidation";
+  remove_array(array_name);
+
+  create_array(array_name);
+  write_array(array_name, {1, 2}, {1, 2});
+  write_array(array_name, {3, 3}, {3});
+  CHECK(tiledb::test::num_fragments(array_name) == 2);
+
+  read_array(array_name, {1, 3}, {1, 2, 3});
+
+  Context ctx;
+  Config config;
+  config.set("sm.consolidation.buffer_size", "1000");
+
+  FragmentInfo fragment_info(ctx, array_name);
+  fragment_info.load();
+  std::string fragment_name1 = fragment_info.fragment_uri(0);
+  std::string fragment_name2 = fragment_info.fragment_uri(1);
+  std::string short_fragment_name1 =
+      fragment_name1.substr(fragment_name1.find_last_of('/') + 1);
+  std::string short_fragment_name2 =
+      fragment_name2.substr(fragment_name2.find_last_of('/') + 1);
+
+  const char* fragment_uris[2] = {
+      short_fragment_name1.c_str(), short_fragment_name2.c_str()};
+
+  REQUIRE_NOTHROW(
+      Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
   CHECK(tiledb::test::num_fragments(array_name) == 3);
 
   read_array(array_name, {1, 3}, {1, 2, 3});

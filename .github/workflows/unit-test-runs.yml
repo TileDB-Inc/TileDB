@@ -3,14 +3,6 @@ on:
   workflow_call:
 
 env:
-  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_ASSERTIONS: ON
-  TILEDB_S3: OFF
-  TILEDB_AZURE: OFF
-  TILEDB_GCS: OFF
-  TILEDB_SERIALIZATION: ON
-  TILEDB_STATIC: ON
-  TILEDB_TOOLS: ON
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
 jobs:
@@ -18,15 +10,41 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
       fail-fast: false
     name: Build - ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v3
 
       - name: 'Homebrew setup'
-        run: brew install pkg-config
-        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+        run: brew install automake pkg-config
+        if: ${{ startsWith(matrix.os, 'macos-') }}
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
+
+      # Need this for virtualenv and arrow tests if enabled
+      - name: 'Install Python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: 'Set up Python dependencies'
+        run: |
+          set -e pipefail
+          python -m pip install --upgrade pip virtualenv
+          pip install pyarrow pybind11[global] numpy
+
+      - name: Setup MSVC toolset
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+        with:
+          arch: x64
 
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
@@ -46,29 +64,25 @@ jobs:
           echo "uname -v: " $(uname -v)
           printenv
         shell: bash
+        if: ${{ !startsWith(matrix.os, 'windows-') }}
 
-      - name: 'Build and run standalone unit tests'
-        id: test
+      - name: 'Build standalone unit tests'
         run: |
-
-          mkdir -p $GITHUB_WORKSPACE/build
-          pushd $GITHUB_WORKSPACE/build
-
-          cmake .. \
-            -DTILEDB_AZURE=${TILEDB_AZURE}\
-            -DTILEDB_GCS=${TILEDB_GCS} \
-            -DTILEDB_S3=${TILEDB_S3} \
-            -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION} \
-            -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS} \
-            -DTILEDB_STATIC=${TILEDB_STATIC}
-          make -j4
+          cmake -S . \
+            -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DTILEDB_SERIALIZATION=ON \
+            -DTILEDB_ASSERTIONS=ON \
+            -DTILEDB_ARROW_TESTS=ON
           # Build all unit tests
-          make -C tiledb tests -j4
-          # Run all unit tests
-          make -C tiledb test ARGS="-R '^unit_'" -R "test_assert"
-          make -C tiledb test ARGS="-R 'test_ci_asserts'"
+          cmake --build build --target tests -j4
 
-          popd
+      - name: 'Run standalone unit tests'
+        run: |
+          ctest --test-dir build -R '(^unit_|test_assert)' --no-tests=error
+          ctest --test-dir build -R 'test_ci_asserts'
+
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh

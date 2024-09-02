@@ -26,5 +26,6 @@
 
 include(common)
 
+add_subdirectory(cpp_string)
 add_subdirectory(exception_wrapper)
 add_subdirectory(handle)

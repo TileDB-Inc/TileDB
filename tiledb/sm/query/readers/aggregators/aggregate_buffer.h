@@ -91,14 +91,9 @@ class AggregateBuffer {
     return bitmap_data_.has_value();
   }
 
-  /** Returns the min cell position to aggregate. */
-  uint64_t min_cell() const {
-    return min_cell_;
-  }
-
-  /** Returns the max cell position to aggregate. */
-  uint64_t max_cell() const {
-    return max_cell_;
+  /** Returns the number of cells to aggregate. */
+  uint64_t size() const {
+    return max_cell_ - min_cell_;
   }
 
   /**
@@ -111,7 +106,8 @@ class AggregateBuffer {
    * @return Value.
    */
   template <typename T>
-  inline T value_at(const uint64_t cell_idx) const {
+  inline T value_at(uint64_t cell_idx) const {
+    cell_idx += min_cell_;
     if constexpr (std::is_same_v<T, std::string_view>) {
       if (var_data_.has_value()) {
         auto offsets = static_cast<const uint64_t*>(fixed_data_);
@@ -138,7 +134,7 @@ class AggregateBuffer {
    * @return Validity value.
    */
   inline uint8_t validity_at(const uint64_t cell_idx) const {
-    return validity_data_.value()[cell_idx];
+    return validity_data_.value()[cell_idx + min_cell_];
   }
 
   /**
@@ -150,7 +146,7 @@ class AggregateBuffer {
    */
   template <class BitmapType>
   inline BitmapType bitmap_at(const uint64_t cell_idx) const {
-    return static_cast<BitmapType*>(bitmap_data_.value())[cell_idx];
+    return static_cast<BitmapType*>(bitmap_data_.value())[cell_idx + min_cell_];
   }
 
  private:

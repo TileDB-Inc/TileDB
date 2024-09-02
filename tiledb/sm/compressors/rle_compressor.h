@@ -34,7 +34,6 @@
 #define TILEDB_RLE_COMPRESSOR_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/endian.h"
 
@@ -59,9 +58,8 @@ class RLE {
    * @param value_size The size of a single value.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the compressed data to.
-   * @return Status
    */
-  static Status compress(
+  static void compress(
       uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
@@ -70,9 +68,8 @@ class RLE {
    * @param value_size The size of a single.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the decompressed data.
-   * @return Status
    */
-  static Status decompress(
+  static void decompress(
       uint64_t value_size,
       ConstBuffer* input_buffer,
       PreallocatedBuffer* output_buffer);
@@ -205,7 +202,7 @@ class RLE {
    * length|string_size|string] items. Memory is allocated and owned by the
    * caller
    */
-  static Status compress(
+  static void compress(
       const span<std::string_view> input,
       uint64_t rle_len_size,
       uint64_t string_len_size,
@@ -222,7 +219,7 @@ class RLE {
    * @param output_offsets Output offsets reconstructed from input
    * Memory is allocated and owned by the caller
    */
-  static Status decompress(
+  static void decompress(
       const span<const std::byte> input,
       const uint8_t rle_len_size,
       const uint8_t string_len_size,

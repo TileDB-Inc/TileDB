@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2023-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,28 +25,19 @@
 #
 
 include(common NO_POLICY_SCOPE)
-find_package(Catch_EP REQUIRED)
+include(unit_test)
 
-# #TODO: link only against a new CAPI array handle, not all core objects
-add_executable(
-    unit_capi_array EXCLUDE_FROM_ALL
-    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-)
+find_package(Catch2 REQUIRED)
 
-target_link_libraries(unit_capi_array
-  PUBLIC
-    Catch2::Catch2WithMain
-    export
-    TILEDB_CORE_OBJECTS_ILIB
-)
+# Maturity
+#
+# This unit links against the whole library out of necessity. There's not
+# yet a _complete_ `array` C API handle object library. 
+#
+commence(unit_test capi_array)
+  this_target_sources(unit_capi_array.cc)
+  this_target_link_libraries(export
+      TILEDB_CORE_OBJECTS_ILIB
+      TILEDB_CORE_OBJECTS)
+conclude(unit_test)
 
-# Sources for tests
-target_sources(unit_capi_array PUBLIC  
-    unit_capi_array.cc
-)
-
-add_test(
-    NAME "unit_capi_array"
-    COMMAND $<TARGET_FILE:unit_capi_array>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)

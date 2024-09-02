@@ -121,45 +121,49 @@ capi_return_t tiledb_buffer_list_flatten(
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 
-capi_return_t tiledb_buffer_list_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) noexcept {
+CAPI_INTERFACE(
+    buffer_list_alloc, tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
   return api_entry_context<tiledb::api::tiledb_buffer_list_alloc>(
       ctx, buffer_list);
 }
 
-void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) noexcept {
+CAPI_INTERFACE_VOID(buffer_list_free, tiledb_buffer_list_t** buffer_list) {
   return api_entry_void<tiledb::api::tiledb_buffer_list_free>(buffer_list);
 }
 
-capi_return_t tiledb_buffer_list_get_num_buffers(
+CAPI_INTERFACE(
+    buffer_list_get_num_buffers,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers) noexcept {
+    uint64_t* num_buffers) {
   return api_entry_context<tiledb::api::tiledb_buffer_list_get_num_buffers>(
       ctx, buffer_list, num_buffers);
 }
 
-capi_return_t tiledb_buffer_list_get_buffer(
+CAPI_INTERFACE(
+    buffer_list_get_buffer,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
     uint64_t buffer_idx,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry_context<tiledb::api::tiledb_buffer_list_get_buffer>(
       ctx, buffer_list, buffer_idx, buffer);
 }
 
-capi_return_t tiledb_buffer_list_get_total_size(
+CAPI_INTERFACE(
+    buffer_list_get_total_size,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size) noexcept {
+    uint64_t* total_size) {
   return api_entry_context<tiledb::api::tiledb_buffer_list_get_total_size>(
       ctx, buffer_list, total_size);
 }
 
-capi_return_t tiledb_buffer_list_flatten(
+CAPI_INTERFACE(
+    buffer_list_flatten,
     tiledb_ctx_t* ctx,
     tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry_context<tiledb::api::tiledb_buffer_list_flatten>(
       ctx, buffer_list, buffer);
 }

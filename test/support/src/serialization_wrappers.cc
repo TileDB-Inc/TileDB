@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -141,7 +142,13 @@ int array_serialize_wrapper(
   REQUIRE(rc == TILEDB_OK);
 
   // Load array from the rest server
-  rc = tiledb_deserialize_array(ctx, buff, serialize_type, 0, new_array);
+  rc = tiledb_deserialize_array(
+      ctx,
+      buff,
+      serialize_type,
+      0,
+      array->array_->array_uri().c_str(),
+      new_array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up.
@@ -200,7 +207,7 @@ void tiledb_subarray_serialize(
   tiledb_array_schema_t* array_schema = nullptr;
   tiledb_array_get_schema(ctx, array, &array_schema);
   REQUIRE(tiledb::sm::serialization::subarray_to_capnp(
-              *(array_schema->array_schema_), (*subarray)->subarray_, &builder)
+              *(array_schema->array_schema()), (*subarray)->subarray_, &builder)
               .ok());
   // Deserialize
   tiledb_subarray_t* deserialized_subarray;

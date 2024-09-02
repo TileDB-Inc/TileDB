@@ -41,9 +41,12 @@
 
 #include "tiledb/common/status.h"
 
-#include "hadoop/hdfs.h"
-
 using namespace tiledb::common;
+
+// Declarations copied from hadoop/hdfs.h
+// We do not include it here to avoid leaking it to consuming code.
+struct hdfs_internal;
+typedef struct hdfs_internal* hdfsFS;
 
 namespace tiledb {
 

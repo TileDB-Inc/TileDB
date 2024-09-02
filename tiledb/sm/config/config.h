@@ -61,12 +61,20 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class WhiteboxConfig;
+
 /**
  * This class manages the TileDB configuration options.
  * It is implemented as a simple map from string to string.
  * Parsing to appropriate types happens on demand.
  */
 class Config {
+  friend class ConfigIter;
+  /**
+   * WhiteboxConfig makes available internals of Config for testing.
+   */
+  friend class WhiteboxConfig;
+
  public:
   /* ****************************** */
   /*        CONFIG DEFAULTS         */
@@ -117,6 +125,9 @@ class Config {
   /** Refactored query submit is disabled by default */
   static const std::string REST_USE_REFACTORED_QUERY_SUBMIT;
 
+  /** The namespace that should be charged for the request. */
+  static const std::string REST_PAYER_NAMESPACE;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
@@ -129,9 +140,6 @@ class Config {
 
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
-
-  /** Allow aggregates API or not. */
-  static const std::string SM_ALLOW_AGGREGATES_EXPERIMENTAL;
 
   /** Allow separate attribute writes or not. */
   static const std::string SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES;
@@ -221,6 +229,15 @@ class Config {
 
   /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;
+
+  /** Weight for consolidation buffers used to split total budget. */
+  static const std::string SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT;
+
+  /** Weight for consolidation read query used to split total budget. */
+  static const std::string SM_MEM_CONSOLIDATION_READER_WEIGHT;
+
+  /** Weight for consolidation write query used to split total budget. */
+  static const std::string SM_MEM_CONSOLIDATION_WRITER_WEIGHT;
 
   /** Ratio of the sparse global order reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
@@ -457,6 +474,15 @@ class Config {
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;
 
+  /** GCS service account(s) to impersonate. */
+  static const std::string VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT;
+
+  /** GCS service account key JSON string. */
+  static const std::string VFS_GCS_SERVICE_ACCOUNT_KEY;
+
+  /** GCS external account credentials JSON string. */
+  static const std::string VFS_GCS_WORKLOAD_IDENTITY_CONFIGURATION;
+
   /** GCS max parallel ops. */
   static const std::string VFS_GCS_MAX_PARALLEL_OPS;
 
@@ -468,6 +494,9 @@ class Config {
 
   /** GCS request timeout in milliseconds. */
   static const std::string VFS_GCS_REQUEST_TIMEOUT_MS;
+
+  /** GCS maximum buffer size for non-multipart uploads. */
+  static const std::string VFS_GCS_MAX_DIRECT_UPLOAD_SIZE;
 
   /** S3 region. */
   static const std::string VFS_S3_REGION;
@@ -535,6 +564,9 @@ class Config {
   /** The S3 KMS key id for KMS server-side-encryption. */
   static const std::string VFS_S3_SSE_KMS_KEY_ID;
 
+  /** The S3 storage class to upload objects to. */
+  static const std::string VFS_S3_STORAGE_CLASS;
+
   /** Request timeout in milliseconds. */
   static const std::string VFS_S3_REQUEST_TIMEOUT_MS;
 
@@ -564,6 +596,12 @@ class Config {
 
   /** Force making an unsigned request to s3 (false). */
   static const std::string VFS_S3_NO_SIGN_REQUEST;
+
+  /**
+   * When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
+   * signals.
+   */
+  static const std::string VFS_S3_INSTALL_SIGPIPE_HANDLER;
 
   /** HDFS default kerb ticket cache path. */
   static const std::string VFS_HDFS_KERB_TICKET_CACHE_PATH;
@@ -680,9 +718,6 @@ class Config {
   Status get_vector(
       const std::string& param, std::vector<T>* value, bool* found) const;
 
-  /** Returns the param -> value map. */
-  const std::map<std::string, std::string>& param_values() const;
-
   /** Gets the set parameters. */
   const std::set<std::string>& set_params() const;
 
@@ -696,6 +731,10 @@ class Config {
 
   /** Compares configs for equality. */
   bool operator==(const Config& rhs) const;
+
+  /** Get all config params taking into account environment variables */
+  const std::map<std::string, std::string> get_all_params_from_config_or_env()
+      const;
 
  private:
   /* ********************************* */
@@ -773,6 +812,9 @@ class Config {
 
   template <bool must_find_>
   optional<std::string> get_internal_string(const std::string& key) const;
+
+  /** Returns the param -> value map. */
+  const std::map<std::string, std::string>& param_values() const;
 };
 
 /**

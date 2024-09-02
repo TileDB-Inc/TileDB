@@ -2,22 +2,14 @@
 title: Ignore File
 ---
 
-A ignore file has name `__t1_t2_uuid_v.ign` and is located in the array commit folder:
+A ignore file has name [`<timestamped_name>`](./timestamped_name.md)`.ign` and is located in the array commit or metadata folder:
 
 ```
 my_array                           # array folder
    |_ ....
    |_ __commits                    # array commit folder
-         |___t1_t2_uuid_v.ign      # ignore file
+         |_ <timestamped_name>.ign      # ignore file
 ```
-
-or in the array metadata folder:
-
-In the file name:
-
-* `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-* `v` is the format version
 
 The ignore file is a simple text file where each line contains a URI string. The URI is the relative URI based on the top level array URI.
 

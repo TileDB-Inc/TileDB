@@ -25,15 +25,12 @@
 # THE SOFTWARE.
 #
 
-if (WIN32)
+if (MSVC)
   # Disable MSVC warnings not present with gcc.
   #   C4204: non-constant aggregate initializer
   #   C4221: aggregate initializer with local variable
   #   C4305: implicit truncation of double to float
   add_compile_options(/wd4204 /wd4221 /wd4305)
-else()
-   #TODO: Remove when KV API has been removed.
-  add_compile_options(-Wno-deprecated-declarations)
 endif()
 add_custom_target(experimental_examples)
 
@@ -41,3 +38,7 @@ if (TILEDB_CPP_API)
   add_subdirectory(cpp_api)
   add_dependencies(experimental_examples experimental_examples_cpp)
 endif()
+
+# Add alias for compatibility.
+add_custom_target(experimental-examples)
+add_dependencies(experimental-examples experimental_examples)

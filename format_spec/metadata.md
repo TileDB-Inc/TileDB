@@ -16,15 +16,10 @@ my_array                            # array folder
          |_ ...
 ```
 
-`<timestamped_name>` has format `__t1_t2_uuid_v`, where:
-
-* `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-* `v` is the format version
-
-The metadata folder can contain:
-* Any number of [metadata files](#array-metadata-file)
-* Any number of [vacuum files](./vacuum_file.md)
+The metadata folder can contain any number of [timestamped](./timestamped_name.md):
+* [metadata files](#array-metadata-file)
+* [vacuum files](./vacuum_file.md)
+* Note: the timestamped names do _not_ include the format version.
 
 ## Metadata File
 

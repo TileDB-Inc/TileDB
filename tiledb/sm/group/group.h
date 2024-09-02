@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,6 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -43,12 +42,12 @@
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+class ContextResources;
 
 class GroupDetailsException : public StatusException {
  public:
@@ -59,10 +58,24 @@ class GroupDetailsException : public StatusException {
 
 class Group {
  public:
-  Group(const URI& group_uri, StorageManager* storage_manager);
+  /**
+   * Constructs a Group object given a ContextResources reference and a uri.
+   *
+   * @param resources A ContextResources reference
+   * @param group_uri The location of the group
+   */
+  Group(ContextResources& resources, const URI& group_uri);
 
   /** Destructor. */
   ~Group() = default;
+
+  /**
+   * Creates a TileDB group.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the group to be created.
+   */
+  static void create(ContextResources& resources, const URI& uri);
 
   /** Returns the group directory object. */
   const shared_ptr<GroupDirectory> group_directory() const;
@@ -72,11 +85,10 @@ class Group {
    *
    * @param query_type The query type. This should always be READ. It
    *    is here only for sanity check.
-   * @return Status
    *
    * @note Applicable only to reads.
    */
-  Status open(QueryType query_type);
+  void open(QueryType query_type);
 
   /**
    * Opens the group.
@@ -85,28 +97,39 @@ class Group {
    * @param timestamp_start The start timestamp at which to open the group
    * @param timestamp_end The end timestamp at which to open the group
    * @param query_type The query type. This should always be READ. It
-   * @return Status
    *
    */
-  Status open(
+  void open(
       QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end);
 
+  /**
+   * Closes a group opened for reads.
+   */
+  inline void close_for_reads() {
+    // Closing a group opened for reads does nothing at present.
+  }
+
+  /**
+   * Closes a group opened for writes.
+   */
+  void close_for_writes();
+
   /** Closes the group and frees all memory. */
-  Status close();
+  void close();
 
   /**
    * Clear a group
-   *
-   * @return
    */
-  Status clear();
+  void clear();
 
   /**
-   * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
    *
-   * Note: if recursive == false, data added to the group will be left as-is.
+   * Handles local and remote deletion of data from a group with the given URI.
    *
-   * @param uri The address of the group to be deleted.
+   * @pre The group must be opened in MODIFY_EXCLUSIVE mode.
+   * @note If recursive == false, data added to the group will be left as-is.
+   *
+   * @param uri The URI of the group to be deleted.
    * @param recursive True if all data inside the group is to be deleted.
    */
   void delete_group(const URI& uri, bool recursive = false);
@@ -180,7 +203,7 @@ class Group {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the group metadata object. */
-  Status metadata(Metadata** metadata);
+  Metadata* metadata();
 
   /**
    * Retrieves the group metadata object.
@@ -193,7 +216,6 @@ class Group {
    * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* unsafe_metadata();
-  const Metadata* metadata() const;
 
   /**
    * Set metadata loaded
@@ -203,6 +225,36 @@ class Group {
    * @return void
    */
   void set_metadata_loaded(const bool metadata_loaded);
+
+  /**
+   * Consolidates the metadata of a group into a single file.
+   *
+   * @param resources The context resources.
+   * @param group_name The name of the group whose metadata will be
+   *     consolidated.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   */
+  static void consolidate_metadata(
+      ContextResources& resources,
+      const char* group_name,
+      const Config& config);
+
+  /**
+   * Vacuums the consolidated metadata files of a group.
+   *
+   * @param resources The context resources.
+   * @param group_name The name of the group whose metadata will be
+   *     vacuumed.
+   * @param config Configuration parameters for vacuuming
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   */
+  static void vacuum_metadata(
+      ContextResources& resources,
+      const char* group_name,
+      const Config& config);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -247,9 +299,8 @@ class Group {
    * @param group_member_uri group member uri
    * @param relative is this URI relative
    * @param name optional name for member
-   * @return Status
    */
-  Status mark_member_for_addition(
+  void mark_member_for_addition(
       const URI& group_member_uri,
       const bool& relative,
       std::optional<std::string>& name);
@@ -257,18 +308,11 @@ class Group {
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
-   * @param uri of member to remove
-   * @return Status
+   * @param name Name of member to remove. If the member has no name,
+   * this parameter should be set to the URI of the member. In that case, only
+   * the unnamed member with the given URI will be removed.
    */
-  Status mark_member_for_removal(const URI& uri);
-
-  /**
-   * Remove a member from a group, this will be flushed to disk on close
-   *
-   * @param uri of member to remove
-   * @return Status
-   */
-  Status mark_member_for_removal(const std::string& uri);
+  void mark_member_for_removal(const std::string& name);
 
   /**
    * Get the vector of members to modify, used in serialization only
@@ -307,23 +351,9 @@ class Group {
   /**
    * Function to generate a URL of a detail file
    *
-   * @return tuple of status and uri
+   * @return uri
    */
-  tuple<Status, optional<URI>> generate_detail_uri() const;
-
-  /**
-   * Have changes been applied to a group in write mode
-   * @return changes_applied_
-   */
-  bool changes_applied() const;
-
-  /**
-   * Set changes applied, only used in serialization
-   * @param changes_applied should changes be considered to be applied? If so
-   * then this will enable writes from a deserialized group
-   *
-   */
-  void set_changes_applied(bool changes_applied);
+  URI generate_detail_uri() const;
 
   /**
    * Get count of members
@@ -358,7 +388,7 @@ class Group {
   bool is_remote() const;
 
   /** Retrieves the query type. Errors if the group is not open. */
-  Status get_query_type(QueryType* query_type) const;
+  QueryType get_query_type() const;
 
   /**
    * Dump a string representation of a group
@@ -391,14 +421,14 @@ class Group {
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
+  /** Memory tracker for the group. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The group URI. */
   URI group_uri_;
 
   /** The group directory object for listing URIs. */
   shared_ptr<GroupDirectory> group_dir_;
-
-  /** TileDB storage manager. */
-  StorageManager* storage_manager_;
 
   /** The group config. */
   Config config_;
@@ -448,8 +478,8 @@ class Group {
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
 
-  /* Were changes applied and is a write is required */
-  bool changes_applied_;
+  /** The ContextResources class. */
+  ContextResources& resources_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -461,13 +491,37 @@ class Group {
   void load_metadata();
 
   /**
-   * Generate new name in the form of timestmap_timestamp_uuid
-   *
-   * @return tuple of status and optional string
+   * Load group metadata from disk
    */
-  tuple<Status, optional<std::string>> generate_name() const;
+  void load_metadata_from_storage(
+      const shared_ptr<GroupDirectory>& group_dir,
+      const EncryptionKey& encryption_key);
+
+  /** Opens an group for reads. */
+  void group_open_for_reads();
+
+  /**
+   * Load group details from disk
+   */
+  void load_group_details();
+
+  /**
+   * Load a group detail from URI
+   *
+   * @param uri location to load
+   */
+  void load_group_from_uri(const URI& uri);
+
+  /**
+   * Load a group detail from URIs
+   *
+   * @param uris locations to load
+   */
+  void load_group_from_all_uris(const std::vector<TimestampedURI>& uris);
+
+  /** Opens an group for writes. */
+  void group_open_for_writes();
 };
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GROUP_H

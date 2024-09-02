@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,19 +35,32 @@
 
 #ifdef HAVE_GCS
 
-#include <google/cloud/storage/client.h>
+#include <google/cloud/version.h>
 
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/curl/curl_init.h"
+#include "tiledb/sm/filesystem/ls_scanner.h"
 #include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "uri.h"
 
 using namespace tiledb::common;
+
+namespace google::cloud {
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
+class Credentials;
+class Options;
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
+namespace storage {
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
+class Client;
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
+}  // namespace storage
+}  // namespace google::cloud
 
 namespace tiledb {
 
@@ -56,6 +69,14 @@ class directory_entry;
 }
 
 namespace sm {
+
+/** Class for GCS status exceptions. */
+class GCSException : public StatusException {
+ public:
+  explicit GCSException(const std::string& msg)
+      : StatusException("GCS", msg) {
+  }
+};
 
 class GCS {
  public:
@@ -213,6 +234,32 @@ class GCS {
       int max_paths = -1) const;
 
   /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param file_filter The FilePredicate to invoke on each object for
+   * filtering.
+   * @param directory_filter The DirectoryPredicate to invoke on each common
+   * prefix for pruning. This is currently unused, but is kept here for future
+   * support.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI& uri,
+      F file_filter,
+      [[maybe_unused]] D directory_filter = accept_all_dirs,
+      bool recursive = false) const {
+    // We use the constructor of std::function that accepts an F&& to convert
+    // the generic F to a polymorphic std::function.
+    return ls_filtered_impl(uri, std::move(file_filter), recursive);
+  }
+
+  /**
    *
    * Lists objects and object information that start with `prefix`.
    *
@@ -221,8 +268,7 @@ class GCS {
    * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(
+  std::vector<filesystem::directory_entry> ls_with_sizes(
       const URI& uri,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
@@ -302,6 +348,17 @@ class GCS {
    * @return Status
    */
   Status flush_object(const URI& uri);
+
+  /**
+   * Creates a GCS credentials object.
+   *
+   * This method is intended to be used by testing code only.
+   *
+   * @param options Options to configure the credentials.
+   * @return shared pointer to credentials
+   */
+  std::shared_ptr<google::cloud::Credentials> make_credentials(
+      const google::cloud::Options& options) const;
 
  private:
   /* ********************************* */
@@ -420,8 +477,17 @@ class GCS {
   // The GCS project id.
   std::string project_id_;
 
+  // The GCS service account credentials JSON string.
+  std::string service_account_key_;
+
+  // The GCS external account credentials JSON string.
+  std::string workload_identity_configuration_;
+
+  // A comma-separated list with the GCS service accounts to impersonate.
+  std::string impersonate_service_account_;
+
   // The GCS REST client.
-  mutable google::cloud::StatusOr<google::cloud::storage::Client> client_;
+  mutable tdb_unique_ptr<google::cloud::storage::Client> client_;
 
   /** Maps a object URI to an write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
@@ -566,6 +632,33 @@ class GCS {
    * @return Status
    */
   Status is_bucket(const std::string& bucket_name, bool* const is_bucket) const;
+
+  /**
+   * Contains the implementation of ls_filtered.
+   *
+   * @section Notes
+   *
+   * The use of the non-generic std::function is necessary to keep the
+   * function's implementation in gcs.cc and avoid leaking the Google Cloud
+   * SDK headers, which would cause significant build performance regressions
+   * (see PR 4777). In the public-facing ls_filtered, we still use a generic
+   * callback which we convert.
+   *
+   * This has the consequence that the callback cannot capture variables that
+   * are not copy-constructible. It could be rectified with C++ 23's
+   * std::move_only_function, when it becomes available.
+   *
+   * @param uri The parent path to list sub-paths.
+   * @param file_filter The FilePredicate to invoke on each object for
+   * filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
+   */
+  LsObjects ls_filtered_impl(
+      const URI& uri,
+      std::function<bool(const std::string_view, uint64_t)> file_filter,
+      bool recursive) const;
 
   /**
    * Thread-safe fetch of the write cache buffer in `write_cache_map_`.

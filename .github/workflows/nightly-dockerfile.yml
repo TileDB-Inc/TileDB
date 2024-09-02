@@ -1,0 +1,41 @@
+name: Nightly-Dockerfile
+
+on:
+  schedule:
+    # runs every day at 2:50 UTC
+    - cron: "50 02 * * *"
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile:
+          - centos.dockerfile
+          - rocky.dockerfile
+    name: ${{ matrix.dockerfile }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build the Dockerfile
+        run: docker build -f examples/Dockerfile/${{ matrix.dockerfile }} -t tiledb:dev .
+
+  create_issue_on_fail:
+    permissions:
+      issues: write
+    runs-on: ubuntu-latest
+    needs: build
+    if: failure() || cancelled()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Issue if Build Fails
+        uses: TileDB-Inc/github-actions/open-issue@main
+        with:
+          name: Nightly Dev Build
+          label: CI,nightly
+          assignee: dudoslav

@@ -74,6 +74,8 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.add_attribute(a2);
     schema.add_attribute(a3);
     schema.add_attribute(a4);
+    CHECK_THROWS(schema.set_cell_order(TILEDB_UNORDERED));
+    CHECK_THROWS(schema.set_tile_order(TILEDB_UNORDERED));
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     CHECK_THROWS(schema.set_allows_dups(1));
@@ -152,6 +154,8 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.add_attribute(a2);
     schema.add_attribute(a3);
     schema.add_attribute(a4);
+    CHECK_THROWS(schema.set_cell_order(TILEDB_UNORDERED));
+    CHECK_THROWS(schema.set_tile_order(TILEDB_UNORDERED));
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     schema.set_allows_dups(true);
@@ -250,9 +254,10 @@ TEST_CASE(
   CHECK_THROWS(array.non_empty_domain<int32_t>());
   std::vector<int32_t> subarray = {1, 2, 1, 3};
 
-  // Query checks
+  // Query/subarray checks
   Query query(ctx, array, TILEDB_READ);
-  CHECK_THROWS(query.set_subarray(subarray));
+  Subarray sub(ctx, array);
+  CHECK_THROWS(sub.set_subarray(subarray));
   std::vector<int32_t> buff = {1, 2, 4};
   CHECK_THROWS(query.set_data_buffer(tiledb::test::TILEDB_COORDS, buff));
 

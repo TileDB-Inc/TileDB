@@ -35,6 +35,11 @@
  * unit.cc along with some previously observed results.
  */
 
+/*
+ * WARNING:
+ *   [2024/05/13] This file has succumbed to bit rot. It no longer compiles.
+ */
+
 // clang-format off
 //.\tiledb\test\performance\RelWithDebInfo\tiledb_explore_msys_handle_leakage.exe --read-sparse-iters=1 --perform-query=1 --consolidate-sparse-iters=1 --wait-for-keypress both
 //./tiledb/test/performance/tiledb_explore_msys_handle_leakage.exe --read-sparse-iters=1 --perform-query=1 --consolidate-sparse-sparse-iters=1 --wait-for-keypress both

@@ -34,7 +34,6 @@
 #define TILEDB_LRU_CACHE_H
 
 #include "tiledb/common/macros.h"
-#include "tiledb/common/status.h"
 
 #include <list>
 #include <mutex>
@@ -144,17 +143,17 @@ class LRUCache {
    * @param size The logical size of the object.
    * @param overwrite If `true`, if the object exists in the cache it will be
    *     overwritten. Otherwise, the new object will be deleted.
-   * @return Status
    */
-  Status insert(
-      const K& key, V&& object, uint64_t size, bool overwrite = true) {
+  void insert(const K& key, V&& object, uint64_t size, bool overwrite = true) {
     // Do nothing if the object size is bigger than the cache maximum size
-    if (size > max_size_)
-      return Status::Ok();
+    if (size > max_size_) {
+      return;
+    }
 
     const bool exists = item_map_.count(key) == 1;
-    if (exists && !overwrite)
-      return Status::Ok();
+    if (exists && !overwrite) {
+      return;
+    }
 
     // Evict objects until there is room for `object`. Note that this
     // invalidates the state in `exists`.
@@ -191,8 +190,6 @@ class LRUCache {
     }
 
     size_ += size;
-
-    return Status::Ok();
   }
 
   /**
@@ -235,27 +232,21 @@ class LRUCache {
    * Invalidates and evicts the object in the cache with the given key.
    *
    * @param key The key that describes the object to be invalidated.
-   * @param success Set to `true` if the object was removed successfully; if
-   *    the object did not exist in the cache, set to `false`.
-   * @return Status
+   * @return Return `true` if the object was removed successfully; if
+   *    the object did not exist in the cache, return `false`.
    */
-  Status invalidate(const K& key, bool* success) {
-    assert(success);
-
+  bool invalidate(const K& key) {
     const auto item_it = item_map_.find(key);
     const bool exists = item_it != item_map_.end();
     if (!exists) {
-      *success = false;
-      return Status::Ok();
+      return false;
     }
 
     // Move item to the head of the list and evict it.
     auto& node = item_it->second;
     item_ll_.splice(item_ll_.begin(), item_ll_, node);
     evict();
-    *success = true;
-
-    return Status::Ok();
+    return true;
   }
 
   /**

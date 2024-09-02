@@ -47,13 +47,12 @@
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
 class CompressionFilterStatusException : public StatusException {
  public:
   explicit CompressionFilterStatusException(const std::string& msg)
@@ -105,6 +104,12 @@ bool CompressionFilter::accepts_input_datatype(Datatype input_type) const {
                                                      input_type)) {
       return false;
     }
+    // We must receive an integral number of units of the reinterpret datatype
+    else if (
+        reinterpret_datatype_ != Datatype::ANY &&
+        datatype_size(input_type) % datatype_size(reinterpret_datatype_) != 0) {
+      return false;
+    }
   }
 
   return true;
@@ -114,22 +119,14 @@ int CompressionFilter::compression_level() const {
   return level_;
 }
 
-void CompressionFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
+std::ostream& CompressionFilter::output(std::ostream& os) const {
   std::string compressor_str = tiledb::sm::compressor_str(compressor_);
+  os << compressor_str << ": COMPRESSION_LEVEL=" << level_;
   if (compressor_ == Compressor::DELTA ||
-      compressor_ == Compressor::DOUBLE_DELTA) {
-    fprintf(
-        out,
-        "%s: COMPRESSION_LEVEL=%i, REINTERPRET_DATATYPE=%s",
-        compressor_str.c_str(),
-        level_,
-        datatype_str(reinterpret_datatype_).c_str());
-  } else {
-    fprintf(out, "%s: COMPRESSION_LEVEL=%i", compressor_str.c_str(), level_);
-  }
+      compressor_ == Compressor::DOUBLE_DELTA)
+    os << ", REINTERPRET_DATATYPE=" << datatype_str(reinterpret_datatype_);
+
+  return os;
 }
 
 CompressionFilter* CompressionFilter::clone_impl() const {
@@ -241,7 +238,7 @@ Status CompressionFilter::get_option_impl(
   return Status::Ok();
 }
 
-Status CompressionFilter::run_forward(
+void CompressionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
     FilterBuffer* input_metadata,
@@ -250,22 +247,24 @@ Status CompressionFilter::run_forward(
     FilterBuffer* output) const {
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
-    RETURN_NOT_OK(output->append_view(input));
-    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-    return Status::Ok();
+    throw_if_not_ok(output->append_view(input));
+    throw_if_not_ok(output_metadata->append_view(input_metadata));
+    return;
   }
 
-  if (input->size() > std::numeric_limits<uint32_t>::max())
-    return LOG_STATUS(
-        Status_FilterError("Input is too large to be compressed."));
+  if (input->size() > std::numeric_limits<uint32_t>::max()) {
+    throw FilterStatusException("Input is too large to be compressed.");
+  }
 
   if ((filter_data_type_ == Datatype::STRING_ASCII ||
        filter_data_type_ == Datatype::STRING_UTF8) &&
       offsets_tile) {
     if (compressor_ == Compressor::RLE ||
-        compressor_ == Compressor::DICTIONARY_ENCODING)
-      return compress_var_string_coords(
-          *input, offsets_tile, *output, *output_metadata);
+        compressor_ == Compressor::DICTIONARY_ENCODING) {
+      throw_if_not_ok(compress_var_string_coords(
+          *input, offsets_tile, *output, *output_metadata));
+      return;
+    }
   }
 
   std::vector<ConstBuffer> data_parts =
@@ -277,9 +276,10 @@ Status CompressionFilter::run_forward(
       2 * sizeof(uint32_t) + total_num_parts * 2 * sizeof(uint32_t);
   auto num_metadata_parts = static_cast<uint32_t>(metadata_parts.size());
   auto num_data_parts = static_cast<uint32_t>(data_parts.size());
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(
+      output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
 
   // Allocate output data
   uint64_t output_size_ub = 0;
@@ -289,18 +289,16 @@ Status CompressionFilter::run_forward(
     output_size_ub += part.size() + overhead(tile, part.size());
 
   // Ensure space in output buffer for worst case.
-  RETURN_NOT_OK(output->prepend_buffer(output_size_ub));
+  throw_if_not_ok(output->prepend_buffer(output_size_ub));
   Buffer* buffer_ptr = output->buffer_ptr(0);
   assert(buffer_ptr != nullptr);
   buffer_ptr->reset_offset();
 
   // Compress all parts.
   for (auto& part : metadata_parts)
-    RETURN_NOT_OK(compress_part(tile, &part, buffer_ptr, output_metadata));
+    throw_if_not_ok(compress_part(tile, &part, buffer_ptr, output_metadata));
   for (auto& part : data_parts)
-    RETURN_NOT_OK(compress_part(tile, &part, buffer_ptr, output_metadata));
-
-  return Status::Ok();
+    throw_if_not_ok(compress_part(tile, &part, buffer_ptr, output_metadata));
 }
 
 Status CompressionFilter::run_reverse(
@@ -363,27 +361,26 @@ Status CompressionFilter::compress_part(
   uint32_t orig_size = (uint32_t)output->size();
   switch (compressor_) {
     case Compressor::GZIP:
-      RETURN_NOT_OK(GZip::compress(level_, &input_buffer, output));
+      GZip::compress(level_, &input_buffer, output);
       break;
     case Compressor::ZSTD:
-      RETURN_NOT_OK(ZStd::compress(
-          level_, zstd_compress_ctx_pool_, &input_buffer, output));
+      ZStd::compress(level_, zstd_compress_ctx_pool_, &input_buffer, output);
       break;
     case Compressor::LZ4:
-      RETURN_NOT_OK(LZ4::compress(level_, &input_buffer, output));
+      LZ4::compress(level_, &input_buffer, output);
       break;
     case Compressor::RLE:
-      RETURN_NOT_OK(RLE::compress(cell_size, &input_buffer, output));
+      RLE::compress(cell_size, &input_buffer, output);
       break;
     case Compressor::BZIP2:
-      RETURN_NOT_OK(BZip::compress(level_, &input_buffer, output));
+      BZip::compress(level_, &input_buffer, output);
       break;
     case Compressor::DOUBLE_DELTA:
-      RETURN_NOT_OK(DoubleDelta::compress(
+      DoubleDelta::compress(
           reinterpret_datatype_ == Datatype::ANY ? filter_data_type_ :
                                                    reinterpret_datatype_,
           &input_buffer,
-          output));
+          output);
       break;
     case Compressor::DICTIONARY_ENCODING:
       return LOG_STATUS(
@@ -446,20 +443,20 @@ Status CompressionFilter::decompress_part(
       assert(0);
       break;
     case Compressor::GZIP:
-      st = GZip::decompress(&input_buffer, &output_buffer);
+      GZip::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::ZSTD:
-      st = ZStd::decompress(
+      ZStd::decompress(
           zstd_decompress_ctx_pool_, &input_buffer, &output_buffer);
       break;
     case Compressor::LZ4:
-      st = LZ4::decompress(&input_buffer, &output_buffer);
+      LZ4::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::RLE:
-      st = RLE::decompress(cell_size, &input_buffer, &output_buffer);
+      RLE::decompress(cell_size, &input_buffer, &output_buffer);
       break;
     case Compressor::BZIP2:
-      st = BZip::decompress(&input_buffer, &output_buffer);
+      BZip::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::DELTA:
       Delta::decompress(
@@ -469,7 +466,7 @@ Status CompressionFilter::decompress_part(
           &output_buffer);
       break;
     case Compressor::DOUBLE_DELTA:
-      st = DoubleDelta::decompress(
+      DoubleDelta::decompress(
           reinterpret_datatype_ == Datatype::ANY ? filter_data_type_ :
                                                    reinterpret_datatype_,
           &input_buffer,
@@ -594,8 +591,8 @@ Status CompressionFilter::compress_var_string_coords(
       reinterpret_cast<std::byte*>(data_buffer->data()), output_size_ub);
 
   if (compressor_ == Compressor::RLE) {
-    RETURN_NOT_OK(RLE::compress(
-        input_view, rle_len_bytesize, string_len_bytesize, output_view));
+    RLE::compress(
+        input_view, rle_len_bytesize, string_len_bytesize, output_view);
     RETURN_NOT_OK(output_metadata.write(&rle_len_bytesize, sizeof(uint8_t)));
     RETURN_NOT_OK(output_metadata.write(&string_len_bytesize, sizeof(uint8_t)));
   } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
@@ -645,12 +642,12 @@ Status CompressionFilter::decompress_var_string_coords(
     uint8_t rle_len_bytesize, string_len_bytesize;
     RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
     RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
-    throw_if_not_ok(RLE::decompress(
+    RLE::decompress(
         input_view,
         rle_len_bytesize,
         string_len_bytesize,
         output_view,
-        offsets_view));
+        offsets_view);
   } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
     uint8_t ids_bytesize = 0, string_len_bytesize = 0;
     uint32_t dict_size = 0;
@@ -690,6 +687,8 @@ uint64_t CompressionFilter::overhead(
       return BZip::overhead(nbytes);
     case Compressor::DOUBLE_DELTA:
       return DoubleDelta::overhead(nbytes);
+    case Compressor::DELTA:
+      return Delta::OVERHEAD;
     case Compressor::DICTIONARY_ENCODING:
     default:
       // No compression
@@ -739,5 +738,4 @@ Datatype CompressionFilter::output_datatype(Datatype datatype) const {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -30,7 +30,12 @@ commence(unit_test capi_query_aggregate)
   this_target_sources(unit_capi_query_aggregate.cc)
   this_target_object_libraries(capi_query_aggregate)
   if (NOT MSVC)
-      target_compile_options(unit_capi_query_aggregate PRIVATE -Wno-deprecated-declarations)
+    target_compile_options(unit_capi_query_aggregate PRIVATE -Wno-deprecated-declarations)
   endif()
   this_target_link_libraries(tiledb_test_support_lib)
+  
+  if (TILEDB_SERIALIZATION)
+    add_definitions(-DTILEDB_SERIALIZATION)
+  endif()
+
 conclude(unit_test)

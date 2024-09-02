@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,18 +37,16 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
@@ -58,12 +56,11 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-class GlobalOrderWriterStatusException : public StatusException {
+class GlobalOrderWriterException : public StatusException {
  public:
-  explicit GlobalOrderWriterStatusException(const std::string& message)
+  explicit GlobalOrderWriterException(const std::string& message)
       : StatusException("GlobalOrderWriter", message) {
   }
 };
@@ -75,54 +72,49 @@ class GlobalOrderWriterStatusException : public StatusException {
 GlobalOrderWriter::GlobalOrderWriter(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
+    StrategyParams& params,
     uint64_t fragment_size,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
-    bool skip_checks_serialization)
+    optional<std::string> fragment_name)
     : WriterBase(
           stats,
           logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout,
+          params,
           written_fragment_info,
           disable_checks_consolidation,
           coords_info,
           remote_query,
-          fragment_name,
-          skip_checks_serialization)
+          fragment_name)
     , processed_conditions_(processed_conditions)
     , fragment_size_(fragment_size)
     , current_fragment_size_(0) {
   // Check the layout is global order.
-  if (layout != Layout::GLOBAL_ORDER) {
-    throw GlobalOrderWriterStatusException(
+  if (layout_ != Layout::GLOBAL_ORDER) {
+    throw GlobalOrderWriterException(
         "Failed to initialize global order writer. Layout " +
-        layout_str(layout) + " is not global order.");
+        layout_str(layout_) + " is not global order.");
   }
 
   // Check no ordered attributes.
   if (array_schema_.has_ordered_attributes()) {
-    throw GlobalOrderWriterStatusException(
+    throw GlobalOrderWriterException(
         "Failed to initialize global order writer. Global order writes to "
         "ordered attributes are not yet supported.");
   }
 }
 
 GlobalOrderWriter::~GlobalOrderWriter() {
+}
+
+GlobalOrderWriter::GlobalWriteState::GlobalWriteState(
+    shared_ptr<MemoryTracker> memory_tracker)
+    : last_tiles_(memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
+    , last_var_offsets_(memory_tracker->get_resource(MemoryType::WRITER_DATA))
+    , cells_written_(memory_tracker->get_resource(MemoryType::WRITER_DATA)) {
 }
 
 /* ****************************** */
@@ -187,12 +179,12 @@ Status GlobalOrderWriter::alloc_global_write_state() {
     return logger_->status(
         Status_WriterError("Cannot initialize global write state; State not "
                            "properly finalized"));
-  global_write_state_.reset(new GlobalWriteState);
+  global_write_state_.reset(tdb_new(GlobalWriteState, query_memory_tracker_));
 
   // Alloc FragmentMetadata object
-  global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
+  global_write_state_->frag_meta_ = this->create_fragment_metadata();
   // Used in serialization when FragmentMetadata is built from ground up
-  global_write_state_->frag_meta_->set_storage_manager(storage_manager_);
+  global_write_state_->frag_meta_->set_context_resources(&resources_);
 
   return Status::Ok();
 }
@@ -210,20 +202,18 @@ Status GlobalOrderWriter::init_global_write_state() {
     const auto capacity = array_schema_.capacity();
     const auto cell_num_per_tile =
         coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
-    auto last_tile_vector = std::pair<std::string, WriterTileTupleVector>(
-        name, WriterTileTupleVector());
-    try {
-      last_tile_vector.second.emplace_back(WriterTileTuple(
-          array_schema_,
-          cell_num_per_tile,
-          var_size,
-          nullable,
-          cell_size,
-          type));
-    } catch (const std::logic_error& le) {
-      return Status_WriterError(le.what());
-    }
-    global_write_state_->last_tiles_.emplace(std::move(last_tile_vector));
+    auto last_tiles_it = global_write_state_->last_tiles_.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(name),
+        std::forward_as_tuple(query_memory_tracker_));
+    last_tiles_it.first->second.emplace_back(
+        array_schema_,
+        cell_num_per_tile,
+        var_size,
+        nullable,
+        cell_size,
+        type,
+        query_memory_tracker_);
 
     // Initialize cells written
     global_write_state_->cells_written_[name] = 0;
@@ -251,36 +241,30 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
   // TODO: to be refactored, there are multiple places in writers where
   // we iterate over the internal fragment files manually
   for (const auto& name : buffer_names()) {
-    auto&& [st1, uri] = meta->uri(name);
-    RETURN_NOT_OK_TUPLE(st1, {});
+    auto uri = meta->uri(name);
 
-    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(*uri);
+    auto&& [st2, state] = resources_.vfs().multipart_upload_state(uri);
     RETURN_NOT_OK_TUPLE(st2, {});
     // If there is no entry for this uri, probably multipart upload is disabled
     // or no write was issued so far
     if (!state.has_value()) {
       return {Status::Ok(), {}};
     }
-    result[uri->remove_trailing_slash().last_path_part()] = std::move(*state);
+    result[uri.remove_trailing_slash().last_path_part()] = std::move(*state);
 
     if (array_schema_.var_size(name)) {
-      auto&& [status, var_uri] = meta->var_uri(name);
-      RETURN_NOT_OK_TUPLE(status, {});
-
-      auto&& [st, var_state] =
-          storage_manager_->vfs()->multipart_upload_state(*var_uri);
+      auto var_uri = meta->var_uri(name);
+      auto&& [st, var_state] = resources_.vfs().multipart_upload_state(var_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[var_uri->remove_trailing_slash().last_path_part()] =
+      result[var_uri.remove_trailing_slash().last_path_part()] =
           std::move(*var_state);
     }
     if (array_schema_.is_nullable(name)) {
-      auto&& [status, validity_uri] = meta->validity_uri(name);
-      RETURN_NOT_OK_TUPLE(status, {});
-
+      auto validity_uri = meta->validity_uri(name);
       auto&& [st, val_state] =
-          storage_manager_->vfs()->multipart_upload_state(*validity_uri);
+          resources_.vfs().multipart_upload_state(validity_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[validity_uri->remove_trailing_slash().last_path_part()] =
+      result[validity_uri.remove_trailing_slash().last_path_part()] =
           std::move(*val_state);
     }
   }
@@ -300,8 +284,7 @@ Status GlobalOrderWriter::set_multipart_upload_state(
   // uri in this case holds only the buffer name
   auto absolute_uri =
       global_write_state_->frag_meta_->fragment_uri().join_path(uri);
-  return storage_manager_->vfs()->set_multipart_upload_state(
-      absolute_uri, state);
+  return resources_.vfs().set_multipart_upload_state(absolute_uri, state);
 }
 
 /* ****************************** */
@@ -340,10 +323,7 @@ Status GlobalOrderWriter::check_coord_dups() const {
   }
 
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      1,
-      coords_info_.coords_num_,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -440,7 +420,7 @@ Status GlobalOrderWriter::check_global_order() const {
 
   // Check if all coordinates are in global order in parallel
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
       [&](uint64_t i) {
@@ -491,7 +471,7 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
 
   // Check if all coordinates are in hilbert order in parallel
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
       [&](uint64_t i) {
@@ -521,13 +501,13 @@ void GlobalOrderWriter::clean_up() {
     // Cleanup the fragment we are currently writing. There is a chance that the
     // URI is empty if creating the first fragment had failed.
     if (!uri.empty()) {
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+      throw_if_not_ok(resources_.vfs().remove_dir(uri));
     }
     global_write_state_.reset(nullptr);
 
     // Cleanup all fragments pending commit.
     for (auto& uri : frag_uris_to_commit_) {
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+      throw_if_not_ok(resources_.vfs().remove_dir(uri));
     }
     frag_uris_to_commit_.clear();
   }
@@ -589,10 +569,7 @@ Status GlobalOrderWriter::compute_coord_dups(
 
   std::mutex mtx;
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      1,
-      coords_info_.coords_num_,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -721,7 +698,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Write either one commit file or a consolidated commit file if multiple
   // fragments were written.
   if (frag_uris_to_commit_.size() == 0) {
-    RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
+    throw_if_not_ok(resources_.vfs().touch(commit_uri));
   } else {
     std::vector<URI> commit_uris;
     commit_uris.reserve(frag_uris_to_commit_.size() + 1);
@@ -731,8 +708,8 @@ Status GlobalOrderWriter::finalize_global_write_state() {
     commit_uris.emplace_back(commit_uri);
 
     auto write_version = array_->array_schema_latest().write_version();
-    storage_manager_->write_consolidated_commits_file(
-        write_version, array_->array_directory(), commit_uris);
+    Consolidator::write_consolidated_commits_file(
+        write_version, array_->array_directory(), commit_uris, resources_);
   }
 
   // Delete global write state
@@ -765,7 +742,8 @@ Status GlobalOrderWriter::global_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(&coord_dups));
   }
 
-  std::unordered_map<std::string, WriterTileTupleVector> tiles;
+  tdb::pmr::unordered_map<std::string, WriterTileTupleVector> tiles(
+      query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_full_tiles(coord_dups, &tiles));
 
   // Find number of tiles and gather stats
@@ -813,10 +791,10 @@ Status GlobalOrderWriter::global_write() {
 
     // Set new number of tiles in the fragment metadata
     auto new_num_tiles = frag_meta->tile_index_base() + num;
-    throw_if_not_ok(frag_meta->set_num_tiles(new_num_tiles));
+    frag_meta->set_num_tiles(new_num_tiles);
 
     if (new_num_tiles == 0) {
-      throw GlobalOrderWriterStatusException(
+      throw GlobalOrderWriterException(
           "Fragment size is too small to write a single tile");
     }
 
@@ -851,7 +829,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 
   // Reserve space for the last tile in the fragment metadata
   auto meta = global_write_state_->frag_meta_;
-  throw_if_not_ok(meta->set_num_tiles(meta->tile_index_base() + 1));
+  meta->set_num_tiles(meta->tile_index_base() + 1);
 
   // Filter last tiles
   RETURN_CANCEL_OR_ERROR(filter_last_tiles(cell_num_last_tiles));
@@ -869,30 +847,32 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 void GlobalOrderWriter::nuke_global_write_state() {
   auto meta = global_write_state_->frag_meta_;
   throw_if_not_ok(close_files(meta));
-  throw_if_not_ok(storage_manager_->vfs()->remove_dir(meta->fragment_uri()));
+  throw_if_not_ok(resources_.vfs().remove_dir(meta->fragment_uri()));
   global_write_state_.reset(nullptr);
 }
 
 Status GlobalOrderWriter::prepare_full_tiles(
     const std::set<uint64_t>& coord_dups,
-    std::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
   auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute and coordinate tiles
   for (const auto& it : buffers_) {
-    (*tiles)[it.first] = WriterTileTupleVector();
+    tiles->emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(it.first),
+        std::forward_as_tuple(query_memory_tracker_));
   }
 
   auto num = buffers_.size();
-  auto status =
-      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
-        auto buff_it = buffers_.begin();
-        std::advance(buff_it, i);
-        const auto& name = buff_it->first;
-        RETURN_CANCEL_OR_ERROR(
-            prepare_full_tiles(name, coord_dups, &(*tiles)[name]));
-        return Status::Ok();
-      });
+  auto status = parallel_for(&resources_.compute_tp(), 0, num, [&](uint64_t i) {
+    auto buff_it = buffers_.begin();
+    std::advance(buff_it, i);
+    const auto& name = buff_it->first;
+    throw_if_not_ok(prepare_full_tiles(name, coord_dups, &tiles->at(name)));
+    throw_if_cancelled();
+    return Status::Ok();
+  });
 
   RETURN_NOT_OK(status);
 
@@ -932,22 +912,22 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   }
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_[name][0];
+  auto& last_tile = global_write_state_->last_tiles_.at(name)[0];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
       global_write_state_->cells_written_[name] % cell_num_per_tile;
   if (last_tile_cell_idx != 0) {
     if (coord_dups.empty()) {
       do {
-        RETURN_NOT_OK(last_tile.fixed_tile().write(
+        last_tile.fixed_tile().write(
             buffer + cell_idx * cell_size,
             last_tile_cell_idx * cell_size,
-            cell_size));
+            cell_size);
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
         ++cell_idx;
         ++last_tile_cell_idx;
@@ -955,15 +935,15 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     } else {
       do {
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
-          RETURN_NOT_OK(last_tile.fixed_tile().write(
+          last_tile.fixed_tile().write(
               buffer + cell_idx * cell_size,
               last_tile_cell_idx * cell_size,
-              cell_size));
+              cell_size);
           if (nullable) {
-            RETURN_NOT_OK(last_tile.validity_tile().write(
+            last_tile.validity_tile().write(
                 buffer_validity + cell_idx * constants::cell_validity_size,
                 last_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
           ++last_tile_cell_idx;
         }
@@ -982,16 +962,26 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   if (full_tile_num > 0) {
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
-      tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
+      tiles->emplace_back(
+          array_schema_,
+          cell_num_per_tile,
+          false,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_);
     }
 
     // Handle last tile (it must be either full or empty)
     auto tile_it = tiles->begin();
     if (last_tile_cell_idx == cell_num_per_tile) {
-      tile_it->fixed_tile().swap(last_tile.fixed_tile());
+      tile_it->fixed_tile().write(
+          last_tile.fixed_tile().data(), 0, last_tile.fixed_tile().size());
       if (nullable) {
-        tile_it->validity_tile().swap(last_tile.validity_tile());
+        tile_it->validity_tile().write(
+            last_tile.validity_tile().data(),
+            0,
+            last_tile.validity_tile().size());
       }
       tile_it++;
     } else if (last_tile_cell_idx != 0) {
@@ -1002,14 +992,14 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     // Write all remaining cells one by one
     if (coord_dups.empty()) {
       for (uint64_t i = 0; i < cell_num_to_write;) {
-        RETURN_NOT_OK(tile_it->fixed_tile().write(
-            buffer + cell_idx * cell_size, 0, cell_size * cell_num_per_tile));
+        tile_it->fixed_tile().write(
+            buffer + cell_idx * cell_size, 0, cell_size * cell_num_per_tile);
 
         if (nullable) {
-          RETURN_NOT_OK(tile_it->validity_tile().write(
+          tile_it->validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               0,
-              constants::cell_validity_size * cell_num_per_tile));
+              constants::cell_validity_size * cell_num_per_tile);
         }
 
         cell_idx += cell_num_per_tile;
@@ -1025,14 +1015,14 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
         }
 
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
-          RETURN_NOT_OK(tile_it->fixed_tile().write(
-              buffer + cell_idx * cell_size, cell_idx * cell_size, cell_size));
+          tile_it->fixed_tile().write(
+              buffer + cell_idx * cell_size, cell_idx * cell_size, cell_size);
 
           if (nullable) {
-            RETURN_NOT_OK(tile_it->validity_tile().write(
+            tile_it->validity_tile().write(
                 buffer_validity + cell_idx * constants::cell_validity_size,
                 cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
         }
       }
@@ -1043,29 +1033,29 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   last_tile_cell_idx = 0;
   if (coord_dups.empty()) {
     for (; cell_idx < cell_num; ++cell_idx, ++last_tile_cell_idx) {
-      RETURN_NOT_OK(last_tile.fixed_tile().write(
+      last_tile.fixed_tile().write(
           buffer + cell_idx * cell_size,
           last_tile_cell_idx * cell_size,
-          cell_size));
+          cell_size);
       if (nullable) {
-        RETURN_NOT_OK(last_tile.validity_tile().write(
+        last_tile.validity_tile().write(
             buffer_validity + cell_idx * constants::cell_validity_size,
             last_tile_cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
       if (coord_dups.find(cell_idx) == coord_dups.end()) {
-        RETURN_NOT_OK(last_tile.fixed_tile().write(
+        last_tile.fixed_tile().write(
             buffer + cell_idx * cell_size,
             last_tile_cell_idx * cell_size,
-            cell_size));
+            cell_size);
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
         ++last_tile_cell_idx;
       }
@@ -1103,7 +1093,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     return Status::Ok();
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_[name][0];
+  auto& last_tile = global_write_state_->last_tiles_.at(name)[0];
   auto& last_var_offset = global_write_state_->last_var_offsets_[name];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
@@ -1112,10 +1102,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     if (coord_dups.empty()) {
       do {
         // Write offset.
-        RETURN_NOT_OK(last_tile.offset_tile().write(
+        last_tile.offset_tile().write(
             &last_var_offset,
             last_tile_cell_idx * sizeof(last_var_offset),
-            sizeof(last_var_offset)));
+            sizeof(last_var_offset));
 
         // Write var-sized value(s).
         auto buff_offset =
@@ -1125,16 +1115,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                                 prepare_buffer_offset(
                                     buffer, cell_idx + 1, attr_datatype_size) -
                                     buff_offset;
-        RETURN_NOT_OK(last_tile.var_tile().write_var(
-            buffer_var + buff_offset, last_var_offset, var_size));
+        last_tile.var_tile().write_var(
+            buffer_var + buff_offset, last_var_offset, var_size);
         last_var_offset += var_size;
 
         // Write validity value(s).
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
 
         ++cell_idx;
@@ -1144,10 +1134,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
       do {
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
           // Write offset.
-          RETURN_NOT_OK(last_tile.offset_tile().write(
+          last_tile.offset_tile().write(
               &last_var_offset,
               last_tile_cell_idx * sizeof(last_var_offset),
-              sizeof(last_var_offset)));
+              sizeof(last_var_offset));
 
           // Write var-sized value(s).
           auto buff_offset =
@@ -1158,16 +1148,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                   prepare_buffer_offset(
                       buffer, cell_idx + 1, attr_datatype_size) -
                       buff_offset;
-          RETURN_NOT_OK(last_tile.var_tile().write_var(
-              buffer_var + buff_offset, last_var_offset, var_size));
+          last_tile.var_tile().write_var(
+              buffer_var + buff_offset, last_var_offset, var_size);
           last_var_offset += var_size;
 
           // Write validity value(s).
           if (nullable) {
-            RETURN_NOT_OK(last_tile.validity_tile().write(
+            last_tile.validity_tile().write(
                 buffer_validity + cell_idx,
                 last_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
           ++last_tile_cell_idx;
         }
@@ -1175,8 +1165,6 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
         ++cell_idx;
       } while (last_tile_cell_idx != cell_num_per_tile && cell_idx != cell_num);
     }
-
-    last_tile.var_tile().set_size(last_var_offset);
   }
 
   // Initialize full tiles and set previous last tile as first tile
@@ -1189,19 +1177,33 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   if (full_tile_num > 0) {
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
-      tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
+      tiles->emplace_back(
+          array_schema_,
+          cell_num_per_tile,
+          true,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_);
     }
 
     // Handle last tile (it must be either full or empty)
     auto tile_it = tiles->begin();
     if (last_tile_cell_idx == cell_num_per_tile) {
-      last_var_offset = 0;
-      tile_it->offset_tile().swap(last_tile.offset_tile());
-      tile_it->var_tile().swap(last_tile.var_tile());
+      tile_it->offset_tile().write(
+          last_tile.offset_tile().data(), 0, last_tile.offset_tile().size());
+      tile_it->var_tile().write_var(
+          last_tile.var_tile().data(), 0, last_var_offset);
+      tile_it->var_tile().set_size(last_var_offset);
       if (nullable) {
-        tile_it->validity_tile().swap(last_tile.validity_tile());
+        tile_it->validity_tile().write(
+            last_tile.validity_tile().data(),
+            0,
+            last_tile.validity_tile().size());
       }
+
+      last_var_offset = 0;
+
       tile_it++;
     } else if (last_tile_cell_idx != 0) {
       return Status_WriterError(
@@ -1222,10 +1224,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
           }
 
           // Write offset.
-          RETURN_NOT_OK(tile_it->offset_tile().write(
+          tile_it->offset_tile().write(
               &last_var_offset,
               current_tile_cell_idx * sizeof(last_var_offset),
-              sizeof(last_var_offset)));
+              sizeof(last_var_offset));
 
           // Write var-sized value(s).
           auto buff_offset =
@@ -1236,16 +1238,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                   prepare_buffer_offset(
                       buffer, cell_idx + 1, attr_datatype_size) -
                       buff_offset;
-          RETURN_NOT_OK(tile_it->var_tile().write_var(
-              buffer_var + buff_offset, last_var_offset, var_size));
+          tile_it->var_tile().write_var(
+              buffer_var + buff_offset, last_var_offset, var_size);
           last_var_offset += var_size;
 
           // Write validity value(s).
           if (nullable) {
-            RETURN_NOT_OK(tile_it->validity_tile().write(
+            tile_it->validity_tile().write(
                 buffer_validity + cell_idx,
                 current_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
         }
       } else {
@@ -1259,10 +1261,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
             }
 
             // Write offset.
-            RETURN_NOT_OK(tile_it->offset_tile().write(
+            tile_it->offset_tile().write(
                 &last_var_offset,
                 current_tile_cell_idx * sizeof(last_var_offset),
-                sizeof(last_var_offset)));
+                sizeof(last_var_offset));
 
             // Write var-sized value(s).
             auto buff_offset =
@@ -1273,16 +1275,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                     prepare_buffer_offset(
                         buffer, cell_idx + 1, attr_datatype_size) -
                         buff_offset;
-            RETURN_NOT_OK(tile_it->var_tile().write_var(
-                buffer_var + buff_offset, last_var_offset, var_size));
+            tile_it->var_tile().write_var(
+                buffer_var + buff_offset, last_var_offset, var_size);
             last_var_offset += var_size;
 
             // Write validity value(s).
             if (nullable) {
-              RETURN_NOT_OK(tile_it->validity_tile().write(
+              tile_it->validity_tile().write(
                   buffer_validity + cell_idx,
                   current_tile_cell_idx * constants::cell_validity_size,
-                  constants::cell_validity_size));
+                  constants::cell_validity_size);
             }
 
             ++current_tile_cell_idx;
@@ -1300,10 +1302,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   if (coord_dups.empty()) {
     for (; cell_idx < cell_num; ++cell_idx, ++last_tile_cell_idx) {
       // Write offset.
-      RETURN_NOT_OK(last_tile.offset_tile().write(
+      last_tile.offset_tile().write(
           &last_var_offset,
           last_tile_cell_idx * sizeof(last_var_offset),
-          sizeof(last_var_offset)));
+          sizeof(last_var_offset));
 
       // Write var-sized value(s).
       auto buff_offset =
@@ -1313,26 +1315,26 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
               *buffer_var_size - buff_offset :
               prepare_buffer_offset(buffer, cell_idx + 1, attr_datatype_size) -
                   buff_offset;
-      RETURN_NOT_OK(last_tile.var_tile().write_var(
-          buffer_var + buff_offset, last_var_offset, var_size));
+      last_tile.var_tile().write_var(
+          buffer_var + buff_offset, last_var_offset, var_size);
       last_var_offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        RETURN_NOT_OK(last_tile.validity_tile().write(
+        last_tile.validity_tile().write(
             buffer_validity + cell_idx,
             last_tile_cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
       if (coord_dups.find(cell_idx) == coord_dups.end()) {
         // Write offset.
-        RETURN_NOT_OK(last_tile.offset_tile().write(
+        last_tile.offset_tile().write(
             &last_var_offset,
             last_tile_cell_idx * sizeof(last_var_offset),
-            sizeof(last_var_offset)));
+            sizeof(last_var_offset));
 
         // Write var-sized value(s).
         auto buff_offset =
@@ -1342,16 +1344,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                                 prepare_buffer_offset(
                                     buffer, cell_idx + 1, attr_datatype_size) -
                                     buff_offset;
-        RETURN_NOT_OK(last_tile.var_tile().write_var(
-            buffer_var + buff_offset, last_var_offset, var_size));
+        last_tile.var_tile().write_var(
+            buffer_var + buff_offset, last_var_offset, var_size);
         last_var_offset += var_size;
 
         // Write validity value(s).
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
 
         ++last_tile_cell_idx;
@@ -1369,7 +1371,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 uint64_t GlobalOrderWriter::num_tiles_to_write(
     uint64_t start,
     uint64_t tile_num,
-    std::unordered_map<std::string, WriterTileTupleVector>& tiles) {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) {
   // Cache variables to prevent map lookups.
   const auto buf_names = buffer_names();
   std::vector<bool> var_size;
@@ -1381,7 +1383,7 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
   for (auto& name : buf_names) {
     var_size.emplace_back(array_schema_.var_size(name));
     nullable.emplace_back(array_schema_.is_nullable(name));
-    writer_tile_vectors.emplace_back(&tiles[name]);
+    writer_tile_vectors.emplace_back(&tiles.at(name));
   }
 
   // Make sure we don't write more than the desired fragment size.
@@ -1442,7 +1444,7 @@ Status GlobalOrderWriter::start_new_fragment() {
   const auto write_version = array_->array_schema_latest().write_version();
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
-  auto new_fragment_str = storage_format::generate_uri(
+  auto new_fragment_str = storage_format::generate_timestamped_name(
       fragment_timestamp_range_.first,
       fragment_timestamp_range_.second,
       write_version);
@@ -1456,5 +1458,4 @@ Status GlobalOrderWriter::start_new_fragment() {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -97,8 +97,8 @@ class /* AWS_IDENTITY_MANAGEMENT_API */
   STSProfileWithWebIdentityCredentialsProvider(
       const Aws::String& profileName,
       std::chrono::minutes duration,
-      const std::function<Aws::STS::STSClient*(const AWSCredentials&)>&
-          stsClientFactory);
+      const std::function<std::shared_ptr<Aws::STS::STSClient>(
+          const AWSCredentials&)>& stsClientFactory);
 
   /**
    * Fetches the credentials set from STS following the rules defined in the
@@ -132,11 +132,15 @@ class /* AWS_IDENTITY_MANAGEMENT_API */
       const Aws::String& externalID,
       Aws::STS::STSClient* client);
 
+  AWSCredentials GetCredentialsFromWebIdentityInternal(
+      const Config::Profile& profile, Aws::STS::STSClient* client);
+
   Aws::String m_profileName;
   AWSCredentials m_credentials;
   const std::chrono::minutes m_duration;
   const std::chrono::milliseconds m_reloadFrequency;
-  std::function<Aws::STS::STSClient*(const AWSCredentials&)> m_stsClientFactory;
+  std::function<std::shared_ptr<Aws::STS::STSClient>(const AWSCredentials&)>
+      m_stsClientFactory;
 };
 }  // namespace Auth
 }  // namespace Aws

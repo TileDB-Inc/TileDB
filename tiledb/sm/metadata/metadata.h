@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,17 +40,19 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Buffer;
 class ConstBuffer;
+class MemoryTracker;
 enum class Datatype : uint8_t;
 
 /**
@@ -82,53 +84,70 @@ class Metadata {
   };
 
   /** Iterator type for iterating over metadata values. */
-  typedef std::map<std::string, MetadataValue>::const_iterator iterator;
+  typedef tdb::pmr::map<std::string, MetadataValue>::const_iterator iterator;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  explicit Metadata();
+  /** Default constructor is deleted. */
+  Metadata() = delete;
 
   /** Constructor. */
-  Metadata(const std::map<std::string, MetadataValue>& metadata_map);
+  Metadata(shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Copy constructor. */
-  Metadata(const Metadata& rhs);
-
-  /** Copy assignment. */
-  Metadata& operator=(const Metadata& other);
+  DISABLE_COPY(Metadata);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Metadata);
 
   /** Destructor. */
-  ~Metadata();
+  ~Metadata() = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
+  /** Copy assignment. */
+  Metadata& operator=(Metadata& other);
+
+  /** Assignment via std::map. */
+  Metadata& operator=(std::map<std::string, MetadataValue>&& md_map);
+
+  /** Returns the memory tracker. */
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
+
   /** Clears the metadata. */
   void clear();
 
   /** Retrieves the array metadata URI. */
-  Status get_uri(const URI& array_uri, URI* meta_uri);
+  URI get_uri(const URI& array_uri);
 
   /** Generates a new array metadata URI. */
-  Status generate_uri(const URI& array_uri);
+  void generate_uri(const URI& array_uri);
 
   /**
    * Deserializes the input metadata buffers. Note that the buffers are
    * assumed to be sorted on time. The function will take care of any
    * deleted or overwritten metadata items considering the order.
    */
-  static Metadata deserialize(
+  static std::map<std::string, MetadataValue> deserialize(
       const std::vector<shared_ptr<Tile>>& metadata_tiles);
 
   /** Serializes all key-value metadata items into the input buffer. */
   void serialize(Serializer& serializer) const;
 
-  /** Returns the timestamp range. */
-  const std::pair<uint64_t, uint64_t>& timestamp_range() const;
+  /**
+   * Stores the metadata into persistent storage.
+   *
+   * @param resources The context resources.
+   * @param uri The object URI.
+   * @param encryption_key The encryption key to use.
+   */
+  void store(
+      ContextResources& resources,
+      const URI& uri,
+      const EncryptionKey& encryption_key);
 
   /**
    * Deletes a metadata item.
@@ -205,10 +224,7 @@ class Metadata {
    * Returns the URIs of the metadata files that have been loaded
    * to this object.
    */
-  const std::vector<URI>& loaded_metadata_uris() const;
-
-  /** Swaps the contents between the object and the input. */
-  void swap(Metadata* metadata);
+  const tdb::pmr::vector<URI>& loaded_metadata_uris() const;
 
   /**
    * Clears the metadata and assigns the input timestamp to
@@ -234,33 +250,34 @@ class Metadata {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** A map from metadata key to metadata value. */
-  std::map<std::string, MetadataValue> metadata_map_;
+  tdb::pmr::map<std::string, MetadataValue> metadata_map_;
 
   /**
    * A vector pointing to all the values in `metadata_map_`. It facilitates
    * searching metadata from index. Used only for reading metadata (inapplicable
    * when writing metadata).
    */
-  std::vector<std::pair<const std::string*, MetadataValue*>> metadata_index_;
+  tdb::pmr::vector<std::pair<const std::string*, MetadataValue*>>
+      metadata_index_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
 
   /**
-   * The timestamp range covered by the metadata that was read or written.
-   * This is used to determine the metadata file name.
-   */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
-
-  /**
    * The URIs of the metadata files that have been loaded to this object.
    * This is needed to know which files to delete upon consolidation.
    */
-  std::vector<URI> loaded_metadata_uris_;
+  tdb::pmr::vector<URI> loaded_metadata_uris_;
 
   /** The URI of the array metadata file. */
   URI uri_;
+
+  /** Timestamped name. */
+  std::string timestamped_name_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -272,7 +289,6 @@ class Metadata {
   void build_metadata_index();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_METADATA_H

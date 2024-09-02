@@ -35,6 +35,7 @@
 #ifndef TILEDB_CPP_API_ATTRIBUTE_H
 #define TILEDB_CPP_API_ATTRIBUTE_H
 
+#include "capi_string.h"
 #include "context.h"
 #include "deleter.h"
 #include "exception.h"
@@ -140,6 +141,11 @@ class Attribute {
     ctx.handle_error(
         tiledb_attribute_get_name(ctx.ptr().get(), attr_.get(), &name));
     return name;
+  }
+
+  /** Returns the context that the attribute belongs to. */
+  const Context& context() const {
+    return ctx_;
   }
 
   /** Returns the attribute datatype. */
@@ -469,17 +475,19 @@ class Attribute {
     return attr_;
   }
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
   /**
    * Dumps information about the attribute in an ASCII representation to an
    * output.
    *
-   * @param out (Optional) File to dump output to. Defaults to `nullptr`
-   * which will lead to selection of `stdout`.
+   * @param out (Optional) File to dump output to. Defaults to `stdout`.
    */
-  void dump(FILE* out = nullptr) const {
+  TILEDB_DEPRECATED
+  void dump(FILE* out = stdout) const {
     ctx_.get().handle_error(
         tiledb_attribute_dump(ctx_.get().ptr().get(), attr_.get(), out));
   }
+#endif
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
@@ -583,11 +591,15 @@ class Attribute {
 /* ********************************* */
 
 /** Gets a string representation of an attribute for an output stream. */
-inline std::ostream& operator<<(std::ostream& os, const Attribute& a) {
-  os << "Attr<" << a.name() << ',' << tiledb::impl::to_str(a.type()) << ','
-     << (a.cell_val_num() == TILEDB_VAR_NUM ? "VAR" :
-                                              std::to_string(a.cell_val_num()))
-     << '>';
+inline std::ostream& operator<<(std::ostream& os, const Attribute& attribute) {
+  auto& ctx = attribute.context();
+  tiledb_string_t* tdb_string;
+
+  ctx.handle_error(tiledb_attribute_dump_str(
+      ctx.ptr().get(), attribute.ptr().get(), &tdb_string));
+
+  os << impl::convert_to_string(&tdb_string).value();
+
   return os;
 }
 

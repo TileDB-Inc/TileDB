@@ -26,9 +26,8 @@
 include(unit_test)
 
 commence(unit_test delete_update_condition)
-    this_target_link_libraries(ast_test_support_lib)
     this_target_sources(main.cc unit_delete_condition.cc unit_update_condition.cc)
     # The dependencies can't yet be factored into separate object libraries
-    target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS)
-    target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS_ILIB)
+    this_target_link_libraries(ast_test_support_lib)
+    this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)

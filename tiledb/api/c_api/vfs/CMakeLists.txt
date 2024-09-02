@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,24 +25,17 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
     vfs_api.cc
 )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_vfs OBJECT ${SOURCES})
-target_link_libraries(capi_vfs PUBLIC capi_context_stub $<TARGET_OBJECTS:capi_context_stub>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_vfs EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_vfs PRIVATE capi_vfs)
-target_sources(compile_capi_vfs PRIVATE test/compile_capi_vfs_main.cc)
-add_dependencies(all_link_complete compile_capi_vfs)
+commence(object_library capi_vfs)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(capi_context_stub)
+conclude(object_library)
 
 add_test_subdirectory()

@@ -65,32 +65,6 @@ template <class T>
 class TileCellSlabIter {
  public:
   /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  /**
-   * Stores information about a range along a single dimension. The
-   * whole range resides in a single tile.
-   */
-  struct Range {
-    /** The start of the range in global coordinates. */
-    T start_;
-    /** The end of the range in global coordinates. */
-    T end_;
-
-    /** Constructor. */
-    Range(T start, T end)
-        : start_(start)
-        , end_(end) {
-    }
-
-    /** Equality operator. */
-    bool operator==(const Range& r) const {
-      return (r.start_ == start_ && r.end_ == end_);
-    }
-  };
-
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -99,7 +73,7 @@ class TileCellSlabIter {
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads,
       const Subarray& root_subarray,
-      const Subarray& subarray,
+      const DenseTileSubarray<T>& subarray,
       const std::vector<T>& tile_extents,
       const std::vector<T>& start_coords,
       const std::vector<RangeInfo<T>>& range_info,
@@ -165,7 +139,7 @@ class TileCellSlabIter {
   uint64_t num_ranges_;
 
   /** Original range indexes. */
-  const std::vector<std::vector<uint64_t>>& original_range_idx_;
+  const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& original_range_idx_;
 
   /** Range info. */
   const std::vector<RangeInfo<T>>& range_info_;
@@ -217,7 +191,8 @@ class TileCellSlabIter {
    * ranges, after appropriately splitting them so that no range crosses
    * more that one tile.
    */
-  std::vector<std::vector<Range>> ranges_;
+  const tdb::pmr::vector<
+      tdb::pmr::vector<typename DenseTileSubarray<T>::DenseTileRange>>& ranges_;
 
   /** Saved multiplication of tile extents in cell order. */
   std::vector<uint64_t> mult_extents_;
@@ -243,13 +218,6 @@ class TileCellSlabIter {
 
   /** Initializes the range coords and the cell slab coords. */
   void init_coords();
-
-  /**
-   * Initializes the ranges per dimension, splitting appropriately the
-   * subarray ranges on tile boundaries. Eventually the produced `ranges_`
-   * should not never cross more than one tile.
-   */
-  Status init_ranges(const Subarray& subarray);
 
   /**
    * Updates the current cell slab, based on the current state of

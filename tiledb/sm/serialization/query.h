@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -47,12 +47,12 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 class Buffer;
 class BufferList;
+class ContextResources;
 class Query;
 class GlobalOrderWriter;
 class UnorderedWriter;
@@ -137,12 +137,14 @@ using CopyState =
  * @param serialized_buffer Buffer containing serialized query
  * @param serialize_type Serialization type of serialized query
  * @param array Array object to deserialize into
+ * @param memory_tracker Memory tracker to use for allocations.
  */
 Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager);
+    ContextResources& resources,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize a query
@@ -239,9 +241,8 @@ Status unordered_write_state_from_capnp(
     UnorderedWriter* runordered_writer,
     SerializationContext context);
 
-Status condition_from_capnp(
-    const capnp::Condition::Reader& condition_reader,
-    QueryCondition* const condition);
+QueryCondition condition_from_capnp(
+    const capnp::Condition::Reader& condition_reader);
 
 Status condition_to_capnp(
     const QueryCondition& condition,
@@ -266,10 +267,40 @@ void ordered_dim_label_reader_from_capnp(
     OrderedDimLabelReader* reader,
     ThreadPool* compute_tp);
 
+Status query_to_capnp(
+    Query& query, capnp::Query::Builder* query_builder, const bool client_side);
+
+Status query_from_capnp(
+    const capnp::Query::Reader& query_reader,
+    const SerializationContext context,
+    void* buffer_start,
+    CopyState* const copy_state,
+    Query* const query,
+    ThreadPool* compute_tp,
+    const bool allocate_buffers);
+
+/**
+ * Convert a list of Range objects (one dimension) into capnp message
+ *
+ * @param ranges List of ranges per dimension
+ * @param range_builder capnp builder
+ */
+void range_buffers_to_capnp(
+    const std::vector<Range>& ranges,
+    capnp::SubarrayRanges::Builder& range_builder);
+
+/**
+ * Deserialize a list of Range objects (one dimension) from capnp message
+ *
+ * @param range_reader capnp reader
+ * @return The list of ranges
+ */
+std::vector<Range> range_buffers_from_capnp(
+    capnp::SubarrayRanges::Reader& range_reader);
+
 #endif
 
 }  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SERIALIZATION_QUERY_H

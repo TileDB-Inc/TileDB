@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,11 @@
 
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 #include <cassert>
@@ -44,51 +44,33 @@
 #include <iostream>
 #include <list>
 
+/** Class for locally generated status exceptions. */
+class RTreeException : public StatusException {
+ public:
+  explicit RTreeException(const std::string& msg)
+      : StatusException("RTree", msg) {
+  }
+};
+
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-RTree::RTree() {
-  domain_ = nullptr;
-  fanout_ = 0;
-  deserialized_buffer_size_ = 0;
-}
-
-RTree::RTree(const Domain* domain, unsigned fanout)
-    : domain_(domain)
-    , fanout_(fanout) {
+RTree::RTree(
+    const Domain* domain,
+    unsigned fanout,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , domain_(domain)
+    , fanout_(fanout)
+    , levels_(memory_tracker_->get_resource(MemoryType::RTREE)) {
 }
 
 RTree::~RTree() = default;
-
-RTree::RTree(const RTree& rtree)
-    : RTree() {
-  auto clone = rtree.clone();
-  swap(clone);
-}
-
-RTree::RTree(RTree&& rtree) noexcept
-    : RTree() {
-  swap(rtree);
-}
-
-RTree& RTree::operator=(const RTree& rtree) {
-  auto clone = rtree.clone();
-  swap(clone);
-
-  return *this;
-}
-
-RTree& RTree::operator=(RTree&& rtree) noexcept {
-  swap(rtree);
-
-  return *this;
-}
 
 /* ****************************** */
 /*               API              */
@@ -240,7 +222,7 @@ const NDRange& RTree::leaf(uint64_t leaf_idx) const {
   return levels_.back()[leaf_idx];
 }
 
-const std::vector<NDRange>& RTree::leaves() const {
+const tdb::pmr::vector<NDRange>& RTree::leaves() const {
   assert(!levels_.empty());
   return levels_.back();
 }
@@ -284,38 +266,34 @@ void RTree::serialize(Serializer& serializer) const {
   }
 }
 
-Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
+void RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
   if (levels_.size() != 1)
-    return LOG_STATUS(Status_RTreeError(
-        "Cannot set leaf; There are more than one levels in the tree"));
+    throw RTreeException(
+        "Cannot set leaf; There are more than one levels in the tree");
 
   if (leaf_id >= levels_[0].size())
-    return LOG_STATUS(Status_RTreeError("Cannot set leaf; Invalid lead index"));
+    throw RTreeException("Cannot set leaf; Invalid lead index");
 
   levels_[0][leaf_id] = mbr;
-
-  return Status::Ok();
 }
 
-Status RTree::set_leaves(const std::vector<NDRange>& mbrs) {
+void RTree::set_leaves(const tdb::pmr::vector<NDRange>& mbrs) {
   levels_.clear();
   levels_.resize(1);
-  levels_[0] = mbrs;
-  return Status::Ok();
+  levels_[0].assign(mbrs.begin(), mbrs.end());
 }
 
-Status RTree::set_leaf_num(uint64_t num) {
+void RTree::set_leaf_num(uint64_t num) {
   // There should be exactly one level (the leaf level)
   if (levels_.size() != 1)
     levels_.resize(1);
 
   if (num < levels_[0].size())
-    return LOG_STATUS(
-        Status_RTreeError("Cannot set number of leaves; provided number "
-                          "cannot be smaller than the current leaf number"));
+    throw RTreeException(
+        "Cannot set number of leaves; provided number "
+        "cannot be smaller than the current leaf number");
 
   levels_[0].resize(num);
-  return Status::Ok();
 }
 
 void RTree::deserialize(
@@ -328,13 +306,21 @@ void RTree::deserialize(
   deserialize_v5(deserializer, domain);
 }
 
+void RTree::reset(const Domain* domain, unsigned int fanout) {
+  domain_ = domain;
+  fanout_ = fanout;
+  free_memory();
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
 RTree::Level RTree::build_level(const Level& level) {
   auto cur_mbr_num = (uint64_t)level.size();
-  Level new_level((uint64_t)std::ceil((double)cur_mbr_num / fanout_));
+  Level new_level(
+      (uint64_t)std::ceil((double)cur_mbr_num / fanout_),
+      memory_tracker_->get_resource(MemoryType::RTREE));
   auto new_mbr_num = (uint64_t)new_level.size();
 
   uint64_t mbrs_visited = 0;
@@ -344,16 +330,7 @@ RTree::Level RTree::build_level(const Level& level) {
       domain_->expand_ndrange(level[mbrs_visited], &new_level[i]);
   }
 
-  return new_level;
-}
-
-RTree RTree::clone() const {
-  RTree clone;
-  clone.domain_ = domain_;
-  clone.fanout_ = fanout_;
-  clone.levels_ = levels_;
-
-  return clone;
+  return {new_level, memory_tracker_->get_resource(MemoryType::RTREE)};
 }
 
 void RTree::deserialize_v1_v4(
@@ -370,17 +347,24 @@ void RTree::deserialize_v1_v4(
 
   auto level_num = deserializer.read<unsigned>();
   levels_.clear();
-  levels_.resize(level_num);
+  levels_.reserve(level_num);
   auto dim_num = domain->dim_num();
   for (unsigned l = 0; l < level_num; ++l) {
     auto mbr_num = deserializer.read<uint64_t>();
-    levels_[l].resize(mbr_num);
+    // We use emplace_back to construct the level in place, which also
+    // implicitly passes the memory tracking allocator all the way down to the
+    // NDRange objects.
+    auto& level = levels_.emplace_back();
+    level.reserve(mbr_num);
     for (uint64_t m = 0; m < mbr_num; ++m) {
-      levels_[l][m].resize(dim_num);
+      auto& mbr = level.emplace_back();
+      mbr.reserve(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
         auto r_size{2 * domain->dimension_ptr(d)->coord_size()};
         auto data = deserializer.get_ptr<void>(r_size);
-        levels_[l][m][d] = Range(data, r_size);
+        // NDRange is not yet a pmr vector, so we need to explicitly pass the
+        // grandparent container's allocator.
+        mbr.emplace_back(data, r_size, level.get_allocator());
       }
     }
   }
@@ -395,27 +379,36 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
   auto level_num = deserializer.read<unsigned>();
 
   levels_.clear();
-  levels_.resize(level_num);
+  levels_.reserve(level_num);
   auto dim_num = domain->dim_num();
 
   for (unsigned l = 0; l < level_num; ++l) {
     auto mbr_num = deserializer.read<uint64_t>();
-    levels_[l].resize(mbr_num);
+    // We use emplace_back to construct the level in place, which also
+    // implicitly passes the memory tracking allocator all the way down to the
+    // NDRange objects.
+    auto& level = levels_.emplace_back();
+    level.reserve(mbr_num);
 
     for (uint64_t m = 0; m < mbr_num; ++m) {
-      levels_[l][m].resize(dim_num);
+      auto& mbr = level.emplace_back();
+      mbr.reserve(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
         auto dim{domain->dimension_ptr(d)};
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * dim->coord_size();
           auto data = deserializer.get_ptr<void>(r_size);
-          levels_[l][m][d] = Range(data, r_size);
+          // NDRange is not yet a pmr vector, so we need to explicitly pass the
+          // grandparent container's allocator.
+          mbr.emplace_back(data, r_size, level.get_allocator());
         } else {  // Var-sized
           // range_size | start_size | range
           auto r_size = deserializer.read<uint64_t>();
           auto start_size = deserializer.read<uint64_t>();
           auto data = deserializer.get_ptr<void>(r_size);
-          levels_[l][m][d] = Range(data, r_size, start_size);
+          // NDRange is not yet a pmr vector, so we need to explicitly pass the
+          // grandparent container's allocator.
+          mbr.emplace_back(data, r_size, start_size, level.get_allocator());
         }
       }
     }
@@ -424,11 +417,4 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
   domain_ = domain;
 }
 
-void RTree::swap(RTree& rtree) {
-  std::swap(domain_, rtree.domain_);
-  std::swap(fanout_, rtree.fanout_);
-  std::swap(levels_, rtree.levels_);
-}
-
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

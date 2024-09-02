@@ -43,8 +43,10 @@ add_subdirectory(dynamic_memory)
 add_subdirectory(exception)
 add_subdirectory(governor)
 add_subdirectory(interval)
+add_subdirectory(random)
 add_subdirectory(thread_pool)
 add_subdirectory(types)
+add_subdirectory(util)
 
 get_gathered(COMMON_SOURCES)
 set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
@@ -53,10 +55,21 @@ set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
 # `baseline` object library
 #
 commence(object_library baseline)
-    this_target_sources(logger.cc governor/governor.cc
-        dynamic_memory/dynamic_memory.cc heap_profiler.cc heap_memory.cc
-        exception/exception.cc exception/status.cc)
-    find_package(Spdlog_EP REQUIRED)
+    this_target_sources(
+        logger.cc
+        dynamic_memory/dynamic_memory.cc
+        exception/exception.cc
+        exception/status.cc
+        governor/governor.cc
+        heap_profiler.cc
+        heap_memory.cc
+        memory_tracker.cc
+        pmr.cc
+    )
+    if (TILEDB_USE_CPP17_PMR)
+      this_target_sources(polymorphic_allocator/polymorphic_allocator.cc)
+    endif()
+    find_package(spdlog REQUIRED)
     target_link_libraries(baseline PUBLIC spdlog::spdlog)
     target_link_libraries(baseline PUBLIC common)
 conclude(object_library)

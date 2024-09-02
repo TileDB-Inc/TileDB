@@ -48,6 +48,7 @@
 #include <aws/core/utils/logging/LogMacros.h>
 #include <aws/sts/STSClient.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
+#include <aws/sts/model/AssumeRoleWithWebIdentityRequest.h>
 
 #include <utility>
 
@@ -77,8 +78,8 @@ STSProfileWithWebIdentityCredentialsProvider::
     STSProfileWithWebIdentityCredentialsProvider(
         const Aws::String& profileName,
         std::chrono::minutes duration,
-        const std::function<Aws::STS::STSClient*(const AWSCredentials&)>&
-            stsClientFactory)
+        const std::function<std::shared_ptr<Aws::STS::STSClient>(
+            const AWSCredentials&)>& stsClientFactory)
     : m_profileName(profileName)
     , m_duration(duration)
     , m_reloadFrequency(
@@ -430,26 +431,21 @@ STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromSTS(
     const Aws::String& externalID) {
   using namespace Aws::STS::Model;
   if (m_stsClientFactory) {
-    return GetCredentialsFromSTSInternal(
-        roleArn, externalID, m_stsClientFactory(credentials));
+    auto client = m_stsClientFactory(credentials);
+    return GetCredentialsFromSTSInternal(roleArn, externalID, client.get());
   }
 
   Aws::STS::STSClient stsClient{credentials};
   return GetCredentialsFromSTSInternal(roleArn, externalID, &stsClient);
 }
 
-AWSCredentials
-STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromWebIdentity(
-    const Config::Profile& profile) {
+AWSCredentials STSProfileWithWebIdentityCredentialsProvider::
+    GetCredentialsFromWebIdentityInternal(
+        const Config::Profile& profile, Aws::STS::STSClient* client) {
+  using namespace Aws::STS::Model;
   const Aws::String& m_roleArn = profile.GetRoleArn();
   Aws::String m_tokenFile = profile.GetValue("web_identity_token_file");
   Aws::String m_sessionName = profile.GetValue("role_session_name");
-
-  auto tmpRegion = profile.GetRegion();
-  if (tmpRegion.empty()) {
-    // Set same default as STSAssumeRoleWebIdentityCredentialsProvider
-    tmpRegion = Aws::Region::US_EAST_1;
-  }
 
   if (m_sessionName.empty()) {
     m_sessionName = Aws::Utils::UUID::RandomUUID();
@@ -467,30 +463,40 @@ STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromWebIdentity(
     return {};
   }
 
-  Internal::STSCredentialsClient::STSAssumeRoleWithWebIdentityRequest request{
-      m_sessionName, m_roleArn, m_token};
+  AssumeRoleWithWebIdentityRequest request;
+  request.SetRoleArn(m_roleArn);
+  request.SetRoleSessionName(m_sessionName);
+  request.SetWebIdentityToken(m_token);
 
-  Aws::Client::ClientConfiguration config;
-  config.scheme = Aws::Http::Scheme::HTTPS;
-  config.region = tmpRegion;
+  auto outcome = client->AssumeRoleWithWebIdentity(request);
+  if (outcome.IsSuccess()) {
+    const auto& modelCredentials = outcome.GetResult().GetCredentials();
+    AWS_LOGSTREAM_TRACE(
+        CLASS_TAG,
+        "Successfully retrieved credentials with AWS_ACCESS_KEY: "
+            << modelCredentials.GetAccessKeyId());
+    return {
+        modelCredentials.GetAccessKeyId(),
+        modelCredentials.GetSecretAccessKey(),
+        modelCredentials.GetSessionToken(),
+        modelCredentials.GetExpiration()};
+  } else {
+    AWS_LOGSTREAM_ERROR(CLASS_TAG, "failed to assume role" << m_roleArn);
+  }
+  return {};
+}
 
-  Aws::Vector<Aws::String> retryableErrors;
-  retryableErrors.push_back("IDPCommunicationError");
-  retryableErrors.push_back("InvalidIdentityToken");
+AWSCredentials
+STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromWebIdentity(
+    const Config::Profile& profile) {
+  using namespace Aws::STS::Model;
+  if (m_stsClientFactory) {
+    auto client = m_stsClientFactory({});
+    return GetCredentialsFromWebIdentityInternal(profile, client.get());
+  }
 
-  config.retryStrategy =
-      Aws::MakeShared<Aws::Client::SpecifiedRetryableErrorsRetryStrategy>(
-          CLASS_TAG, retryableErrors, 3 /*maxRetries*/);
-
-  auto m_client =
-      Aws::MakeUnique<Aws::Internal::STSCredentialsClient>(CLASS_TAG, config);
-  auto result = m_client->GetAssumeRoleWithWebIdentityCredentials(request);
-  AWS_LOGSTREAM_TRACE(
-      CLASS_TAG,
-      "Successfully retrieved credentials with AWS_ACCESS_KEY: "
-          << result.creds.GetAWSAccessKeyId());
-
-  return result.creds;
+  Aws::STS::STSClient stsClient{AWSCredentials{}};
+  return GetCredentialsFromWebIdentityInternal(profile, &stsClient);
 }
 
 #endif  // HAVE_S3s

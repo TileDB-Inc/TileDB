@@ -179,9 +179,11 @@ TEST_CASE(
   // Sanity check reading
   array.open(TILEDB_READ);
   std::vector<int> subarray = {0, 10};
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
   std::vector<float> a1_read(2);
   Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a1", a1_read);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);

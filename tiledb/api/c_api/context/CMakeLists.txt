@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
     context_api.cc
@@ -34,28 +35,14 @@ gather_sources(${SOURCES})
 list(APPEND OTHER_SOURCES
     # We need to recompile sources that depend on StorageManager to use the stub
     ../../../sm/storage_manager/context.cc
-    ../../../sm/storage_manager/context_resources.cc
     )
 
-#
-# The stubbed object library is compiled with the `StorageManagerStub`. Anything
-# that needs actual storage manager behavior will fail. If all that's needed is
-# a reference, it will work fine.
-#
-add_library(capi_context_stub OBJECT ${SOURCES} ${OTHER_SOURCES})
-target_link_libraries(capi_context_stub PUBLIC export)
-target_link_libraries(capi_context_stub PUBLIC storage_manager_stub)
-target_link_libraries(capi_context_stub PUBLIC capi_config_stub $<TARGET_OBJECTS:capi_config_stub>)
-target_link_libraries(capi_context_stub PUBLIC vfs $<TARGET_OBJECTS:vfs>)
-target_link_libraries(capi_context_stub PUBLIC stats $<TARGET_OBJECTS:stats>)
-target_link_libraries(capi_context_stub PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_context_stub EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_context_stub PRIVATE capi_context_stub)
-target_sources(compile_capi_context_stub PRIVATE test/compile_capi_context_main.cc)
-add_dependencies(all_link_complete compile_capi_context_stub)
+commence(object_library capi_context_stub)
+  this_target_sources(${SOURCES} ${OTHER_SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(capi_config_stub)
+  this_target_object_libraries(storage_manager_stub)
+  this_target_object_libraries(context_resources)
+conclude(object_library)
 
 add_test_subdirectory()

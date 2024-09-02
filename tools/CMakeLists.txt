@@ -25,26 +25,26 @@
 # THE SOFTWARE.
 #
 
-if(TILEDB_VCPKG)
-  find_package(Clipp CONFIG REQUIRED)
-else()
-  find_package(Clipp_EP REQUIRED)
-endif()
+find_package(Clipp CONFIG REQUIRED)
 
-add_executable(tiledb EXCLUDE_FROM_ALL
+add_executable(tiledb-cli EXCLUDE_FROM_ALL
   src/commands/help_command.cc
   src/commands/info_command.cc
   src/main/tiledb.cc
-  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+)
+
+set_target_properties(tiledb-cli PROPERTIES
+  OUTPUT_NAME tiledb
 )
 
 # List of all tool targets
-set(TILEDB_TOOLS tiledb)
+set(TILEDB_TOOLS tiledb-cli)
 
 # Set up link and include directories for all tools
 foreach(TOOL ${TILEDB_TOOLS})
   target_link_libraries(${TOOL} PRIVATE
     TILEDB_CORE_OBJECTS_ILIB
+    TILEDB_CORE_OBJECTS
     clipp::clipp
   )
   target_include_directories(${TOOL} PRIVATE

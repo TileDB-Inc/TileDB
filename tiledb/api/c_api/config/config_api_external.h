@@ -91,11 +91,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * **Parameters**
  *
- * - `sm.allow_aggregates_experimental` <br>
- *    **Experimental** <br>
- *    Allow query aggregates APIs. Experimental for testing purposes,
- *    do not use.<br>
- *    **Default**: false
  * - `sm.allow_separate_attribute_writes` <br>
  *    **Experimental** <br>
  *    Allow separate attribute write queries.<br>
@@ -107,13 +102,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
- *    arbitrarily. <br>
+ *    arbitrarily. Also note that this check means that it will take longer to
+ *    perform the write operation. <br>
  *    **Default**: false
  * - `sm.check_coord_dups` <br>
  *    This is applicable only if `sm.dedup_coords` is `false`.
  *    If `true`, an error will be thrown if there are cells with duplicate
  *    coordinates during sparse fragmnet writes. If `false` and there are
- *    duplicates, the duplicates will be written without errors. <br>
+ *    duplicates, the duplicates will be written without errors. Note that this
+ *    check is much ligher weight than the coordinate deduplication check
+ *    enabled by `sm.dedup_coords`. <br>
  *    **Default**: true
  * - `sm.check_coord_oob` <br>
  *    If `true`, an error will be thrown if there are cells with coordinates
@@ -169,6 +167,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    (since the resulting fragment is dense). <br>
  *    **Default**: 1.0
  * - `sm.consolidation.buffer_size` <br>
+ *    **Deprecated**
  *    The size (in bytes) of the attribute buffers used during
  *    consolidation. <br>
  *    **Default**: 50,000,000
@@ -181,7 +180,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.consolidation.steps` <br>
  *    The number of consolidation steps to be performed when executing
  *    the consolidation algorithm.<br>
- *    **Default**: 1
+ *    **Default**: UINT32_MAX
  * - `sm.consolidation.purge_deleted_cells` <br>
  *    **Experimental** <br>
  *    Purge deleted cells from the consolidated fragment or not.<br>
@@ -208,6 +207,25 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
  *    Only for `fragments` and `array_meta` consolidation mode. <br>
  *    **Default**: UINT64_MAX
+ * - `sm.encryption_key` <br>
+ *    The key for encrypted arrays. <br>
+ *    **Default**: ""
+ * - `sm.encryption_type` <br>
+ *    The type of encryption used for encrypted arrays. <br>
+ *    **Default**: "NO_ENCRYPTION"
+ * - `sm.enumerations_max_size` <br>
+ *    Maximum in memory size for an enumeration. If the enumeration is <br>
+ *    var sized, the size will include the data and the offsets. <br>
+ *    **Default**: 10MB
+ * - `sm.enumerations_max_total_size` <br>
+ *    Maximum in memory size for all enumerations. If the enumeration <br>
+ *    is var sized, the size will include the data and the offsets. <br>
+ *    **Default**: 50MB
+ * - `sm.max_tile_overlap_size` <br>
+ *    Maximum size for the tile overlap structure which holds <br>
+ *    information about which tiles are covered by ranges. Only used <br>
+ *    in dense reads and legacy reads. <br>
+ *    **Default**: 300MB
  * - `sm.memory_budget` <br>
  *    The memory budget for tiles of fixed-sized attributes (or offsets for
  *    var-sized attributes) to be fetched during reads.<br>
@@ -231,14 +249,21 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.query.dense.reader` <br>
  *    Which reader to use for dense queries. "refactored" or "legacy".<br>
  *    **Default**: refactored
+ * - `sm.query.dense.qc_coords_mode` <br>
+ *    Dense configuration that allows to only return the coordinates of <br>
+ *    the cells that match a query condition without any attribute data. <br>
+ *    **Default**: "false"
  * - `sm.query.sparse_global_order.reader` <br>
  *    Which reader to use for sparse global order queries. "refactored"
  *    or "legacy".<br>
- *    **Default**: legacy
+ *    **Default**: refactored
  * - `sm.query.sparse_unordered_with_dups.reader` <br>
  *    Which reader to use for sparse unordered with dups queries.
  *    "refactored" or "legacy".<br>
  *    **Default**: refactored
+ * - `sm.skip_checksum_validation` <br>
+ *    Skip checksum validation on reads for the md5 and sha256 filters. <br>
+ *    **Default**: "false"
  * - `sm.mem.malloc_trim` <br>
  *    Should malloc_trim be called on context and query destruction? This might
  *    reduce residual memory usage. <br>
@@ -257,6 +282,27 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB
+ * - `sm.mem.consolidation.buffers_weight` <br>
+ *    Weight used to split `sm.mem.total_budget` and assign to the
+ *    consolidation buffers. The budget is split across 3 values,
+ *    `sm.mem.consolidation.buffers_weight`,
+ *    `sm.mem.consolidation.reader_weight` and
+ *    `sm.mem.consolidation.writer_weight`. <br>
+ *    **Default**: 1
+ * - `sm.mem.consolidation.reader_weight` <br>
+ *    Weight used to split `sm.mem.total_budget` and assign to the
+ *    reader query. The budget is split across 3 values,
+ *    `sm.mem.consolidation.buffers_weight`,
+ *    `sm.mem.consolidation.reader_weight` and
+ *    `sm.mem.consolidation.writer_weight`. <br>
+ *    **Default**: 3
+ * - `sm.mem.consolidation.writer_weight` <br>
+ *    Weight used to split `sm.mem.total_budget` and assign to the
+ *    writer query. The budget is split across 3 values,
+ *    `sm.mem.consolidation.buffers_weight`,
+ *    `sm.mem.consolidation.reader_weight` and
+ *    `sm.mem.consolidation.writer_weight`. <br>
+ *    **Default**: 2
  * - `sm.mem.reader.sparse_global_order.ratio_coords` <br>
  *    Ratio of the budget allocated for coordinates in the sparse global
  *    order reader. <br>
@@ -305,6 +351,24 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If `true` tile offsets can be partially loaded and unloaded by the
  *    readers. <br>
  *    **Default**: false
+ * - `ssl.ca_file` <br>
+ *    The path to CA certificate to use when validating server certificates.
+ *    Applies to all SSL/TLS connections. <br>
+ *    This option might be ignored on platforms that have native certificate
+ *    stores like Windows. <br>
+ *    **Default**: ""
+ * - `ssl.ca_path` <br>
+ *    The path to a directory with CA certificates to use when validating
+ *    server certificates. Applies to all SSL/TLS connections. <br>
+ *    This option might be ignored on platforms that have native certificate
+ *    stores like Windows. <br>
+ *    **Default**: ""
+ * - `ssl.verify` <br>
+ *    Whether to verify the server's certificate. Applies to all SSL/TLS
+ *    connections. <br>
+ *    Disabling verification is insecure and should only used for testing
+ *    purposes. <br>
+ *    **Default**: true
  * - `vfs.read_ahead_cache_size` <br>
  *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
  *    **Default**: 10485760
@@ -315,7 +379,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: 10MB
  * - `vfs.max_batch_size` <br>
  *    The maximum number of bytes in a VFS read operation<br>
- *    **Default**: UINT64_MAX
+ *    **Default**: 100MB
  * - `vfs.min_batch_size` <br>
  *    The minimum number of bytes in a VFS read operation<br>
  *    **Default**: 20MB
@@ -388,7 +452,27 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    attempts, in milliseconds.
  *    **Default**: 60000
  * - `vfs.gcs.project_id` <br>
- *    Set the GCS project id. <br>
+ *    Set the GCS project ID to create new buckets to. Not required unless you
+ *    are going to use the VFS to create buckets. <br>
+ *    **Default**: ""
+ * - `vfs.gcs.service_account_key` <br>
+ *    **Experimental** <br>
+ *    Set the JSON string with GCS service account key. Takes precedence
+ *    over `vfs.gcs.workload_identity_configuration` if both are specified. If
+ *    neither is specified, Application Default Credentials will be used. <br>
+ *    **Default**: ""
+ * - `vfs.gcs.workload_identity_configuration` <br>
+ *    **Experimental** <br>
+ *    Set the JSON string with Workload Identity Federation configuration.
+ *    `vfs.gcs.service_account_key` takes precedence over this if both are
+ *    specified. If neither is specified, Application Default Credentials will
+ *    be used. <br>
+ *    **Default**: ""
+ * - `vfs.gcs.impersonate_service_account` <br>
+ *    **Experimental** <br>
+ *    Set the GCS service account to impersonate. A chain of impersonated
+ *    accounts can be formed by specifying many service accounts, separated by a
+ *    comma. <br>
  *    **Default**: ""
  * - `vfs.gcs.multi_part_size` <br>
  *    The part size (in bytes) used in GCS multi part writes.
@@ -405,6 +489,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.gcs.request_timeout_ms` <br>
  *    The maximum amount of time to retry network requests to GCS. <br>
  *    **Default**: "3000"
+ * - `vfs.gcs.max_direct_upload_size` <br>
+ *    The maximum size in bytes of a direct upload to GCS. Ignored
+ *    if `vfs.gcs.use_multi_part_upload` is set to true. <br>
+ *    **Default**: "10737418240"
  * - `vfs.s3.region` <br>
  *    The S3 region, if S3 is enabled. <br>
  *    **Default**: us-east-1
@@ -472,7 +560,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: ""
  * - `vfs.s3.connect_timeout_ms` <br>
  *    The connection timeout in ms. Any `long` value is acceptable. <br>
- *    **Default**: 3000
+ *    **Default**: 10800
  * - `vfs.s3.connect_max_tries` <br>
  *    The maximum tries for a connection. Any `long` value is acceptable. <br>
  *    **Default**: 5
@@ -488,7 +576,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The AWS SDK logging level. This is a process-global setting. The
  *    configuration of the most recently constructed context will set
  *    process state. Log files are written to the process working directory.
- *    **Default**: ""
+ *    **Default**: "Off"
  * - `vfs.s3.request_timeout_ms` <br>
  *    The request timeout in ms. Any `long` value is acceptable. <br>
  *    **Default**: 3000
@@ -526,6 +614,22 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The server-side encryption key to use if
  *    vfs.s3.sse == "kms" (AWS key management service). <br>
  *    **Default**: ""
+ * - `vfs.s3.storage_class` <br>
+ *    The storage class to use for the newly uploaded S3 objects. The set of
+ *    accepted values is found in the Aws::S3::Model::StorageClass enumeration.
+ *    "NOT_SET"
+ *    "STANDARD"
+ *    "REDUCED_REDUNDANCY"
+ *    "STANDARD_IA"
+ *    "ONEZONE_IA"
+ *    "INTELLIGENT_TIERING"
+ *    "GLACIER"
+ *    "DEEP_ARCHIVE"
+ *    "OUTPOSTS"
+ *    "GLACIER_IR"
+ *    "SNOW"
+ *    "EXPRESS_ONEZONE" <br>
+ *    **Default**: "NOT_SET"
  * - `vfs.s3.bucket_canned_acl` <br>
  *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
  *    "NOT_SET"
@@ -554,10 +658,14 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `config_files` (forces SDK to only consider options found in aws
  *    config files),
  *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
- * from config files with support for web tokens, commonly used by EKS/ECS).
+ *    from config files with support for web tokens, commonly used by EKS/ECS).
  *    **Default**: auto
  *    <br>
- * - `vfs.hdfs.name_node_uri"` <br>
+ * - `vfs.s3.install_sigpipe_handler` <br>
+ *    When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
+ *    signals.
+ *    **Default**: "true"
+ * - `vfs.hdfs.name_node_uri` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""
  * - `vfs.hdfs.username` <br>
@@ -595,6 +703,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Authentication token for REST server (used instead of
  *    username/password). <br>
  *    **Default**: ""
+ * - `rest.resubmit_incomplete` <br>
+ *    If true, incomplete queries received from server are automatically
+ *    resubmitted before returning to user control. <br>
+ *    **Default**: "true"
  * - `rest.ignore_ssl_validation` <br>
  *    Have curl ignore ssl peer and host validation for REST server. <br>
  *    **Default**: false
@@ -608,7 +720,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: "503"
  * - `rest.retry_count` <br>
  *    Number of times to retry failed REST requests <br>
- *    **Default**: 3
+ *    **Default**: 25
  * - `rest.retry_initial_delay_ms` <br>
  *    Initial delay in milliseconds to wait until retrying a REST request <br>
  *    **Default**: 500
@@ -628,20 +740,31 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If true, array non empty domain will be loaded and sent to server together
  *    with the open array <br>
  *    **Default**: true
+ * - `rest.load_enumerations_on_array_open` <br>
+ *    If true, enumerations will be loaded and sent to server together with
+ *    the open array.
+ *    **Default**: false
  * - `rest.use_refactored_array_open` <br>
- *    If true, the new, experimental REST routes and APIs for opening an array
+ *    If true, the new REST routes and APIs for opening an array
  *    will be used <br>
- *    **Default**: false
+ *    **Default**: true
  * - `rest.use_refactored_array_open_and_query_submit` <br>
- *    If true, the new, experimental REST routes and APIs for opening an array
- *    and submitting a query will be used <br>
- *    **Default**: false
+ *    If true, the new REST routes and APIs for opening an array and submitting
+ *    a query will be used <br>
+ *    **Default**: true
  * - `rest.curl.buffer_size` <br>
  *    Set curl buffer size for REST requests <br>
  *    **Default**: 524288 (512KB)
  * - `rest.capnp_traversal_limit` <br>
  *    CAPNP traversal limit used in the deserialization of messages(bytes) <br>
- *    **Default**: 536870912 (512MB)
+ *    **Default**: 2147483648 (2GB)
+ * - `rest.custom_headers.*` <br>
+ *    (Optional) Prefix for custom headers on REST requests. For each custom
+ *    header, use "rest.custom_headers.header_key" = "header_value" <br>
+ *    **Optional. No Default**
+ * - `rest.payer_namespace` <br>
+ *    The namespace that should be charged for the request. <br>
+ *    **Default**: no default set
  * - `filestore.buffer_size` <br>
  *    Specifies the size in bytes of the internal buffers used in the filestore
  *    API. The size should be bigger than the minimum tile size filestore

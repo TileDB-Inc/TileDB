@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,13 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 
+class DoubleDeltaException : public StatusException {
+ public:
+  explicit DoubleDeltaException(const std::string& message)
+      : StatusException("DoubleDeltaException", message) {
+  }
+};
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -43,8 +50,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 const uint64_t DoubleDelta::OVERHEAD = 17;
 
@@ -52,10 +58,12 @@ const uint64_t DoubleDelta::OVERHEAD = 17;
 /*               API              */
 /* ****************************** */
 
-Status DoubleDelta::compress(
+void DoubleDelta::compress(
     Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return DoubleDelta::compress<std::byte>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::compress<int8_t>(input_buffer, output_buffer);
@@ -109,22 +117,23 @@ Status DoubleDelta::compress(
       return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return LOG_STATUS(Status_CompressionError(
-          "Cannot compress tile with DoubleDelta; Float "
-          "datatypes are not supported"));
+      throw DoubleDeltaException(
+          "DoubleDelta tile compression is not yet supported for float types.");
   }
 
   assert(false);
-  return LOG_STATUS(Status_CompressionError(
-      "Cannot compress tile with DoubleDelta; Not supported datatype"));
+  throw DoubleDeltaException(
+      "Cannot compress tile with DoubleDelta; Unsupported datatype");
 }
 
-Status DoubleDelta::decompress(
+void DoubleDelta::decompress(
     Datatype type,
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return DoubleDelta::decompress<std::byte>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
@@ -178,14 +187,14 @@ Status DoubleDelta::decompress(
       return DoubleDelta::decompress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return LOG_STATUS(Status_CompressionError(
-          "Cannot decompress tile with DoubleDelta; Float "
-          "datatypes are not supported"));
+      throw DoubleDeltaException(
+          "DoubleDelta tile decompression is not yet supported for float "
+          "types.");
   }
 
   assert(false);
-  return LOG_STATUS(Status_CompressionError(
-      "Cannot decompress tile with DoubleDelta; Not supported datatype"));
+  throw DoubleDeltaException(
+      "Cannot decompress tile with DoubleDelta; Unupported datatype");
 }
 
 uint64_t DoubleDelta::overhead(uint64_t) {
@@ -198,7 +207,7 @@ uint64_t DoubleDelta::overhead(uint64_t) {
 /* ****************************** */
 
 template <class T>
-Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+void DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Calculate number of values and handle trivial case
   uint64_t value_size = sizeof(T);
   uint64_t num = input_buffer->size() / value_size;
@@ -207,29 +216,29 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Calculate bitsize (ignoring the sign bit)
   auto in = (T*)input_buffer->data();
   unsigned int bitsize;
-  RETURN_NOT_OK(compute_bitsize(in, num, &bitsize));
+  compute_bitsize(in, num, &bitsize);
   assert(bitsize <= std::numeric_limits<uint8_t>::max());
   auto bitsize_c = static_cast<uint8_t>(bitsize);
 
   // Write bitsize and number of values
-  RETURN_NOT_OK(output_buffer->write(&bitsize_c, sizeof(uint8_t)));
-  RETURN_NOT_OK(output_buffer->write(&num, sizeof(uint64_t)));
+  throw_if_not_ok(output_buffer->write(&bitsize_c, sizeof(uint8_t)));
+  throw_if_not_ok(output_buffer->write(&num, sizeof(uint64_t)));
 
   // Trivial case - no compression
   if (bitsize >= sizeof(T) * 8 - 1) {
-    RETURN_NOT_OK(output_buffer->write(in, input_buffer->size()));
-    return Status::Ok();
+    throw_if_not_ok(output_buffer->write(in, input_buffer->size()));
+    return;
   }
 
   // Write first value
-  RETURN_NOT_OK(output_buffer->write(&in[0], value_size));
+  throw_if_not_ok(output_buffer->write(&in[0], value_size));
   if (num == 1)
-    return Status::Ok();
+    return;
 
   // Write second value
-  RETURN_NOT_OK(output_buffer->write(&in[1], value_size));
+  throw_if_not_ok(output_buffer->write(&in[1], value_size));
   if (num == 2)
-    return Status::Ok();
+    return;
 
   // Write double deltas
   int64_t prev_delta = int64_t(in[1]) - int64_t(in[0]);
@@ -238,27 +247,23 @@ Status DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   for (uint64_t i = 2; i < num; ++i) {
     int64_t cur_delta = int64_t(in[i]) - int64_t(in[i - 1]);
     int64_t dd = cur_delta - prev_delta;
-    RETURN_NOT_OK(
-        write_double_delta(output_buffer, dd, bitsize, &chunk, &bit_in_chunk));
+    write_double_delta(output_buffer, dd, bitsize, &chunk, &bit_in_chunk);
     prev_delta = cur_delta;
   }
 
   // Write whatever is left in the chunk
   if (bit_in_chunk < 63)
-    RETURN_NOT_OK(output_buffer->write(&chunk, sizeof(uint64_t)));
-
-  return Status::Ok();
+    throw_if_not_ok(output_buffer->write(&chunk, sizeof(uint64_t)));
 }
 
 template <class T>
-Status DoubleDelta::compute_bitsize(
-    T* in, uint64_t num, unsigned int* bitsize) {
+void DoubleDelta::compute_bitsize(T* in, uint64_t num, unsigned int* bitsize) {
   // Find maximum absolute double delta
   *bitsize = 0;
   int64_t max = 0;
   if (num <= 2) {
     *bitsize = 0;
-    return Status::Ok();
+    return;
   }
   int64_t prev_delta = int64_t(in[1]) - int64_t(in[0]);
   char delta_out_of_bounds = 0;
@@ -272,68 +277,64 @@ Status DoubleDelta::compute_bitsize(
   }
   // Handle error
   if (delta_out_of_bounds) {
-    return LOG_STATUS(
-        Status_CompressionError("Cannot compress with DoubleDelta; Some "
-                                "negative double delta is out of bounds"));
+    throw DoubleDeltaException(
+        "Cannot compress with DoubleDelta; Some negative double delta is out "
+        "of bounds");
   }
   // Calculate bitsize of the maximum absolute double delta
   do {
     ++(*bitsize);
     max >>= 1;
   } while (max);
-  return Status::Ok();
 }
 
 template <class T>
-Status DoubleDelta::decompress(
+void DoubleDelta::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Read bitsize and number of values
   uint8_t bitsize_c = 0;
   uint64_t num = 0;
   uint64_t value_size = sizeof(T);
-  RETURN_NOT_OK(input_buffer->read(&bitsize_c, sizeof(uint8_t)));
-  RETURN_NOT_OK(input_buffer->read(&num, sizeof(uint64_t)));
+  throw_if_not_ok(input_buffer->read(&bitsize_c, sizeof(uint8_t)));
+  throw_if_not_ok(input_buffer->read(&num, sizeof(uint64_t)));
   auto bitsize = static_cast<unsigned int>(bitsize_c);
   auto out = (T*)output_buffer->cur_data();
 
   // Trivial case - no compression
   if (bitsize >= sizeof(T) * 8 - 1) {
-    RETURN_NOT_OK(output_buffer->write(
+    throw_if_not_ok(output_buffer->write(
         input_buffer->cur_data(), input_buffer->nbytes_left_to_read()));
-    return Status::Ok();
+    return;
   }
 
   // Read first value
   T value;
-  RETURN_NOT_OK(input_buffer->read(&value, value_size));
-  RETURN_NOT_OK(output_buffer->write(&value, value_size));
+  throw_if_not_ok(input_buffer->read(&value, value_size));
+  throw_if_not_ok(output_buffer->write(&value, value_size));
   if (num == 1)
-    return Status::Ok();
+    return;
 
   // Read second value
-  RETURN_NOT_OK(input_buffer->read(&value, value_size));
-  RETURN_NOT_OK(output_buffer->write(&value, value_size));
+  throw_if_not_ok(input_buffer->read(&value, value_size));
+  throw_if_not_ok(output_buffer->write(&value, value_size));
   if (num == 2)
-    return Status::Ok();
+    return;
 
   // Read first chunk
   uint64_t chunk;
-  RETURN_NOT_OK(input_buffer->read(&chunk, sizeof(uint64_t)));
+  throw_if_not_ok(input_buffer->read(&chunk, sizeof(uint64_t)));
   int bit_in_chunk = 63;  // Leftmost bit (MSB)
 
   // Decompress rest of the values
   int64_t dd;
   for (uint64_t i = 2; i < num; ++i) {
-    RETURN_NOT_OK(
-        read_double_delta(input_buffer, &dd, bitsize, &chunk, &bit_in_chunk));
+    read_double_delta(input_buffer, &dd, bitsize, &chunk, &bit_in_chunk);
     value = (T)(dd + 2 * (int64_t)out[i - 1] - (int64_t)out[i - 2]);
-    RETURN_NOT_OK(output_buffer->write(&value, value_size));
+    throw_if_not_ok(output_buffer->write(&value, value_size));
   }
-
-  return Status::Ok();
 }
 
-Status DoubleDelta::read_double_delta(
+void DoubleDelta::read_double_delta(
     ConstBuffer* buff,
     int64_t* double_delta,
     int bitsize,
@@ -347,7 +348,7 @@ Status DoubleDelta::read_double_delta(
 
   // Read chunk and reset
   if (*bit_in_chunk < 0) {
-    RETURN_NOT_OK(buff->read(chunk, sizeof(uint64_t)));
+    throw_if_not_ok(buff->read(chunk, sizeof(uint64_t)));
     *bit_in_chunk = 63;
   }
 
@@ -369,7 +370,7 @@ Status DoubleDelta::read_double_delta(
 
     // Read chunk and reset
     if (*bit_in_chunk < 0 && buff->offset() != buff->size()) {
-      RETURN_NOT_OK(buff->read(chunk, sizeof(uint64_t)));
+      throw_if_not_ok(buff->read(chunk, sizeof(uint64_t)));
       *bit_in_chunk = 63;
       bits_to_read_from_chunk = std::min(*bit_in_chunk + 1, bits_left_to_read);
     }
@@ -377,11 +378,9 @@ Status DoubleDelta::read_double_delta(
 
   // Set sign
   (*double_delta) *= sign;
-
-  return Status::Ok();
 }
 
-Status DoubleDelta::write_double_delta(
+void DoubleDelta::write_double_delta(
     Buffer* buff,
     int64_t double_delta,
     int bitsize,
@@ -395,7 +394,7 @@ Status DoubleDelta::write_double_delta(
 
   // Write chunk and reset
   if (*bit_in_chunk < 0) {
-    RETURN_NOT_OK(buff->write(chunk, sizeof(uint64_t)));
+    throw_if_not_ok(buff->write(chunk, sizeof(uint64_t)));
     *bit_in_chunk = 63;
     *chunk = 0;
   }
@@ -419,55 +418,52 @@ Status DoubleDelta::write_double_delta(
 
     // Write chunk and reset
     if (*bit_in_chunk < 0) {
-      RETURN_NOT_OK(buff->write(chunk, sizeof(uint64_t)));
+      throw_if_not_ok(buff->write(chunk, sizeof(uint64_t)));
       *bit_in_chunk = 63;
       *chunk = 0;
       bits_to_fill_in_chunk = std::min((*bit_in_chunk) + 1, bits_left_to_write);
     }
   }
-
-  return Status::Ok();
 }
 
 // Explicit template instantiations
 
-template Status DoubleDelta::compress<char>(
+template void DoubleDelta::compress<char>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
-template Status DoubleDelta::compress<int8_t>(
+template void DoubleDelta::compress<int8_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
-template Status DoubleDelta::compress<uint8_t>(
+template void DoubleDelta::compress<uint8_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
-template Status DoubleDelta::compress<int16_t>(
+template void DoubleDelta::compress<int16_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
-template Status DoubleDelta::compress<uint16_t>(
+template void DoubleDelta::compress<uint16_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
-template Status DoubleDelta::compress<int>(
+template void DoubleDelta::compress<int>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
-template Status DoubleDelta::compress<uint32_t>(
+template void DoubleDelta::compress<uint32_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
-template Status DoubleDelta::compress<int64_t>(
+template void DoubleDelta::compress<int64_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
-template Status DoubleDelta::compress<uint64_t>(
+template void DoubleDelta::compress<uint64_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
 
-template Status DoubleDelta::decompress<char>(
+template void DoubleDelta::decompress<char>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-template Status DoubleDelta::decompress<int8_t>(
+template void DoubleDelta::decompress<int8_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-template Status DoubleDelta::decompress<uint8_t>(
+template void DoubleDelta::decompress<uint8_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-template Status DoubleDelta::decompress<int16_t>(
+template void DoubleDelta::decompress<int16_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-template Status DoubleDelta::decompress<uint16_t>(
+template void DoubleDelta::decompress<uint16_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-template Status DoubleDelta::decompress<int>(
+template void DoubleDelta::decompress<int>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-template Status DoubleDelta::decompress<uint32_t>(
+template void DoubleDelta::decompress<uint32_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-template Status DoubleDelta::decompress<int64_t>(
+template void DoubleDelta::decompress<int64_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
-template Status DoubleDelta::decompress<uint64_t>(
+template void DoubleDelta::decompress<uint64_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
-};  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

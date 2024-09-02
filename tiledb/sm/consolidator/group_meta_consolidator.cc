@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,8 +49,10 @@ namespace tiledb::sm {
 /* ****************************** */
 
 GroupMetaConsolidator::GroupMetaConsolidator(
-    const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    ContextResources& resources,
+    const Config& config,
+    StorageManager* storage_manager)
+    : Consolidator(resources, storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -64,104 +66,67 @@ GroupMetaConsolidator::GroupMetaConsolidator(
 Status GroupMetaConsolidator::consolidate(
     const char* group_name, EncryptionType, const void*, uint32_t) {
   auto timer_se = stats_->start_timer("consolidate_group_meta");
-
   check_array_uri(group_name);
 
   // Open group for reading
   auto group_uri = URI(group_name);
-  Group group_for_reads(group_uri, storage_manager_);
-  RETURN_NOT_OK(group_for_reads.open(
-      QueryType::READ, config_.timestamp_start_, config_.timestamp_end_));
+  Group group_for_reads(resources_, group_uri);
+  group_for_reads.open(
+      QueryType::READ, config_.timestamp_start_, config_.timestamp_end_);
 
   // Open group for writing
-  Group group_for_writes(group_uri, storage_manager_);
-  RETURN_NOT_OK_ELSE(
-      group_for_writes.open(QueryType::WRITE),
-      throw_if_not_ok(group_for_reads.close()));
+  Group group_for_writes(resources_, group_uri);
 
-  // Swap the in-memory metadata between the two groups.
-  // After that, the group for writes will store the (consolidated by
-  // the way metadata loading works) metadata of the group for reads
-  Metadata* metadata_r;
-  auto st = group_for_reads.metadata(&metadata_r);
-  if (!st.ok()) {
-    throw_if_not_ok(group_for_reads.close());
-    throw_if_not_ok(group_for_writes.close());
-    return st;
-  }
-  Metadata* metadata_w;
-  st = group_for_writes.metadata(&metadata_w);
-  if (!st.ok()) {
-    throw_if_not_ok(group_for_reads.close());
-    throw_if_not_ok(group_for_writes.close());
-    return st;
-  }
-  metadata_r->swap(metadata_w);
-
-  // Metadata uris to delete
-  const auto to_vacuum = metadata_w->loaded_metadata_uris();
-
-  // Generate new name for consolidated metadata
-  st = metadata_w->generate_uri(group_uri);
-  if (!st.ok()) {
-    throw_if_not_ok(group_for_reads.close());
-    throw_if_not_ok(group_for_writes.close());
-    return st;
+  try {
+    group_for_writes.open(QueryType::WRITE);
+  } catch (...) {
+    group_for_reads.close();
   }
 
-  // Get the new URI name
-  URI new_uri;
-  st = metadata_w->get_uri(group_uri, &new_uri);
-  if (!st.ok()) {
-    throw_if_not_ok(group_for_reads.close());
-    throw_if_not_ok(group_for_writes.close());
-    return st;
+  // Copy-assign the read metadata into the metadata of the group for writes
+  auto metadata_r = group_for_reads.metadata();
+  *(group_for_writes.metadata()) = *metadata_r;
+  URI new_uri = metadata_r->get_uri(group_uri);
+  const auto& to_vacuum = metadata_r->loaded_metadata_uris();
+
+  // Prepare vacuum file
+  URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
+  std::stringstream ss;
+  for (const auto& uri : to_vacuum) {
+    ss << uri.to_string() << "\n";
   }
+  auto data = ss.str();
 
   // Close groups
-  RETURN_NOT_OK_ELSE(
-      group_for_reads.close(), throw_if_not_ok(group_for_writes.close()));
-  RETURN_NOT_OK(group_for_writes.close());
+  group_for_reads.close();
+  group_for_writes.close();
 
   // Write vacuum file
-  URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
-
-  std::stringstream ss;
-  for (const auto& uri : to_vacuum)
-    ss << uri.to_string() << "\n";
-
-  auto data = ss.str();
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+  throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
+  throw_if_not_ok(resources_.vfs().close_file(vac_uri));
 
   return Status::Ok();
 }
 
 void GroupMetaConsolidator::vacuum(const char* group_name) {
   if (group_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw std::invalid_argument(
         "Cannot vacuum group metadata; Group name cannot be null");
   }
 
   // Get the group metadata URIs and vacuum file URIs to be vacuumed
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-  GroupDirectory group_dir;
-  try {
-    group_dir = GroupDirectory(
-        vfs,
-        compute_tp,
-        URI(group_name),
-        0,
-        std::numeric_limits<uint64_t>::max());
-  } catch (const std::logic_error& le) {
-    throw Status_GroupDirectoryError(le.what());
-  }
+  auto& vfs = resources_.vfs();
+  auto& compute_tp = resources_.compute_tp();
+  GroupDirectory group_dir(
+      vfs,
+      compute_tp,
+      URI(group_name),
+      0,
+      std::numeric_limits<uint64_t>::max());
 
   // Delete the group metadata and vacuum files
-  vfs->remove_files(compute_tp, group_dir.group_meta_uris_to_vacuum());
-  vfs->remove_files(compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
+  vfs.remove_files(&compute_tp, group_dir.group_meta_uris_to_vacuum());
+  vfs.remove_files(&compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */
@@ -170,13 +135,13 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
 
 Status GroupMetaConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = storage_manager_->config();
+  Config merged_config = resources_.config();
   merged_config.inherit(config);
   bool found = false;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
   assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
 

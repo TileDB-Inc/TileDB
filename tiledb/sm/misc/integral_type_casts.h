@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -96,12 +96,9 @@ template <typename Source>
 void safe_integral_cast_to_datatype(
     Source value, Datatype type, ByteVecValue& dest) {
   if (!datatype_is_integer(type)) {
-    throw std::invalid_argument("Datatype must be integral");
-  }
-
-  if (type == Datatype::BLOB) {
     throw std::invalid_argument(
-        "Datatype::BLOB not supported in integral conversion");
+        "Unsupported datatype " + datatype_str(type) +
+        "; Datatype must be integral");
   }
 
   switch (type) {
@@ -133,7 +130,9 @@ void safe_integral_cast_to_datatype(
       dest.assign_as<uint64_t>(safe_integral_cast<Source, uint64_t>(value));
       return;
     default:
-      throw std::logic_error("Definitions of integral types are mismatched.");
+      throw std::logic_error(
+          "Definitions of integral types are mismatched on datatype " +
+          datatype_str(type));
   }
 
   ::stdx::unreachable();

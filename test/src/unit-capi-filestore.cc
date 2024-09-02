@@ -305,9 +305,14 @@ TEST_CASE_METHOD(
   uint64_t subarray_read[] = {0, file_content.size() - 1};
   uint64_t size = buffer.size();
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_subarray(ctx_, query, subarray_read);
+  tiledb_subarray_alloc(ctx_, array, &sub);
+  tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  tiledb_query_set_subarray_t(ctx_, query, sub);
+  tiledb_subarray_free(&sub);
+
   tiledb_query_set_data_buffer(
       ctx_,
       query,
@@ -425,9 +430,13 @@ TEST_CASE_METHOD(
   uint64_t subarray_read[] = {0, file_content.size() - 1};
   uint64_t size = buffer.size();
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
-  tiledb_query_set_subarray(ctx_, query, subarray_read);
+  tiledb_subarray_alloc(ctx_, array, &sub);
+  tiledb_subarray_set_subarray(ctx_, sub, subarray_read);
+  tiledb_query_set_subarray_t(ctx_, query, sub);
+  tiledb_subarray_free(&sub);
   tiledb_query_set_data_buffer(
       ctx_,
       query,

@@ -89,14 +89,14 @@ const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_BUFFER_SIZE = "524288";
-const std::string Config::REST_CAPNP_TRAVERSAL_LIMIT = "536870912";
+const std::string Config::REST_CAPNP_TRAVERSAL_LIMIT = "2147483648";
 const std::string Config::REST_CURL_VERBOSE = "false";
-const std::string Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN = "true";
+const std::string Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
-const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
-const std::string Config::REST_USE_REFACTORED_QUERY_SUBMIT = "false";
-const std::string Config::SM_ALLOW_AGGREGATES_EXPERIMENTAL = "false";
+const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "true";
+const std::string Config::REST_USE_REFACTORED_QUERY_SUBMIT = "true";
+const std::string Config::REST_PAYER_NAMESPACE = "";
 const std::string Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES = "false";
 const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
@@ -119,6 +119,9 @@ const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
+const std::string Config::SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT = "1";
+const std::string Config::SM_MEM_CONSOLIDATION_READER_WEIGHT = "3";
+const std::string Config::SM_MEM_CONSOLIDATION_WRITER_WEIGHT = "2";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
@@ -185,11 +188,15 @@ const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
 const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
 const std::string Config::VFS_GCS_ENDPOINT = "";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
+const std::string Config::VFS_GCS_SERVICE_ACCOUNT_KEY = "";
+const std::string Config::VFS_GCS_WORKLOAD_IDENTITY_CONFIGURATION = "";
+const std::string Config::VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_GCS_MULTI_PART_SIZE = "5242880";
 const std::string Config::VFS_GCS_USE_MULTI_PART_UPLOAD = "true";
 const std::string Config::VFS_GCS_REQUEST_TIMEOUT_MS = "3000";
+const std::string Config::VFS_GCS_MAX_DIRECT_UPLOAD_SIZE = "10737418240";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
@@ -213,6 +220,7 @@ const std::string Config::VFS_S3_CONNECT_MAX_TRIES = "5";
 const std::string Config::VFS_S3_CONNECT_SCALE_FACTOR = "25";
 const std::string Config::VFS_S3_SSE = "";
 const std::string Config::VFS_S3_SSE_KMS_KEY_ID = "";
+const std::string Config::VFS_S3_STORAGE_CLASS = "NOT_SET";
 const std::string Config::VFS_S3_REQUEST_TIMEOUT_MS = "3000";
 const std::string Config::VFS_S3_REQUESTER_PAYS = "false";
 const std::string Config::VFS_S3_PROXY_SCHEME = "http";
@@ -226,6 +234,7 @@ const std::string Config::VFS_S3_NO_SIGN_REQUEST = "false";
 const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
+const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
@@ -262,14 +271,12 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "rest.use_refactored_array_open_and_query_submit",
         Config::REST_USE_REFACTORED_QUERY_SUBMIT),
+    std::make_pair("rest.payer_namespace", Config::REST_PAYER_NAMESPACE),
     std::make_pair(
         "config.env_var_prefix", Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX),
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
     std::make_pair(
         "config.logging_format", Config::CONFIG_LOGGING_DEFAULT_FORMAT),
-    std::make_pair(
-        "sm.allow_aggregates_experimental",
-        Config::SM_ALLOW_AGGREGATES_EXPERIMENTAL),
     std::make_pair(
         "sm.allow_separate_attribute_writes",
         Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES),
@@ -305,6 +312,15 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.mem.tile_upper_memory_limit", Config::SM_UPPER_MEMORY_LIMIT),
     std::make_pair("sm.mem.total_budget", Config::SM_MEM_TOTAL_BUDGET),
+    std::make_pair(
+        "sm.mem.consolidation.buffers_weight",
+        Config::SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT),
+    std::make_pair(
+        "sm.mem.consolidation.reader_weight",
+        Config::SM_MEM_CONSOLIDATION_READER_WEIGHT),
+    std::make_pair(
+        "sm.mem.consolidation.writer_weight",
+        Config::SM_MEM_CONSOLIDATION_WRITER_WEIGHT),
     std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_coords",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS),
@@ -419,12 +435,23 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("vfs.gcs.endpoint", Config::VFS_GCS_ENDPOINT),
     std::make_pair("vfs.gcs.project_id", Config::VFS_GCS_PROJECT_ID),
     std::make_pair(
+        "vfs.gcs.service_account_key", Config::VFS_GCS_SERVICE_ACCOUNT_KEY),
+    std::make_pair(
+        "vfs.gcs.workload_identity_configuration",
+        Config::VFS_GCS_WORKLOAD_IDENTITY_CONFIGURATION),
+    std::make_pair(
+        "vfs.gcs.impersonate_service_account",
+        Config::VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT),
+    std::make_pair(
         "vfs.gcs.max_parallel_ops", Config::VFS_GCS_MAX_PARALLEL_OPS),
     std::make_pair("vfs.gcs.multi_part_size", Config::VFS_GCS_MULTI_PART_SIZE),
     std::make_pair(
         "vfs.gcs.use_multi_part_upload", Config::VFS_GCS_USE_MULTI_PART_UPLOAD),
     std::make_pair(
         "vfs.gcs.request_timeout_ms", Config::VFS_GCS_REQUEST_TIMEOUT_MS),
+    std::make_pair(
+        "vfs.gcs.max_direct_upload_size",
+        Config::VFS_GCS_MAX_DIRECT_UPLOAD_SIZE),
     std::make_pair("vfs.s3.region", Config::VFS_S3_REGION),
     std::make_pair(
         "vfs.s3.aws_access_key_id", Config::VFS_S3_AWS_ACCESS_KEY_ID),
@@ -458,6 +485,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.connect_scale_factor", Config::VFS_S3_CONNECT_SCALE_FACTOR),
     std::make_pair("vfs.s3.sse", Config::VFS_S3_SSE),
     std::make_pair("vfs.s3.sse_kms_key_id", Config::VFS_S3_SSE_KMS_KEY_ID),
+    std::make_pair("vfs.s3.storage_class", Config::VFS_S3_STORAGE_CLASS),
     std::make_pair(
         "vfs.s3.request_timeout_ms", Config::VFS_S3_REQUEST_TIMEOUT_MS),
     std::make_pair("vfs.s3.requester_pays", Config::VFS_S3_REQUESTER_PAYS),
@@ -474,6 +502,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.s3.object_canned_acl", Config::VFS_S3_OBJECT_CANNED_ACL),
     std::make_pair("vfs.s3.config_source", Config::VFS_S3_CONFIG_SOURCE),
+    std::make_pair(
+        "vfs.s3.install_sigpipe_handler",
+        Config::VFS_S3_INSTALL_SIGPIPE_HANDLER),
     std::make_pair("vfs.hdfs.name_node_uri", Config::VFS_HDFS_NAME_NODE_URI),
     std::make_pair("vfs.hdfs.username", Config::VFS_HDFS_USERNAME),
     std::make_pair(
@@ -501,6 +532,9 @@ const std::set<std::string> Config::unserialized_params_ = {
     "vfs.s3.aws_external_id",
     "vfs.s3.aws_load_frequency",
     "vfs.s3.aws_session_name",
+    "vfs.gcs.service_account_key",
+    "vfs.gcs.workload_identity_configuration",
+    "vfs.gcs.impersonate_service_account",
     "rest.username",
     "rest.password",
     "rest.token",
@@ -713,8 +747,6 @@ Status Config::sanity_check(
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
           Status_ConfigError("Invalid logging format parameter value"));
-  } else if (param == "sm.allow_aggregates_experimental") {
-    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.allow_separate_attribute_writes") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.allow_updates_experimental") {
@@ -908,6 +940,17 @@ const char* Config::get_from_config_or_env(
   // indicate it was not found
   *found = found_config;
   return *found ? value_config : "";
+}
+
+const std::map<std::string, std::string>
+Config::get_all_params_from_config_or_env() const {
+  std::map<std::string, std::string> values;
+  bool found = false;
+  for (const auto& [key, value] : param_values_) {
+    std::string val = get_from_config_or_env(key, &found);
+    values.emplace(key, val);
+  }
+  return values;
 }
 
 template <class T, bool must_find_>

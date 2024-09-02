@@ -49,6 +49,71 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/stats/stats.h"
 
+/**
+ * Documenting the current stats behavior and architecture as close as
+ * possible to the code so it's helpful next time someone tries to refactor.
+ *
+ * Statistics collection is done at the top level via the GlobalStats class
+ * defined in this file.
+ * We maintain a global object called `all_stats` which is used to register
+ * Stats objects, enable/disable collection, reset or dumping the collected
+ * stats.
+ *
+ * The TileDB C API uses the `all_stats` object directly to execute the
+ * actions iterated above.
+ *
+ * The GlobalStats class owns a list called `registered_stats` that has one
+ * Stats object registered for each Context used. In consequence,
+ * ContextResources register a Stats object for each Context created, this
+ * object serves as the root for the tree of all children Stats used in a
+ * Context.
+ *
+ * As mentioned above, the Stats objects used under a Context form a tree.
+ * Each Stats object mentains a list of children Stats and a pointer to the
+ * parent Stats object.
+ * The Stats object created by ContextResources(named "Context.StorageManager")
+ * is the only Stats constructed in a standalone fashion using the Stats
+ * constructor, all the other objects under this root Stats are created via
+ * the Stats::create_child API.
+ *
+ * The (current, please update if not accurate anymore) exhaustive list of
+ * Stats we maintain under a Context is:
+ * ---------------------------
+ * ContextResources
+ *    - Query
+ *    - Reader
+ *    - Writer
+ *        - DenseTiler
+ *        - Subarray
+ *    - Deletes
+ *    - Subarray
+ *    - subSubarray
+ *        - SubarrayPartitioner
+ *    - VFS
+ *        - S3
+ *        - ArrayDirectory
+ *    - RestClient
+ *    - Consolidator
+ * ---------------------------
+ * Please visualize this as a tree, it was much easier to write
+ * like this, the tree is too wide.
+ *
+ *
+ * Observed issues:
+ * - Stats objects currently are created via Stats::create_child API from a
+ *   parent stats object. Child objects such as e.g. Subarray only hold a
+ *   pointer to the Stats object, this means that the Stats objects outlive
+ *   the objects they represent and are kept alive by the tree like structure
+ *   defined by the Stats class.
+ *   In theory, a Context running for a long time would OOM the machine with
+ *   Stats objects.
+ *
+ * - Stats::populate_flattened_stats aggregate the collected statistic via
+ *   summing. But we also collect ".min", ".max" statistics as well,
+ *   sum-aggregating those is incorrect. Currently the dump function just
+ *   doesn't print those statistics.
+ */
+
 namespace tiledb {
 namespace sm {
 namespace stats {
@@ -99,16 +164,16 @@ class GlobalStats {
    */
   void register_stats(const shared_ptr<Stats>& stats);
 
-  /** Dump the current stats to the given file. */
+  /** Dumps the current stats to the given file. */
   void dump(FILE* out) const;
 
-  /** Dump the current stats to the given string. */
+  /** Dumps the current stats to the given string. */
   void dump(std::string* out) const;
 
-  /** Dump the current raw stats to the given file as a JSON. */
+  /** Dumps the current raw stats to the given file as a JSON. */
   void raw_dump(FILE* out) const;
 
-  /** Dump the current raw stats to the given string as a JSON. */
+  /** Dumps the current raw stats to the given string as a JSON. */
   void raw_dump(std::string* out) const;
 
  private:
@@ -141,7 +206,7 @@ class GlobalStats {
   /*       PRIVATE FUNCTIONS        */
   /* ****************************** */
 
-  /** Dump the current registered stats. */
+  /** Dumps the current registered stats in ASCII format. */
   std::string dump_registered_stats() const;
 
   /** iterate over raw stats calling f() */
@@ -158,8 +223,7 @@ class GlobalStats {
 /* ********************************* */
 
 /**
- * The singleton instance holding all global stats counters. The report will
- * be automatically made when this object is destroyed (at program termination).
+ * The singleton instance holding all global stats counters and timers.
  */
 extern GlobalStats all_stats;
 

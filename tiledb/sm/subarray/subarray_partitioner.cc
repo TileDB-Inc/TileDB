@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,14 +40,13 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 
 #include <iomanip>
 
-class SubarrayPartitionerStatusException : public StatusException {
+class SubarrayPartitionerException : public StatusException {
  public:
-  explicit SubarrayPartitionerStatusException(const std::string& message)
+  explicit SubarrayPartitionerException(const std::string& message)
       : StatusException("SubarrayPartitioner", message) {
   }
 };
@@ -666,8 +665,12 @@ Subarray& SubarrayPartitioner::subarray() {
   return subarray_;
 }
 
-stats::Stats* SubarrayPartitioner::stats() const {
-  return stats_;
+const stats::Stats& SubarrayPartitioner::stats() const {
+  return *stats_;
+}
+
+void SubarrayPartitioner::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
 }
 
 /* ****************************** */
@@ -691,7 +694,7 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   auto dim_num = subarray_.dim_num();
   uint64_t num;
   for (unsigned i = 0; i < dim_num; ++i) {
-    RETURN_NOT_OK(subarray_.get_range_num(i, &num));
+    subarray_.get_range_num(i, &num);
     range_num.push_back(num);
   }
 
@@ -790,8 +793,8 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
 Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   // Compute the tile overlap. Note that the ranges in `tile_overlap` may have
   // been truncated the ending bound due to memory constraints.
-  RETURN_NOT_OK(subarray_.precompute_tile_overlap(
-      state_.start_, state_.end_, config_, compute_tp_));
+  subarray_.precompute_tile_overlap(
+      state_.start_, state_.end_, config_, compute_tp_);
   const SubarrayTileOverlap* const tile_overlap =
       subarray_.subarray_tile_overlap();
   assert(tile_overlap->range_idx_start() == state_.start_);
@@ -816,13 +819,13 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
   // Compute the estimated result sizes
   std::vector<std::vector<Subarray::ResultSize>> result_sizes;
   std::vector<std::vector<Subarray::MemorySize>> memory_sizes;
-  RETURN_NOT_OK(subarray_.compute_relevant_fragment_est_result_sizes(
+  subarray_.compute_relevant_fragment_est_result_sizes(
       names,
       tile_overlap->range_idx_start(),
       tile_overlap->range_idx_end(),
       &result_sizes,
       &memory_sizes,
-      compute_tp_));
+      compute_tp_);
 
   bool done = false;
   current_.start_ = tile_overlap->range_idx_start();
@@ -928,7 +931,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   const Range* r;
   for (auto d : dims) {
     auto dim{array_schema.domain().dimension_ptr(d)};
-    throw_if_not_ok(range.get_range(d, 0, &r));
+    range.get_range(d, 0, &r);
     auto tiles_apart = dim->tile_num(*r) - 1;
     if (tiles_apart != 0) {
       *splitting_dim = d;
@@ -1001,7 +1004,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   const Range* r;
   for (auto d : dims) {
     auto dim{array_schema.dimension_ptr(d)};
-    throw_if_not_ok(range.get_range(d, 0, &r));
+    range.get_range(d, 0, &r);
     if (!r->unary()) {
       *splitting_dim = d;
       dim->splitting_value(*r, splitting_value, unsplittable);
@@ -1046,7 +1049,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
   // Check for unsplittable again
   auto dim{array_schema.dimension_ptr(*splitting_dim)};
   const Range* r;
-  throw_if_not_ok(range.get_range(*splitting_dim, 0, &r));
+  range.get_range(*splitting_dim, 0, &r);
   if (dim->smaller_than(*splitting_value, *r)) {
     *unsplittable = true;
     return;
@@ -1107,7 +1110,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
   const Range* r;
   for (auto d : dims) {
     // Check if we need to split the multiple ranges
-    RETURN_NOT_OK(partition.get_range_num(d, &range_num));
+    partition.get_range_num(d, &range_num);
     if (range_num > 1) {
       assert(d == dims.back());
       *splitting_dim = d;
@@ -1117,7 +1120,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
     }
 
     // Check if we need to split single range
-    throw_if_not_ok(partition.get_range(d, 0, &r));
+    partition.get_range(d, 0, &r);
     auto dim{array_schema.dimension_ptr(d)};
     if (!r->unary()) {
       *splitting_dim = d;
@@ -1131,105 +1134,31 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
-  const auto& array_schema = subarray_.array()->array_schema_latest();
-  bool must_split = false;
-
-  uint64_t size_fixed;
-  uint64_t size_var;
-  uint64_t size_validity;
-  uint64_t mem_size_fixed;
-  uint64_t mem_size_var;
-  uint64_t mem_size_validity;
   for (const auto& b : budget_) {
-    // Compute max sizes
+    /*
+     * Compute max memory size and, if needed, estimated result size
+     */
     auto name = b.first;
-    auto var_size = array_schema.var_size(name);
-    auto nullable = array_schema.is_nullable(name);
-
-    // Compute est sizes
-    size_fixed = 0;
-    size_var = 0;
-    size_validity = 0;
-    mem_size_fixed = 0;
-    mem_size_var = 0;
-    mem_size_validity = 0;
-    // Compute max memory sizes
-    if (var_size) {
-      if (!nullable) {
-        throw_if_not_ok(partition->get_max_memory_size(
-            b.first.c_str(),
-            &mem_size_fixed,
-            &mem_size_var,
-            config_,
-            compute_tp_));
-      } else {
-        throw_if_not_ok(partition->get_max_memory_size_nullable(
-            b.first.c_str(),
-            &mem_size_fixed,
-            &mem_size_var,
-            &mem_size_validity,
-            config_,
-            compute_tp_));
-      }
-    } else {
-      if (!nullable) {
-        throw_if_not_ok(partition->get_max_memory_size(
-            b.first.c_str(), &mem_size_fixed, config_, compute_tp_));
-      } else {
-        throw_if_not_ok(partition->get_est_result_size_nullable(
-            b.first.c_str(),
-            &size_fixed,
-            &size_validity,
-            config_,
-            compute_tp_));
-        throw_if_not_ok(partition->get_max_memory_size_nullable(
-            b.first.c_str(),
-            &mem_size_fixed,
-            &mem_size_validity,
-            config_,
-            compute_tp_));
-      }
-    }
-
-    // Compute estimated result sizes
-    if (!skip_split_on_est_size_) {
-      if (var_size) {
-        if (!nullable) {
-          throw_if_not_ok(partition->get_est_result_size(
-              b.first.c_str(), &size_fixed, &size_var, config_, compute_tp_));
-        } else {
-          throw_if_not_ok(partition->get_est_result_size_nullable(
-              b.first.c_str(),
-              &size_fixed,
-              &size_var,
-              &size_validity,
-              config_,
-              compute_tp_));
-        }
-      } else {
-        if (!nullable) {
-          throw_if_not_ok(partition->get_est_result_size_internal(
-              b.first.c_str(), &size_fixed, config_, compute_tp_));
-        } else {
-          throw_if_not_ok(partition->get_est_result_size_nullable(
-              b.first.c_str(),
-              &size_fixed,
-              &size_validity,
-              config_,
-              compute_tp_));
-        }
-      }
-    }
+    auto mem_size{
+        partition->get_max_memory_size(b.first.c_str(), config_, compute_tp_)};
+    auto est_size{
+        skip_split_on_est_size_ ?
+            // Skip the estimate and use a default object that's all zeros.
+            FieldDataSize{} :
+            // Perform the estimate
+            partition->get_est_result_size(
+                b.first.c_str(), config_, compute_tp_)};
 
     // If we try to split a unary range because of memory budgets, throw an
     // error. This can happen when the memory budget cannot fit even one tile.
     // It will cause the reader to process the query cell by cell, which will
     // make it very slow.
     if (!skip_unary_partitioning_budget_check_ &&
-        (mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
-         mem_size_validity > memory_budget_validity_)) {
+        (mem_size.fixed_ > memory_budget_ ||
+         mem_size.variable_ > memory_budget_var_ ||
+         mem_size.validity_ > memory_budget_validity_)) {
       if (partition->is_unary()) {
-        throw SubarrayPartitionerStatusException(
+        throw SubarrayPartitionerException(
             "Trying to partition a unary range because of memory budget, this "
             "will cause the query to run very slow. Increase "
             "`sm.memory_budget` and `sm.memory_budget_var` through the "
@@ -1241,16 +1170,16 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
 
     // Check for budget overflow
     if ((!skip_split_on_est_size_ &&
-         (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
-          size_validity > b.second.size_validity_)) ||
-        mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
-        mem_size_validity > memory_budget_validity_) {
-      must_split = true;
-      break;
+         (est_size.fixed_ > b.second.size_fixed_ ||
+          est_size.variable_ > b.second.size_var_ ||
+          est_size.validity_ > b.second.size_validity_)) ||
+        mem_size.fixed_ > memory_budget_ ||
+        mem_size.variable_ > memory_budget_var_ ||
+        mem_size.validity_ > memory_budget_validity_) {
+      return true;
     }
   }
-
-  return must_split;
+  return false;
 }
 
 Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
@@ -1333,7 +1262,7 @@ Status SubarrayPartitioner::split_top_single_range(bool* unsplittable) {
 
   // Split remaining range into two ranges
   Subarray r1, r2;
-  RETURN_NOT_OK(range.split(splitting_dim, splitting_value, &r1, &r2));
+  range.split(splitting_dim, splitting_value, &r1, &r2);
 
   // Update list
   state_.single_range_.pop_front();
@@ -1376,8 +1305,7 @@ Status SubarrayPartitioner::split_top_multi_range(bool* unsplittable) {
   // Split partition into two partitions
   Subarray p1;
   Subarray p2;
-  RETURN_NOT_OK(partition.split(
-      splitting_range, splitting_dim, splitting_value, &p1, &p2));
+  partition.split(splitting_range, splitting_dim, splitting_value, &p1, &p2);
 
   // Update list
   state_.multi_range_.pop_front();
@@ -1432,7 +1360,7 @@ void SubarrayPartitioner::compute_range_uint64(
   for (uint32_t d = 0; d < dim_num; ++d) {
     auto dim{array_schema.dimension_ptr(d)};
     auto var = dim->var_size();
-    throw_if_not_ok(range.get_range(d, 0, &r));
+    range.get_range(d, 0, &r);
     empty_start = var ? (r->start_size() == 0) : r->empty();
     empty_end = var ? (r->end_size() == 0) : r->empty();
     auto max_default =

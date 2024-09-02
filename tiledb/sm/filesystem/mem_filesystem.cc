@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,14 +39,12 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
-#include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class MemFilesystem::FSNode {
  public:
@@ -374,18 +372,16 @@ bool MemFilesystem::is_file(const std::string& path) const {
 Status MemFilesystem::ls(
     const std::string& path, std::vector<std::string>* const paths) const {
   assert(paths);
-  auto&& [st, entries] = ls_with_sizes(URI("mem://" + path));
-  RETURN_NOT_OK(st);
 
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(URI("mem://" + path))) {
     paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>>
-MemFilesystem::ls_with_sizes(const URI& path) const {
+std::vector<directory_entry> MemFilesystem::ls_with_sizes(
+    const URI& path) const {
   auto abspath = path.to_path();
   std::vector<std::string> tokens = tokenize(abspath);
 
@@ -398,9 +394,7 @@ MemFilesystem::ls_with_sizes(const URI& path) const {
     dir = dir + token + "/";
 
     if (cur->children_.count(token) != 1) {
-      auto st = LOG_STATUS(Status_MemFSError(
-          std::string("Unable to list on non-existent path ") + abspath));
-      return {st, nullopt};
+      throw MemFSException("Unable to list on non-existent path " + abspath);
     }
 
     cur = cur->children_[token].get();
@@ -410,11 +404,9 @@ MemFilesystem::ls_with_sizes(const URI& path) const {
   assert(cur_lock.owns_lock());
   assert(cur_lock.mutex() == &cur->mutex_);
   auto&& [st, entries] = cur->ls(dir);
-  if (!st.ok()) {
-    return {st, nullopt};
-  }
+  throw_if_not_ok(st);
 
-  return {Status::Ok(), entries};
+  return *entries;
 }
 
 Status MemFilesystem::move(
@@ -692,5 +684,4 @@ Status MemFilesystem::lookup_node(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

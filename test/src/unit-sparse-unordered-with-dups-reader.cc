@@ -32,6 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -45,6 +46,7 @@
 #endif
 
 #include <test/support/tdb_catch.h>
+#include <numeric>
 
 using namespace tiledb::sm;
 using namespace tiledb::test;
@@ -60,12 +62,14 @@ struct CSparseUnorderedWithDupsFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_unordered_with_dups";
   std::string total_budget_;
+  std::string tile_upper_memory_limit_;
   std::string ratio_tile_ranges_;
   std::string ratio_array_data_;
   std::string ratio_coords_;
   std::string partial_tile_offsets_loading_;
 
   void create_default_array_1d();
+  void create_large_domain_array_1d();
   void create_default_array_1d_string(int tile_extent = 2, int capacity = 2);
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
@@ -102,6 +106,7 @@ struct CSparseUnorderedWithDupsFx {
       uint8_t* a2_validity,
       uint64_t* a2_validity_size,
       uint64_t num_subarrays = 0,
+      tiledb_config_t* config = nullptr,
       tiledb_query_t** query_ret = nullptr,
       tiledb_array_t** array_ret = nullptr);
   void reset_config();
@@ -165,6 +170,16 @@ void CSparseUnorderedWithDupsFx::update_config() {
       TILEDB_OK);
   REQUIRE(error == nullptr);
 
+  if (tile_upper_memory_limit_ != "") {
+    REQUIRE(
+        tiledb_config_set(
+            config,
+            "sm.mem.tile_upper_memory_limit",
+            tile_upper_memory_limit_.c_str(),
+            &error) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+  }
+
   REQUIRE(
       tiledb_config_set(
           config,
@@ -205,6 +220,27 @@ void CSparseUnorderedWithDupsFx::update_config() {
 
 void CSparseUnorderedWithDupsFx::create_default_array_1d() {
   int domain[] = {1, 200};
+  int tile_extent = 2;
+  create_array(
+      ctx_,
+      array_name_,
+      TILEDB_SPARSE,
+      {"d"},
+      {TILEDB_INT32},
+      {domain},
+      {&tile_extent},
+      {"a"},
+      {TILEDB_INT32},
+      {1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      2,
+      true);  // allows dups.
+}
+
+void CSparseUnorderedWithDupsFx::create_large_domain_array_1d() {
+  int domain[] = {1, 20000};
   int tile_extent = 2;
   create_array(
       ctx_,
@@ -409,8 +445,14 @@ int32_t CSparseUnorderedWithDupsFx::read(
   if (set_subarray) {
     // Set subarray.
     int subarray[] = {1, 200};
-    rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   if (qc_idx != 0) {
@@ -480,6 +522,7 @@ int32_t CSparseUnorderedWithDupsFx::read_strings(
     uint8_t* a2_validity,
     uint64_t* a2_validity_size,
     uint64_t num_subarrays,
+    tiledb_config_t* config,
     tiledb_query_t** query_ret,
     tiledb_array_t** array_ret) {
   // Open array for reading.
@@ -497,6 +540,10 @@ int32_t CSparseUnorderedWithDupsFx::read_strings(
   tiledb_subarray_t* subarray;
   rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
+  if (config != nullptr) {
+    rc = tiledb_subarray_set_config(ctx_, subarray, config);
+    CHECK(rc == TILEDB_OK);
+  }
 
   for (uint64_t i = 0; i < num_subarrays; i++) {
     // Create subarray for reading data.
@@ -674,8 +721,14 @@ void CSparseUnorderedWithDupsVarDataFx::read_and_check_data(bool set_subarray) {
   if (set_subarray) {
     // Set subarray.
     int64_t subarray[] = {1, 4, 1, 4};
-    rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   std::vector<int32_t> data(3);
@@ -767,10 +820,10 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      nullptr,
       array->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(array->array_.get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   fragments.emplace_back(std::move(fragment));
 
@@ -890,75 +943,158 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: tile offsets forcing multiple "
-    "iterations",
+    "Sparse unordered with dups reader: tile offsets partial loading",
     "[sparse-unordered-with-dups][tile-offsets][multiple-iterations]") {
-  bool set_subarray = GENERATE(true, false);
+  bool enable_partial_tile_offsets_loading = GENERATE(true, false);
 
   // Create default array.
   reset_config();
-  create_default_array_1d();
+  create_large_domain_array_1d();
+  bool one_frag = false;
 
-  // Write two fragments.
-  std::vector<int> coords(100);
-  std::iota(coords.begin(), coords.end(), 1);
-  uint64_t coords_size = coords.size() * sizeof(int);
+  SECTION("- One fragment") {
+    one_frag = true;
+  }
+  SECTION("- Multiple fragments") {
+    one_frag = false;
+  }
 
-  std::vector<int> data(100);
-  std::iota(data.begin(), data.end(), 1);
-  uint64_t data_size = data.size() * sizeof(int);
+  // Write fragments.
+  if (one_frag) {
+    std::vector<int> coords(100);
+    std::iota(coords.begin(), coords.end(), 1);
+    uint64_t coords_size = coords.size() * sizeof(int);
 
-  write_1d_fragment(coords.data(), &coords_size, data.data(), &data_size);
+    std::vector<int> data(100);
+    std::iota(data.begin(), data.end(), 1);
+    uint64_t data_size = data.size() * sizeof(int);
 
-  std::vector<int> coords2(100);
-  std::iota(coords2.begin(), coords2.end(), 101);
-  uint64_t coords2_size = coords.size() * sizeof(int);
+    write_1d_fragment(coords.data(), &coords_size, data.data(), &data_size);
+  } else {
+    std::vector<int> coords(100);
+    std::iota(coords.begin(), coords.end(), 1);
+    uint64_t coords_size = coords.size() * sizeof(int);
 
-  std::vector<int> data2(100);
-  std::iota(data2.begin(), data2.end(), 101);
-  uint64_t data2_size = data.size() * sizeof(int);
-  write_1d_fragment(coords2.data(), &coords2_size, data2.data(), &data2_size);
+    std::vector<int> data(100);
+    std::iota(data.begin(), data.end(), 1);
+    uint64_t data_size = data.size() * sizeof(int);
 
-  total_budget_ = "1000000";
-  ratio_array_data_ = set_subarray ? "0.003" : "0.002";
-  partial_tile_offsets_loading_ = "true";
+    write_1d_fragment(coords.data(), &coords_size, data.data(), &data_size);
+
+    std::vector<int> coords2(1000);
+    std::iota(coords2.begin(), coords2.end(), 101);
+    uint64_t coords2_size = coords2.size() * sizeof(int);
+
+    std::vector<int> data2(1000);
+    std::iota(data2.begin(), data2.end(), 101);
+    uint64_t data2_size = data2.size() * sizeof(int);
+    write_1d_fragment(coords2.data(), &coords2_size, data2.data(), &data2_size);
+
+    std::vector<int> coords3(5000);
+    std::iota(coords3.begin(), coords3.end(), 1101);
+    uint64_t coords3_size = coords3.size() * sizeof(int);
+
+    std::vector<int> data3(5000);
+    std::iota(data3.begin(), data3.end(), 1101);
+    uint64_t data3_size = data3.size() * sizeof(int);
+    write_1d_fragment(coords3.data(), &coords3_size, data3.data(), &data3_size);
+
+    std::vector<int> coords4(10000);
+    std::iota(coords4.begin(), coords4.end(), 6101);
+    uint64_t coords4_size = coords4.size() * sizeof(int);
+
+    std::vector<int> data4(10000);
+    std::iota(data4.begin(), data4.end(), 6101);
+    uint64_t data4_size = data4.size() * sizeof(int);
+    write_1d_fragment(coords4.data(), &coords4_size, data4.data(), &data4_size);
+  }
+
+  total_budget_ = "3300000";
+  ratio_array_data_ = "0.002";
+  partial_tile_offsets_loading_ =
+      enable_partial_tile_offsets_loading ? "true" : "false";
   update_config();
 
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
 
-  // Try to read.
-  int coords_r[200];
-  int data_r[200];
+  int coords_r[16100];
+  int data_r[16100];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(
-      set_subarray,
-      0,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
-  CHECK(rc == TILEDB_OK);
+  auto rc = 0;
 
-  // Validate the results.
-  for (int i = 0; i < 200; i++) {
-    CHECK(coords_r[i] == i + 1);
-    CHECK(data_r[i] == i + 1);
+  // Case 1: Read only one frag. Should be ok for both cases of partial tile
+  // loading Case 2: Read multiple fragments with partial tile offset loading.
+  // Should be ok
+  if (enable_partial_tile_offsets_loading || one_frag) {
+    rc = read(
+        false,
+        0,
+        coords_r,
+        &coords_r_size,
+        data_r,
+        &data_r_size,
+        &query,
+        &array);
+    CHECK(rc == TILEDB_OK);
+
+    // Validate the results.
+    int elements_to_check;
+    if (one_frag) {
+      elements_to_check = 100;
+    } else {
+      elements_to_check = 16100;
+    }
+
+    for (int i = 0; i < elements_to_check; i++) {
+      CHECK(coords_r[i] == i + 1);
+      CHECK(data_r[i] == i + 1);
+    }
+
+    // Check the internal loop count against expected value.
+    auto stats =
+        ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
+            ->stats();
+    REQUIRE(stats != nullptr);
+    auto counters = stats->counters();
+    REQUIRE(counters != nullptr);
+    auto loop_num =
+        counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
+
+    if (one_frag) {
+      CHECK(1 == loop_num->second);
+    } else {
+      CHECK(9 == loop_num->second);
+    }
+
+    // Try to read multiple frags without partial tile offset reading. Should
+    // fail
+  } else {
+    rc = read(
+        false,
+        0,
+        coords_r,
+        &coords_r_size,
+        data_r,
+        &data_r_size,
+        &query,
+        &array);
+    CHECK(rc == TILEDB_ERR);
+
+    tiledb_error_t* error = NULL;
+    rc = tiledb_ctx_get_last_error(ctx_, &error);
+    CHECK(rc == TILEDB_OK);
+
+    const char* msg;
+    rc = tiledb_error_message(error, &msg);
+    CHECK(rc == TILEDB_OK);
+
+    std::string error_str(msg);
+    CHECK(
+        error_str.find("Cannot load tile offsets, computed size") !=
+        std::string::npos);
   }
-
-  // Check the internal loop count against expected value.
-  auto stats =
-      ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
-          ->stats();
-  REQUIRE(stats != nullptr);
-  auto counters = stats->counters();
-  REQUIRE(counters != nullptr);
-  auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
-  CHECK(2 == loop_num->second);
 
   // Clean up.
   rc = tiledb_array_close(ctx_, array);
@@ -1007,8 +1143,8 @@ TEST_CASE_METHOD(
   }
 
   // Two result tile (2 * ~1208) will be bigger than the budget (1500).
-  total_budget_ = "10000";
-  ratio_coords_ = "0.15";
+  total_budget_ = "40000";
+  ratio_coords_ = "0.04";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -1086,7 +1222,7 @@ TEST_CASE_METHOD(
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
   // One result tile (~505) will be larger than leftover memory.
-  total_budget_ = "800";
+  total_budget_ = "1800";
   ratio_array_data_ = "0.99";
   ratio_coords_ = "0.0005";
   update_config();
@@ -1526,21 +1662,23 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
 
   // Make a vector of tiles.
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  std::list<UnorderedWithDupsResultTile<uint64_t>> rt;
   for (uint64_t t = 0; t < num_tiles; t++) {
-    rt.emplace_back(0, t, *fragments[0]);
+    rt.emplace_back(
+        0, t, *fragments[0], tiledb::test::get_test_memory_tracker());
 
     // Allocate and set the bitmap if required.
     if (bitmaps[t].size() > 0) {
-      rt.back().bitmap() = bitmaps[t];
+      rt.back().bitmap().assign(bitmaps[t].begin(), bitmaps[t].end());
       rt.back().count_cells();
     }
   }
 
   // Create the result_tiles pointer vector.
   std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
+  uint64_t i = 0;
+  for (auto& t : rt) {
+    result_tiles[i++] = &t;
   }
 
   // Create a Query buffer.
@@ -1742,21 +1880,23 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
 
   // Make a vector of tiles.
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  std::list<UnorderedWithDupsResultTile<uint64_t>> rt;
   for (uint64_t t = 0; t < num_tiles; t++) {
-    rt.emplace_back(0, t, *fragments[0]);
+    rt.emplace_back(
+        0, t, *fragments[0], tiledb::test::get_test_memory_tracker());
 
     // Allocate and set the bitmap if required.
     if (bitmaps[t].size() > 0) {
-      rt.back().bitmap() = bitmaps[t];
+      rt.back().bitmap().assign(bitmaps[t].begin(), bitmaps[t].end());
       rt.back().count_cells();
     }
   }
 
   // Create the result_tiles pointer vector.
   std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
+  uint64_t i = 0;
+  for (auto& t : rt) {
+    result_tiles[i++] = &t;
   }
 
   // Call the function.
@@ -1841,7 +1981,6 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
 
   // Try to read with every possible buffer sizes. When varying
   // buffer, the minimum should fit the number of dups at a minimum.
@@ -1880,6 +2019,7 @@ TEST_CASE_METHOD(
         a2_validity_r.data(),
         &a2_validity_r_size,
         num_dups,
+        config,
         &query,
         &array);
     CHECK(rc == TILEDB_OK);
@@ -1925,6 +2065,7 @@ TEST_CASE_METHOD(
     tiledb_array_free(&array);
     tiledb_query_free(&query);
   }
+  tiledb_config_free(&config);
 }
 
 TEST_CASE_METHOD(
@@ -1990,7 +2131,6 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
 
   tiledb_array_t* array;
   auto st = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -2012,6 +2152,8 @@ TEST_CASE_METHOD(
   st = tiledb_subarray_add_range(ctx_, subarray, 0, &start, &end, nullptr);
   CHECK(st == TILEDB_OK);
   st = tiledb_subarray_add_range(ctx_, subarray, 0, &start, &end_2, nullptr);
+  CHECK(st == TILEDB_OK);
+  st = tiledb_subarray_set_config(ctx_, subarray, config);
   CHECK(st == TILEDB_OK);
   st = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(st == TILEDB_OK);
@@ -2054,4 +2196,5 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
   tiledb_subarray_free(&subarray);
+  tiledb_config_free(&config);
 }

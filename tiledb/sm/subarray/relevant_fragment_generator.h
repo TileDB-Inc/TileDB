@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,16 +34,15 @@
 #define TILEDB_RELEVANT_FRAGMENTS_GENERATOR_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 
 #include <vector>
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-class Array;
+class OpenedArray;
 class RelevantFragments;
 class Subarray;
 class SubarrayTileOverlap;
@@ -72,7 +71,9 @@ class RelevantFragmentGenerator {
 
   /** Constructor a generator. */
   RelevantFragmentGenerator(
-      const Array& array, const Subarray& subarray, stats::Stats* stats);
+      const shared_ptr<OpenedArray> opened_array,
+      const Subarray& subarray,
+      stats::Stats* stats);
 
   /* ********************************* */
   /*                API                */
@@ -96,28 +97,6 @@ class RelevantFragmentGenerator {
   RelevantFragments compute_relevant_fragments(ThreadPool* compute_tp);
 
  private:
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
-  /**
-   * Computes the relevant fragment bytemap for a specific dimension.
-   *
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param dim_idx The index of the dimension to compute on.
-   * @param fragment_num The number of fragments to compute on.
-   * @param start_coords The starting range coordinates to compute between.
-   * @param end_coords The ending range coordinates to compute between.
-   * @param frag_bytemap The fragment bytemap to mutate.
-   */
-  Status compute_relevant_fragments_for_dim(
-      ThreadPool* compute_tp,
-      dimension_size_type dim_idx,
-      size_t fragment_num,
-      const std::vector<uint64_t>& start_coords,
-      const std::vector<uint64_t>& end_coords,
-      std::vector<uint8_t>* frag_bytemap) const;
-
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
@@ -144,13 +123,12 @@ class RelevantFragmentGenerator {
   /** The class stats. */
   stats::Stats* stats_;
 
-  /** Reference to the opened array. */
-  const Array& array_;
+  /** Reference to the opened opened array. */
+  const shared_ptr<OpenedArray> array_;
 
   /** Reference to the subarray. */
   const Subarray& subarray_;
-};  // namespace sm
-}  // namespace sm
-}  // namespace tiledb
+};
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_RELEVANT_FRAGMENTS_GENERATOR_H

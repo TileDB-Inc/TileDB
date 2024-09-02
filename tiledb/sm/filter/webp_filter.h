@@ -40,6 +40,7 @@ constexpr bool webp_filter_exists = false;
 #endif  // TILEDB_WEBP
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter.h"
@@ -147,12 +148,6 @@ class WebpFilter : public Filter {
   /* ****************************** */
 
   /**
-   * Dumps filter details in ASCII format.
-   * @param out Location to write output.
-   */
-  void dump(FILE* out) const override;
-
-  /**
    * Checks if the filter is applicable to the input datatype.
    *
    * @param type Input datatype to check filter compatibility.
@@ -170,9 +165,8 @@ class WebpFilter : public Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return Status::Ok() on success. Throws on failure.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -188,9 +182,8 @@ class WebpFilter : public Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return Status::Ok() on success. Throws on failure.
    */
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -277,6 +270,13 @@ class WebpFilter : public Filter {
   inline std::pair<uint16_t, uint16_t> get_extents() const {
     return extents_;
   }
+
+ protected:
+  /**
+   * Dumps filter details in ASCII format.
+   * @param out String to write output.
+   */
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /* ********************************* */

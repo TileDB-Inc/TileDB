@@ -40,6 +40,9 @@
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
+static const std::string arrays_dir =
+    std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
+
 namespace tiledb::sm {
 class WhiteboxArrayDirectory {
  public:
@@ -49,12 +52,6 @@ class WhiteboxArrayDirectory {
       const bool consolidation_with_timestamps) const {
     return array_directory.timestamps_overlap(
         fragment_timestamp_range, consolidation_with_timestamps);
-  }
-
-  void set_open_timestamps(
-      ArrayDirectory& array_directory, uint64_t start, uint64_t end) const {
-    array_directory.timestamp_start_ = start;
-    array_directory.timestamp_end_ = end;
   }
 };
 }  // namespace tiledb::sm
@@ -66,8 +63,12 @@ TEST_CASE(
   Config cfg;
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources{cfg, logger, 1, 1, ""};
-  ArrayDirectory array_dir(resources, URI());
-  wb_array_dir.set_open_timestamps(array_dir, 2, 4);
+  ArrayDirectory array_dir(
+      resources,
+      URI(arrays_dir + "/dense_array_v1_3_0"),
+      2,
+      4,
+      ArrayDirectoryMode::READ);
 
   // Only full overlap should be included for regular fragments.
 

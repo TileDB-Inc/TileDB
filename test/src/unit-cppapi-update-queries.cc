@@ -1,11 +1,11 @@
 /**
- * @file   unit-cppapi-updates-queries.cc
+ * @file   unit-cppapi-update-queries.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,10 +35,11 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array/array_operations.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/query/update_value.h"
 
 using namespace tiledb;
@@ -50,7 +51,6 @@ struct UpdatesFx {
   // TileDB context.
   Context ctx_;
   VFS vfs_;
-  sm::StorageManager* sm_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
@@ -83,7 +83,6 @@ UpdatesFx::UpdatesFx()
   config.set("sm.consolidation.buffer_size", "1000");
   config["sm.allow_updates_experimental"] = "true";
   ctx_ = Context(config);
-  sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);
 }
 
@@ -91,21 +90,30 @@ UpdatesFx::~UpdatesFx() {
 }
 
 void UpdatesFx::create_sparse_array(bool allows_dups, bool encrypt) {
+  Config cfg;
+  if (encrypt) {
+    std::string enc_type_str =
+        encryption_type_str((tiledb::sm::EncryptionType)enc_type_);
+    cfg["sm.encryption_type"] = enc_type_str.c_str();
+    cfg["sm.encryption_key"] = key_;
+  }
+  Context ctx(cfg);
+
   // Create dimensions.
-  auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
-  auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
+  auto d1 = Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
+  auto d2 = Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
 
   // Create domain.
-  Domain domain(ctx_);
+  Domain domain(ctx);
   domain.add_dimension(d1);
   domain.add_dimension(d2);
 
   // Create attributes.
-  auto a1 = Attribute::create<int32_t>(ctx_, "a1");
-  auto a2 = Attribute::create<int32_t>(ctx_, "a2");
+  auto a1 = Attribute::create<int32_t>(ctx, "a1");
+  auto a2 = Attribute::create<int32_t>(ctx, "a2");
 
   // Create array schema.
-  ArraySchema schema(ctx_, TILEDB_SPARSE);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);
   schema.add_attributes(a1);
@@ -116,16 +124,12 @@ void UpdatesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   }
 
   // Set up filters.
-  Filter filter(ctx_, TILEDB_FILTER_NONE);
-  FilterList filter_list(ctx_);
+  Filter filter(ctx, TILEDB_FILTER_NONE);
+  FilterList filter_list(ctx);
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  if (encrypt) {
-    Array::create(SPARSE_ARRAY_NAME, schema, enc_type_, key_);
-  } else {
-    Array::create(SPARSE_ARRAY_NAME, schema);
-  }
+  Array::create(SPARSE_ARRAY_NAME, schema);
 }
 
 void UpdatesFx::write_update_condition(
@@ -202,17 +206,15 @@ void UpdatesFx::check_update_conditions(
   auto array_ptr = array->ptr()->array_;
 
   // Load delete conditions.
-  auto&& [st, conditions, update_values] =
-      sm_->load_delete_and_update_conditions(*array_ptr);
-  REQUIRE(st.ok());
-  REQUIRE(conditions->size() == qcs.size());
+  auto&& [conditions, update_values] = load_delete_and_update_conditions(
+      ctx_.ptr().get()->resources(), *array_ptr->opened_array().get());
+  REQUIRE(conditions.size() == qcs.size());
 
   for (uint64_t i = 0; i < qcs.size(); i++) {
     // Compare to negated condition.
     auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
-    CHECK(tiledb::test::ast_equal(conditions->at(i).ast(), cmp.ast()));
-
-    auto& loaded_update_values = update_values->at(i);
+    CHECK(tiledb::test::ast_equal(conditions.at(i).ast(), cmp.ast()));
+    auto& loaded_update_values = update_values.at(i);
     for (uint64_t j = 0; j < uvs[i].size(); j++) {
       CHECK(uvs[i][j].field_name() == loaded_update_values[j].field_name());
     }

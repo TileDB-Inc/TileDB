@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -35,9 +35,11 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
@@ -57,8 +59,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for locally generated exceptions. */
 class ArraySchemaEvolutionException : public StatusException {
@@ -72,20 +73,49 @@ class ArraySchemaEvolutionException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArraySchemaEvolution::ArraySchemaEvolution() {
+ArraySchemaEvolution::ArraySchemaEvolution(
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , attributes_to_add_map_(
+          memory_tracker->get_resource(MemoryType::ATTRIBUTES))
+    , enumerations_to_add_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumerations_to_extend_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
     std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add,
     std::unordered_set<std::string> attrs_to_drop,
     std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add,
+    std::unordered_map<std::string, shared_ptr<const Enumeration>>
+        enmrs_to_extend,
     std::unordered_set<std::string> enmrs_to_drop,
-    std::pair<uint64_t, uint64_t> timestamp_range)
-    : attributes_to_add_map_(attrs_to_add)
+    std::pair<uint64_t, uint64_t> timestamp_range,
+    shared_ptr<CurrentDomain> current_domain,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , attributes_to_add_map_(
+          memory_tracker->get_resource(MemoryType::ATTRIBUTES))
     , attributes_to_drop_(attrs_to_drop)
-    , enumerations_to_add_map_(enmrs_to_add)
+    , enumerations_to_add_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumerations_to_extend_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_drop_(enmrs_to_drop)
-    , timestamp_range_(timestamp_range) {
+    , timestamp_range_(timestamp_range)
+    , current_domain_to_expand_(current_domain) {
+  for (auto& elem : attrs_to_add) {
+    attributes_to_add_map_.insert(elem);
+  }
+
+  for (auto& elem : enmrs_to_add) {
+    enumerations_to_add_map_.insert(elem);
+  }
+
+  for (auto& elem : enmrs_to_extend) {
+    enumerations_to_extend_map_.insert(elem);
+  }
 }
 
 ArraySchemaEvolution::~ArraySchemaEvolution() {
@@ -104,12 +134,16 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
         "Cannot evolve schema; Input array schema is null");
   }
 
-  auto schema = make_shared<ArraySchema>(HERE(), *(orig_schema.get()));
+  auto schema = orig_schema->clone();
 
   // Add enumerations. Must be done before attributes so that any attributes
   // referencing enumerations won't fail to be added.
   for (auto& enmr : enumerations_to_add_map_) {
     schema->add_enumeration(enmr.second);
+  }
+
+  for (auto& enmr : enumerations_to_extend_map_) {
+    schema->extend_enumeration(enmr.second);
   }
 
   // Add attributes.
@@ -121,9 +155,12 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
   for (auto& attr_name : attributes_to_drop_) {
     bool has_attr = false;
     throw_if_not_ok(schema->has_attribute(attr_name, &has_attr));
-    if (has_attr) {
-      throw_if_not_ok(schema->drop_attribute(attr_name));
+    if (!has_attr) {
+      throw ArraySchemaEvolutionException(
+          "Cannot drop attribute; Input attribute name refers to a dimension "
+          "or does not exist");
     }
+    throw_if_not_ok(schema->drop_attribute(attr_name));
   }
 
   // Drop enumerations
@@ -135,11 +172,15 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
 
   // Set timestamp, if specified
   if (std::get<0>(timestamp_range_) != 0) {
-    throw_if_not_ok(schema.get()->set_timestamp_range(timestamp_range_));
-    throw_if_not_ok(schema->generate_uri(timestamp_range_));
+    schema->generate_uri(timestamp_range_);
   } else {
     // Generate new schema URI
-    throw_if_not_ok(schema->generate_uri());
+    schema->generate_uri();
+  }
+
+  // Get expanded current domain
+  if (current_domain_to_expand_) {
+    schema->expand_current_domain(current_domain_to_expand_);
   }
 
   return schema;
@@ -250,15 +291,63 @@ shared_ptr<const Enumeration> ArraySchemaEvolution::enumeration_to_add(
   return it->second;
 }
 
+void ArraySchemaEvolution::extend_enumeration(
+    shared_ptr<const Enumeration> enmr) {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (enmr == nullptr) {
+    throw ArraySchemaEvolutionException(
+        "Cannot extend enumeration; Input enumeration is null");
+  }
+
+  auto it = enumerations_to_extend_map_.find(enmr->name());
+  if (it != enumerations_to_extend_map_.end()) {
+    throw ArraySchemaEvolutionException(
+        "Cannot extend enumeration; Input enumeration name has already "
+        "been extended in this evolution.");
+  }
+
+  enumerations_to_extend_map_[enmr->name()] = enmr;
+}
+
+std::vector<std::string> ArraySchemaEvolution::enumeration_names_to_extend()
+    const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  std::vector<std::string> names;
+  names.reserve(enumerations_to_extend_map_.size());
+  for (auto elem : enumerations_to_extend_map_) {
+    names.push_back(elem.first);
+  }
+
+  return names;
+}
+
+shared_ptr<const Enumeration> ArraySchemaEvolution::enumeration_to_extend(
+    const std::string& name) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  auto it = enumerations_to_extend_map_.find(name);
+
+  if (it == enumerations_to_extend_map_.end()) {
+    return nullptr;
+  }
+
+  return it->second;
+}
+
 void ArraySchemaEvolution::drop_enumeration(
     const std::string& enumeration_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   enumerations_to_drop_.insert(enumeration_name);
 
-  auto it = enumerations_to_add_map_.find(enumeration_name);
-  if (it != enumerations_to_add_map_.end()) {
+  auto add_it = enumerations_to_add_map_.find(enumeration_name);
+  if (add_it != enumerations_to_add_map_.end()) {
     // Reset the pointer and erase it
-    enumerations_to_add_map_.erase(it);
+    enumerations_to_add_map_.erase(add_it);
+  }
+
+  auto extend_it = enumerations_to_extend_map_.find(enumeration_name);
+  if (extend_it != enumerations_to_extend_map_.end()) {
+    enumerations_to_extend_map_.erase(extend_it);
   }
 }
 
@@ -276,10 +365,10 @@ std::vector<std::string> ArraySchemaEvolution::enumeration_names_to_drop()
 void ArraySchemaEvolution::set_timestamp_range(
     const std::pair<uint64_t, uint64_t>& timestamp_range) {
   if (timestamp_range.first != timestamp_range.second) {
-    throw std::runtime_error(std::string(
+    throw ArraySchemaEvolutionException(
         "Cannot set timestamp range; first element " +
         std::to_string(timestamp_range.first) + " and second element " +
-        std::to_string(timestamp_range.second) + " are not equal!"));
+        std::to_string(timestamp_range.second) + " are not equal!");
   }
   timestamp_range_ = timestamp_range;
 }
@@ -287,6 +376,30 @@ void ArraySchemaEvolution::set_timestamp_range(
 std::pair<uint64_t, uint64_t> ArraySchemaEvolution::timestamp_range() const {
   return std::pair<uint64_t, uint64_t>(
       timestamp_range_.first, timestamp_range_.second);
+}
+
+void ArraySchemaEvolution::expand_current_domain(
+    shared_ptr<CurrentDomain> current_domain) {
+  if (current_domain == nullptr) {
+    throw ArraySchemaEvolutionException(
+        "Cannot expand the array current domain; Input current domain is null");
+  }
+
+  if (current_domain->empty()) {
+    throw ArraySchemaEvolutionException(
+        "Unable to expand the array current domain, the new current domain "
+        "specified is empty");
+  }
+
+  std::lock_guard<std::mutex> lock(mtx_);
+  current_domain_to_expand_ = current_domain;
+}
+
+shared_ptr<CurrentDomain> ArraySchemaEvolution::current_domain_to_expand()
+    const {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  return current_domain_to_expand_;
 }
 
 /* ****************************** */
@@ -299,7 +412,7 @@ void ArraySchemaEvolution::clear() {
   enumerations_to_add_map_.clear();
   enumerations_to_drop_.clear();
   timestamp_range_ = {0, 0};
+  current_domain_to_expand_ = nullptr;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

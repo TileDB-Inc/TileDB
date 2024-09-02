@@ -51,14 +51,12 @@ BitshuffleFilter* BitshuffleFilter::clone_impl() const {
   return tdb_new(BitshuffleFilter, filter_data_type_);
 }
 
-void BitshuffleFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "BitShuffle");
+std::ostream& BitshuffleFilter::output(std::ostream& os) const {
+  os << "BitShuffle";
+  return os;
 }
 
-Status BitshuffleFilter::run_forward(
+void BitshuffleFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -68,39 +66,37 @@ Status BitshuffleFilter::run_forward(
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // Output size does not change with this filter.
-  RETURN_NOT_OK(output->prepend_buffer(input->size()));
+  throw_if_not_ok(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
 
   // Compute the list of parts to shuffle
   std::vector<ConstBuffer> parts;
-  RETURN_NOT_OK(compute_parts(input, &parts));
+  throw_if_not_ok(compute_parts(input, &parts));
 
   // Write the metadata
   auto num_parts = (uint32_t)parts.size();
   uint32_t metadata_size = sizeof(uint32_t) + num_parts * sizeof(uint32_t);
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&num_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(output_metadata->write(&num_parts, sizeof(uint32_t)));
 
   // Shuffle all parts
   for (const auto& part : parts) {
     auto part_size = (uint32_t)part.size();
-    RETURN_NOT_OK(output_metadata->write(&part_size, sizeof(uint32_t)));
+    throw_if_not_ok(output_metadata->write(&part_size, sizeof(uint32_t)));
 
     if (part_size % tile_type_size != 0 || part_size % 8 != 0) {
       // Can't shuffle: just copy.
       std::memcpy(output_buf->cur_data(), part.data(), part_size);
     } else {
-      RETURN_NOT_OK(shuffle_part(tile, &part, output_buf));
+      throw_if_not_ok(shuffle_part(tile, &part, output_buf));
     }
 
     if (output_buf->owns_data())
       output_buf->advance_size(part.size());
     output_buf->advance_offset(part.size());
   }
-
-  return Status::Ok();
 }
 
 Status BitshuffleFilter::compute_parts(

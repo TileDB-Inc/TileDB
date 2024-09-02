@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,6 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/iquery_strategy.h"
@@ -46,12 +45,10 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_coords.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 
@@ -68,18 +65,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
 
   /** Constructor. */
   SparseUnorderedWithDupsReader(
-      stats::Stats* stats,
-      shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates,
-      bool skip_checks_serialization = false);
+      stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params);
 
   /** Destructor. */
   ~SparseUnorderedWithDupsReader() = default;
@@ -513,6 +499,23 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       UnorderedWithDupsResultTile<BitmapType>& rt);
 
   /**
+   * Returns wether or not we can aggregate the tile with only the fragment
+   * metadata.
+   *
+   * @param rt Result tile.
+   * @return If we can do the aggregation with the frag md or not.
+   */
+  inline bool can_aggregate_tile_with_frag_md(
+      UnorderedWithDupsResultTile<BitmapType>* rt) {
+    auto& frag_md = fragment_metadata_[rt->frag_idx()];
+
+    // Here we only aggregate a full tile if first of all there are no missing
+    // cells in the bitmap. This can be validated with 'copy_full_tile'.
+    // Finally, we check the fragment metadata has indeed tile metadata.
+    return rt->copy_full_tile() && frag_md->has_tile_metadata();
+  }
+
+  /**
    * Process aggregates.
    *
    * @param num_range_threads Total number of range threads.
@@ -547,7 +550,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   void end_iteration(ResultTilesList& result_tiles);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SPARSE_UNORDERED_WITH_DUPS_READER

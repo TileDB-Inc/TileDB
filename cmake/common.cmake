@@ -91,13 +91,3 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR})
 cmake_path(SET TILEDB_SOURCE_ROOT NORMALIZE ${CMAKE_SOURCE_DIR})
 cmake_path(APPEND TILEDB_SOURCE_ROOT "external/include" OUTPUT_VARIABLE TILEDB_EXTERNAL_INCLUDE)
-
-#
-# Policies
-#
-if (POLICY CMP0076)
-    # CMP0076 NEW instructs `target_sources` to convert relative paths to absolute ones.
-    # At present this is only used for unit-test executables, not for the main
-    # library at the top level.
-    cmake_policy(SET CMP0076 NEW)
-endif()

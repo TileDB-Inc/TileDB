@@ -36,6 +36,7 @@
 #include "../../c_api_support/handle/handle.h"
 #include "../config/config_api_internal.h"
 #include "../error/error_api_internal.h"
+#include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/storage_manager/context.h"
 
 struct tiledb_ctx_handle_t
@@ -63,8 +64,24 @@ struct tiledb_ctx_handle_t
     return ctx_.resources();
   }
 
+  inline tiledb::sm::Config& config() {
+    return ctx_.resources().config();
+  }
+
   inline tiledb::sm::StorageManager* storage_manager() {
     return ctx_.storage_manager();
+  }
+
+  inline tiledb::sm::CancellationSource cancellation_source() {
+    return ctx_.cancellation_source();
+  }
+
+  inline tiledb::sm::RestClient& rest_client() {
+    return ctx_.rest_client();
+  }
+
+  inline bool has_rest_client() {
+    return ctx_.has_rest_client();
   }
 
   inline optional<std::string> last_error() {

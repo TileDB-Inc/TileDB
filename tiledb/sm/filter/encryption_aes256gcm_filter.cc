@@ -63,25 +63,29 @@ EncryptionAES256GCMFilter* EncryptionAES256GCMFilter::clone_impl() const {
   return clone;
 }
 
-void EncryptionAES256GCMFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "EncryptionAES256GCM");
+std::ostream& EncryptionAES256GCMFilter::output(std::ostream& os) const {
+  os << "EncryptionAES256GCM";
+  return os;
 }
 
-Status EncryptionAES256GCMFilter::run_forward(
+Datatype EncryptionAES256GCMFilter::output_datatype(Datatype) const {
+  /* encryption gives us meaningless bits with overwhelming probability */
+  return Datatype::BLOB;
+}
+
+void EncryptionAES256GCMFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  if (key_bytes_ == nullptr)
-    return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
+  if (key_bytes_ == nullptr) {
+    throw FilterStatusException("Encryption error; bad key.");
+  }
 
   // Allocate an initial output buffer.
-  RETURN_NOT_OK(output->prepend_buffer(input->size()));
+  throw_if_not_ok(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
   assert(output_buf != nullptr);
 
@@ -95,17 +99,16 @@ Status EncryptionAES256GCMFilter::run_forward(
                           Crypto::AES256GCM_IV_BYTES;
   uint32_t metadata_size =
       2 * sizeof(uint32_t) + total_num_parts * part_md_size;
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(
+      output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
 
   // Encrypt all parts
   for (auto& part : metadata_parts)
-    RETURN_NOT_OK(encrypt_part(&part, output_buf, output_metadata));
+    throw_if_not_ok(encrypt_part(&part, output_buf, output_metadata));
   for (auto& part : data_parts)
-    RETURN_NOT_OK(encrypt_part(&part, output_buf, output_metadata));
-
-  return Status::Ok();
+    throw_if_not_ok(encrypt_part(&part, output_buf, output_metadata));
 }
 
 Status EncryptionAES256GCMFilter::encrypt_part(

@@ -29,6 +29,8 @@
  *
  * Tests for the ResultTile classes.
  */
+
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/misc/types.h"
@@ -59,13 +61,15 @@ struct CResultTileFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
-  std::unique_ptr<FragmentMetadata> frag_md_;
+  std::shared_ptr<FragmentMetadata> frag_md_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   CResultTileFx();
   ~CResultTileFx();
 };
 
-CResultTileFx::CResultTileFx() {
+CResultTileFx::CResultTileFx()
+    : memory_tracker_(tiledb::test::get_test_memory_tracker()) {
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
@@ -107,13 +111,17 @@ CResultTileFx::CResultTileFx() {
   rc = tiledb_array_open(ctx_, array_, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
-  frag_md_.reset(new FragmentMetadata(
-      nullptr,
+  // Create test memory tracker.
+  memory_tracker_ = tiledb::test::create_test_memory_tracker();
+
+  frag_md_ = make_shared<FragmentMetadata>(
+      HERE(),
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(array_->array_.get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
-      false));
+      memory_tracker_,
+      false);
 }
 
 CResultTileFx::~CResultTileFx() {
@@ -159,7 +167,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_domain_free(&domain);
 
-  UnorderedWithDupsResultTile<uint8_t> tile(0, 0, *frag_md_);
+  UnorderedWithDupsResultTile<uint8_t> tile(
+      0, 0, *frag_md_, tiledb::test::get_test_memory_tracker());
 
   // Check the function with an empty bitmap.
   CHECK(tile.result_num_between_pos(2, 10) == 8);
@@ -188,12 +197,12 @@ TEST_CASE_METHOD(
   auto& array_schema = array_->array_->array_schema_latest();
   FragmentMetadata frag_md(
       nullptr,
-      nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(array_->array_.get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      memory_tracker_,
       true);
-  ResultTile rt(0, 0, frag_md);
+  ResultTile rt(0, 0, frag_md, tiledb::test::get_test_memory_tracker());
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
@@ -269,10 +278,13 @@ TEST_CASE_METHOD(
     exp_result_count = {0, 1, 1, 1, 1, 1, 1, 0};
   }
 
-  std::vector<uint64_t> range_indexes(ranges.size());
+  tdb::pmr::vector<uint64_t> range_indexes(
+      ranges.size(), memory_tracker_->get_resource(MemoryType::DIMENSIONS));
   std::iota(range_indexes.begin(), range_indexes.end(), 0);
 
-  std::vector<uint8_t> result_count(num_cells, 1);
+  auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
+      MemoryType::RESULT_TILE_BITMAP);
+  tdb::pmr::vector<uint8_t> result_count(num_cells, 1, resource);
   ResultTile::compute_results_count_sparse_string(
       &rt,
       dim_idx,
@@ -298,12 +310,12 @@ TEST_CASE_METHOD(
   auto& array_schema = array_->array_->array_schema_latest();
   FragmentMetadata frag_md(
       nullptr,
-      nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(array_->array_.get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      memory_tracker_,
       true);
-  ResultTile rt(0, 0, frag_md);
+  ResultTile rt(0, 0, frag_md, tiledb::test::get_test_memory_tracker());
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
@@ -409,10 +421,13 @@ TEST_CASE_METHOD(
     exp_result_count = {0, 1, 2, 1, 0, 1, 3, 2};
   }
 
-  std::vector<uint64_t> range_indexes(ranges.size());
+  tdb::pmr::vector<uint64_t> range_indexes(
+      ranges.size(), memory_tracker_->get_resource(MemoryType::DIMENSIONS));
   std::iota(range_indexes.begin(), range_indexes.end(), 0);
 
-  std::vector<uint64_t> result_count(num_cells, 1);
+  auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
+      MemoryType::RESULT_TILE_BITMAP);
+  tdb::pmr::vector<uint64_t> result_count(num_cells, 1, resource);
   ResultTile::compute_results_count_sparse_string(
       &rt,
       dim_idx,

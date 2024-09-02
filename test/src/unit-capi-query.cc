@@ -5,8 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +32,7 @@
 
 #include <tiledb/sm/c_api/tiledb_struct_def.h>
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -41,13 +41,13 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/platform/platform.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::test;
 
@@ -69,7 +69,6 @@ struct QueryFx {
   void test_get_buffer_write_decoupled(const std::string& path);
   void test_get_buffer_read(const std::string& path);
   void test_get_buffer_read_decoupled(const std::string& path);
-  static std::string random_name(const std::string& prefix);
 };
 
 QueryFx::QueryFx()
@@ -83,13 +82,6 @@ QueryFx::~QueryFx() {
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
-}
-
-std::string QueryFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 void QueryFx::create_temp_dir(const std::string& path) {
@@ -191,9 +183,16 @@ void QueryFx::test_get_buffer_write(const std::string& path) {
 
   // Prepare query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   CHECK(rc == TILEDB_OK);
 
   // Get unset buffers
@@ -298,9 +297,16 @@ void QueryFx::test_get_buffer_write_decoupled(const std::string& path) {
 
   // Prepare query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   CHECK(rc == TILEDB_OK);
 
   // Get unset buffers
@@ -397,9 +403,16 @@ void QueryFx::test_get_buffer_read(const std::string& path) {
 
   // Prepare query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   CHECK(rc == TILEDB_OK);
 
   // Get unset buffers
@@ -509,9 +522,16 @@ void QueryFx::test_get_buffer_read_decoupled(const std::string& path) {
 
   // Prepare query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   CHECK(rc == TILEDB_OK);
 
   // Get unset buffers
@@ -703,4 +723,107 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_array_free(&rarray);
   remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    QueryFx,
+    "C API: Test query write failure",
+    "[capi][query][write-failure]") {
+  // DenyWriteAccess is not supported on Windows.
+  if constexpr (tiledb::platform::is_os_windows)
+    return;
+  // The test fails on Manylinux. Skip it.
+  char* manylinux_var = getenv("TILEDB_MANYLINUX");
+  if (manylinux_var && strlen(manylinux_var) > 0)
+    return;
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.temp_dir();
+  std::string array_name = temp_dir + "write_failure";
+  create_temp_dir(temp_dir);
+
+  tiledb_layout_t layout =
+      GENERATE(TILEDB_ROW_MAJOR, TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+  tiledb_array_type_t array_type =
+      layout == TILEDB_UNORDERED ? TILEDB_SPARSE : TILEDB_DENSE;
+
+  tiledb_ctx_t* ctx;
+  int rc;
+  {
+    tiledb_array_schema_t* schema;
+    tiledb_domain_t* domain;
+    tiledb_dimension_t* dim;
+    tiledb_attribute_t* attr;
+
+    rc = tiledb_ctx_alloc(nullptr, &ctx);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_array_schema_alloc(ctx, array_type, &schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_domain_alloc(ctx, &domain);
+    REQUIRE(rc == TILEDB_OK);
+
+    int bounds[] = {0, 4};
+    int extent = 1;
+    rc = tiledb_dimension_alloc(ctx, "d1", TILEDB_INT32, bounds, &extent, &dim);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_domain_add_dimension(ctx, domain, dim);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_set_domain(ctx, schema, domain);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_attribute_alloc(ctx, "attr1", TILEDB_INT32, &attr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_add_attribute(ctx, schema, attr);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_array_create(ctx, array_name.c_str(), schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    tiledb_attribute_free(&attr);
+    tiledb_dimension_free(&dim);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&schema);
+  }
+
+  {
+    DenyWriteAccess dwa{array_name + "/__fragments"};
+
+    tiledb_array_t* array;
+    tiledb_query_t* query;
+    rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_set_layout(ctx, query, layout);
+    REQUIRE(rc == TILEDB_OK);
+    int data[] = {0, 1, 2, 3, 4};
+    uint64_t data_size = sizeof(data);
+    rc = tiledb_query_set_data_buffer(ctx, query, "attr1", data, &data_size);
+    REQUIRE(rc == TILEDB_OK);
+    if (array_type == TILEDB_SPARSE) {
+      rc = tiledb_query_set_data_buffer(ctx, query, "d1", data, &data_size);
+      REQUIRE(rc == TILEDB_OK);
+    }
+
+    rc = tiledb_query_submit(ctx, query);
+    REQUIRE(rc != TILEDB_OK);
+
+    tiledb_error_t* err;
+    rc = tiledb_ctx_get_last_error(ctx, &err);
+    REQUIRE(rc == TILEDB_OK);
+    const char* msg;
+    rc = tiledb_error_message(err, &msg);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(
+        std::string(msg).find("Cannot create directory") != std::string::npos);
+
+    tiledb_error_free(&err);
+    tiledb_query_free(&query);
+    tiledb_array_free(&array);
+  }
+  tiledb_ctx_free(&ctx);
 }

@@ -1,16 +1,18 @@
 # Group
 
-A group consists of [metadata](./metadata.md) and a file containing group members.
-
-The current group format version is `2`.
+The current group format version (`2`) is a folder called `__group` located here:
 
 ```
 my_group                       # Group folder
-    |_ __tiledb_group.tdb      # Empty group file
+    |  ...
     |_ __group                 # Group folder
         |_ <timestamped_name>  # Timestamped group file detailing members
-    |_ __meta                  # group metadata folder
+    |_ ...
 ```
+
+The group folder can contain:
+
+* Any number of group files with name [`<timestamped_name>`](./timestamped_name.md).
 
 ## Group File
 

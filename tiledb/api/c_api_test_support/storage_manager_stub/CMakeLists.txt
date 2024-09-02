@@ -40,3 +40,6 @@ add_library(storage_manager_stub OBJECT
 # that contains the overriding header to the include search path.
 target_include_directories(storage_manager_stub PUBLIC
     ${CMAKE_SOURCE_DIR}/tiledb/api/c_api_test_support/storage_manager_stub)
+target_include_directories(storage_manager_stub PRIVATE
+    ${CMAKE_SOURCE_DIR}
+)

@@ -37,17 +37,18 @@ void create_array() {
   std::vector<float> data2 = {
       13.2f, 14.1f, 14.2f, 15.1f, 15.2f, 15.3f, 16.1f, 18.3f, 19.1f};
 
-  // Set the subarray to write into
-  std::vector<int> subarray = {1, 9};
-
   // Open array for writing
   Array array(ctx, array_name, TILEDB_WRITE);
 
+  // Set the subarray to write into
+  Subarray subarray(ctx, array);
+  subarray.add_range<int>(0, 1, 9);
+
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", data1)
+      .set_data_buffer("a1", data1)
       .set_validity_buffer("a1", a1_validity_buf)
-      .set_buffer("a2", data2)
+      .set_data_buffer("a2", data2)
       .set_subarray(subarray);
 
   query.submit();
@@ -69,20 +70,22 @@ TEST_CASE(
   // Prepare the array for reading
   Array array(ctx, array_name, TILEDB_READ);
 
-  const std::vector<int> subarray = {1, 9};
-
   // Prepare the vectors that will hold the results
   std::vector<int> a1_buffer(9);
   std::vector<float> a2_buffer(9);
   std::vector<uint8_t> a1_validity_buf(9);
 
+  // Set the subarray to write into
+  Subarray subarray(ctx, array);
+  subarray.add_range<int>(0, 1, 9);
+
   // Prepare the query
   Query query(ctx, array, TILEDB_READ);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_buffer("a1", a1_buffer)
+      .set_data_buffer("a1", a1_buffer)
       .set_validity_buffer("a1", a1_validity_buf)
-      .set_buffer("a2", a2_buffer);
+      .set_data_buffer("a2", a2_buffer);
 
   QueryCondition qc1(ctx);
   float val = 15.1f;

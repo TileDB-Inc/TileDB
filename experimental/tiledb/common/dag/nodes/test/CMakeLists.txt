@@ -57,7 +57,7 @@ target_sources(unit_nodes_sieve PUBLIC
 #
 add_test(
     NAME "unit_nodes_sieve"
-    COMMAND $<TARGET_FILE:unit_nodes_sieve> --durations=yes
+    COMMAND $<TARGET_FILE:unit_nodes_sieve>
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 add_dependencies(all_unit_tests "unit_nodes_sieve")

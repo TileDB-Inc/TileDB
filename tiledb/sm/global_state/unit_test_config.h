@@ -126,9 +126,6 @@ class UnitTestConfig {
   /** For every nth multipart upload request, return a non-OK status. */
   Attribute<unsigned int> s3_fail_every_nth_upload_request;
 
-  /** Used when setting a non-standard key_length. */
-  Attribute<uint32_t> array_encryption_key_length;
-
  private:
   /** Constructor. */
   UnitTestConfig() = default;

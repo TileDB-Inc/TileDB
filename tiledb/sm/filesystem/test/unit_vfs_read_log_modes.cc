@@ -73,9 +73,9 @@ TEST_CASE("VFS Read Log Modes", "[vfs][read-logging-modes]") {
   for (int i = 0; i < 2; i++) {
     char buffer[123];
     for (auto& uri : uris_to_read) {
-      auto st = res.vfs().read(URI(uri), 123, buffer, 456);
       // None of these files exist, so we expect every read to fail.
-      REQUIRE(!st.ok());
+      REQUIRE_THROWS(
+          throw_if_not_ok(res.vfs().read(URI(uri), 123, buffer, 456)));
     }
   }
 }

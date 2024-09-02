@@ -36,7 +36,9 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/query/query_state.h"
 
 namespace tiledb {
 namespace sm {
@@ -46,30 +48,27 @@ namespace sm {
 /* ****************************** */
 
 StrategyBase::StrategyBase(
-    stats::Stats* stats,
-    shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout)
-    : stats_(stats)
+    stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
+    : resources_(params.resources())
+    , array_memory_tracker_(params.array_memory_tracker())
+    , query_memory_tracker_(params.query_memory_tracker())
+    , stats_(stats)
     , logger_(logger)
-    , array_(array)
-    , array_schema_(array->array_schema_latest())
-    , config_(config)
-    , buffers_(buffers)
-    , layout_(layout)
-    , storage_manager_(storage_manager)
-    , subarray_(subarray)
+    , array_(params.array())
+    , array_schema_(params.array()->array_schema_latest())
+    , config_(params.config())
+    , buffers_(params.buffers())
+    , layout_(params.layout())
+    , query_state_machine_(params.query_state_machine())
+    , cancellation_source_(params.cancellation_source())
+    , subarray_(params.subarray())
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
 }
 
-stats::Stats* StrategyBase::stats() const {
-  return stats_;
+void StrategyBase::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
 }
 
 /* ****************************** */
@@ -102,6 +101,26 @@ void StrategyBase::get_dim_attr_stats() const {
         }
       }
     }
+  }
+}
+
+void StrategyBase::throw_if_cancelled() const {
+  if (cancellation_source_.cancellation_in_progress()) {
+    throw QueryException("Query was cancelled");
+  }
+}
+
+void StrategyBase::cancel() {
+  query_state_machine_.event(LocalQueryEvent::cancel);
+}
+
+bool StrategyBase::cancelled() const {
+  return query_state_machine_.is_cancelled();
+}
+
+void StrategyBase::process_external_cancellation() {
+  if (cancellation_source_.cancellation_in_progress()) {
+    cancel();
   }
 }
 

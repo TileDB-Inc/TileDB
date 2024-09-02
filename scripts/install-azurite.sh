@@ -24,56 +24,13 @@
 # SOFTWARE.
 #
 
-# Installs dependencies for Azurite.
+# Installs Azurite.
 
-die() {
-  echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
-}
+# Fail if npm does not exist.
+if ! command -v npm &> /dev/null
+then
+    echo "npm could not be found. Please install Node.js."
+    exit 1
+fi
 
-install_apt_pkgs() {
-  sudo apt-get -y install libnode-dev node-gyp libssl1.0 npm || die "could not install nodejs dependency"
-}
-
-install_yum_pkgs() {
-  sudo yum -y install nodejs || die "could not install nodejs dependency"
-}
-
-install_brew_pkgs() {
-  # Now installed on AZP images by default
-  if [[ `which node` == "" ]]; then
-    brew install node || brew link --overwrite node
-  fi
-}
-
-install_deps() {
-  AZURITE_PACKAGE="azurite@3.22.0"
-  if [[ $OSTYPE == linux* ]]; then
-    if [ -n "$(command -v apt-get)" ]; then
-      install_apt_pkgs
-    elif [ -n "$(command -v yum)" ]; then
-      install_yum_pkgs
-    fi
-
-    sudo npm config set strict-ssl false
-    sudo npm cache clean -f
-    sudo npm install -g n
-    sudo n stable
-    sudo npm install -g $AZURITE_PACKAGE
-  elif [[ $OSTYPE == darwin* ]]; then
-    if [ -n "$(command -v brew)" ]; then
-      install_brew_pkgs
-    else
-      die "homebrew is not installed!"
-    fi
-
-    npm install -g $AZURITE_PACKAGE
-  else
-    die "unsupported package management system"
-  fi
-}
-
-run() {
-  install_deps
-}
-
-run 
+npm install -g azurite

@@ -55,14 +55,14 @@ capi_return_t tiledb_data_order_from_str(
 
 using tiledb::api::api_entry_plain;
 
-capi_return_t tiledb_data_order_to_str(
-    tiledb_data_order_t data_order, const char** str) noexcept {
+CAPI_INTERFACE(
+    data_order_to_str, tiledb_data_order_t data_order, const char** str) {
   return api_entry_plain<tiledb::api::tiledb_data_order_to_str>(
       data_order, str);
 }
 
-capi_return_t tiledb_data_order_from_str(
-    const char* str, tiledb_data_order_t* data_order) noexcept {
+CAPI_INTERFACE(
+    data_order_from_str, const char* str, tiledb_data_order_t* data_order) {
   return api_entry_plain<tiledb::api::tiledb_data_order_from_str>(
       str, data_order);
 }

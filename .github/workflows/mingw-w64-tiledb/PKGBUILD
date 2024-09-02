@@ -7,13 +7,6 @@ pkgdesc="Storage management library for sparse and dense array data (mingw-w64)"
 arch=("any")
 url="https://tiledb.com/"
 license=("MIT")
-depends=("${MINGW_PACKAGE_PREFIX}-lz4"
-         "${MINGW_PACKAGE_PREFIX}-aws-sdk-cpp"
-         "${MINGW_PACKAGE_PREFIX}-bzip2"
-         "${MINGW_PACKAGE_PREFIX}-curl"
-         "${MINGW_PACKAGE_PREFIX}-zlib"
-         "${MINGW_PACKAGE_PREFIX}-zstd"
-         )
 makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
              "${MINGW_PACKAGE_PREFIX}-gcc")
 options=("staticlibs" "strip")
@@ -26,9 +19,9 @@ build() {
   if [ "$CARCH" == "i686" ]; then
   export CFLAGS="-mfpmath=sse -msse2"
   export CXXFLAGS="-mfpmath=sse -msse2"
-  vcpkg_triplet="x86-mingw-static"
+  vcpkg_triplet="x86-mingw-static-release"
   else
-  vcpkg_triplet="x64-mingw-static"
+  vcpkg_triplet="x64-mingw-static-release"
   fi
 
 
@@ -38,28 +31,27 @@ build() {
     -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=Release \
-    -DTILEDB_STATIC=ON \
+    -DTILEDB_TESTS=OFF \
     -DTILEDB_S3=ON \
     -DCOMPILER_SUPPORTS_AVX2=OFF \
-    -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     -DTILEDB_WERROR=OFF \
-    -DVCPKG_OVERLAY_PORTS=../.github/workflows/mingw-w64-tiledb/system-ports \
     -DVCPKG_TARGET_TRIPLET=${vcpkg_triplet} \
     ..
   make
-  make -C tiledb
 
 # in a local environ, can build to demo/check for previously seen (windows event) handle leakge
 # apparently due to issues with mingw std library implementation.
 # note that with S3 enabled above, and minio not running, the aws sdk may fatally error on exit.
-#  make -C tiledb/test tiledb_unit # need the support lib built
-#  make -C tiledb/test/performance tiledb_explore_msys_handle_leakage
+#  make -C test tiledb_unit # need the support lib built
+#  make -C test/performance tiledb_explore_msys_handle_leakage
 #  . ../test/performance/msys_handle_leakage/trials.sh
 }
 
 package() {
   cd ${source_dir}/build-${MINGW_CHOST}
-  make DESTDIR="${pkgdir}" -C tiledb install
+  make DESTDIR="${pkgdir}" install
+  # Copy vcpkg_installed to the mingw package.
+  cp -r vcpkg_installed/${vcpkg_triplet}/. ${pkgdir}/${MINGW_ARCH}
 }
 
 check (){

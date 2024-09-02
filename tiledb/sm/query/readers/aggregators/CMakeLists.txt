@@ -31,7 +31,7 @@ include(object_library)
 # `aggregators` object library
 #
 commence(object_library aggregators)
-    this_target_sources(count_aggregator.cc mean_aggregator.cc min_max_aggregator.cc output_buffer_validator.cc safe_sum.cc sum_aggregator.cc)
+    this_target_sources(count_aggregator.cc min_max_aggregator.cc operation.cc output_buffer_validator.cc safe_sum.cc sum_aggregator.cc)
     this_target_object_libraries(baseline array_schema)
 conclude(object_library)
 

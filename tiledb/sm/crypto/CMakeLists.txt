@@ -36,9 +36,10 @@ commence(object_library tiledb_crypto)
     if(WIN32)
         this_target_link_libraries(bcrypt)
     else()
-        find_package(OpenSSL_EP REQUIRED)
-	#this_target_link_libraries(OpenSSL::Crypto)
-	target_link_libraries(tiledb_crypto PRIVATE OpenSSL::Crypto)
+        find_package(OpenSSL REQUIRED)
+        # We cannot use this_target_link_libraries, because it links with PUBLIC
+        # visibility, and we use OpenSSL only as an internal implementation detail.
+        target_link_libraries(tiledb_crypto PRIVATE OpenSSL::Crypto)
     endif()
     # OpenSSL-3 deprecates MD5
     if(MSVC)
@@ -47,3 +48,5 @@ commence(object_library tiledb_crypto)
         set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
     endif()
 conclude(object_library)
+
+add_test_subdirectory()

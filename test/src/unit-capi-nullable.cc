@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,10 +32,14 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/temporary_local_directory.h"
+#include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/enums/array_type.h"
 
 #include <iostream>
+#include <optional>
 #include <vector>
 
 using namespace std;
@@ -44,14 +48,6 @@ using namespace tiledb::test;
 
 class NullableArrayFx {
  public:
-  const string& FILE_TEMP_DIR = tiledb::test::get_temp_path();
-
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
   struct test_dim_t {
     test_dim_t(
         const string& name,
@@ -144,19 +140,16 @@ class NullableArrayFx {
   /** The C-API VFS object. */
   tiledb_vfs_t* vfs_;
 
-  /**
-   * Creates a directory using `vfs_`.
-   *
-   * @param path The directory path.
-   */
-  void create_dir(const string& path);
+  /** The unique local directory object. */
+  TemporaryLocalDirectory temp_dir_;
 
   /**
-   * Removes a directory using `vfs_`.
+   * Compute the full array path given an array name.
    *
-   * @param path The directory path.
+   * @param array_name The array name.
+   * @return The full array path.
    */
-  void remove_dir(const string& path);
+  const string array_path(const string& array_name);
 
   /**
    * Creates a TileDB array.
@@ -205,36 +198,26 @@ NullableArrayFx::NullableArrayFx() {
   // Create a config.
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_config_alloc(&config, &error));
+  throw_if_setup_failed(error == nullptr);
 
   // Create the context.
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_ctx_alloc(config, &ctx_));
+  throw_if_setup_failed(ctx_ != nullptr);
 
   // Create the VFS.
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-
+  throw_if_setup_failed(tiledb_vfs_alloc(ctx_, config, &vfs_));
+  throw_if_setup_failed(vfs_ != nullptr);
   tiledb_config_free(&config);
-
-  serialize_ = false;
 }
 
 NullableArrayFx::~NullableArrayFx() {
-  remove_dir(FILE_TEMP_DIR);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
 }
 
-void NullableArrayFx::create_dir(const string& path) {
-  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-void NullableArrayFx::remove_dir(const string& path) {
-  int is_dir = 0;
-  REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
-    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
+const string NullableArrayFx::array_path(const string& array_name) {
+  return vfs_array_uri(vfs_test_get_fs_vec()[0], temp_dir_.path() + array_name);
 }
 
 void NullableArrayFx::create_array(
@@ -244,9 +227,6 @@ void NullableArrayFx::create_array(
     const vector<test_attr_t>& test_attrs,
     const tiledb_layout_t cell_order,
     const tiledb_layout_t tile_order) {
-  remove_dir(FILE_TEMP_DIR);
-  create_dir(FILE_TEMP_DIR);
-
   // Create the dimensions.
   vector<tiledb_dimension_t*> dims;
   dims.reserve(test_dims.size());
@@ -313,8 +293,7 @@ void NullableArrayFx::create_array(
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create(
-      ctx_, (FILE_TEMP_DIR + array_name).c_str(), array_schema);
+  rc = tiledb_array_create(ctx_, array_path(array_name).c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Free attributes.
@@ -340,8 +319,7 @@ void NullableArrayFx::write(
     const tiledb_layout_t layout) {
   // Open the array for writing.
   tiledb_array_t* array;
-  int rc =
-      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_path(array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -425,13 +403,11 @@ void NullableArrayFx::write(
   }
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      FILE_TEMP_DIR + array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  if (layout != TILEDB_GLOBAL_ORDER) {
+    rc = tiledb_query_submit(ctx_, query);
+  } else {
+    rc = tiledb_query_submit_and_finalize(ctx_, query);
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -447,14 +423,14 @@ void NullableArrayFx::read(
     const void* const subarray) {
   // Open the array for reading.
   tiledb_array_t* array;
-  int rc =
-      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_path(array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
   // Create the read query.
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
 
@@ -529,17 +505,16 @@ void NullableArrayFx::read(
   }
 
   // Set the subarray to read.
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      FILE_TEMP_DIR + array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -864,42 +839,37 @@ void NullableArrayFx::do_2d_nullable_test(
   }
 }
 
+// TODO: Add [rest] tag and fix test issues with cleanup
+// because of the use of dynamic section
 TEST_CASE_METHOD(
     NullableArrayFx,
     "C API: Test 2D array with nullable attributes",
     "[capi][2d][nullable]") {
+  // Define the attributes.
   vector<test_attr_t> attrs;
   attrs.emplace_back("a1", TILEDB_INT32, 1, true);
   attrs.emplace_back("a2", TILEDB_INT32, 1, true);
   attrs.emplace_back("a3", TILEDB_INT32, TILEDB_VAR_NUM, true);
 
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
+  // Generate test conditions
+  auto num_attrs{GENERATE(1, 2, 3)};
+  auto array_type{GENERATE(TILEDB_DENSE, TILEDB_SPARSE)};
+  auto cell_order{GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR)};
+  auto tile_order{GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR)};
+  auto write_order{GENERATE(
+      TILEDB_ROW_MAJOR,
+      TILEDB_COL_MAJOR,
+      TILEDB_UNORDERED,
+      TILEDB_GLOBAL_ORDER)};
 
-  for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
-    vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
-    for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {
-      for (const tiledb_layout_t cell_order :
-           {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-        for (const tiledb_layout_t tile_order :
-             {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-          for (const tiledb_layout_t write_order :
-               {TILEDB_ROW_MAJOR,
-                TILEDB_COL_MAJOR,
-                TILEDB_UNORDERED,
-                TILEDB_GLOBAL_ORDER}) {
-            do_2d_nullable_test(
-                test_attrs, array_type, cell_order, tile_order, write_order);
-          }
-        }
-      }
-    }
+  DYNAMIC_SECTION(
+      array_type_str((ArrayType)array_type)
+      << " array with " << num_attrs << " attribute(s). "
+      << layout_str((Layout)cell_order) << " cells, "
+      << layout_str((Layout)tile_order) << " tiles, "
+      << layout_str((Layout)write_order) << " writes") {
+    vector<test_attr_t> test_attrs(attrs.begin(), attrs.begin() + num_attrs);
+    do_2d_nullable_test(
+        test_attrs, array_type, cell_order, tile_order, write_order);
   }
 }

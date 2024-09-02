@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,6 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
@@ -47,7 +46,7 @@ namespace py = pybind11;
 namespace {
 struct CPPArrayFx {
  public:
-  CPPArrayFx(std::string uri, const uint64_t col_size)
+  CPPArrayFx(std::string uri, const uint64_t col_size, const uint8_t offset)
       : vfs(ctx)
       , uri(uri) {
     if (vfs.is_dir(uri))
@@ -60,41 +59,47 @@ struct CPPArrayFx {
     domain.add_dimensions(d1);
 
     std::vector<Attribute> attrs;
-    attrs.insert(
-        attrs.end(),
-        {Attribute::create<int8_t>(ctx, "int8"),
-         Attribute::create<int16_t>(ctx, "int16"),
-         Attribute::create<int32_t>(ctx, "int32"),
-         Attribute::create<int64_t>(ctx, "int64"),
-
-         Attribute::create<uint8_t>(ctx, "uint8"),
-         Attribute::create<uint16_t>(ctx, "uint16"),
-         Attribute::create<uint32_t>(ctx, "uint32"),
-         Attribute::create<uint64_t>(ctx, "uint64"),
-
-         Attribute::create<float>(ctx, "float32"),
-         Attribute::create<double>(ctx, "float64")});
-
-    // must be constructed manually to get TILEDB_STRING_UTF8 type
-    {
-      auto str_attr = Attribute(ctx, "utf_string1", TILEDB_STRING_UTF8);
+    if (offset == 64) {
+      auto str_attr = Attribute(ctx, "utf_big_string", TILEDB_STRING_UTF8);
       str_attr.set_cell_val_num(TILEDB_VAR_NUM);
       attrs.push_back(str_attr);
-    }
-    {
-      auto str_attr = Attribute(ctx, "utf_string2", TILEDB_STRING_UTF8);
-      str_attr.set_cell_val_num(TILEDB_VAR_NUM);
-      attrs.push_back(str_attr);
-    }
-    {
-      auto str_attr = Attribute(ctx, "tiledb_char", TILEDB_CHAR);
-      str_attr.set_cell_val_num(TILEDB_VAR_NUM);
-      attrs.push_back(str_attr);
-    }
+    } else if (offset == 32) {
+      attrs.insert(
+          attrs.end(),
+          {Attribute::create<int8_t>(ctx, "int8"),
+           Attribute::create<int16_t>(ctx, "int16"),
+           Attribute::create<int32_t>(ctx, "int32"),
+           Attribute::create<int64_t>(ctx, "int64"),
 
-    // must be constructed manually to get TILEDB_DATETIME_NS type
-    auto datetimens_attr = Attribute(ctx, "datetime_ns", TILEDB_DATETIME_NS);
-    attrs.push_back(datetimens_attr);
+           Attribute::create<uint8_t>(ctx, "uint8"),
+           Attribute::create<uint16_t>(ctx, "uint16"),
+           Attribute::create<uint32_t>(ctx, "uint32"),
+           Attribute::create<uint64_t>(ctx, "uint64"),
+
+           Attribute::create<float>(ctx, "float32"),
+           Attribute::create<double>(ctx, "float64")});
+
+      // must be constructed manually to get TILEDB_STRING_UTF8 type
+      {
+        auto str_attr = Attribute(ctx, "utf_string1", TILEDB_STRING_UTF8);
+        str_attr.set_cell_val_num(TILEDB_VAR_NUM);
+        attrs.push_back(str_attr);
+      }
+      {
+        auto str_attr = Attribute(ctx, "utf_string2", TILEDB_STRING_UTF8);
+        str_attr.set_cell_val_num(TILEDB_VAR_NUM);
+        attrs.push_back(str_attr);
+      }
+      {
+        auto str_attr = Attribute(ctx, "tiledb_char", TILEDB_CHAR);
+        str_attr.set_cell_val_num(TILEDB_VAR_NUM);
+        attrs.push_back(str_attr);
+      }
+
+      // must be constructed manually to get TILEDB_DATETIME_NS type
+      auto datetimens_attr = Attribute(ctx, "datetime_ns", TILEDB_DATETIME_NS);
+      attrs.push_back(datetimens_attr);
+    }
 
     FilterList filters(ctx);
     filters.add_filter({ctx, TILEDB_FILTER_LZ4});
@@ -166,7 +171,9 @@ void allocate_query_buffers(tiledb::Query* const query) {
 
   bool has_ranges = false;
   for (uint64_t dim_idx = 0; dim_idx < schema.domain().ndim(); dim_idx++) {
-    if (query->range_num(dim_idx) > 0) {
+    Subarray subarray(query->ctx(), query->array());
+    query->update_subarray_from_query(&subarray);
+    if (subarray.range_num(dim_idx) > 0) {
       has_ranges = true;
       break;
     }
@@ -216,9 +223,11 @@ void allocate_query_buffers(tiledb::Query* const query) {
 
 };  // namespace
 
-void test_for_column_size(size_t col_size) {
-  std::string uri("test_arrow_io_" + std::to_string(col_size));
-  CPPArrayFx _fx(uri, col_size);
+void test_for_column_size(const size_t col_size, const uint8_t offset) {
+  std::string uri(
+      "test_arrow_io_" + std::to_string(col_size) + "_" +
+      std::to_string(offset));
+  CPPArrayFx _fx(uri, col_size, offset);
 
   py::object py_data_source;
   py::object py_data_arrays;
@@ -233,7 +242,8 @@ void test_for_column_size(size_t col_size) {
   unit_arrow = py::module::import("unit_arrow");
 
   // this class generates random test data for each attribute
-  auto h_data_source = unit_arrow.attr("DataFactory");
+  auto class_name = "DataFactory" + std::to_string(offset);
+  auto h_data_source = unit_arrow.attr(class_name.c_str());
   py_data_source = h_data_source(py::int_(col_size));
   py_data_names = py_data_source.attr("names");
   py_data_arrays = py_data_source.attr("arrays");
@@ -247,7 +257,7 @@ void test_for_column_size(size_t col_size) {
      * Test write
      */
     Config config;
-    config["sm.var_offsets.bitsize"] = 32;
+    config["sm.var_offsets.bitsize"] = offset;
     config["sm.var_offsets.mode"] = "elements";
     config["sm.var_offsets.extra_element"] = "true";
     Context ctx(config);
@@ -255,7 +265,9 @@ void test_for_column_size(size_t col_size) {
     Query query(ctx, array);
     query.set_layout(TILEDB_COL_MAJOR);
     int32_t range_max = static_cast<int32_t>(col_size > 0 ? col_size - 1 : 0);
-    query.add_range(0, (int32_t)0, (int32_t)range_max);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, (int32_t)0, (int32_t)range_max);
+    query.set_subarray(subarray);
 
     std::vector<ArrowArray*> vec_array;
     std::vector<ArrowSchema*> vec_schema;
@@ -300,14 +312,12 @@ void test_for_column_size(size_t col_size) {
   // However, there is an unexplained crash due to an early destructor
   // when both brace scopes are converted to SECTIONs.
   // SECTION("Test reading data back via ArrowAdapter into pyarrow arrays")
-
-  // test both bitsize read modes
-  for (auto bitsize : {32, 64}) {
+  {
     /*
      * Test read
      */
     Config config;
-    config["sm.var_offsets.bitsize"] = bitsize;
+    config["sm.var_offsets.bitsize"] = 64;
     config["sm.var_offsets.mode"] = "elements";
     config["sm.var_offsets.extra_element"] = "true";
     Context ctx(config);
@@ -315,7 +325,9 @@ void test_for_column_size(size_t col_size) {
     Query query(ctx, array);
     query.set_layout(TILEDB_COL_MAJOR);
     int32_t range_max = static_cast<int32_t>(col_size > 0 ? col_size - 1 : 0);
-    query.add_range(0, static_cast<int32_t>(0), range_max);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, static_cast<int32_t>(0), range_max);
+    query.set_subarray(subarray);
 
     allocate_query_buffers(&query);
     query.submit();
@@ -432,8 +444,9 @@ TEST_CASE("Arrow IO integration tests", "[arrow]") {
 #endif
 
   // do not use catch2 GENERATE here: it causes bad things to happen w/ python
-  uint64_t col_sizes[] = {0};  //,1,2,3,4,11,103};
+  uint64_t col_sizes[] = {0, 1, 2, 3, 4, 11, 103};
   for (auto sz : col_sizes) {
-    test_for_column_size(sz);
+    test_for_column_size(sz, 32);
+    test_for_column_size(sz, 64);
   }
 }

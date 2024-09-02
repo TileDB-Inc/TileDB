@@ -120,13 +120,10 @@ class CompressionFilter : public Filter {
   /** Return the compression level used by this filter instance. */
   int compression_level() const;
 
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
-
   /**
    * Compress the given input into the given output.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -152,6 +149,10 @@ class CompressionFilter : public Filter {
   /** Set the compression level used by this filter instance. */
   void set_compression_level(int compressor_level);
 
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
+
  private:
   /** The compressor. */
   Compressor compressor_;
@@ -161,9 +162,6 @@ class CompressionFilter : public Filter {
 
   /** The format version. */
   uint32_t version_;
-
-  /** The default filter compression level. */
-  static constexpr int default_level_ = -30000;
 
   /** Mutex guarding zstd_compress_ctx_pool */
   std::mutex zstd_compress_ctx_pool_mtx_;

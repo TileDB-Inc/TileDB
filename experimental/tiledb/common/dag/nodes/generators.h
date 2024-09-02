@@ -33,6 +33,7 @@
 #ifndef TILEDB_DAG_GENERATOR_H
 #define TILEDB_DAG_GENERATOR_H
 
+#include <random>
 #include <tiledb/stdx/stop_token>
 
 #include "experimental/tiledb/common/dag/ports/ports.h"

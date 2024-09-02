@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,21 @@
  */
 #ifdef _WIN32
 
-#include "win.h"
+#if !defined(NOMINMAX)
+#define NOMINMAX  // suppress definition of min/max macros in Windows headers
+#endif
+#include <Shlwapi.h>
+#include <Windows.h>
+#include <algorithm>
+#include <cassert>
+#include <codecvt>
+#include <fstream>
+#include <iostream>
+#include <locale>
+#include <sstream>
+#include <string_view>
+
+#include "filesystem_base.h"
 #include "path_win.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
@@ -41,40 +55,33 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
 #include "uri.h"
-
-#if !defined(NOMINMAX)
-#define NOMINMAX  // suppress definition of min/max macros in Windows headers
-#endif
-#include <Shlwapi.h>
-#include <Windows.h>
-#include <strsafe.h>
-#include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
-#include <algorithm>
-#include <cassert>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string_view>
+#include "win.h"
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 namespace {
 /** Returns the last Windows error message string. */
 std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
-  LPVOID lpMsgBuf = nullptr;
-  if (FormatMessage(
+  LPWSTR lpMsgBuf = nullptr;
+  // FormatMessageW allocates a buffer that must be freed with LocalFree.
+  if (FormatMessageW(
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
               FORMAT_MESSAGE_IGNORE_INSERTS,
           NULL,
           gle,
-          MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-          (LPTSTR)&lpMsgBuf,
+          // By passing zero as the language ID, Windows will try the following
+          // languages in order:
+          // * Language neutral
+          // * Thread LANGID, based on the thread's locale value
+          // * User default LANGID, based on the user's default locale value
+          // * System default LANGID, based on the system default locale value
+          // * US English
+          0,
+          (LPWSTR)&lpMsgBuf,
           0,
           NULL) == 0) {
     if (lpMsgBuf) {
@@ -82,7 +89,9 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
     }
     return "unknown error";
   }
-  std::string msg(reinterpret_cast<char*>(lpMsgBuf));
+  // Convert to UTF-8.
+  std::string msg =
+      std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(lpMsgBuf);
   LocalFree(lpMsgBuf);
   return msg;
 }
@@ -316,7 +325,7 @@ Status Win::init(const Config& config) {
 }
 
 bool Win::is_dir(const std::string& path) const {
-  return PathIsDirectory(path.c_str());
+  return PathFileExists(path.c_str()) && PathIsDirectory(path.c_str());
 }
 
 bool Win::is_file(const std::string& path) const {
@@ -324,18 +333,14 @@ bool Win::is_file(const std::string& path) const {
 }
 
 Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
-  auto&& [st, entries] = ls_with_sizes(URI(path));
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
-    const URI& uri) const {
+std::vector<directory_entry> Win::ls_with_sizes(const URI& uri) const {
   auto path = uri.to_path();
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
@@ -379,7 +384,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
   }
 
   FindClose(find_h);
-  return {Status::Ok(), entries};
+  return entries;
 
 err:
   auto gle = GetLastError();
@@ -391,11 +396,9 @@ err:
     offender.append(" ");
     offender.append(what_call);
   }
-  std::string errmsg(
+  throw IOError(
       "Failed to list directory \"" + path + "\" " +
       get_last_error_msg(gle, offender.c_str()));
-  auto st = LOG_STATUS(Status_IOError(errmsg));
-  return {st, nullopt};
 }
 
 Status Win::move_path(
@@ -583,7 +586,6 @@ Status Win::write_at(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // _WIN32

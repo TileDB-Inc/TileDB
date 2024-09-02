@@ -61,9 +61,10 @@ namespace serialization {
 
 Status config_to_capnp(
     const Config& config, capnp::Config::Builder* config_builder) {
-  auto entries = config_builder->initEntries(config.param_values().size());
+  auto config_params = config.get_all_params_from_config_or_env();
+  auto entries = config_builder->initEntries(config_params.size());
   uint64_t i = 0;
-  for (const auto& kv : config.param_values()) {
+  for (const auto& kv : config_params) {
     entries[i].setKey(kv.first);
     entries[i].setValue(kv.second);
     ++i;
@@ -83,8 +84,7 @@ Status config_from_capnp(
       auto key = std::string_view{kv.getKey().cStr(), kv.getKey().size()};
       auto value = std::string_view{kv.getValue().cStr(), kv.getValue().size()};
       RETURN_NOT_OK((*config)->set(std::string{key}, std::string{value}));
-      if (key == "sm.use_refactored_readers" ||
-          key == "sm.query.dense.reader" ||
+      if (key == "sm.query.dense.reader" ||
           key == "sm.query.sparse_global_order.reader" ||
           key == "sm.query.sparse_unordered_with_dups.reader")
         found_refactored_reader_config = true;

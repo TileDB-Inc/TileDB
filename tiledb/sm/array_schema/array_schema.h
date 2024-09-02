@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,18 +37,16 @@
 #include <unordered_map>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/uuid.h"
-#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Attribute;
 class Buffer;
@@ -57,6 +55,8 @@ class Dimension;
 class DimensionLabel;
 class Domain;
 class Enumeration;
+class MemoryTracker;
+class CurrentDomain;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -93,12 +93,15 @@ class ArraySchema {
   /* ********************************* */
 
   /** Constructor. */
-  ArraySchema();
-
-  /** Constructor. */
-  ArraySchema(ArrayType array_type);
+  ArraySchema() = delete;
 
   /** Constructor.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
+   */
+  ArraySchema(ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Constructor with std::vector attributes.
    * @param uri The URI of the array schema file.
    * @param version The format version of this array schema.
    * @param timestamp_range The timestamp the array schema was written.
@@ -118,6 +121,9 @@ class ArraySchema {
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
+   * @param current_domain The array current domain object
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
    **/
   ArraySchema(
       URI uri,
@@ -136,14 +142,19 @@ class ArraySchema {
       std::unordered_map<std::string, std::string> enumeration_path_map,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters);
+      FilterPipeline coords_filters,
+      shared_ptr<CurrentDomain> current_domain,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
-   * Constructor. Clones the input.
+   * Copy constructor. Clones the input.
    *
    * @param array_schema The array schema to copy.
    */
-  explicit ArraySchema(const ArraySchema& array_schema);
+  ArraySchema(const ArraySchema& array_schema);
+
+  DISABLE_COPY_ASSIGN(ArraySchema);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(ArraySchema);
 
   /** Destructor. */
   ~ArraySchema() = default;
@@ -203,7 +214,10 @@ class ArraySchema {
   }
 
   /** Returns the attributes. */
-  const std::vector<shared_ptr<const Attribute>>& attributes() const;
+  inline const tdb::pmr::vector<shared_ptr<const Attribute>>& attributes()
+      const {
+    return attributes_;
+  }
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -254,6 +268,11 @@ class ArraySchema {
   /** Return the pipeline used for coordinates. */
   const FilterPipeline& coords_filters() const;
 
+  /** Return the array current domain. */
+  inline const CurrentDomain& current_domain() const {
+    return *current_domain_;
+  }
+
   /** True if the array is dense. */
   bool dense() const;
 
@@ -288,9 +307,6 @@ class ArraySchema {
   /** Returns the number of dimensions. */
   dimension_size_type dim_num() const;
 
-  /** Dumps the array schema in ASCII format in the selected output. */
-  void dump(FILE* out) const;
-
   /**
    * Checks if the array schema has a attribute of the given name.
    *
@@ -317,14 +333,6 @@ class ArraySchema {
 
   /** Returns true if the input name is nullable. */
   bool is_nullable(const std::string& name) const;
-
-  /**
-   * Serializes the array schema object into a buffer.
-   *
-   * @param serializer The object the array schema is serialized into.
-   * @return Status
-   */
-  void serialize(Serializer& serializer) const;
 
   /** Returns the tile order. */
   Layout tile_order() const;
@@ -386,6 +394,16 @@ class ArraySchema {
    * @param enmr The enumeration to add.
    */
   void add_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Extend an Enumeration on this ArraySchema.
+   *
+   * N.B., this method is intended to be called via ArraySchemaEvolution.
+   * Calling it from anywhere else is likely incorrect.
+   *
+   * @param enmr The extended enumeration.
+   */
+  void extend_enumeration(shared_ptr<const Enumeration> enmr);
 
   /**
    * Check if an enumeration exists with the given name.
@@ -457,9 +475,16 @@ class ArraySchema {
    *
    * @param deserializer The deserializer to deserialize from.
    * @param uri The uri of the Array.
+   * @param memory_tracker The memory tracker to use.
    * @return A new ArraySchema.
    */
-  static ArraySchema deserialize(Deserializer& deserializer, const URI& uri);
+  static shared_ptr<ArraySchema> deserialize(
+      Deserializer& deserializer,
+      const URI& uri,
+      shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Return a cloned copy of this array schema. */
+  shared_ptr<ArraySchema> clone() const;
 
   /** Returns the array domain. */
   inline const Domain& domain() const {
@@ -537,7 +562,7 @@ class ArraySchema {
   format_version_t version() const;
 
   /** Set a timestamp range for the array schema */
-  Status set_timestamp_range(
+  void set_timestamp_range(
       const std::pair<uint64_t, uint64_t>& timestamp_range);
 
   /** Returns the timestamp range. */
@@ -555,16 +580,56 @@ class ArraySchema {
   /** Set the schema name. */
   void set_name(const std::string& name);
 
-  /** Generates a new array schema URI. */
-  Status generate_uri();
+  /** Generates a new array schema URI with optional timestamp range. */
+  void generate_uri(
+      std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
+          std::nullopt);
 
-  /** Generates a new array schema URI with specified timestamp range. */
-  Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
+  /** Returns the enumeration map. */
+  inline const tdb::pmr::
+      unordered_map<std::string, shared_ptr<const Enumeration>>&
+      enumeration_map() const {
+    return enumeration_map_;
+  }
+
+  /** Returns the enumeration path map. */
+  inline const tdb::pmr::unordered_map<std::string, std::string>&
+  enumeration_path_map() const {
+    return enumeration_path_map_;
+  }
+
+  /** Returns the dimension labels. */
+  inline const tdb::pmr::vector<shared_ptr<const DimensionLabel>>&
+  dimension_labels() const {
+    return dimension_labels_;
+  }
+
+  /**
+   * Expand the array current domain
+   *
+   * @param new_current_domain The new array current domain we want to expand to
+   */
+  void expand_current_domain(shared_ptr<CurrentDomain> new_current_domain);
+
+  /**
+   * Set the array current domain on the schema
+   *
+   * @param current_domain The array current domain we want to set on the schema
+   */
+  void set_current_domain(shared_ptr<CurrentDomain> current_domain);
+
+  /** Array current domain accessor */
+  shared_ptr<CurrentDomain> get_current_domain() const;
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * The memory tracker of the ArraySchema.
+   */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The URI of the array schema file. */
   URI uri_;
@@ -599,7 +664,7 @@ class ArraySchema {
   shared_ptr<Domain> domain_;
 
   /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, const Dimension*> dim_map_;
+  tdb::pmr::unordered_map<std::string, const Dimension*> dim_map_;
 
   /**
    * The cell order. It can be one of the following:
@@ -625,7 +690,7 @@ class ArraySchema {
    * within this array schema. Other member variables reference objects within
    * this container.
    */
-  std::vector<shared_ptr<const Attribute>> attributes_;
+  tdb::pmr::vector<shared_ptr<const Attribute>> attributes_;
 
   /**
    * Type for the range of the map that is member `attribute_map_`. See the
@@ -646,20 +711,21 @@ class ArraySchema {
    * Invariant: The number of entries in `attribute_map_` is the same as the
    *   number of entries in `attributes_`
    */
-  std::unordered_map<std::string, attribute_reference> attribute_map_;
+  tdb::pmr::unordered_map<std::string, attribute_reference> attribute_map_;
 
   /** The array dimension labels. */
-  std::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
+  tdb::pmr::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
 
   /** A map from the dimension label names to the label schemas. */
-  std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;
+  tdb::pmr::unordered_map<std::string, const DimensionLabel*>
+      dimension_label_map_;
 
   /** A map of Enumeration names to Enumeration pointers. */
-  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+  tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>
       enumeration_map_;
 
-  /** A map of Enumeration names to Enumeration URIs */
-  std::unordered_map<std::string, std::string> enumeration_path_map_;
+  /** A map of Enumeration names to Enumeration filenames */
+  tdb::pmr::unordered_map<std::string, std::string> enumeration_path_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
@@ -669,6 +735,9 @@ class ArraySchema {
 
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
+
+  /** The array current domain */
+  shared_ptr<CurrentDomain> current_domain_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
@@ -713,7 +782,10 @@ class ArraySchema {
   void clear();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::ArraySchema& schema);
 
 #endif  // TILEDB_ARRAY_SCHEMA_H

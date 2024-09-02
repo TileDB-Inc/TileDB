@@ -21,7 +21,7 @@ int main(const int argc, char** const argv) {
 
   // Define acceptable VFS values.
   const std::vector<std::string> vfs_fs = {
-      "native", "s3", "hdfs", "azure", "gcs"};
+      "native", "s3", "hdfs", "azure", "gcs", "rest-s3"};
 
   // Build a pipe-separated string of acceptable VFS values.
   std::ostringstream vfs_fs_oss;

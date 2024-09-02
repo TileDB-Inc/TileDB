@@ -492,10 +492,14 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Set a multi-range subarray
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array_, &subarray);
   uint64_t start = 1, end = 1;
-  rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &start, &end, nullptr);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &start, &end, nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Submit
@@ -504,4 +508,6 @@ TEST_CASE_METHOD(
 
   // Clean up
   close_array(ctx_, array_);
+  tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }

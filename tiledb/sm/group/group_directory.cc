@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,16 +34,20 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+class GroupDirectoryException : public StatusException {
+ public:
+  explicit GroupDirectoryException(const std::string& message)
+      : StatusException("GroupDirectory", message) {
+  }
+};
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -54,8 +58,8 @@ namespace sm {
  * anywhere in the code at present, though that might change.
  */
 GroupDirectory::GroupDirectory(
-    VFS* vfs,
-    ThreadPool* tp,
+    VFS& vfs,
+    ThreadPool& tp,
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
@@ -68,7 +72,7 @@ GroupDirectory::GroupDirectory(
     , loaded_(false) {
   auto st = load();
   if (!st.ok()) {
-    throw std::logic_error(st.message());
+    throw GroupDirectoryException(st.message());
   }
 }
 
@@ -126,9 +130,9 @@ Status GroupDirectory::load() {
   // Lists all directories in parallel. Skipping for schema only.
   // Some processing is also done here for things that don't depend on others.
   // List (in parallel) the root directory URIs
-  tasks.emplace_back(tp_->execute([&]() {
+  tasks.emplace_back(tp_.execute([&]() {
     auto&& [st, uris] = list_root_dir_uris();
-    RETURN_NOT_OK(st);
+    throw_if_not_ok(st);
 
     root_dir_uris = std::move(uris.value());
 
@@ -136,13 +140,13 @@ Status GroupDirectory::load() {
   }));
 
   // Load (in parallel) the group metadata URIs
-  tasks.emplace_back(tp_->execute([&]() { return load_group_meta_uris(); }));
+  tasks.emplace_back(tp_.execute([&]() { return load_group_meta_uris(); }));
 
   // Load (in paralell) the group details URIs
-  tasks.emplace_back(tp_->execute([&] { return load_group_detail_uris(); }));
+  tasks.emplace_back(tp_.execute([&] { return load_group_detail_uris(); }));
 
   // Wait for all tasks to complete
-  RETURN_NOT_OK(tp_->wait_all(tasks));
+  throw_if_not_ok(tp_.wait_all(tasks));
 
   // Error check
   bool is_group = false;
@@ -158,37 +162,13 @@ Status GroupDirectory::load() {
   }
 
   if (!is_group) {
-    return LOG_STATUS(
-        Status_GroupDirectoryError("Cannot open group; Group does not exist."));
+    throw GroupNotFoundException("Cannot open group; Group does not exist.");
   }
 
   // The URI manager has been loaded successfully
   loaded_ = true;
 
   return Status::Ok();
-}
-
-tuple<Status, optional<std::string>> GroupDirectory::compute_new_fragment_name(
-    const URI& first, const URI& last, format_version_t format_version) const {
-  // Get uuid
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
-
-  // For creating the new fragment URI
-
-  // Get timestamp ranges
-  std::pair<uint64_t, uint64_t> t_first, t_last;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(first, &t_first), nullopt);
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(last, &t_last), nullopt);
-
-  // Create new URI
-  std::stringstream ss;
-  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
-
-  return {Status::Ok(), ss.str()};
 }
 
 bool GroupDirectory::loaded() const {
@@ -202,7 +182,7 @@ bool GroupDirectory::loaded() const {
 tuple<Status, optional<std::vector<URI>>> GroupDirectory::list_root_dir_uris() {
   // List the group directory URIs
   std::vector<URI> group_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &group_dir_uris), nullopt);
+  RETURN_NOT_OK_TUPLE(vfs_.ls(uri_, &group_dir_uris), nullopt);
 
   return {Status::Ok(), group_dir_uris};
 }
@@ -211,7 +191,7 @@ Status GroupDirectory::load_group_meta_uris() {
   // Load the URIs in the group metadata directory
   std::vector<URI> group_meta_dir_uris;
   auto group_meta_uri = uri_.join_path(constants::group_metadata_dir_name);
-  RETURN_NOT_OK(vfs_->ls(group_meta_uri, &group_meta_dir_uris));
+  throw_if_not_ok(vfs_.ls(group_meta_uri, &group_meta_dir_uris));
 
   // Compute and group metadata URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_meta_uris_to_vacuum, group_meta_vac_uris_to_vacuum] =
@@ -235,12 +215,12 @@ Status GroupDirectory::load_group_detail_uris() {
   // Load the URIs in the group details directory
   std::vector<URI> group_detail_dir_uris;
   auto group_detail_uri = uri_.join_path(constants::group_detail_dir_name);
-  RETURN_NOT_OK(vfs_->ls(group_detail_uri, &group_detail_dir_uris));
+  throw_if_not_ok(vfs_.ls(group_detail_uri, &group_detail_dir_uris));
 
   // Compute and group details URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_detail_uris_to_vacuum, group_detail_vac_uris_to_vacuum] =
       compute_uris_to_vacuum(group_detail_dir_uris);
-  RETURN_NOT_OK(st1);
+  throw_if_not_ok(st1);
   group_detail_uris_to_vacuum_ = std::move(group_detail_uris_to_vacuum.value());
   group_detail_vac_uris_to_vacuum_ =
       std::move(group_detail_vac_uris_to_vacuum.value());
@@ -248,7 +228,7 @@ Status GroupDirectory::load_group_detail_uris() {
   // Compute filtered group details URIs
   auto&& [st2, group_detail_filtered_uris] = compute_filtered_uris(
       group_detail_dir_uris, group_detail_uris_to_vacuum_);
-  RETURN_NOT_OK(st2);
+  throw_if_not_ok(st2);
   group_detail_uris_ = std::move(group_detail_filtered_uris.value());
   group_detail_dir_uris.clear();
 
@@ -268,12 +248,8 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   std::unordered_set<std::string> non_vac_uris_set;
   std::unordered_map<std::string, size_t> uris_map;
   for (size_t i = 0; i < uris.size(); ++i) {
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uris[i], &timestamp_range),
-        nullopt,
-        nullopt);
-
+    FragmentID fragment_id{uris[i]};
+    auto timestamp_range{fragment_id.timestamp_range()};
     if (is_vacuum_file(uris[i])) {
       if (timestamp_range.first >= timestamp_start_ &&
           timestamp_range.second <= timestamp_end_)
@@ -292,12 +268,12 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   // Also determine which vac files to vacuum
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
-  auto status = parallel_for(tp_, 0, vac_files.size(), [&](size_t i) {
+  auto status = parallel_for(&tp_, 0, vac_files.size(), [&](size_t i) {
     uint64_t size = 0;
-    RETURN_NOT_OK(vfs_->file_size(vac_files[i], &size));
+    throw_if_not_ok(vfs_.file_size(vac_files[i], &size));
     std::string names;
     names.resize(size);
-    RETURN_NOT_OK(vfs_->read(vac_files[i], 0, &names[0], size));
+    throw_if_not_ok(vfs_.read(vac_files[i], 0, &names[0], size));
     std::stringstream ss(names);
     bool vacuum_vac_file = true;
     for (std::string uri_str; std::getline(ss, uri_str);) {
@@ -362,9 +338,8 @@ GroupDirectory::compute_filtered_uris(
     // Add only URIs whose first timestamp is greater than or equal to the
     // timestamp_start and whose second timestamp is smaller than or equal to
     // the timestamp_end
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uri, &timestamp_range), nullopt);
+    FragmentID fragment_id{uri};
+    auto timestamp_range{fragment_id.timestamp_range()};
     auto t1 = timestamp_range.first;
     auto t2 = timestamp_range.second;
     if (t1 >= timestamp_start_ && t2 <= timestamp_end_)
@@ -384,5 +359,4 @@ bool GroupDirectory::is_vacuum_file(const URI& uri) const {
   return false;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

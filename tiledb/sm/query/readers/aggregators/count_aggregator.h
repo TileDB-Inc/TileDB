@@ -33,6 +33,7 @@
 #ifndef TILEDB_COUNT_AGGREGATOR_H
 #define TILEDB_COUNT_AGGREGATOR_H
 
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/readers/aggregators/no_op.h"
@@ -45,7 +46,6 @@ class QueryBuffer;
 template <class ValidityPolicy>
 class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
  public:
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -60,9 +60,14 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   /* ********************************* */
 
   /** Returns if the aggregation is var sized or not. */
-  bool var_sized() override {
+  bool aggregation_var_sized() override {
     return false;
   };
+
+  /** Returns if the aggregation is nullable or not. */
+  bool aggregation_nullable() override {
+    return false;
+  }
 
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
@@ -87,6 +92,13 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   void aggregate_data(AggregateBuffer& input_data) override;
 
   /**
+   * Aggregate a tile with fragment metadata.
+   *
+   * @param tile_metadata Tile metadata for aggregation.
+   */
+  void aggregate_tile_with_frag_md(TileMetadata& tile_metadata) override;
+
+  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.
@@ -95,6 +107,11 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   void copy_to_user_buffer(
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
+
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  Datatype output_datatype() override {
+    return Datatype::UINT64;
+  }
 
  private:
   /* ********************************* */
@@ -127,9 +144,20 @@ class CountAggregator : public CountAggregatorBase<NonNull> {
   std::string field_name() override {
     return constants::count_of_rows;
   }
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_count_str;
+  }
+
+  /** Returns if the aggregation is for validity only data. */
+  bool aggregation_validity_only() override {
+    return false;
+  }
 };
 
-class NullCountAggregator : public CountAggregatorBase<Null> {
+class NullCountAggregator : public CountAggregatorBase<Null>,
+                            public InputFieldValidator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -144,6 +172,16 @@ class NullCountAggregator : public CountAggregatorBase<Null> {
   /** Returns the field name for the aggregator. */
   std::string field_name() override {
     return field_info_.name_;
+  }
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_null_count_str;
+  }
+
+  /** Returns if the aggregation is for validity only data. */
+  bool aggregation_validity_only() override {
+    return true;
   }
 
  private:

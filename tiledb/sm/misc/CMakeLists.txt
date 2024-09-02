@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2021-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,8 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
+find_package(LibMagic MODULE REQUIRED)
+
 #
 # `cancelable_tasks` object library
 #
@@ -39,6 +41,33 @@ conclude(object_library)
 #
 commence(object_library constants)
     this_target_sources(constants.cc)
+conclude(object_library)
+
+############################################################
+# provide actions/target for preparation of magic.mgc data for embedding/build
+
+#
+# `mgc_dict` object library
+#
+# The file is used as a header but we don't name it .h to avoid it being picked up by IDEs
+set(MGC_GZIPPED_H_OUTPUT_FILE "${PROJECT_BINARY_DIR}/magic_mgc.zst.h_")
+
+add_custom_command(
+  OUTPUT "${MGC_GZIPPED_H_OUTPUT_FILE}"
+  DEPENDS "${libmagic_DICTIONARY}" "${CMAKE_CURRENT_LIST_DIR}/generate_embedded_data_header.script.cmake"
+  COMMAND ${CMAKE_COMMAND} "-DINPUT_FILE=${libmagic_DICTIONARY}" "-DOUTPUT_FILE=${MGC_GZIPPED_H_OUTPUT_FILE}" -P "${CMAKE_CURRENT_LIST_DIR}/generate_embedded_data_header.script.cmake"
+)
+add_custom_target(gen_mgc_unarch
+  DEPENDS ${MGC_GZIPPED_H_OUTPUT_FILE}
+)
+
+commence(object_library mgc_dict)
+    add_dependencies(mgc_dict gen_mgc_unarch)
+    # change to `this_target_include_directories` when available
+    target_include_directories(mgc_dict PRIVATE "${PROJECT_BINARY_DIR}")
+    this_target_object_libraries(buffer compressors)
+    this_target_link_libraries(libmagic)
+    this_target_sources(mgc_dict.cc)
 conclude(object_library)
 
 #
@@ -65,55 +94,18 @@ commence(object_library parse_argument)
 conclude(object_library)
 
 #
+# `rectangle` object library
+#
+commence(object_library rectangle)
+    this_target_sources(rectangle.cc)
+    this_target_object_libraries(baseline)
+conclude(object_library)
+
+#
 # `time` object library
 #
 commence(object_library time)
     this_target_sources(tdb_time.cc)
 conclude(object_library)
 
-#
-# `uuid` object library
-#
-commence(object_library uuid)
-    this_target_sources(uuid.cc)
-    this_target_object_libraries(baseline)
-    if(WIN32)
-        this_target_link_libraries(rpcrt4)
-    else()
-        find_package(OpenSSL_EP REQUIRED)
-        this_target_link_libraries(OpenSSL::Crypto)
-    endif()
-conclude(object_library)
-
 add_test_subdirectory()
-
-#
-# `mgc_dict.*` tests are declared in this directory for the moment.
-#
-# See also `/tiledb/CMakeLists.txt` for related targets `gen_mgc_unarch` and
-# `update-embedded-magic-data`
-#
-if (TILEDB_TESTS)
-  # simple unit test of magic.mgc embedded data vs external data
-  find_package(Magic_EP REQUIRED)
-  if(NOT EXISTS ${libmagic_DICTIONARY})
-    message(FATAL_ERROR "Failed to find libmagic 'magic.mgc' file.")
-  endif()
-  add_executable(unit_mgc_dict EXCLUDE_FROM_ALL)
-  target_sources(unit_mgc_dict PRIVATE
-          test/unit_mgc_dict.cc
-          mgc_dict.cc
-  )
-  target_link_libraries(unit_mgc_dict PRIVATE
-    compressors
-    filter
-    libmagic
-    )
-
-  target_compile_options(unit_mgc_dict PRIVATE -DTILEDB_PATH_TO_MAGIC_MGC=\"${libmagic_DICTIONARY}\")
-  target_include_directories(unit_mgc_dict
-    PRIVATE
-      ${CMAKE_CURRENT_BINARY_DIR}
-     "${libmagic_INCLUDE_DIR}"
-  )
-endif()

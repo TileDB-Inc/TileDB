@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,13 +36,11 @@
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Compute the number of bits required to represent a signed integral value. */
 template <typename T>
@@ -92,21 +90,21 @@ BitWidthReductionFilter::BitWidthReductionFilter(
     , max_window_size_(max_window_size) {
 }
 
-void BitWidthReductionFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-  fprintf(out, "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=%u", max_window_size_);
+std::ostream& BitWidthReductionFilter::output(std::ostream& os) const {
+  os << "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=";
+  os << std::to_string(max_window_size_);
+  return os;
 }
 
 bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
   if (datatype_is_integer(datatype) || datatype_is_datetime(datatype) ||
-      datatype_is_time(datatype) || datatype == Datatype::BLOB) {
+      datatype_is_time(datatype) || datatype_is_byte(datatype)) {
     return true;
   }
   return false;
 }
 
-Status BitWidthReductionFilter::run_forward(
+void BitWidthReductionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
     FilterBuffer* input_metadata,
@@ -156,26 +154,28 @@ Status BitWidthReductionFilter::run_forward(
     case Datatype::TIME_AS:
       if (tile.format_version() < 20) {
         // Return data as-is for backwards compatibility
-        RETURN_NOT_OK(output->append_view(input));
-        RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-        return Status::Ok();
+        throw_if_not_ok(output->append_view(input));
+        throw_if_not_ok(output_metadata->append_view(input_metadata));
+        return;
       }
       return run_forward<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT8:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::BOOL:
     case Datatype::UINT8:
     default:
       // If bit width compression can't work, just return the input unmodified.
-      RETURN_NOT_OK(output->append_view(input));
-      RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-      return Status::Ok();
+      throw_if_not_ok(output->append_view(input));
+      throw_if_not_ok(output_metadata->append_view(input_metadata));
+      return;
   }
 }
 
 template <typename T>
-Status BitWidthReductionFilter::run_forward(
+void BitWidthReductionFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -206,24 +206,22 @@ Status BitWidthReductionFilter::run_forward(
   }
 
   // Allocate space in output buffer for the upper bound.
-  RETURN_NOT_OK(output->prepend_buffer(output_size_ub));
+  throw_if_not_ok(output->prepend_buffer(output_size_ub));
   Buffer* buffer_ptr = output->buffer_ptr(0);
   buffer_ptr->reset_offset();
   assert(buffer_ptr != nullptr);
 
   // Forward the existing metadata
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
   // Allocate a buffer for this filter's metadata and write the header.
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&input_size, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata->write(&total_num_windows, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(output_metadata->write(&input_size, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->write(&total_num_windows, sizeof(uint32_t)));
 
   // Compress all parts.
   for (unsigned i = 0; i < num_parts; i++) {
-    RETURN_NOT_OK(compress_part<T>(&parts[i], output, output_metadata));
+    throw_if_not_ok(compress_part<T>(&parts[i], output, output_metadata));
   }
-
-  return Status::Ok();
 }
 
 template <typename T>
@@ -337,6 +335,8 @@ Status BitWidthReductionFilter::run_reverse(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT8:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::BOOL:
     case Datatype::UINT8:
     default:
@@ -564,5 +564,4 @@ void BitWidthReductionFilter::serialize_impl(Serializer& serializer) const {
   serializer.write<uint32_t>(max_window_size_);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

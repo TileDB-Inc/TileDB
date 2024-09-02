@@ -39,7 +39,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
 include(CIConfig)
 include(BuildOptions)
 include(global-policies NO_POLICY_SCOPE)
+include(Sanitizer)
 include(TileDBToolchain)
+include(Doxygen)
+include(Format)
 
 ############################################################
 # Parse version file
@@ -106,60 +109,12 @@ endif()
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-############################################################
-# Superbuild setup
-############################################################
-
-# Set the variable used when calling find_package(), find_file() etc.
-# to determine if NO_DEFAULT_PATH should be passed.
-if (TILEDB_FORCE_ALL_DEPS)
-  set(TILEDB_DEPS_NO_DEFAULT_PATH NO_DEFAULT_PATH)
-else()
-  set(TILEDB_DEPS_NO_DEFAULT_PATH)
-endif()
-
-# If this is an in-IDE build, we need to disable the superbuild and explicitly
-# set the EP base dir. The normal 'cmake && make' process won't need this step,
-# it is for better CLion support of this superbuild architecture.
-if (TILEDB_CMAKE_IDE)
-  set(TILEDB_SUPERBUILD OFF)
-  set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
-endif()
-
-# When building static TileDB, we also need to install any static dependencies
-# built as external projects.
-set(TILEDB_INSTALL_STATIC_DEPS ${TILEDB_STATIC})
-
-# Set main TileDB Source
-set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
-# Set experimental TileDB Source
-set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
-
-# Perform superbuild config and exit.
-if (TILEDB_SUPERBUILD)
-  project(TileDB-Superbuild)
-
-  # Override default install prefix if not set
-  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    message(STATUS "Setting CMAKE_INSTALL_PREFIX to: '${PROJECT_BINARY_DIR}/dist'")
-    set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/dist" CACHE PATH "..." FORCE)
-  endif()
-
-  message(STATUS "Starting TileDB superbuild.")
-  include("cmake/TileDB-Superbuild.cmake")
-  message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-  # The superbuild file incorporates this file as an external project with the
-  # superbuild off. Thus we stop processing this file here, knowing that we'll
-  # come back later.
-  return()
-endif()
+# Disable warnings from Boost
+set(Boost_NO_WARN_NEW_VERSIONS ON)
 
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
 message(STATUS "  CMake version: ${CMAKE_VERSION}")
-# Paths to locate the installed external projects.
-set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
-set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
 ############################################################
 # Compile options/definitions for all targets
@@ -252,24 +207,17 @@ if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
 
-# HACK: Set the sanitizer configuration globally after the
-# superbuild has finished. We want to enable sanitization for
-# TileDB, but not our dependencies.
-#
-# The reasoning for setting this globally is due to false positives
-# in the `AddressSanitizerContainerOverflow` checks [1].
-#
-# [1] https://github.com/google/sanitizers/wiki/AddressSanitizerContainerOverflow#false-positives
-if (SANITIZER)
-  string(TOLOWER ${SANITIZER} SANITIZER)
-  if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
-    message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
-  else()
-    message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
-  endif()
-  add_compile_options(-DTILEDB_SANITIZER=${SANITIZER})
-  add_compile_options(-g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER})
-  add_link_options(-fsanitize=${SANITIZER})
+if(TILEDB_SANITIZER)
+  validate_sanitizer_options()
+endif()
+
+include(DetectStdPmr)
+
+if(TILEDB_USE_CPP17_PMR)
+  message(STATUS "Building with cpp17::pmr")
+  add_definitions(-DUSE_CPP17_PMR)
+else()
+  message(STATUS "Building with std::pmr")
 endif()
 
 #######################################################
@@ -323,6 +271,7 @@ endif()
 
 list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_deprecated.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
@@ -337,12 +286,20 @@ endif()
 
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array/array_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_type_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/layout_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/current_domain/current_domain_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/data_order/data_order_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/data_order/data_order_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_enum.h"
@@ -358,16 +315,18 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external.h"
-    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/ndrectangle/ndrectangle_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/string/string_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_experimental.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -384,28 +343,28 @@ set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAM
 set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
 
 ##################################
-# VFS Object Storage Configuration
+# Library Configuration
 ##################################
-# Create an interface library for use in passing the
-# appropriate compiler definitions for the set of
-# configured object storage backends.
+#
+# `configuration_definitions` is an interface library that contains compiler
+# definitions corresponding to the configuration variables passed to CMake
 
-add_library(object_store_definitions INTERFACE)
+add_library(configuration_definitions INTERFACE)
 
 if (TILEDB_AZURE)
-  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_AZURE)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_AZURE)
 endif()
 
 if (TILEDB_GCS)
-  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_GCS)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_GCS)
 endif()
 
 if (TILEDB_HDFS)
-  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_HDFS)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_HDFS)
 endif()
 
 if (TILEDB_S3)
-  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_S3)
+  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
 
 ##################################
@@ -532,9 +491,6 @@ add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
-  if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
-    message(FATAL_ERROR "Building tools with Azure enabled requires enabling TILEDB_VCPKG")
-  endif()
   add_subdirectory(tools)
 endif()
 
@@ -565,12 +521,16 @@ if (TILEDB_TESTS)
   add_dependencies(tests tiledb_unit)
   add_dependencies(tests tiledb_regression)
   add_dependencies(tests test_assert)
+  if(TILEDB_ARROW_TESTS)
+    add_dependencies(tests unit_arrow)
+  endif()
 
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
   # C API basics
   add_dependencies(tests unit_capi_config unit_capi_context)
   add_dependencies(tests unit_capi_array)
+  add_dependencies(tests unit_capi_array_schema)
   add_dependencies(tests unit_capi_buffer)
   add_dependencies(tests unit_capi_buffer_list)
   add_dependencies(tests unit_capi_data_order)
@@ -581,19 +541,21 @@ if (TILEDB_TESTS)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)
 
-  if (TILEDB_CRC32)
-    add_dependencies(tests unit_link_crc32)
-  endif()
-
-  if (TILEDB_WEBP)
-    add_dependencies(tests unit_link_webp)
-  endif()
-
   if (ENABLE_MAGIC_TEST)
     add_dependencies(tests unit_mgc_dict)
   endif()
 
   add_subdirectory(test/regression)
+
+  # Add custom target 'check', which builds and runs all tests.
+  # This includes both the main test suite in the 'test' directory (consisting of
+  # tiledb_unit, tiledb_regression and other tests), as well as the standalone
+  # tests in subdirectories of the 'tiledb' directory.
+  add_custom_target(check
+    COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
+    DEPENDS tests
+    USES_TERMINAL
+  )
 endif()
 
 # -------------------------------------------------------
@@ -617,3 +579,16 @@ add_custom_target(
    COMMAND rmdir "${CMAKE_INSTALL_PREFIX}/include/tiledb"
    COMMAND echo "TileDB uninstalled"
 )
+
+###########################################################
+# Run the optional extra cmake include
+###########################################################
+
+if(TILEDB_EXTRA_CMAKE_INCLUDE)
+  get_filename_component(
+    EXTRA_INCLUDE_ABSPATH
+    "${TILEDB_EXTRA_CMAKE_INCLUDE}"
+    ABSOLUTE
+  )
+  include("${EXTRA_INCLUDE_ABSPATH}")
+endif()

@@ -89,6 +89,16 @@ TEMPLATE_TEST_CASE(
         std::numeric_limits<TestType>::max()};
     test_crop_range<TestType>(bounds, range, bounds);
   }
+  SECTION("Test crop outside lower bound") {
+    TestType range[2]{0, 0};
+    TestType result[2]{1, 1};
+    test_crop_range<TestType>(bounds, range, result);
+  }
+  SECTION("Test crop outside upper bound") {
+    TestType range[2]{5, 6};
+    TestType result[2]{4, 4};
+    test_crop_range<TestType>(bounds, range, result);
+  }
 }
 
 TEMPLATE_TEST_CASE(
@@ -125,6 +135,16 @@ TEMPLATE_TEST_CASE(
         std::numeric_limits<TestType>::lowest(),
         std::numeric_limits<TestType>::max()};
     test_crop_range<TestType>(bounds, range, bounds);
+  }
+  SECTION("Test crop outside lower bound") {
+    TestType range[2]{-6, -4};
+    TestType result[2]{-2, -2};
+    test_crop_range<TestType>(bounds, range, result);
+  }
+  SECTION("Test crop outside upper bound") {
+    TestType range[2]{5, 6};
+    TestType result[2]{2, 2};
+    test_crop_range<TestType>(bounds, range, result);
   }
 }
 
@@ -163,5 +183,15 @@ TEMPLATE_TEST_CASE(
         -std::numeric_limits<TestType>::infinity(),
         std::numeric_limits<TestType>::infinity()};
     test_crop_range<TestType>(bounds, range, bounds);
+  }
+  SECTION("Test crop outside lower bound") {
+    TestType range[2]{-60.1f, -40.3f};
+    TestType result[2]{-10.5f, -10.5f};
+    test_crop_range<TestType>(bounds, range, result);
+  }
+  SECTION("Test crop outside upper bound") {
+    TestType range[2]{5.1f, 6.5f};
+    TestType result[2]{3.33f, 3.33f};
+    test_crop_range<TestType>(bounds, range, result);
   }
 }

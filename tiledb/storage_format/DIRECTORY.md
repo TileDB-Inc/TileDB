@@ -20,6 +20,8 @@ Please note that this information is repeated in the C API, C++ API, and the Dim
 
 * TILEDB_CHAR
 * TILEDB_BLOB
+* TILEDB_GEOM_WKB
+* TILEDB_GEOM_WKT
 * TILEDB_BOOL
 * TILEDB_STRING_UTF8
 * TILEDB_STRING_UTF16

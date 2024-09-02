@@ -1,0 +1,212 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - dev
+      - 'release-*'
+    tags:
+      - '*'
+
+jobs:
+  Package-Source-Release:
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout TileDB
+        uses: actions/checkout@v3
+      - name: Set variables
+        id: get-values
+        run: |
+          release_hash=$( echo ${{ github.sha }} | cut -c-7 - )
+          ref=${{ github.head_ref || github.ref_name }}
+          echo "release_version=${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
+        shell: bash
+      - name: CMake Configure
+        run: cmake -S . -B build -DTILEDB_CMAKE_IDE=ON
+      - name: CPack Package Source
+        env:
+          TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
+        run: cd build && cpack --config CPackSourceConfig.cmake
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: |
+            build/tiledb-*.tar.gz*
+
+  Package-Binary-Release:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-arm64, macos-x86_64, linux-x86_64, linux-x86_64-noavx2, windows-x86_64]
+        include:
+          - platform: windows-x86_64
+            os: windows-2019
+            triplet: x64-windows-release
+          - platform: linux-x86_64
+            os: ubuntu-20.04
+            manylinux: true
+            triplet: x64-linux-release
+          - platform: linux-x86_64-noavx2
+            os: ubuntu-20.04
+            cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
+            triplet: x64-linux-release
+            manylinux: true
+          - platform: macos-x86_64
+            os: macos-12
+            MACOSX_DEPLOYMENT_TARGET: 11
+            triplet: x64-osx-release
+          - platform: macos-arm64
+            os: macos-12
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
+            MACOSX_DEPLOYMENT_TARGET: 11
+            triplet: arm64-osx-release
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || '' }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      # Manylinux does not support Node 20 due to libc incompatibility. Temporarily opt out.
+      # https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ matrix.manylinux && 'true' || 'false' }}
+
+    steps:
+      - name: Checkout TileDB
+        # v4 uses node 20 which is incompatible with the libc version of the manylinux image
+        uses: actions/checkout@v3
+      - name: 'Homebrew setup'
+        run: brew install automake pkg-config
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Set variables
+        id: get-values
+        run: |
+          release_hash=$( echo ${{ github.sha }} | cut -c-7 - )
+          ref=${{ github.head_ref || github.ref_name }}
+          echo "release_version=${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
+        shell: bash
+      - name: Install manylinux prerequisites
+        if: matrix.manylinux
+        run: |
+          set -e pipefail
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
+          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
+      - name: Configure TileDB
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_INSTALL_PREFIX=./dist \
+            -DTILEDB_INSTALL_LIBDIR=lib \
+            -DTILEDB_S3=ON \
+            -DTILEDB_AZURE=ON \
+            -DTILEDB_GCS=ON \
+            -DTILEDB_HDFS=${{ startsWith(matrix.platform, 'windows') && 'OFF' || 'ON' }} \
+            -DTILEDB_SERIALIZATION=ON \
+            -DTILEDB_WEBP=ON \
+            -DTILEDB_TESTS=OFF \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
+            ${{ matrix.cmake_args }}
+        shell: bash
+      - name: Build TileDB
+        env:
+          TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
+        run: cmake --build build --config Release --target package
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: |
+            build/tiledb-*.tar.gz*
+            build/tiledb-*.zip*
+      - name: "Print log files (failed build only)"
+        run: |
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+        if: failure() # only run this job if the build step failed
+
+  Test-Release-Artifacts:
+    needs: Package-Binary-Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: release
+          path: dist
+      - name: Test names of release artifacts
+        run: |
+          if [ ls dist/ | grep -Ev -- '^tiledb-(linux|macos|windows)+-(x86_64|arm64)(-noavx2)?-.+-[0-9a-f]{7}\.(zip|tar\.gz)$' ]; then
+            echo "Some release artifact names do not match expected pattern"
+            exit 1
+          fi
+
+  Publish-Release:
+    needs:
+      - Test-Release-Artifacts
+      - Package-Source-Release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: release
+          path: dist
+      - name: Publish release artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const repo = context.repo;
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: repo.owner,
+              repo: repo.repo,
+              tag: "${{ github.ref_name }}"
+            });
+            const globber = await glob.create('dist/*');
+            for await (const file of globber.globGenerator()) {
+              await github.rest.repos.uploadReleaseAsset({
+                owner: repo.owner,
+                repo: repo.repo,
+                release_id: release.data.id,
+                headers: {
+                  'content-type': 'application/octet-stream',
+                  'content-length': fs.statSync(file).size
+                },
+                name: path.basename(file),
+                data: fs.readFileSync(file)
+              });
+            }
+
+  Generate-Release-List:
+    needs:
+      - Publish-Release
+    uses: ./.github/workflows/append-release-cmake.yml
+    with:
+      ref: ${{ github.ref_name }}
+
+  Create-Issue-On-Fail:
+    permissions:
+      issues: write
+    runs-on: ubuntu-latest
+    needs: Publish-Release
+    if: (failure() || cancelled()) && github.event_name != 'workflow_dispatch'
+    steps:
+      # The open-issue action requires to clone the repository.
+      - name: Checkout TileDB
+        uses: actions/checkout@v4
+      - name: Create Issue if Build Fails
+        uses: TileDB-Inc/github-actions/open-issue@main
+        with:
+          name: Release failed
+          label: release
+          assignee: KiterLuc,teo-tsirpanis,davisp

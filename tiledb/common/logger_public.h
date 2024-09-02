@@ -28,8 +28,9 @@
  * @section DESCRIPTION
  *
  * This file defines simple logging functions that can be exposed (by expedient)
- * to the public API. Their implementations are in `logger.cc`. See the
- * documentation in `logger.h` for the full story.
+ * to the public API. Their implementations are in `logger.cc`. They are
+ * declared in a separate header from `logger.h` for historical reasons, when
+ * `logger.h` was leaking spdlog's headers.
  */
 
 #pragma once

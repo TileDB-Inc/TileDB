@@ -28,6 +28,7 @@
 
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -128,7 +129,8 @@ DimensionLabel::DimensionLabel(
     const URI& uri,
     const Dimension* dim,
     DataOrder label_order,
-    Datatype label_type)
+    Datatype label_type,
+    shared_ptr<MemoryTracker> memory_tracker)
     : dim_id_(dim_id)
     , dim_label_name_(dim_label_name)
     , uri_(uri)
@@ -139,8 +141,9 @@ DimensionLabel::DimensionLabel(
           label_type == Datatype::STRING_ASCII ? constants::var_num : 1)
     , schema_(make_shared<ArraySchema>(
           HERE(),
-          label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
-                                                     ArrayType::DENSE))
+          (label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
+                                                      ArrayType::DENSE),
+          memory_tracker))
     , is_external_(false)
     , relative_uri_(true) {
   auto index_type{dim->type()};
@@ -169,12 +172,16 @@ DimensionLabel::DimensionLabel(
 
   // Create and set dimension label domain.
   std::vector<shared_ptr<Dimension>> index_dims{
-      make_shared<Dimension>(HERE(), "index", index_type)};
+      make_shared<Dimension>(HERE(), "index", index_type, memory_tracker)};
   throw_if_not_ok(index_dims.back()->set_domain(dim->domain().data()));
   throw_if_not_ok(
       index_dims.back()->set_tile_extent(dim->tile_extent().data()));
   throw_if_not_ok(schema_->set_domain(make_shared<Domain>(
-      HERE(), Layout::ROW_MAJOR, index_dims, Layout::ROW_MAJOR)));
+      HERE(),
+      Layout::ROW_MAJOR,
+      index_dims,
+      Layout::ROW_MAJOR,
+      memory_tracker)));
 
   // Create and set dimension label attribute.
   auto label_attr = make_shared<Attribute>(
@@ -252,21 +259,6 @@ shared_ptr<DimensionLabel> DimensionLabel::deserialize(
   }
 }
 
-void DimensionLabel::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-  fprintf(out, "### Dimension Label ###\n");
-  fprintf(out, "- Dimension Index: %i\n", dim_id_);
-  fprintf(out, "- Dimension Label Name: %s\n", dim_label_name_.c_str());
-  fprintf(out, "- URI: %s\n", uri_.c_str());
-  fprintf(out, "- Label Attribute Name: %s\n", label_attr_name_.c_str());
-  fprintf(out, "- Label Type: %s\n", datatype_str(label_type_).c_str());
-  (label_cell_val_num_ == constants::var_num) ?
-      fprintf(out, "- Label cell val num: var\n") :
-      fprintf(out, "- Label cell val num: %u\n", label_cell_val_num_);
-  fprintf(out, "\n");
-}
-
 const shared_ptr<ArraySchema> DimensionLabel::schema() const {
   if (!schema_) {
     throw StatusException(
@@ -326,3 +318,19 @@ void DimensionLabel::serialize(Serializer& serializer, uint32_t) const {
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::DimensionLabel& dl) {
+  os << "### Dimension Label ###\n";
+  os << "- Dimension Index: " << dl.dimension_index() << std::endl;
+  os << "- Dimension Label Name: " << dl.name() << std::endl;
+  os << "- URI: " << dl.uri().to_string() << std::endl;
+  os << "- Label Attribute Name: " << dl.name() << std::endl;
+  os << "- Label Type: " << datatype_str(dl.label_type()) << std::endl;
+  (dl.label_cell_val_num() == tiledb::sm::constants::var_num) ?
+      os << "- Label cell val num: var\n" :
+      os << "- Label cell val num: " << dl.label_cell_val_num() << std::endl;
+  os << std::endl;
+
+  return os;
+}

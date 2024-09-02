@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,13 +37,11 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/apply_with_type.h"
 
@@ -53,12 +51,11 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-class OrderedDimLabelReaderStatusException : public StatusException {
+class OrderedDimLabelReaderException : public StatusException {
  public:
-  explicit OrderedDimLabelReaderStatusException(const std::string& message)
+  explicit OrderedDimLabelReaderException(const std::string& message)
       : StatusException("OrderedDimLabelReader", message) {
   }
 };
@@ -70,31 +67,12 @@ class OrderedDimLabelReaderStatusException : public StatusException {
 OrderedDimLabelReader::OrderedDimLabelReader(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates,
-    bool increasing_labels,
-    bool skip_checks_serialization)
+    StrategyParams& params,
+    bool increasing_labels)
     : ReaderBase(
-          stats,
-          logger->clone("OrderedDimLabelReader", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          aggregate_buffers,
-          subarray,
-          layout,
-          condition,
-          default_channel_aggregates)
+          stats, logger->clone("OrderedDimLabelReader", ++logger_id_), params)
     , ranges_(
-          subarray.get_attribute_ranges(array_schema_.attributes()[0]->name()))
+          subarray_.get_attribute_ranges(array_schema_.attributes()[0]->name()))
     , label_name_(array_schema_.attributes()[0]->name())
     , label_type_(array_schema_.attributes()[0]->type())
     , label_var_size_(array_schema_.attributes()[0]->var_size())
@@ -102,59 +80,54 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     , index_dim_(array_schema_.domain().dimension_ptr(0))
     , result_tiles_(fragment_metadata_.size()) {
   // Sanity checks.
-  if (storage_manager_ == nullptr) {
-    throw OrderedDimLabelReaderStatusException(
-        "Cannot initialize ordered dim label reader; Storage manager not set");
-  }
-
-  if (!default_channel_aggregates.empty()) {
-    throw OrderedDimLabelReaderStatusException(
+  if (!params.default_channel_aggregates().empty()) {
+    throw OrderedDimLabelReaderException(
         "Cannot initialize reader; Reader cannot process aggregates");
   }
 
-  if (!skip_checks_serialization && buffers_.empty()) {
-    throw OrderedDimLabelReaderStatusException(
+  if (!params.skip_checks_serialization() && buffers_.empty()) {
+    throw OrderedDimLabelReaderException(
         "Cannot initialize ordered dim label reader; Buffers not set");
   }
 
-  if (!skip_checks_serialization && buffers_.size() != 1) {
-    throw OrderedDimLabelReaderStatusException(
+  if (!params.skip_checks_serialization() && buffers_.size() != 1) {
+    throw OrderedDimLabelReaderException(
         "Cannot initialize ordered dim label reader with " +
         std::to_string(buffers_.size()) + " buffers; Only one buffer allowed");
   }
 
   for (const auto& b : buffers_) {
     if (b.first != index_dim_->name()) {
-      throw OrderedDimLabelReaderStatusException(
+      throw OrderedDimLabelReaderException(
           "Cannot initialize ordered dim label reader; Wrong buffer set");
     }
 
     if (*b.second.buffer_size_ !=
         ranges_.size() * 2 * datatype_size(index_dim_->type())) {
-      throw OrderedDimLabelReaderStatusException(
+      throw OrderedDimLabelReaderException(
           "Cannot initialize ordered dim label reader; Wrong buffer size");
     }
 
     if (b.second.buffer_var_size_ != 0) {
-      throw OrderedDimLabelReaderStatusException(
+      throw OrderedDimLabelReaderException(
           "Cannot initialize ordered dim label reader; Wrong buffer var size");
     }
   }
 
   if (subarray_.is_set()) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Cannot initialize ordered dim label reader; Subarray is set");
   }
 
   if (condition_.has_value()) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Ordered dimension label reader cannot process query condition");
   }
 
   bool found = false;
   if (!config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found)
            .ok()) {
-    throw OrderedDimLabelReaderStatusException("Cannot get setting");
+    throw OrderedDimLabelReaderException("Cannot get setting");
   }
   assert(found);
 }
@@ -185,8 +158,8 @@ Status OrderedDimLabelReader::dowork() {
   // `tile_var_offsets_`, `tile_validity_offsets_` and `tile_var_sizes_` in
   // `fragment_metadata_`.
   std::vector<std::string> names = {label_name_};
-  RETURN_NOT_OK(load_tile_offsets(subarray_.relevant_fragments(), names));
-  RETURN_NOT_OK(load_tile_var_sizes(subarray_.relevant_fragments(), names));
+  load_tile_offsets(subarray_.relevant_fragments(), names);
+  load_tile_var_sizes(subarray_.relevant_fragments(), names);
 
   // Load the dimension labels min/max values.
   load_label_min_max_values();
@@ -216,7 +189,7 @@ void OrderedDimLabelReader::label_read() {
     if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
       label_read<decltype(T)>();
     } else {
-      throw OrderedDimLabelReaderStatusException(
+      throw OrderedDimLabelReaderException(
           "Cannot read ordered label array; Unsupported domain type");
     }
   };
@@ -230,7 +203,7 @@ void OrderedDimLabelReader::label_read() {
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Cannot read dim label; Dimension label is empty");
   }
 
@@ -272,8 +245,8 @@ void OrderedDimLabelReader::label_read() {
         read_and_unfilter_attribute_tiles({label_name_}, result_tiles));
 
     // Compute/copy results.
-    throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(), 0, max_range, [&](uint64_t r) {
+    throw_if_not_ok(
+        parallel_for(&resources_.compute_tp(), 0, max_range, [&](uint64_t r) {
           compute_and_copy_range_indexes<IndexType>(buffer_offset, r);
           return Status::Ok();
         }));
@@ -314,7 +287,7 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
     per_range_array_tile_indexes[r].resize(fragment_metadata_.size());
   }
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       fragment_metadata_.size(),
       0,
@@ -329,7 +302,7 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
   // value for each range start/end.
   per_range_array_tile_indexes_.resize(ranges_.size());
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, ranges_.size(), [&](uint64_t r) {
+      &resources_.compute_tp(), 0, ranges_.size(), [&](uint64_t r) {
         per_range_array_tile_indexes_[r] = RangeTileIndexes(
             tile_idx_min, tile_idx_max, per_range_array_tile_indexes[r]);
         return Status::Ok();
@@ -342,17 +315,16 @@ void OrderedDimLabelReader::load_label_min_max_values() {
 
   // Load min/max data for all fragments.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       fragment_metadata_.size(),
       [&](const uint64_t i) {
         auto& fragment = fragment_metadata_[i];
-        std::vector<std::string> names_min = {label_name_};
-        RETURN_NOT_OK(fragment->load_tile_min_values(
-            *encryption_key, std::move(names_min)));
-        std::vector<std::string> names_max = {label_name_};
-        RETURN_NOT_OK(fragment->load_tile_max_values(
-            *encryption_key, std::move(names_max)));
+        std::vector<std::string> names = {label_name_};
+        fragment->loaded_metadata()->load_tile_min_values(
+            *encryption_key, names);
+        fragment->loaded_metadata()->load_tile_max_values(
+            *encryption_key, names);
         return Status::Ok();
       }));
 }
@@ -472,7 +444,8 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
 uint64_t OrderedDimLabelReader::label_tile_size(unsigned f, uint64_t t) const {
   uint64_t tile_size = fragment_metadata_[f]->tile_size(label_name_, t);
   if (label_var_size_) {
-    tile_size += fragment_metadata_[f]->tile_var_size(label_name_, t);
+    tile_size +=
+        fragment_metadata_[f]->loaded_metadata()->tile_var_size(label_name_, t);
   }
 
   return tile_size;
@@ -544,10 +517,13 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
                   std::piecewise_construct,
                   std::forward_as_tuple(tile_idx),
                   std::forward_as_tuple(
-                      f, frag_tile_idx, *fragment_metadata_[f].get()));
+                      f,
+                      frag_tile_idx,
+                      *fragment_metadata_[f].get(),
+                      query_memory_tracker_));
             } else {
               if (r == 0) {
-                throw OrderedDimLabelReaderStatusException(
+                throw OrderedDimLabelReaderException(
                     "Can't process a single range, increase memory budget");
               }
               return r;
@@ -594,7 +570,7 @@ LabelType OrderedDimLabelReader::get_value_at(
 
     // We should always find the value before the last fragment.
     if (f == 0) {
-      throw OrderedDimLabelReaderStatusException("Couldn't find value");
+      throw OrderedDimLabelReaderException("Couldn't find value");
     }
   }
 }
@@ -686,7 +662,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       LabelType value = get_range_as<LabelType>(r, 0);
       if (get_value_at<IndexType, LabelType>(dest[0], dim_dom[0], tile_extent) <
           value) {
-        throw OrderedDimLabelReaderStatusException("Range contained no values");
+        throw OrderedDimLabelReaderException("Range contained no values");
       }
     }
 
@@ -698,7 +674,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       LabelType value = get_range_as<LabelType>(r, 1);
       if (get_value_at<IndexType, LabelType>(dest[1], dim_dom[0], tile_extent) >
           value) {
-        throw OrderedDimLabelReaderStatusException("Range contained no values");
+        throw OrderedDimLabelReaderException("Range contained no values");
       }
     }
   } else {
@@ -711,7 +687,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       LabelType value = get_range_as<LabelType>(r, 1);
       if (get_value_at<IndexType, LabelType>(dest[0], dim_dom[0], tile_extent) >
           value) {
-        throw OrderedDimLabelReaderStatusException("Range contained no values");
+        throw OrderedDimLabelReaderException("Range contained no values");
       }
     }
 
@@ -723,14 +699,14 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       LabelType value = get_range_as<LabelType>(r, 0);
       if (get_value_at<IndexType, LabelType>(dest[1], dim_dom[0], tile_extent) <
           value) {
-        throw OrderedDimLabelReaderStatusException("Range contained no values");
+        throw OrderedDimLabelReaderException("Range contained no values");
       }
     }
   }
 
   // If the range provided contained no values, throw an error.
   if (dest[0] > dest[1]) {
-    throw OrderedDimLabelReaderStatusException("Range contained no values");
+    throw OrderedDimLabelReaderException("Range contained no values");
   }
 }
 
@@ -752,5 +728,4 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
   apply_with_type(g, label_type_);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

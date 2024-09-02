@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,10 +34,15 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
+
+#include "filesystem_base.h"
+#include "ls_scanner.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
+#include "tiledb/platform/platform.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/curl/curl_init.h"
@@ -64,6 +69,7 @@
 #include <aws/core/utils/threading/Executor.h>
 #include <aws/identity-management/auth/STSAssumeRoleCredentialsProvider.h>
 #include <aws/s3/S3Client.h>
+#include <aws/s3/S3ClientConfiguration.h>
 #include <aws/s3/model/CompleteMultipartUploadRequest.h>
 #include <aws/s3/model/CopyObjectRequest.h>
 #include <aws/s3/model/CreateBucketRequest.h>
@@ -86,7 +92,67 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
-class TileDBS3Client;
+/** Class for S3 status exceptions. */
+class S3Exception : public StatusException {
+ public:
+  explicit S3Exception(const std::string& msg)
+      : StatusException("S3", msg) {
+  }
+};
+
+namespace {
+
+/**
+ * Return the exception name and error message from the given outcome object.
+ *
+ * @tparam R AWS result type
+ * @tparam E AWS error type
+ * @param outcome Outcome to retrieve error message from
+ * @return Error message string
+ */
+template <typename R, typename E>
+std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
+  if (outcome.IsSuccess()) {
+    return "Success";
+  }
+
+  auto err = outcome.GetError();
+  Aws::StringStream ss;
+
+  ss << "[Error Type: " << static_cast<int>(err.GetErrorType()) << "]"
+     << " [HTTP Response Code: " << static_cast<int>(err.GetResponseCode())
+     << "]";
+
+  if (!err.GetExceptionName().empty()) {
+    ss << " [Exception: " << err.GetExceptionName() << "]";
+  }
+
+  // For some reason, these symbols are not exposed when building with MINGW
+  // so for now we just disable adding the tags on Windows.
+  if constexpr (!platform::is_os_windows) {
+    if (!err.GetRemoteHostIpAddress().empty()) {
+      ss << " [Remote IP: " << err.GetRemoteHostIpAddress() << "]";
+    }
+
+    if (!err.GetRequestId().empty()) {
+      ss << " [Request ID: " << err.GetRequestId() << "]";
+    }
+  }
+
+  if (err.GetResponseHeaders().size() > 0) {
+    ss << " [Headers:";
+    for (auto&& h : err.GetResponseHeaders()) {
+      ss << " '" << h.first << "' = '" << h.second << "'";
+    }
+    ss << "]";
+  }
+
+  ss << " : " << err.GetMessage();
+
+  return ss.str();
+}
+
+}  // namespace
 
 /**
  * The s3-specific configuration parameters.
@@ -159,6 +225,8 @@ struct S3Parameters {
             sse_algorithm_ == "kms" ?
                 config.get<std::string>("vfs.s3.sse_kms_key_id").value() :
                 "")
+      , storage_class_(
+            config.get<std::string>("vfs.s3.storage_class", Config::must_find))
       , bucket_acl_str_(config.get<std::string>(
             "vfs.s3.bucket_canned_acl", Config::must_find))
       , object_acl_str_(config.get<std::string>(
@@ -261,6 +329,9 @@ struct S3Parameters {
   /** The server-side encryption key to use with the kms algorithm. */
   std::string sse_kms_key_id_;
 
+  /** The S3 storage class. */
+  std::string storage_class_;
+
   /** Names of values found in Aws::S3::Model::BucketCannedACL enumeration. */
   std::string bucket_acl_str_;
 
@@ -272,10 +343,222 @@ struct S3Parameters {
 };
 
 /**
+ * Helper class which overrides Aws::S3::S3Client to set headers from
+ * vfs.s3.custom_headers.*
+ *
+ * @note The AWS SDK does not have a common base class, so there's no
+ * straightforward way to add a header to a unique request before submitting
+ * it. This class exists solely to override the S3Client, adding custom headers
+ * upon building the Http Request.
+ */
+class TileDBS3Client : public Aws::S3::S3Client {
+ public:
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const Aws::S3::S3ClientConfiguration& client_config)
+      : Aws::S3::S3Client(client_config)
+      , params_(s3_params) {
+  }
+
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
+      const Aws::S3::S3ClientConfiguration& client_config)
+      : Aws::S3::S3Client(
+            creds,
+            // Create default endpoint provider.
+            make_shared<Aws::S3::S3EndpointProvider>(HERE()),
+            client_config)
+      , params_(s3_params) {
+  }
+
+  void BuildHttpRequest(
+      const Aws::AmazonWebServiceRequest& request,
+      const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
+      const override {
+    S3Client::BuildHttpRequest(request, httpRequest);
+
+    // Set header from S3Parameters custom headers
+    for (auto& [key, val] : params_.custom_headers_) {
+      httpRequest->SetHeaderValue(key, val);
+    }
+  }
+
+  inline bool requester_pays() const {
+    return params_.requester_pays_;
+  }
+
+ protected:
+  /**
+   * A reference to the S3 configuration parameters, which stores the header.
+   *
+   * @note Until the removal of init_client(), this must be const-qualified.
+   */
+  const S3Parameters& params_;
+};
+
+/**
+ * S3Scanner wraps the AWS ListObjectsV2 request and provides an iterator for
+ * results. If we reach the end of the current batch of results and results are
+ * truncated, we fetch the next batch of results from S3.
+ *
+ * For each batch of results collected by fetch_results(), the begin_ and end_
+ * members are initialized to the first and last elements of the batch. The scan
+ * steps through each result in the range [begin_, end_), using next() to
+ * advance to the next object accepted by the filters for this scan.
+ *
+ * @section Known Defect
+ *      The iterators of S3Scanner are initialized by the AWS ListObjectsV2
+ *      results and there is no way to determine if they are different from
+ *      iterators returned by a previous request. To be able to detect this, we
+ *      can track the batch number and compare it to the batch number associated
+ *      with the iterator returned by the previous request. Batch number can be
+ *      tracked by the total number of times we submit a ListObjectsV2 request
+ *      within fetch_results().
+ *
+ * @tparam F The FilePredicate type used to filter object results.
+ * @tparam D The DirectoryPredicate type used to prune prefix results.
+ */
+template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+class S3Scanner : public LsScanner<F, D> {
+ public:
+  /** Declare LsScanIterator as a friend class for access to call next(). */
+  template <class scanner_type, class T>
+  friend class LsScanIterator;
+  using Iterator = LsScanIterator<S3Scanner<F, D>, Aws::S3::Model::Object>;
+
+  /** Constructor. */
+  S3Scanner(
+      const std::shared_ptr<TileDBS3Client>& client,
+      const URI& prefix,
+      F file_filter,
+      D dir_filter = accept_all_dirs,
+      bool recursive = false,
+      int max_keys = 1000);
+
+  /**
+   * Returns true if there are more results to fetch from S3.
+   */
+  [[nodiscard]] inline bool more_to_fetch() const {
+    return list_objects_outcome_.GetResult().GetIsTruncated();
+  }
+
+  /**
+   * @return Iterator to the beginning of the results being iterated on.
+   *    Input iterators are single-pass, so we return a copy of this iterator at
+   *    it's current position.
+   */
+  Iterator begin() {
+    return Iterator(this);
+  }
+
+  /**
+   * @return Default constructed iterator, which marks the end of results using
+   *    nullptr.
+   */
+  Iterator end() {
+    return Iterator();
+  }
+
+ private:
+  /**
+   * Advance to the next object accepted by the filters for this scan.
+   *
+   * @param ptr Reference to the current data pointer.
+   * @sa LsScanIterator::operator++()
+   */
+  void next(typename Iterator::pointer& ptr);
+
+  /**
+   * If the iterator is at the end of the current batch, this will fetch the
+   * next batch of results from S3. This does not check if the results are
+   * accepted by the filters for this scan.
+   *
+   * @param ptr Reference to the current data iterator.
+   */
+  void advance(typename Iterator::pointer& ptr) {
+    ptr++;
+    if (ptr == end_) {
+      if (more_to_fetch()) {
+        // Fetch results and reset the iterator.
+        ptr = fetch_results();
+      } else {
+        // Set the pointer to nullptr to indicate the end of results.
+        end_ = ptr = typename Iterator::pointer();
+      }
+    }
+  }
+
+  /**
+   * Fetch the next batch of results from S3. This also handles setting the
+   * continuation token for the next request, if the results were truncated.
+   *
+   * @return A pointer to the first result in the new batch. The return value
+   *    is used to update the pointer managed by the iterator during traversal.
+   *    If the request returned no results, this will return nullptr to mark the
+   *    end of the scan.
+   * @sa LsScanIterator::operator++()
+   * @sa S3Scanner::next(typename Iterator::pointer&)
+   */
+  typename Iterator::pointer fetch_results() {
+    // If this is our first request, GetIsTruncated() will be false.
+    if (more_to_fetch()) {
+      // If results are truncated on a subsequent request, we set the next
+      // continuation token before resubmitting our request.
+      Aws::String next_marker =
+          list_objects_outcome_.GetResult().GetNextContinuationToken();
+      if (next_marker.empty()) {
+        throw S3Exception(
+            "Failed to retrieve next continuation token for ListObjectsV2 "
+            "request.");
+      }
+      list_objects_request_.SetContinuationToken(std::move(next_marker));
+    } else if (list_objects_outcome_.IsSuccess()) {
+      // If we have previously submitted a successful request and there are no
+      // more results, we've reached the end of the scan.
+      begin_ = end_ = typename Iterator::pointer();
+      return end_;
+    }
+
+    list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
+    if (!list_objects_outcome_.IsSuccess()) {
+      throw S3Exception(
+          std::string("Error while listing with prefix '") +
+          this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
+          delimiter_ + "'" + outcome_error_message(list_objects_outcome_));
+    }
+    // Update pointers to the newly fetched results.
+    begin_ = list_objects_outcome_.GetResult().GetContents().begin();
+    end_ = list_objects_outcome_.GetResult().GetContents().end();
+
+    if (list_objects_outcome_.GetResult().GetContents().empty()) {
+      // If the request returned no results, we've reached the end of the scan.
+      // We hit this case when the number of objects in the bucket is a multiple
+      // of the current max_keys.
+      return end_;
+    }
+
+    return begin_;
+  }
+
+  /** Pointer to the S3 client initialized by VFS. */
+  shared_ptr<TileDBS3Client> client_;
+  /** Delimiter used for ListObjects request. */
+  std::string delimiter_;
+  /** Iterators for the current objects fetched from S3. */
+  typename Iterator::pointer begin_, end_;
+
+  /** The current request being scanned. */
+  Aws::S3::Model::ListObjectsV2Request list_objects_request_;
+  /** The current request outcome being scanned. */
+  Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
+};
+
+/**
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
  */
-class S3 {
+class S3 : FilesystemBase {
  private:
   /** Forward declaration */
   struct MultiPartUploadState;
@@ -308,9 +591,212 @@ class S3 {
    * Creates a bucket.
    *
    * @param bucket The name of the bucket to be created.
-   * @return Status
    */
-  Status create_bucket(const URI& bucket) const;
+  void create_bucket(const URI& bucket) const override;
+
+  /**
+   * Removes the contents of an S3 bucket.
+   *
+   * @param bucket The URI of the bucket to be emptied.
+   */
+  void empty_bucket(const URI& bucket) const override;
+
+  /**
+   * Checks if a bucket is empty.
+   *
+   * @param bucket The URI of the bucket.
+   * @return True if the bucket is empty, false otherwise.
+   */
+  bool is_empty_bucket(const URI& bucket) const override;
+
+  /**
+   * Check if a bucket exists.
+   *
+   * @param bucket The name of the bucket.
+   * @return True if the bucket exists, false otherwise.
+   */
+  bool is_bucket(const URI& uri) const override;
+
+  /**
+   * Renames a directory. Note that this is an expensive operation.
+   * The function will essentially copy all objects with directory
+   * prefix `old_uri` to new objects with prefix `new_uri` and then
+   * delete the old ones.
+   *
+   * @param old_uri The URI of the old path.
+   * @param new_uri The URI of the new path.
+   */
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
+
+  /**
+   * Copies a file.
+   *
+   * @param old_uri The URI of the old path.
+   * @param new_uri The URI of the new path.
+   */
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
+
+  /**
+   * Copies a directory. All subdirectories and files are copied.
+   *
+   * @param old_uri The URI of the old path.
+   * @param new_uri The URI of the new path.
+   */
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
+
+  /**
+   * Reads from a file.
+   *
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @param use_read_ahead Whether to use the read-ahead cache.
+   */
+  void read(
+      const URI& uri,
+      uint64_t offset,
+      void* buffer,
+      uint64_t nbytes,
+      bool use_read_ahead = true) const override;
+
+  /**
+   * Deletes a bucket.
+   *
+   * @param bucket The name of the bucket to be deleted.
+   */
+  void remove_bucket(const URI& bucket) const override;
+
+  /**
+   * Deletes all objects with prefix `prefix/` (if the ending `/` does not
+   * exist in `prefix`, it is added by the function.
+   *
+   * For instance, suppose there exist the following objects:
+   * - `s3://some_bucket/foo/bar1`
+   * - `s3://some_bucket/foo/bar2/bar3
+   * - `s3://some_bucket/foo/bar4
+   * - `s3://some_bucket/foo2`
+   *
+   * `remove("s3://some_bucket/foo")` and `remove("s3://some_bucket/foo/")`
+   * will delete objects:
+   *
+   * - `s3://some_bucket/foo/bar1`
+   * - `s3://some_bucket/foo/bar2/bar3
+   * - `s3://some_bucket/foo/bar4
+   *
+   * In contrast, `remove("s3://some_bucket/foo2")` will not delete anything,
+   * the function internally appends `/` to the end of the URI, and therefore
+   * there is not object with prefix "s3://some_bucket/foo2/" in this example.
+   *
+   * @param prefix The prefix of the objects to be deleted.
+   */
+  void remove_dir(const URI& prefix) const override;
+
+  /**
+   * Creates an empty object.
+   *
+   * @param uri The URI of the object to be created.
+   */
+  void touch(const URI& uri) const override;
+
+  /**
+   * Writes the input buffer to an S3 object. Note that this is essentially
+   * an append operation implemented via multipart uploads.
+   *
+   * @param uri The URI of the object to be written to.
+   * @param buffer The input buffer.
+   * @param length The size of the input buffer.
+   * @param remote_global_order_write
+   */
+  void write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t length,
+      bool remote_global_order_write = false) override;
+
+  /**
+   * Creates a directory.
+   *
+   * - On S3, this is a noop.
+   * - On all other backends, if the directory exists, the function
+   *   just succeeds without doing anything.
+   *
+   * @param uri The URI of the directory.
+   */
+  void create_dir(const URI&) const override {
+    // No-op for S3.
+  }
+
+  /**
+   * Checks if a file exists.
+   *
+   * @param uri The URI to check for existence.
+   * @return True if the file exists, else False.
+   */
+  bool is_file(const URI& uri) const override {
+    bool object = false;
+    throw_if_not_ok(is_object(uri, &object));
+    return object;
+  }
+
+  /**
+   * Deletes a file.
+   *
+   * @param uri The URI of the file.
+   */
+  void remove_file(const URI& uri) const override {
+    throw_if_not_ok(remove_object(uri));
+  }
+
+  /**
+   * Retrieves the size of a file.
+   *
+   * @param uri The URI of the file.
+   * @param size The file size to be retrieved.
+   */
+  void file_size(const URI& uri, uint64_t* size) const override {
+    throw_if_not_ok(object_size(uri, size));
+  }
+
+  /**
+   * Renames a file.
+   * Both URI must be of the same backend type. (e.g. both s3://, file://, etc)
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   */
+  void move_file(const URI& old_uri, const URI& new_uri) const override {
+    throw_if_not_ok(move_object(old_uri, new_uri));
+  }
+
+  /**
+   * Syncs (flushes) a file. Note that for S3 this is a noop.
+   *
+   * @param uri The URI of the file.
+   */
+  void sync(const URI&) const override {
+    // No-op for S3.
+  }
+
+  /**
+   * Checks if a directory exists.
+   *
+   * @param uri The URI to check for existence.
+   * @return True if the directory exists, else False.
+   */
+  bool is_dir(const URI& uri) const override {
+    bool dir = false;
+    throw_if_not_ok(is_dir(uri, &dir));
+    return dir;
+  }
+
+  /**
+   * Retrieves all the entries contained in the parent.
+   *
+   * @param parent The target directory to list.
+   * @return All entries that are contained in the parent
+   */
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
   /**
    * Disconnects a S3 client.
@@ -318,10 +804,6 @@ class S3 {
    * @return Status
    */
   Status disconnect();
-
-  /** Removes the contents of an S3 bucket. */
-  Status empty_bucket(const URI& bucket) const;
-
   /**
    * Flushes an object to S3, finalizing the multipart upload.
    *
@@ -337,19 +819,6 @@ class S3 {
    * @param uri The URI of the object to be flushed.
    */
   void finalize_and_flush_object(const URI& uri);
-
-  /** Checks if a bucket is empty. */
-  Status is_empty_bucket(const URI& bucket, bool* is_empty) const;
-
-  /**
-   * Check if a bucket exists.
-   *
-   * @param bucket The name of the bucket.
-   * @param exists Mutates to `true` if `uri` is an existing bucket,
-   *   and `false` otherwise.
-   * @return Status
-   */
-  Status is_bucket(const URI& uri, bool* exists) const;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -380,6 +849,12 @@ class S3 {
    * @return Status
    */
   Status is_object(const URI& uri, bool* exists) const;
+
+  /** Checks if the given object exists on S3. */
+  Status is_object(
+      const Aws::String& bucket_name,
+      const Aws::String& object_key,
+      bool* exists) const;
 
   /**
    * Lists the objects that start with `prefix`. Full URI paths are
@@ -413,17 +888,69 @@ class S3 {
   /**
    *
    * Lists objects and object information that start with `prefix`.
+   * For recursive results, an empty string can be passed as the `delimiter`.
    *
    * @param prefix The parent path to list sub-paths.
-   * @param delimiter The uri is truncated to the first delimiter
-   * @param max_paths The maximum number of paths to be retrieved
-   * @return A list of directory_entry objects
+   * @param delimiter The uri is truncated to the first delimiter.
+   * @param max_paths The maximum number of paths to be retrieved.
+   * @return A list of directory_entry objects.
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(
-      const URI& prefix,
-      const std::string& delimiter = "/",
-      int max_paths = -1) const;
+  std::vector<directory_entry> ls_with_sizes(
+      const URI& prefix, const std::string& delimiter, int max_paths) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false) const {
+    throw_if_not_ok(init_client());
+    S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
+    // Prepend each object key with the bucket URI.
+    auto prefix = parent.to_string();
+    prefix = prefix.substr(0, prefix.find('/', 5));
+
+    LsObjects objects;
+    for (auto object : s3_scanner) {
+      objects.emplace_back(prefix + "/" + object.GetKey(), object.GetSize());
+    }
+    return objects;
+  }
+
+  /**
+   * Constructs a scanner for listing S3 objects. The scanner can be used to
+   * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
+   * or STL constructors supporting initialization via input iterators.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   * @param max_keys The maximum number of keys to retrieve per request.
+   * @return Fully constructed S3Scanner object.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  S3Scanner<F, D> scanner(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false,
+      int max_keys = 1000) const {
+    throw_if_not_ok(init_client());
+    return S3Scanner<F, D>(client_, parent, f, d, recursive, max_keys);
+  }
 
   /**
    * Renames an object.
@@ -432,37 +959,7 @@ class S3 {
    * @param new_uri The URI of the new path.
    * @return Status
    */
-  Status move_object(const URI& old_uri, const URI& new_uri);
-
-  /**
-   * Renames a directory. Note that this is an expensive operation.
-   * The function will essentially copy all objects with directory
-   * prefix `old_uri` to new objects with prefix `new_uri` and then
-   * delete the old ones.
-   *
-   * @param old_uri The URI of the old path.
-   * @param new_uri The URI of the new path.
-   * @return Status
-   */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
-
-  /**
-   * Copies a file.
-   *
-   * @param old_uri The URI of the old path.
-   * @param new_uri The URI of the new path.
-   * @return Status
-   */
-  Status copy_file(const URI& old_uri, const URI& new_uri);
-
-  /**
-   * Copies a directory. All subdirectories and files are copied.
-   *
-   * @param old_uri The URI of the old path.
-   * @param new_uri The URI of the new path.
-   * @return Status
-   */
-  Status copy_dir(const URI& old_uri, const URI& new_uri);
+  Status move_object(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Returns the size of the input object with a given URI in bytes.
@@ -484,21 +981,13 @@ class S3 {
    * @param length_returned Returns the total length read into `buffer`.
    * @return Status
    */
-  Status read(
+  Status read_impl(
       const URI& uri,
-      off_t offset,
-      void* buffer,
-      uint64_t length,
-      uint64_t read_ahead_length,
-      uint64_t* length_returned) const;
-
-  /**
-   * Deletes a bucket.
-   *
-   * @param bucket The name of the bucket to be deleted.
-   * @return Status
-   */
-  Status remove_bucket(const URI& bucket) const;
+      const off_t offset,
+      void* const buffer,
+      const uint64_t length,
+      const uint64_t read_ahead_length,
+      uint64_t* const length_returned) const;
 
   /**
    * Deletes an object with a given URI.
@@ -507,51 +996,6 @@ class S3 {
    * @return Status
    */
   Status remove_object(const URI& uri) const;
-
-  /**
-   * Deletes all objects with prefix `prefix/` (if the ending `/` does not
-   * exist in `prefix`, it is added by the function.
-   *
-   * For instance, suppose there exist the following objects:
-   * - `s3://some_bucket/foo/bar1`
-   * - `s3://some_bucket/foo/bar2/bar3
-   * - `s3://some_bucket/foo/bar4
-   * - `s3://some_bucket/foo2`
-   *
-   * `remove("s3://some_bucket/foo")` and `remove("s3://some_bucket/foo/")`
-   * will delete objects:
-   *
-   * - `s3://some_bucket/foo/bar1`
-   * - `s3://some_bucket/foo/bar2/bar3
-   * - `s3://some_bucket/foo/bar4
-   *
-   * In contrast, `remove("s3://some_bucket/foo2")` will not delete anything,
-   * the function internally appends `/` to the end of the URI, and therefore
-   * there is not object with prefix "s3://some_bucket/foo2/" in this example.
-   *
-   * @param uri The prefix of the objects to be deleted.
-   * @return Status
-   */
-  Status remove_dir(const URI& prefix) const;
-
-  /**
-   * Creates an empty object.
-   *
-   * @param uri The URI of the object to be created.
-   * @return Status
-   */
-  Status touch(const URI& uri) const;
-
-  /**
-   * Writes the input buffer to an S3 object. Note that this is essentially
-   * an append operation implemented via multipart uploads.
-   *
-   * @param uri The URI of the object to be written to.
-   * @param buffer The input buffer.
-   * @param length The size of the input buffer.
-   * @return Status
-   */
-  Status write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
    * Writes the input buffer to an S3 object. This function buffers in memory
@@ -576,6 +1020,28 @@ class S3 {
    * @param length The size of the input buffer.
    */
   void global_order_write(const URI& uri, const void* buffer, uint64_t length);
+
+  /* ********************************* */
+  /*        PUBLIC STATIC METHODS      */
+  /* ********************************* */
+
+  /**
+   * Returns the input `path` after adding a `/` character
+   * at the front if it does not exist.
+   */
+  static std::string add_front_slash(const std::string& path);
+
+  /**
+   * Returns the input `path` after removing a potential `/` character
+   * from the front if it exists.
+   */
+  static std::string remove_front_slash(const std::string& path);
+
+  /**
+   * Returns the input `path` after removing a potential `/` character
+   * from the end if it exists.
+   */
+  static std::string remove_trailing_slash(const std::string& path);
 
  private:
   /* ********************************* */
@@ -886,7 +1352,7 @@ class S3 {
   mutable std::mutex client_init_mtx_;
 
   /** Configuration object used to initialize the client. */
-  mutable tdb_unique_ptr<Aws::Client::ClientConfiguration> client_config_;
+  mutable shared_ptr<Aws::S3::S3ClientConfiguration> client_config_;
 
   /** The executor used by 'client_'. */
   mutable shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
@@ -915,6 +1381,9 @@ class S3 {
 
   /** The server-side encryption algorithm. */
   Aws::S3::Model::ServerSideEncryption sse_;
+
+  /** The storage class for a s3 upload request. */
+  Aws::S3::Model::StorageClass storage_class_;
 
   /** Protects file_buffers map */
   std::mutex file_buffers_mtx_;
@@ -954,7 +1423,7 @@ class S3 {
    * @param new_uri The newly created object.
    * @return Status
    */
-  Status copy_object(const URI& old_uri, const URI& new_uri);
+  Status copy_object(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Fills the file buffer (given as an input `Buffer` object) from the
@@ -972,24 +1441,6 @@ class S3 {
       const void* buffer,
       uint64_t length,
       uint64_t* nbytes_filled);
-
-  /**
-   * Returns the input `path` after adding a `/` character
-   * at the front if it does not exist.
-   */
-  std::string add_front_slash(const std::string& path) const;
-
-  /**
-   * Returns the input `path` after removing a potential `/` character
-   * from the front if it exists.
-   */
-  std::string remove_front_slash(const std::string& path) const;
-
-  /**
-   * Returns the input `path` after removing a potential `/` character
-   * from the end if it exists.
-   */
-  std::string remove_trailing_slash(const std::string& path) const;
 
   /**
    * Writes the contents of the input buffer to the S3 object given by
@@ -1026,12 +1477,6 @@ class S3 {
    */
   std::string join_authority_and_path(
       const std::string& authority, const std::string& path) const;
-
-  /** Checks if the given object exists on S3. */
-  Status is_object(
-      const Aws::String& bucket_name,
-      const Aws::String& object_key,
-      bool* exists) const;
 
   /** Waits for the input object to be propagated. */
   Status wait_for_object_to_propagate(
@@ -1071,13 +1516,15 @@ class S3 {
    * @param outcome The returned outcome from the complete or abort request.
    * @param uri The URI of the S3 file to be written to.
    * @param buff The file buffer associated with 'uri'.
+   * @param is_abort Should be true only when this is an abort request.
    * @return Status
    */
   template <typename R, typename E>
   Status finish_flush_object(
       const Aws::Utils::Outcome<R, E>& outcome,
       const URI& uri,
-      Buffer* const buff);
+      Buffer* const buff,
+      bool is_abort);
 
   /**
    * Writes the input buffer to a file by issuing one PutObject
@@ -1191,6 +1638,63 @@ class S3 {
   URI generate_chunk_uri(
       const URI& attribute_uri, const std::string& chunk_name);
 };
+
+template <FilePredicate F, DirectoryPredicate D>
+S3Scanner<F, D>::S3Scanner(
+    const shared_ptr<TileDBS3Client>& client,
+    const URI& prefix,
+    F file_filter,
+    D dir_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
+    , client_(client)
+    , delimiter_(this->is_recursive_ ? "" : "/") {
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+  const std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
+  list_objects_request_.SetPrefix(aws_uri_str.c_str());
+  // Empty delimiter returns recursive results from S3.
+  list_objects_request_.SetDelimiter(delimiter_.c_str());
+  // The default max_keys for ListObjects is 1000.
+  list_objects_request_.SetMaxKeys(max_keys);
+
+  if (client_->requester_pays()) {
+    list_objects_request_.SetRequestPayer(
+        Aws::S3::Model::RequestPayer::requester);
+  }
+  fetch_results();
+  next(begin_);
+}
+
+template <FilePredicate F, DirectoryPredicate D>
+void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto object = *ptr;
+    uint64_t size = object.GetSize();
+    std::string path = "s3://" + list_objects_request_.GetBucket() +
+                       S3::add_front_slash(object.GetKey());
+
+    // TODO: Add support for directory pruning.
+    if (this->file_filter_(path, size)) {
+      // Iterator is at the next object within results accepted by the filters.
+      return;
+    } else {
+      // Object was rejected by the FilePredicate, do not include it in results.
+      advance(ptr);
+    }
+  }
+}
 
 }  // namespace tiledb::sm
 

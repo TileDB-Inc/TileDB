@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2021-2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@ commence(object_library vfs)
         vfs.cc
         vfs_file_handle.cc
         win.cc
+        filesystem_base.cc
         ../curl/curl_init.cc
     )
     if (TILEDB_S3)
@@ -59,6 +60,7 @@ commence(object_library vfs)
         cert_file
         config
         math
+        seedable_global_PRNG
         stats
         stringx
         thread_pool

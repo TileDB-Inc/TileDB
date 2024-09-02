@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2021-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -44,6 +44,7 @@ commence(object_library generic_tile_io)
       baseline
       buffer
       constants
+      context_resources
       tiledb_crypto
       filter_pipeline
       tile
@@ -51,10 +52,12 @@ commence(object_library generic_tile_io)
   )
 conclude(object_library)
 
-# This is linked outside the object_library scope because ContextResources
-# is recompiled as part of the capi_context_stub. Including context_resources
-# here like this prevents many headaches revolving around duplicate symbols
-# when linking executables.
-target_link_libraries(compile_generic_tile_io PRIVATE context_resources)
+#
+# `writer_tile` object library
+#
+commence(object_library writer_tile)
+  this_target_sources(tile_metadata_generator.cc writer_tile_tuple.cc)
+  this_target_object_libraries(array_schema tile)
+conclude(object_library)
 
 add_test_subdirectory()

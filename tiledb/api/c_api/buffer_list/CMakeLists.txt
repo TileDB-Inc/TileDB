@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2023-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,33 +25,18 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   buffer_list_api.cc
 )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_buffer_list_stub OBJECT ${SOURCES})
-target_link_libraries(capi_buffer_list_stub PUBLIC export)
-target_link_libraries(capi_buffer_list_stub PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(capi_buffer_list_stub PUBLIC buffer_list $<TARGET_OBJECTS:buffer_list>)
+commence(object_library capi_buffer_list_stub)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(capi_context_stub)
+  this_target_object_libraries(buffer buffer_list)
+conclude(object_library)
 
-#
-# We need to build this as a stub-based library because the API wrappers make
-# reference to `context`, even though the functions in the buffer list section 
-# of the API do not use a context for error handling.
-#
-target_link_libraries(capi_buffer_list_stub PUBLIC capi_context_stub $<TARGET_OBJECTS:capi_context_stub>)
-
- #
- # Test-compile of object library ensures link-completeness
- #
- add_executable(compile_capi_buffer_list EXCLUDE_FROM_ALL)
- target_sources(compile_capi_buffer_list PRIVATE test/compile_capi_buffer_list_main.cc)
- target_link_libraries(compile_capi_buffer_list PRIVATE capi_buffer_list_stub)
- add_dependencies(all_link_complete compile_capi_buffer_list)
-
- add_test_subdirectory()
+add_test_subdirectory()

@@ -82,8 +82,11 @@ class Schema {
   /*          VIRTUAL INTERFACE        */
   /* ********************************* */
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
   /** Dumps the array schema in an ASCII representation to an output. */
+  TILEDB_DEPRECATED
   virtual void dump(FILE* out) const = 0;
+#endif
 
   /** Adds an attribute to the array. */
   virtual Schema& add_attribute(const Attribute& attr) = 0;

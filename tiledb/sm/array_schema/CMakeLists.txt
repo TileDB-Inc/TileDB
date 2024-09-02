@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2021-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,7 @@ commence(object_library attribute)
         constants
         filter_pipeline
         range
-        stringx
-        uuid)
+        stringx)
 conclude(object_library)
 
 #
@@ -63,22 +62,43 @@ conclude(object_library)
 #
 commence(object_library enumeration)
     this_target_sources(enumeration.cc)
-    this_target_object_libraries(buffer constants uuid)
+    this_target_object_libraries(buffer constants seedable_global_PRNG)
+conclude(object_library)
+
+#
+# `ndrectangle` object library
+#
+commence(object_library ndrectangle)
+    this_target_sources(ndrectangle.cc)
+    this_target_object_libraries(constants domain)
+conclude(object_library)
+
+#
+# `current_domain` object library
+#
+commence(object_library current_domain)
+    this_target_sources(current_domain.cc)
+    this_target_object_libraries(ndrectangle constants)
 conclude(object_library)
 
 #
 # `array_schema` object library
+# for data-oriented array_schema functions.
 #
 commence(object_library array_schema)
-    this_target_sources(array_schema.cc dimension_label.cc)
+    this_target_sources(
+        array_schema.cc array_schema_evolution.cc dimension_label.cc)
     this_target_object_libraries(
-        attribute domain enumeration time uri_format uuid vfs)
+        attribute domain enumeration fragment_identifier current_domain time uri_format vfs)
 conclude(object_library)
 
-# This is linked outside the object_library scope because ContextResources
-# is recompiled as part of the capi_context_stub. Including context_resources
-# here like this prevents many headaches revolving around duplicate symbols
-# when linking executables.
-target_link_libraries(compile_array_schema PRIVATE context_resources generic_tile_io)
+#
+# `array_schema_operations` object library 
+# for I/O-oriented array_schema operations on the array_schema library. 
+#
+commence(object_library array_schema_operations)
+    this_target_sources(array_schema_operations.cc)
+    this_target_object_libraries(array_directory array_schema generic_tile_io tiledb_crypto)
+conclude(object_library)
 
 add_test_subdirectory()

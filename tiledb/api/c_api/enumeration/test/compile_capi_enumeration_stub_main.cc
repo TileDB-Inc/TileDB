@@ -32,7 +32,15 @@
 int main() {
   try {
     tiledb_enumeration_handle_t e{
-        "fooo", tiledb::sm::Datatype::INT32, 1, 0, nullptr, 0, nullptr, 0};
+        "fooo",
+        tiledb::sm::Datatype::INT32,
+        1,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        0,
+        nullptr};
   } catch (...) {
   }
   return 0;

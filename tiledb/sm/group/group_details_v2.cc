@@ -47,12 +47,13 @@ GroupDetailsV2::GroupDetailsV2(const URI& group_uri)
 //   group_member #1
 //   group_member #2
 //   ...
-void GroupDetailsV2::serialize(Serializer& serializer) {
+void GroupDetailsV2::serialize(
+    const std::vector<std::shared_ptr<GroupMember>>& members,
+    Serializer& serializer) const {
   serializer.write<format_version_t>(GroupDetailsV2::format_version_);
-  uint64_t group_member_num = members_.size();
-  serializer.write<uint64_t>(group_member_num);
-  for (auto& it : members_) {
-    it.second->serialize(serializer);
+  serializer.write<uint64_t>(members.size());
+  for (auto& it : members) {
+    it->serialize(serializer);
   }
 }
 
@@ -105,30 +106,23 @@ shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
   return group;
 }
 
-Status GroupDetailsV2::apply_pending_changes() {
+std::vector<std::shared_ptr<GroupMember>> GroupDetailsV2::members_to_serialize()
+    const {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  members_.clear();
-  members_vec_.clear();
-  members_by_name_.clear();
-  members_vec_.reserve(members_to_modify_.size());
+  decltype(members_) members = members_;
 
-  // First add each member to unordered map, overriding if the user adds/removes
-  // it multiple times
-  for (auto& it : members_to_modify_) {
-    members_[it->uri().to_string()] = it;
+  // Add each member, overriding if the user adds/removes it multiple times.
+  for (auto it : members_to_modify_) {
+    members[it->key()] = it;
   }
 
-  for (auto& it : members_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
+  std::vector<std::shared_ptr<GroupMember>> result;
+  result.reserve(members.size());
+  for (auto& it : members) {
+    result.emplace_back(it.second);
   }
-  changes_applied_ = !members_to_modify_.empty();
-  members_to_modify_.clear();
-
-  return Status::Ok();
+  return result;
 }
 
 }  // namespace sm

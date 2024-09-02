@@ -41,12 +41,6 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-class FilterStatusException : public StatusException {
- public:
-  explicit FilterStatusException(const std::string& msg)
-      : StatusException("Filter", msg) {
-  }
-};
 
 Filter::Filter(FilterType type, Datatype filter_data_type) {
   type_ = type;
@@ -140,3 +134,8 @@ void Filter::init_decompression_resource_pool(uint64_t) {
 
 }  // namespace sm
 }  // namespace tiledb
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Filter& filter) {
+  filter.output(os);
+  return os;
+}

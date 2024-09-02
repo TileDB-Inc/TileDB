@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,6 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/consistency.h"
@@ -46,17 +45,221 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArraySchema;
-class SchemaEvolution;
+class ArraySchemaEvolution;
 class FragmentMetadata;
+class MemoryTracker;
 enum class QueryType : uint8_t;
+
+/**
+ * Class to store opened array resources. The class is not C.41 compliant as the
+ * serialization code doesn't allow it. It needs to be refactored. This object
+ * will not change after the array as been opened though (see note below for the
+ * consolidation exception), so eventually we can make this object C.41
+ * compliant. That object allows queries or subarrays can take a reference to
+ * the resources which is going to be stored in a shared pointer and guarantee
+ * that the resources will be kept alive for the whole duration of the query.
+ *
+ * For consolidation, the opened array resources will be changed after the array
+ * is opened. The consolidator does load fragments separately once it figured
+ * out what it wants to consolidate. This is not an issue as we control the
+ * consolidator code and that code is built around that functionality.
+ */
+class OpenedArray {
+ public:
+  /* No default constructor. */
+  OpenedArray() = delete;
+
+  /**
+   * Construct a new Opened Array object.
+   *
+   * @param resources The context resources to use.
+   * @param memory_tracker The array's MemoryTracker.
+   * @param array_uri The URI of the array.
+   * @param encryption_type Encryption type.
+   * @param key_bytes Encryption key data.
+   * @param key_length Encryption key length.
+   * @param timestamp_start Start timestamp used to load the array directory.
+   * @param timestamp_end_opened_at Timestamp at which the array was opened.
+   * @param is_remote Is the array remote?
+   */
+  OpenedArray(
+      ContextResources& resources,
+      shared_ptr<MemoryTracker> memory_tracker,
+      const URI& array_uri,
+      EncryptionType encryption_type,
+      const void* key_bytes,
+      uint32_t key_length,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end_opened_at,
+      bool is_remote)
+      : resources_(resources)
+      , array_dir_(ArrayDirectory(resources, array_uri))
+      , array_schema_latest_(nullptr)
+      , metadata_(memory_tracker)
+      , metadata_loaded_(false)
+      , non_empty_domain_computed_(false)
+      , encryption_key_(make_shared<EncryptionKey>(HERE()))
+      , timestamp_start_(timestamp_start)
+      , timestamp_end_opened_at_(timestamp_end_opened_at)
+      , is_remote_(is_remote) {
+    throw_if_not_ok(
+        encryption_key_->set_key(encryption_type, key_bytes, key_length));
+  }
+
+  /** Returns the context resources. */
+  inline ContextResources& resources() {
+    return resources_;
+  }
+
+  /** Returns the array directory object. */
+  inline const ArrayDirectory& array_directory() const {
+    return array_dir_.value();
+  }
+
+  /** Sets the array directory. */
+  inline void set_array_directory(const ArrayDirectory&& dir) {
+    array_dir_ = dir;
+  }
+
+  /** Returns the latest array schema. */
+  inline const ArraySchema& array_schema_latest() const {
+    return *(array_schema_latest_.get());
+  }
+
+  /** Returns the latest array schema as a shared pointer. */
+  inline shared_ptr<ArraySchema> array_schema_latest_ptr() const {
+    return array_schema_latest_;
+  }
+
+  /** Sets the latest array schema. */
+  inline void set_array_schema_latest(
+      const shared_ptr<ArraySchema>& array_schema) {
+    array_schema_latest_ = array_schema;
+  }
+
+  /** Returns all array schemas. */
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  array_schemas_all() const {
+    return array_schemas_all_;
+  }
+
+  /** Sets all array schema. */
+  inline void set_array_schemas_all(
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>&& all_schemas) {
+    array_schemas_all_ = std::move(all_schemas);
+  }
+
+  /** Gets a reference to the metadata. */
+  inline Metadata& metadata() {
+    return metadata_;
+  }
+
+  /** Get a reference to the `metadata_loaded_` value. */
+  inline bool& metadata_loaded() {
+    return metadata_loaded_;
+  }
+
+  /** Get a reference to the `non_empty_domain_computed_` value. */
+  inline bool& non_empty_domain_computed() {
+    return non_empty_domain_computed_;
+  }
+
+  /** Gets a reference to the non empty domain. */
+  inline NDRange& non_empty_domain() {
+    return non_empty_domain_;
+  }
+
+  /** Gets a reference to the fragment metadata. */
+  inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
+    return fragment_metadata_;
+  }
+
+  /** Returns a constant pointer to the encryption key. */
+  inline const EncryptionKey* encryption_key() const {
+    return encryption_key_.get();
+  }
+
+  /**
+   * Returns a reference to the private encryption key.
+   */
+  inline const EncryptionKey& get_encryption_key() const {
+    return *encryption_key_;
+  }
+
+  /** Returns the start timestamp used to load the array directory. */
+  inline uint64_t timestamp_start() const {
+    return timestamp_start_;
+  }
+
+  /**
+   * Returns the timestamp at which the array was opened.
+   *
+   * WARNING: This is a legacy function that is needed to support the current
+   * API and REST calls. Do not use in new code.
+   */
+  inline uint64_t timestamp_end_opened_at() const {
+    return timestamp_end_opened_at_;
+  }
+
+  /** Returns if the array is remote or not. */
+  inline bool is_remote() const {
+    return is_remote_;
+  }
+
+ private:
+  /** The context resources. */
+  ContextResources& resources_;
+
+  /** The array directory object for listing URIs. */
+  optional<ArrayDirectory> array_dir_;
+
+  /** The latest array schema. */
+  shared_ptr<ArraySchema> array_schema_latest_;
+
+  /**
+   * A map of all array_schemas_all
+   */
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
+
+  /** The array metadata. */
+  Metadata metadata_;
+
+  /** True if the array metadata is loaded. */
+  bool metadata_loaded_;
+
+  /** True if the non_empty_domain has been computed */
+  bool non_empty_domain_computed_;
+
+  /** The non-empty domain of the array. */
+  NDRange non_empty_domain_;
+
+  /** The metadata of the fragments the array was opened with. */
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
+
+  /**
+   * The private encryption key used to encrypt the array.
+   *
+   * Note: This is the only place in TileDB where the user's private key
+   * bytes should be stored. Whenever a key is needed, a pointer to this
+   * memory region should be passed instead of a copy of the bytes.
+   */
+  shared_ptr<EncryptionKey> encryption_key_;
+
+  /** The start timestamp used to load the array directory. */
+  uint64_t timestamp_start_;
+
+  /** The timestamp at which the array was opened. */
+  uint64_t timestamp_end_opened_at_;
+
+  /** Is this a remote array? */
+  bool is_remote_;
+};
 
 /**
  * Free function that returns a reference to the ConsistencyController object.
@@ -89,8 +292,8 @@ class Array {
 
   /** Constructor. */
   Array(
+      ContextResources& resources,
       const URI& array_uri,
-      StorageManager* storage_manager,
       ConsistencyController& cc = controller());
 
   /** Destructor. */
@@ -103,37 +306,67 @@ class Array {
   /*                API                */
   /* ********************************* */
 
+  /** Returns the opened array. */
+  inline const shared_ptr<OpenedArray> opened_array() const {
+    return opened_array_;
+  };
+
   /** Returns the array directory object. */
-  const ArrayDirectory& array_directory() const;
+  inline const ArrayDirectory& array_directory() const {
+    return opened_array_->array_directory();
+  }
 
   /** Set the array directory. */
-  void set_array_directory(const ArrayDirectory& dir) {
-    array_dir_ = dir;
+  inline void set_array_directory(const ArrayDirectory&& dir) {
+    opened_array_->set_array_directory(std::move(dir));
   }
 
   /** Sets the latest array schema.
    * @param array_schema The array schema to set.
    */
-  void set_array_schema_latest(const shared_ptr<ArraySchema>& array_schema);
+  inline void set_array_schema_latest(
+      const shared_ptr<ArraySchema>& array_schema) {
+    opened_array_->set_array_schema_latest(array_schema);
+  }
 
   /** Returns the latest array schema. */
-  const ArraySchema& array_schema_latest() const;
+  inline const ArraySchema& array_schema_latest() const {
+    return opened_array_->array_schema_latest();
+  }
 
   /** Returns the latest array schema as a shared pointer. */
-  shared_ptr<const ArraySchema> array_schema_latest_ptr() const;
+  inline shared_ptr<const ArraySchema> array_schema_latest_ptr() const {
+    return opened_array_->array_schema_latest_ptr();
+  }
 
   /** Returns array schemas map. */
   inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
   array_schemas_all() const {
-    return array_schemas_all_;
+    return opened_array_->array_schemas_all();
   }
 
   /**
    * Sets all array schemas.
    * @param all_schemas The array schemas to set.
    */
-  void set_array_schemas_all(
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas);
+  inline void set_array_schemas_all(
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>&& all_schemas) {
+    opened_array_->set_array_schemas_all(std::move(all_schemas));
+  }
+
+  /**
+   * Evolve a TileDB array schema and store its new schema.
+   *
+   * @param resources The context resources.
+   * @param array_uri The uri of the array whose schema is to be evolved.
+   * @param schema_evolution The schema evolution.
+   * @param encryption_key The encryption key to use.
+   */
+  static void evolve_array_schema(
+      ContextResources& resources,
+      const URI& array_uri,
+      ArraySchemaEvolution* array_schema,
+      const EncryptionKey& encryption_key);
 
   /** Returns the array URI. */
   const URI& array_uri() const;
@@ -141,6 +374,20 @@ class Array {
   /** Returns the serialized array URI, this is for backwards compatibility with
    * serialization in pre TileDB 2.4 */
   const URI& array_uri_serialized() const;
+
+  /**
+   * Creates a TileDB array, storing its schema.
+   *
+   * @param resources The context resources.
+   * @param array_uri The URI of the array to be created.
+   * @param array_schema The array schema.
+   * @param encryption_key The encryption key to use.
+   */
+  static void create(
+      ContextResources& resources,
+      const URI& array_uri,
+      const shared_ptr<ArraySchema>& array_schema,
+      const EncryptionKey& encryption_key);
 
   /**
    * Opens the array for reading at a timestamp retrieved from the config
@@ -179,9 +426,8 @@ class Array {
    * Reload the array with the specified fragments.
    *
    * @param fragments_to_load The list of fragments to load.
-   * @return Status
    */
-  Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
+  void load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
    * Opens the array for reading.
@@ -210,52 +456,117 @@ class Array {
   Status close();
 
   /**
-   * Deletes the Array data with given URI.
+   * Performs deletion of local fragments with the given parent URI,
+   * between the provided timestamps.
    *
-   * @param uri The uri of the Array whose data is to be deleted.
+   * @param resources The context resources.
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete fragments.
+   * @param timestamp_end The end timestamp at which to delete fragments.
+   * @param array_dir An optional ArrayDirectory from which to delete fragments.
    *
-   * @pre The Array must be open for exclusive writes
+   * @section Maturity Notes
+   * This is legacy code, ported from StorageManager during its removal process.
+   * Its existence supports the non-static `delete_fragments` API below,
+   * performing the actual deletion of fragments. This function is slated for
+   * removal and should be directly integrated into the function below.
    */
-  void delete_array(const URI& uri);
+  static void delete_fragments(
+      ContextResources& resources,
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timstamp_end,
+      std::optional<ArrayDirectory> array_dir = std::nullopt);
 
   /**
-   * Deletes the fragments from the Array with given URI.
+   * Handles local and remote deletion of fragments between the provided
+   * timestamps from an open array with the given URI.
    *
    * @param uri The uri of the Array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete fragments.
    * @param timestamp_end The end timestamp at which to delete fragments.
    *
    * @pre The Array must be open for exclusive writes
+   *
+   * @section Maturity Notes
+   * This API is an interim version of its final product, awaiting rewrite.
+   * As is, it handles the incoming URI and invokes the remote or local function
+   * call accordingly. The local, static function above is legacy code which
+   * exists only to support this function. A rewrite should integrate the two
+   * and remove the need for any static APIs.
    */
   void delete_fragments(
       const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
 
   /**
+   * Performs deletion of the local array with the given parent URI.
+   *
+   * @param resources The context resources.
+   * @param uri The uri of the Array whose data is to be deleted.
+   *
+   * @section Maturity Notes
+   * This is legacy code, ported from StorageManager during its removal process.
+   * Its existence supports the non-static `delete_array` API below,
+   * performing the actual deletion of array data. This function is slated for
+   * removal and should be directly integrated into the function below.
+   */
+  static void delete_array(ContextResources& resources, const URI& uri);
+
+  /**
+   * Handles local and remote deletion of an open array with the given URI.
+   *
+   * @param uri The uri of the Array whose data is to be deleted.
+   *
+   * @pre The Array must be open for exclusive writes
+   *
+   * @section Maturity Notes
+   * This API is an interim version of its final product, awaiting rewrite.
+   * As is, it handles the incoming URI and invokes the remote or local function
+   * call accordingly. The local, static function above is legacy code which
+   * exists only to support this function. A rewrite should integrate the two
+   * and remove the need for any static APIs.
+   */
+  void delete_array(const URI& uri);
+
+  /**
    * Deletes the fragments with the given URIs from the Array with given URI.
    *
-   * @param uri The uri of the Array whose fragments are to be deleted.
    * @param fragment_uris The uris of the fragments to be deleted.
    *
    * @pre The Array must be open for exclusive writes
    */
-  void delete_fragments_list(
-      const URI& uri, const std::vector<URI>& fragment_uris);
+  void delete_fragments_list(const std::vector<URI>& fragment_uris);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
 
   /**
-   * Returns the fragment metadata of the array. If the array is not open,
-   * an empty vector is returned.
-   */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata() const;
-
-  /**
    * Accessor to the fragment metadata of the array.
    */
   inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
-    return fragment_metadata_;
+    return opened_array_->fragment_metadata();
   }
+
+  /**
+   * Sets fragment metadata.
+   * @param fragment_metadata The fragment metadata.
+   */
+  inline void set_fragment_metadata(
+      std::vector<shared_ptr<FragmentMetadata>>&& fragment_metadata) {
+    opened_array_->fragment_metadata() = fragment_metadata;
+  }
+
+  /**
+   * Retrieves the encryption type.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the array.
+   * @param encryption_type Set to the encryption type.
+   */
+  static void encryption_type(
+      ContextResources& resources,
+      const URI& uri,
+      EncryptionType* encryption_type);
 
   /**
    * Get the enumeration for the given name.
@@ -278,10 +589,12 @@ class Array {
    * loaded before this function returns.
    *
    * @param enumeration_names The names of the enumerations.
+   * @param schema The ArraySchema to store loaded enumerations in.
    * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
    */
   std::vector<shared_ptr<const Enumeration>> get_enumerations(
-      const std::vector<std::string>& enumeration_names);
+      const std::vector<std::string>& enumeration_names,
+      shared_ptr<ArraySchema> schema);
 
   /** Load all enumerations for the array. */
   void load_all_enumerations();
@@ -324,7 +637,9 @@ class Array {
   /**
    * Returns a reference to the private encryption key.
    */
-  const EncryptionKey& get_encryption_key() const;
+  inline const EncryptionKey& get_encryption_key() const {
+    return opened_array_->get_encryption_key();
+  }
 
   /**
    * Re-opens the array. This effectively updates the "view" of the array,
@@ -344,36 +659,67 @@ class Array {
    */
   Status reopen(uint64_t timestamp_start, uint64_t timestamp_end);
 
-  /** Returns the start timestamp. */
+  /** Returns the start timestamp used to load the array directory. */
   inline uint64_t timestamp_start() const {
-    return timestamp_start_;
+    return array_dir_timestamp_start_;
   }
 
-  /** Returns the end timestamp. */
+  /**
+   * Returns the end timestamp as set by the user.
+   *
+   * This may differ from the actual timestamp in use if the array has not yet
+   * been opened, the user has changed this value, or if using the sentinel
+   * value of `UINT64_MAX`.
+   */
   inline uint64_t timestamp_end() const {
-    return timestamp_end_;
+    return user_set_timestamp_end_.value_or(UINT64_MAX);
   }
 
-  /** Returns the timestamp at which the array was opened. */
+  /**
+   * Returns the timestamp at which the array was opened.
+   *
+   * WARNING: This is a legacy function that is needed to support the current
+   * API and REST calls. Do not use in new code.
+   */
   inline uint64_t timestamp_end_opened_at() const {
-    return timestamp_end_opened_at_;
+    return query_type_ == QueryType::READ ?
+               array_dir_timestamp_end_ :
+               new_component_timestamp_.value_or(0);
   }
 
   /** Directly set the timestamp start value. */
   inline void set_timestamp_start(uint64_t timestamp_start) {
-    timestamp_start_ = timestamp_start;
+    array_dir_timestamp_start_ = timestamp_start;
   }
 
   /** Directly set the timestamp end value. */
   inline void set_timestamp_end(uint64_t timestamp_end) {
-    timestamp_end_ = timestamp_end;
+    if (timestamp_end == UINT64_MAX) {
+      user_set_timestamp_end_ = nullopt;
+    } else {
+      user_set_timestamp_end_ = timestamp_end;
+    }
   }
 
-  /** Directly set the timestamp end opened at value. */
-  inline void set_timestamp_end_opened_at(
-      const uint64_t timestamp_end_opened_at) {
-    timestamp_end_opened_at_ = timestamp_end_opened_at;
-  }
+  /**
+   * Set the internal timestamps.
+   *
+   * Note for sentinel values for `timestamp_end`:
+   * * `timestamp_end == UINT64_MAX`:
+   *     The array directory end timestamp will be set to the current time if
+   *     ``set_current_time=True``. New components will use the time at query
+   *     submission.
+   * * `timestamp_end` == 0:
+   *     The new component timestamp will use the time at query submission.
+   *
+   * @param timestamp_start The starting timestamp for opening the array
+   * directory.
+   * @param timstamp_end The ending timestamp for opening the array directory
+   * and setting new components. See above comments for sentinel values `0` and
+   * `UINT64_MAX`.
+   */
+  void set_timestamps(
+      uint64_t timetamp_start, uint64_t timestamp_end, bool set_current_time);
 
   /** Directly set the array config.
    *
@@ -479,7 +825,7 @@ class Array {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the array metadata object. */
-  Status metadata(Metadata** metadata);
+  Metadata& metadata();
 
   /**
    * Retrieves the array metadata object.
@@ -495,45 +841,148 @@ class Array {
 
   /** Set if array metadata is loaded already for this array or not */
   inline void set_metadata_loaded(const bool is_loaded) {
-    metadata_loaded_ = is_loaded;
+    opened_array_->metadata_loaded() = is_loaded;
   }
 
   /** Check if array metadata is loaded already for this array or not */
-  inline bool& metadata_loaded() {
-    return metadata_loaded_;
+  inline bool metadata_loaded() {
+    return opened_array_->metadata_loaded();
   }
 
   /** Check if non emtpy domain is loaded already for this array or not */
-  inline bool& non_empty_domain_computed() {
-    return non_empty_domain_computed_;
+  inline bool non_empty_domain_computed() {
+    return opened_array_->non_empty_domain_computed();
   }
 
-  /** Returns the non-empty domain of the opened array.
-   *  If the non_empty_domain has not been computed or loaded
-   *  it will be loaded first
-   * */
-  tuple<Status, optional<const NDRange>> non_empty_domain();
+  /**
+   * Returns the non-empty domain of the opened array. If the non_empty_domain
+   * has not been computed or loaded it will be loaded first.
+   */
+  const NDRange non_empty_domain();
 
   /**
-   * Retrieves the array metadata object that is already loadad.
-   * If it's not yet loaded it will be empty.
+   * Retrieves the non-empty domain from the opened array.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
    */
-  NDRange* loaded_non_empty_domain();
+  void non_empty_domain(NDRange* domain, bool* is_empty);
+
+  /**
+   * Retrieves the non-empty domain from the opened array.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @pre The array dimensions are numeric and of the same type.
+   *
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain(void* domain, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @param idx The dimension index.
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_from_index(unsigned idx, void* domain, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain size of the opened array on the given
+   * dimension. This is the union of the non-empty domains of the array
+   * fragments. Applicable only to var-sized dimensions.
+   *
+   * @param idx The dimension index.
+   * @param start_size The size in bytes of the range start.
+   * @param end_size The size in bytes of the range end.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_size_from_index(
+      unsigned idx, uint64_t* start_size, uint64_t* end_size, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param idx The dimension index.
+   * @param start The domain range start to set.
+   * @param end The domain range end to set.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_from_index(
+      unsigned idx, void* start, void* end, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @param field_name The dimension name.
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_from_name(
+      std::string_view field_name, void* domain, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain size of the open array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param field_name The dimension name.
+   * @param start_size The size in bytes of the range start.
+   * @param end_size The size in bytes of the range end.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_size_from_name(
+      std::string_view field_name,
+      uint64_t* start_size,
+      uint64_t* end_size,
+      bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+
+   * @param field_name The dimension name.
+   * @param start The domain range start to set.
+   * @param end The domain range end to set.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_from_name(
+      std::string_view field_name, void* start, void* end, bool* is_empty);
+
+  /**
+   * Retrieves the array metadata object that is already loaded. If it's not yet
+   * loaded it will be empty.
+   */
+  inline NDRange& loaded_non_empty_domain() {
+    return opened_array_->non_empty_domain();
+  }
 
   /** Returns the non-empty domain of the opened array. */
-  void set_non_empty_domain(const NDRange& non_empty_domain);
+  inline void set_non_empty_domain(const NDRange& non_empty_domain) {
+    opened_array_->non_empty_domain() = non_empty_domain;
+  }
 
   /** Set if the non_empty_domain is computed already for this array or not */
   inline void set_non_empty_domain_computed(const bool is_computed) {
-    non_empty_domain_computed_ = is_computed;
+    opened_array_->non_empty_domain_computed() = is_computed;
   }
 
   /** Returns the memory tracker. */
-  MemoryTracker* memory_tracker();
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
 
   /**
    * Checks the config to see if non empty domain should be serialized on array
-   * open. */
+   * open.
+   */
   bool serialize_non_empty_domain() const;
 
   /**
@@ -562,14 +1011,10 @@ class Array {
   /**
    * Sets the array state as open, used in serialization
    */
-  inline void set_serialized_array_open() {
-    is_open_ = true;
-  }
+  void set_serialized_array_open();
 
   /** Set the query type to open the array for. */
-  inline void set_query_type(QueryType query_type) {
-    query_type_ = query_type;
-  }
+  void set_query_type(QueryType query_type);
 
   /**
    * Checks the array is open, in MODIFY_EXCLUSIVE mode, before deleting data.
@@ -583,26 +1028,38 @@ class Array {
   std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes() const;
 
   /** Load array directory for non-remote arrays */
-  ArrayDirectory& load_array_directory();
+  const ArrayDirectory& load_array_directory();
+
+  /* Get the REST client */
+  [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
+    return resources_.rest_client();
+  }
+
+  /**
+   * Upgrade a TileDB array to latest format version.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the array.
+   * @param config Configuration parameters for the upgrade
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   */
+  static void upgrade_version(
+      ContextResources& resources, const URI& uri, const Config& config);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The latest array schema. */
-  shared_ptr<ArraySchema> array_schema_latest_;
+  /** TileDB Context Resources. */
+  ContextResources& resources_;
 
-  /**
-   * A map of all array_schemas_all
-   */
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
+  /** The opened array that can be used by queries. */
+  shared_ptr<OpenedArray> opened_array_;
 
   /** The array URI. */
   URI array_uri_;
-
-  /** The array directory object for listing URIs. */
-  ArrayDirectory array_dir_;
 
   /** This is a backwards compatible URI from serialization
    *  In TileDB 2.5 we removed sending the URI but 2.4 and older were
@@ -611,18 +1068,6 @@ class Array {
    * clients.
    */
   URI array_uri_serialized_;
-
-  /**
-   * The private encryption key used to encrypt the array.
-   *
-   * Note: This is the only place in TileDB where the user's private key
-   * bytes should be stored. Whenever a key is needed, a pointer to this
-   * memory region should be passed instead of a copy of the bytes.
-   */
-  shared_ptr<EncryptionKey> encryption_key_;
-
-  /** The metadata of the fragments the array was opened with. */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;
@@ -634,34 +1079,40 @@ class Array {
   QueryType query_type_ = QueryType::READ;
 
   /**
-   * The starting timestamp between to open `open_array_` at.
-   * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC).
+   * Starting timestamp to open fragments between.
+   *
+   * Timestamps are ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
    */
-  uint64_t timestamp_start_;
+  uint64_t array_dir_timestamp_start_;
 
   /**
-   * The ending timestamp between to open `open_array_` at.
-   * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). A value of UINT64_T
-   * will be interpretted as the current timestamp.
+   * Timestamp set by the user.
+   *
+   * This is used when setting the end timestamp for loading the array directory
+   * and the timestamp to use when creating fragments, metadata, etc. This may
+   * be changed by the user at any time.
+   *
+   * Timestamps are ms elapsed since 1970-01-01 00:00:00 +0000 (UTC). If set to
+   * `nullopt`, use the current time.
    */
-  uint64_t timestamp_end_;
+  optional<uint64_t> user_set_timestamp_end_;
 
   /**
-   * The ending timestamp that the array was last opened
-   * at. This is useful when `timestamp_end_` has been
-   * set to UINT64_T. In this scenario, this variable will
-   * store the timestamp for the time that the array was
-   * opened.
+   * Ending timestamp to open fragments between.
+   *
+   * Timestamps are ms elapsed since 1970-01-01 00:00:00 +0000 (UTC). Set to a
+   * sentinel value of UINT64_MAX before the array is opened.
    */
-  uint64_t timestamp_end_opened_at_;
+  uint64_t array_dir_timestamp_end_;
 
-  /** TileDB storage manager. */
-  StorageManager* storage_manager_;
-
-  /** TileDB Context Resources. */
-  ContextResources& resources_;
+  /**
+   * The timestamp to use when creating fragments, delete/update commits,
+   * metadata, etc.
+   *
+   * Timestamps are ms elapsed since 1970-01-01 00:00:00 +0000 (UTC). If set to
+   * `nullopt`, use the current time.
+   */
+  optional<uint64_t> new_component_timestamp_;
 
   /** The array config. */
   Config config_;
@@ -679,20 +1130,8 @@ class Array {
   /** True if the array is remote (has `tiledb://` URI scheme). */
   bool remote_;
 
-  /** The array metadata. */
-  Metadata metadata_;
-
-  /** True if the array metadata is loaded. */
-  bool metadata_loaded_;
-
-  /** True if the non_empty_domain has been computed */
-  bool non_empty_domain_computed_;
-
-  /** The non-empty domain of the array. */
-  NDRange non_empty_domain_;
-
   /** Memory tracker for the array. */
-  MemoryTracker memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** A reference to the object which controls the present Array instance. */
   ConsistencyController& consistency_controller_;
@@ -718,9 +1157,8 @@ class Array {
    * `timestamp_start` and `timestamp_end`.
    *
    * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * @return tuple latest ArraySchema, map of all array schemas and
    * vector of FragmentMetadata
-   *        Status Ok on success, else error
    *        ArraySchema The array schema to be retrieved after the
    *           array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
@@ -728,39 +1166,37 @@ class Array {
    *           after the array is opened.
    */
   tuple<
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+      std::vector<shared_ptr<FragmentMetadata>>>
   open_for_reads();
 
   /**
    * Opens an array for reads without fragments.
    *
    * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
+   * @return tuple of latest ArraySchema and map of all array schemas
    *        ArraySchema The array schema to be retrieved after the
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_reads_without_fragments();
 
-  /** Opens an array for writes.
+  /**
+   * Opens an array for writes.
    *
    * @param array The array to open.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
+   * @return tuple of latest ArraySchema and map of all array schemas
    *        ArraySchema The array schema to be retrieved after the
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_writes();
 
   /** Clears the cached max buffer sizes and subarray. */
@@ -818,7 +1254,6 @@ class Array {
   void set_array_closed();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_H

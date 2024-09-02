@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,6 @@
 #ifndef TILEDB_CAPI_FILTER_LIST_INTERNAL_H
 #define TILEDB_CAPI_FILTER_LIST_INTERNAL_H
 
-#include "filter_list_api_external.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 

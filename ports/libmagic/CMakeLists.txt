@@ -91,6 +91,10 @@ set(targets ${targets} libmagic)
 
 target_link_libraries(libmagic PRIVATE PCRE2::POSIX)
 
+if(WIN32)
+  target_link_libraries(libmagic PRIVATE shlwapi)
+endif()
+
 target_include_directories(libmagic
   PUBLIC
     "$<BUILD_INTERFACE:${LIBMAGIC_SOURCE_DIR}>"

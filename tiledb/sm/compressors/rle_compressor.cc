@@ -41,12 +41,18 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status RLE::compress(
+class RLEException : public StatusException {
+ public:
+  explicit RLEException(const std::string& message)
+      : StatusException("RLEException", message) {
+  }
+};
+
+void RLE::compress(
     uint64_t value_size, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr)
-    return LOG_STATUS(Status_CompressionError(
-        "Failed compressing with RLE; null input buffer"));
+    throw RLEException("Failed compressing with RLE; null input buffer");
   unsigned int cur_run_len = 1;
   unsigned int max_run_len = 65535;
   auto input_cur = (const unsigned char*)input_buffer->data() + value_size;
@@ -56,12 +62,12 @@ Status RLE::compress(
 
   // Trivial case
   if (value_num == 0)
-    return Status::Ok();
+    return;
 
   // Sanity check on input buffer
   if (input_buffer->size() % value_size != 0) {
-    return LOG_STATUS(Status_CompressionError(
-        "Failed compressing with RLE; invalid input buffer format"));
+    throw RLEException(
+        "Failed compressing with RLE; invalid input buffer format");
   }
 
   // Make runs
@@ -71,11 +77,11 @@ Status RLE::compress(
       ++cur_run_len;
     } else {  // Save the run
       // Copy to output buffer
-      RETURN_NOT_OK(output_buffer->write(input_prev, value_size));
+      throw_if_not_ok(output_buffer->write(input_prev, value_size));
       byte = (unsigned char)(cur_run_len >> 8);
-      RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
+      throw_if_not_ok(output_buffer->write(&byte, sizeof(char)));
       byte = (unsigned char)(cur_run_len % 256);
-      RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
+      throw_if_not_ok(output_buffer->write(&byte, sizeof(char)));
 
       // Reset current run length
       cur_run_len = 1;
@@ -87,23 +93,20 @@ Status RLE::compress(
   }
 
   // Save final run
-  RETURN_NOT_OK(output_buffer->write(input_prev, value_size));
+  throw_if_not_ok(output_buffer->write(input_prev, value_size));
   byte = (unsigned char)(cur_run_len >> 8);
-  RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
+  throw_if_not_ok(output_buffer->write(&byte, sizeof(char)));
   byte = (unsigned char)(cur_run_len % 256);
-  RETURN_NOT_OK(output_buffer->write(&byte, sizeof(char)));
-
-  return Status::Ok();
+  throw_if_not_ok(output_buffer->write(&byte, sizeof(char)));
 }
 
-Status RLE::decompress(
+void RLE::decompress(
     uint64_t value_size,
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr)
-    return LOG_STATUS(Status_CompressionError(
-        "Failed decompressing with RLE; null input buffer"));
+    throw RLEException("Failed decompressing with RLE; null input buffer");
 
   auto input_cur = static_cast<const unsigned char*>(input_buffer->data());
   uint64_t run_size = value_size + 2 * sizeof(char);
@@ -112,12 +115,12 @@ Status RLE::decompress(
 
   // Trivial case
   if (run_num == 0)
-    return Status::Ok();
+    return;
 
   // Sanity check on input buffer format
   if (input_buffer->size() % run_size != 0) {
-    return LOG_STATUS(Status_CompressionError(
-        "Failed decompressing with RLE; invalid input buffer format"));
+    throw RLEException(
+        "Failed decompressing with RLE; invalid input buffer format");
   }
 
   // Decompress runs
@@ -130,13 +133,11 @@ Status RLE::decompress(
 
     // Copy to output buffer
     for (uint64_t j = 0; j < run_len; ++j)
-      RETURN_NOT_OK(output_buffer->write(input_cur, value_size));
+      throw_if_not_ok(output_buffer->write(input_cur, value_size));
 
     // Update input/output tracking info
     input_cur += run_size;
   }
-
-  return Status::Ok();
 }
 
 uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
@@ -193,15 +194,15 @@ tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
       output_strings_size};
 }
 
-Status RLE::compress(
+void RLE::compress(
     const span<std::string_view> input,
     uint64_t rle_len_size,
     uint64_t string_len_size,
     span<std::byte> output) {
   if (input.empty() || output.empty() || rle_len_size == 0 ||
       string_len_size == 0) {
-    return LOG_STATUS(Status_CompressionError(
-        "Failed compressing strings with RLE; empty input arguments"));
+    throw RLEException(
+        "Failed compressing strings with RLE; empty input arguments");
   }
 
   if (rle_len_size <= 1) {
@@ -245,19 +246,17 @@ Status RLE::compress(
       compress<uint64_t, uint64_t>(input, output);
     }
   }
-
-  return Status::Ok();
 }
 
-Status RLE::decompress(
+void RLE::decompress(
     const span<const std::byte> input,
     const uint8_t rle_len_size,
     const uint8_t string_len_size,
     span<std::byte> output,
     span<uint64_t> output_offsets) {
   if (input.empty() || rle_len_size == 0 || string_len_size == 0) {
-    return LOG_STATUS(Status_CompressionError(
-        "Failed decompressing strings with RLE; empty input arguments"));
+    throw RLEException(
+        "Failed decompressing strings with RLE; empty input arguments");
   }
 
   if (rle_len_size <= 1) {
@@ -301,8 +300,6 @@ Status RLE::decompress(
       decompress<uint64_t, uint64_t>(input, output, output_offsets);
     }
   }
-
-  return Status::Ok();
 }
 
 }  // namespace sm

@@ -31,12 +31,14 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "src/mem_helpers.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 
 using namespace tiledb::sm;
 
 TEST_CASE("TileDomain: Test 1D", "[TileDomain][1d]") {
   int32_t tile_extent_v = 10;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(1);
   tile_extents[0].assign_as<int32_t>(tile_extent_v);
   Layout layout = Layout::ROW_MAJOR;
@@ -72,6 +74,7 @@ TEST_CASE(
   std::vector<int32_t> domain_vec = {1, 10, 1, 10};
   std::vector<int32_t> domain_slice = {1, 10, 1, 10};
   std::vector<int32_t> tile_extents_vec = {2, 5};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(2);
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
@@ -115,6 +118,7 @@ TEST_CASE(
   std::vector<int32_t> domain_vec = {1, 10, 1, 10};
   std::vector<int32_t> domain_slice = {4, 10, 2, 8};
   std::vector<int32_t> tile_extents_vec = {2, 5};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(2);
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
@@ -153,6 +157,7 @@ TEST_CASE(
   std::vector<int32_t> domain_vec = {1, 10, 1, 10};
   std::vector<int32_t> domain_slice = {1, 10, 1, 10};
   std::vector<int32_t> tile_extents_vec = {2, 5};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(2);
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
@@ -191,6 +196,7 @@ TEST_CASE(
   std::vector<int32_t> domain_vec = {1, 10, 1, 10};
   std::vector<int32_t> domain_slice = {4, 10, 2, 8};
   std::vector<int32_t> tile_extents_vec = {2, 5};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(2);
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
@@ -228,6 +234,7 @@ TEST_CASE(
   std::vector<int32_t> domain_vec = {1, 10, 11, 20};
   std::vector<int32_t> domain_slice = {4, 10, 12, 18};
   std::vector<int32_t> tile_extents_vec = {2, 5};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(2);
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
@@ -260,6 +267,7 @@ TEST_CASE(
   std::vector<int32_t> domain_vec = {1, 10, 11, 20};
   std::vector<int32_t> domain_slice = {2, 10, 12, 18};
   std::vector<int32_t> tile_extents_vec = {2, 5};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(2);
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
@@ -297,6 +305,7 @@ TEST_CASE(
   std::vector<int32_t> domain_vec = {1, 10, 11, 20};
   std::vector<int32_t> domain_slice = {2, 10, 12, 18};
   std::vector<int32_t> tile_extents_vec = {2, 5};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(2);
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
@@ -323,6 +332,7 @@ TEST_CASE("TileDomain: Test 2D, covers", "[TileDomain][2d][covers]") {
   std::vector<int32_t> domain_slice_1 = {2, 6, 2, 8};
   std::vector<int32_t> domain_slice_2 = {3, 6, 1, 7};
   std::vector<int32_t> tile_extents_vec = {2, 5};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::vector<ByteVecValue> tile_extents(2);
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);

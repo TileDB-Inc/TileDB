@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -41,6 +41,7 @@
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query_aggregates.h"
 #endif
 // clang-format on
 
@@ -73,21 +74,19 @@
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
 shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
-Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
+void stats_to_capnp(const Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters
   const auto counters = stats.counters();
   if (counters != nullptr && !counters->empty()) {
@@ -113,31 +112,29 @@ Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
       ++index;
     }
   }
-
-  return Status::Ok();
 }
 
-Status stats_from_capnp(
-    const capnp::Stats::Reader& stats_reader, Stats* stats) {
+StatsData stats_from_capnp(const capnp::Stats::Reader& stats_reader) {
+  std::unordered_map<std::string, uint64_t> counters;
+  std::unordered_map<std::string, double> timers;
+
   if (stats_reader.hasCounters()) {
-    auto counters = stats->counters();
     auto counters_reader = stats_reader.getCounters();
     for (const auto entry : counters_reader.getEntries()) {
       auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
-      (*counters)[std::string{key}] = entry.getValue();
+      counters[std::string(key)] = entry.getValue();
     }
   }
 
   if (stats_reader.hasTimers()) {
-    auto timers = stats->timers();
     auto timers_reader = stats_reader.getTimers();
     for (const auto entry : timers_reader.getEntries()) {
       auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
-      (*timers)[std::string{key}] = entry.getValue();
+      timers[std::string(key)] = entry.getValue();
     }
   }
 
-  return Status::Ok();
+  return stats::StatsData(counters, timers);
 }
 
 void range_buffers_to_capnp(
@@ -245,11 +242,9 @@ Status subarray_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = subarray->stats();
-  if (stats != nullptr) {
-    auto stats_builder = builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = subarray->stats();
+  auto stats_builder = builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   if (subarray->relevant_fragments().relevant_fragments_size() > 0) {
     auto relevant_fragments_builder = builder->initRelevantFragments(
@@ -266,26 +261,24 @@ Status subarray_to_capnp(
 
 Status subarray_from_capnp(
     const capnp::Subarray::Reader& reader, Subarray* subarray) {
-  RETURN_NOT_OK(subarray->set_coalesce_ranges(reader.getCoalesceRanges()));
+  subarray->set_coalesce_ranges(reader.getCoalesceRanges());
   auto ranges_reader = reader.getRanges();
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {
     auto range_reader = ranges_reader[i];
-    Datatype type = Datatype::UINT8;
-    RETURN_NOT_OK(datatype_enum(range_reader.getType(), &type));
 
     auto data = range_reader.getBuffer();
     auto data_ptr = data.asBytes();
     if (range_reader.hasBufferSizes()) {
       auto ranges = range_buffers_from_capnp(range_reader);
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
+      subarray->set_ranges_for_dim(i, ranges);
 
       // Set default indicator
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     } else {
       // Handle 1.7 style ranges where there is a single range with no sizes
       Range range(data_ptr.begin(), data.size());
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
+      subarray->set_ranges_for_dim(i, {range});
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     }
   }
@@ -327,11 +320,8 @@ Status subarray_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader.hasStats()) {
-    stats::Stats* stats = subarray->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader.getStats());
+    subarray->set_stats(stats_data);
   }
 
   if (reader.hasRelevantFragments()) {
@@ -427,11 +417,9 @@ Status subarray_partitioner_to_capnp(
   builder->setMemoryBudgetValidity(mem_budget_validity);
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = partitioner.stats();
-  if (stats != nullptr) {
-    auto stats_builder = builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = partitioner.stats();
+  auto stats_builder = builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -524,12 +512,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
+      partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
           &config,
           compute_tp,
-          true));
+          true);
     }
   }
 
@@ -565,11 +553,8 @@ Status subarray_partitioner_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader.hasStats()) {
-    auto stats = partitioner->stats();
-    // We should always have stats
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader.getStats());
+    partitioner->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -595,18 +580,18 @@ Status read_state_to_capnp(
 }
 
 Status index_read_state_to_capnp(
-    const SparseIndexReaderBase::ReadState* read_state,
+    const SparseIndexReaderBase::ReadState& read_state,
     capnp::ReaderIndex::Builder* builder) {
   auto read_state_builder = builder->initReadState();
 
   read_state_builder.setDoneAddingResultTiles(
-      read_state->done_adding_result_tiles_);
+      read_state.done_adding_result_tiles());
 
   auto frag_tile_idx_builder =
-      read_state_builder.initFragTileIdx(read_state->frag_idx_.size());
-  for (size_t i = 0; i < read_state->frag_idx_.size(); ++i) {
-    frag_tile_idx_builder[i].setTileIdx(read_state->frag_idx_[i].tile_idx_);
-    frag_tile_idx_builder[i].setCellIdx(read_state->frag_idx_[i].cell_idx_);
+      read_state_builder.initFragTileIdx(read_state.frag_idx().size());
+  for (size_t i = 0; i < read_state.frag_idx().size(); ++i) {
+    frag_tile_idx_builder[i].setTileIdx(read_state.frag_idx()[i].tile_idx_);
+    frag_tile_idx_builder[i].setCellIdx(read_state.frag_idx()[i].cell_idx_);
   }
 
   return Status::Ok();
@@ -662,25 +647,21 @@ Status read_state_from_capnp(
   return Status::Ok();
 }
 
-Status index_read_state_from_capnp(
+tiledb::sm::SparseIndexReaderBase::ReadState index_read_state_from_capnp(
     const ArraySchema& schema,
-    const capnp::ReadStateIndex::Reader& read_state_reader,
-    SparseIndexReaderBase* reader) {
-  auto read_state = reader->read_state();
-
-  read_state->done_adding_result_tiles_ =
-      read_state_reader.getDoneAddingResultTiles();
-
+    const capnp::ReadStateIndex::Reader& read_state_reader) {
+  bool done_reading = read_state_reader.getDoneAddingResultTiles();
   assert(read_state_reader.hasFragTileIdx());
-  read_state->frag_idx_.clear();
+  std::vector<FragIdx> fragment_indexes;
   for (const auto rcs : read_state_reader.getFragTileIdx()) {
     auto tile_idx = rcs.getTileIdx();
     auto cell_idx = rcs.getCellIdx();
 
-    read_state->frag_idx_.emplace_back(tile_idx, cell_idx);
+    fragment_indexes.emplace_back(tile_idx, cell_idx);
   }
 
-  return Status::Ok();
+  return tiledb::sm::SparseIndexReaderBase::ReadState(
+      std::move(fragment_indexes), done_reading);
 }
 
 Status dense_read_state_from_capnp(
@@ -916,11 +897,9 @@ Status reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -950,11 +929,9 @@ Status index_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -985,11 +962,9 @@ Status dense_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -1067,9 +1042,8 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
       tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
 }
 
-Status condition_from_capnp(
-    const capnp::Condition::Reader& condition_reader,
-    QueryCondition* const condition) {
+QueryCondition condition_from_capnp(
+    const capnp::Condition::Reader& condition_reader) {
   if (condition_reader.hasClauses()) {  // coming from older API
     // Accumulating the AST value nodes from the clause list.
     std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
@@ -1103,19 +1077,20 @@ Status condition_from_capnp(
     // Constructing the tree from the list of AST nodes.
     assert(ast_nodes.size() > 0);
     if (ast_nodes.size() == 1) {
-      condition->set_ast(std::move(ast_nodes[0]));
+      return QueryCondition(std::move(ast_nodes[0]));
     } else {
       auto tree_ptr = tdb_unique_ptr<ASTNode>(tdb_new(
           ASTNodeExpr, std::move(ast_nodes), QueryConditionCombinationOp::AND));
-      condition->set_ast(std::move(tree_ptr));
+      return QueryCondition(std::move(tree_ptr));
     }
   } else if (condition_reader.hasTree()) {
     // Constructing the query condition from the AST representation.
     // We assume that the deserialized values of the AST are validated properly.
     auto ast_reader = condition_reader.getTree();
-    condition->set_ast(condition_ast_from_capnp(ast_reader));
+    return QueryCondition(condition_ast_from_capnp(ast_reader));
   }
-  return Status::Ok();
+  throw std::runtime_error(
+      "condition_from_capnp: serialized QC has no tree or clauses.");
 }
 
 Status reader_from_capnp(
@@ -1143,18 +1118,14 @@ Status reader_from_capnp(
   // Query condition
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
-    QueryCondition condition;
-    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    QueryCondition condition = condition_from_capnp(condition_reader);
     RETURN_NOT_OK(query->set_condition(condition));
   }
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader_reader.getStats());
+    reader->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -1179,24 +1150,20 @@ Status index_reader_from_capnp(
 
   // Read state
   if (reader_reader.hasReadState())
-    RETURN_NOT_OK(index_read_state_from_capnp(
-        schema, reader_reader.getReadState(), reader));
+    reader->set_read_state(
+        index_read_state_from_capnp(schema, reader_reader.getReadState()));
 
   // Query condition
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
-    QueryCondition condition;
-    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    QueryCondition condition = condition_from_capnp(condition_reader);
     RETURN_NOT_OK(query->set_condition(condition));
   }
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader_reader.getStats());
+    reader->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -1228,18 +1195,14 @@ Status dense_reader_from_capnp(
   // Query condition
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
-    QueryCondition condition;
-    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    QueryCondition condition = condition_from_capnp(condition_reader);
     RETURN_NOT_OK(query->set_condition(condition));
   }
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader_reader.getStats());
+    reader->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -1252,18 +1215,14 @@ Status delete_from_capnp(
   // Query condition
   if (delete_reader.hasCondition()) {
     auto condition_reader = delete_reader.getCondition();
-    QueryCondition condition;
-    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    QueryCondition condition = condition_from_capnp(condition_reader);
     RETURN_NOT_OK(query->set_condition(condition));
   }
 
   // If cap'n proto object has stats set it on c++ object
   if (delete_reader.hasStats()) {
-    stats::Stats* stats = delete_strategy->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(delete_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(delete_reader.getStats());
+    delete_strategy->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -1280,11 +1239,9 @@ Status delete_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = delete_strategy.stats();
-  if (stats != nullptr) {
-    auto stats_builder = delete_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *delete_strategy.stats();
+  auto stats_builder = delete_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -1308,11 +1265,9 @@ Status writer_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = writer.stats();
-  if (stats != nullptr) {
-    auto stats_builder = writer_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *writer.stats();
+  auto stats_builder = writer_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   if (query.layout() == Layout::GLOBAL_ORDER) {
     auto& global_writer = dynamic_cast<GlobalOrderWriter&>(writer);
@@ -1348,11 +1303,8 @@ Status writer_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (writer_reader.hasStats()) {
-    stats::Stats* stats = writer->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(writer_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(writer_reader.getStats());
+    writer->set_stats(stats_data);
   }
 
   if (query.layout() == Layout::GLOBAL_ORDER &&
@@ -1413,6 +1365,17 @@ Status query_to_capnp(
   const auto dim_label_names = query.dimension_label_buffer_names();
   buffer_names.insert(
       buffer_names.end(), dim_label_names.begin(), dim_label_names.end());
+
+  // Add aggregate buffers
+  const auto aggregate_names = query.aggregate_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), aggregate_names.begin(), aggregate_names.end());
+
+  // TODO: add API in query to get all buffers in one go
+  // Deserialization gets the list of buffers from wire then call
+  // set_data_buffer which knows on which structure to set. We should have a
+  // function here as well that gets all buffer names or even better, all
+  // buffers
 
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
@@ -1553,10 +1516,10 @@ Status query_to_capnp(
   RETURN_NOT_OK(config_to_capnp(query.config(), &config_builder));
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = query.stats();
-  if (stats != nullptr) {
+  auto stats = query.stats();
+  if (stats) {
     auto stats_builder = query_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+    stats_to_capnp(*stats, &stats_builder);
   }
 
   auto& written_fragment_info = query.get_written_fragment_info();
@@ -1582,6 +1545,16 @@ Status query_to_capnp(
     }
   }
 
+  // The server should throw if it's about to serialize an incomplete query
+  // that has aggregates on it, this behavior is currently not supported.
+  if (!client_side && query.status() == QueryStatus::INCOMPLETE &&
+      query.has_aggregates()) {
+    throw StatusException(Status_SerializationError(
+        "Aggregates are not currently supported in incomplete remote "
+        "queries"));
+  }
+  query_channels_to_capnp(query, query_builder);
+
   return Status::Ok();
 }
 
@@ -1591,7 +1564,8 @@ Status query_from_capnp(
     void* buffer_start,
     CopyState* const copy_state,
     Query* const query,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    const bool allocate_buffers) {
   using namespace tiledb::sm;
 
   auto array = query->array();
@@ -1654,6 +1628,11 @@ Status query_from_capnp(
     }
   }
 
+  // It's important that deserialization of query channels/aggregates happens
+  // before deserializing buffers. set_data_buffer won't know whether a buffer
+  // is aggregate or not if the list of aggregates per channel is not populated.
+  query_channels_from_capnp(query_reader, query);
+
   const auto& schema = query->array_schema();
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders()) {
@@ -1686,8 +1665,19 @@ Status query_from_capnp(
     uint8_t* existing_validity_buffer = nullptr;
     uint64_t existing_validity_buffer_size = 0;
 
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
+    // TODO: This is yet another instance where there needs to be a common
+    // mechanism for reporting the common properties of a field.
+    // Refactor to use query_field_t.
+    bool var_size = false;
+    bool nullable = false;
+    auto aggregate = query->get_aggregate(name);
+    if (aggregate.has_value()) {
+      var_size = aggregate.value()->aggregation_var_sized();
+      nullable = aggregate.value()->aggregation_nullable();
+    } else {
+      var_size = schema.var_size(name);
+      nullable = schema.is_nullable(name);
+    }
     const QueryBuffer& query_buffer = query->buffer(name);
     if (type == QueryType::READ) {
       // We use the query_buffer directly in order to get the original buffer
@@ -1971,6 +1961,15 @@ Status query_from_capnp(
         Buffer offsets_buff(nullptr, fixedlen_size);
         Buffer varlen_buff(nullptr, varlen_size);
         Buffer validitylen_buff(nullptr, validitylen_size);
+
+        // Aggregates don't have incomplete queries, and only set the results on
+        // completion, so we don't need to have go allocate memory.
+        if (query->is_aggregate(name)) {
+          offsets_buff = Buffer(fixedlen_size);
+          varlen_buff = Buffer(fixedlen_size);
+          validitylen_buff = Buffer(validitylen_size);
+        }
+
         // For the server on reads we want to set the original user requested
         // buffer sizes This handles the case of incomplete queries where on
         // the second `submit()` call the client's buffer size will be the
@@ -2006,19 +2005,39 @@ Status query_from_capnp(
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->var_len_size, false, true));
+              name,
+              attr_state->var_len_data.data(),
+              &attr_state->var_len_size,
+              allocate_buffers,
+              true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false, true));
+              name,
+              attr_state->fixed_len_data.data_as<uint64_t>(),
+              &attr_state->fixed_len_size,
+              allocate_buffers,
+              true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false, true));
+                name,
+                attr_state->validity_len_data.data_as<uint8_t>(),
+                &attr_state->validity_len_size,
+                allocate_buffers,
+                true));
           }
         } else {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false, true));
+              name,
+              attr_state->fixed_len_data.data(),
+              &attr_state->fixed_len_size,
+              allocate_buffers,
+              true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false, true));
+                name,
+                attr_state->validity_len_data.data_as<uint8_t>(),
+                &attr_state->validity_len_size,
+                allocate_buffers,
+                true));
           }
         }
       } else if (query_type == QueryType::WRITE) {
@@ -2047,12 +2066,24 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           throw_if_not_ok(query->set_data_buffer(
-              name, varlen_data, &attr_state->var_len_size, true, true));
+              name,
+              varlen_data,
+              &attr_state->var_len_size,
+              allocate_buffers,
+              true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, offsets, &attr_state->fixed_len_size, true, true));
+              name,
+              offsets,
+              &attr_state->fixed_len_size,
+              allocate_buffers,
+              true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size, true, true));
+                name,
+                validity,
+                &attr_state->validity_len_size,
+                allocate_buffers,
+                true));
           }
         } else {
           auto* data = attribute_buffer_start;
@@ -2075,10 +2106,14 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           throw_if_not_ok(query->set_data_buffer(
-              name, data, &attr_state->fixed_len_size, true, true));
+              name, data, &attr_state->fixed_len_size, allocate_buffers, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size, true, true));
+                name,
+                validity,
+                &attr_state->validity_len_size,
+                allocate_buffers,
+                true));
           }
         }
       } else {
@@ -2194,11 +2229,8 @@ Status query_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (query_reader.hasStats()) {
-    stats::Stats* stats = query->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(query_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(query_reader.getStats());
+    query->set_stats(stats_data);
   }
 
   if (query_reader.hasWrittenFragmentInfo()) {
@@ -2248,7 +2280,8 @@ Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager) {
+    ContextResources& resources,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -2262,8 +2295,8 @@ Status array_from_query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
-        RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), storage_manager, &array, false));
+        array_from_capnp(
+            query_reader.getArray(), resources, &array, false, memory_tracker);
         break;
       }
       case SerializationType::CAPNP: {
@@ -2273,7 +2306,7 @@ Status array_from_query_deserialize(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
         // Set traversal limit from config
-        uint64_t limit = storage_manager->config()
+        uint64_t limit = resources.config()
                              .get<uint64_t>("rest.capnp_traversal_limit")
                              .value();
         ::capnp::ReaderOptions readerOptions;
@@ -2290,8 +2323,8 @@ Status array_from_query_deserialize(
 
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
-        RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), storage_manager, &array, false));
+        array_from_capnp(
+            query_reader.getArray(), resources, &array, false, memory_tracker);
         break;
       }
       default:
@@ -2471,7 +2504,8 @@ Status do_query_deserialize(
     const SerializationContext context,
     CopyState* const copy_state,
     Query* query,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    const bool allocate_buffers) {
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize query; json format not supported."));
@@ -2489,7 +2523,13 @@ Status do_query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
-            query_reader, context, nullptr, copy_state, query, compute_tp);
+            query_reader,
+            context,
+            nullptr,
+            copy_state,
+            query,
+            compute_tp,
+            allocate_buffers);
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
@@ -2519,7 +2559,13 @@ Status do_query_deserialize(
         auto attribute_buffer_start = reader.getEnd();
         auto buffer_start = const_cast<::capnp::word*>(attribute_buffer_start);
         return query_from_capnp(
-            query_reader, context, buffer_start, copy_state, query, compute_tp);
+            query_reader,
+            context,
+            buffer_start,
+            copy_state,
+            query,
+            compute_tp,
+            allocate_buffers);
       }
       default:
         return LOG_STATUS(Status_SerializationError(
@@ -2561,6 +2607,7 @@ Status query_deserialize(
     original_copy_state =
         tdb_unique_ptr<CopyState>(tdb_new(CopyState, *copy_state));
   }
+  auto allocate_buffers = query->type() == QueryType::WRITE;
 
   // Deserialize 'serialized_buffer'.
   const Status st = do_query_deserialize(
@@ -2569,7 +2616,8 @@ Status query_deserialize(
       clientside ? SerializationContext::CLIENT : SerializationContext::SERVER,
       copy_state,
       query,
-      compute_tp);
+      compute_tp,
+      allocate_buffers);
 
   // If the deserialization failed, deserialize 'original_buffer'
   // into 'query' to ensure that 'query' is in the state it was before the
@@ -2587,7 +2635,8 @@ Status query_deserialize(
         SerializationContext::BACKUP,
         copy_state,
         query,
-        compute_tp);
+        compute_tp,
+        allocate_buffers);
     if (!st2.ok()) {
       LOG_ERROR(st2.message());
       return st2;
@@ -3088,11 +3137,9 @@ void ordered_dim_label_reader_to_capnp(
       query.dimension_label_increasing_order());
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    throw_if_not_ok(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 }
 
 void ordered_dim_label_reader_from_capnp(
@@ -3120,11 +3167,8 @@ void ordered_dim_label_reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      throw_if_not_ok(stats_from_capnp(reader_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader_reader.getStats());
+    reader->set_stats(stats_data);
   }
 }
 
@@ -3142,7 +3186,11 @@ Status query_deserialize(
 }
 
 Status array_from_query_deserialize(
-    const Buffer&, SerializationType, Array&, StorageManager*) {
+    const Buffer&,
+    SerializationType,
+    Array&,
+    ContextResources&,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
@@ -3161,6 +3209,4 @@ Status query_est_result_size_deserialize(
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

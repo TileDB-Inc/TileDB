@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,18 +37,15 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #ifdef __linux__
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/filesystem/posix.h"
-#include "tiledb/sm/misc/utils.h"
 #endif
 
 #include <cassert>
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace global_state {
+namespace tiledb::sm::global_state {
 
 GlobalState& GlobalState::GetGlobalState() {
   // This is thread-safe in C++11.
@@ -60,29 +57,24 @@ GlobalState::GlobalState() {
   initialized_ = false;
 }
 
-Status GlobalState::init(const Config& config) {
+void GlobalState::init(const Config& config) {
   std::unique_lock<std::mutex> lck(init_mtx_);
 
   // Get config params
-  bool found;
-  bool enable_signal_handlers = false;
-  RETURN_NOT_OK(config.get<bool>(
-      "sm.enable_signal_handlers", &enable_signal_handlers, &found));
-  assert(found);
+  bool enable_signal_handlers =
+      config.get<bool>("sm.enable_signal_handlers", Config::must_find);
 
   // run these operations once
   if (!initialized_) {
     config_ = config;
 
     if (enable_signal_handlers) {
-      RETURN_NOT_OK(SignalHandlers::GetSignalHandlers().initialize());
+      SignalHandlers::GetSignalHandlers().initialize();
     }
-    RETURN_NOT_OK(Watchdog::GetWatchdog().initialize());
+    Watchdog::GetWatchdog().initialize();
 
     initialized_ = true;
   }
-
-  return Status::Ok();
 }
 
 void GlobalState::register_storage_manager(StorageManager* sm) {
@@ -100,6 +92,4 @@ std::set<StorageManager*> GlobalState::storage_managers() {
   return storage_managers_;
 }
 
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::global_state

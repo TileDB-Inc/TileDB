@@ -51,14 +51,17 @@ class Array;
 class Buffer;
 class ArraySchema;
 class Dimension;
+class MemoryTracker;
+class URI;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
 
 class LoadArraySchemaRequest {
  public:
-  LoadArraySchemaRequest(bool include_enumerations = false)
-      : include_enumerations_(include_enumerations) {
+  explicit LoadArraySchemaRequest(const Config& config)
+      : include_enumerations_(config.get<bool>(
+            "rest.load_enumerations_on_array_open", Config::must_find)) {
   }
 
   inline bool include_enumerations() const {
@@ -109,10 +112,13 @@ Status array_schema_to_capnp(
  *
  * @param schema_reader Cap'n proto object
  * @param uri A URI object
+ * @param memory_tracker The memory tracker to use.
  * @return a new ArraySchema
  */
-ArraySchema array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
+shared_ptr<ArraySchema> array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader,
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize a dimension label to cap'n proto object
@@ -130,10 +136,12 @@ void dimension_label_to_capnp(
  * Deserialize a dimension label from a cap'n proto object
  *
  * @param reader Cap'n proto reader object.
+ * @param memory_tracker The memory tracker to use.
  * @return A new DimensionLabel.
  */
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
-    const capnp::DimensionLabel::Reader& reader);
+    const capnp::DimensionLabel::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 #endif  // TILEDB_SERIALIZATION
 
@@ -152,8 +160,10 @@ Status array_schema_serialize(
     Buffer* serialized_buffer,
     const bool client_side);
 
-ArraySchema array_schema_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer);
+shared_ptr<ArraySchema> array_schema_deserialize(
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 Status nonempty_domain_serialize(
     const Array* array,
@@ -200,12 +210,16 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType serialization_type, const Buffer& data);
 
 void serialize_load_array_schema_response(
-    const ArraySchema& schema,
-    SerializationType serialization_type,
-    Buffer& data);
+    const Array& array, SerializationType serialization_type, Buffer& data);
 
-ArraySchema deserialize_load_array_schema_response(
-    SerializationType serialization_type, const Buffer& data);
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+deserialize_load_array_schema_response(
+    const URI& uri,
+    SerializationType serialization_type,
+    const Buffer& data,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 }  // namespace serialization
 }  // namespace sm

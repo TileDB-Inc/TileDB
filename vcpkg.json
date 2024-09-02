@@ -1,10 +1,7 @@
 {
-    "name": "tiledb",
-    "version-string": "2.15.0",
-    "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
+    "builtin-baseline": "7aeffc91033ad35cc4e2c152f213a866ec6c11ac",
     "dependencies": [
         "bzip2",
-        "liblzma",
         "libmagic",
         "lz4",
         {
@@ -16,31 +13,11 @@
         "zstd"
     ],
     "features": {
-        "abseil": {
-            "description": "Enables building of abseil library and linkage test",
-            "dependencies": [
-                {
-                    "name": "abseil",
-                    "version>=": "20211102.0"
-                }
-            ]
-        },
         "azure": {
             "description": "Support Azure Blob Storage",
             "dependencies": [
-                {
-                    "name": "azure-storage-blobs-cpp",
-                    "version>=": "12.6.1"
-                },
-                {
-                    "name": "libxml2",
-                    "features": [
-                        "lzma",
-                        "zlib"
-                    ],
-                    "default-features": false,
-                    "platform": "!windows"
-                }
+                "azure-storage-blobs-cpp",
+                "azure-identity-cpp"
             ]
         },
         "gcs": {
@@ -48,7 +25,6 @@
             "dependencies": [
                 {
                     "name": "google-cloud-cpp",
-                    "version>=": "2.15.1",
                     "features": [
                         "storage"
                     ],
@@ -69,10 +45,7 @@
                     "name": "curl",
                     "features": [ "zstd" ]
                 },
-                {
-                    "name": "capnproto",
-                    "version>=": "1.0.1"
-                }
+                "capnproto"
             ]
         },
         "s3": {
@@ -80,7 +53,6 @@
             "dependencies": [
                 {
                     "name": "aws-sdk-cpp",
-                    "version>=": "1.11.160",
                     "features": ["s3", "identity-management", "sts"],
                     "default-features": false
                 }
@@ -89,7 +61,11 @@
         "tests": {
             "description": "Build tiledb tests",
             "dependencies": [
-                "catch2"
+                "catch2",
+                {
+                    "name": "libfaketime",
+                    "platform": "!windows"
+                }
             ]
         },
         "tools": {
@@ -101,17 +77,15 @@
         "webp": {
             "description": "Support WebP compression",
             "dependencies": [
-                {
-                    "name": "libwebp",
-                    "version>=": "1.3.2"
-                }
+                "libwebp"
             ]
         }
     },
     "overrides": [
         {
-            "name": "abseil",
-            "version": "20230802.1"
+            "$note": "Remove this when the custom port for libmagic gets removed",
+            "name": "dirent",
+            "version": "1.23.2#3"
         }
     ]
 }

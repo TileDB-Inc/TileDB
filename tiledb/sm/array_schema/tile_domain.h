@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/types.h"
@@ -81,13 +82,13 @@ class TileDomain {
       unsigned id,
       const NDRange& domain,
       const NDRange& domain_slice,
-      const std::vector<ByteVecValue> tile_extents,
+      const std::vector<ByteVecValue>& tile_extents,
       Layout layout)
       : id_(id)
       , dim_num_((unsigned)domain.size())
       , domain_(domain)
       , domain_slice_(domain_slice)
-      , tile_extents_(tile_extents)
+      , tile_extents_(tile_extents.begin(), tile_extents.end())
       , layout_(layout) {
     assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
     compute_tile_domain(domain, domain_slice, tile_extents);

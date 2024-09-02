@@ -1,0 +1,80 @@
+name: Append Release CMake
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref to be used as release'
+        default: 'latest'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Ref to be used as release'
+        default: 'latest'
+        required: true
+        type: string
+
+jobs:
+  generate_cmake_files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout TileDB
+        uses: actions/checkout@v3
+
+      - name: Make release and output directories
+        run: |
+          mkdir release output
+
+      - name: Github release data
+        id: release_data
+        uses: KevinRohn/github-full-release-data@v2.0.4
+        with:
+          # repository: 'TileDB-Inc/TileDB'
+          version: ${{ inputs.ref }}
+          asset-file: '*.zip,*.tar.gz'
+          asset-output: './release/'
+
+      - name: Render template
+        run: |
+          PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?-(.+)\.(tar\.gz|zip)$"
+          RELLIST="output/releases.csv"
+          MODULE="output/DownloadPrebuiltTileDB.cmake"
+          cp cmake/inputs/DownloadPrebuiltTileDB.cmake $MODULE
+          echo "platform,url,sha256" > $RELLIST
+          
+          for FILE in $(ls release)
+          do
+                  if [[ $FILE =~ $PATTERN ]]
+                  then
+                          OS=${BASH_REMATCH[1]^^}
+                          ARCH=${BASH_REMATCH[2]^^}
+                          NOAVX2=${BASH_REMATCH[3]^^}
+                          PLATFORM=${OS}-${ARCH}${NOAVX2}
+          
+                          URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$FILE"
+                          HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
+          
+                          echo "${PLATFORM},${URL},${HASH}" >> $RELLIST
+                  fi
+          done
+          
+          SOURCE_FILE_NAME=$(ls release/tiledb-source-*.tar.gz)
+          URL_TILEDB_SOURCE="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$(basename $SOURCE_FILE_NAME)"
+          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \t -f 1)
+          
+          echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE}" >> $RELLIST
+          
+          HASH=$(sha256sum $RELLIST | cut -d " " -f 1)
+          echo $HASH > $RELLIST.sha256
+          
+          cat $RELLIST
+
+      - name: Upload template to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file: output/*
+          tag: ${{ steps.release_data.outputs.tag_name }}
+          overwrite: true
+          file_glob: true

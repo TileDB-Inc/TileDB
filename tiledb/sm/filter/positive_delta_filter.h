@@ -91,9 +91,6 @@ class PositiveDeltaFilter : public Filter {
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
 
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
-
   /**
    * Checks if the filter is applicable to the input datatype.
    *
@@ -104,7 +101,7 @@ class PositiveDeltaFilter : public Filter {
   /**
    * Perform positive-delta encoding of the given input into the given output.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const,
       FilterBuffer* input_metadata,
@@ -126,6 +123,10 @@ class PositiveDeltaFilter : public Filter {
 
   /** Set the max window size (in bytes) to use. */
   void set_max_window_size(uint32_t max_window_size);
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** Maximum size, in bytes, of a window of input elements to compress. */
@@ -154,7 +155,7 @@ class PositiveDeltaFilter : public Filter {
 
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const tile_offsets,
       FilterBuffer* input_metadata,

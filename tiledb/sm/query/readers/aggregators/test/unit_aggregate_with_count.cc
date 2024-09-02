@@ -37,9 +37,11 @@
 #include "tiledb/sm/query/readers/aggregators/sum_type.h"
 #include "tiledb/sm/query/readers/aggregators/validity_policies.h"
 
+#include <test/support/src/helper_type.h>
 #include <test/support/tdb_catch.h>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 typedef tuple<
     uint8_t,
@@ -59,9 +61,9 @@ TEMPLATE_LIST_TEST_CASE(
     FixedTypesUnderTest) {
   typedef TestType T;
   AggregateWithCount<T, typename sum_type_data<T>::sum_type, SafeSum, NonNull>
-      aggregator(FieldInfo("a1", false, false, 1));
+      aggregator(FieldInfo("a1", false, false, 1, tdb_type<T>));
   AggregateWithCount<T, typename sum_type_data<T>::sum_type, SafeSum, NonNull>
-      aggregator_nullable(FieldInfo("a2", false, true, 1));
+      aggregator_nullable(FieldInfo("a2", false, true, 1, tdb_type<T>));
 
   std::vector<T> fixed_data = {1, 2, 3, 4, 5, 5, 4, 3, 2, 1};
   std::vector<uint8_t> validity_data = {0, 0, 1, 0, 1, 0, 1, 0, 1, 0};

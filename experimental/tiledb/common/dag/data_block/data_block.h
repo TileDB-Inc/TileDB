@@ -50,9 +50,6 @@ namespace tiledb::common {
 /**
  * The fixed size (in bytes) of each `DataBlock`.
  */
-namespace {
-constexpr static const size_t chunk_size_ = 4'194'304;  // 4M
-}
 
 /**
  * A fixed size block, an untyped carrier (of `std::byte`) for data to
@@ -76,15 +73,16 @@ constexpr static const size_t chunk_size_ = 4'194'304;  // 4M
  * The `DataBlockImpl` class provides the interface for `DataBlock`, but is also
  * parameterized by`Allocator`.
  */
-template <class Allocator>
+template <size_t chunk_size = 64 * 1'024>
 class DataBlockImpl {
-  static Allocator allocator_;
+  constexpr static const size_t chunk_size_ = chunk_size;
 
   /**
    * Type aliases for `DataBlock` storage.  The underlying storage for the
    * `DataBlock` is a chunk of `std::byte`.  The `DataBlock` maintains this
    * storage as a `shared_ptr<std::byte>`.
    */
+  using allocator_t = PoolAllocator<chunk_size_>;
   using storage_t = std::shared_ptr<std::byte>;
   using span_t = tcb::span<std::byte>;
   using pointer_t = std::byte*;
@@ -101,23 +99,21 @@ class DataBlockImpl {
    * The actual stored chunk.  The `storage_` is the `shared_ptr` to the chunk,
    * while `data_` is a pointer to the actual bytes.
    */
+
   storage_t storage_;
   pointer_t data_{nullptr};
 
  public:
-  /**
-   * Constructor used if the `Allocator` is `std::allocator` of `std::byte`.
-   */
-  template <class R = Allocator>
-  explicit DataBlockImpl(
-      size_t init_size = 0UL,
-      typename std::enable_if<
-          std::is_same_v<R, std::allocator<std::byte>>>::type* = 0)
-      : capacity_{chunk_size_}
-      , size_{init_size}
-      , storage_{allocator_.allocate(chunk_size_),
-                 [&](auto px) { allocator_.deallocate(px, chunk_size_); }}
-      , data_{storage_.get()} {
+  // @todo: Do some initialization here.
+  // @todo: Default initialize?
+  // Although there is a "size" argument, we don't actually do anything with it.
+  // We always return a single datablock of size chunk_size_.
+  void* operator new(size_t) {
+    return reinterpret_cast<void*>(allocator_t{}.allocate());
+  }
+
+  void operator delete(void* ptr) {
+    allocator_t{}.deallocate(reinterpret_cast<std::byte*>(ptr));
   }
 
   /**
@@ -126,15 +122,11 @@ class DataBlockImpl {
    * `shared_ptr` constructor.  It is expected that his deleter will simply
    * return the chunk to the pool.  See pool_allocator.h for details.
    */
-  template <class R = Allocator>
-  explicit DataBlockImpl(
-      size_t init_size = 0UL,
-      typename std::enable_if<
-          std::is_same_v<R, PoolAllocator<chunk_size_>>>::type* = nullptr)
-      : capacity_{chunk_size_}
+  DataBlockImpl(size_t init_size = 0UL)
+              : capacity_{chunk_size_}
       , size_{init_size}
-      , storage_{allocator_.allocate(),
-                 [&](auto px) { allocator_.deallocate(px); }}
+      , storage_{allocator_t{}.allocate(),
+                 [&](auto px) { allocator_t{}.deallocate(px); }}
       , data_{storage_.get()} {
   }
 
@@ -161,7 +153,7 @@ class DataBlockImpl {
   using DataBlockConstIterator = span_t::iterator;
 
   using value_type = span_t::value_type;
-  using allocator_type = SingletonPoolAllocator<chunk_size_>;
+  using allocator_type = allocator_t;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using reference = value_type&;
@@ -279,21 +271,15 @@ class DataBlockImpl {
   }
 };
 
-template <class Allocator>
-Allocator DataBlockImpl<Allocator>::allocator_;
-
 /**
  * The `DataBlock` class is the `DataBlockImpl` above, specialized to the
  * PoolAllocator with chunk size specified by our defined `chunk_size_`.
  */
-using DataBlock = DataBlockImpl<PoolAllocator<chunk_size_>>;
-
-/**
- * Function for getting new `DataBlock`s
- */
-[[maybe_unused]] static DataBlock make_data_block(size_t init_size) {
-  return DataBlock{init_size};
-}
+template <size_t block_size = 64 * 1'024>
+class DataBlock : public DataBlockImpl<block_size> {
+  using Base = DataBlockImpl<block_size>;
+  using Base::Base;
+};
 
 }  // namespace tiledb::common
 

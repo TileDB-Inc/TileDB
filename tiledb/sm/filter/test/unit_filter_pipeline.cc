@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -185,6 +185,8 @@ TEST_CASE(
   CHECK(
       fp_with.use_tile_chunking(is_var_sized, version, Datatype::DATETIME_AS));
   CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::BLOB));
+  CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::GEOM_WKB));
+  CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::GEOM_WKT));
   CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::INT32));
   CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::FLOAT64));
 }
@@ -238,6 +240,8 @@ TEST_CASE(
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::TIME_MS, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::DATETIME_AS, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::BLOB, version));
+  CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::GEOM_WKB, version));
+  CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::GEOM_WKT, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::INT32, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::FLOAT64, version));
 }

@@ -289,3 +289,19 @@ TEST_CASE("api_entry_error - throw") {
   CHECK(error->message() == "Test: error");
   tiledb_error_free(&error);
 }
+
+capi_return_t tf_budget_never_available() {
+  throw BudgetUnavailable("Test", "budget unavailable");
+}
+TEST_CASE("BudgetUnavailable - special return value from CAPIFunction") {
+  auto rc{tiledb::api::api_entry_plain<tf_budget_never_available>()};
+  CHECK(tiledb_status(rc) == TILEDB_BUDGET_UNAVAILABLE);
+}
+
+capi_return_t tf_budget_exceeded() {
+  throw BudgetExceeded("Test", "budget exceeded");
+}
+TEST_CASE("BudgetExceeded - ordinary return value from CAPIFunction") {
+  auto rc{tiledb::api::api_entry_plain<tf_budget_exceeded>()};
+  CHECK(tiledb_status(rc) == TILEDB_ERR);
+}

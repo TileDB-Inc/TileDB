@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,6 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
 
@@ -74,7 +73,7 @@ TEST_CASE("C++ API: Time attribute", "[cppapi][Time]") {
     Query query_w(ctx, array_w);
     query_w.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a", data_w)
-        .set_coordinates(coords_w)
+        .set_data_buffer("__coords", coords_w)
         .submit();
     query_w.finalize();
     array_w.close();
@@ -86,7 +85,7 @@ TEST_CASE("C++ API: Time attribute", "[cppapi][Time]") {
     Query query_r(ctx, array_r);
     query_r.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_r)
-        .set_coordinates(coords_r);
+        .set_data_buffer("__coords", coords_r);
     REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
     auto result_num = query_r.result_buffer_elements()["a"].second;
@@ -138,7 +137,7 @@ TEST_CASE("C++ API: Time dimension", "[cppapi][time]") {
     Query query_w(ctx, array_w);
     query_w.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a", data_w)
-        .set_coordinates(coords_w)
+        .set_data_buffer("__coords", coords_w)
         .submit();
     query_w.finalize();
     array_w.close();
@@ -148,9 +147,11 @@ TEST_CASE("C++ API: Time dimension", "[cppapi][time]") {
     std::vector<int64_t> subarray_r = {0, 9};
     Array array_r(ctx, array_name, TILEDB_READ);
     Query query_r(ctx, array_r);
+    Subarray sub(ctx, array_r);
+    sub.set_subarray(subarray_r);
     query_r.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_r)
-        .set_subarray(subarray_r);
+        .set_subarray(sub);
     REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
     auto result_num = query_r.result_buffer_elements()["a"].second;

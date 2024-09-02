@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,9 +33,9 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
 using namespace tiledb::test;
@@ -79,8 +79,10 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
     int range[] = {0, 0};
-    query.add_range(0, range[0], range[1]);
-    query.add_range(1, range[0], range[1]);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, range[0], range[1]);
+    subarray.add_range(1, range[0], range[1]);
+    query.set_subarray(subarray);
 
     auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 4);
@@ -117,7 +119,9 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
     int range[] = {1, 2};
-    query.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
+    query.set_subarray(subarray);
 
     auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 4);
@@ -157,27 +161,29 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
     int range0[] = {0, 0}, range1[] = {2, 2};
-    query.add_range(0, range0[0], range0[1]);
-    query.add_range(1, range0[0], range0[1]);
-    query.add_range(0, range1[0], range1[1]);
-    query.add_range(1, range1[0], range1[1]);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, range0[0], range0[1]);
+    subarray.add_range(1, range0[0], range0[1]);
+    subarray.add_range(0, range1[0], range1[1]);
+    subarray.add_range(1, range1[0], range1[1]);
 
     int64_t inv_range[] = {0, 1};
-    CHECK_THROWS(query.add_range(1, inv_range[0], inv_range[1]));
+    CHECK_THROWS(subarray.add_range(1, inv_range[0], inv_range[1]));
+    query.set_subarray(subarray);
 
     // Get range
-    auto range = query.range<int>(0, 0);
+    auto range = subarray.range<int>(0, 0);
     CHECK(range[0] == 0);
     CHECK(range[1] == 0);
     CHECK(range[2] == 0);
-    range = query.range<int>(1, 1);
+    range = subarray.range<int>(1, 1);
     CHECK(range[0] == 2);
     CHECK(range[1] == 2);
     CHECK(range[2] == 0);
 
-    CHECK_THROWS(range = query.range<int>(1, 3));
+    CHECK_THROWS(range = subarray.range<int>(1, 3));
     std::array<int64_t, 3> range2 = {{0, 0, 0}};
-    CHECK_THROWS(range2 = query.range<int64_t>(1, 1));
+    CHECK_THROWS(range2 = subarray.range<int64_t>(1, 1));
 
     auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 4);
@@ -234,10 +240,12 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
     int range0[] = {0, 1}, range1[] = {2, 3};
-    query.add_range(0, range0[0], range0[1]);
-    query.add_range(1, range0[0], range0[1]);
-    query.add_range(0, range1[0], range1[1]);
-    query.add_range(1, range1[0], range1[1]);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, range0[0], range0[1]);
+    subarray.add_range(1, range0[0], range0[1]);
+    subarray.add_range(0, range1[0], range1[1]);
+    subarray.add_range(1, range1[0], range1[1]);
+    query.set_subarray(subarray);
 
     auto est_size = query.est_result_size("a");
     std::vector<int> data(est_size);
@@ -281,8 +289,10 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.set_config(config);
     int range[] = {1, 4};
     int range2[] = {-1, 3};
-    REQUIRE_THROWS(query.add_range(0, range[0], range[1]));
-    REQUIRE_THROWS(query.add_range(1, range2[0], range2[1]));
+    Subarray subarray(ctx, array);
+    REQUIRE_THROWS(subarray.add_range(0, range[0], range[1]));
+    REQUIRE_THROWS(subarray.add_range(1, range2[0], range2[1]));
+    query.set_subarray(subarray);
   }
 
   SECTION("- Read ranges oob error - Subarray-cppapi") {
@@ -318,8 +328,11 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.set_config(config);
     int range[] = {1, 4};
     int range2[] = {-1, 3};
-    query.add_range(0, range[0], range[1]);
-    query.add_range(1, range2[0], range2[1]);
+    Subarray subarray(ctx, array);
+    subarray.set_config(config);
+    subarray.add_range(0, range[0], range[1]);
+    subarray.add_range(1, range2[0], range2[1]);
+    query.set_subarray(subarray);
 
     auto est_size = query.est_result_size("a");
     REQUIRE(est_size == 12);
@@ -332,18 +345,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(query.result_buffer_elements()["a"].second == 3);
     REQUIRE(data[0] == 2);
     REQUIRE(data[1] == 3);
-  }
-
-  SECTION("- set_subarray  Write ranges oob warn - Subarray-query") {
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
-    // throws on sparse array (set_subarray not supported)
-    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
-    tiledb::Config config;
-    config.set("sm.read_range_oob", "warn");
-    query.set_config(config);
-    // throws on sparse array
-    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
   }
 
   SECTION("- Read ranges oob warn - Subarray-cppapi") {
@@ -415,32 +416,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
     // default expected to err.
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
     tiledb::Config config;
-    // The config option should be ignored but we set anyway.
-    config.set("sm.read_range_oob", "error");
-    subarray.set_config(config);
-    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
-  }
-
-  SECTION("- set_subarray Write ranges oob warn - Subarray-query") {
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
-    // default (dense) WRITE should always err/throw on oob
-    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
-    tiledb::Config config;
-    config.set("sm.read_range_oob", "warn");
-    query.set_config(config);
-    // (dense) WRITE should ignore sm.read_range_oob config option
-    // and err/throw on oob
-    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
-  }
-
-  SECTION("- set_subarray Write ranges oob warn - Subarray-cppapi") {
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Subarray subarray(ctx, array);
-    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
-    tiledb::Config config;
-    config.set("sm.read_range_oob", "warn");
-    subarray.set_config(config);
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
   }
 
@@ -449,22 +424,22 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
   }
 }
 
-#ifdef TILEDB_SERIALIZATION
 TEST_CASE(
     "C++ API: Test serialized OOB subarray error (dense)",
-    "[cppapi][dense][subarray][oob][serialization]") {
-  bool query_v2 = GENERATE(true, false);
-
-  std::string array_name = "cpp_unit_array";
+    "[cppapi][dense][subarray][oob][serialization][rest]") {
+  auto reader_type = GENERATE("legacy", "refactored");
   tiledb::Config cfg;
-  cfg.set("config.logging_level", "3");
-  cfg["sm.query.dense.reader"] = GENERATE("legacy", "refactored");
-  tiledb::Context ctx(cfg);
+  cfg["sm.query.dense.reader"] = reader_type;
+  tiledb::test::VFSTestSetup vfs_test_setup(cfg.ptr().get());
 
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  // SC-45976 : Different behaviour between local and remote arrays when
+  // submitting query with ranges oob of domain
+  if (!vfs_test_setup.is_rest()) {
+    return;
   }
+
+  tiledb::Context ctx(vfs_test_setup.ctx());
+  std::string array_name = vfs_test_setup.array_uri("cpp_unit_array");
 
   // Create
   tiledb::Domain domain(ctx);
@@ -493,29 +468,29 @@ TEST_CASE(
   SECTION("- Upper bound OOB") {
     int range[] = {0, 100};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
   }
 
   SECTION("- Lower bound OOB") {
     int range[] = {-1, 2};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
   }
 
   SECTION("- Second range OOB") {
     int range[] = {1, 4};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
     int range2[] = {10, 20};
     auto r2 = Range(&range2[0], &range2[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(1, r2).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(1, r2));
   }
 
   SECTION("- Valid ranges") {
     int range[] = {0, 1};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(1, r).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(1, r));
     expected = TILEDB_OK;
   }
 
@@ -525,21 +500,14 @@ TEST_CASE(
 
   std::vector<int> a(4);
   query.set_data_buffer("a", a);
-  tiledb::test::ServerQueryBuffers buffers;
-  CHECK(
-      submit_query_wrapper(
-          ctx, array_name, &query, buffers, true, query_v2, false) == expected);
-
   if (expected == TILEDB_OK) {
+    CHECK_NOTHROW(query.submit());
     CHECK(query.query_status() == tiledb::Query::Status::COMPLETE);
     CHECK(a == std::vector<int>{1, 2, 3, 4});
-  }
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  } else {
+    CHECK_THROWS(query.submit());
   }
 }
-#endif
 
 TEST_CASE(
     "C++ API: Test subarray (incomplete) - Subarray-query",
@@ -604,14 +572,16 @@ TEST_CASE(
   int row_range[] = {0, 1};
   int col_range0[] = {12277, 13499};
   int col_range1[] = {13500, 17486};
-  query.add_range(0, row_range[0], row_range[1]);
-  query.add_range(1, col_range0[0], col_range0[1]);
-  query.add_range(1, col_range1[0], col_range1[1]);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, row_range[0], row_range[1]);
+  subarray.add_range(1, col_range0[0], col_range0[1]);
+  subarray.add_range(1, col_range1[0], col_range1[1]);
+  query.set_subarray(subarray);
 
   // Test range num
-  auto range_num = query.range_num(0);
+  auto range_num = subarray.range_num(0);
   CHECK(range_num == 1);
-  range_num = query.range_num(1);
+  range_num = subarray.range_num(1);
   // Ranges `col_range0` and `col_range1` are coalesced.
   CHECK(range_num == 1);
 
@@ -1066,9 +1036,12 @@ TEST_CASE(
   int row_range[] = {1, 1};
   int col_range0[] = {12277, 12277};
   int col_range1[] = {12277, 13160};
-  query.add_range(0, row_range[0], row_range[1]);
-  query.add_range(1, col_range0[0], col_range0[1]);
-  query.add_range(1, col_range1[0], col_range1[1]);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, row_range[0], row_range[1]);
+  subarray.add_range(1, col_range0[0], col_range0[1]);
+  subarray.add_range(1, col_range1[0], col_range1[1]);
+  subarray.set_config(cfg);
+  query.set_subarray(subarray);
   query.set_layout(TILEDB_UNORDERED);
 
   // Allocate buffers large enough to hold 2 cells at a time.
@@ -1201,6 +1174,7 @@ TEST_CASE(
       .set_data_buffer("a", data);
 
   // Submit query
+  subarray.set_config(cfg);
   query.set_subarray(subarray);
   auto st = query.submit();
   REQUIRE(st == tiledb::Query::Status::INCOMPLETE);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,6 @@
 #define TILEDB_CAPI_FILTER_INTERNAL_H
 
 #include <memory>
-#include "filter_api_external.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/enums/filter_option.h"
@@ -117,7 +116,7 @@ namespace tiledb::api {
  *
  * @param filter_list Possibly-valid pointer to a filter
  */
-inline void ensure_filter_is_valid(const tiledb_filter_t* filter) {
+inline void ensure_filter_is_valid(const tiledb_filter_handle_t* filter) {
   ensure_handle_is_valid(filter);
 }
 

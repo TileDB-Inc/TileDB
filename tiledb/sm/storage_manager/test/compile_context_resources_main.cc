@@ -29,6 +29,7 @@
 #include "../context_resources.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::ContextResources);
+  tiledb::sm::Config config{};
+  tiledb::sm::ContextResources(config, nullptr, 0, 0, "");
   return 0;
 }

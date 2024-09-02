@@ -4,7 +4,7 @@ title: Fragment
 
 ## Main Structure
 
-A fragment metadata folder is called `<timestamped_name>` and located here:
+A fragment metadata folder is called [`<timestamped_name>`](./timestamped_name.md)` and located here:
 
 ```
 my_array                                    # array folder
@@ -30,11 +30,6 @@ my_array                                    # array folder
          |      |_ ...  
         |_ ...  
 ```
-
-`<timestamped_name>` has format `__t1_t2_uuid_v`, where:
-* `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-* `v` is the format version
 
 There can be any number of fragments in an array. The fragment folder contains:
 
@@ -75,9 +70,9 @@ The fragment metadata file has the following on-disk format:
 | Variable sums for attribute/dimension N | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension N |
 | Tile null counts for attribute/dimension 1 | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension 1 |
 | … | … | … |
-| Variable maxes for attribute/dimension N | [[Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
-| Fragment min, max, sum, null count | [[Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | The serialized fragment min max sum null count |
-| Processed conditions | [[Tile Processed Conditions](#tile-processed-conditions) | The serialized processed conditions |
+| Tile null counts for attribute/dimension N | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
+| Fragment min, max, sum, null count | [Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | The serialized fragment min max sum null count |
+| Processed conditions | [Tile Processed Conditions](#tile-processed-conditions) | The serialized processed conditions |
 | Metadata footer | [Footer](#footer) | Basic metadata gathered in the footer |
 
 ### R-Tree

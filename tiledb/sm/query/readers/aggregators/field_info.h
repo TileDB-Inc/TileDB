@@ -50,6 +50,8 @@ class FieldInfo {
   FieldInfo()
       : var_sized_(false)
       , is_nullable_(false)
+      , is_dense_dim_(false)
+      , is_slab_dim_(false)
       , cell_val_num_(1)
       , type_(Datatype::UINT8){};
 
@@ -67,10 +69,39 @@ class FieldInfo {
       const bool var_sized,
       const bool is_nullable,
       const unsigned cell_val_num,
-      const Datatype type = Datatype::UINT8)
+      const Datatype type)
       : name_(name)
       , var_sized_(var_sized)
       , is_nullable_(is_nullable)
+      , is_dense_dim_(false)
+      , is_slab_dim_(false)
+      , cell_val_num_(cell_val_num)
+      , type_(type){};
+
+  /**
+   * Constructor.
+   *
+   * @param name Name of the field.
+   * @param var_sized Is the field var sized?
+   * @param is_nullable Is the field nullable?
+   * @param is_dense_dim Is the field nullable?
+   * @param is_slab_dim Is the dense dimension the slab dimension?
+   * @param cell_val_num Cell val num.
+   * @param type Data type of the field
+   */
+  FieldInfo(
+      const std::string name,
+      const bool var_sized,
+      const bool is_nullable,
+      const bool is_dense_dim,
+      const bool is_slab_dim,
+      const unsigned cell_val_num,
+      const Datatype type)
+      : name_(name)
+      , var_sized_(var_sized)
+      , is_nullable_(is_nullable)
+      , is_dense_dim_(is_dense_dim)
+      , is_slab_dim_(is_slab_dim)
       , cell_val_num_(cell_val_num)
       , type_(type){};
 
@@ -86,6 +117,12 @@ class FieldInfo {
 
   /** Is the field nullable? */
   const bool is_nullable_;
+
+  /** Is the field a dense dimension? */
+  const bool is_dense_dim_;
+
+  /** Is the dense dimension the cell slab dimension? */
+  const bool is_slab_dim_;
 
   /** Cell val num. */
   const unsigned cell_val_num_;

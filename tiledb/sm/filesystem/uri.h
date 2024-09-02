@@ -79,7 +79,7 @@ class URI {
    * @param path String that gets converted into an absolute path and stored
    *     as a URI.
    */
-  explicit URI(const std::string& path);
+  explicit URI(std::string_view path);
 
   /**
    * Constructor.
@@ -87,7 +87,7 @@ class URI {
    * @param path
    * @param get_abs should local files become absolute
    */
-  explicit URI(const std::string& path, const bool& get_abs);
+  explicit URI(std::string_view path, const bool& get_abs);
 
   /** Destructor. */
   ~URI();
@@ -125,7 +125,7 @@ class URI {
    * @param path The path to be checked.
    * @return The result of the check.
    */
-  static bool is_file(const std::string& path);
+  static bool is_file(std::string_view path);
 
   /**
    * Checks if the URI is file.
@@ -140,7 +140,7 @@ class URI {
    * @param str the string to search for in the URI
    * @return The result of the check.
    */
-  bool contains(const std::string_view& str) const;
+  bool contains(std::string_view str) const;
 
   /**
    * Checks if the input path is HDFS.
@@ -148,7 +148,7 @@ class URI {
    * @param path The path to be checked.
    * @return The result of the check.
    */
-  static bool is_hdfs(const std::string& path);
+  static bool is_hdfs(std::string_view path);
 
   /**
    * Checks if the URI is HDFS.
@@ -163,7 +163,7 @@ class URI {
    * @param path The path to be checked.
    * @return The result of the check.
    */
-  static bool is_s3(const std::string& path);
+  static bool is_s3(std::string_view path);
 
   /**
    * Checks if the URI is S3.
@@ -178,7 +178,7 @@ class URI {
    * @param path The path to be checked.
    * @return The result of the check.
    */
-  static bool is_azure(const std::string& path);
+  static bool is_azure(std::string_view path);
 
   /**
    * Checks if the URI is Azure.
@@ -193,7 +193,7 @@ class URI {
    * @param path The path to be checked.
    * @return The result of the check.
    */
-  static bool is_gcs(const std::string& path);
+  static bool is_gcs(std::string_view path);
 
   /**
    * Checks if the URI is gcs.
@@ -208,7 +208,7 @@ class URI {
    * @param path The path to be checked.
    * @return The result of the check.
    */
-  static bool is_memfs(const std::string& path);
+  static bool is_memfs(std::string_view path);
 
   /**
    * Checks if the URI is mem.
@@ -223,7 +223,7 @@ class URI {
    * @param path The path to be checked.
    * @return The result of the check.
    */
-  static bool is_tiledb(const std::string& path);
+  static bool is_tiledb(std::string_view path);
 
   /**
    * Checks if the URI is TileDB.
@@ -316,6 +316,8 @@ class URI {
 
   /** For comparing URIs alphanumerically. */
   bool operator>(const URI& uri) const;
+
+  operator std::string_view() const noexcept;
 
  private:
   /* ********************************* */

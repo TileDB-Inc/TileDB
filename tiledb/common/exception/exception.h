@@ -185,6 +185,52 @@ inline void throw_if_not_ok(const Status& st) {
   }
 }
 
+/**
+ * An exception that refuses to start an operation because the estimate of
+ * resources to complete the operation exceeds the available budget for those
+ * resources.
+ *
+ * This exception should only be thrown _before_ an operation commences. Once an
+ * operation starts, if (for whatever reason) the budget estimate was wrong, the
+ * proper exception to throw is `BudgetExceeded`. The reason for this is that
+ * the exception wrapper catches this exception in a specific `catch` clause,
+ * whereupon it returns the special value `TILEDB_BUDGET_UNAVAILABLE` to the C
+ * API caller. `BudgetExceeded`, by contrast, is an ordinary exception that will
+ * terminate an in-progress operation like any other fatal error would.
+ *
+ * @section Maturity Notes
+ *
+ * This exception makes no attempt to state what kind of budget was unavailable.
+ * In order to do this in the exception itself there would need to be data
+ * structures available that formalized what budget categories existed, what the
+ * limits are, what the request would have required, etc. The constructor for
+ * this exception might eventually take additional constructor arguments for
+ * this purpose.
+ */
+class BudgetUnavailable : public StatusException {
+ public:
+  /**
+   * Ordinary constructor has same signature as `BudgetExceeded`.
+   */
+  BudgetUnavailable(const std::string origin, const std::string message)
+      : StatusException(origin, message) {
+  }
+};
+
+/**
+ * An exception that terminates an already-started operation because there is
+ * not enough budget of some resource to complete the operation.
+ */
+class BudgetExceeded : public StatusException {
+ public:
+  /**
+   * Ordinary constructor has same signature as `BudgetUnavailable`.
+   */
+  BudgetExceeded(const std::string origin, const std::string message)
+      : StatusException(origin, message) {
+  }
+};
+
 }  // namespace tiledb::common
 
 #endif  // TILEDB_COMMON_EXCEPTION_H

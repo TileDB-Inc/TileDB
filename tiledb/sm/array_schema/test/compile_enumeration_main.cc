@@ -32,7 +32,15 @@
 int main(int, char*[]) {
   try {
     tiledb::sm::Enumeration::create(
-        "foo", tiledb::sm::Datatype::INT32, 1, false, nullptr, 0, nullptr, 0);
+        "foo",
+        tiledb::sm::Datatype::INT32,
+        1,
+        false,
+        nullptr,
+        0,
+        nullptr,
+        0,
+        nullptr);
   } catch (...) {
   }
   return 0;

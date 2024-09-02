@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2022 TileDB, Inc.
+# Copyright (c) 2017-2024 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,63 +26,7 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
-
-# Arrow integration test config and dependencies
-# Override from environment if not set in cache
-if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
-  if ($ENV{TILEDB_ARROW_TESTS})
-    message(STATUS "Enabling Apache Arrow integration test")
-    # Technically this would be an "option", but we want conditional override from ENV
-    set(TILEDB_ARROW_TESTS ON CACHE BOOL "Enable Arrow tests (requires Python with pyarrow and numpy)" FORCE)
-    mark_as_advanced(TILEDB_ARROW_TESTS)
-  endif()
-endif()
-
-if (${TILEDB_ARROW_TESTS})
-  # Reworked FindPython was introducted in 3.12 with features used below
-  if (CMAKE_VERSION VERSION_LESS "3.12")
-    message(FATAL_ERROR "CMake >= 3.12 is required for TileDB Arrow Tests. (found ${CMAKE_VERSION})")
-  endif()
-  # Tell CMake to check the Python registry entry last on Windows
-  set(Python_FIND_REGISTRY "LAST")
-  # Tell CMake to prefer Python from the PATH
-  set(Python_FIND_STRATEGY "LOCATION")
-  find_package(Python COMPONENTS Interpreter Development REQUIRED)
-  find_package(pybind11)
-
-  message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
-
-  # If we can't find the pybind11 cmake config (not available in pypi yet)
-  # try to find with the current executable.
-  if (NOT ${pybind11_FOUND})
-    # Get the include arguments from the python executable (has "-I" compiler option)
-    execute_process(COMMAND  ${Python_EXECUTABLE} -m pybind11 --includes
-                    OUTPUT_VARIABLE CMD_PYBIND11_INCLUDE
-                    RESULT_VARIABLE CMD_PYBIND11_RESULT
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if (${CMD_PYBIND11_RESULT})
-      message(FATAL_ERROR "Unable to find pybind11 via cmake or 'python3 -m pybind11 --includes'")
-    endif()
-
-    # Convert args to list
-    separate_arguments(CMD_PARSED_INCLUDES NATIVE_COMMAND ${CMD_PYBIND11_INCLUDE})
-    # Remove the "-I" from each include
-    foreach(INCL_PATH IN LISTS CMD_PARSED_INCLUDES)
-      string(REPLACE "-I" "" INCL_PATH ${INCL_PATH})
-      list(APPEND PYBIND11_INCLUDE_DIRECTORIES ${INCL_PATH})
-    endforeach()
-
-    file(TO_CMAKE_PATH "${Python_SITELIB}" SAFE_Python_SITELIB)
-    set(pybind11_FOUND TRUE CACHE BOOL "pybind11 include path found")
-    add_library(pybind11::embed INTERFACE IMPORTED)
-    target_include_directories(pybind11::embed INTERFACE ${PYBIND11_INCLUDE_DIRECTORIES})
-    target_link_libraries(pybind11::embed INTERFACE Python::Python)
-    target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_SITELIB_PATH="${SAFE_Python_SITELIB}")
-  endif()
-  file(TO_CMAKE_PATH ${CMAKE_CURRENT_BINARY_DIR} SAFE_CURRENT_BINARY_DIR)
-  target_compile_definitions(pybind11::embed INTERFACE -DTILEDB_PYTHON_UNIT_PATH="${SAFE_CURRENT_BINARY_DIR}")
-endif()
+find_package(Catch2 REQUIRED)
 
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
@@ -119,14 +63,12 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-cppapi-aggregates.cc
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
-  src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-as_built.cc
   src/unit-capi-array.cc
   src/unit-capi-array_schema.cc
-  src/unit-capi-async.cc
   src/unit-capi-attributes.cc
   src/unit-capi-config.cc
   src/unit-capi-context.cc
@@ -151,6 +93,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-partial-attribute-write.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
+  src/unit-capi-rest-dense_array.cc
   src/unit-capi-smoke-test.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_heter.cc
@@ -168,8 +111,8 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-compression-dd.cc
   src/unit-compression-delta.cc
   src/unit-compression-rle.cc
-  src/unit-crypto.cc
   src/unit-ctx.cc
+  src/unit-current-domain-rest.cc
   src/unit-dense-reader.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
@@ -178,21 +121,18 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-enumerations.cc
   src/unit-enum-helpers.cc
   src/unit-filter-buffer.cc
-  src/unit-filter-pipeline.cc
   src/unit-global-order.cc
-  src/unit-gcs.cc
-  src/unit-gs.cc
-  src/unit-hdfs-filesystem.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
+  src/unit-query-plan.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
   src/unit-request-handlers.cc
   src/unit-resource-pool.cc
+  src/unit-rest-enumerations.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
-  src/unit-s3-no-multipart.cc
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
@@ -203,12 +143,16 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
+  "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/test/unit_capi_ls_recursive.cc"
   )
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/cpp-integration-filter-pipeline.cc
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
+    src/test-cppapi-ndrectangle.cc
+    src/test-cppapi-current-domain.cc
     src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
     src/unit-cppapi-checksum.cc
@@ -233,6 +177,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-partial-attribute-write.cc
     src/unit-cppapi-query.cc
+    src/unit-cppapi-query-condition-enumerations.cc
     src/unit-cppapi-query-condition-sets.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
@@ -253,22 +198,8 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
-    src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-QueryCondition-serialization.cc
     src/unit-curl.cc
-  )
-endif()
-
-if (TILEDB_TESTS_ENABLE_REST)
-  list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/unit-capi-rest-dense_array.cc
-  )
-endif()
-
-if (TILEDB_ARROW_TESTS)
-  list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/unit-arrow.cc
-    ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
 endif()
 
@@ -276,6 +207,11 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
+# We want tests to continue as normal even as the API is changing,
+# so don't warn for deprecations, since they'll be escalated to errors.
+if (NOT MSVC)
+  add_compile_options(-Wno-deprecated-declarations)
+endif()
 
 # unit test executable
 add_executable(
@@ -285,13 +221,7 @@ add_executable(
   "src/unit.cc"
 )
 
-add_dependencies(tiledb_unit tiledb_test_support_lib)
-
-# We want tests to continue as normal even as the API is changing,
-# so don't warn for deprecations, since they'll be escalated to errors.
-if (NOT MSVC)
-  target_compile_options(tiledb_unit PRIVATE -Wno-deprecated-declarations)
-endif()
+target_compile_options(tiledb_unit PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
 target_include_directories(
   tiledb_unit BEFORE PRIVATE
@@ -302,8 +232,10 @@ target_include_directories(
 target_link_libraries(tiledb_unit
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
+    TILEDB_CORE_OBJECTS
     Catch2::Catch2
     tiledb_test_support_lib
+    configuration_definitions
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
@@ -327,24 +259,13 @@ if (TILEDB_TESTS_AWS_S3_CONFIG)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
 endif()
 
-if (TILEDB_TESTS_ENABLE_REST)
-  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_ENABLE_REST)
-endif()
-
 if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
-if (TILEDB_ARROW_TESTS)
-  target_link_libraries(tiledb_unit PRIVATE pybind11::embed)
-
-  # install the python helper next to the executable for import
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
-endif()
-
 if (TILEDB_WEBP)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_WEBP)
-  find_package(Zlib_EP) # We need PNG to use our Zlib so that static link works correctly if applicable
+  find_package(ZLIB) # We need PNG to use our Zlib so that static link works correctly if applicable
   find_package(PNG)
   if (PNG_FOUND)
     target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)
@@ -356,7 +277,7 @@ endif()
 
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
-target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(tiledb_unit PRIVATE -Dtiledb_EXPORTS)
 
 target_compile_definitions(tiledb_unit PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
@@ -367,6 +288,66 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU
     set_target_properties(tiledb_unit PROPERTIES
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )
+endif()
+
+if (TILEDB_ARROW_TESTS)
+  # Tell CMake to check the Python registry entry last on Windows
+  set(Python_FIND_REGISTRY "LAST")
+  # Tell CMake to prefer Python from the PATH
+  set(Python_FIND_STRATEGY "LOCATION")
+  find_package(Python COMPONENTS Interpreter Development REQUIRED)
+  find_package(pybind11 REQUIRED)
+  message(STATUS "Configuring Apache Arrow integration test with Python ${Python_VERSION} (${Python_EXECUTABLE})")
+
+  add_executable(
+    unit_arrow EXCLUDE_FROM_ALL
+    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+    src/unit-arrow.cc
+    ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
+  )
+
+  target_link_libraries(unit_arrow
+    PUBLIC
+      TILEDB_CORE_OBJECTS_ILIB
+      TILEDB_CORE_OBJECTS
+      Catch2::Catch2WithMain
+      pybind11::embed
+      tiledb_test_support_lib
+      configuration_definitions
+  )
+
+  file(TO_CMAKE_PATH ${CMAKE_CURRENT_BINARY_DIR} SAFE_CURRENT_BINARY_DIR)
+  target_compile_definitions(unit_arrow PRIVATE -DTILEDB_PYTHON_UNIT_PATH="${SAFE_CURRENT_BINARY_DIR}")
+  # install the python helper next to the executable for import
+  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/unit_arrow.py" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+
+  target_include_directories(
+    unit_arrow BEFORE PRIVATE
+      ${TILEDB_CORE_INCLUDE_DIR}
+      ${TILEDB_EXPORT_HEADER_DIR}
+  )
+
+  add_test(
+    NAME "unit_arrow"
+    COMMAND unit_arrow --durations=yes
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+endif()
+
+# Only produce timing tests for UNIX based systems (faketime constraint)
+find_library(
+        LIBFAKETIME
+        NAMES faketime
+)
+
+if (LIBFAKETIME)
+    add_test(
+            NAME "tiledb_timing_unit"
+            COMMAND tiledb_unit --durations=yes [sub-millisecond]
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=path_list_append:${LIBFAKETIME}")
 endif()
 
 add_test(
@@ -390,18 +371,16 @@ if(TILEDB_HDFS)
   endif()
 endif()
 
-# Add custom target 'check'
-add_custom_target(check
-  COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
-  DEPENDS tests
-  USES_TERMINAL
-)
-
 # CI tests
 add_subdirectory(ci)
 if(WIN32)
   add_subdirectory(performance)
 endif()
 
-#add tests related to external items
-add_subdirectory(external)
+add_custom_target(
+  check-package
+  COMMAND ${CMAKE_COMMAND}
+    -DCMAKE_PREFIX_PATH="${CMAKE_INSTALL_PREFIX}$<SEMICOLON>${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}"
+    -B ${CMAKE_CURRENT_BINARY_DIR}/check-package-build
+    ${CMAKE_CURRENT_SOURCE_DIR}/packaging
+)

@@ -35,7 +35,7 @@ gather_sources(${SOURCES})
 commence(object_library capi_domain_stub)
   this_target_sources(domain_api.cc)
   this_target_link_libraries(export)
-  this_target_object_libraries(capi_dimension_stub)
+  this_target_object_libraries(capi_dimension_stub capi_string)
   this_target_object_libraries(domain)
 conclude(object_library)
 

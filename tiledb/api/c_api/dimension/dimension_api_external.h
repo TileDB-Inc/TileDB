@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@
 #include "../api_external_common.h"
 #include "../datatype/datatype_api_external.h"
 #include "../filter_list/filter_list_api_external.h"
+#include "../string/string_api_external.h"
 
 // For the `FILE *` argument in `tiledb_dimension_dump`
 #include <stdio.h>
@@ -62,9 +63,9 @@ typedef struct tiledb_dimension_handle_t tiledb_dimension_t;
  *
  * Note: as laid out in the Storage Format,
  * the following Datatypes are not valid for Dimension:
- * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
- * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
- * TILEDB_STRING_UCS4, TILEDB_ANY
+ * TILEDB_CHAR, TILEDB_BLOB, TILEDB_GEOM_WKB, TILEDB_GEOM_WKT, TILEDB_BOOL,
+ * TILEDB_STRING_UTF8, TILEDB_STRING_UTF16, TILEDB_STRING_UTF32,
+ * TILEDB_STRING_UCS2, TILEDB_STRING_UCS4, TILEDB_ANY
  *
  * @param ctx The TileDB context.
  * @param name The dimension name.
@@ -270,6 +271,7 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
     const tiledb_dimension_t* dim,
     const void** tile_extent) TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Dumps the contents of a dimension in ASCII form to some output (e.g.,
  * file or stdout).
@@ -287,10 +289,36 @@ TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_dimension_dump(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_dimension_dump(
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     FILE* out) TILEDB_NOEXCEPT;
+#endif
+
+/**
+ * Dumps the contents of a dimension in ASCII form to the selected string
+ * output.
+ *
+ * The output string handle must be freed by the user after use.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_dimension_dump_str(ctx, dimension, &tdb_string);
+ * // Use the string
+ * tiledb_string_free(&tdb_string);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param dimension The dimension.
+ * @param out The output string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_dimension_dump_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dimension,
+    tiledb_string_t** out) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

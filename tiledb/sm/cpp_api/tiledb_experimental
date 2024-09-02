@@ -41,9 +41,11 @@
 #include "dimension_label_experimental.h"
 #include "enumeration_experimental.h"
 #include "consolidation_plan_experimental.h"
-#include "group_experimental.h"
 #include "query_condition_experimental.h"
 #include "query_experimental.h"
 #include "subarray_experimental.h"
+#include "vfs_experimental.h"
+#include "ndrectangle.h"
+#include "current_domain.h"
 
 #endif  // TILEDB_EXPERIMENTAL_CPP_H

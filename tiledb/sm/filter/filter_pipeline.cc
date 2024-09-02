@@ -45,6 +45,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
+#include "webp_filter.h"
 
 using namespace tiledb::common;
 
@@ -268,13 +269,13 @@ Status FilterPipeline::filter_chunks_forward(
 
       f->init_compression_resource_pool(compute_tp->concurrency_level());
 
-      RETURN_NOT_OK(f->run_forward(
+      f->run_forward(
           tile,
           offsets_tile,
           &input_metadata,
           &input_data,
           &output_metadata,
-          &output_data));
+          &output_data);
 
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
@@ -357,11 +358,11 @@ Status FilterPipeline::filter_chunks_forward(
     std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
     dest_offset += sizeof(uint32_t);
     // Write the chunk metadata
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         final_stage_output_metadata.copy_to((char*)dest + dest_offset));
     dest_offset += metadata_size;
     // Write the chunk data
-    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
+    throw_if_not_ok(final_stage_output_data.copy_to((char*)dest + dest_offset));
     return Status::Ok();
   });
 
@@ -381,13 +382,13 @@ uint32_t FilterPipeline::max_chunk_size() const {
   return max_chunk_size_;
 }
 
-Status FilterPipeline::run_forward(
+void FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
     WriterTile* const tile,
     WriterTile* const offsets_tile,
     ThreadPool* const compute_tp,
     bool use_chunking) const {
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       tile ? Status::Ok() : Status_Error("invalid argument: null Tile*"));
 
   writer_stats->add_counter("write_filtered_byte_num", tile->size());
@@ -403,25 +404,28 @@ Status FilterPipeline::run_forward(
   // Get the chunk sizes for var size attributes.
   auto&& [st, chunk_offsets] =
       get_var_chunk_sizes(chunk_size, tile, offsets_tile);
-  RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
+  if (!st.ok()) {
+    tile->filtered_buffer().clear();
+    throw_if_not_ok(st);
+  }
 
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer'.
-  RETURN_NOT_OK_ELSE(
-      filter_chunks_forward(
-          *tile,
-          offsets_tile,
-          chunk_size,
-          *chunk_offsets,
-          tile->filtered_buffer(),
-          compute_tp),
-      tile->filtered_buffer().clear());
+  st = filter_chunks_forward(
+      *tile,
+      offsets_tile,
+      chunk_size,
+      *chunk_offsets,
+      tile->filtered_buffer(),
+      compute_tp);
+  if (!st.ok()) {
+    tile->filtered_buffer().clear();
+    throw_if_not_ok(st);
+  }
 
   // The contents of 'buffer' have been filtered and stored
   // in 'filtered_buffer'. We can safely free 'buffer'.
   tile->clear_data();
-
-  return Status::Ok();
 }
 
 void FilterPipeline::run_reverse_generic_tile(
@@ -555,16 +559,6 @@ FilterPipeline FilterPipeline::deserialize(
   return FilterPipeline(max_chunk_size, filters);
 }
 
-void FilterPipeline::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  for (const auto& filter : filters_) {
-    fprintf(out, "\n  > ");
-    filter->dump(out);
-  }
-}
-
 void FilterPipeline::ensure_compatible(
     const Filter& first, const Filter& second, Datatype first_input_type) {
   auto first_output_type = first.output_datatype(first_input_type);
@@ -582,6 +576,10 @@ bool FilterPipeline::has_filter(const FilterType& filter_type) const {
       return true;
   }
   return false;
+}
+
+std::vector<shared_ptr<Filter>> FilterPipeline::filters() const {
+  return filters_;
 }
 
 void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
@@ -644,6 +642,8 @@ bool FilterPipeline::use_tile_chunking(
     } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
+  } else if (has_filter(FilterType::FILTER_WEBP)) {
+    return false;
   }
 
   return true;
@@ -651,3 +651,12 @@ bool FilterPipeline::use_tile_chunking(
 
 }  // namespace sm
 }  // namespace tiledb
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FilterPipeline& fp) {
+  for (const auto& filter : fp.filters()) {
+    os << std::endl << "  > ";
+    os << *filter;
+  }
+  return os;
+}

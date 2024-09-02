@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,13 +42,12 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-
+namespace tiledb::sm {
 class ArrayDirectory;
 enum class SerializationType : uint8_t;
+}  // namespace tiledb::sm
 
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -78,8 +77,6 @@ void array_directory_to_capnp(
 
 #endif
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization
 
 #endif  // TILEDB_SERIALIZATION_ARRAY_DIRECTORY_H

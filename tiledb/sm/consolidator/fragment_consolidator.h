@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,11 +35,12 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 #include <vector>
@@ -53,6 +54,114 @@ class Config;
 class Query;
 class URI;
 
+/* ********************************* */
+/*           TYPE DEFINITIONS        */
+/* ********************************* */
+
+/** Consolidation configuration parameters. */
+struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
+  /**
+   * Include timestamps in the consolidated fragment or not.
+   */
+  bool with_timestamps_;
+  /**
+   * Include delete metadata in the consolidated fragment or not.
+   */
+  bool with_delete_meta_;
+  /**
+   * The factor by which the size of the dense fragment resulting
+   * from consolidating a set of fragments (containing at least one
+   * dense fragment) can be amplified. This is important when
+   * the union of the non-empty domains of the fragments to be
+   * consolidated have a lot of empty cells, which the consolidated
+   * fragment will have to fill with the special fill value
+   * (since the resulting fragments is dense).
+   */
+  float amplification_;
+  /** Attribute buffer size. */
+  uint64_t buffer_size_;
+  /** Total memory budget for consolidation operation. */
+  uint64_t total_budget_;
+  /** Consolidation buffers weight used to partition total budget. */
+  uint64_t buffers_weight_;
+  /** Reader weight used to partition total budget. */
+  uint64_t reader_weight_;
+  /** Writer weight used to partition total budget. */
+  uint64_t writer_weight_;
+  /** Max fragment size. */
+  uint64_t max_fragment_size_;
+  /**
+   * Number of consolidation steps performed in a single
+   * consolidation invocation.
+   */
+  uint32_t steps_;
+  /** Minimum number of fragments to consolidate in a single step. */
+  uint32_t min_frags_;
+  /** Maximum number of fragments to consolidate in a single step. */
+  uint32_t max_frags_;
+  /**
+   * Minimum size ratio for two fragments to be considered for
+   * consolidation.
+   */
+  float size_ratio_;
+  /** Is the refactored reader in use or not */
+  bool use_refactored_reader_;
+  /** Purge deleted cells or not. */
+  bool purge_deleted_cells_;
+};
+
+/**
+ * Consolidation workspace holds the large buffers used by the operation.
+ */
+class FragmentConsolidationWorkspace {
+ public:
+  FragmentConsolidationWorkspace(shared_ptr<MemoryTracker> memory_tracker);
+
+  // Disable copy and move construction/assignment so we don't have
+  // to think about it.
+  DISABLE_COPY_AND_COPY_ASSIGN(FragmentConsolidationWorkspace);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentConsolidationWorkspace);
+
+  /**
+   * Resize the buffers that will be used upon reading the input fragments and
+   * writing into the new fragment. It also retrieves the number of buffers
+   * created.
+   *
+   * @param stats The stats.
+   * @param config The consolidation config.
+   * @param array_schema The array schema.
+   * @param avg_cell_sizes The average cell sizes.
+   * @param total_buffers_budget Total budget for the consolidation buffers.
+   * @return a consolidation workspace containing the buffers
+   */
+  void resize_buffers(
+      stats::Stats* stats,
+      const FragmentConsolidationConfig& config,
+      const ArraySchema& array_schema,
+      std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
+      uint64_t total_buffers_budget);
+
+  /** Accessor for buffers. */
+  tdb::pmr::vector<span<std::byte>>& buffers() {
+    return buffers_;
+  }
+
+  /** Accessor for sizes. */
+  tdb::pmr::vector<uint64_t>& sizes() {
+    return sizes_;
+  };
+
+ private:
+  /*** The backing buffer used for all buffers. */
+  tdb::pmr::vector<std::byte> backing_buffer_;
+
+  /*** Spans that point to non-overlapping sections of the buffer. */
+  tdb::pmr::vector<span<std::byte>> buffers_;
+
+  /*** The size of each span. */
+  tdb::pmr::vector<uint64_t> sizes_;
+};
+
 /** Handles fragment consolidation. */
 class FragmentConsolidator : public Consolidator {
   friend class WhiteboxFragmentConsolidator;
@@ -65,11 +174,21 @@ class FragmentConsolidator : public Consolidator {
   /**
    * Constructor.
    *
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of all Consolidator classes on StorageManager.
+   * For now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * FragmentConsolidator(ContextResources&, const Config&).
+   *
+   * @param resources The context resources.
    * @param config Config.
-   * @param storage_manager Storage manager.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    */
   explicit FragmentConsolidator(
-      const Config& config, StorageManager* storage_manager);
+      ContextResources& resources,
+      const Config& config,
+      StorageManager* storage_manager);
 
   /** Destructor. */
   ~FragmentConsolidator() = default;
@@ -95,7 +214,7 @@ class FragmentConsolidator : public Consolidator {
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length);
+      uint32_t key_length) override;
 
   /**
    * Consolidates only the fragments of the input array using a list of
@@ -125,57 +244,9 @@ class FragmentConsolidator : public Consolidator {
    *
    * @param array_name URI of array to vacuum.
    */
-  void vacuum(const char* array_name);
+  void vacuum(const char* array_name) override;
 
  private:
-  /* ********************************* */
-  /*           TYPE DEFINITIONS        */
-  /* ********************************* */
-
-  /** Consolidation configuration parameters. */
-  struct ConsolidationConfig : Consolidator::ConsolidationConfigBase {
-    /**
-     * Include timestamps in the consolidated fragment or not.
-     */
-    bool with_timestamps_;
-    /**
-     * Include delete metadata in the consolidated fragment or not.
-     */
-    bool with_delete_meta_;
-    /**
-     * The factor by which the size of the dense fragment resulting
-     * from consolidating a set of fragments (containing at least one
-     * dense fragment) can be amplified. This is important when
-     * the union of the non-empty domains of the fragments to be
-     * consolidated have a lot of empty cells, which the consolidated
-     * fragment will have to fill with the special fill value
-     * (since the resulting fragments is dense).
-     */
-    float amplification_;
-    /** Attribute buffer size. */
-    uint64_t buffer_size_;
-    /** Max fragment size. */
-    uint64_t max_fragment_size_;
-    /**
-     * Number of consolidation steps performed in a single
-     * consolidation invocation.
-     */
-    uint32_t steps_;
-    /** Minimum number of fragments to consolidate in a single step. */
-    uint32_t min_frags_;
-    /** Maximum number of fragments to consolidate in a single step. */
-    uint32_t max_frags_;
-    /**
-     * Minimum size ratio for two fragments to be considered for
-     * consolidation.
-     */
-    float size_ratio_;
-    /** Is the refactored reader in use or not */
-    bool use_refactored_reader_;
-    /** Purge deleted cells or not. */
-    bool purge_deleted_cells_;
-  };
-
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -221,6 +292,7 @@ class FragmentConsolidator : public Consolidator {
    *     fragments are *not* all sparse.
    * @param new_fragment_uri The URI of the fragment created after
    *     consolidating the `to_consolidate` fragments.
+   * @param cw A workspace containing buffers for the queries
    * @return Status
    */
   Status consolidate_internal(
@@ -228,7 +300,8 @@ class FragmentConsolidator : public Consolidator {
       shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
-      URI* new_fragment_uri);
+      URI* new_fragment_uri,
+      FragmentConsolidationWorkspace& cw);
 
   /**
    * Copies the array by reading from the fragments to be consolidated
@@ -237,30 +310,10 @@ class FragmentConsolidator : public Consolidator {
    *
    * @param query_r The read query.
    * @param query_w The write query.
-   * @return Status
+   * @param cw A workspace containing buffers for the queries
    */
-  Status copy_array(
-      Query* query_r,
-      Query* query_w,
-      std::vector<ByteVec>* buffers,
-      std::vector<uint64_t>* buffer_sizes);
-
-  /**
-   * Creates the buffers that will be used upon reading the input fragments and
-   * writing into the new fragment. It also retrieves the number of buffers
-   * created.
-   *
-   * @param stats The stats.
-   * @param config The consolidation config.
-   * @param array_schema The array schema.
-   * @param avg_cell_sizes The average cell sizes.
-   * @return Buffers, Buffer sizes.
-   */
-  static tuple<std::vector<ByteVec>, std::vector<uint64_t>> create_buffers(
-      stats::Stats* stats,
-      const ConsolidationConfig& config,
-      const ArraySchema& array_schema,
-      std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
+  void copy_array(
+      Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
@@ -276,15 +329,19 @@ class FragmentConsolidator : public Consolidator {
    * @param query_r This query reads from the fragments to be consolidated.
    * @param query_w This query writes to the new consolidated fragment.
    * @param new_fragment_uri The URI of the new fragment to be created.
+   * @param read_memory_budget Memory budget for the read operation.
+   * @param write_memory_budget Memory budget for the write operation.
    * @return Status
    */
   Status create_queries(
       shared_ptr<Array> array_for_reads,
       shared_ptr<Array> array_for_writes,
       const NDRange& subarray,
-      Query** query_r,
-      Query** query_w,
-      URI* new_fragment_uri);
+      tdb_unique_ptr<Query>& query_r,
+      tdb_unique_ptr<Query>& query_w,
+      URI* new_fragment_uri,
+      uint64_t read_memory_budget,
+      uint64_t write_memory_budget);
 
   /**
    * Based on the input fragment info, this algorithm decides the (sorted) list
@@ -313,13 +370,10 @@ class FragmentConsolidator : public Consolidator {
    * if the array is sparse in the end.
    *
    * @param query The query to set the buffers to.
-   * @param The buffers to set.
-   * @param buffer_sizes The buffer sizes.
+   * @param cw Consolidation workspace containing the buffers
    */
-  Status set_query_buffers(
-      Query* query,
-      std::vector<ByteVec>* buffers,
-      std::vector<uint64_t>* buffer_sizes) const;
+  void set_query_buffers(
+      Query* query, FragmentConsolidationWorkspace& cw) const;
 
   /** Writes the vacuum file that contains the URIs of the consolidated
    * fragments. */
@@ -334,7 +388,7 @@ class FragmentConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Consolidation configuration parameters. */
-  ConsolidationConfig config_;
+  FragmentConsolidationConfig config_;
 };
 
 }  // namespace tiledb::sm

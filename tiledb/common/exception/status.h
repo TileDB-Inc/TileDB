@@ -5,7 +5,7 @@
  *
  * The BSD License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *            Copyright (c) 2011 The LevelDB Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,8 +60,7 @@
 #include "tiledb/common/common-std.h"
 #include "tiledb/common/heap_memory.h"
 
-namespace tiledb {
-namespace common {
+namespace tiledb::common {
 
 #define RETURN_NOT_OK(s) \
   do {                   \
@@ -86,15 +85,6 @@ namespace common {
     if (!_s.ok()) {                 \
       return {_s, __VA_ARGS__};     \
     }                               \
-  } while (false)
-
-#define RETURN_NOT_OK_ELSE_TUPLE(s, else_, ...) \
-  do {                                          \
-    Status _s = (s);                            \
-    if (!_s.ok()) {                             \
-      else_;                                    \
-      return {_s, __VA_ARGS__};                 \
-    }                                           \
   } while (false)
 
 /**
@@ -259,10 +249,6 @@ inline Status Status_Ok() {
 inline Status Status_Error(const std::string& msg) {
   return {"Error", msg};
 };
-/** Return a StorageManager error class Status with a given message **/
-inline Status Status_StorageManagerError(const std::string& msg) {
-  return {"[TileDB::StorageManager] Error", msg};
-}
 /** Return a FragmentMetadata error class Status with a given message **/
 inline Status Status_FragmentMetadataError(const std::string& msg) {
   return {"[TileDB::FragmentMetadata] Error", msg};
@@ -280,17 +266,9 @@ inline Status Status_ArraySchemaEvolutionError(const std::string& msg) {
 inline Status Status_IOError(const std::string& msg) {
   return {"[TileDB::IO] Error", msg};
 }
-/** Return a GZip error class Status with a given message **/
-inline Status Status_GZipError(const std::string& msg) {
-  return {"[TileDB::GZip] Error", msg};
-}
 /** Return a ChecksumError error class Status with a given message **/
 inline Status Status_ChecksumError(const std::string& msg) {
   return {"[TileDB::ChecksumError] Error", msg};
-}
-/** Return a Compression error class Status with a given message **/
-inline Status Status_CompressionError(const std::string& msg) {
-  return {"[TileDB::Compression] Error", msg};
 }
 /** Return a Tile error class Status with a given message **/
 inline Status Status_TileError(const std::string& msg) {
@@ -450,7 +428,6 @@ inline Status Status_TaskError(const std::string& msg) {
 inline Status Status_RangeError(const std::string& msg) {
   return {"[TileDB::Range] Error", msg};
 }
-}  // namespace common
-}  // namespace tiledb
+}  // namespace tiledb::common
 
 #endif  // TILEDB_STATUS_H

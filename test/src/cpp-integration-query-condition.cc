@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,9 +36,9 @@
 #include <iostream>
 #include <vector>
 
+#include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
 
@@ -91,6 +91,7 @@ inline int index_from_row_col(int r, int c) {
  * @param set_dups Whether the array allows coordinate duplicates.
  * @param a_data_read Data buffer to store cell values on attribute a.
  * @param b_data_read Data buffer to store cell values on attribute b.
+ * @param array_uri URI of array to create.
  */
 void create_array(
     Context& ctx,
@@ -98,7 +99,8 @@ void create_array(
     bool set_dups,
     bool add_utf8_attr,
     std::vector<int>& a_data_read,
-    std::vector<float>& b_data_read) {
+    std::vector<float>& b_data_read,
+    const std::string& array_uri = array_name) {
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, num_rows}}, 4))
       .add_dimension(Dimension::create<int>(ctx, "cols", {{1, num_rows}}, 4));
@@ -123,7 +125,7 @@ void create_array(
     attr_c.set_nullable(true);
     schema.add_attribute(attr_c);
   }
-  Array::create(array_name, schema);
+  Array::create(array_uri, schema);
 
   // Write some initial data and close the array.
   std::vector<int> row_dims;
@@ -179,7 +181,7 @@ void create_array(
   }
 
   if (array_type == TILEDB_SPARSE) {
-    Array array_w(ctx, array_name, TILEDB_WRITE);
+    Array array_w(ctx, array_uri, TILEDB_WRITE);
     Query query_w(ctx, array_w);
     query_w.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("rows", row_dims)
@@ -197,7 +199,7 @@ void create_array(
     query_w.finalize();
     array_w.close();
   } else if (array_type == TILEDB_DENSE) {
-    Array array_w(ctx, array_name, TILEDB_WRITE);
+    Array array_w(ctx, array_uri, TILEDB_WRITE);
     Query query_w(ctx, array_w);
     query_w.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", a_data)
@@ -215,16 +217,18 @@ void create_array(
   }
 
   // Open and read the entire array to save data for future comparisons.
-  Array array1(ctx, array_name, TILEDB_READ);
+  Array array1(ctx, array_uri, TILEDB_READ);
   Query query1(ctx, array1);
   query1.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_data_read)
       .set_data_buffer("b", b_data_read);
 
+  Subarray subarray1(ctx, array1);
   if (array_type == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query1.add_range("rows", range[0], range[1])
+    subarray1.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query1.set_subarray(subarray1);
   }
   query1.submit();
 
@@ -316,15 +320,17 @@ struct TestParams {
 
 TEST_CASE(
     "Testing read query with empty QC, with no range.",
-    "[query][query-condition][empty]") {
+    "[query][query-condition][empty][rest]") {
+  // Generate test parameters.
+  TestParams params = GENERATE(
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Create an empty query condition
   QueryCondition qc(ctx);
@@ -338,12 +344,6 @@ TEST_CASE(
   std::vector<int> a_data_read_2(num_rows * num_rows);
   std::vector<float> b_data_read_2(num_rows * num_rows);
 
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
-
   // Setup by creating buffers to store all elements of the original array.
   create_array(
       ctx,
@@ -351,7 +351,8 @@ TEST_CASE(
       params.set_dups_,
       params.add_utf8_attr_,
       a_data_read,
-      b_data_read);
+      b_data_read,
+      array_uri);
 
   // Create the query, which reads over the entire array with query condition
   Config config;
@@ -359,15 +360,19 @@ TEST_CASE(
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
+
+  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get(), false);
+  auto ctx2 = vfs_test_setup2.ctx();
+  Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -378,15 +383,12 @@ TEST_CASE(
 
 TEST_CASE(
     "Testing read query with basic QC, with no range.",
-    "[query][query-condition]") {
+    "[query][query-condition][rest]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Define query condition (b < 4.0).
   QueryCondition qc(ctx);
@@ -415,7 +417,8 @@ TEST_CASE(
       params.set_dups_,
       params.add_utf8_attr_,
       a_data_read,
-      b_data_read);
+      b_data_read,
+      array_uri);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -424,15 +427,18 @@ TEST_CASE(
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
+  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get(), false);
+  auto ctx2 = vfs_test_setup2.ctx();
+  Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -500,23 +506,16 @@ TEST_CASE(
 
   query.finalize();
   array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE(
     "Testing read query with basic negated QC, with no range.",
-    "[query][query-condition][negation]") {
+    "[query][query-condition][negation][rest]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Define query condition (b < 4.0).
   QueryCondition qc(ctx);
@@ -547,7 +546,8 @@ TEST_CASE(
       params.set_dups_,
       params.add_utf8_attr_,
       a_data_read,
-      b_data_read);
+      b_data_read,
+      array_uri);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -556,15 +556,20 @@ TEST_CASE(
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
+
+  vfs_test_setup.update_config(config.ptr().get());
+  Context ctx2 = vfs_test_setup.ctx();
+
+  Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -632,10 +637,6 @@ TEST_CASE(
 
   query.finalize();
   array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE(
@@ -692,8 +693,10 @@ TEST_CASE(
 
   // Define range.
   int range[] = {2, 3};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -822,8 +825,10 @@ TEST_CASE(
   // Define range.
   int range[] = {2, 3};
   int range1[] = {7, 10};
-  query.add_range("rows", range1[0], range1[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range1[0], range1[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -961,8 +966,10 @@ TEST_CASE(
   // Define range.
   int range[] = {2, 3};
   int range1[] = {7, 10};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range1[0], range1[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -1085,8 +1092,10 @@ TEST_CASE(
 
   // Define range.
   int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -1247,8 +1256,10 @@ TEST_CASE(
 
   // Define range.
   int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -1419,8 +1430,10 @@ TEST_CASE(
 
   // Define range.
   int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(
@@ -1548,18 +1561,22 @@ TEST_CASE(
   std::vector<int> vals = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
   Query query_w(ctx, array, TILEDB_WRITE);
   int range[] = {1, 10};
-  query_w.add_range("d", range[0], range[1]);
+  Subarray subarray_w(ctx, array);
+  subarray_w.add_range("d", range[0], range[1]);
+  query_w.set_subarray(subarray_w);
   query_w.set_layout(TILEDB_ROW_MAJOR);
-  query_w.set_buffer("a", vals);
+  query_w.set_data_buffer("a", vals);
   REQUIRE(query_w.submit() == Query::Status::COMPLETE);
 
   // Write values from 3-6 as 7 in the array.
   std::vector<int> vals2 = {7, 7, 7, 7};
   Query query_w2(ctx, array, TILEDB_WRITE);
   int range2[] = {3, 6};
-  query_w2.add_range("d", range2[0], range2[1]);
+  Subarray subarray_w2(ctx, array);
+  subarray_w2.add_range("d", range2[0], range2[1]);
+  query_w2.set_subarray(subarray_w2);
   query_w2.set_layout(TILEDB_ROW_MAJOR);
-  query_w2.set_buffer("a", vals2);
+  query_w2.set_data_buffer("a", vals2);
   REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
 
   array.close();
@@ -1574,14 +1591,92 @@ TEST_CASE(
 
   std::vector<int> vals_read(10);
   Query query_r(ctx, array_r, TILEDB_READ);
-  query_r.add_range("d", range[0], range[1]);
+  Subarray subarray_r(ctx, array_r);
+  subarray_r.add_range("d", range[0], range[1]);
+  query_r.set_subarray(subarray_r);
   query_r.set_layout(TILEDB_ROW_MAJOR);
-  query_r.set_buffer("a", vals_read);
+  query_r.set_data_buffer("a", vals_read);
   query_r.set_condition(qc);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
   std::vector<int> c_vals_read = {-1, -1, 7, 7, 7, 7, -1, -1, -1, -1};
   CHECK(0 == memcmp(vals_read.data(), c_vals_read.data(), 10 * sizeof(int)));
+
+  array_r.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE(
+    "Testing sparse query condition with the same fragment domain.",
+    "[query][query-condition][sparse][same-fd]") {
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create a simple 1D vector with domain 1-10 and one attribute.
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 10}}, 5));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.set_cell_order(TILEDB_HILBERT);
+  schema.set_allows_dups(false);
+  schema.set_capacity(2);
+
+  Attribute attr = Attribute::create<int>(ctx, "a");
+  Attribute attr2 = Attribute::create<int>(ctx, "a2");
+  int fill_value = -1;
+  attr.set_fill_value(&fill_value, sizeof(int));
+  schema.add_attribute(attr);
+  schema.add_attribute(attr2);
+  Array::create(array_name, schema);
+
+  // Open array for write.
+  Array array(ctx, array_name, TILEDB_WRITE);
+
+  std::vector<int> dim_vals = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+  // Write all values as 3 in the array.
+  std::vector<int> vals = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+  Query query_w(ctx, array, TILEDB_WRITE);
+  query_w.set_data_buffer("d", dim_vals);
+  query_w.set_data_buffer("a", vals);
+  query_w.set_data_buffer("a2", vals);
+  REQUIRE(query_w.submit() == Query::Status::COMPLETE);
+
+  // Write values from 1-10 as 7 in the array.
+  std::vector<int> vals2 = {7, 7, 7, 7, 7, 7, 7, 7, 7, 6};
+  Query query_w2(ctx, array, TILEDB_WRITE);
+  query_w2.set_data_buffer("d", dim_vals);
+  query_w2.set_data_buffer("a", vals2);
+  query_w2.set_data_buffer("a2", vals);
+  REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
+
+  array.close();
+
+  // Open the array for read.
+  Array array_r(ctx, array_name, TILEDB_READ);
+
+  // Query the data with query condition a < 7.
+  QueryCondition qc(ctx);
+  int val1 = 7;
+  qc.init("a", &val1, sizeof(int), TILEDB_LT);
+
+  std::vector<int> vals_read(10);
+  std::vector<int> vals_read2(10);
+  std::vector<int> dim_vals_read(10);
+  Query query_r(ctx, array_r, TILEDB_READ);
+  query_r.set_layout(TILEDB_GLOBAL_ORDER);
+  query_r.set_data_buffer("a", vals_read);
+  query_r.set_data_buffer("a2", vals_read2);
+  query_r.set_data_buffer("d", dim_vals_read);
+  query_r.set_condition(qc);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
   array_r.close();
 
@@ -1663,10 +1758,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -1807,10 +1904,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -1965,10 +2064,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -2107,10 +2208,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -2287,10 +2390,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -2511,10 +2616,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -2617,7 +2724,9 @@ TEST_CASE(
   std::vector<uint8_t> rlabs(10);
 
   Query rquery(ctx, rarray, TILEDB_READ);
-  rquery.set_subarray(subarray)
+  Subarray sub(ctx, rarray);
+  sub.set_subarray(subarray);
+  rquery.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("rows", rrows)
       .set_data_buffer("labs", rlabs);

@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #include "tiledb/common/logger_public.h"
@@ -166,12 +167,14 @@ TEST_CASE(
   // Prepare a read query.
   Array array_read(ctx, array_name, TILEDB_READ);
   Query query_read(ctx, array_read, TILEDB_READ);
+  Subarray subarray_read(ctx, array_read);
   auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
   auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
-  query_read.add_range(
+  subarray_read.add_range(
       0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-  query_read.add_range<int32_t>(
+  subarray_read.add_range<int32_t>(
       1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
+  query_read.set_subarray(subarray_read);
 
   // Prepare buffers with small enough sizes to ensure the string dimension
   // must split.
@@ -253,6 +256,7 @@ TEST_CASE(
     // Prepare a read query.
     Array array_read(ctx, array_name, TILEDB_READ);
     Query query_read(ctx, array_read, TILEDB_READ);
+    Subarray subarray_read(ctx, array_read);
     auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
     auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
     auto dim3_non_empty_domain = array_read.non_empty_domain_var(2);
@@ -263,7 +267,7 @@ TEST_CASE(
     // editors.
     switch (option) {
       case 1:
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         expected_dim1 = {"bb", "c", "d"};
         expected_dim2 = {1, 1, 2};
@@ -271,11 +275,11 @@ TEST_CASE(
         expected_a1_data = {2, 3, 4};
         break;
       case 2:
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d"};
         expected_dim2 = {1, 2};
@@ -283,9 +287,9 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 3:
-        query_read.add_range(
+        subarray_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"a", "bb", "c", "d", "ee", "f"};
         expected_dim2 = {1, 1, 1, 2, 2, 2};
@@ -293,15 +297,15 @@ TEST_CASE(
         expected_a1_data = {1, 2, 3, 4, 5, 6};
         break;
       case 4:
-        query_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
         expected_dim1 = {"c", "d"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "j"};
         expected_a1_data = {3, 4};
         break;
       case 5:
-        query_read.add_range(0, std::string("c"), std::string("d"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"c", "d"};
         expected_dim2 = {1, 2};
@@ -309,9 +313,9 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 6:
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"bb", "c", "d"};
         expected_dim2 = {1, 1, 2};
@@ -319,9 +323,9 @@ TEST_CASE(
         expected_a1_data = {2, 3, 4};
         break;
       case 7:
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d"};
         expected_dim2 = {1, 2};
@@ -329,8 +333,8 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 8:
-        query_read.add_range(0, std::string("c"), std::string("d"));
-        query_read.add_range(
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d"};
         expected_dim2 = {1, 2};
@@ -338,9 +342,9 @@ TEST_CASE(
         expected_a1_data = {3, 4};
         break;
       case 9:
-        query_read.add_range(
+        subarray_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c", "d", "ee"};
         expected_dim2 = {1, 2, 2};
@@ -348,8 +352,8 @@ TEST_CASE(
         expected_a1_data = {3, 4, 5};
         break;
       case 10:
-        query_read.add_range(0, std::string("c"), std::string("ee"));
-        query_read.add_range(
+        subarray_read.add_range(0, std::string("c"), std::string("ee"));
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kk"));
         expected_dim1 = {"c", "d", "ee"};
         expected_dim2 = {1, 2, 2};
@@ -357,6 +361,7 @@ TEST_CASE(
         expected_a1_data = {3, 4, 5};
         break;
     }
+    query_read.set_subarray(subarray_read);
 
     std::vector<char> dim1;
     std::vector<uint64_t> dim1_offsets;
@@ -480,6 +485,7 @@ TEST_CASE(
     // Prepare a read query. Do not set a range for the last string dimension.
     Array array_read(ctx, array_name, TILEDB_READ);
     Query query_read(ctx, array_read, TILEDB_READ);
+    Subarray subarray_read(ctx, array_read);
     auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
     auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
 
@@ -496,7 +502,7 @@ TEST_CASE(
       case 1:
         expected_result_num = 4;
         initial_expected_read_status = Query::Status::INCOMPLETE;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
@@ -506,11 +512,11 @@ TEST_CASE(
       case 2:
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
         expected_dim2 = {2, 1};
@@ -520,9 +526,9 @@ TEST_CASE(
       case 3:
         expected_result_num = 6;
         initial_expected_read_status = Query::Status::INCOMPLETE;
-        query_read.add_range(
+        subarray_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"a", "a", "bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2, 1, 2};
@@ -532,7 +538,7 @@ TEST_CASE(
       case 4:
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
-        query_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
@@ -541,8 +547,8 @@ TEST_CASE(
       case 5:
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
-        query_read.add_range(0, std::string("c"), std::string("d"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
@@ -552,9 +558,9 @@ TEST_CASE(
       case 6:
         expected_result_num = 4;
         initial_expected_read_status = Query::Status::INCOMPLETE;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
@@ -564,9 +570,9 @@ TEST_CASE(
       case 7:
         expected_result_num = 2;
         initial_expected_read_status = Query::Status::COMPLETE;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
         expected_dim2 = {2, 1};
@@ -577,8 +583,8 @@ TEST_CASE(
         expected_result_num = 1;
         initial_result_num = 1;
         initial_expected_read_status = Query::Status::COMPLETE;
-        query_read.add_range(0, std::string("c"), std::string("d"));
-        query_read.add_range(
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c"};
         expected_dim2 = {1};
@@ -589,9 +595,9 @@ TEST_CASE(
         expected_result_num = 3;
         initial_result_num = 3;
         initial_expected_read_status = Query::Status::COMPLETE;
-        query_read.add_range(
+        subarray_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "bb", "c"};
         expected_dim2 = {2, 2, 1};
@@ -599,6 +605,7 @@ TEST_CASE(
         expected_a1_data = {4, 5, 3};
         break;
     }
+    query_read.set_subarray(subarray_read);
 
     std::vector<char> dim1;
     std::vector<uint64_t> dim1_offsets;
@@ -720,6 +727,7 @@ TEST_CASE(
   // Prepare a read query. Do not set a range for the last string dimension.
   Array array_read(ctx, array_name, TILEDB_READ);
   Query query_read(ctx, array_read, TILEDB_READ);
+  Subarray subarray_read(ctx, array_read);
   auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
   auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
 
@@ -737,7 +745,7 @@ TEST_CASE(
     which_option = 1;
     expected_result_num = 4;
     initial_expected_read_status = Query::Status::INCOMPLETE;
-    query_read.add_range(
+    subarray_read.add_range(
         std::string("dim1"), std::string("az"), std::string("de"));
     expected_dim1 = {"bb", "bb", "c", "c"};
     expected_dim2 = {1, 2, 1, 2};
@@ -748,11 +756,11 @@ TEST_CASE(
     which_option = 2;
     expected_result_num = 2;
     initial_expected_read_status = Query::Status::COMPLETE;
-    query_read.add_range(
+    subarray_read.add_range(
         std::string("dim1"), std::string("az"), std::string("de"));
-    query_read.add_range<int32_t>(
+    subarray_read.add_range<int32_t>(
         1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-    query_read.add_range(
+    subarray_read.add_range(
         std::string("dim3"), std::string("i"), std::string("kl"));
     expected_dim1 = {"bb", "c"};
     expected_dim2 = {2, 1};
@@ -763,9 +771,9 @@ TEST_CASE(
     which_option = 3;
     expected_result_num = 6;
     initial_expected_read_status = Query::Status::INCOMPLETE;
-    query_read.add_range(
+    subarray_read.add_range(
         0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-    query_read.add_range<int32_t>(
+    subarray_read.add_range<int32_t>(
         1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
     expected_dim1 = {"a", "a", "bb", "bb", "c", "c"};
     expected_dim2 = {1, 2, 1, 2, 1, 2};
@@ -776,7 +784,7 @@ TEST_CASE(
     which_option = 4;
     expected_result_num = 2;
     initial_expected_read_status = Query::Status::COMPLETE;
-    query_read.add_range(0, std::string("c"), std::string("d"));
+    subarray_read.add_range(0, std::string("c"), std::string("d"));
     expected_dim1 = {"c", "c"};
     expected_dim2 = {1, 2};
     expected_dim3 = {"i", "l"};
@@ -786,8 +794,8 @@ TEST_CASE(
     which_option = 5;
     expected_result_num = 2;
     initial_expected_read_status = Query::Status::COMPLETE;
-    query_read.add_range(0, std::string("c"), std::string("d"));
-    query_read.add_range<int32_t>(
+    subarray_read.add_range(0, std::string("c"), std::string("d"));
+    subarray_read.add_range<int32_t>(
         1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
     expected_dim1 = {"c", "c"};
     expected_dim2 = {1, 2};
@@ -798,9 +806,9 @@ TEST_CASE(
     which_option = 6;
     expected_result_num = 4;
     initial_expected_read_status = Query::Status::INCOMPLETE;
-    query_read.add_range(
+    subarray_read.add_range(
         std::string("dim1"), std::string("az"), std::string("de"));
-    query_read.add_range<int32_t>(
+    subarray_read.add_range<int32_t>(
         1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
     expected_dim1 = {"bb", "bb", "c", "c"};
     expected_dim2 = {1, 2, 1, 2};
@@ -811,9 +819,9 @@ TEST_CASE(
     which_option = 7;
     expected_result_num = 2;
     initial_expected_read_status = Query::Status::COMPLETE;
-    query_read.add_range(
+    subarray_read.add_range(
         std::string("dim1"), std::string("az"), std::string("de"));
-    query_read.add_range(
+    subarray_read.add_range(
         std::string("dim3"), std::string("i"), std::string("kl"));
     expected_dim1 = {"bb", "c"};
     expected_dim2 = {2, 1};
@@ -825,8 +833,8 @@ TEST_CASE(
     expected_result_num = 1;
     initial_result_num = 1;
     initial_expected_read_status = Query::Status::COMPLETE;
-    query_read.add_range(0, std::string("c"), std::string("d"));
-    query_read.add_range(
+    subarray_read.add_range(0, std::string("c"), std::string("d"));
+    subarray_read.add_range(
         std::string("dim3"), std::string("i"), std::string("kl"));
     expected_dim1 = {"c"};
     expected_dim2 = {1};
@@ -838,15 +846,16 @@ TEST_CASE(
     expected_result_num = 3;
     initial_result_num = 3;
     initial_expected_read_status = Query::Status::COMPLETE;
-    query_read.add_range(
+    subarray_read.add_range(
         0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-    query_read.add_range(
+    subarray_read.add_range(
         std::string("dim3"), std::string("i"), std::string("kl"));
     expected_dim1 = {"a", "bb", "c"};
     expected_dim2 = {2, 2, 1};
     expected_dim3 = {"j", "kk", "i"};
     expected_a1_data = {4, 5, 3};
   }
+  query_read.set_subarray(subarray_read);
 
   std::vector<uint64_t> dim1_offsets;
   std::vector<int32_t> dim2;
@@ -994,6 +1003,7 @@ TEST_CASE(
     // Prepare a read query. Ranges set vary in the different switch cases.
     Array array_read(ctx, array_name, TILEDB_READ);
     Query query_read(ctx, array_read, TILEDB_READ);
+    Subarray subarray_read(ctx, array_read);
     auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
     auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
 
@@ -1006,7 +1016,7 @@ TEST_CASE(
     switch (option) {
       case 1:
         expected_result_num = 4;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
@@ -1016,11 +1026,11 @@ TEST_CASE(
         break;
       case 2:
         expected_result_num = 2;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
         expected_dim2 = {2, 1};
@@ -1029,9 +1039,9 @@ TEST_CASE(
         break;
       case 3:
         expected_result_num = 6;
-        query_read.add_range(
+        subarray_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"a", "a", "bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2, 1, 2};
@@ -1040,7 +1050,7 @@ TEST_CASE(
         break;
       case 4:
         expected_result_num = 2;
-        query_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
@@ -1048,8 +1058,8 @@ TEST_CASE(
         break;
       case 5:
         expected_result_num = 2;
-        query_read.add_range(0, std::string("c"), std::string("d"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
@@ -1058,9 +1068,9 @@ TEST_CASE(
         break;
       case 6:
         expected_result_num = 4;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
@@ -1069,9 +1079,9 @@ TEST_CASE(
         break;
       case 7:
         expected_result_num = 2;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
         expected_dim2 = {2, 1};
@@ -1080,8 +1090,8 @@ TEST_CASE(
         break;
       case 8:
         expected_result_num = 1;
-        query_read.add_range(0, std::string("c"), std::string("d"));
-        query_read.add_range(
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c"};
         expected_dim2 = {1};
@@ -1090,9 +1100,9 @@ TEST_CASE(
         break;
       case 9:
         expected_result_num = 3;
-        query_read.add_range(
+        subarray_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "bb", "c"};
         expected_dim2 = {2, 2, 1};
@@ -1100,6 +1110,7 @@ TEST_CASE(
         expected_a1_data = {4, 5, 3};
         break;
     }
+    query_read.set_subarray(subarray_read);
 
     std::vector<char> dim1;
     std::vector<uint64_t> dim1_offsets;
@@ -1246,6 +1257,7 @@ TEST_CASE(
     // Prepare a read query. Ranges set vary in the different switch cases.
     Array array_read(ctx, array_name, TILEDB_READ);
     Query query_read(ctx, array_read, TILEDB_READ);
+    Subarray subarray_read(ctx, array_read);
     auto dim1_non_empty_domain = array_read.non_empty_domain_var(0);
     auto dim2_non_empty_domain = array_read.non_empty_domain<int32_t>(1);
 
@@ -1258,7 +1270,7 @@ TEST_CASE(
     switch (option) {
       case 1:
         expected_result_num = 4;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
@@ -1268,11 +1280,11 @@ TEST_CASE(
         break;
       case 2:
         expected_result_num = 2;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
         expected_dim2 = {2, 1};
@@ -1281,9 +1293,9 @@ TEST_CASE(
         break;
       case 3:
         expected_result_num = 6;
-        query_read.add_range(
+        subarray_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"a", "a", "bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2, 1, 2};
@@ -1292,7 +1304,7 @@ TEST_CASE(
         break;
       case 4:
         expected_result_num = 2;
-        query_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
         expected_dim3 = {"i", "l"};
@@ -1300,8 +1312,8 @@ TEST_CASE(
         break;
       case 5:
         expected_result_num = 2;
-        query_read.add_range(0, std::string("c"), std::string("d"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"c", "c"};
         expected_dim2 = {1, 2};
@@ -1310,9 +1322,9 @@ TEST_CASE(
         break;
       case 6:
         expected_result_num = 4;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range<int32_t>(
+        subarray_read.add_range<int32_t>(
             1, dim2_non_empty_domain.first, dim2_non_empty_domain.second);
         expected_dim1 = {"bb", "bb", "c", "c"};
         expected_dim2 = {1, 2, 1, 2};
@@ -1321,9 +1333,9 @@ TEST_CASE(
         break;
       case 7:
         expected_result_num = 2;
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim1"), std::string("az"), std::string("de"));
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"bb", "c"};
         expected_dim2 = {2, 1};
@@ -1332,8 +1344,8 @@ TEST_CASE(
         break;
       case 8:
         expected_result_num = 1;
-        query_read.add_range(0, std::string("c"), std::string("d"));
-        query_read.add_range(
+        subarray_read.add_range(0, std::string("c"), std::string("d"));
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"c"};
         expected_dim2 = {1};
@@ -1342,9 +1354,9 @@ TEST_CASE(
         break;
       case 9:
         expected_result_num = 3;
-        query_read.add_range(
+        subarray_read.add_range(
             0, dim1_non_empty_domain.first, dim1_non_empty_domain.second);
-        query_read.add_range(
+        subarray_read.add_range(
             std::string("dim3"), std::string("i"), std::string("kl"));
         expected_dim1 = {"a", "bb", "c"};
         expected_dim2 = {2, 2, 1};
@@ -1352,6 +1364,7 @@ TEST_CASE(
         expected_a1_data = {4, 5, 3};
         break;
     }
+    query_read.set_subarray(subarray_read);
 
     std::vector<char> dim1;
     std::vector<uint64_t> dim1_offsets;
@@ -1451,25 +1464,17 @@ void write_sparse_array_string_dim(
     const std::string& array_name,
     std::string& data,
     std::vector<uint64_t>& data_offsets,
-    tiledb_layout_t layout,
-    const bool serialized,
-    const bool refactored_query_v2) {
+    tiledb_layout_t layout) {
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(layout);
   query.set_data_buffer("dim1", (char*)data.data(), data.size());
   query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
-
-  // Submit query
-  test::ServerQueryBuffers server_buffers_;
-  auto rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+  if (layout != TILEDB_GLOBAL_ORDER) {
+    query.submit();
+  } else {
+    query.submit_and_finalize();
+  }
 
   array.close();
 }
@@ -1479,31 +1484,24 @@ void read_and_check_sparse_array_string_dim(
     const std::string& array_name,
     std::string& expected_data,
     std::vector<uint64_t>& expected_offsets,
-    tiledb_layout_t layout,
-    const bool serialized,
-    const bool refactored_query_v2) {
+    tiledb_layout_t layout) {
   Array array(ctx, array_name, TILEDB_READ);
 
   std::vector<uint64_t> offsets_back(expected_offsets.size());
   std::string data_back;
   data_back.resize(expected_data.size());
 
+  Subarray subarray(ctx, array);
+  subarray.add_range(
+      "dim1", std::string("ATSD987JIO"), std::string("TGSD987JPO"));
+
   Query query(ctx, array, TILEDB_READ);
-  query.add_range("dim1", std::string("ATSD987JIO"), std::string("TGSD987JPO"));
+  query.set_subarray(subarray);
   query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
   query.set_offsets_buffer("dim1", offsets_back.data(), offsets_back.size());
   query.set_layout(layout);
 
-  // Submit query
-  test::ServerQueryBuffers server_buffers_;
-  auto rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit();
 
   // Check the element data and offsets are properly returned
   CHECK(data_back == expected_data);
@@ -1514,16 +1512,8 @@ void read_and_check_sparse_array_string_dim(
 
 TEST_CASE(
     "C++ API: Test filtering of string dimensions on sparse arrays",
-    "[cppapi][string-dims][rle-strings][dict-strings][sparse]") {
-  std::string array_name = "test_rle_string_dim";
-  bool serialized = false, refactored_query_v2 = false;
-#ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-
+    "[cppapi][string-dims][rle-strings][dict-strings][sparse][rest]") {
+  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
   // Create data buffer to use
   std::stringstream repetitions;
   size_t repetition_num = 100;
@@ -1538,18 +1528,14 @@ TEST_CASE(
     return start += 10;
   });
 
-  Context ctx;
-  VFS vfs(ctx);
-
-  // Create the array
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_name{vfs_test_setup.array_uri("test_rle_string_dim")};
 
   Domain domain(ctx);
   auto dim =
       Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr);
 
-  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
   // Create compressor as a filter
   Filter filter(ctx, f);
   // Create filter list
@@ -1567,87 +1553,36 @@ TEST_CASE(
 
   SECTION("Unordered write") {
     write_sparse_array_string_dim(
-        ctx,
-        array_name,
-        data,
-        data_elem_offsets,
-        TILEDB_UNORDERED,
-        serialized,
-        refactored_query_v2);
+        ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_dim(
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_ROW_MAJOR,
-          serialized,
-          refactored_query_v2);
+          ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
     }
     SECTION("Global order read") {
       read_and_check_sparse_array_string_dim(
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_GLOBAL_ORDER,
-          serialized,
-          refactored_query_v2);
+          ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
     }
     SECTION("Unordered read") {
       read_and_check_sparse_array_string_dim(
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_UNORDERED,
-          serialized,
-          refactored_query_v2);
+          ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
     }
   }
   SECTION("Global order write") {
     write_sparse_array_string_dim(
-        ctx,
-        array_name,
-        data,
-        data_elem_offsets,
-        TILEDB_GLOBAL_ORDER,
-        serialized,
-        refactored_query_v2);
+        ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_dim(
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_ROW_MAJOR,
-          serialized,
-          refactored_query_v2);
+          ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
     }
     SECTION("Global order read") {
       read_and_check_sparse_array_string_dim(
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_GLOBAL_ORDER,
-          serialized,
-          refactored_query_v2);
+          ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
     }
     SECTION("Unordered read") {
       read_and_check_sparse_array_string_dim(
-          ctx,
-          array_name,
-          data,
-          data_elem_offsets,
-          TILEDB_UNORDERED,
-          serialized,
-          refactored_query_v2);
+          ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
     }
   }
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }
 
 TEST_CASE(

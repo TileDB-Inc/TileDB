@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,14 +38,13 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/misc/rectangle.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -53,13 +52,15 @@ namespace sm {
 
 template <class T>
 DenseTiler<T>::DenseTiler(
+    shared_ptr<MemoryTracker> memory_tracker,
     const std::unordered_map<std::string, QueryBuffer>* buffers,
     const Subarray* subarray,
     Stats* const parent_stats,
     const std::string& offsets_format_mode,
     uint64_t offsets_bitsize,
     bool offsets_extra_element)
-    : stats_(parent_stats->create_child("DenseTiler"))
+    : memory_tracker_(memory_tracker)
+    , stats_(parent_stats->create_child("DenseTiler"))
     , array_schema_(subarray->array()->array_schema_latest())
     , buffers_(buffers)
     , subarray_(subarray)
@@ -113,7 +114,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 
   // Focus on the input tile
   auto tile_sub = this->tile_subarray(id);
-  auto sub_in_tile = utils::geometry::intersection<T>(sub, tile_sub);
+  auto sub_in_tile = rectangle::intersection<T>(sub, tile_sub);
 
   // Compute the starting element to copy from in the subarray, and
   // to copy to in the tile
@@ -223,12 +224,13 @@ Status DenseTiler<T>::get_tile(
         constants::format_version,
         constants::cell_var_offset_type,
         constants::cell_var_offset_size,
-        tile_off_size);
+        tile_off_size,
+        memory_tracker_);
 
     // Fill entire tile with MAX_UINT64
     std::vector<offsets_t> to_write(
         cell_num_in_tile, std::numeric_limits<offsets_t>::max());
-    RETURN_NOT_OK(tile_pos.write(to_write.data(), 0, tile_off_size));
+    tile_pos.write(to_write.data(), 0, tile_off_size);
     to_write.clear();
     to_write.shrink_to_fit();
 
@@ -250,10 +252,10 @@ Status DenseTiler<T>::get_tile(
     auto& tile_val = tile.var_tile();
     for (uint64_t i = 0; i < cell_num_in_tile; ++i) {
       pos = tile_pos_buff[i];
-      RETURN_NOT_OK(tile_off.write(&offset, tile_off_offset, sizeof(offset)));
+      tile_off.write(&offset, tile_off_offset, sizeof(offset));
       tile_off_offset += sizeof(offset);
       if (pos == std::numeric_limits<uint64_t>::max()) {  // Empty
-        RETURN_NOT_OK(tile_val.write_var(&fill_var[0], offset, cell_size));
+        tile_val.write_var(&fill_var[0], offset, cell_size);
         offset += cell_size;
       } else {  // Non-empty
         val_offset = ((offsets_bytesize_ == 8) ?
@@ -267,8 +269,7 @@ Status DenseTiler<T>::get_tile(
                             mul -
                         val_offset) :
                        buff_var_size - val_offset;
-        RETURN_NOT_OK(
-            tile_val.write_var(&buff_var[val_offset], offset, val_size));
+        tile_val.write_var(&buff_var[val_offset], offset, val_size);
         offset += val_size;
       }
     }
@@ -540,8 +541,7 @@ Status DenseTiler<T>::copy_tile(
   auto d = dim_num - 1;
   while (true) {
     // Copy a slab
-    RETURN_NOT_OK(
-        tile.write(&buff[sub_offsets[d]], tile_offsets[d], copy_nbytes));
+    tile.write(&buff[sub_offsets[d]], tile_offsets[d], copy_nbytes);
 
     // Advance cell coordinates, tile and buffer offsets
     auto last_dim_changed = d;
@@ -650,5 +650,4 @@ template class DenseTiler<uint32_t>;
 template class DenseTiler<int64_t>;
 template class DenseTiler<uint64_t>;
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

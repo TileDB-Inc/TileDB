@@ -48,7 +48,6 @@
 #include <unordered_map>
 
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
@@ -59,6 +58,11 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+
+namespace common {
+class Logger;
+}
+
 namespace sm {
 
 /**
@@ -81,6 +85,9 @@ struct HeaderCbData {
 
   /** A pointer to the lock attached to the shared resource of the cache map */
   std::mutex* redirect_uri_map_lock;
+
+  /** True if the uri should be stored in URI cache map, false if not */
+  bool should_cache_redirect;
 };
 
 /**
@@ -124,7 +131,8 @@ class Curl {
       const Config* config,
       const std::unordered_map<std::string, std::string>& extra_headers,
       std::unordered_map<std::string, std::string>* res_headers,
-      std::mutex* res_mtx);
+      std::mutex* res_mtx,
+      bool should_cache_redirect = true);
 
   /**
    * Escapes the given URL.
@@ -150,7 +158,7 @@ class Curl {
       stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
-      const BufferList* data,
+      BufferList* data,
       Buffer* returned_data,
       const std::string& res_ns_uri);
 
@@ -170,7 +178,7 @@ class Curl {
       stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
-      const BufferList* data,
+      BufferList* data,
       Buffer* returned_data,
       const std::string& res_ns_uri);
 
@@ -190,7 +198,7 @@ class Curl {
       stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
-      const BufferList* data,
+      BufferList* data,
       Buffer* returned_data,
       const std::string& res_ns_uri);
 
@@ -243,7 +251,7 @@ class Curl {
       stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
-      const BufferList* data,
+      BufferList* data,
       Buffer* returned_data,
       PostResponseCb&& write_cb,
       const std::string& res_ns_uri);
@@ -260,7 +268,7 @@ class Curl {
    */
   Status patch_data_common(
       SerializationType serialization_type,
-      const BufferList* data,
+      BufferList* data,
       struct curl_slist** headers);
 
   /**
@@ -275,7 +283,7 @@ class Curl {
    */
   Status put_data_common(
       SerializationType serialization_type,
-      const BufferList* data,
+      BufferList* data,
       struct curl_slist** headers);
 
   /**
@@ -290,7 +298,7 @@ class Curl {
    */
   Status post_data_common(
       SerializationType serialization_type,
-      const BufferList* data,
+      BufferList* data,
       struct curl_slist** headers);
 
   /**
@@ -408,6 +416,7 @@ class Curl {
    * @param stats The stats instance to record into
    * @param url URL to fetch
    * @param curl_code Set to the return value of the curl call
+   * @param data Encoded data buffer for sending, if applicable to the request
    * @param returned_data Buffer that will store the response data
    * @return Status
    */
@@ -415,6 +424,7 @@ class Curl {
       stats::Stats* const stats,
       const char* url,
       CURLcode* curl_code,
+      BufferList* data,
       Buffer* returned_data) const;
 
   /**
@@ -424,6 +434,7 @@ class Curl {
    * @param stats The stats instance to record into
    * @param url URL to fetch
    * @param curl_code Set to the return value of the curl call
+   * @param data Encoded data buffer for sending, if applicable to the request
    * @param write_cb Callback to invoke as response data is received
    * @return Status
    */
@@ -431,6 +442,7 @@ class Curl {
       stats::Stats* stats,
       const char* url,
       CURLcode* curl_code,
+      BufferList* data,
       PostResponseCb&& write_cb) const;
 
   /**
@@ -439,6 +451,7 @@ class Curl {
    * @param stats The stats instance to record into
    * @param url URL to fetch
    * @param curl_code Set to the return value of the curl call
+   * @param data Encoded data buffer for sending, if applicable to the request
    * @param write_cb Callback to invoke as response data is received.
    * @param write_arg Opaque memory address passed to 'write_cb'.
    * @return Status
@@ -447,6 +460,7 @@ class Curl {
       stats::Stats* stats,
       const char* url,
       CURLcode* curl_code,
+      BufferList* data,
       size_t (*write_cb)(void*, size_t, size_t, void*),
       void* write_arg) const;
 

@@ -25,23 +25,19 @@
 # THE SOFTWARE.
 #
 
-# Expects invocation wtih -DCMAKE_PREFIX_PATH=<directory-of-tiledb-installation>
+# Expects invocation with -DCMAKE_PREFIX_PATH=<directory-of-tiledb-installation>
 
 cmake_minimum_required(VERSION 3.21)
 
-project(Test_TileDBConfigVersion_h NONE)
-
-if (NOT CMAKE_PREFIX_PATH)
-  message(FATAL_ERROR "Need parameter -DCMAKE_PREFIX_PATH=<tiledb-installation-path>")
-else()
-  if (NOT EXISTS "${CMAKE_PREFIX_PATH}/include/TileDB/tiledb_version.h")
-    message(FATAL_ERROR "Missing tiledb_version.h at ${CMAKE_PREFIX_PATH}/include/TileDB/ !")
-  endif()
-endif()
+project(Test_TileDBConfigVersion_h)
 
 # Parse version numbers out of tiledb_version.h file
 
-file(READ "${CMAKE_PREFIX_PATH}/include/TileDB/tiledb_version.h" ver)
+find_file(
+        tiledb_version_h tiledb_version.h
+        PATH_SUFFIXES "include/tiledb" REQUIRED
+)
+file(READ ${tiledb_version_h} ver)
 
 string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
 set(ver_major ${CMAKE_MATCH_1})

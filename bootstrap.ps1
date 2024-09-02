@@ -13,8 +13,22 @@ develop TileDB.
 .PARAMETER Prefix
 Installs files in tree rooted at PREFIX (defaults to TileDB\dist).
 
+.PARAMETER VcpkgBaseTriplet
+Optionally specify the vcpkg target triplet, e.g. "x64-windows-release".
+Defaults to automatically detecting it from the environment.
+
 .PARAMETER Dependency
 Semicolon separated list to binary dependencies.
+
+.PARAMETER Linkage
+Specify the linkage type to build TileDB with. Valid values are
+"static" and "shared". Default is "shared".
+
+.PARAMETER RemoveDeprecations
+Build TileDB without any deprecated APIs.
+
+.PARAMETER Architecture
+Specify the architecture to configure for.
 
 .PARAMETER CMakeGenerator
 Optionally specify the CMake generator string, e.g. "Visual Studio 15
@@ -40,24 +54,24 @@ Enable build with code coverage support.
 .PARAMETER EnableVerbose
 Enable verbose status messages.
 
-.PARAMETER EnableVcpkg
-Enables building dependencies with vcpkg.
-Deprecated, this is now the default behavior.
-
 .PARAMETER EnableAzure
 Enables building with the Azure storage backend.
 
 .PARAMETER EnableS3
 Enables building with the S3 storage backend.
 
+.PARAMETER EnableGcs
+Enables building with the GCS storage backend.
+
 .PARAMETER EnableSerialization
 Enables building with serialization support.
 
 .PARAMETER EnableStaticTileDB
 Enables building TileDB as a static library.
+Deprecated, use -Linkage static instead.
 
 .PARAMETER EnableBuildDeps
-Enables building TileDB dependencies from source (superbuild)
+Unused, kept for compatibility.
 
 .PARAMETER EnableTools
 Enables building TileDB CLI tools (experimental)
@@ -65,17 +79,8 @@ Enables building TileDB CLI tools (experimental)
 .PARAMETER EnableExperimentalFeatures
 Enables building TileDB Experimental features
 
-.PARAMETER EnableAbseil
-(Obsolete) Enables building of Abseil and simple linkage test
-
-.PARAMETER _EnableCrc32
-Enables building of Crc32 and simple linkage test
-
 .PARAMETER EnableArrowTests
 Enables the compilation of the arrow adapter unit tests
-
-.PARAMETER EnableRestTests
-Enables REST unit tests
 
 .PARAMETER EnableAwsS3Config
 Enables AWS S3 configuration for unit tests
@@ -95,9 +100,6 @@ Disable building the TileDB tests.
 .Parameter DisableStats
 Disables internal TileDB statistics.
 
-.PARAMETER DisableVcpkg
-Disables building dependencies with vcpkg.
-
 .PARAMETER BuildProcesses
 Number of parallel compile jobs.
 
@@ -115,26 +117,26 @@ https://github.com/TileDB-Inc/TileDB
 [CmdletBinding()]
 Param(
     [string]$Prefix,
+    [string]$VcpkgBaseTriplet,
     [string]$Dependency,
+    [string]$Linkage = "shared",
+    [switch]$RemoveDeprecations,
+    [string]$Architecture,
     [string]$CMakeGenerator,
     [switch]$EnableAssert,
     [switch]$EnableDebug,
     [switch]$EnableReleaseSymbols,
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
-    [switch]$EnableVcpkg,
-    [switch]$DisableVcpkg,
     [switch]$EnableAzure,
     [switch]$EnableS3,
+    [switch]$EnableGcs,
     [switch]$EnableSerialization,
     [switch]$EnableStaticTileDB,
     [switch]$EnableTools,
     [switch]$EnableExperimentalFeatures,
-    [switch]$EnableAbseil,
     [switch]$EnableBuildDeps,
-    [switch]$_EnableCrc32,
     [switch]$EnableArrowTests,
-    [switch]$EnableRestTests,
     [switch]$EnableAwsS3Config,
     [switch]$DisableWebP,
     [switch]$DisableWerror,
@@ -160,6 +162,11 @@ $DefaultPrefix = Join-Path $BinaryDirectory "dist"
 
 # Choose the default dependency install prefix.
 $DefaultDependency = $DefaultPrefix
+
+# Set the vcpkg base triplet.
+if ($VcpkgBaseTriplet.IsPresent) {
+    $VcpkgBaseTriplet = "-DTILEDB_VCPKG_BASE_TRIPLET=$VcpkgBaseTriplet"
+}
 
 # Set assertion mode
 # No-op for a debug build.
@@ -187,13 +194,11 @@ if ($EnableVerbose.IsPresent) {
     $Verbosity = "ON"
 }
 
-# Set vcpkg flag
-$UseVcpkg = "ON"
-if ($EnableVcpkg.IsPresent) {
-    Write-Warning "-EnableVcpkg is deprecated and will be removed in a future version. Vcpkg is now enabled by default. Use -DisableVcpkg to disable it."
+if ($RemoveDeprecations.IsPresent) {
+    $_RemoveDeprecations = "ON"
 }
-elseif ($DisableVcpkg.IsPresent) {
-    $UseVcpkg = "OFF"
+else {
+    $_RemoveDeprecations = "OFF"
 }
 
 # Set TileDB Azure flag
@@ -206,6 +211,12 @@ if ($EnableAzure.IsPresent) {
 $UseS3 = "OFF"
 if ($EnableS3.IsPresent) {
     $UseS3 = "ON"
+}
+
+# Set TileDB GCS flag
+$UseGcs = "OFF"
+if ($EnableGcs.IsPresent) {
+    $UseGcs = "ON"
 }
 
 $UseSerialization = "OFF"
@@ -238,9 +249,22 @@ if ($DisableWebP.IsPresent) {
   $BuildWebP="OFF"
 }
 
-$TileDBStatic = "OFF";
+$BuildSharedLibs = "ON";
+if ($Linkage -eq "static") {
+    $BuildSharedLibs = "OFF"
+}
+elseif ($Linkage -ne "shared") {
+    Write-Error "Invalid linkage type: $Linkage. Valid values are 'static' and 'shared'."
+    exit 1
+}
+
 if ($EnableStaticTileDB.IsPresent) {
-    $TileDBStatic = "ON"
+    Write-Warning "-EnableStaticTileDB is deprecated and will be removed in a future version. Use -Linkage static instead."
+    $BuildSharedLibs = "OFF"
+    if ($Linkage -eq "shared") {
+        Write-Error "Cannot specify -EnableStaticTileDB alongside -Linkage shared."
+        exit 1
+    }
 }
 
 $TileDBTools = "OFF";
@@ -253,29 +277,13 @@ if ($EnableExperimentalFeatures.IsPresent) {
     $TileDBExperimentalFeatures = "ON"
 }
 
-if ($EnableAbseil.IsPresent) {
-  # remove in 2.18
-  Write-Host "EnableAbseil is deprecated and will be removed"
-}
-
-$TileDBBuildDeps = "OFF";
 if ($EnableBuildDeps.IsPresent) {
-    $TileDBBuildDeps = "ON"
-}
-
-$BuildCrc32="OFF"
-if ($_EnableCrc32.IsPresent) {
-  $BuildCrc32="ON"
+    Write-Warning "-EnableBuildDeps has no effect and will be removed in a future version. Vcpkg builds all dependencies by default, please consult the guide in doc/dev/BUILD.md or vcpkg's documentation to see how to provide your own dependencies."
 }
 
 $ArrowTests="OFF"
 if ($EnableArrowTests.IsPresent) {
     $ArrowTests="ON"
-}
-
-$RestTests="OFF"
-if ($EnableRestTests.IsPresent) {
-    $RestTests="ON"
 }
 
 $ConfigureS3="OFF"
@@ -295,6 +303,11 @@ if (![string]::IsNullOrEmpty($Dependency)) {
     $DependencyDir = $Dependency
 }
 
+$ArchFlag = ""
+if ($PSBoundParameters.ContainsKey("Architecture")) {
+    $ArchFlag = "-A $Architecture"
+}
+
 # Set CMake generator type.
 $GeneratorFlag = ""
 if ($PSBoundParameters.ContainsKey("CMakeGenerator")) {
@@ -307,7 +320,7 @@ if ($SourceDirectory -eq $BinaryDirectory) {
 }
 
 # Check cmake binary
-if ((Get-Command "cmake.exe" -ErrorAction SilentlyContinue) -eq $null) {
+if ($null -eq (Get-Command "cmake.exe" -ErrorAction SilentlyContinue)) {
     Throw "Unable to find cmake.exe in your PATH."
 }
 if ($CMakeGenerator -eq $null) {
@@ -316,7 +329,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DTILEDB_VCPKG=$UseVcpkg -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake $ArchFlag -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" $VcpkgBaseTriplet -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DBUILD_SHARED_LIBS=$BuildSharedLibs -DTILEDB_REMOVE_DEPRECATIONS=$_RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,6 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -49,8 +48,9 @@ namespace tiledb::sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-CommitsConsolidator::CommitsConsolidator(StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+CommitsConsolidator::CommitsConsolidator(
+    ContextResources& resources, StorageManager* storage_manager)
+    : Consolidator(resources, storage_manager) {
 }
 
 /* ****************************** */
@@ -68,21 +68,21 @@ Status CommitsConsolidator::consolidate(
 
   // Open array for writing
   auto array_uri = URI(array_name);
-  Array array_for_writes(array_uri, storage_manager_);
-  RETURN_NOT_OK(array_for_writes.open(
+  Array array_for_writes(resources_, array_uri);
+  throw_if_not_ok(array_for_writes.open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Ensure write version is at least 12.
   auto write_version = array_for_writes.array_schema_latest().write_version();
-  RETURN_NOT_OK(array_for_writes.close());
+  throw_if_not_ok(array_for_writes.close());
   if (write_version < 12) {
-    return logger_->status(Status_ConsolidatorError(
-        "Array version should be at least 12 to consolidate commits."));
+    throw ConsolidatorException(
+        "Array version should be at least 12 to consolidate commits.");
   }
 
   // Get the array uri to consolidate from the array directory.
   auto array_dir = ArrayDirectory(
-      storage_manager_->resources(),
+      resources_,
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
@@ -95,32 +95,32 @@ Status CommitsConsolidator::consolidate(
 
   // Get the file name.
   auto& to_consolidate = array_dir.commit_uris_to_consolidate();
-  storage_manager_->write_consolidated_commits_file(
-      write_version, array_dir, to_consolidate);
+  Consolidator::write_consolidated_commits_file(
+      write_version, array_dir, to_consolidate, resources_);
 
   return Status::Ok();
 }
 
 void CommitsConsolidator::vacuum(const char* array_name) {
   if (array_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw std::invalid_argument(
         "Cannot vacuum array metadata; Array name cannot be null");
   }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
+      resources_,
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
       ArrayDirectoryMode::COMMITS);
 
   // Delete the commits and vacuum files
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-  vfs->remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
-  vfs->remove_files(
-      compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
+  auto& vfs = resources_.vfs();
+  auto& compute_tp = resources_.compute_tp();
+  vfs.remove_files(&compute_tp, array_dir.commit_uris_to_vacuum());
+  vfs.remove_files(
+      &compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 
 }  // namespace tiledb::sm

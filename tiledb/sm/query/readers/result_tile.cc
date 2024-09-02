@@ -68,14 +68,18 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
 /* ****************************** */
 
 ResultTile::ResultTile(
-    unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-    : domain_(&frag_md.array_schema()->domain())
+    unsigned frag_idx,
+    uint64_t tile_idx,
+    const FragmentMetadata& frag_md,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , domain_(&frag_md.array_schema()->domain())
     , frag_idx_(frag_idx)
     , tile_idx_(tile_idx)
-    , cell_num_(frag_md.cell_num(tile_idx)) {
+    , cell_num_(frag_md.cell_num(tile_idx))
+    , attr_tiles_(frag_md.array_schema()->attribute_num())
+    , coord_tiles_(domain_->dim_num()) {
   auto array_schema = frag_md.array_schema();
-  coord_tiles_.resize(domain_->dim_num());
-  attr_tiles_.resize(array_schema->attribute_num());
   for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
     auto attribute = array_schema->attribute(i);
     attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
@@ -85,41 +89,6 @@ ResultTile::ResultTile(
   // Default `coord_func_` to fetch from `coord_tile_` until at least
   // one unzipped coordinate has been initialized.
   coord_func_ = &ResultTile::zipped_coord;
-}
-
-/** Move constructor. */
-ResultTile::ResultTile(ResultTile&& other) {
-  // Swap with the argument
-  swap(other);
-}
-
-/** Move-assign operator. */
-ResultTile& ResultTile::operator=(ResultTile&& other) {
-  // Swap with the argument
-  swap(other);
-
-  return *this;
-}
-
-void ResultTile::swap(ResultTile& tile) {
-  std::swap(domain_, tile.domain_);
-  std::swap(frag_idx_, tile.frag_idx_);
-  std::swap(tile_idx_, tile.tile_idx_);
-  std::swap(cell_num_, tile.cell_num_);
-  std::swap(attr_tiles_, tile.attr_tiles_);
-  std::swap(timestamps_tile_, tile.timestamps_tile_);
-  std::swap(delete_timestamps_tile_, tile.delete_timestamps_tile_);
-  std::swap(coords_tile_, tile.coords_tile_);
-  std::swap(coord_tiles_, tile.coord_tiles_);
-  std::swap(compute_results_dense_func_, tile.compute_results_dense_func_);
-  std::swap(coord_func_, tile.coord_func_);
-  std::swap(compute_results_sparse_func_, tile.compute_results_sparse_func_);
-  std::swap(
-      compute_results_count_sparse_uint64_t_func_,
-      tile.compute_results_count_sparse_uint64_t_func_);
-  std::swap(
-      compute_results_count_sparse_uint8_t_func_,
-      tile.compute_results_count_sparse_uint8_t_func_);
 }
 
 /* ****************************** */
@@ -174,33 +143,60 @@ void ResultTile::init_attr_tile(
     const std::string& name,
     const TileSizes tile_sizes,
     const TileData tile_data) {
-  auto tuple =
-      TileTuple(format_version, array_schema, name, tile_sizes, tile_data);
-
   if (name == constants::coords) {
-    coords_tile_ = std::move(tuple);
+    coords_tile_.emplace(
+        format_version,
+        array_schema,
+        name,
+        tile_sizes,
+        tile_data,
+        memory_tracker_);
     return;
   }
 
   if (name == constants::timestamps) {
-    timestamps_tile_ = std::move(tuple);
+    timestamps_tile_.emplace(
+        format_version,
+        array_schema,
+        name,
+        tile_sizes,
+        tile_data,
+        memory_tracker_);
     return;
   }
 
   if (name == constants::delete_timestamps) {
-    delete_timestamps_tile_ = std::move(tuple);
+    delete_timestamps_tile_.emplace(
+        format_version,
+        array_schema,
+        name,
+        tile_sizes,
+        tile_data,
+        memory_tracker_);
     return;
   }
 
   if (name == constants::delete_condition_index) {
-    delete_condition_index_tile_ = std::move(tuple);
+    delete_condition_index_tile_.emplace(
+        format_version,
+        array_schema,
+        name,
+        tile_sizes,
+        tile_data,
+        memory_tracker_);
     return;
   }
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
-      at.second = std::move(tuple);
+      at.second.emplace(
+          format_version,
+          array_schema,
+          name,
+          tile_sizes,
+          tile_data,
+          memory_tracker_);
       return;
     }
   }
@@ -213,9 +209,14 @@ void ResultTile::init_coord_tile(
     const TileSizes tile_sizes,
     const TileData tile_data,
     unsigned dim_idx) {
-  coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
+  coord_tiles_[dim_idx].first = name;
+  coord_tiles_[dim_idx].second.emplace(
+      format_version,
+      array_schema,
       name,
-      TileTuple(format_version, array_schema, name, tile_sizes, tile_data));
+      tile_sizes,
+      tile_data,
+      memory_tracker_);
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.
@@ -282,14 +283,11 @@ std::string_view ResultTile::coord_string(
   const auto& coord_tile_val = coord_tiles_[dim_idx].second->var_tile();
 
   offsets_t offset = 0;
-  Status st =
-      coord_tile_off.read(&offset, pos * sizeof(uint64_t), sizeof(uint64_t));
-  assert(st.ok());
+  coord_tile_off.read(&offset, pos * sizeof(uint64_t), sizeof(uint64_t));
 
   offsets_t next_offset = 0;
-  st = coord_tile_off.read(
+  coord_tile_off.read(
       &next_offset, (pos + 1) * sizeof(uint64_t), sizeof(uint64_t));
-  assert(st.ok());
 
   auto size = next_offset - offset;
 
@@ -389,7 +387,8 @@ Status ResultTile::read(
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
-    return tile.read(buffer, offset, nbytes);
+    tile.read(buffer, offset, nbytes);
+    return Status::Ok();
   } else if (
       name == constants::coords && !coord_tiles_[0].first.empty() &&
       !coords_tile_.has_value()) {
@@ -404,8 +403,7 @@ Status ResultTile::read(
         auto& coord_tile = coord_tiles_[d].second->fixed_tile();
         auto cell_size = coord_tile.cell_size();
         auto tile_offset = (pos + c) * cell_size;
-        RETURN_NOT_OK(
-            coord_tile.read(buff + buff_offset, tile_offset, cell_size));
+        coord_tile.read(buff + buff_offset, tile_offset, cell_size);
         buff_offset += cell_size;
       }
     }
@@ -433,8 +431,7 @@ Status ResultTile::read(
     auto dim_size = cell_size / domain_->dim_num();
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
-      RETURN_NOT_OK(coords_tile_->fixed_tile().read(
-          buff + (c * dim_size), offset, dim_size));
+      coords_tile_->fixed_tile().read(buff + (c * dim_size), offset, dim_size);
       offset += cell_size;
     }
   };
@@ -464,9 +461,8 @@ Status ResultTile::read_nullable(
   auto validity_nbytes = len * validity_cell_size;
   auto validity_offset = pos * validity_cell_size;
 
-  RETURN_NOT_OK(tile.read(buffer, offset, nbytes));
-  RETURN_NOT_OK(
-      tile_validity.read(buffer_validity, validity_offset, validity_nbytes));
+  tile.read(buffer, offset, nbytes);
+  tile_validity.read(buffer_validity, validity_offset, validity_nbytes);
 
   return Status::Ok();
 }
@@ -604,7 +600,7 @@ void ResultTile::compute_results_sparse<char>(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap,
+    tdb::pmr::vector<uint8_t>* result_bitmap,
     const Layout& cell_order) {
   auto coords_num = result_tile->cell_num();
   auto dim_num = result_tile->domain()->dim_num();
@@ -761,7 +757,7 @@ void ResultTile::compute_results_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap,
+    tdb::pmr::vector<uint8_t>* result_bitmap,
     const Layout&) {
   // For easy reference.
   auto coords_num = result_tile->cell_num();
@@ -805,7 +801,7 @@ void ResultTile::compute_results_count_sparse_string_range(
     const offsets_t* buff_off,
     const uint64_t start,
     const uint64_t end,
-    std::vector<BitmapType>& result_count) {
+    tdb::pmr::vector<BitmapType>& result_count) {
   const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
 
   // Process all cells.
@@ -870,8 +866,8 @@ void ResultTile::compute_results_count_sparse_string(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const NDRange& ranges,
-    const std::vector<uint64_t>& range_indexes,
-    std::vector<BitmapType>& result_count,
+    const tdb::pmr::vector<uint64_t>& range_indexes,
+    tdb::pmr::vector<BitmapType>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) {
@@ -1046,8 +1042,8 @@ void ResultTile::compute_results_count_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const NDRange& ranges,
-    const std::vector<uint64_t>& range_indexes,
-    std::vector<BitmapType>& result_count,
+    const tdb::pmr::vector<uint64_t>& range_indexes,
+    tdb::pmr::vector<BitmapType>& result_count,
     const Layout&,
     const uint64_t min_cell,
     const uint64_t max_cell) {
@@ -1154,7 +1150,7 @@ Status ResultTile::compute_results_dense(
 Status ResultTile::compute_results_sparse(
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap,
+    tdb::pmr::vector<uint8_t>* result_bitmap,
     const Layout& cell_order) const {
   assert(compute_results_sparse_func_[dim_idx] != nullptr);
   compute_results_sparse_func_[dim_idx](
@@ -1166,8 +1162,8 @@ template <>
 Status ResultTile::compute_results_count_sparse<uint8_t>(
     unsigned dim_idx,
     const NDRange& ranges,
-    const std::vector<uint64_t>& range_indexes,
-    std::vector<uint8_t>& result_count,
+    const tdb::pmr::vector<uint64_t>& range_indexes,
+    tdb::pmr::vector<uint8_t>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) const {
@@ -1188,8 +1184,8 @@ template <>
 Status ResultTile::compute_results_count_sparse<uint64_t>(
     unsigned dim_idx,
     const NDRange& ranges,
-    const std::vector<uint64_t>& range_indexes,
-    std::vector<uint64_t>& result_count,
+    const tdb::pmr::vector<uint64_t>& range_indexes,
+    tdb::pmr::vector<uint64_t>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) const {

@@ -42,6 +42,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Class for query status exceptions. */
+class QueryException : public StatusException {
+ public:
+  explicit QueryException(const std::string& msg)
+      : StatusException("Query", msg) {
+  }
+};
+
 class IQueryStrategy {
  public:
   /** Destructor. */

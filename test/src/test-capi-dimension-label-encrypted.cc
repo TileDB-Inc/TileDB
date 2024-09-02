@@ -82,26 +82,12 @@ TEST_CASE_METHOD(
         tiledb_array_create(ctx_encrypt, array_name.c_str(), array_schema));
     tiledb_array_schema_free(&array_schema);
   }
-  SECTION("Create array with deprecated API") {
-    tiledb_encryption_type_t encryption_type{TILEDB_AES_256_GCM};
-    std::string encryption_key{"0123456789abcdeF0123456789abcdeF"};
-    const uint32_t encryption_key_length{
-        static_cast<uint32_t>(strlen(encryption_key.c_str()))};
-    require_tiledb_ok(tiledb_array_create_with_key(
-        ctx,
-        array_name.c_str(),
-        array_schema,
-        encryption_type,
-        encryption_key.c_str(),
-        encryption_key_length));
-    tiledb_array_schema_free(&array_schema);
-  }
 
   // Check the array schema cannot be loaded without the encryption key.
   tiledb_array_schema_t* loaded_array_schema{nullptr};
   check_tiledb_error_with(
       tiledb_array_schema_load(ctx, array_name.c_str(), &loaded_array_schema),
-      "[TileDB::TileIO] Error: Error reading generic tile; tile is encrypted "
+      "GenericTileIO: Error reading generic tile; tile is encrypted "
       "with AES_256_GCM but given key is for NO_ENCRYPTION");
 
   // Check the array schema can be loaded with the encryption key.
@@ -123,7 +109,7 @@ TEST_CASE_METHOD(
   tiledb_array_schema_t* loaded_label_array_schema{nullptr};
   require_tiledb_error_with(
       tiledb_array_schema_load(ctx, dim_label_uri, &loaded_label_array_schema),
-      "[TileDB::TileIO] Error: Error reading generic tile; tile is encrypted "
+      "GenericTileIO: Error reading generic tile; tile is encrypted "
       "with AES_256_GCM but given key is for NO_ENCRYPTION");
 
   // Check the dimension label can be opened with the encryption key.
@@ -176,19 +162,6 @@ TEST_CASE_METHOD(
   SECTION("Create array with current API") {
     require_tiledb_ok(
         tiledb_array_create(ctx_encrypt, array_name.c_str(), array_schema));
-    tiledb_array_schema_free(&array_schema);
-  }
-  SECTION("Create array with deprecated API") {
-    tiledb_encryption_type_t encryption_type{TILEDB_AES_256_GCM};
-    const uint32_t encryption_key_length{
-        static_cast<uint32_t>(strlen(encryption_key.c_str()))};
-    require_tiledb_ok(tiledb_array_create_with_key(
-        ctx,
-        array_name.c_str(),
-        array_schema,
-        encryption_type,
-        encryption_key.c_str(),
-        encryption_key_length));
     tiledb_array_schema_free(&array_schema);
   }
 

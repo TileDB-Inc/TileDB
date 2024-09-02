@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,6 @@
 #endif
 
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
 #include <sstream>
@@ -74,7 +73,6 @@ struct ObjectMgmtFx {
   std::string get_golden_walk(const std::string& path);
   std::string get_golden_ls(const std::string& path);
   static int write_path(const char* path, tiledb_object_t type, void* data);
-  static std::string random_name(const std::string& prefix);
 };
 
 ObjectMgmtFx::ObjectMgmtFx()
@@ -355,13 +353,6 @@ int ObjectMgmtFx::write_path(
 
   // Always iterate till the end
   return 1;
-}
-
-std::string ObjectMgmtFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 TEST_CASE_METHOD(

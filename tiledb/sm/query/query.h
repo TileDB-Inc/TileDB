@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,6 @@
 #include <utility>
 #include <vector>
 
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -50,16 +49,18 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
+#include "tiledb/sm/query/query_state.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+#include "tiledb/sm/query/readers/aggregators/query_channel.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 class ArrayDimensionLabelQueries;
@@ -138,18 +139,34 @@ class Query {
    * case the query will be used as writes and the given URI should be used
    * for the name of the new fragment to be created.
    *
-   * @note Array must be a properly opened array.
+   * @section Maturity
    *
+   * This is a transitional constructor. There is still a `StorageManager`
+   * argument, and there is also a vestige of it with the `CancellationSource`
+   * argument. These argument now only pertain to job control of query with
+   * respect to its context. Once this facility is rewritten, these constructor
+   * argument may be dropped.
+   *
+   * @pre Array must be a properly opened array.
+   *
+   * @param resources The context resources.
+   * @param cancellation_source A source of external cancellation events
+   * @param storage_manager Storage manager object.
    * @param array The array that is being queried.
    * @param fragment_uri The full URI for the new fragment. Only used for
    * writes.
    * @param fragment_base_uri Optional base name for new fragment. Only used for
    *     writes and only if fragment_uri is empty.
+   * @param memory_budget Total memory budget. If set to nullopt, the value
+   *     will be obtained from the sm.mem.total_budget config option.
    */
   Query(
+      ContextResources& resources,
+      CancellationSource cancellation_source,
       StorageManager* storage_manager,
       shared_ptr<Array> array,
-      optional<std::string> fragment_name = nullopt);
+      optional<std::string> fragment_name = nullopt,
+      optional<uint64_t> memory_budget = nullopt);
 
   /** Destructor. */
   virtual ~Query();
@@ -162,35 +179,94 @@ class Query {
   /* ********************************* */
 
   /**
+   * Require that a name be that of a fixed-size field from the source array.
+   *
+   * Validate these conditions and throw if any are not met.
+   * - The name is that of a field in the array
+   * - The field is fixed-sized
+   *
+   * @param origin The name of the operation that this validation is a part of
+   * @param field_name The name of a field
+   */
+  void field_require_array_fixed(
+      const std::string_view origin, std::string_view field_name);
+
+  /**
+   * Require that a name be that of a variable-size field from the source array.
+   *
+   * Validate these conditions and throw if any are not met.
+   * - The name is that of a field in the array
+   * - The field is variable-sized
+   *
+   * @param origin The name of the operation that this validation is a part of
+   * @param field_name The name of a field
+   */
+  void field_require_array_variable(
+      const std::string_view origin, std::string_view field_name);
+
+  /**
+   * Require that a field be a nullable field from the source array.
+   *
+   * Validate these conditions and throw if any are not met.
+   * - The name is that of an attribute of the source array
+   * - The attribute is nullable
+   *
+   * @param origin The name of the operation that this validation is a part of
+   * @param field_name The name of a field
+   */
+  void field_require_array_nullable(
+      const std::string_view origin, std::string_view field_name);
+
+  /**
+   * Require that a field be a nonnull field from the source array.
+   *
+   * Validate these conditions and throw if any are not met.
+   * - The name is that of a field in the array
+   * - The field is not nullable
+   *
+   * @param origin The name of the operation that this validation is a part of.
+   * @param field_name The name of a field
+   */
+  void field_require_array_nonnull(
+      const std::string_view origin, std::string_view field_name);
+
+  /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  Status get_est_result_size(const char* name, uint64_t* size);
+  FieldDataSize get_est_result_size_fixed_nonnull(std::string_view field_name);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
    * attribute/dimension.
    */
-  Status get_est_result_size(
-      const char* name, uint64_t* size_off, uint64_t* size_val);
+  FieldDataSize get_est_result_size_variable_nonnull(
+      std::string_view field_name);
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized,
    * nullable attribute.
    */
-  Status get_est_result_size_nullable(
-      const char* name, uint64_t* size_val, uint64_t* size_validity);
+  FieldDataSize get_est_result_size_fixed_nullable(std::string_view field_name);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized,
    * nullable attribute.
    */
-  Status get_est_result_size_nullable(
-      const char* name,
-      uint64_t* size_off,
-      uint64_t* size_val,
-      uint64_t* size_validity);
+  FieldDataSize get_est_result_size_variable_nullable(
+      std::string_view field_name);
 
+ private:
+  /**
+   * Common part of all `est_result_size_*` functions, called after argument
+   * validation.
+   *
+   * @param field_name The name of a field
+   * @return estimated result size
+   */
+  FieldDataSize internal_est_result_size(std::string_view field_name);
+
+ public:
   /** Retrieves the number of written fragments. */
   Status get_written_fragment_num(uint32_t* num) const;
 
@@ -227,6 +303,9 @@ class Query {
   /** Returns the names of dimension label buffers for the query. */
   std::vector<std::string> dimension_label_buffer_names() const;
 
+  /** Returns the names of aggregate buffers for the query. */
+  std::vector<std::string> aggregate_buffer_names() const;
+
   /**
    * Returns the names of the buffers set by the user for the query not already
    * written by a previous partial attribute write.
@@ -234,18 +313,23 @@ class Query {
   std::vector<std::string> unwritten_buffer_names() const;
 
   /**
-   * Gets the query buffer for the input attribute/dimension.
+   * Gets the query buffer for the input field.
    * An empty string means the special default attribute.
    */
   QueryBuffer buffer(const std::string& name) const;
 
   /**
-   * Marks a query that has not yet been started as failed. This should not be
-   * called asynchronously to cancel an in-progress query; for that use the
-   * parent StorageManager's cancellation mechanism.
-   * @return Status
+   * Cancel a query.
+   *
+   * This does not immediately halt processing of a query, but does so at the
+   * first point where it checks in to see if it should continue processing.
    */
-  Status cancel();
+  void cancel();
+
+  /**
+   * Predicate function whether the query has been cancelled.
+   */
+  bool cancelled();
 
   /**
    * Finalizes the query, flushing all internal state.
@@ -631,14 +715,6 @@ class Query {
   /** Submits the query to the storage manager. */
   Status submit();
 
-  /**
-   * Submits the query to the storage manager. The query will be
-   * processed asynchronously (i.e., in a non-blocking manner).
-   * Once the query is completed, the input callback function will
-   * be executed using the input callback data.
-   */
-  Status submit_async(std::function<void(void*)> callback, void* callback_data);
-
   /** Returns the query status. */
   QueryStatus status() const;
 
@@ -650,6 +726,14 @@ class Query {
 
   /** Returns the internal stats object. */
   stats::Stats* stats() const;
+
+  /**
+   * Populate the owned stats instance with data.
+   * To be removed when the class will get a C41 constructor.
+   *
+   * @param data Data to populate the stats with.
+   */
+  void set_stats(const stats::StatsData& data);
 
   /** Returns the scratch space used for REST requests. */
   shared_ptr<Buffer> rest_scratch() const;
@@ -667,7 +751,7 @@ class Query {
       Layout layout, const ArraySchema& array_schema);
 
   /** Returns if all ranges for this query are non overlapping. */
-  tuple<Status, optional<bool>> non_overlapping_ranges();
+  bool non_overlapping_ranges();
 
   /** Returns true if this is a dense query */
   bool is_dense() const;
@@ -728,6 +812,21 @@ class Query {
   /** Returns true if the output field is an aggregate. */
   bool is_aggregate(std::string output_field_name) const;
 
+ private:
+  /**
+   * Create the aggregate channel object. This is split out because it's not
+   * at construction time, but on demand, and in two different situations.
+   */
+  void create_aggregate_channel() {
+    /*
+     * Because we have an extremely simple way of choosing channel identifiers,
+     * we can get away with hard-coding `1` here as the identifier for the
+     * aggregate channel.
+     */
+    aggregate_channel_ = make_shared<QueryChannel>(HERE(), *this, 1);
+  }
+
+ public:
   /**
    * Adds an aggregator to the default channel.
    *
@@ -736,21 +835,126 @@ class Query {
    */
   void add_aggregator_to_default_channel(
       std::string output_field_name, shared_ptr<IAggregator> aggregator) {
+    if (default_channel_aggregates_.empty()) {
+      /*
+       * Assert: this is the first aggregate added.
+       *
+       * We create the aggregate channel on demand, and this is when we need to
+       * do it.
+       */
+      create_aggregate_channel();
+    }
     default_channel_aggregates_.emplace(output_field_name, aggregator);
   }
+
+  /** Returns an aggregate based on the output field. */
+  std::optional<shared_ptr<IAggregator>> get_aggregate(
+      std::string output_field_name) const;
+
+  /**
+   * Get a list of all channels and their aggregates
+   */
+  std::vector<LegacyQueryAggregatesOverDefault> get_channels() {
+    // Currently only the default channel is supported
+    return {
+        LegacyQueryAggregatesOverDefault(true, default_channel_aggregates_)};
+  }
+
+  /**
+   * Add a channel to the query. Used only by capnp serialization to initialize
+   * the aggregates list.
+   */
+  void add_channel(const LegacyQueryAggregatesOverDefault& channel) {
+    if (channel.is_default()) {
+      default_channel_aggregates_ = channel.aggregates();
+      if (!default_channel_aggregates_.empty()) {
+        create_aggregate_channel();
+      }
+      return;
+    }
+    throw QueryException(
+        "We currently only support a default channel for queries");
+  }
+
+  /**
+   * Returns true if the query has any aggregates on any channels
+   */
+  bool has_aggregates() {
+    // We only need to check the default channel for now
+    return !default_channel_aggregates_.empty();
+  }
+
+  /**
+   * Returns the number of channels.
+   *
+   * Responsibility for choosing channel identifiers is the responsibility of
+   * this class. At the present time the policy is very simple, since all
+   * queries only draw from a single array.
+   *   - Channel 0: All rows from the query. Always non-segmented, that is,
+   *       without any grouping.
+   *   - Channel 1: (optional) Simple aggregates, if any exist.
+   */
+  inline size_t number_of_channels() {
+    return has_aggregates() ? 1 : 0;
+  };
+
+  /**
+   * The default channel is initialized at construction and always exists.
+   */
+  inline std::shared_ptr<QueryChannel> default_channel() {
+    return default_channel_;
+  }
+
+  inline std::shared_ptr<QueryChannel> aggegate_channel() {
+    if (!has_aggregates()) {
+      throw QueryException("Aggregate channel does not exist");
+    }
+    return aggregate_channel_;
+  }
+
+  /**
+   * Returns the REST client configured in the context resources associated to
+   * this query
+   */
+  RestClient* rest_client() const;
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Resource used for operations. */
+  ContextResources& resources_;
+
+  /** The class stats. */
+  stats::Stats* stats_;
+
+  /** The class logger. */
+  shared_ptr<Logger> logger_;
+
+  /** The query memory tracker. */
+  shared_ptr<MemoryTracker> query_memory_tracker_;
+
+  /**
+   * The state machine for processing local queries.
+   *
+   * At present this class combines both local and remote queries. This member
+   * variable is essentially unused for remote queries.
+   */
+  LocalQueryStateMachine local_state_machine_{LocalQueryState::uninitialized};
+
   /** A smart pointer to the array the query is associated with.
    * Ensures that the Array object exists as long as the Query object exists. */
   shared_ptr<Array> array_shared_;
 
-  /** The array the query is associated with.
-   * Cached copy of array_shared_.get(). */
+  /**
+   * The array the query is associated with.
+   * Cached copy of array_shared_.get().
+   */
   Array* array_;
+
+  /** Keeps a copy of the opened array object at construction. */
+  shared_ptr<OpenedArray> opened_array_;
 
   /** The array schema. */
   shared_ptr<const ArraySchema> array_schema_;
@@ -776,17 +980,17 @@ class Query {
   /** The query status. */
   QueryStatus status_;
 
+  /**
+   * The cancellation source. This will be the last vestige of the storage
+   * manager.
+   */
+  CancellationSource cancellation_source_;
+
   /** The storage manager. */
   StorageManager* storage_manager_;
 
   /** The query strategy. */
   tdb_unique_ptr<IQueryStrategy> strategy_;
-
-  /** The class stats. */
-  stats::Stats* stats_;
-
-  /** The class logger. */
-  shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
@@ -906,6 +1110,12 @@ class Query {
    */
   uint64_t fragment_size_;
 
+  /**
+   * Memory budget. If set to nullopt, the value will be obtained from the
+   * sm.mem.total_budget config option.
+   */
+  optional<uint64_t> memory_budget_;
+
   /** Already written buffers. */
   std::unordered_set<std::string> written_buffers_;
 
@@ -915,6 +1125,25 @@ class Query {
   /** Aggregates for the default channel, by output field name. */
   std::unordered_map<std::string, shared_ptr<IAggregator>>
       default_channel_aggregates_;
+
+  /*
+   * Handles to channels use shared pointers, so the channels are allocated here
+   * for ease of implementation.
+   *
+   * At present there's only one possible non-default channel, so we keep track
+   * of it in its own variable. A fully C.41 class might simply store these in
+   * a constant vector.
+   */
+  /**
+   * The default channel is allocated in the constructor for simplicity.
+   */
+  std::shared_ptr<QueryChannel> default_channel_;
+
+  /**
+   * The aggegregate channel is optional, so we initialize it as empty with it
+   * default constructor.
+   */
+  std::shared_ptr<QueryChannel> aggregate_channel_{};
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -967,7 +1196,6 @@ class Query {
   void copy_aggregates_data_to_user_buffer();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_QUERY_H

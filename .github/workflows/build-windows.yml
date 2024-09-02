@@ -9,9 +9,8 @@ env:
   TILEDB_AZURE: OFF
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: OFF
-  TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableStaticTileDB'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose'
 
 jobs:
   build:
@@ -21,25 +20,27 @@ jobs:
       matrix:
         os: [windows-2019, windows-2022]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
-        environ: [azure, s3, serialization]
+        environ: [azure, s3, gcs, serialization]
         include:
           - environ: 'azure'
             TILEDB_AZURE: ON
-            TILEDB_USE_CUSTOM_NODEJS: OFF
-            TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_S3: OFF
             TILEDB_WEBP: OFF
           - environ: 's3'
             TILEDB_S3: ON
-            TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_AZURE: OFF
+            TILEDB_WEBP: OFF
+          - environ: 'gcs'
+            TILEDB_GCS: ON
+            TILEDB_SERIALIZATION: OFF
+            TILEDB_AZURE: OFF
+            TILEDB_S3: OFF
             TILEDB_WEBP: OFF
           - environ: 'serialization'
             TILEDB_S3: OFF
             TILEDB_AZURE: OFF
-            TILEDB_ARROW_TESTS: OFF
             TILEDB_SERIALIZATION: ON
             TILEDB_WEBP: ON
 
@@ -50,8 +51,8 @@ jobs:
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
       TILEDB_S3: ${{ matrix.TILEDB_S3 }}
       TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
+      TILEDB_GCS: ${{ matrix.TILEDB_GCS }} #gcs }}
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
-      TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
@@ -104,15 +105,6 @@ jobs:
           #but, it seems *we* can populate our own var from our actions, and access it in file upload...
           echo TDBLOCALAPPDATA=$env:LOCALAPPDATA >> "$env:GITHUB_ENV"
 
-      - name: ARROW python needs
-        shell: bash
-        if: ${{ matrix.TILEDB_ARROW_TESTS == 'ON' }}
-        run: |
-          set -e pipefail
-          if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
-            pip install pyarrow pybind11 numpy
-          fi
-
       - name: Prepare git
         run: git config --global core.autocrlf false
 
@@ -121,31 +113,18 @@ jobs:
           submodules: true
           fetch-depth: 0
 
+      - name: Setup MSVC toolset
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        with:
+          arch: x64
+      # This must happen after checkout, because checkout would remove the directory.
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
       - name: Prevent vcpkg from building debug variants
-        shell: python
-        run: |
-          import os
+        run: python $env:GITHUB_WORKSPACE/scripts/ci/patch_vcpkg_triplets.py
 
-          workspace = os.environ["GITHUB_WORKSPACE"]
-          triplet_paths = [os.path.join(workspace, "external", "vcpkg", "triplets"),
-                          os.path.join(workspace, "ports", "triplets")]
-
-          for triplet_path in triplet_paths:
-            for path, dnames, fnames in os.walk(triplet_path):
-              for fname in fnames:
-                fname = os.path.join(path, fname)
-                print(fname)
-                with open(fname, "rb") as handle:
-                  contents = handle.read()
-                # If a file is already patched we skip patching it again because
-                # this affects the hashes calculated by vcpkg for caching
-                if b"VCPKG_BUILD_TYPE release" in contents:
-                  continue
-                contents += b"\nset(VCPKG_BUILD_TYPE release)\n"
-                with open(fname, "wb") as handle:
-                  handle.write(contents)
-
-      - name: core tiledb windows build
+      - name: Configure TileDB
+        shell: pwsh
         run: |
           $ErrorView = "NormalView"
 
@@ -155,32 +134,27 @@ jobs:
           # allow double-checking path
           cmd /c "echo $PATH"
 
-          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
+          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS + " -CMakeGenerator Ninja"
           if ($env:TILEDB_S3 -eq "ON") {
             $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
           }
           if ($env:TILEDB_AZURE -eq "ON") {
             $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
-
-            # to be removed when build of crc32 is to be used by gcs
-            $bootstrapOptions = $bootstrapOptions + " -_EnableCrc32"
           }
           if ($env:TILEDB_GCS -eq "ON") {
-            $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
-            #NOTE: GCS simulator not yet actually in place.
+            $bootstrapOptions = "-EnableGcs " + $bootstrapOptions
           }
           if ($env:TILEDB_SERIALIZATION -eq "ON") {
             $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
           }
-          # static already added above as initial default
-          # if ($env:TILEDB_STATIC -eq "ON") {
-          #  $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
-          # }
           # if ($env:TILEDB_HDFS -eq "ON") {
           #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
           #}
           if ($env:TILEDB_TOOLS -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableTools"
+          }
+          if ($env:TILEDB_ARROW_TESTS -eq "ON") {
+            $bootstrapOptions = $bootstrapOptions + " -EnableArrowTests"
           }
           $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
           if ($env:TILEDB_DEBUG -eq "ON") {
@@ -198,10 +172,6 @@ jobs:
           # if ($env:TILEDB_CI_TSAN -eq "ON") {
           #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
           # }
-          # static already added above as initial default
-          # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
-          #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
-          # }
           if ($env:TILEDB_WERROR -eq "OFF") {
             $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
           }
@@ -217,8 +187,12 @@ jobs:
             Write-Host "Bootstrap failed."
             exit $LastExitCode
           }
+      - name: Build TileDB
+        shell: pwsh
+        run: |
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
-          cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j $env:NUMBER_OF_PROCESSORS 2>&1
+          cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
@@ -231,14 +205,11 @@ jobs:
             Write-Host "Installation failed."
             $host.SetShouldExit($LastExitCode)
           }
-        shell: powershell
 
       - name: 'Test'
         id: test
-        shell: powershell
+        shell: pwsh
         run: |
-          write-host "begin run: 'Test'"
-
           $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
           # Clone backwards compatibility test arrays
@@ -256,13 +227,11 @@ jobs:
             # & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
             # update CMake to disable S3 for the test configuration, see minio note above
-            cmake -B $env:BUILD_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_SOURCESDIRECTORY
+            cmake -B $env:BUILD_BUILDDIRECTORY -DTILEDB_S3=OFF $env:BUILD_SOURCESDIRECTORY
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY -j --target tiledb_unit unit_vfs tiledb_regression all_link_complete --config $CMakeBuildType
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
@@ -272,7 +241,7 @@ jobs:
             }
             else { #using the node/npm already present in vm
               Write-Host "azurite: using vm install nodejs"
-               #this code path avoids overhead of download/expand/install of alternate nodejs/azurite.
+              #this code path avoids overhead of download/expand/install of alternate nodejs/azurite.
               npm install -g azurite
               Write-Host "done with 'npm install -g azurite'"
               $azuriteDataPath = (Join-Path $env:TEMP "azuriteData")
@@ -287,35 +256,39 @@ jobs:
             tasklist | findstr /i node.exe
           }
 
+          if ($env:TILEDB_GCS -eq "ON") {
+            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-gcs-emu.ps1"
+          }
+
           # Actually run tests
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\$CMakeBuildType\tiledb_unit.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
-             Write-Host "Tests failed. tiledb_unit exit status: " $LastExitCocde
-             $host.SetShouldExit($LastExitCode)
+              Write-Host "Tests failed. tiledb_unit exit status: " $LastExitCocde
+              $host.SetShouldExit($LastExitCode)
           }
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\ci\$CMakeBuildType\test_assert.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\sm\filesystem\test\unit_vfs -d=yes"
+          Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
-             Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
-             $host.SetShouldExit($LastExitCode)
+              Write-Host "Tests failed. tiledb_vfs exit status: " $LastExitCocde
+              $host.SetShouldExit($LastExitCode)
           }
 
-
-          if ($env:TILEDB_WEBP -eq "ON") {
-            $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\compressors\$CMakeBuildType\unit_link_webp.exe"
-            Write-Host "cmds: '$cmds'"
-            Invoke-Expression $cmds
-
-            if ($LastExitCode -ne 0) {
-               Write-Host "unit_link_webp failed. CMake exit status: " $LastExitCocde
-               $host.SetShouldExit($LastExitCode)
-            }
+          $cmds = "$env:BUILD_BUILDDIRECTORY\test\ci\test_assert.exe -d=yes"
+          Invoke-Expression $cmds
+          if ($LastExitCode -ne 0) {
+            Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
+            $host.SetShouldExit($LastExitCode)
           }
-          # Build the examples
+      - name: Build examples
+        shell: pwsh
+        run: |
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
+
           cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config $CMakeBuildType -v
 
           if ($LastExitCode -ne 0) {
@@ -325,9 +298,9 @@ jobs:
 
           $env:Path += ";$env:BUILD_BUILDDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
 
-          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api")
-          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\test_app_data")
-          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType") -Filter *.exe |
+          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\c_api")
+          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\c_api\test_app_data")
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "examples\c_api\") -Filter *.exe |
           Foreach-Object {
             try {
               Set-Location -path $TestAppDir
@@ -358,9 +331,9 @@ jobs:
           Set-Location -path $TestAppDir
           Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
 
-          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api")
-          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\test_app_data")
-          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType") -Filter *.exe |
+          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api")
+          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api\test_app_data")
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api\") -Filter *.exe |
           Foreach-Object {
             try {
               Set-Location -path $TestAppDir
@@ -391,35 +364,33 @@ jobs:
           Set-Location -path $TestAppDir
           Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
 
-          # Build examples
+      - name: Build CMake project example
+        shell: pwsh
+        run: |
           cd $env:BUILD_SOURCESDIRECTORY\examples\cmake_project
+
+          $env:Path += ";$env:BUILD_BUILDDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
+
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
           mkdir build
 
           cd build
 
           # Build zip artifact
-          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILD_DIRECTORY\vcpkg_installed\x64-windows-mod" ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE="$CMakeBuildType" -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILDDIRECTORY\vcpkg_installed\x64-windows" ..
 
           cmake --build . --config $CMakeBuildType -v
 
-          #.\$CMakeBuildType\ExampleExe.exe
-          $cmd = ".\$CMakeBuildType\ExampleExe.exe"
+          #.\ExampleExe.exe
+          $cmd = ".\ExampleExe.exe"
           Write-Host "cmd: '$cmd'"
           Invoke-Expression $cmd
 
-          #.\$CMakeBuildType\ExampleExe_static.exe
-          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
-          Write-Host "cmd: '$cmd'"
-          Invoke-Expression $cmd
-
-          # Packaging test
-          cd $env:BUILD_SOURCESDIRECTORY\test\packaging
-          mkdir build
-          cd build
-          cmake -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist" ..
-          # The testing is in the test/packaging/CMakeLists.txt file, just invoked,
-          # there is no other code to be built in the produced projects.
+      - name: Packaging test
+        shell: pwsh
+        run: |
+          cmake --build $env:BUILD_BUILDDIRECTORY --target check-package
 
       - name: 'process crashdumps'
         shell: cmd

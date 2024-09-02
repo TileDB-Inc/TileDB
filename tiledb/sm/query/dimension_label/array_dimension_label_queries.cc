@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,13 +50,15 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
+    ContextResources& resources,
     StorageManager* storage_manager,
     Array* array,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
     const optional<std::string>& fragment_name)
-    : storage_manager_(storage_manager)
+    : resources_(resources)
+    , storage_manager_(storage_manager)
     , label_range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
     , label_data_queries_by_dim_idx_(subarray.dim_num())
     , range_query_status_{QueryStatus::UNINITIALIZED}
@@ -78,7 +80,7 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
       } else {
         // Cannot both read label ranges and write label data on the same write.
         if (subarray.has_label_ranges()) {
-          throw DimensionLabelQueryStatusException(
+          throw DimensionLabelQueryException(
               "Failed to add dimension label queries. Cannot set both label "
               "buffer and label range on a write query.");
         }
@@ -90,7 +92,7 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
         // or to get the timestamp_end from the parent array. This fix is
         // blocked by current discussion on a timestamp refactor design.
         if (!fragment_name_.has_value()) {
-          fragment_name_ = storage_format::generate_fragment_name(
+          fragment_name_ = storage_format::generate_timestamped_name(
               array->timestamp_end_opened_at(),
               array->array_schema_latest().write_version());
         }
@@ -104,7 +106,7 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     case (QueryType::UPDATE):
     case (QueryType::MODIFY_EXCLUSIVE):
       if (!label_buffers.empty() || subarray.has_label_ranges()) {
-        throw DimensionLabelQueryStatusException(
+        throw DimensionLabelQueryException(
             "Failed to add dimension label queries. Query type " +
             query_type_str(array->get_query_type()) +
             " is not supported for dimension labels.");
@@ -112,7 +114,7 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
       break;
 
     default:
-      throw DimensionLabelQueryStatusException(
+      throw DimensionLabelQueryException(
           "Failed to add dimension label queries. Unknown query type " +
           query_type_str(array->get_query_type()) + ".");
   }
@@ -131,7 +133,7 @@ bool ArrayDimensionLabelQueries::completed() const {
 DimensionLabelQuery* ArrayDimensionLabelQueries::get_range_query(
     ArrayDimensionLabelQueries::dimension_size_type dim_idx) const {
   if (!has_range_query(dim_idx)) {
-    throw DimensionLabelQueryStatusException(
+    throw DimensionLabelQueryException(
         "No dimension label range query for dimension at index " +
         std::to_string(dim_idx));
   }
@@ -141,7 +143,7 @@ DimensionLabelQuery* ArrayDimensionLabelQueries::get_range_query(
 std::vector<DimensionLabelQuery*> ArrayDimensionLabelQueries::get_data_query(
     ArrayDimensionLabelQueries::dimension_size_type dim_idx) const {
   if (!has_data_query(dim_idx)) {
-    throw DimensionLabelQueryStatusException(
+    throw DimensionLabelQueryException(
         "No dimension label data query for dimension at index " +
         std::to_string(dim_idx));
   }
@@ -150,7 +152,7 @@ std::vector<DimensionLabelQuery*> ArrayDimensionLabelQueries::get_data_query(
 
 void ArrayDimensionLabelQueries::process_data_queries() {
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       data_queries_.size(),
       [&](const size_t query_idx) {
@@ -160,7 +162,7 @@ void ArrayDimensionLabelQueries::process_data_queries() {
           throw_if_not_ok(query->process());
           return Status::Ok();
         } catch (const StatusException& err) {
-          throw DimensionLabelQueryStatusException(
+          throw DimensionLabelQueryException(
               "Failed to process data query for label '" +
               query->dim_label_name() + "'. " + err.what());
         }
@@ -170,7 +172,7 @@ void ArrayDimensionLabelQueries::process_data_queries() {
 void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
   // Process queries and update the subarray.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       label_range_queries_by_dim_idx_.size(),
       [&](const uint32_t dim_idx) {
@@ -181,7 +183,7 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
             range_query->init();
             throw_if_not_ok(range_query->process());
             if (!range_query->completed()) {
-              throw DimensionLabelQueryStatusException(
+              throw DimensionLabelQueryException(
                   "Range query for label '" + range_query->dim_label_name() +
                   "' failed to complete.");
             }
@@ -201,7 +203,7 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
           }
           return Status::Ok();
         } catch (const StatusException& err) {
-          throw DimensionLabelQueryStatusException(
+          throw DimensionLabelQueryException(
               "Failed to process and update index ranges for label '" +
               range_query->dim_label_name() + "'. " + err.what());
         }
@@ -248,13 +250,14 @@ void ArrayDimensionLabelQueries::add_read_queries(
       // Create the range query.
       range_queries_.emplace_back(tdb_new(
           DimensionLabelQuery,
+          resources_,
           storage_manager_,
           dim_label,
           dim_label_ref,
           label_ranges));
       label_range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
     } catch (const StatusException& err) {
-      throw DimensionLabelQueryStatusException(
+      throw DimensionLabelQueryException(
           "Failed to initialize the query to read range data from label '" +
           label_name + "'. " + err.what());
     }
@@ -280,6 +283,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
       // Create the data query.
       data_queries_.emplace_back(tdb_new(
           DimensionLabelQuery,
+          resources_,
           storage_manager_,
           dim_label,
           dim_label_ref,
@@ -290,7 +294,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
     } catch (const StatusException& err) {
-      throw DimensionLabelQueryStatusException(
+      throw DimensionLabelQueryException(
           "Failed to initialize the data query for label '" + label_name +
           "'. " + err.what());
     }
@@ -311,7 +315,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
 
       // Verify that this subarray is not set to use labels.
       if (subarray.has_label_ranges(dim_label_ref.dimension_index())) {
-        throw DimensionLabelQueryStatusException(
+        throw DimensionLabelQueryException(
             "Cannot write label data when subarray is set by label range.");
       }
 
@@ -331,6 +335,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
       // Create the dimension label query.
       data_queries_.emplace_back(tdb_new(
           DimensionLabelQuery,
+          resources_,
           storage_manager_,
           dim_label,
           dim_label_ref,
@@ -343,7 +348,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
     } catch (const StatusException& err) {
-      throw DimensionLabelQueryStatusException(
+      throw DimensionLabelQueryException(
           "Failed to initialize the data query for label '" + label_name +
           "'. " + err.what());
     }
@@ -357,8 +362,7 @@ shared_ptr<Array> ArrayDimensionLabelQueries::open_dimension_label(
     const QueryType& query_type) {
   // Create the dimension label.
   auto label_iter = dimension_labels_.try_emplace(
-      dim_label_name,
-      make_shared<Array>(HERE(), dim_label_uri, storage_manager_));
+      dim_label_name, make_shared<Array>(HERE(), resources_, dim_label_uri));
   const auto dim_label = label_iter.first->second;
 
   // Open the dimension label with the same timestamps and encryption as the

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,6 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
 #include <sstream>
@@ -84,7 +83,6 @@ struct GroupFx {
   void remove_temp_dir(const std::string& path) const;
   std::string get_golden_walk(const std::string& path);
   std::string get_golden_ls(const std::string& path);
-  static std::string random_name(const std::string& prefix);
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> read_group(
       tiledb_group_t* group) const;
   void set_group_timestamp(
@@ -233,17 +231,27 @@ std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
     tiledb_group_t* group) const {
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> ret;
   uint64_t count = 0;
-  char* uri;
-  tiledb_object_t type;
-  char* name;
   int rc = tiledb_group_get_member_count(ctx_, group, &count);
   REQUIRE(rc == TILEDB_OK);
   for (uint64_t i = 0; i < count; i++) {
-    rc = tiledb_group_get_member_by_index(ctx_, group, i, &uri, &type, &name);
+    std::string uri;
+    tiledb_object_t type;
+    tiledb_string_t *uri_handle, *name_handle;
+    rc = tiledb_group_get_member_by_index_v2(
+        ctx_, group, i, &uri_handle, &type, &name_handle);
     REQUIRE(rc == TILEDB_OK);
+    const char* uri_str;
+    size_t uri_size;
+    rc = tiledb_string_view(uri_handle, &uri_str, &uri_size);
+    CHECK(rc == TILEDB_OK);
+    uri = std::string(uri_str, uri_size);
+    rc = tiledb_string_free(&uri_handle);
+    CHECK(rc == TILEDB_OK);
+    if (name_handle) {
+      rc = tiledb_string_free(&name_handle);
+      CHECK(rc == TILEDB_OK);
+    }
     ret.emplace_back(uri, type);
-    std::free(uri);
-    std::free(name);
   }
   return ret;
 }
@@ -330,13 +338,6 @@ std::string GroupFx::get_golden_ls(const std::string& path) {
   return golden;
 }
 
-std::string GroupFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
-}
-
 TEST_CASE_METHOD(
     GroupFx, "C API: Test group metadata", "[capi][group][metadata]") {
   // TODO: refactor for each supported FS.
@@ -390,14 +391,14 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GroupFx,
-    "C API: Group Metadata, write/read",
-    "[capi][group][metadata][read]") {
+    "C API: Group Metadata, write/read, rest",
+    "[capi][group][metadata][rest][regression][sc-4821]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
+  std::string group1_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group1");
 
-  std::string group1_uri = temp_dir + "group1";
   REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
 
   tiledb_group_t* group;
@@ -782,6 +783,8 @@ TEST_CASE_METHOD(
     GroupFx,
     "C API: Group, write/read with named members",
     "[capi][group][metadata][read]") {
+  bool remove_by_name = GENERATE(true, false);
+
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -893,13 +896,25 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+  // Remove by bame or URI.
+  if (remove_by_name) {
+    rc = tiledb_group_remove_member(ctx_, group1, "four");
+  } else {
+    rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+  }
   REQUIRE(rc == TILEDB_OK);
+
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
-  rc = tiledb_group_remove_member(ctx_, group2, array3_uri.c_str());
+  // Remove by bame or URI.
+  if (remove_by_name) {
+    rc = tiledb_group_remove_member(ctx_, group2, "three");
+  } else {
+    rc = tiledb_group_remove_member(ctx_, group2, array3_uri.c_str());
+  }
   REQUIRE(rc == TILEDB_OK);
+
   // There should be nothing left in group2
   group2_expected.clear();
 
@@ -933,6 +948,78 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_group_free(&group1);
   tiledb_group_free(&group2);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group, write duplicate members",
+    "[capi][group][write][duplicate]") {
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  const tiledb::sm::URI group1_uri(temp_dir + "group1");
+  const tiledb::sm::URI group2_uri(temp_dir + "group1/group2");
+  const tiledb::sm::URI group3_uri(temp_dir + "group1/group3");
+
+  REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
+  REQUIRE(tiledb_group_create(ctx_, group2_uri.c_str()) == TILEDB_OK);
+  REQUIRE(tiledb_group_create(ctx_, group3_uri.c_str()) == TILEDB_OK);
+
+  tiledb_group_t* group1;
+  int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1, 1);
+  rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  SECTION("Name-name collision") {
+    rc =
+        tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, "one");
+    REQUIRE(rc == TILEDB_OK);
+    rc =
+        tiledb_group_add_member(ctx_, group1, group3_uri.c_str(), false, "one");
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_group_remove_member(ctx_, group1, "one");
+    REQUIRE(rc == TILEDB_ERR);
+  }
+
+  SECTION("Name-URI collision") {
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, "group2");
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(ctx_, group1, "group2", true, nullptr);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_group_remove_member(ctx_, group1, "group2");
+    REQUIRE(rc == TILEDB_ERR);
+  }
+
+  SECTION("URI-name collision") {
+    rc = tiledb_group_add_member(ctx_, group1, "group2", true, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, group3_uri.c_str(), false, "group2");
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_group_remove_member(ctx_, group1, "group2");
+    REQUIRE(rc == TILEDB_ERR);
+  }
+
+  SECTION("URI-URI collision") {
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+    REQUIRE(rc == TILEDB_ERR);
+  }
+
+  // Close group
+  rc = tiledb_group_close(ctx_, group1);
+  tiledb_group_free(&group1);
   remove_temp_dir(temp_dir);
 }
 
@@ -1197,6 +1284,8 @@ TEST_CASE_METHOD(
     GroupFx,
     "C API: Group, write/read, relative with named members",
     "[capi][group][metadata][read]") {
+  bool remove_by_name = GENERATE(true, false);
+
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -1321,12 +1410,22 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+  // Remove by bame or URI.
+  if (remove_by_name) {
+    rc = tiledb_group_remove_member(ctx_, group1, "eight");
+  } else {
+    rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+  }
   REQUIRE(rc == TILEDB_OK);
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
-  rc = tiledb_group_remove_member(ctx_, group2, array3_relative_uri.c_str());
+  // Remove by bame or URI.
+  if (remove_by_name) {
+    rc = tiledb_group_remove_member(ctx_, group2, "seven");
+  } else {
+    rc = tiledb_group_remove_member(ctx_, group2, array3_relative_uri.c_str());
+  }
   REQUIRE(rc == TILEDB_OK);
   // There should be nothing left in group2
   group2_expected.clear();
@@ -1361,6 +1460,56 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_group_free(&group1);
   tiledb_group_free(&group2);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group, dump",
+    "[capi][group][dump][rest-fails][sc-48099]") {
+  // Create and open group in write mode
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  std::string group1_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group1");
+  REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
+
+  std::string group2_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group2");
+  REQUIRE(tiledb_group_create(ctx_, group2_uri.c_str()) == TILEDB_OK);
+
+  tiledb_group_t* group1;
+  int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1, 1);
+  rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), 0, "group2");
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Delete the subgroup to test that recursively dumping its parent will not
+  // fail.
+  rc = tiledb_object_remove(ctx_, group2_uri.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_open(ctx_, group1, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  char* group_dump;
+  rc = tiledb_group_dump_str(ctx_, group1, &group_dump, 1);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(group_dump != nullptr);
+  REQUIRE(
+      std::string(group_dump) ==
+      "group1 GROUP\n|-- group2 GROUP (does not exist)\n");
+  free(group_dump);
+
+  rc = tiledb_group_close(ctx_, group1);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_group_free(&group1);
   remove_temp_dir(temp_dir);
 }
 
@@ -1676,6 +1825,74 @@ TEST_CASE_METHOD(
   tiledb_group_free(&group2_read);
   tiledb_group_free(&group3_read);
   tiledb_group_free(&group4_read);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group metadata serialization",
+    "[capi][group][metadata][serialization]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  tiledb::sm::URI group_uri(temp_dir + "group");
+  REQUIRE(tiledb_group_create(ctx_, group_uri.c_str()) == TILEDB_OK);
+  tiledb::sm::URI group_deserialized_uri(temp_dir + "group_deserialized");
+  REQUIRE(
+      tiledb_group_create(ctx_, group_deserialized_uri.c_str()) == TILEDB_OK);
+
+  tiledb_group_t* group = nullptr;
+  REQUIRE(tiledb_group_alloc(ctx_, group_uri.c_str(), &group) == TILEDB_OK);
+  REQUIRE(tiledb_group_open(ctx_, group, TILEDB_WRITE) == TILEDB_OK);
+
+  int value = 123;
+  REQUIRE(
+      tiledb_group_put_metadata(
+          ctx_, group, "testmetadata", TILEDB_INT32, 1, &value) == TILEDB_OK);
+
+  REQUIRE(tiledb_group_close(ctx_, group) == TILEDB_OK);
+  tiledb_group_free(&group);
+
+  // Reopen in read mode
+  REQUIRE(tiledb_group_alloc(ctx_, group_uri.c_str(), &group) == TILEDB_OK);
+  REQUIRE(tiledb_group_open(ctx_, group, TILEDB_READ) == TILEDB_OK);
+
+  tiledb_group_t* group_deserialized = nullptr;
+  REQUIRE(
+      tiledb_group_alloc(
+          ctx_, group_deserialized_uri.c_str(), &group_deserialized) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_group_open(ctx_, group_deserialized, TILEDB_WRITE) == TILEDB_OK);
+
+  REQUIRE(
+      tiledb_group_serialize(ctx_, group, group_deserialized, TILEDB_CAPNP) ==
+      TILEDB_OK);
+
+  REQUIRE(tiledb_group_close(ctx_, group_deserialized) == TILEDB_OK);
+  tiledb_group_free(&group_deserialized);
+
+  // Reopen in read mode
+  REQUIRE(
+      tiledb_group_alloc(
+          ctx_, group_deserialized_uri.c_str(), &group_deserialized) ==
+      TILEDB_OK);
+  REQUIRE(
+      tiledb_group_open(ctx_, group_deserialized, TILEDB_READ) == TILEDB_OK);
+
+  tiledb_datatype_t dtype;
+  uint32_t num;
+  const void* val;
+  tiledb_group_get_metadata(
+      ctx_, group_deserialized, "testmetadata", &dtype, &num, &val);
+
+  REQUIRE(val != nullptr);
+  CHECK(*static_cast<const int32_t*>(val) == 123);
+
+  REQUIRE(tiledb_group_close(ctx_, group) == TILEDB_OK);
+  tiledb_group_free(&group);
+  REQUIRE(tiledb_group_close(ctx_, group_deserialized) == TILEDB_OK);
+  tiledb_group_free(&group_deserialized);
   remove_temp_dir(temp_dir);
 }
 #endif

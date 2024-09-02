@@ -33,6 +33,7 @@
 #include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 using namespace tiledb::sm;
 using namespace tiledb::common;
@@ -44,7 +45,28 @@ using namespace tiledb::common;
 ConsolidationPlan::ConsolidationPlan(
     shared_ptr<Array> array, uint64_t fragment_size)
     : desired_fragment_size_(fragment_size) {
-  generate(array);
+  if (array->is_remote()) {
+    auto rest_client = array->rest_client();
+    if (!rest_client) {
+      throw std::runtime_error(
+          "Failed to create a consolidation plan; Remote array"
+          "with no REST client.");
+    }
+    // reach out to the REST client to populate class members
+    fragment_uris_per_node_ = rest_client->post_consolidation_plan_from_rest(
+        array->array_uri(), array->config(), fragment_size);
+    num_nodes_ = fragment_uris_per_node_.size();
+  } else {
+    generate(array);
+  }
+}
+
+ConsolidationPlan::ConsolidationPlan(
+    uint64_t fragment_size,
+    std::vector<std::vector<std::string>> fragment_uris_per_node)
+    : num_nodes_{fragment_uris_per_node.size()}
+    , fragment_uris_per_node_{fragment_uris_per_node}
+    , desired_fragment_size_{fragment_size} {
 }
 
 ConsolidationPlan::~ConsolidationPlan() = default;

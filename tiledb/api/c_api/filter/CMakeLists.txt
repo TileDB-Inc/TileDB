@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,25 +25,17 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
     filter_api.cc
 )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_filter_stub OBJECT ${SOURCES})
-target_link_libraries(capi_filter_stub PUBLIC capi_context_stub $<TARGET_OBJECTS:capi_context_stub>)
-target_link_libraries(capi_filter_stub PUBLIC all_filters $<TARGET_OBJECTS:all_filters>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_filter_stub EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_filter_stub PRIVATE capi_filter_stub)
-target_sources(compile_capi_filter_stub PRIVATE test/compile_capi_filter_main.cc)
-add_dependencies(all_link_complete compile_capi_filter_stub)
+commence(object_library capi_filter_stub)
+  this_target_sources(${SOURCES})
+  this_target_object_libraries(capi_context_stub)
+  this_target_object_libraries(all_filters)
+conclude(object_library)
 
 add_test_subdirectory()

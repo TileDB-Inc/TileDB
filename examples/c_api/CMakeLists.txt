@@ -31,16 +31,12 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF) # Don't use GNU extensions
 
 # Add custom target 'examples_c'
-add_custom_target(examples_c DEPENDS tiledb_shared)
-
-if (TILEDB_STATIC)
-  add_custom_target(static_examples_c DEPENDS tiledb_static)
-endif()
+add_custom_target(examples_c)
 
 # Function that builds an executable per example
 function(build_TileDB_example_capi TARGET)
   add_executable(${TARGET}_c EXCLUDE_FROM_ALL ${TARGET}.c)
-  target_link_libraries(${TARGET}_c PUBLIC local_install tiledb_shared)
+  target_link_libraries(${TARGET}_c PUBLIC local_install tiledb)
   if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
@@ -49,22 +45,12 @@ function(build_TileDB_example_capi TARGET)
   add_dependencies(examples_c ${TARGET}_c)
 endfunction()
 
-function(build_TileDB_static_example_capi TARGET)
-  add_executable(static_${TARGET}_c EXCLUDE_FROM_ALL ${TARGET}.c)
-  target_include_directories(static_${TARGET}_c PUBLIC
-    "${CMAKE_CURRENT_BINARY_DIR}/../"
-  )
-  target_link_libraries(static_${TARGET}_c tiledb_static)
-  if (NOT WIN32)
-    # On Linux, must explicitly link -lpthread -ldl in order for static linking
-    # to libzstd or libcurl to work.
-    target_link_libraries(static_${TARGET}_c pthread dl)
-  endif()
-  add_dependencies(static_examples_c static_${TARGET}_c)
-endfunction()
-
 # Get the example sources
 file(GLOB TILEDB_EXAMPLE_SOURCES_CAPI "*.c")
+
+if(TILEDB_REMOVE_DEPRECATIONS)
+  list(FILTER TILEDB_EXAMPLE_SOURCES_CAPI EXCLUDE REGEX "async")
+endif()
 
 # Iterate over all example sources and call the build function
 foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CAPI})
@@ -80,7 +66,4 @@ foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CAPI})
 
   # Build example executable
   build_TileDB_example_capi(${EXAMPLE_BIN})
-  if (TILEDB_STATIC)
-    build_TileDB_static_example_capi(${EXAMPLE_BIN})
-  endif()
 endforeach()

@@ -1,6 +1,6 @@
 include(TileDBAssertions)
 
-find_package(Catch_EP REQUIRED)
+find_package(Catch2 REQUIRED)
 
 add_executable(
   test_assert

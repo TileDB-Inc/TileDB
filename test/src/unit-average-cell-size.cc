@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,8 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <numeric>
 
@@ -166,9 +166,8 @@ struct CPPAverageCellSizeFx {
     REQUIRE(query.submit() == Query::Status::COMPLETE);
 
     auto uri = sm::URI(query.fragment_uri(0));
-    std::pair<uint64_t, uint64_t> timestamps;
-    REQUIRE(sm::utils::parse::get_timestamp_range(uri, &timestamps).ok());
-    return {uri, timestamps};
+    sm::FragmentID fragment_id{uri};
+    return {uri, fragment_id.timestamp_range()};
   }
 
   /**
@@ -207,12 +206,12 @@ struct CPPAverageCellSizeFx {
       uint64_t a2_size,
       optional<uint64_t> a3_size = std::nullopt) {
     auto array_for_reads{make_shared<sm::Array>(
-        HERE(), sm::URI(array_name), ctx_.ptr().get()->storage_manager())};
+        HERE(), ctx_.ptr().get()->resources(), sm::URI(array_name))};
     REQUIRE(array_for_reads
                 ->open_without_fragments(
                     sm::EncryptionType::NO_ENCRYPTION, nullptr, 0)
                 .ok());
-    REQUIRE(array_for_reads->load_fragments(uris).ok());
+    array_for_reads->load_fragments(uris);
     auto avg_cell_sizes = array_for_reads->get_average_var_cell_sizes();
 
     CHECK(avg_cell_sizes["d2"] == d2_size);

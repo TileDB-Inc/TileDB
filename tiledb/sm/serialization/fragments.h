@@ -44,74 +44,31 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class Buffer;
+class Config;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
 
-#ifdef TILEDB_SERIALIZATION
-/**
- * Convert ArrayDeleteFragmentsTimestampsRequest to Cap'n Proto message
- *
- * @param uri the URI of the fragments' parent array
- * @param start_timestamp the start timestamp to serialize
- * @param end_timestamp the end timestamp to serialize
- * @param builder cap'n proto class
- */
-void fragments_timestamps_to_capnp(
-    std::string uri,
-    uint64_t start_timestamp,
-    uint64_t end_timestamp,
-    capnp::ArrayDeleteFragmentsTimestampsRequest::Builder* builder);
-
-/**
- * Convert Cap'n Proto message to ArrayDeleteFragmentsTimestampsRequest
- *
- * @param reader cap'n proto class
- * @return a tuple of uri, start_timestamp, end_timestamp
- */
-std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_from_capnp(
-    const capnp::ArrayDeleteFragmentsTimestampsRequest::Reader& reader);
-
-/**
- * Convert ArrayDeleteFragmentsListRequest to Cap'n Proto message
- *
- * @param uri the URI of the fragments' parent array
- * @param fragments fragments to serialize
- * @param builder cap'n proto class
- */
-void fragments_list_to_capnp(
-    std::string uri,
-    const std::vector<URI>& fragments,
-    capnp::ArrayDeleteFragmentsListRequest::Builder* builder);
-
-/**
- * Convert Cap'n Proto message to ArrayDeleteFragmentsListRequest
- *
- * @param reader cap'n proto class
- * @return a tuple of uri, vector of deserialized fragments
- */
-std::tuple<const char*, std::vector<URI>> fragments_list_from_capnp(
-    const capnp::ArrayDeleteFragmentsListRequest::Reader& reader);
-#endif
-
-void fragments_timestamps_serialize(
-    std::string uri,
+void serialize_delete_fragments_timestamps_request(
+    const Config& config,
     uint64_t start_timestamp,
     uint64_t end_timestamp,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
 
-std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
+std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
     SerializationType serialize_type, const Buffer& serialized_buffer);
 
-void fragments_list_serialize(
-    std::string uri,
+void serialize_delete_fragments_list_request(
+    const Config& config,
     const std::vector<URI>& fragments,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
 
-std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer);
+std::vector<URI> deserialize_delete_fragments_list_request(
+    const URI& array_uri,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer);
 
 }  // namespace serialization
 }  // namespace tiledb::sm

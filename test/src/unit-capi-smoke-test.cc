@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,24 +33,22 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/temporary_local_directory.h"
+#include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
+#include <optional>
 #include <vector>
 
 using namespace std;
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
-static const char encryption_key[] = "unittestunittestunittestunittest";
-static const string array_name = "smoke_test_array";
-
 class SmokeTestFx {
  public:
-  const string& FILE_TEMP_DIR = tiledb::test::get_temp_path();
-
   /**
    * Wraps data to build a dimension with the C-API.
    */
@@ -215,19 +213,22 @@ class SmokeTestFx {
   /** The C-API VFS object. */
   tiledb_vfs_t* vfs_;
 
-  /**
-   * Creates a directory using `vfs_`.
-   *
-   * @param path The directory path.
-   */
-  void create_dir(const string& path);
+  /** The unique local directory object. */
+  TemporaryLocalDirectory temp_dir_;
+
+  /** The encryption key. */
+  const char encryption_key_[33] = "unittestunittestunittestunittest";
+
+  /** The name of the array. */
+  const string array_name_ = "smoke_test_array";
 
   /**
-   * Removes a directory using `vfs_`.
+   * Compute the full array path given an array name.
    *
-   * @param path The directory path.
+   * @param array_name The array name.
+   * @return The full array path.
    */
-  void remove_dir(const string& path);
+  const string array_path(const string& array_name);
 
   /**
    * Creates a TileDB array.
@@ -378,34 +379,26 @@ SmokeTestFx::SmokeTestFx() {
   // Create a config.
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_config_alloc(&config, &error));
+  throw_if_setup_failed(error == nullptr);
 
   // Create the context.
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_ctx_alloc(config, &ctx_));
+  throw_if_setup_failed(ctx_ != nullptr);
 
   // Create the VFS.
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-
+  throw_if_setup_failed(tiledb_vfs_alloc(ctx_, config, &vfs_));
+  throw_if_setup_failed(vfs_ != nullptr);
   tiledb_config_free(&config);
 }
 
 SmokeTestFx::~SmokeTestFx() {
-  remove_dir(FILE_TEMP_DIR);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
 }
 
-void SmokeTestFx::create_dir(const string& path) {
-  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-void SmokeTestFx::remove_dir(const string& path) {
-  int is_dir = 0;
-  REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
-    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
+const string SmokeTestFx::array_path(const string& array_name) {
+  return temp_dir_.path() + array_name;
 }
 
 void SmokeTestFx::create_array(
@@ -415,9 +408,6 @@ void SmokeTestFx::create_array(
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_encryption_type_t encryption_type) {
-  remove_dir(FILE_TEMP_DIR);
-  create_dir(FILE_TEMP_DIR);
-
   // Create the dimensions.
   vector<tiledb_dimension_t*> dims;
   dims.reserve(test_dims.size());
@@ -498,14 +488,14 @@ void SmokeTestFx::create_array(
     rc = tiledb_config_set(
         config, "sm.encryption_type", encryption_type_string.c_str(), &error);
     REQUIRE(error == nullptr);
-    rc = tiledb_config_set(config, "sm.encryption_key", encryption_key, &error);
+    rc =
+        tiledb_config_set(config, "sm.encryption_key", encryption_key_, &error);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(error == nullptr);
     REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
     tiledb_config_free(&config);
   }
-  rc = tiledb_array_create(
-      ctx_, (FILE_TEMP_DIR + array_name).c_str(), array_schema);
+  rc = tiledb_array_create(ctx_, array_path(array_name_).c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Free attributes.
@@ -531,8 +521,7 @@ void SmokeTestFx::write(
     tiledb_encryption_type_t encryption_type) {
   // Open the array for writing (with or without encryption).
   tiledb_array_t* array;
-  int rc =
-      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_path(array_name_).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
@@ -546,7 +535,7 @@ void SmokeTestFx::write(
         cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -661,8 +650,7 @@ void SmokeTestFx::read(
     tiledb_query_condition_combination_op_t combination_op) {
   // Open the array for reading (with or without encryption).
   tiledb_array_t* array;
-  int rc =
-      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_path(array_name_).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
@@ -676,7 +664,7 @@ void SmokeTestFx::read(
         cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -688,6 +676,7 @@ void SmokeTestFx::read(
 
   // Create the read query.
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
 
@@ -766,8 +755,13 @@ void SmokeTestFx::read(
   }
 
   // Set the subarray to read.
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Create the attribute condition objects.
   tiledb_query_condition_t* combined_query_condition = nullptr;
@@ -1397,35 +1391,33 @@ TEST_CASE_METHOD(
   const uint64_t d3_tile_extent = 5;
   dims.emplace_back("d3", TILEDB_UINT64, d3_domain, d3_tile_extent);
 
-  for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
-    vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
-    for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {
-      for (const tiledb_layout_t cell_order :
-           {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-        for (const tiledb_layout_t tile_order :
-             {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-          for (const tiledb_encryption_type_t encryption_type :
-               {TILEDB_NO_ENCRYPTION, TILEDB_AES_256_GCM}) {
-            for (const tiledb_layout_t write_order :
-                 {TILEDB_ROW_MAJOR, TILEDB_UNORDERED}) {
-              vector<test_dim_t> test_dims;
-              for (const test_dim_t& dim : dims) {
-                test_dims.emplace_back(dim);
+  // Generate test conditions
+  auto num_attrs{GENERATE(1, 2, 3)};
+  auto num_dims{GENERATE(1, 2, 3)};
+  auto array_type{GENERATE(TILEDB_DENSE, TILEDB_SPARSE)};
+  auto cell_order{GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR)};
+  auto tile_order{GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR)};
+  auto encryption_type{GENERATE(TILEDB_NO_ENCRYPTION, TILEDB_AES_256_GCM)};
+  auto write_order{GENERATE(TILEDB_ROW_MAJOR, TILEDB_UNORDERED)};
 
-                smoke_test(
-                    test_attrs,
-                    query_conditions_vec,
-                    test_dims,
-                    array_type,
-                    cell_order,
-                    tile_order,
-                    write_order,
-                    encryption_type);
-              }
-            }
-          }
-        }
-      }
-    }
+  DYNAMIC_SECTION(
+      array_type_str((ArrayType)array_type)
+      << " array with " << num_attrs << " attribute(s) and " << num_dims
+      << " dimension(s)." << layout_str((Layout)cell_order) << " cells, "
+      << layout_str((Layout)tile_order) << " tiles, "
+      << layout_str((Layout)write_order) << " writes, "
+      << encryption_type_str((EncryptionType)encryption_type)
+      << " encryption") {
+    vector<test_attr_t> test_attrs(attrs.begin(), attrs.begin() + num_attrs);
+    vector<test_dim_t> test_dims(dims.begin(), dims.begin() + num_dims);
+    smoke_test(
+        test_attrs,
+        query_conditions_vec,
+        test_dims,
+        array_type,
+        cell_order,
+        tile_order,
+        write_order,
+        encryption_type);
   }
 }

@@ -209,7 +209,7 @@ class PoolAllocatorImpl {
      */
     auto aligned_start{reinterpret_cast<std::byte*>(
         reinterpret_cast<ptrdiff_t>(new_bytes + sizeof(pointer) + (align - 1)) &
-        reinterpret_cast<ptrdiff_t>(page_mask))};
+        static_cast<ptrdiff_t>(page_mask))};
 
     for (size_t i = 0; i < chunks_per_array; ++i) {
       push_chunk(aligned_start + i * chunk_size);
@@ -403,17 +403,12 @@ template <size_t chunk_size>
 class PoolAllocator {
  public:
   using value_type = typename SingletonPoolAllocator<chunk_size>::value_type;
+  using pointer_type = value_type*;
   PoolAllocator() = default;
-  value_type* allocate() {
+  pointer_type allocate() {
     return _allocator<chunk_size>.allocate();
   }
-  value_type* allocate(size_t) {
-    return _allocator<chunk_size>.allocate();
-  }
-  void deallocate(value_type* a) {
-    return _allocator<chunk_size>.deallocate(a);
-  }
-  void deallocate(value_type* a, size_t) {
+  void deallocate(pointer_type a) {
     return _allocator<chunk_size>.deallocate(a);
   }
   size_t num_instances() {

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
@@ -359,7 +360,7 @@ TEST_CASE_METHOD(
 
   // Check array schema and number of dimension labels.
   require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
-  auto dim_label_num = array_schema->array_schema_->dim_label_num();
+  auto dim_label_num = array_schema->dim_label_num();
   REQUIRE(dim_label_num == 1);
 
   // Create array
@@ -384,10 +385,9 @@ TEST_CASE_METHOD(
     tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
     require_tiledb_ok(tiledb_array_schema_load(
         ctx, dim_label_uri, &loaded_dim_label_array_schema));
-    uint64_t loaded_tile_extent{
-        loaded_dim_label_array_schema->array_schema_->dimension_ptr(0)
-            ->tile_extent()
-            .rvalue_as<uint64_t>()};
+    uint64_t loaded_tile_extent{loaded_dim_label_array_schema->dimension_ptr(0)
+                                    ->tile_extent()
+                                    .rvalue_as<uint64_t>()};
     REQUIRE(tile_extent == loaded_tile_extent);
     tiledb_array_schema_free(&loaded_dim_label_array_schema);
   }

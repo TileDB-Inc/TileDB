@@ -91,7 +91,7 @@ if (TILEDB_TESTS)
     #
     # All unit tests depend on Catch
     #
-    find_package(Catch_EP REQUIRED)
+    find_package(Catch2 REQUIRED)
 endif()
 
 add_subdirectory(data_block)

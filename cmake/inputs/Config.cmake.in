@@ -1,8 +1,9 @@
 #
 # This file attempts to locate the TileDB library. If found, the following
 # imported targets are created:
-#   - TileDB::tiledb_shared
-#   - TileDB::tiledb_static
+#   - TileDB::tiledb (points to either a static or shared library)
+#   - TileDB::tiledb_shared (if TileDB is built as a shared library)
+#   - TileDB::tiledb_static (if TileDB is built as a static library)
 # And the following variables are defined:
 #   - TILEDB_FOUND
 #   - TileDB_FOUND
@@ -10,16 +11,53 @@
 
 @PACKAGE_INIT@
 
+if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
+  include(CMakeFindDependencyMacro)
+  find_dependency(Threads)
+  find_dependency(BZip2)
+  find_dependency(lz4)
+  find_dependency(spdlog)
+  find_dependency(ZLIB)
+  find_dependency(zstd)
+  find_dependency(unofficial-libmagic)
+  if(NOT WIN32)
+    find_dependency(OpenSSL)
+  endif()
+  if(@TILEDB_S3@) # TILEDB_S3
+    find_dependency(AWSSDK COMPONENTS @AWS_SERVICES@)
+  endif()
+  if(@TILEDB_AZURE@) # TILEDB_AZURE
+    find_dependency(azure-identity-cpp)
+    find_dependency(azure-storage-blobs-cpp)
+  endif()
+  if(@TILEDB_GCS@) # TILEDB_GCS
+    find_dependency(google_cloud_cpp_storage)
+  endif()
+  if(@TILEDB_SERIALIZATION@) # TILEDB_SERIALIZATION
+    find_dependency(CapnProto)
+    find_dependency(CURL)
+  endif()
+  if(@TILEDB_WEBP@) # TILEDB_WEBP
+    find_dependency(WebP)
+  endif()
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/@TARGETS_EXPORT_NAME@.cmake")
 check_required_components("@PROJECT_NAME@")
 
-# Targets required for linking against tiledb_static:
-@TILEDB_STATIC_DEP_STRING@
-# -- End required targets for static
+if(NOT TARGET TileDB::tiledb)
+  if(TARGET TileDB::tiledb_shared)
+    add_library(TileDB::tiledb INTERFACE IMPORTED)
+    set_target_properties(TileDB::tiledb PROPERTIES INTERFACE_LINK_LIBRARIES TileDB::tiledb_shared)
+  elseif(TARGET TileDB::tiledb_static)
+    add_library(TileDB::tiledb INTERFACE IMPORTED)
+    set_target_properties(TileDB::tiledb PROPERTIES INTERFACE_LINK_LIBRARIES TileDB::tiledb_static)
+  endif()
+endif()
 
 # Define a convenience all-caps variable
 if (NOT DEFINED TILEDB_FOUND)
-  if (TARGET TileDB::tiledb_shared)
+  if (TARGET TileDB::tiledb)
     set(TILEDB_FOUND TRUE)
   else()
     set(TILEDB_FOUND FALSE)

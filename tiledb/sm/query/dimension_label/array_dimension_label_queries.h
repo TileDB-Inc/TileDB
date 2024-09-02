@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -69,6 +69,13 @@ class ArrayDimensionLabelQueries {
   /**
    * Constructor.
    *
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Query class on StorageManager.
+   * For now, we still need to keep the storage_manager argument, but once the
+   * dependency is gone, the signature will be
+   * ArrayDimensionLabelQueries(ContextResources&, Array*, ...).
+   *
+   * @param resources The context resources.
    * @param storage_manager Storage manager object.
    * @param array Parent array the dimension labels are defined on.
    * @param subarray Subarray for the query on the parent array.
@@ -78,6 +85,7 @@ class ArrayDimensionLabelQueries {
    * @param fragment_name Optional fragment name for writing fragments.
    */
   ArrayDimensionLabelQueries(
+      ContextResources& resources,
       StorageManager* storage_manager,
       Array* array,
       const Subarray& subarray,
@@ -159,6 +167,9 @@ class ArrayDimensionLabelQueries {
   void process_range_queries(Query* parent_query);
 
  private:
+  /** The context resources. */
+  ContextResources& resources_;
+
   /** The storage manager. */
   StorageManager* storage_manager_;
 

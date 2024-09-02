@@ -196,17 +196,14 @@ TEST_CASE(
   encrypt = GENERATE(false, true);
   tiledb_encryption_type_t encryption_type;
   const char* key;
-  int key_length;
   uint64_t expected_fragment_size;
   if (encrypt) {
     encryption_type = tiledb_encryption_type_t::TILEDB_AES_256_GCM;
     key = "12345678901234567890123456789012";
-    key_length = 32;
     expected_fragment_size = 5585;
   } else {
     encryption_type = tiledb_encryption_type_t::TILEDB_NO_ENCRYPTION;
     key = "";
-    key_length = 0;
     expected_fragment_size = 3202;
   }
 
@@ -218,7 +215,6 @@ TEST_CASE(
       array_name,
       encryption_type,
       key,
-      key_length,
       TILEDB_DENSE,
       {"d"},
       {TILEDB_UINT64},
@@ -323,7 +319,6 @@ TEST_CASE(
       array_name,
       encryption_type,
       key,
-      key_length,
       1,
       subarray,
       TILEDB_ROW_MAJOR,
@@ -380,7 +375,6 @@ TEST_CASE(
       array_name,
       encryption_type,
       key,
-      key_length,
       2,
       subarray,
       TILEDB_ROW_MAJOR,
@@ -398,7 +392,6 @@ TEST_CASE(
       array_name,
       encryption_type,
       key,
-      key_length,
       3,
       subarray,
       TILEDB_ROW_MAJOR,
@@ -593,7 +586,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       array_name,
       TILEDB_AES_256_GCM,
       key,
-      32,
       TILEDB_SPARSE,
       {"d1", "d2"},
       {TILEDB_UINT64, TILEDB_UINT64},
@@ -635,7 +627,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       array_name,
       TILEDB_AES_256_GCM,
       key,
-      32,
       1,
       TILEDB_UNORDERED,
       buffers,
@@ -656,7 +647,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       array_name,
       TILEDB_AES_256_GCM,
       key,
-      32,
       2,
       TILEDB_UNORDERED,
       buffers,
@@ -677,7 +667,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
       array_name,
       TILEDB_AES_256_GCM,
       key,
-      32,
       3,
       TILEDB_UNORDERED,
       buffers,
@@ -1281,9 +1270,24 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Consolidate
   rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
@@ -1522,20 +1526,27 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
 
   // Check dump
   const auto ver = std::to_string(tiledb::sm::constants::format_version);
+  const char* schema_name;
+  rc = tiledb_fragment_info_get_array_schema_name(
+      ctx, fragment_info, 0, &schema_name);
+  CHECK(rc == TILEDB_OK);
   std::string dump_str =
       std::string("- Fragment num: 3\n") +
       "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri_1 + "\n" +
-      "  > Type: dense\n" + "  > Non-empty domain: [1, 6]\n" +
-      "  > Size: 3202\n" + "  > Cell num: 10\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
+      "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
+      "  > Non-empty domain: [1, 6]\n" + "  > Size: 3202\n" +
+      "  > Cell num: 10\n" + "  > Timestamp range: [1, 1]\n" +
+      "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #2:\n" +
-      "  > URI: " + written_frag_uri_2 + "\n" + "  > Type: dense\n" +
+      "  > URI: " + written_frag_uri_2 + "\n" +
+      "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
       "  > Non-empty domain: [1, 4]\n" + "  > Size: 3151\n" +
       "  > Cell num: 5\n" + "  > Timestamp range: [2, 2]\n" +
       "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n" + "- Fragment #3:\n" +
-      "  > URI: " + written_frag_uri_3 + "\n" + "  > Type: dense\n" +
+      "  > URI: " + written_frag_uri_3 + "\n" +
+      "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
       "  > Non-empty domain: [5, 6]\n" + "  > Size: 3202\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [3, 3]\n" +
       "  > Format version: " + ver + "\n" +
@@ -1641,9 +1652,30 @@ TEST_CASE(
       buffers,
       &written_frag_uri_3);
 
+  // Consolidate fragments
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Consolidate
-  rc = tiledb_array_consolidate(ctx, array_name.c_str(), nullptr);
+  rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -1685,13 +1717,18 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
 
   // Check dump
+  const char* schema_name;
+  rc = tiledb_fragment_info_get_array_schema_name(
+      ctx, fragment_info, 0, &schema_name);
+  CHECK(rc == TILEDB_OK);
   const auto ver = std::to_string(tiledb::sm::constants::format_version);
   std::string dump_str =
       std::string("- Fragment num: 1\n") +
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 3\n" +
       "- To vacuum URIs:\n" + "  > " + written_frag_uri_1 + "\n  > " +
       written_frag_uri_2 + "\n  > " + written_frag_uri_3 + "\n" +
-      "- Fragment #1:\n" + "  > URI: " + uri + "\n" + "  > Type: dense\n" +
+      "- Fragment #1:\n" + "  > URI: " + uri + "\n" +
+      "  > Schema name: " + schema_name + "\n" + "  > Type: dense\n" +
       "  > Non-empty domain: [1, 6]\n" + "  > Size: 3208\n" +
       "  > Cell num: 10\n" + "  > Timestamp range: [1, 3]\n" +
       "  > Format version: " + ver + "\n" +
@@ -1796,13 +1833,18 @@ TEST_CASE(
 
   // Check dump
   const auto ver = std::to_string(tiledb::sm::constants::format_version);
+  const char* schema_name;
+  rc = tiledb_fragment_info_get_array_schema_name(
+      ctx, fragment_info, 0, &schema_name);
+  CHECK(rc == TILEDB_OK);
   std::string dump_str =
       std::string("- Fragment num: 1\n") +
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
-      "  > Type: sparse\n" + "  > Non-empty domain: [a, ddd]\n" +
-      "  > Size: 3439\n" + "  > Cell num: 4\n" +
-      "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
+      "  > Schema name: " + schema_name + "\n" + "  > Type: sparse\n" +
+      "  > Non-empty domain: [a, ddd]\n" + "  > Size: 3439\n" +
+      "  > Cell num: 4\n" + "  > Timestamp range: [1, 1]\n" +
+      "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();

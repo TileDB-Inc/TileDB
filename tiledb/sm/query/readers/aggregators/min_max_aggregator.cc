@@ -120,16 +120,8 @@ ComparatorAggregator<T, Op>::ComparatorAggregator(const FieldInfo& field_info)
     : ComparatorAggregatorBase<T>(field_info)
     , OutputBufferValidator(field_info)
     , aggregate_with_count_(field_info) {
-  if (field_info.var_sized_ && !std::is_same<T, std::string>::value) {
-    throw MinMaxAggregatorStatusException(
-        "Min/max aggregates are not supported for var sized non-string "
-        "attributes.");
-  }
-
-  if (field_info.cell_val_num_ != 1 && !std::is_same<T, std::string>::value) {
-    throw MinMaxAggregatorStatusException(
-        "Min/max aggregates are not supported for attributes with cell_val_num "
-        "greater than one.");
+  if constexpr (!std::is_same<T, std::string>::value) {
+    ensure_field_numeric(field_info);
   }
 }
 
@@ -153,12 +145,32 @@ void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
     res = aggregate_with_count_.template aggregate<uint8_t>(input_data);
   }
 
+  const auto value = std::get<0>(res);
+  const auto count = std::get<1>(res);
+  update_value(value, count);
+}
+
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::aggregate_tile_with_frag_md(
+    TileMetadata& tile_metadata) {
+  const auto value = tile_metadata_value(tile_metadata);
+  const auto count = tile_metadata.count() - tile_metadata.null_count();
+  update_value(value, count);
+}
+
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::copy_to_user_buffer(
+    std::string output_field_name,
+    std::unordered_map<std::string, QueryBuffer>& buffers) {
+  ComparatorAggregatorBase<T>::copy_to_user_buffer(output_field_name, buffers);
+}
+
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::update_value(VALUE_T value, uint64_t count) {
   {
     // This might be called on multiple threads, the final result stored in
     // value_ should be computed in a thread safe manner.
     std::unique_lock lock(value_mtx_);
-    const auto value = std::get<0>(res);
-    const auto count = std::get<1>(res);
     if (count > 0 &&
         (ComparatorAggregatorBase<T>::value_ == std::nullopt ||
          op_(value, ComparatorAggregatorBase<T>::value_.value()))) {
@@ -171,13 +183,6 @@ void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
       ComparatorAggregatorBase<T>::validity_value_ = 1;
     }
   }
-}
-
-template <typename T, typename Op>
-void ComparatorAggregator<T, Op>::copy_to_user_buffer(
-    std::string output_field_name,
-    std::unordered_map<std::string, QueryBuffer>& buffers) {
-  ComparatorAggregatorBase<T>::copy_to_user_buffer(output_field_name, buffers);
 }
 
 // Explicit template instantiations

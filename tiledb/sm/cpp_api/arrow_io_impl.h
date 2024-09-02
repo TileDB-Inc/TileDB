@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -99,8 +99,7 @@ using _TileDBError = tiledb::TileDBError;
 #define TDB_LERROR tiledb::TileDBError
 #endif
 
-namespace tiledb {
-namespace arrow {
+namespace tiledb::arrow {
 
 /* ****************************** */
 /*       Helper types             */
@@ -254,6 +253,8 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
     case TILEDB_STRING_UCS2:
     case TILEDB_STRING_UCS4:
     case TILEDB_ANY:
+    case TILEDB_GEOM_WKB:
+    case TILEDB_GEOM_WKT:
     default:
       break;
   }
@@ -917,10 +918,6 @@ void query_set_buffer_arrow_array(
   importer.import_(name, arw_array, arw_schema);
 }
 
-}  // end namespace arrow
-}  // end namespace tiledb
-
-/* End TileDB Arrow IO public API implementation */
-/* ************************************************************************ */
+}  // namespace tiledb::arrow
 
 #endif  // TILEDB_ARROW_H

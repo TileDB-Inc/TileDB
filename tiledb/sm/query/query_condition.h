@@ -33,8 +33,7 @@
 #ifndef TILEDB_QUERY_CONDITION_H
 #define TILEDB_QUERY_CONDITION_H
 
-#include "external/include/span/span.hpp"
-
+#include <span>
 #include <unordered_set>
 
 #include "tiledb/common/status.h"
@@ -47,7 +46,15 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class QueryConditionException : public StatusException {
+ public:
+  explicit QueryConditionException(const std::string& message)
+      : StatusException("QueryCondition", message) {
+  }
+};
+
 class FragmentMetadata;
+class MemoryTracker;
 struct ResultCellSlab;
 class ResultTile;
 
@@ -55,14 +62,57 @@ enum class QueryConditionCombinationOp : uint8_t;
 
 class QueryCondition {
  public:
+  /** Class to pass query parameters to query condition processing. */
+  class Params {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    Params() = delete;
+
+    /** Constructor setting all parameters. */
+    Params(
+        shared_ptr<MemoryTracker> memory_tracker,
+        const ArraySchema& array_schema)
+        : memory_tracker_(memory_tracker)
+        , schema_(array_schema) {
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** Returns the memory tracker. */
+    shared_ptr<MemoryTracker> GetMemoryTracker() const {
+      return memory_tracker_;
+    }
+
+    /** Returns the array schema. */
+    const ArraySchema& GetSchema() const {
+      return schema_;
+    }
+
+   private:
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+    /** Memory tracker. */
+    shared_ptr<MemoryTracker> memory_tracker_;
+
+    /** Array schema. */
+    const ArraySchema& schema_;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
+  /** Default constructor. Should be used only in the C API. */
   QueryCondition();
 
-  /** Constructor for a set membership QueryCondition */
+  /** Constructor for a set membership QueryCondition. */
   QueryCondition(
       const std::string& field_name,
       const void* data,
@@ -192,7 +242,7 @@ class QueryCondition {
   /**
    * Applies this query condition to `result_cell_slabs`.
    *
-   * @param array_schema The array schema associated with `result_cell_slabs`.
+   * @param params Query condition parameters.
    * @param fragment_metadata The fragment metadata.
    * @param result_cell_slabs The cell slabs to filter. Mutated to remove cell
    *   slabs that do not meet the criteria in this query condition.
@@ -200,7 +250,7 @@ class QueryCondition {
    * @return Status
    */
   Status apply(
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       std::vector<ResultCellSlab>& result_cell_slabs,
       uint64_t stride) const;
@@ -208,7 +258,7 @@ class QueryCondition {
   /**
    * Applies this query condition to a set of cells.
    *
-   * @param array_schema The array schema.
+   * @param params Query condition parameters.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
    * @param length The number of cells to process.
@@ -219,7 +269,7 @@ class QueryCondition {
    * @return Status
    */
   Status apply_dense(
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
@@ -231,27 +281,21 @@ class QueryCondition {
   /**
    * Applies this query condition to a set of cells.
    *
-   * @param array_schema The array schema.
+   * @param params Query condition parameters.
    * @param result_tile The result tile to get the cells from.
    * @param result_bitmap The bitmap to use for results.
    * @return Status
    */
   template <typename BitmapType>
   Status apply_sparse(
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       ResultTile& result_tile,
-      std::vector<BitmapType>& result_bitmap);
+      tdb::pmr::vector<BitmapType>& result_bitmap);
 
   /**
    * Reverse the query condition using De Morgan's law.
    */
   QueryCondition negated_condition();
-
-  /**
-   * Sets the AST. This is internal state to only be used in
-   * the serialization path.
-   */
-  void set_ast(tdb_unique_ptr<ASTNode>&& ast);
 
   /**
    * Returns the AST object. This is internal state to only be used in testing
@@ -360,7 +404,7 @@ class QueryCondition {
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      std::vector<uint8_t>& result_cell_bitmap) const;
+      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies a value node on primitive-typed result cell slabs.
@@ -385,7 +429,7 @@ class QueryCondition {
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      std::vector<uint8_t>& result_cell_bitmap) const;
+      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -407,14 +451,14 @@ class QueryCondition {
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      std::vector<uint8_t>& result_cell_bitmap) const;
+      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to
    * `result_cell_slabs`.
    *
    * @param node The node to apply.
-   * @param array_schema The array schema associated with `result_cell_slabs`.
+   * @param params Query condition parameters.
    * @param fragment_metadata The fragment metadata.
    * @param stride The stride between cells.
    * @param combination_op The combination op.
@@ -426,12 +470,12 @@ class QueryCondition {
   template <typename CombinationOp = std::logical_and<uint8_t>>
   void apply_tree(
       const tdb_unique_ptr<ASTNode>& node,
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      std::vector<uint8_t>& result_cell_bitmap) const;
+      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies a value node on a dense result tile,
@@ -524,7 +568,7 @@ class QueryCondition {
    * Applies the query condition represented with the AST to a set of cells.
    *
    * @param node The node to apply.
-   * @param array_schema The array schema.
+   * @param params Query condition parameters.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
    * @param src_cell The cell offset in the source tile.
@@ -537,7 +581,7 @@ class QueryCondition {
   template <typename CombinationOp = std::logical_and<uint8_t>>
   void apply_tree_dense(
       const tdb_unique_ptr<ASTNode>& node,
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
@@ -567,7 +611,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile,
@@ -590,7 +634,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile.
@@ -609,7 +653,7 @@ class QueryCondition {
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -628,13 +672,13 @@ class QueryCondition {
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to a set of cells.
    *
    * @param node The node to apply.
-   * @param array_schema The array schema.
+   * @param params Query condition parameters.
    * @param result_tile The result tile to get the cells from.
    * @param combination_op The combination op.
    * @param result_bitmap The bitmap to use for results.
@@ -645,10 +689,10 @@ class QueryCondition {
       typename CombinationOp = std::logical_and<BitmapType>>
   void apply_tree_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       ResultTile& result_tile,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 };
 
 }  // namespace sm

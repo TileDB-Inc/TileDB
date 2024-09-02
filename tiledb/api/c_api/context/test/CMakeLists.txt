@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,20 +24,9 @@
 # THE SOFTWARE.
 #
 
-add_executable(unit_capi_context EXCLUDE_FROM_ALL)
-find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_context PUBLIC Catch2::Catch2WithMain)
+include(unit_test)
 
-# Sources for code under test
-target_link_libraries(unit_capi_context PUBLIC capi_context_stub)
-
-# Sources for tests
-target_sources(unit_capi_context PUBLIC
-    unit_capi_context.cc
-    )
-
-add_test(
-    NAME "unit_capi_context"
-    COMMAND $<TARGET_FILE:unit_capi_context>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test capi_context)
+  this_target_sources(unit_capi_context.cc)
+  this_target_object_libraries(capi_context_stub)
+conclude(unit_test)

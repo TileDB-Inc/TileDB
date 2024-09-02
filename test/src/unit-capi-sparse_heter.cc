@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,6 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
 #include <sstream>
@@ -61,9 +60,9 @@ struct SparseHeterFx {
 
   // Serialization parameters
   bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
+
+  // Path to prepend to array name according to filesystem/mode
+  std::string prefix_;
 
   // Functions
   SparseHeterFx();
@@ -118,7 +117,6 @@ struct SparseHeterFx {
       const std::vector<int64_t>& buff_d1,
       const std::vector<float>& buff_d2,
       const std::vector<int32_t>& buff_a);
-  static std::string random_name(const std::string& prefix);
   int tiledb_array_get_non_empty_domain_from_index_wrapper(
       tiledb_ctx_t* ctx,
       tiledb_array_t* array,
@@ -148,9 +146,13 @@ SparseHeterFx::SparseHeterFx()
     : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+  auto temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  prefix_ = vfs_array_uri(fs_vec_[0], temp_dir);
 }
 
 SparseHeterFx::~SparseHeterFx() {
+  remove_temp_dir(fs_vec_[0]->temp_dir());
   // Close vfs test
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
@@ -322,13 +324,6 @@ void SparseHeterFx::remove_temp_dir(const std::string& path) {
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
-std::string SparseHeterFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
-}
-
 void SparseHeterFx::check_non_empty_domain_float_int64(
     const std::string& path,
     const float* dom_f,
@@ -428,11 +423,16 @@ void SparseHeterFx::check_est_result_size_float_int64(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 0, &subarray_f[0], &subarray_f[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 1, &subarray_i[0], &subarray_i[1], nullptr);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 0, &subarray_f[0], &subarray_f[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 1, &subarray_i[0], &subarray_i[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Check error for zipped coordinates
@@ -456,6 +456,7 @@ void SparseHeterFx::check_est_result_size_float_int64(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void SparseHeterFx::check_est_result_size_int64_float(
@@ -474,11 +475,16 @@ void SparseHeterFx::check_est_result_size_int64_float(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 0, &subarray_i[0], &subarray_i[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 1, &subarray_f[0], &subarray_f[1], nullptr);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 0, &subarray_i[0], &subarray_i[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 1, &subarray_f[0], &subarray_f[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Check error for zipped coordinates
@@ -502,6 +508,7 @@ void SparseHeterFx::check_est_result_size_int64_float(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void SparseHeterFx::write_sparse_array_float_int64(
@@ -537,13 +544,11 @@ void SparseHeterFx::write_sparse_array_float_int64(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    rc = tiledb_query_submit_and_finalize(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -586,9 +591,12 @@ void SparseHeterFx::write_sparse_array_int64_float(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    rc = tiledb_query_submit_and_finalize(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -634,12 +642,17 @@ void SparseHeterFx::check_read_sparse_array_float_int64(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 0, &subarray_f[0], &subarray_f[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 0, &subarray_f[0], &subarray_f[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 1, &subarray_i[0], &subarray_i[1], nullptr);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 1, &subarray_i[0], &subarray_i[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
@@ -662,6 +675,7 @@ void SparseHeterFx::check_read_sparse_array_float_int64(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void SparseHeterFx::check_read_sparse_array_int64_float(
@@ -698,12 +712,17 @@ void SparseHeterFx::check_read_sparse_array_int64_float(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 0, &subarray_i[0], &subarray_i[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 0, &subarray_i[0], &subarray_i[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 1, &subarray_f[0], &subarray_f[1], nullptr);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 1, &subarray_f[0], &subarray_f[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
@@ -726,26 +745,14 @@ void SparseHeterFx::check_read_sparse_array_int64_float(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
     SparseHeterFx,
     "C API: Test sparse array with heterogeneous domains (float, int64)",
-    "[capi][sparse][heter][float-int64]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-  SECTION("- Serialization") {
-#ifdef TILEDB_SERIALIZATION
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-#endif
-  }
-
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_array_heter";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+    "[capi][sparse][heter][float-int64][non-rest]") {
+  std::string array_name = prefix_ + "sparse_array_heter";
 
   // Create array
   float dom_f[] = {1.0f, 20.0f};
@@ -988,8 +995,29 @@ TEST_CASE_METHOD(
 
   // ####### CONSOLIDATE #######
 
-  int rc = tiledb_array_consolidate(ctx_, array_name.c_str(), nullptr);
+  // Consolidate fragments
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  auto rc = tiledb_config_set(
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Check non-empty domain
   c_dom_f = {1.1f, 1.5f};
@@ -1080,26 +1108,13 @@ TEST_CASE_METHOD(
       buff_d1_r,
       buff_d2_r,
       buff_a_r);
-
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     SparseHeterFx,
     "C API: Test sparse array with heterogeneous domains (int64, float)",
-    "[capi][sparse][heter][int64-float]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-  SECTION("- Serialization") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_array_heter";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+    "[capi][sparse][heter][int64-float][non-rest]") {
+  std::string array_name = prefix_ + "sparse_array_heter";
 
   // Create array
   float dom_f[] = {1.0f, 20.0f};
@@ -1342,8 +1357,29 @@ TEST_CASE_METHOD(
 
   // ####### CONSOLIDATE #######
 
-  int rc = tiledb_array_consolidate(ctx_, array_name.c_str(), nullptr);
+  // Consolidate fragments
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  auto rc = tiledb_config_set(
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Check non-empty domain
   c_dom_i = {1, 6};
@@ -1434,6 +1470,4 @@ TEST_CASE_METHOD(
       buff_d1_r,
       buff_d2_r,
       buff_a_r);
-
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }

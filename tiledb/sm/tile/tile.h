@@ -34,7 +34,7 @@
 #define TILEDB_TILE_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/status.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
 #include "tiledb/storage_format/serialization/serializers.h"
@@ -45,6 +45,8 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class MemoryTracker;
 
 /**
  * Base class for common code between Tile and WriterTile objects.
@@ -58,20 +60,17 @@ class TileBase {
    * @param type The data type.
    * @param cell_size The cell size.
    * @param size The size of the tile.
+   * @param resource The memory resource to use.
    */
   TileBase(
       const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
-      const uint64_t size);
-
-  /** Move constructor. */
-  TileBase(TileBase&& tile);
-
-  /** Move-assign operator. */
-  TileBase& operator=(TileBase&& tile);
+      const uint64_t size,
+      tdb::pmr::memory_resource* resource);
 
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
 
   /* ********************************* */
   /*                API                */
@@ -109,7 +108,7 @@ class TileBase {
    * buffer of size nbytes. Does not mutate the internal offset.
    * Thread-safe among readers.
    */
-  Status read(void* buffer, uint64_t offset, uint64_t nbytes) const;
+  void read(void* buffer, uint64_t offset, uint64_t nbytes) const;
 
   /** Returns the tile size. */
   inline uint64_t size() const {
@@ -127,7 +126,7 @@ class TileBase {
    * @note This function assumes that the tile buffer has already been
    *     properly allocated. It does not alter the tile offset and size.
    */
-  Status write(const void* data, uint64_t offset, uint64_t nbytes);
+  void write(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
    * Adds an extra offset at the end of this tile representing the size of the
@@ -139,21 +138,16 @@ class TileBase {
     data_as<uint64_t>()[size_ / cell_size_ - 1] = var_tile.size();
   }
 
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(TileBase& tile);
-
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * The buffer backing the tile data.
-   *
-   * TODO: Convert to regular allocations once tdb_realloc is not used for var
-   * size data anymore and remove custom deleter.
-   */
-  std::unique_ptr<char, void (*)(void*)> data_;
+  /** The memory resource to use. */
+  tdb::pmr::memory_resource* resource_;
+
+  /** The buffer backing the tile data. */
+  tdb::pmr::unique_ptr<std::byte> data_;
 
   /** Size of the data. */
   uint64_t size_;
@@ -179,7 +173,8 @@ class Tile : public TileBase {
    *
    * @param tile_size to be provided to init_unfiltered call
    */
-  static Tile from_generic(storage_size_t tile_size);
+  static shared_ptr<Tile> from_generic(
+      storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker);
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -204,14 +199,33 @@ class Tile : public TileBase {
       const unsigned int zipped_coords_dim_num,
       const uint64_t size,
       void* filtered_data,
-      uint64_t filtered_size);
+      uint64_t filtered_size,
+      shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Move constructor. */
-  Tile(Tile&& tile);
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param zipped_coords_dim_num The number of dimensions in case the tile
+   *      stores coordinates.
+   * @param size The size of the tile.
+   * @param filtered_data Pointer to the external filtered data.
+   * @param filtered_size The filtered size to allocate.
+   * @param resource The memory resource to use.
+   */
+  Tile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const unsigned int zipped_coords_dim_num,
+      const uint64_t size,
+      void* filtered_data,
+      uint64_t filtered_size,
+      tdb::pmr::memory_resource* resource);
 
-  /** Move-assign operator. */
-  Tile& operator=(Tile&& tile);
-
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
 
   /* ********************************* */
@@ -265,7 +279,7 @@ class Tile : public TileBase {
    * Zips the coordinate values such that a cell's coordinates across
    * all dimensions appear contiguously in the buffer.
    */
-  Status zip_coordinates();
+  void zip_coordinates();
 
   /**
    * Reads the chunk data of a tile buffer and populates a chunk data structure.
@@ -283,9 +297,6 @@ class Tile : public TileBase {
    * @return Original size.
    */
   uint64_t load_offsets_chunk_data(ChunkData& chunk_data);
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(Tile& tile);
 
  private:
   /* ********************************* */
@@ -348,14 +359,21 @@ class Tile : public TileBase {
  * Tile object for write operations.
  */
 class WriterTile : public TileBase {
+  /**
+   * Allow access to max_tile_chunk_size_ for testing.
+   */
+  friend class WhiteboxWriterTile;
+
  public:
   /**
    * returns a Tile initialized with parameters commonly used for
    * generic data storage.
    *
    * @param tile_size to be provided to init_unfiltered call
+   * @param memory_tracker The memory tracker to use.
    */
-  static WriterTile from_generic(storage_size_t tile_size);
+  static shared_ptr<WriterTile> from_generic(
+      storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Computes the chunk size for a tile.
@@ -366,13 +384,6 @@ class WriterTile : public TileBase {
    */
   static uint32_t compute_chunk_size(
       const uint64_t tile_size, const uint64_t tile_cell_size);
-
-  /**
-   * Override max_tile_chunk_size_ used to process tile chunks in parallel.
-   *
-   * @param max_tile_chunk_size The maximum chunk size.
-   */
-  static void set_max_tile_chunk_size(uint64_t max_tile_chunk_size);
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -385,20 +396,33 @@ class WriterTile : public TileBase {
    * @param type The data type.
    * @param cell_size The cell size.
    * @param size The size of the tile.
+   * @param meory_tracker The memory tracker to use.
    */
   WriterTile(
       const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
-      const uint64_t size);
+      const uint64_t size,
+      shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Move constructor. */
-  WriterTile(WriterTile&& tile);
-
-  /** Move-assign operator. */
-  WriterTile& operator=(WriterTile&& tile);
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param size The size of the tile.
+   * @param resource The memory resource to use.
+   */
+  WriterTile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const uint64_t size,
+      tdb::pmr::memory_resource* resource);
 
   DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(WriterTile);
 
   /* ********************************* */
   /*                API                */
@@ -433,9 +457,8 @@ class WriterTile : public TileBase {
    * @param data Pointer to the data to write.
    * @param offset Offset to write into the tile buffer.
    * @param nbytes Number of bytes to write.
-   * @return Status.
    */
-  Status write_var(const void* data, uint64_t offset, uint64_t nbytes);
+  void write_var(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
    * Sets the size of the tile.
@@ -445,9 +468,6 @@ class WriterTile : public TileBase {
   inline void set_size(uint64_t size) {
     size_ = size;
   }
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(WriterTile& tile);
 
  private:
   /* ********************************* */
@@ -474,13 +494,13 @@ class WriterTile : public TileBase {
  */
 class TileDeserializer : public Deserializer {
  public:
-  explicit TileDeserializer(Tile&& tile)
-      : Deserializer(tile.data(), tile.size())
-      , tile_(std::move(tile)) {
+  explicit TileDeserializer(shared_ptr<Tile> tile)
+      : Deserializer(tile->data(), tile->size())
+      , tile_(tile) {
   }
 
  private:
-  Tile tile_;
+  shared_ptr<Tile> tile_;
 };
 
 }  // namespace sm

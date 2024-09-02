@@ -28,3 +28,4 @@ include(common NO_POLICY_SCOPE)
 add_test_subdirectory()
 
 add_subdirectory(synchronized_optional)
+add_subdirectory(__ranges)

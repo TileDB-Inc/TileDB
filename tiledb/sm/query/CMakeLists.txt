@@ -27,6 +27,7 @@
 include(common NO_POLICY_SCOPE)
 add_subdirectory(ast)
 add_subdirectory(deletes_and_updates)
+add_subdirectory(external_sort)
 add_subdirectory(readers)
 
 #

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter.h"
@@ -50,8 +50,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Buffer;
 class EncryptionKey;
@@ -126,12 +125,6 @@ class FilterPipeline {
    */
   static FilterPipeline deserialize(
       Deserializer& deserializer, const uint32_t version, Datatype datatype);
-
-  /**
-   * Dumps the filter pipeline details in ASCII format in the selected
-   * output.
-   */
-  void dump(FILE* out) const;
 
   /**
    * Checks that two filters have compatible input / output types.
@@ -222,9 +215,8 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param chunking True if the tile should be cut into chunks before
    * filtering, false if not.
-   * @return Status
    */
-  Status run_forward(
+  void run_forward(
       stats::Stats* writer_stats,
       WriterTile* tile,
       WriterTile* offsets_tile,
@@ -296,8 +288,9 @@ class FilterPipeline {
       FilterPipeline* pipeline, const EncryptionKey& encryption_key);
 
   /**
-   * Checks if an attribute/dimension needs to be filtered in chunks or as a
-   * whole
+   * Checks if the offsets tiles of an attribute/dimension should be skipped
+   * from being written. This happens in filters that encode the offsets
+   * alongside the data.
    *
    * @param type Datatype of the input attribute/dimension
    * @param version Array schema version
@@ -319,6 +312,8 @@ class FilterPipeline {
    */
   bool use_tile_chunking(
       const bool is_var, const uint32_t version, const Datatype type) const;
+
+  std::vector<shared_ptr<Filter>> filters() const;
 
  private:
   /** A pair of FilterBuffers. */
@@ -371,7 +366,10 @@ class FilterPipeline {
       ThreadPool* const compute_tp) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FILTER_PIPELINE_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FilterPipeline& filter_pipeline);

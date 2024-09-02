@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/status.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/storage_format/serialization/serializers.h"
@@ -48,6 +48,7 @@ namespace sm {
 
 class Buffer;
 class ConstBuffer;
+class MemoryTracker;
 
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
@@ -62,27 +63,19 @@ class RTree {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+  RTree() = delete;
 
   /** Constructor. */
-  RTree();
-
-  /** Constructor. */
-  RTree(const Domain* domain, unsigned fanout);
+  RTree(
+      const Domain* domain,
+      unsigned fanout,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Destructor. */
   ~RTree();
 
-  /** Copy constructor. This performs a deep copy. */
-  RTree(const RTree& rtree);
-
-  /** Move constructor. */
-  RTree(RTree&& rtree) noexcept;
-
-  /** Copy-assign operator. This performs a deep copy. */
-  RTree& operator=(const RTree& rtree);
-
-  /** Move-assign operator. */
-  RTree& operator=(RTree&& rtree) noexcept;
+  DISABLE_COPY_AND_COPY_ASSIGN(RTree);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(RTree);
 
   /* ********************************* */
   /*                 API               */
@@ -125,7 +118,7 @@ class RTree {
   const NDRange& leaf(uint64_t leaf_idx) const;
 
   /** Returns the leaves of the tree. */
-  const std::vector<NDRange>& leaves() const;
+  const tdb::pmr::vector<NDRange>& leaves() const;
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree
@@ -142,9 +135,8 @@ class RTree {
   /**
    * Sets the RTree domain.
    */
-  inline Status set_domain(const Domain* domain) {
+  inline void set_domain(const Domain* domain) {
     domain_ = domain;
-    return Status::Ok();
   }
 
   /**
@@ -152,13 +144,13 @@ class RTree {
    * if the number of levels in the tree is different from exactly
    * 1 (the leaf level), and if `leaf_id` is out of bounds / invalid.
    */
-  Status set_leaf(uint64_t leaf_id, const NDRange& mbr);
+  void set_leaf(uint64_t leaf_id, const NDRange& mbr);
 
   /**
    * Sets the input MBRs as leaves. This will destroy the existing
    * RTree.
    */
-  Status set_leaves(const std::vector<NDRange>& mbrs);
+  void set_leaves(const tdb::pmr::vector<NDRange>& mbrs);
 
   /**
    * Resizes the leaf level. It destroys the upper levels
@@ -166,7 +158,7 @@ class RTree {
    * It errors if `num` is smaller than the current number
    * of leaves.
    */
-  Status set_leaf_num(uint64_t num);
+  void set_leaf_num(uint64_t num);
 
   /**
    * Deserializes the contents of the object from the input buffer based
@@ -175,6 +167,14 @@ class RTree {
    */
   void deserialize(
       Deserializer& deserializer, const Domain* domain, uint32_t version);
+
+  /**
+   * Resets the RTree with the input domain and fanout.
+   *
+   * @param domain The domain to use for the RTree.
+   * @param fanout The fanout of the RTree.
+   */
+  void reset(const Domain* domain, unsigned fanout);
 
  private:
   /* ********************************* */
@@ -203,7 +203,7 @@ class RTree {
    * `levels_`, where the first level is the root. This is how
    * we can infer which tree level each `Level` object corresponds to.
    */
-  typedef std::vector<NDRange> Level;
+  typedef tdb::pmr::vector<NDRange> Level;
 
   /**
    * Defines an R-Tree level entry, which corresponds to a node
@@ -222,6 +222,9 @@ class RTree {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Memory tracker for the RTree. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /**
    * The domain for which this R-tree provides an index.
    *
@@ -237,7 +240,7 @@ class RTree {
    * The tree levels. The first level is the root. Note that the root
    * always consists of a single MBR.
    */
-  std::vector<Level> levels_;
+  tdb::pmr::vector<Level> levels_;
 
   /**
    * Stores the size of the buffer used to deserialize the data, used for
@@ -251,9 +254,6 @@ class RTree {
 
   /** Builds a single tree level on top of the input level. */
   Level build_level(const Level& level);
-
-  /** Returns a deep copy of this RTree. */
-  RTree clone() const;
 
   /**
    * Deserializes the contents of the object from the input buffer based
@@ -272,12 +272,6 @@ class RTree {
    * Applicable to versions >= 5
    */
   void deserialize_v5(Deserializer& deserializer, const Domain* domain);
-
-  /**
-   * Swaps the contents (all field values) of this RTree with the
-   * given ``rtree``.
-   */
-  void swap(RTree& rtree);
 };
 
 }  // namespace sm

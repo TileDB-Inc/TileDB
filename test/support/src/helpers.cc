@@ -45,6 +45,7 @@
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -55,24 +56,34 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
+
+int setenv_local(const char* __name, const char* __value) {
+#ifdef _WIN32
+  return _putenv_s(__name, __value);
+#else
+  return ::setenv(__name, __value, 1);
+#endif
+}
 
 std::mutex catch2_macro_mutex;
 
-namespace tiledb {
-namespace test {
-
-const std::string& get_temp_path() {
-  // Ensure the path has a trailing delimiter.
-  static std::string temp_path =
-      (std::filesystem::temp_directory_path() /
-       ("tiledb_test_" + std::to_string(getpid())) / "")
-          .string();
-
-  return temp_path;
-}
+namespace tiledb::test {
 
 // Command line arguments.
 std::string g_vfs;
+
+void throw_if_setup_failed(capi_return_t rc) {
+  if (rc != TILEDB_OK) {
+    throw std::runtime_error("Test setup failed.");
+  }
+}
+
+void throw_if_setup_failed(bool condition) {
+  if (!condition) {
+    throw std::runtime_error("Test setup failed.");
+  }
+}
 
 void check_tiledb_error_with(
     tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
@@ -298,10 +309,10 @@ void check_subarray(
   uint64_t dim_range_num = 0;
   const type::Range* range;
   for (unsigned i = 0; i < dim_num; ++i) {
-    CHECK(subarray.get_range_num(i, &dim_range_num).ok());
+    CHECK_NOTHROW(subarray.get_range_num(i, &dim_range_num));
     CHECK(dim_range_num == ranges[i].size() / 2);
     for (uint64_t j = 0; j < dim_range_num; ++j) {
-      CHECK(subarray.get_range(i, j, &range).ok());
+      CHECK_NOTHROW(subarray.get_range(i, j, &range));
       auto r = (const T*)range->data();
 
       CHECK(r[0] == ranges[i][2 * j]);
@@ -350,70 +361,31 @@ void check_subarray(
 }
 
 template <class T>
-void check_subarray_equiv(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
-  CHECK(subarray1.range_num() == subarray2.range_num());
-  // Check dim num
-  auto dim_num1 = subarray1.dim_num();
-  auto dim_num2 = subarray2.dim_num();
-  CHECK(dim_num1 == dim_num2);
-
-  tiledb::sm::ByteVec sa1bytes, sa2bytes;
-  //.to_byte_vect() only valid when range_num() == 1, but should be same for
-  // both and resulting bytes, empty or otherwise, should be the same as well.
-  CHECK(
-      subarray1.to_byte_vec(&sa1bytes).ok() ==
-      subarray2.to_byte_vec(&sa2bytes).ok());
-  CHECK(sa1bytes == sa2bytes);
-
-  const std::vector<std::vector<uint8_t>> sa1tilecoords =
-      subarray1.tile_coords();
-  const std::vector<std::vector<uint8_t>> sa2tilecoords =
-      subarray2.tile_coords();
-  CHECK(sa1tilecoords == sa2tilecoords);
-
-  // Check ranges
-  uint64_t dim_range_num1 = 0;
-  const type::Range* range1;
-  uint64_t dim_range_num2 = 0;
-  const type::Range* range2;
-  if (dim_num1 == dim_num2) {
-    for (unsigned i = 0; i < dim_num1; ++i) {
-      CHECK(subarray1.get_range_num(i, &dim_range_num1).ok());
-      CHECK(subarray2.get_range_num(i, &dim_range_num2).ok());
-      CHECK(dim_range_num1 == dim_range_num2);
-      if (dim_range_num1 == dim_range_num2) {
-        for (uint64_t j = 0; j < dim_range_num1; ++j) {
-          CHECK(subarray1.get_range(i, j, &range1).ok());
-          CHECK(subarray2.get_range(i, j, &range2).ok());
-          auto r1 = (const T*)range1->data();
-          auto r2 = (const T*)range2->data();
-          CHECK(r1[0] == r2[0]);
-          CHECK(r1[1] == r2[1]);
-        }
-      }
-    }
-  }
-}
-
-template <class T>
 bool subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
   bool equiv_state = 1;  // assume true
-
-  equiv_state &= (subarray1.range_num() == subarray2.range_num());
+  auto rn1 = subarray1.range_num();
+  auto rn2 = subarray2.range_num();
+  if (rn1 != rn2) {
+    return false;
+  }
   // Check dim num
   auto dim_num1 = subarray1.dim_num();
   auto dim_num2 = subarray2.dim_num();
-  equiv_state &= (dim_num1 == dim_num2);
+  if (dim_num1 != dim_num2) {
+    return false;
+  }
 
+  /*
+   * `to_byte_vect()` is only valid when `range_num() == 1`, so only
+   * convert in that case, since `to_byte_vect()` will throw otherwise
+   */
   tiledb::sm::ByteVec sa1bytes, sa2bytes;
-  //.to_byte_vect() only valid when range_num() == 1, but should be same for
-  // both and resulting bytes, empty or otherwise, should be the same as well.
-  equiv_state &=
-      (subarray1.to_byte_vec(&sa1bytes).ok() ==
-       subarray2.to_byte_vec(&sa2bytes).ok());
-  equiv_state &= (sa1bytes == sa2bytes);
+  if (rn1 == 1) {
+    subarray1.to_byte_vec(&sa1bytes);
+    subarray2.to_byte_vec(&sa2bytes);
+    equiv_state &= (sa1bytes == sa2bytes);
+  }
 
   const std::vector<std::vector<uint8_t>> sa1tilecoords =
       subarray1.tile_coords();
@@ -428,13 +400,17 @@ bool subarray_equiv(
   const type::Range* range2;
   if (dim_num1 == dim_num2) {
     for (unsigned i = 0; i < dim_num1; ++i) {
-      equiv_state &= (subarray1.get_range_num(i, &dim_range_num1).ok());
-      equiv_state &= (subarray2.get_range_num(i, &dim_range_num2).ok());
+      try {
+        subarray1.get_range_num(i, &dim_range_num1);
+        subarray2.get_range_num(i, &dim_range_num2);
+      } catch (...) {
+        return false;
+      }
       equiv_state &= (dim_range_num1 == dim_range_num2);
       if (dim_range_num1 == dim_range_num2) {
         for (uint64_t j = 0; j < dim_range_num1; ++j) {
-          CHECK(subarray1.get_range(i, j, &range1).ok());
-          CHECK(subarray2.get_range(i, j, &range2).ok());
+          CHECK_NOTHROW(subarray1.get_range(i, j, &range1));
+          CHECK_NOTHROW(subarray2.get_range(i, j, &range2));
           auto r1 = (const T*)range1->data();
           auto r2 = (const T*)range2->data();
           equiv_state &= (r1[0] == r2[0]);
@@ -558,7 +534,6 @@ void create_array(
     const std::string& array_name,
     tiledb_encryption_type_t enc_type,
     const char* key,
-    uint32_t key_len,
     tiledb_array_type_t array_type,
     const std::vector<std::string>& dim_names,
     const std::vector<tiledb_datatype_t>& dim_types,
@@ -651,8 +626,6 @@ void create_array(
   rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len);
   tiledb_ctx_t* ctx_array;
   REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
   rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
@@ -785,63 +758,32 @@ void create_azure_container(
   }
 }
 
-void create_ctx_and_vfs(
-    bool s3_supported,
-    bool azure_supported,
-    tiledb_ctx_t** ctx,
-    tiledb_vfs_t** vfs) {
-  // Create TileDB context
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  if (s3_supported) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-  if (azure_supported) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "http://127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-  }
-  REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+void get_supported_fs(
+    bool* s3_supported,
+    bool* hdfs_supported,
+    bool* azure_supported,
+    bool* gcs_supported,
+    bool* rest_s3_supported) {
+  // Override VFS support if the user used the '--vfs' command line argument.
+  if (g_vfs.empty()) {
+    *s3_supported = tiledb::sm::filesystem::s3_enabled;
+    *hdfs_supported = tiledb::sm::filesystem::hdfs_enabled;
+    *azure_supported = tiledb::sm::filesystem::azure_enabled;
+    *gcs_supported = tiledb::sm::filesystem::gcs_enabled;
+    *rest_s3_supported = false;
+  } else {
+    if (!(g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
+          g_vfs == "azure" || g_vfs == "gcs" || g_vfs == "rest-s3")) {
+      throw std::runtime_error(
+          "Failed to get supported fs. Invalid --vfs command line argument.");
+    }
 
-  // Create VFS
-  *vfs = nullptr;
-  REQUIRE(tiledb_vfs_alloc(*ctx, config, vfs) == TILEDB_OK);
-  tiledb_config_free(&config);
+    *s3_supported = g_vfs == "s3";
+    *hdfs_supported = g_vfs == "hdfs";
+    *azure_supported = g_vfs == "azure";
+    *gcs_supported = g_vfs == "gcs";
+    *rest_s3_supported = g_vfs == "rest-s3";
+  }
 }
 
 void create_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
@@ -864,7 +806,7 @@ void create_subarray(
     auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
       type::Range range(&ranges[d][2 * j], 2 * sizeof(T));
-      CHECK(ret.add_range(d, std::move(range), true).ok());
+      CHECK_NOTHROW(ret.add_range(d, std::move(range), true));
     }
   }
 
@@ -926,84 +868,10 @@ void create_subarray(
   *returned_subarray = psubarray;
 }
 
-void get_supported_fs(
-    bool* s3_supported,
-    bool* hdfs_supported,
-    bool* azure_supported,
-    bool* gcs_supported) {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  int is_supported = 0;
-  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *s3_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *hdfs_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_AZURE, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *azure_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_GCS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *gcs_supported = (bool)is_supported;
-
-  // Override VFS support if the user used the '--vfs' command line argument.
-  if (!g_vfs.empty()) {
-    REQUIRE(
-        (g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
-         g_vfs == "azure" || g_vfs == "gcs"));
-
-    if (g_vfs == "native") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
-    }
-
-    if (g_vfs == "s3") {
-      *s3_supported = true;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
-    }
-
-    if (g_vfs == "hdfs") {
-      *s3_supported = false;
-      *hdfs_supported = true;
-      *azure_supported = false;
-      *gcs_supported = false;
-    }
-
-    if (g_vfs == "azure") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = true;
-      *gcs_supported = false;
-    }
-
-    if (g_vfs == "gcs") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = true;
-    }
-  }
-
-  tiledb_ctx_free(&ctx);
-}
-
 void open_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   int rc = tiledb_array_open(ctx, array, query_type);
   CHECK(rc == TILEDB_OK);
-}
-
-std::string random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 void remove_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
@@ -1079,7 +947,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers) {
@@ -1088,7 +955,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       nullptr,
       layout,
@@ -1122,7 +988,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* subarray,
     tiledb_layout_t layout,
@@ -1133,7 +998,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       subarray,
       layout,
@@ -1157,7 +1021,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
@@ -1167,7 +1030,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       nullptr,
       layout,
@@ -1187,8 +1049,7 @@ void write_array(
       ctx,
       array_name,
       TILEDB_NO_ENCRYPTION,
-      nullptr,
-      0,
+      "",
       timestamp,
       subarray,
       layout,
@@ -1201,7 +1062,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* sub,
     tiledb_layout_t layout,
@@ -1232,8 +1092,6 @@ void write_array(
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
   }
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1323,15 +1181,23 @@ void read_array(
   rc = tiledb_query_set_layout(ctx, query, layout);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+
   auto dim_num = (unsigned)ranges.size();
   for (unsigned i = 0; i < dim_num; ++i) {
     auto dim_range_num = ranges[i].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      rc = tiledb_query_add_range(
-          ctx, query, i, &ranges[i][2 * j], &ranges[i][2 * j + 1], nullptr);
+      rc = tiledb_subarray_add_range(
+          ctx, subarray, i, &ranges[i][2 * j], &ranges[i][2 * j + 1], nullptr);
       CHECK(rc == TILEDB_OK);
     }
   }
+
+  // Set the subarray
+  tiledb_query_set_subarray_t(ctx, query, subarray);
 
   // Set buffers
   for (const auto& b : buffers) {
@@ -1373,10 +1239,10 @@ void read_array(
 
   // Clean up
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
-int32_t num_commits(const std::string& array_name) {
-  Context ctx;
+int32_t num_commits(Context ctx, const std::string& array_name) {
   VFS vfs(ctx);
 
   // Get the number of write files in the commit directory
@@ -1384,14 +1250,25 @@ int32_t num_commits(const std::string& array_name) {
   return commits_dir.file_count(sm::constants::write_file_suffix);
 }
 
-int32_t num_fragments(const std::string& array_name) {
+int32_t num_commits(const std::string& array_name) {
   Context ctx;
+
+  return num_commits(ctx, array_name);
+}
+
+int32_t num_fragments(Context ctx, const std::string& array_name) {
   VFS vfs(ctx);
 
   // Get all URIs in the array directory
   auto uris = vfs.ls(
       array_name + "/" + tiledb::sm::constants::array_fragments_dir_name);
   return static_cast<uint32_t>(uris.size());
+}
+
+int32_t num_fragments(const std::string& array_name) {
+  Context ctx;
+
+  return num_fragments(ctx, array_name);
 }
 
 std::string random_string(const uint64_t l) {
@@ -1580,428 +1457,188 @@ int deserialize_array_and_query(
       ctx, c_buff, TILEDB_CAPNP, clientside ? 1 : 0, array_uri, query, &array);
 }
 
-int array_open_wrapper(
-    tiledb_ctx_t* client_ctx,
-    tiledb_query_type_t query_type,
-    bool serialize,
-    tiledb_array_t** open_array) {
-  // Open array
-#ifndef TILEDB_SERIALIZATION
-  return tiledb_array_open(client_ctx, *open_array, query_type);
-#endif
-
-  if (!serialize) {
-    return tiledb_array_open(client_ctx, *open_array, query_type);
+sm::URI generate_fragment_uri(sm::Array* array) {
+  if (array == nullptr) {
+    return sm::URI(tiledb::storage_format::generate_timestamped_name(
+        TILEDB_TIMESTAMP_NOW_MS, constants::format_version));
   }
 
-  // Get the config to use it for creating fresh contexts
-  tiledb_config_t* config;
-  int rc = tiledb_ctx_get_config(client_ctx, &config);
-  REQUIRE(rc == TILEDB_OK);
+  uint64_t timestamp = array->timestamp_end_opened_at();
+  auto write_version = array->array_schema_latest().write_version();
 
-  // this helper only applies to refactored array open, so set it in the config
-  // Note: we actually set use_refactored_array_open_and_query_submit instead of
-  // simple use_refactored_array_open here, because we want array_open_wrapper
-  // to be usable in query_v3 tests that require that flag to be set right
-  // from the beginning for full Array objects to be retrieved on array open.
-  // There are dedicated tests in unit-capi-array.cc that are testing array v2
-  // feature with just setting use_refactored_array_open config variable.
-  tiledb_error_t* error = nullptr;
-  rc = tiledb_config_set(
-      config,
-      "rest.use_refactored_array_open_and_query_submit",
-      "true",
-      &error);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  auto new_fragment_str = tiledb::storage_format::generate_timestamped_name(
+      timestamp, write_version);
+  auto frag_dir_uri = array->array_directory().get_fragments_dir(write_version);
+  return frag_dir_uri.join_path(new_fragment_str);
+}
+
+void create_sparse_array_v11(tiledb_ctx_t* ctx, const std::string& array_name) {
+  tiledb_config_t* config;
+  REQUIRE(tiledb_ctx_get_config(ctx, &config) == TILEDB_OK);
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_vfs_alloc(ctx, config, &vfs) == TILEDB_OK);
+  // Get the v11 sparse array.
+  std::string v11_arrays_dir =
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
   REQUIRE(
-      tiledb_array_set_config(client_ctx, *open_array, config) == TILEDB_OK);
-
-  auto serialization_type =
-      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP;
-
-  // 1. Client: Serialize array_open request to Server. First set the query_type
-  // that will be serialized
-  auto type = static_cast<sm::QueryType>(query_type);
-  (*open_array)->array_->set_query_type(type);
-
-  tiledb_buffer_t* buffer;
-  rc = tiledb_serialize_array_open(
-      client_ctx, *open_array, serialization_type, 1, &buffer);
-  REQUIRE(rc == TILEDB_OK);
-
-  // 2. Server : Receive and deserialize array_open_request
-  // Allocate new context for server
-  tiledb_ctx_t* server_ctx;
-  tiledb_ctx_alloc(config, &server_ctx);
-  tiledb_array_t* deserialized_array_server = nullptr;
-  rc = tiledb_deserialize_array_open(
-      server_ctx, buffer, serialization_type, 0, &deserialized_array_server);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_buffer_free(&buffer);
-
-  // Check that the original and de-serialized array have the same query type
-  REQUIRE(deserialized_array_server->array_->get_query_type() == type);
-
-  // 3. Server: Open the array the request was received for in the requested
-  // mode
-  // This is needed in test, as the deserialized array has a dummy array_uri of
-  // "deserialized_array" set instead of the original one. The Cloud side
-  // already knows the array URI so it's not a problem in the real life scenario
-  deserialized_array_server->array_->set_array_uri(
-      (*open_array)->array_->array_uri());
-
-  // if we need to add start and end timestamps uncomment this code
-  // rc = tiledb_array_set_open_timestamp_start(server_ctx,
-  // deserialized_array_server, array->array_->timestamp_start());
-  // REQUIRE_SAFE(rc == TILEDB_OK);
-  // rc = tiledb_array_set_open_timestamp_end(server_ctx,
-  // deserialized_array_server, array->array_->timestamp_end()); REQUIRE_SAFE(rc
-  // == TILEDB_OK);
-  rc = tiledb_array_open(server_ctx, deserialized_array_server, query_type);
-  REQUIRE(rc == TILEDB_OK);
-
-  // 4. Server -> Client: Send opened Array (serialize)
-  tiledb_buffer_t* buff;
-  rc = tiledb_serialize_array(
-      server_ctx,
-      deserialized_array_server,
-      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-      1,
-      &buff);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_close(server_ctx, deserialized_array_server);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&deserialized_array_server);
-  tiledb_ctx_free(&server_ctx);
-  CHECK(server_ctx == nullptr);
-
-  // 5. Client: Receive and deserialize Array (into deserialized_array_client),
-  // in the same way that rest_client does.
-  auto st = tiledb::sm::serialization::array_deserialize(
-      (*open_array)->array_.get(),
-      tiledb::sm::SerializationType::CAPNP,
-      buff->buffer(),
-      client_ctx->storage_manager());
-  REQUIRE(st.ok());
-
-  // 6. Server: Close array and clean up
-  tiledb_buffer_free(&buff);
-
-  return rc;
+      tiledb_vfs_copy_dir(
+          ctx, vfs, v11_arrays_dir.c_str(), array_name.c_str()) == TILEDB_OK);
 }
 
-int submit_query_wrapper(
-    const Context& client_ctx,
-    const std::string& array_uri,
-    Query* query,
-    ServerQueryBuffers& buffers,
-    bool serialize_query,
-    bool refactored_query_v2,
-    bool finalize) {
-  auto query_c = query->ptr().get();
-  return submit_query_wrapper(
-      client_ctx.ptr().get(),
-      array_uri,
-      &query_c,
-      buffers,
-      serialize_query,
-      refactored_query_v2,
-      finalize);
-}
+void write_sparse_v11(
+    tiledb_ctx_t* ctx, const std::string& array_name, uint64_t timestamp) {
+  // Prepare cell buffers.
+  std::vector<int> buffer_a1{0, 1, 2, 3};
+  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
+  std::string buffer_var_a2("abbcccdddd");
+  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
+  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
+  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
 
-int submit_query_wrapper(
-    tiledb_ctx_t* client_ctx,
-    const std::string& array_uri,
-    tiledb_query_t** query,
-    ServerQueryBuffers& buffers,
-    bool serialize,
-    bool refactored_query_v2,
-    bool finalize) {
-  int rc = 0;
-#ifndef TILEDB_SERIALIZATION
-  rc = tiledb_query_submit(client_ctx, *query);
-  if (rc != TILEDB_OK) {
-    return rc;
-  }
-
-  if (finalize) {
-    // Finalize query
-    rc = tiledb_query_finalize(client_ctx, *query);
-  }
-
-  return rc;
-#endif
-
-  if (!serialize) {
-    rc = tiledb_query_submit(client_ctx, *query);
-    if (rc != TILEDB_OK) {
-      return rc;
-    }
-
-    if (finalize) {
-      // Finalize query
-      rc = tiledb_query_finalize(client_ctx, *query);
-    }
-
-    return rc;
-  }
-
-  // Get the config to use it for creating fresh contexts
-  tiledb_config_t* config;
-  rc = tiledb_query_get_config(client_ctx, *query, &config);
-  CHECK(rc == TILEDB_OK);
-
-  // Get the array of that query
+  // Open array.
   tiledb_array_t* array;
-  REQUIRE(tiledb_query_get_array(client_ctx, *query, &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_set_open_timestamp_end(ctx, array, timestamp) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx, array, TILEDB_WRITE) == TILEDB_OK);
 
-  // if refactored query v2 set it in the config
-  if (refactored_query_v2) {
-    tiledb_error_t* error = nullptr;
-    rc = tiledb_config_set(
-        config,
-        "rest.use_refactored_array_open_and_query_submit",
-        "true",
-        &error);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(error == nullptr);
+  // Create query.
+  tiledb_query_t* query;
+  REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER) == TILEDB_OK);
+  uint64_t a1_size = buffer_a1.size() * sizeof(int);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a1", buffer_a1.data(), &a1_size) == TILEDB_OK);
+  uint64_t a2_var_size = buffer_var_a2.size() * sizeof(char);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a2", (void*)buffer_var_a2.c_str(), &a2_var_size) ==
+      TILEDB_OK);
+  uint64_t a2_size = buffer_a2.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_offsets_buffer(
+          ctx, query, "a2", buffer_a2.data(), &a2_size) == TILEDB_OK);
+  uint64_t a3_size = buffer_a3.size() * sizeof(float);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a3", buffer_a3.data(), &a3_size) == TILEDB_OK);
 
-    REQUIRE(tiledb_array_close(client_ctx, array) == TILEDB_OK);
-    REQUIRE(tiledb_array_set_config(client_ctx, array, config) == TILEDB_OK);
-    tiledb_query_type_t query_type;
-    REQUIRE_SAFE(
-        tiledb_query_get_type(client_ctx, *query, &query_type) == TILEDB_OK);
-    REQUIRE(tiledb_array_open(client_ctx, array, query_type) == TILEDB_OK);
-  }
+  uint64_t d1_size = buffer_coords_dim1.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "d1", buffer_coords_dim1.data(), &d1_size) == TILEDB_OK);
+  uint64_t d2_size = buffer_coords_dim2.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "d2", buffer_coords_dim2.data(), &d2_size) == TILEDB_OK);
 
-  // Get the query type
-  tiledb_query_type_t query_type;
-  REQUIRE_SAFE(
-      tiledb_query_get_type(client_ctx, *query, &query_type) == TILEDB_OK);
+  // Submit/finalize the query.
+  REQUIRE(tiledb_query_submit_and_finalize(ctx, query) == TILEDB_OK);
+  // Close array.
+  REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
 
-  // 1. Client -> Server : Serialize and send query request
-  tiledb_query_t* server_deser_query;
-  std::vector<uint8_t> serialized;
-
-  rc = serialize_query(client_ctx, *query, &serialized, 1);
-  REQUIRE(rc == TILEDB_OK);
-
-  // 2. Server: Deserialize query request
-  // Allocate new context for server
-  tiledb_ctx_t* server_ctx;
-  tiledb_ctx_alloc(config, &server_ctx);
-  tiledb_array_t* array_server = nullptr;
-  if (refactored_query_v2) {
-    rc = deserialize_array_and_query(
-        server_ctx, serialized, &server_deser_query, array_uri.c_str(), 0);
-    REQUIRE_SAFE(rc == TILEDB_OK);
-  } else {
-    // Open array
-    int rc = tiledb_array_alloc(server_ctx, array_uri.c_str(), &array_server);
-    REQUIRE_SAFE(rc == TILEDB_OK);
-
-    rc = tiledb_array_set_open_timestamp_start(
-        server_ctx, array_server, array->array_->timestamp_start());
-    REQUIRE_SAFE(rc == TILEDB_OK);
-    rc = tiledb_array_set_open_timestamp_end(
-        server_ctx, array_server, array->array_->timestamp_end_opened_at());
-    REQUIRE_SAFE(rc == TILEDB_OK);
-
-    rc = tiledb_array_open(server_ctx, array_server, query_type);
-    REQUIRE_SAFE(rc == TILEDB_OK);
-
-    rc = tiledb_query_alloc(
-        server_ctx, array_server, query_type, &server_deser_query);
-    REQUIRE_SAFE(rc == TILEDB_OK);
-    rc = tiledb::test::deserialize_query(
-        server_ctx, serialized, server_deser_query, 0);
-    REQUIRE_SAFE(rc == TILEDB_OK);
-  }
-
-  // This is a feature of the server, not a bug, quoting from query_from_capnp:
-  // "On reads, just set null pointers with accurate size so that the
-  // server can introspect and allocate properly sized buffers separately."
-  // Empty buffers will naturally break query_submit so to go on in test we
-  // need to allocate here as if we were the server.
-  if (query_type == TILEDB_READ) {
-    allocate_query_buffers_server_side(server_ctx, server_deser_query, buffers);
-  }
-
-  // 3. Server: Submit query WITHOUT re-opening the array, using under the hood
-  // the array found in the deserialized query
-  rc = tiledb_query_submit(server_ctx, server_deser_query);
-  if (rc != TILEDB_OK) {
-    return rc;
-  }
-
-  if (finalize) {
-    tiledb_query_status_t status;
-    rc = tiledb_query_get_status(server_ctx, server_deser_query, &status);
-    CHECK(status == TILEDB_COMPLETED);
-
-    rc = tiledb_query_finalize(server_ctx, server_deser_query);
-    if (rc != TILEDB_OK) {
-      return rc;
-    }
-  }
-
-  // Serialize the new query and "send it over the network" (server-side)
-  // 4. Server -> Client : Send query response
-  std::vector<uint8_t> serialized2;
-  rc = serialize_query(server_ctx, server_deser_query, &serialized2, 0);
-  REQUIRE(rc == TILEDB_OK);
-
-  if (!refactored_query_v2) {
-    // Close array and clean up
-    rc = tiledb_array_close(server_ctx, array_server);
-    CHECK(rc == TILEDB_OK);
-    tiledb_array_free(&array_server);
-  }
-
-  tiledb_ctx_free(&server_ctx);
-  CHECK(server_ctx == nullptr);
-
-  // 5. Client: Deserialize query
-  rc = deserialize_query(client_ctx, serialized2, *query, 1);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Clean up.
-  tiledb_query_free(&server_deser_query);
-
-  return rc;
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 }
 
-int finalize_query_wrapper(
-    const Context& client_ctx,
-    const std::string& array_uri,
-    Query* query,
-    bool serialize_query) {
-  auto query_c = query->ptr().get();
-  return finalize_query_wrapper(
-      client_ctx.ptr().get(), array_uri, &query_c, serialize_query);
+void read_sparse_v11(
+    tiledb_ctx_t* ctx, const std::string& array_name, uint64_t timestamp) {
+  // Prepare expected results for cell buffers.
+  std::vector<int> buffer_a1{0, 1, 2, 3};
+  std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
+  std::string buffer_var_a2("abbcccdddd");
+  std::vector<float> buffer_a3{0.1f, 0.2f, 1.1f, 1.2f, 2.1f, 2.2f, 3.1f, 3.2f};
+  std::vector<uint64_t> buffer_coords_dim1{1, 1, 1, 2};
+  std::vector<uint64_t> buffer_coords_dim2{1, 2, 4, 3};
+
+  int buffer_a1_read[4];
+  uint64_t buffer_a2_read[4];
+  char buffer_var_a2_read[10];
+  float buffer_a3_read[8];
+  uint64_t buffer_coords_dim1_read[4];
+  uint64_t buffer_coords_dim2_read[4];
+
+  // Open array.
+  tiledb_array_t* array;
+  REQUIRE(tiledb_array_alloc(ctx, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(
+      tiledb_array_set_open_timestamp_end(ctx, array, timestamp) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
+
+  // Create query.
+  tiledb_query_t* query;
+  REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
+  REQUIRE(
+      tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER) == TILEDB_OK);
+  uint64_t a1_size = buffer_a1.size() * sizeof(int);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a1", buffer_a1_read, &a1_size) == TILEDB_OK);
+  uint64_t a2_var_size = buffer_var_a2.size() * sizeof(char);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a2", buffer_var_a2_read, &a2_var_size) == TILEDB_OK);
+  uint64_t a2_size = buffer_a2.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_offsets_buffer(
+          ctx, query, "a2", buffer_a2_read, &a2_size) == TILEDB_OK);
+  uint64_t a3_size = buffer_a3.size() * sizeof(float);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "a3", buffer_a3_read, &a3_size) == TILEDB_OK);
+
+  uint64_t d1_size = buffer_coords_dim1.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "d1", buffer_coords_dim1_read, &d1_size) == TILEDB_OK);
+  uint64_t d2_size = buffer_coords_dim2.size() * sizeof(uint64_t);
+  REQUIRE(
+      tiledb_query_set_data_buffer(
+          ctx, query, "d2", buffer_coords_dim2_read, &d2_size) == TILEDB_OK);
+
+  // Submit the query.
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
+  // Close array.
+  REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
+
+  CHECK(!memcmp(buffer_a1.data(), buffer_a1_read, sizeof(buffer_a1_read)));
+  CHECK(!memcmp(
+      buffer_var_a2.data(), buffer_var_a2_read, sizeof(buffer_var_a2_read)));
+  CHECK(!memcmp(buffer_a2.data(), buffer_a2_read, sizeof(buffer_a2_read)));
+  CHECK(!memcmp(buffer_a3.data(), buffer_a3_read, sizeof(buffer_a3_read)));
+  CHECK(!memcmp(
+      buffer_coords_dim1.data(),
+      buffer_coords_dim1_read,
+      sizeof(buffer_coords_dim1_read)));
+  CHECK(!memcmp(
+      buffer_coords_dim2.data(),
+      buffer_coords_dim2_read,
+      sizeof(buffer_coords_dim2_read)));
+
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
 }
 
-int finalize_query_wrapper(
-    tiledb_ctx_t* client_ctx,
-    const std::string& array_uri,
-    tiledb_query_t** query,
-    bool serialize) {
-#ifndef TILEDB_SERIALIZATION
-  return tiledb_query_finalize(client_ctx, *query);
-#endif
-
-  if (!serialize) {
-    return tiledb_query_finalize(client_ctx, *query);
+void schema_equiv(
+    const sm::ArraySchema& schema1, const sm::ArraySchema& schema2) {
+  CHECK(schema1.array_type() == schema2.array_type());
+  CHECK(schema1.attributes().size() == schema2.attributes().size());
+  for (unsigned int i = 0; i < schema2.attribute_num(); i++) {
+    auto a = schema1.attribute(i);
+    auto b = schema2.attribute(i);
+    CHECK(a->cell_val_num() == b->cell_val_num());
+    CHECK(a->name() == b->name());
+    CHECK(a->type() == b->type());
+    CHECK(a->nullable() == b->nullable());
+    CHECK(a->get_enumeration_name() == b->get_enumeration_name());
   }
-
-  // Get the config to use it for creating fresh contexts
-  tiledb_config_t* config;
-  auto rc = tiledb_query_get_config(client_ctx, *query, &config);
-  CHECK(rc == TILEDB_OK);
-
-  // Get the query type
-  tiledb_query_type_t query_type;
-  REQUIRE_SAFE(
-      tiledb_query_get_type(client_ctx, *query, &query_type) == TILEDB_OK);
-
-  // 1. Client -> Server : Send query request
-  std::vector<uint8_t> serialized;
-
-  rc = serialize_query(client_ctx, *query, &serialized, 1);
-  REQUIRE(rc == TILEDB_OK);
-
-  // 2. Server: Deserialize query request
-  // Allocate new context for server
-  tiledb_ctx_t* server_ctx;
-  tiledb_ctx_alloc(config, &server_ctx);
-  tiledb_query_t* server_deser_query;
-  rc = deserialize_array_and_query(
-      server_ctx, serialized, &server_deser_query, array_uri.c_str(), 0);
-
-  // 3. Server: Finalize query
-  rc = tiledb_query_finalize(server_ctx, server_deser_query);
-  if (rc != TILEDB_OK) {
-    return rc;
-  }
-
-  /*
-   * TODO: This is disabled because it fails today as the previous serialization
-   * step before finalize, sets the query buffers to NULL for READ queries, so
-   * the following serialization step will hit an assert because of empty
-   * buffers, as query_finalize is a NOOP for READ queries.
-   *
-   * // Serialize the new query and "send it over the network" (server-side)
-   * 3. Server -> Client : Send query response
-   * std::vector<uint8_t> serialized2;
-   * rc = tiledb_query_v2_serialize(
-   *     ctx, array_uri.c_str(), serialized, false, server_deser_query, query);
-   * REQUIRE_SAFE(rc == TILEDB_OK);
-   */
-
-  // Clean up.
-  tiledb_query_free(&server_deser_query);
-
-  return rc;
-}
-
-void allocate_query_buffers_server_side(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    ServerQueryBuffers& query_buffers) {
-  int rc = 0;
-  const auto buffer_names = query->query_->buffer_names();
-  for (uint64_t i = 0; i < buffer_names.size(); i++) {
-    const auto& name = buffer_names[i];
-    const auto& buff = query->query_->buffer(name);
-    const auto& schema = query->query_->array_schema();
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
-    if (var_size && buff.buffer_var_ == nullptr) {
-      // Variable-sized buffer
-      query_buffers.attr_or_dim_data.emplace_back(*buff.buffer_var_size_);
-      query_buffers.attr_or_dim_off.emplace_back(
-          (*buff.buffer_size_) / sizeof(sm::constants::cell_var_offset_size));
-      rc = tiledb_query_set_data_buffer(
-          ctx,
-          query,
-          name.c_str(),
-          query_buffers.attr_or_dim_data.back().data(),
-          buff.buffer_var_size_);
-      REQUIRE_SAFE(rc == TILEDB_OK);
-      rc = tiledb_query_set_offsets_buffer(
-          ctx,
-          query,
-          name.c_str(),
-          query_buffers.attr_or_dim_off.back().data(),
-          buff.buffer_size_);
-      REQUIRE_SAFE(rc == TILEDB_OK);
-    }
-
-    if (name == TILEDB_COORDS || (!var_size && buff.buffer_ == nullptr)) {
-      // Fixed-length buffer or Coords
-      query_buffers.attr_or_dim.emplace_back(*buff.buffer_size_);
-      rc = tiledb_query_set_data_buffer(
-          ctx,
-          query,
-          name.c_str(),
-          query_buffers.attr_or_dim.back().data(),
-          buff.buffer_size_);
-      REQUIRE_SAFE(rc == TILEDB_OK);
-    }
-
-    if (nullable) {
-      // nullable
-      query_buffers.attr_or_dim_nullable.emplace_back(
-          *buff.validity_vector_.buffer_size());
-      rc = tiledb_query_set_validity_buffer(
-          ctx,
-          query,
-          name.c_str(),
-          query_buffers.attr_or_dim_nullable.back().data(),
-          buff.validity_vector_.buffer_size());
-    }
-  }
+  CHECK(schema1.capacity() == schema2.capacity());
+  CHECK(schema1.cell_order() == schema2.cell_order());
+  CHECK(schema1.tile_order() == schema2.tile_order());
+  CHECK(schema1.allows_dups() == schema2.allows_dups());
+  CHECK(schema1.array_uri().to_string() == schema2.array_uri().to_string());
 }
 
 template void check_subarray<int8_t>(
@@ -2024,27 +1661,6 @@ template void check_subarray<float>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<float>& ranges);
 template void check_subarray<double>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<double>& ranges);
-
-template void check_subarray_equiv<int8_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<uint8_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<int16_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<uint16_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<int32_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<uint32_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<int64_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<uint64_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<float>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<double>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 
 template bool subarray_equiv<int8_t>(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
@@ -2377,6 +1993,4 @@ template void check_counts<int32_t>(
 template void check_counts<uint64_t>(
     span<uint64_t> vals, std::vector<uint64_t> expected);
 
-}  // End of namespace test
-
-}  // End of namespace tiledb
+}  // namespace tiledb::test

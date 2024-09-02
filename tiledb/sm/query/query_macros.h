@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,79 +35,44 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 #ifndef RETURN_CANCEL_OR_ERROR
 /**
  * Returns an error status if the given Status is not Status::Ok, or
- * if the StorageManager that owns this Query has requested cancellation.
+ * if the Context that owns this Query has requested cancellation.
  */
-#define RETURN_CANCEL_OR_ERROR(s)                              \
-  do {                                                         \
-    Status _s = (s);                                           \
-    if (!_s.ok()) {                                            \
-      return _s;                                               \
-    } else if (storage_manager_->cancellation_in_progress()) { \
-      return Status_QueryError("Query cancelled.");            \
-    }                                                          \
+#define RETURN_CANCEL_OR_ERROR(s)                   \
+  do {                                              \
+    Status _s = (s);                                \
+    if (!_s.ok()) {                                 \
+      return _s;                                    \
+    }                                               \
+    process_external_cancellation();                \
+    if (cancelled()) {                              \
+      return Status_QueryError("Query cancelled."); \
+    }                                               \
   } while (false)
 #endif
 
 #ifndef RETURN_CANCEL_OR_ERROR_TUPLE
 /**
  * Returns an error status if the given Status is not Status::Ok, or
- * if the StorageManager that owns this Query has requested cancellation.
+ * if the Context that owns this Query has requested cancellation.
  */
 #define RETURN_CANCEL_OR_ERROR_TUPLE(s)                             \
   do {                                                              \
     Status _s = (s);                                                \
     if (!_s.ok()) {                                                 \
       return {_s, std::nullopt};                                    \
-    } else if (storage_manager_->cancellation_in_progress()) {      \
+    }                                                               \
+    process_external_cancellation();                                \
+    if (cancelled()) {                                              \
       return {Status_QueryError("Query cancelled."), std::nullopt}; \
     }                                                               \
   } while (false)
 #endif
 
-#ifndef RETURN_CANCEL_OR_ERROR_ELSE
-/**
- * Returns an error status if the given Status is not Status::Ok, or
- * if the StorageManager that owns this Query has requested cancellation.
- * If an error status is returned, also execute the 'else' code.
- */
-#define RETURN_CANCEL_OR_ERROR_ELSE(s, _else)                  \
-  do {                                                         \
-    Status _s = (s);                                           \
-    if (!_s.ok()) {                                            \
-      _else;                                                   \
-      return _s;                                               \
-    } else if (storage_manager_->cancellation_in_progress()) { \
-      _else;                                                   \
-      return Status_QueryError("Query cancelled.");            \
-    }                                                          \
-  } while (false)
-#endif
-
-#ifndef BREAK_CANCEL_OR_ERROR
-/**
- * If the given status 's' is not Status::Ok, sets the Status variable
- * 'outer_st' to 's' and breaks the containing loop.
- */
-#define BREAK_CANCEL_OR_ERROR(outer_st, s)                     \
-  do {                                                         \
-    Status _s = (s);                                           \
-    if (!_s.ok()) {                                            \
-      outer_st = _s;                                           \
-      break;                                                   \
-    } else if (storage_manager_->cancellation_in_progress()) { \
-      outer_st = Status_QueryError("Query cancelled.");        \
-      break;                                                   \
-    }                                                          \
-  } while (false)
-#endif
-
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_QUERY_MACROS_H

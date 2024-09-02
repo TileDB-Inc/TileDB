@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,11 +33,11 @@
 #include "query_ast.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/misc/integral_type_casts.h"
+#include "tiledb/sm/query/query_condition.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 static inline bool supported_string_type(Datatype type) {
   return (
@@ -200,12 +200,17 @@ void ASTNodeVal::rewrite_enumeration_conditions(
   if (op_ != QueryConditionOp::IN && op_ != QueryConditionOp::NOT_IN) {
     auto idx = enumeration->index_of(get_value_ptr(), get_value_size());
     if (idx == constants::enumeration_missing_value) {
-      throw std::invalid_argument(
-          "Enumeration value not found for field '" + attr->name() + "'");
+      if (op_ == QueryConditionOp::NE) {
+        op_ = QueryConditionOp::ALWAYS_TRUE;
+      } else {
+        op_ = QueryConditionOp::ALWAYS_FALSE;
+      }
+      data_ = ByteVecValue(val_size);
+      utils::safe_integral_cast_to_datatype(0, attr->type(), data_);
+    } else {
+      data_ = ByteVecValue(val_size);
+      utils::safe_integral_cast_to_datatype(idx, attr->type(), data_);
     }
-
-    data_ = ByteVecValue(val_size);
-    utils::safe_integral_cast_to_datatype(idx, attr->type(), data_);
   } else {
     // Buffers and writers for the new data/offsets memory
     std::vector<uint8_t> data_buffer(val_size * members_.size());
@@ -216,25 +221,29 @@ void ASTNodeVal::rewrite_enumeration_conditions(
 
     ByteVecValue curr_data(val_size);
     uint64_t curr_offset = 0;
+    uint64_t num_offsets = 0;
 
     for (auto& member : members_) {
       auto idx = enumeration->index_of(member.data(), member.size());
       if (idx == constants::enumeration_missing_value) {
-        throw std::invalid_argument(
-            "Enumeration value not found for field '" + attr->name() + "'");
+        continue;
       }
 
       utils::safe_integral_cast_to_datatype(idx, attr->type(), curr_data);
       data_writer.write(curr_data.data(), curr_data.size());
       offsets_writer.write(curr_offset);
       curr_offset += val_size;
+      num_offsets += 1;
     }
 
-    data_ = ByteVecValue(data_buffer.size());
-    std::memcpy(data_.data(), data_buffer.data(), data_buffer.size());
+    auto total_data_size = curr_offset;
+    auto total_offsets_size = num_offsets * constants::cell_var_offset_size;
 
-    offsets_ = ByteVecValue(offsets_buffer.size());
-    std::memcpy(offsets_.data(), offsets_buffer.data(), offsets_buffer.size());
+    data_ = ByteVecValue(total_data_size);
+    std::memcpy(data_.data(), data_buffer.data(), total_data_size);
+
+    offsets_ = ByteVecValue(total_offsets_size);
+    std::memcpy(offsets_.data(), offsets_buffer.data(), total_offsets_size);
 
     generate_members();
   }
@@ -309,8 +318,8 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
       (op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN)) {
     for (auto& member : members_) {
       if (member.size() != cell_size) {
-        throw Status_QueryConditionError(
-            "Value node set memmber size mismatch: " +
+        throw QueryConditionException(
+            "Value node set member size mismatch: " +
             std::to_string(cell_size) + " != " + std::to_string(member.size()));
       }
     }
@@ -319,15 +328,16 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   // Ensure that the attribute type is valid.
   switch (type) {
     case Datatype::ANY:
-      return Status_QueryConditionError(
-          "Value node attribute type may not be of type 'ANY': " + field_name_);
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return Status_QueryConditionError(
-          "Only ASCII and UTF-8 string types are currently supported." +
-          field_name_);
+          "Unsupported value node attribute type " + datatype_str(type) +
+          " on field " + field_name_);
     default:
       break;
   }
@@ -592,5 +602,4 @@ void ASTNodeExpr::set_use_enumeration(bool use_enumeration) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

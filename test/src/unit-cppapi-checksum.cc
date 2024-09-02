@@ -94,7 +94,7 @@ static void run_checksum_test(tiledb_filter_type_t filter_type) {
   query.set_data_buffer("a1", a1_data)
       .set_data_buffer("a2", a2buf.second)
       .set_offsets_buffer("a2", a2buf.first)
-      .set_coordinates(coords)
+      .set_data_buffer("__coords", coords)
       .set_layout(TILEDB_UNORDERED);
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
@@ -111,7 +111,9 @@ static void run_checksum_test(tiledb_filter_type_t filter_type) {
   std::string a2_read_data;
   a2_read_data.resize(7);
   Query query_r(ctx2, array);
-  query_r.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer(tiledb::test::TILEDB_COORDS, coords_read)
       .set_data_buffer("a1", a1_read)
@@ -182,7 +184,9 @@ static void run_checksum_test(tiledb_filter_type_t filter_type) {
   std::string a2_read_data2;
   a2_read_data2.resize(7);
   Query query_r2(ctx, array);
-  query_r2.set_subarray(subarray)
+  Subarray sub2(ctx, array);
+  sub2.set_subarray(subarray);
+  query_r2.set_subarray(sub2)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer(tiledb::test::TILEDB_COORDS, coords_read2)
       .set_data_buffer("a1", a1_read2)

@@ -314,7 +314,7 @@ TEMPLATE_LIST_TEST_CASE(
               "WebP filter can only be applied to dense arrays"));
     }
 
-    REQUIRE_NOTHROW(Array::create(webp_array_name, valid_schema));
+    Array::create(webp_array_name, valid_schema);
 
     if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);

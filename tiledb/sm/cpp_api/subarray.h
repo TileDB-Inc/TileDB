@@ -331,16 +331,7 @@ class Subarray {
    * Setting configuration with this function overrides the following
    * Subarray-level parameters only:
    *
-   * - `sm.memory_budget`
-   * - `sm.memory_budget_var`
-   * - `sm.sub_partitioner_memory_budget`
-   * - `sm.var_offsets.mode`
-   * - `sm.var_offsets.extra_element`
-   * - `sm.var_offsets.bitsize`
-   * - `sm.check_coord_dups`
-   * - `sm.check_coord_oob`
-   * - `sm.check_global_order`
-   * - `sm.dedup_coords`
+   * - `sm.read_range_oob`
    */
   Subarray& set_config(const Config& config) {
     auto ctx = ctx_.get();

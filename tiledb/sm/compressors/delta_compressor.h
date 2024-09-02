@@ -33,7 +33,7 @@
 #ifndef TILEDB_DELTA_H
 #define TILEDB_DELTA_H
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/common.h"
 
 using namespace tiledb::common;
 
@@ -49,10 +49,9 @@ enum class Datatype : uint8_t;
 class Delta {
  public:
   /**
-   * Constant overhead (equal to 1 byte for the bitsize, 8 bytes for
-   * the number of cells, and 8 bytes for a potential extra 64-bit chunk).
+   * Constant overhead (equal to 8 bytes for the number of cells).
    */
-  static const uint64_t OVERHEAD;
+  static constexpr uint64_t OVERHEAD = sizeof(uint64_t);
 
   /* ****************************** */
   /*               API              */
@@ -67,11 +66,9 @@ class Delta {
    *
    * The output buffer will contain the following after compression:
    *
-   * bitsize | n | in_0 | in_1 - in_0 | in_2 - in_1 | ... | in_n - in_{n-1}
+   * n | in_0 | in_1 - in_0 | in_2 - in_1 | ... | in_n - in_{n-1}
    *
    * where:
-   *  - *bitsize* (char) is the minimum number of bits required to represent
-   *    any abs(dd_i).
    *  - *n* (uint64_t) is the number of values in the input buffer.
    *
    * @param type The type of the input values.

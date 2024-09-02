@@ -29,32 +29,6 @@ set -xeuo pipefail
 pushd $GITHUB_WORKSPACE/test/benchmarking
 mkdir -p build
 cd build
-cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/build/dist ../src
-make
+cmake -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/build/dist;$GITHUB_WORKSPACE/build/vcpkg_installed/$VCPKG_TARGET_TRIPLET" ../src
+cmake --build .
 popd
-
-testfile=$(mktemp)
-mv $testfile $testfile.cc
-testfile=$testfile.cc
-cat <<EOF > $testfile
-#include <assert.h>
-#include <tiledb/tiledb.h>
-#include <tiledb/version.h>
-int main(int argc, char **argv) {
-  int major = 0;
-  int minor = 0;
-  int patch = 0;
-  tiledb_version(&major,&minor,&patch);
-  auto version = tiledb::version();
-  assert(major == std::get<0>(version));
-  return 0;
-}
-EOF
-export TESTFILE_LDFLAGS="-ltiledb"
-export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/build/dist/lib:/usr/local/lib:${LD_LIBRARY_PATH:-}
-$CXX -std=c++11 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/build/dist/include -L$GITHUB_WORKSPACE/build/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
-$testfile.exe && \
-rm -f $testfile $testfile.exe
-
-ps -U $(whoami) -o comm= | sort | uniq
-#  displayName: 'Build examples, PNG test, and benchmarks (build-only)'

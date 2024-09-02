@@ -92,7 +92,7 @@ build_site() {
     # Note:
     #  -E disables the build cache (slower builds).
     #  -W enables warnings as errors.
-    sphinx-build -E -W -T -b html -d ${build_dir}/doctrees -D language=en ${source_dir} ${build_dir}/html ${BUILD_DIR_ARG:-} || \
+    sphinx-build -E -W -T -b html -d ${build_dir}/doctrees ${source_dir} ${build_dir}/html ${BUILD_DIR_ARG:-} || \
         die "could not build sphinx site"
 }
 

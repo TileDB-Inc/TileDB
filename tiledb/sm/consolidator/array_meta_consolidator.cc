@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,8 +47,10 @@ namespace tiledb::sm {
 /* ****************************** */
 
 ArrayMetaConsolidator::ArrayMetaConsolidator(
-    const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    ContextResources& resources,
+    const Config& config,
+    StorageManager* storage_manager)
+    : Consolidator(resources, storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -65,13 +67,12 @@ Status ArrayMetaConsolidator::consolidate(
     const void* encryption_key,
     uint32_t key_length) {
   auto timer_se = stats_->start_timer("consolidate_array_meta");
-
   check_array_uri(array_name);
 
   // Open array for reading
   auto array_uri = URI(array_name);
-  Array array_for_reads(array_uri, storage_manager_);
-  RETURN_NOT_OK(array_for_reads.open(
+  Array array_for_reads(resources_, array_uri);
+  throw_if_not_ok(array_for_reads.open(
       QueryType::READ,
       config_.timestamp_start_,
       config_.timestamp_end_,
@@ -80,100 +81,60 @@ Status ArrayMetaConsolidator::consolidate(
       key_length));
 
   // Open array for writing
-  Array array_for_writes(array_uri, storage_manager_);
+  Array array_for_writes(resources_, array_uri);
   RETURN_NOT_OK_ELSE(
       array_for_writes.open(
           QueryType::WRITE, encryption_type, encryption_key, key_length),
       throw_if_not_ok(array_for_reads.close()));
 
-  // Swap the in-memory metadata between the two arrays.
-  // After that, the array for writes will store the (consolidated by
-  // the way metadata loading works) metadata of the array for reads
-  Metadata* metadata_r;
-  auto st = array_for_reads.metadata(&metadata_r);
-  if (!st.ok()) {
-    throw_if_not_ok(array_for_reads.close());
-    throw_if_not_ok(array_for_writes.close());
-    return st;
-  }
-  Metadata* metadata_w;
-  st = array_for_writes.metadata(&metadata_w);
-  if (!st.ok()) {
-    throw_if_not_ok(array_for_reads.close());
-    throw_if_not_ok(array_for_writes.close());
-    return st;
-  }
-  metadata_r->swap(metadata_w);
-
-  // Metadata uris to delete
-  const auto to_vacuum = metadata_w->loaded_metadata_uris();
-
-  // Generate new name for consolidated metadata
-  st = metadata_w->generate_uri(array_uri);
-  if (!st.ok()) {
-    throw_if_not_ok(array_for_reads.close());
-    throw_if_not_ok(array_for_writes.close());
-    return st;
-  }
-
-  // Get the new URI name
-  URI new_uri;
-  st = metadata_w->get_uri(array_uri, &new_uri);
-  if (!st.ok()) {
-    throw_if_not_ok(array_for_reads.close());
-    throw_if_not_ok(array_for_writes.close());
-    return st;
-  }
-
-  // Close arrays
-  RETURN_NOT_OK_ELSE(
-      array_for_reads.close(), throw_if_not_ok(array_for_writes.close()));
-  throw_if_not_ok(array_for_writes.close());
-
-  // Write vacuum file
-  URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
-
-  size_t base_uri_size = 0;
+  // Copy-assign the read metadata into the metadata of the array for writes
+  auto& metadata_r = array_for_reads.metadata();
+  array_for_writes.opened_array()->metadata() = metadata_r;
+  URI new_uri = metadata_r.get_uri(array_uri);
+  const auto& to_vacuum = metadata_r.loaded_metadata_uris();
 
   // Write vac files relative to the array URI. This was fixed for reads in
   // version 19 so only do this for arrays starting with version 19.
+  size_t base_uri_size = 0;
   if (array_for_reads.array_schema_latest_ptr() == nullptr ||
       array_for_reads.array_schema_latest().write_version() >= 19) {
     base_uri_size = array_for_reads.array_uri().to_string().size();
   }
 
+  // Prepare vacuum file
+  URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
   std::stringstream ss;
   for (const auto& uri : to_vacuum) {
     ss << uri.to_string().substr(base_uri_size) << "\n";
   }
-
   auto data = ss.str();
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+
+  // Close arrays
+  throw_if_not_ok(array_for_reads.close());
+  throw_if_not_ok(array_for_writes.close());
+
+  // Write vacuum file
+  throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
+  throw_if_not_ok(resources_.vfs().close_file(vac_uri));
 
   return Status::Ok();
 }
 
 void ArrayMetaConsolidator::vacuum(const char* array_name) {
   if (array_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw std::invalid_argument(
         "Cannot vacuum array metadata; Array name cannot be null");
   }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-
+  auto& vfs = resources_.vfs();
+  auto& compute_tp = resources_.compute_tp();
   auto array_dir = ArrayDirectory(
-      storage_manager_->resources(),
-      URI(array_name),
-      0,
-      std::numeric_limits<uint64_t>::max());
+      resources_, URI(array_name), 0, std::numeric_limits<uint64_t>::max());
 
   // Delete the array metadata and vacuum files
-  vfs->remove_files(compute_tp, array_dir.array_meta_uris_to_vacuum());
-  vfs->remove_files(compute_tp, array_dir.array_meta_vac_uris_to_vacuum());
+  vfs.remove_files(&compute_tp, array_dir.array_meta_uris_to_vacuum());
+  vfs.remove_files(&compute_tp, array_dir.array_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */
@@ -182,13 +143,13 @@ void ArrayMetaConsolidator::vacuum(const char* array_name) {
 
 Status ArrayMetaConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = storage_manager_->config();
+  Config merged_config = resources_.config();
   merged_config.inherit(config);
   bool found = false;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
   assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
 

@@ -2,8 +2,10 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO awslabs/aws-c-io
     REF "v${VERSION}"
-    SHA512 54f6ef23ab7fb65c9d1425d21d59daf1b13a50595f7f06c7d4f74bfb5941a7ddf0185ae3249b940473422c1880bb034c0610876c6e13ae499ccd2dcc888c1b23
+    SHA512 b5dc81635ce775c3783df2d4f6ccf0890b1e1669bddb1c10f6d200203684e84504ca87099cb88874010df28f98f658da5a4eacb9e4df0408d40d845f3d394f48
     HEAD_REF master
+    PATCHES
+        "fix-pointer-mismatch.patch"
 )
 
 vcpkg_cmake_configure(

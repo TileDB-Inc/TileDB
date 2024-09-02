@@ -57,9 +57,7 @@ namespace serialization {
  * @return Status
  */
 Status group_serialize(
-    const Group* group,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    Group* group, SerializationType serialize_type, Buffer* serialized_buffer);
 
 /**
  * Deserialize a group via Cap'n proto
@@ -84,9 +82,7 @@ Status group_deserialize(
  * @return Status
  */
 Status group_details_serialize(
-    const Group* group,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    Group* group, SerializationType serialize_type, Buffer* serialized_buffer);
 
 /**
  * Deserialize a group details via Cap'n proto
@@ -149,12 +145,15 @@ Status group_create_serialize(
  * @param serialize_type format to serialize into Cap'n Proto or JSON
  * @param serialized_buffer buffer to store serialized bytes in
  * serialize the array URI
+ * @param load flag signaling whether or not metadata should be fetched from
+ * storage
  * @return Status
  */
 Status group_metadata_serialize(
-    const Group* group,
+    Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    Buffer* serialized_buffer,
+    bool load);
 
 }  // namespace serialization
 }  // namespace sm

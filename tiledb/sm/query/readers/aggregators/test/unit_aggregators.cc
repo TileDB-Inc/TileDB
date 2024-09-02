@@ -34,13 +34,14 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
-#include "tiledb/sm/query/readers/aggregators/mean_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 
+#include <test/support/src/helper_type.h>
 #include <test/support/tdb_catch.h>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 typedef tuple<
     SumAggregator<uint8_t>,
@@ -53,18 +54,16 @@ TEMPLATE_LIST_TEST_CASE(
     AggUnderTestConstructor) {
   SECTION("Var size") {
     CHECK_THROWS_WITH(
-        TestType(FieldInfo("a1", true, false, 1)),
-        Catch::Matchers::EndsWith(
-            "aggregates are not supported for var sized attributes.") ||
-            Catch::Matchers::EndsWith("aggregates are not supported for var "
-                                      "sized non-string attributes."));
+        TestType(FieldInfo("a1", true, false, 1, Datatype::UINT8)),
+        "InputFieldValidator: Aggregate is not supported for var sized "
+        "non-string fields.");
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
-        TestType(FieldInfo("a1", false, false, 2)),
-        Catch::Matchers::EndsWith("aggregates are not supported for attributes "
-                                  "with cell_val_num greater than one."));
+        TestType(FieldInfo("a1", false, false, 2, Datatype::UINT8)),
+        "InputFieldValidator: Aggregate is not supported for non-string fields "
+        "with cell_val_num greater than one.");
   }
 }
 
@@ -73,9 +72,9 @@ TEST_CASE(
     "[null-count-aggregator][constructor]") {
   SECTION("Non nullable") {
     CHECK_THROWS_WITH(
-        NullCountAggregator(FieldInfo("a1", false, false, 1)),
-        "CountAggregator: NullCount aggregates must only be requested for "
-        "nullable attributes.");
+        NullCountAggregator(FieldInfo("a1", false, false, 1, Datatype::UINT8)),
+        "InputFieldValidator: Aggregate must only be requested for nullable "
+        "fields.");
   }
 }
 
@@ -98,12 +97,14 @@ typedef tuple<
     AggUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Aggregator: var sized", "[aggregator][var-sized]", AggUnderTest) {
-  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
-  CHECK(aggregator.var_sized() == false);
+  auto aggregator{make_aggregator<TestType>(
+      FieldInfo("a1", false, true, 1, Datatype::UINT8))};
+  CHECK(aggregator.aggregation_var_sized() == false);
 
   if constexpr (std::is_same<TestType, MinAggregator<uint8_t>>::value) {
-    MinAggregator<std::string> aggregator2(FieldInfo("a1", true, false, 1));
-    CHECK(aggregator2.var_sized() == true);
+    MinAggregator<std::string> aggregator2(
+        FieldInfo("a1", true, false, 1, Datatype::UINT8));
+    CHECK(aggregator2.aggregation_var_sized() == true);
   }
 }
 
@@ -111,7 +112,8 @@ TEMPLATE_LIST_TEST_CASE(
     "Aggregators: need recompute",
     "[aggregators][need-recompute]",
     AggUnderTest) {
-  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  auto aggregator{make_aggregator<TestType>(
+      FieldInfo("a1", false, true, 1, Datatype::UINT8))};
   bool need_recompute = true;
   if constexpr (std::is_same<TestType, MinAggregator<uint64_t>>::value) {
     need_recompute = false;
@@ -121,7 +123,8 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEMPLATE_LIST_TEST_CASE(
     "Aggregators: field name", "[aggregator][field-name]", AggUnderTest) {
-  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  auto aggregator{make_aggregator<TestType>(
+      FieldInfo("a1", false, true, 1, Datatype::UINT8))};
   if (std::is_same<TestType, CountAggregator>::value) {
     CHECK(aggregator.field_name() == constants::count_of_rows);
   } else {
@@ -138,14 +141,15 @@ TEMPLATE_LIST_TEST_CASE(
     "Aggregators: Validate buffer",
     "[aggregators][validate-buffer]",
     AggUnderTestValidateBuffer) {
-  TestType aggregator(FieldInfo("a1", false, false, 1));
-  TestType aggregator_nullable(FieldInfo("a2", false, true, 1));
+  TestType aggregator(FieldInfo("a1", false, false, 1, Datatype::UINT8));
+  TestType aggregator_nullable(
+      FieldInfo("a2", false, true, 1, Datatype::UINT8));
   MinAggregator<std::string> aggregator_var(
-      FieldInfo("a1", true, false, constants::var_num));
+      FieldInfo("a1", true, false, constants::var_num, Datatype::UINT8));
   MinAggregator<std::string> aggregator_var_wrong_cvn(
-      FieldInfo("a1", true, false, 11));
+      FieldInfo("a1", true, false, 11, Datatype::UINT8));
   MinAggregator<std::string> aggregator_fixed_string(
-      FieldInfo("a1", false, false, 5));
+      FieldInfo("a1", false, false, 5, Datatype::UINT8));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -320,7 +324,8 @@ TEMPLATE_LIST_TEST_CASE(
     "Aggregators: Validate buffer count",
     "[aggregators][validate-buffer]",
     AggUnderTestValidateBufferCount) {
-  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  auto aggregator{make_aggregator<TestType>(
+      FieldInfo("a1", false, true, 1, Datatype::UINT8))};
   std::unordered_map<std::string, QueryBuffer> buffers;
 
   SECTION("Doesn't exist") {
@@ -439,12 +444,12 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     if constexpr (std::is_same<AGGREGATOR, CountAggregator>::value) {
       aggregator.emplace();
     } else {
-      aggregator.emplace(FieldInfo("a1", false, false, 1));
+      aggregator.emplace(FieldInfo("a1", false, false, 1, tdb_type<T>));
     }
   }
 
-  auto aggregator_nullable{
-      make_aggregator<AGGREGATOR>(FieldInfo("a1", false, true, 1))};
+  auto aggregator_nullable{make_aggregator<AGGREGATOR>(
+      FieldInfo("a1", false, true, 1, tdb_type<T>))};
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -464,6 +469,30 @@ void basic_aggregation_test(std::vector<double> expected_results) {
   std::vector<uint8_t> validity_data = {0, 0, 1, 0, 1, 0, 1, 0, 1, 0};
 
   SECTION("No bitmap") {
+    ByteVecValue zero(8);
+    ByteVecValue full_tile_sum(8);
+    if constexpr (!std::is_same<RES, std::string>::value) {
+      zero.assign_as<typename tiledb::sm::sum_type_data<T>::sum_type>(0);
+      full_tile_sum.assign_as<typename tiledb::sm::sum_type_data<T>::sum_type>(
+          10);
+    }
+
+    auto tile_metadata_all_null = TileMetadata(
+        10,
+        10,
+        &fixed_data[0],
+        sizeof(typename fixed_data_type<T>::value_type),
+        &fixed_data[0],
+        sizeof(typename fixed_data_type<T>::value_type),
+        zero.data());
+    auto tile_metadata = TileMetadata(
+        10,
+        5,
+        &fixed_data[0],
+        sizeof(typename fixed_data_type<T>::value_type),
+        &fixed_data[0],
+        sizeof(typename fixed_data_type<T>::value_type),
+        full_tile_sum.data());
     if (aggregator.has_value()) {
       // Regular attribute.
       AggregateBuffer input_data{
@@ -471,6 +500,14 @@ void basic_aggregation_test(std::vector<double> expected_results) {
       aggregator->aggregate_data(input_data);
       aggregator->copy_to_user_buffer("Agg", buffers);
       check_value(RES(), res, expected_results[0]);
+
+      aggregator->aggregate_tile_with_frag_md(tile_metadata_all_null);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value(RES(), res, expected_results[1]);
+
+      aggregator->aggregate_tile_with_frag_md(tile_metadata);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value(RES(), res, expected_results[2]);
     }
 
     // Nullable attribute.
@@ -485,7 +522,17 @@ void basic_aggregation_test(std::vector<double> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data2);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value(RES(), res2, expected_results[1]);
+    check_value(RES(), res2, expected_results[3]);
+    check_validity<AGGREGATOR>(validity, 1);
+
+    aggregator_nullable.aggregate_tile_with_frag_md(tile_metadata_all_null);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value(RES(), res2, expected_results[4]);
+    check_validity<AGGREGATOR>(validity, 1);
+
+    aggregator_nullable.aggregate_tile_with_frag_md(tile_metadata);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value(RES(), res2, expected_results[5]);
     check_validity<AGGREGATOR>(validity, 1);
   }
 
@@ -497,13 +544,13 @@ void basic_aggregation_test(std::vector<double> expected_results) {
           2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data(), 1};
       aggregator->aggregate_data(input_data);
       aggregator->copy_to_user_buffer("Agg", buffers);
-      check_value(RES(), res, expected_results[2]);
+      check_value(RES(), res, expected_results[6]);
 
       AggregateBuffer input_data2{
           0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data(), 1};
       aggregator->aggregate_data(input_data2);
       aggregator->copy_to_user_buffer("Agg", buffers);
-      check_value(RES(), res, expected_results[3]);
+      check_value(RES(), res, expected_results[7]);
     }
 
     // Nullable attribute.
@@ -524,10 +571,10 @@ void basic_aggregation_test(std::vector<double> expected_results) {
       res2.data()[0] = '0';
     }
 
-    if (is_nan(expected_results[4])) {
+    if (is_nan(expected_results[8])) {
       CHECK(is_nan(*static_cast<RES*>(static_cast<void*>(res2.data()))));
     } else {
-      check_value(RES(), res2, expected_results[4]);
+      check_value(RES(), res2, expected_results[8]);
     }
     check_validity<AGGREGATOR>(validity, 0);
 
@@ -542,7 +589,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value(RES(), res2, expected_results[5]);
+    check_value(RES(), res2, expected_results[9]);
     check_validity<AGGREGATOR>(validity, 1);
   }
 
@@ -561,7 +608,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
           1};
       aggregator->aggregate_data(input_data);
       aggregator->copy_to_user_buffer("Agg", buffers);
-      check_value(RES(), res, expected_results[6]);
+      check_value(RES(), res, expected_results[10]);
 
       AggregateBuffer input_data2{
           0,
@@ -574,7 +621,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
           1};
       aggregator->aggregate_data(input_data2);
       aggregator->copy_to_user_buffer("Agg", buffers);
-      check_value(RES(), res, expected_results[7]);
+      check_value(RES(), res, expected_results[11]);
     }
 
     // Nullable attribute.
@@ -589,7 +636,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value(RES(), res2, expected_results[8]);
+    check_value(RES(), res2, expected_results[12]);
     check_validity<AGGREGATOR>(validity, 1);
 
     AggregateBuffer input_data4{
@@ -603,7 +650,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value(RES(), res2, expected_results[9]);
+    check_value(RES(), res2, expected_results[13]);
     check_validity<AGGREGATOR>(validity, 1);
   }
 }
@@ -628,7 +675,7 @@ TEMPLATE_LIST_TEST_CASE(
   basic_aggregation_test<
       T,
       typename sum_type_data<T>::sum_type,
-      SumAggregator<T>>({27, 14, 11, 14, 0, 6, 29, 34, 22, 22});
+      SumAggregator<T>>({27, 27, 37, 14, 14, 24, 11, 14, 0, 6, 29, 34, 22, 22});
 }
 
 TEMPLATE_LIST_TEST_CASE(
@@ -638,7 +685,11 @@ TEMPLATE_LIST_TEST_CASE(
   typedef TestType T;
   basic_aggregation_test<T, double, MeanAggregator<T>>(
       {(27.0 / 8.0),
+       (27.0 / 8.0),
+       (37.0 / 13.0),
        (14.0 / 4.0),
+       (14.0 / 4.0),
+       (24.0 / 9.0),
        (11.0 / 3.0),
        (14.0 / 5.0),
        std::numeric_limits<double>::signaling_NaN(),
@@ -679,9 +730,9 @@ TEMPLATE_LIST_TEST_CASE(
     AggUnderTestMinMax) {
   typedef decltype(TestType::first) T;
   typedef decltype(TestType::second) AGG;
-  std::vector<double> res = {1, 2, 2, 1, 0, 2, 1, 1, 2, 2};
+  std::vector<double> res = {1, 1, 1, 2, 2, 1, 2, 1, 0, 2, 1, 1, 2, 2};
   if (std::is_same<AGG, MaxAggregator<T>>::value) {
-    res = {5, 5, 5, 5, 0, 4, 5, 5, 4, 4};
+    res = {5, 5, 5, 5, 5, 5, 5, 5, 0, 4, 5, 5, 4, 4};
   }
   basic_aggregation_test<T, T, AGG>(res);
 }
@@ -689,7 +740,7 @@ TEMPLATE_LIST_TEST_CASE(
 TEST_CASE(
     "Count aggregator: Basic aggregation",
     "[count-aggregator][basic-aggregation]") {
-  std::vector<double> res = {8, 8, 3, 5, 2, 5, 10, 13, 10, 13};
+  std::vector<double> res = {8, 18, 28, 8, 18, 28, 3, 5, 2, 5, 10, 13, 10, 13};
   basic_aggregation_test<uint8_t, uint64_t, CountAggregator>(res);
 }
 
@@ -698,13 +749,14 @@ TEMPLATE_LIST_TEST_CASE(
     "[null-count-aggregator][basic-aggregation]",
     FixedTypesUnderTest) {
   typedef TestType T;
-  std::vector<double> res = {0, 4, 0, 0, 2, 3, 0, 0, 3, 6};
+  std::vector<double> res = {0, 0, 0, 4, 14, 19, 0, 0, 2, 3, 0, 0, 3, 6};
   basic_aggregation_test<T, uint64_t, NullCountAggregator>(res);
 }
 
 TEST_CASE(
     "Sum aggregator: signed overflow", "[sum-aggregator][signed-overflow]") {
-  SumAggregator<int64_t> aggregator(FieldInfo("a1", false, false, 1));
+  SumAggregator<int64_t> aggregator(
+      FieldInfo("a1", false, false, 1, tdb_type<int64_t>));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -788,7 +840,8 @@ TEST_CASE(
 TEST_CASE(
     "Sum aggregator: unsigned overflow",
     "[sum-aggregator][unsigned-overflow]") {
-  SumAggregator<uint64_t> aggregator(FieldInfo("a1", false, false, 1));
+  SumAggregator<uint64_t> aggregator(
+      FieldInfo("a1", false, false, 1, tdb_type<int64_t>));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -826,7 +879,7 @@ TEMPLATE_LIST_TEST_CASE(
     "Sum aggregator: double overflow",
     "[sum-aggregator][double-overflow]",
     DoubleAggUnderTest) {
-  TestType aggregator(FieldInfo("a1", false, false, 1));
+  TestType aggregator(FieldInfo("a1", false, false, 1, tdb_type<double>));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -902,11 +955,12 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
   // Optionally make the aggregator for non nullable values.
   optional<AGGREGATOR> aggregator;
   if constexpr (!std::is_same<AGGREGATOR, NullCountAggregator>::value) {
-    aggregator.emplace(FieldInfo("a1", true, false, constants::var_num));
+    aggregator.emplace(FieldInfo(
+        "a1", true, false, constants::var_num, tdb_type<std::string>));
   }
 
   AGGREGATOR aggregator_nullable(
-      FieldInfo("a2", true, true, constants::var_num));
+      FieldInfo("a2", true, true, constants::var_num, tdb_type<std::string>));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -939,6 +993,24 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
   std::vector<uint8_t> validity_data = {0, 0, 1, 0, 1, 0, 1, 0, 1, 0};
 
   SECTION("No bitmap") {
+    ByteVecValue unused(8);
+    auto tile_metadata_all_null = TileMetadata(
+        10,
+        10,
+        &var_data[offsets[0]],
+        offsets[1] - offsets[0],
+        &var_data[offsets[5]],
+        offsets[6] - offsets[5],
+        unused.data());
+    auto tile_metadata = TileMetadata(
+        10,
+        5,
+        &var_data[offsets[0]],
+        offsets[1] - offsets[0],
+        &var_data[offsets[5]],
+        offsets[6] - offsets[5],
+        unused.data());
+
     if (aggregator.has_value()) {
       // Regular attribute.
       AggregateBuffer input_data{
@@ -946,6 +1018,14 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
       aggregator->aggregate_data(input_data);
       aggregator->copy_to_user_buffer("Agg", buffers);
       check_value_string(fixed_data, value_size, value, expected_results[0]);
+
+      aggregator->aggregate_tile_with_frag_md(tile_metadata_all_null);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value_string(fixed_data, value_size, value, expected_results[1]);
+
+      aggregator->aggregate_tile_with_frag_md(tile_metadata);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value_string(fixed_data, value_size, value, expected_results[2]);
     }
 
     // Nullable attribute.
@@ -960,8 +1040,16 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data2);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value_string(fixed_data2, value_size2, value2, expected_results[1]);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[3]);
     check_validity<AGGREGATOR>(validity, 1);
+
+    aggregator_nullable.aggregate_tile_with_frag_md(tile_metadata_all_null);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[4]);
+
+    aggregator_nullable.aggregate_tile_with_frag_md(tile_metadata);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[5]);
   }
 
   SECTION("Regular bitmap") {
@@ -979,7 +1067,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
           1};
       aggregator->aggregate_data(input_data);
       aggregator->copy_to_user_buffer("Agg", buffers);
-      check_value_string(fixed_data, value_size, value, expected_results[2]);
+      check_value_string(fixed_data, value_size, value, expected_results[6]);
 
       AggregateBuffer input_data2{
           0,
@@ -992,7 +1080,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
           1};
       aggregator->aggregate_data(input_data2);
       aggregator->copy_to_user_buffer("Agg", buffers);
-      check_value_string(fixed_data, value_size, value, expected_results[3]);
+      check_value_string(fixed_data, value_size, value, expected_results[7]);
     }
 
     // Nullable attribute.
@@ -1007,7 +1095,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value_string(fixed_data2, value_size2, value2, expected_results[4]);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[8]);
     check_validity<AGGREGATOR>(validity, 0);
 
     AggregateBuffer input_data4{
@@ -1021,7 +1109,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value_string(fixed_data2, value_size2, value2, expected_results[5]);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[9]);
     check_validity<AGGREGATOR>(validity, 1);
   }
 
@@ -1040,7 +1128,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
           1};
       aggregator->aggregate_data(input_data);
       aggregator->copy_to_user_buffer("Agg", buffers);
-      check_value_string(fixed_data, value_size, value, expected_results[6]);
+      check_value_string(fixed_data, value_size, value, expected_results[10]);
 
       AggregateBuffer input_data2{
           0,
@@ -1053,7 +1141,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
           1};
       aggregator->aggregate_data(input_data2);
       aggregator->copy_to_user_buffer("Agg", buffers);
-      check_value_string(fixed_data, value_size, value, expected_results[7]);
+      check_value_string(fixed_data, value_size, value, expected_results[11]);
     }
 
     // Nullable attribute.
@@ -1068,7 +1156,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value_string(fixed_data2, value_size2, value2, expected_results[8]);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[12]);
     check_validity<AGGREGATOR>(validity, 1);
 
     AggregateBuffer input_data4{
@@ -1082,12 +1170,12 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
         1};
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
-    check_value_string(fixed_data2, value_size2, value2, expected_results[9]);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[13]);
     check_validity<AGGREGATOR>(validity, 1);
   }
 }
 
-typedef tuple<MinAggregator<std::string>, MinAggregator<std::string>>
+typedef tuple<MinAggregator<std::string>, MaxAggregator<std::string>>
     MinMaxAggUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Min max aggregator: Basic string aggregation",
@@ -1095,9 +1183,36 @@ TEMPLATE_LIST_TEST_CASE(
     MinMaxAggUnderTest) {
   typedef TestType AGGREGATOR;
   std::vector<std::string> res = {
-      "1", "2222", "2222", "11", "", "2222", "1", "1", "2222", "2222"};
+      "1",
+      "1",
+      "1",
+      "2222",
+      "2222",
+      "11",
+      "2222",
+      "11",
+      "",
+      "2222",
+      "1",
+      "1",
+      "2222",
+      "2222"};
   if (std::is_same<AGGREGATOR, MaxAggregator<std::string>>::value) {
-    res = {"5555", "555", "5555", "5555", "", "4", "5555", "5555", "4", "4"};
+    res = {
+        "5555",
+        "5555",
+        "5555",
+        "555",
+        "555",
+        "5555",
+        "5555",
+        "5555",
+        "",
+        "4",
+        "5555",
+        "5555",
+        "4",
+        "4"};
   }
 
   basic_string_aggregation_test<AGGREGATOR, std::string>(res);
@@ -1106,6 +1221,141 @@ TEMPLATE_LIST_TEST_CASE(
 TEST_CASE(
     "NullCount aggregator: Basic string aggregation",
     "[null-count-aggregator][basic-string-aggregation]") {
-  std::vector<uint64_t> res = {0, 4, 0, 0, 2, 3, 0, 0, 3, 6};
+  std::vector<uint64_t> res = {0, 0, 0, 4, 14, 19, 0, 0, 2, 3, 0, 0, 3, 6};
   basic_string_aggregation_test<NullCountAggregator, uint64_t>(res);
+}
+
+TEST_CASE(
+    "NullCount aggregator: output datatype",
+    "[null-count-aggregator][output-datatype]") {
+  NullCountAggregator aggregator{
+      FieldInfo{"a1", false, true, 1, Datatype::UINT8}};
+  CHECK(aggregator.output_datatype() == Datatype::UINT64);
+}
+
+TEST_CASE(
+    "Count aggregator: output datatype",
+    "[count-aggregator][output-datatype]") {
+  CountAggregator aggregator;
+  CHECK(aggregator.output_datatype() == Datatype::UINT64);
+}
+
+TEST_CASE(
+    "Sum aggregator: Expected output type",
+    "[sum-aggregator][output_datatype]") {
+  CHECK(
+      SumAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      SumAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+}
+
+TEST_CASE(
+    "Mean aggregator: Expected output type",
+    "[mean-aggregator][output_datatype]") {
+  CHECK(
+      MeanAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<uint8_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<double>{
+          FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+}
+
+TEST_CASE(
+    "Min max aggregator: Expected output type",
+    "[min-max-aggregator][output_datatype]") {
+  CHECK(
+      MinAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT8)}
+          .output_datatype() == Datatype::INT8);
+  CHECK(
+      MinAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT8)}
+          .output_datatype() == Datatype::UINT8);
+  CHECK(
+      MinAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT16)}
+          .output_datatype() == Datatype::INT16);
+  CHECK(
+      MinAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT16)}
+          .output_datatype() == Datatype::UINT16);
+  CHECK(
+      MinAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT32)}
+          .output_datatype() == Datatype::INT32);
+  CHECK(
+      MinAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT32)}
+          .output_datatype() == Datatype::UINT32);
+  CHECK(
+      MinAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MinAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MinAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT32)}
+          .output_datatype() == Datatype::FLOAT32);
+  CHECK(
+      MinAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MinAggregator<std::string>{
+          FieldInfo("a1", false, false, 1, Datatype::STRING_ASCII)}
+          .output_datatype() == Datatype::STRING_ASCII);
 }

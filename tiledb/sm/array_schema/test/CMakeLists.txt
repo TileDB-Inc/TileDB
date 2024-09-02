@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2021-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,9 +33,13 @@ commence(unit_test array_schema)
     this_target_sources(
         main.cc
         unit_array_schema.cc
+        unit_attribute.cc
         unit_dimension.cc
         unit_dimension_label.cc
+        unit_domain.cc
         unit_domain_data.cc
         unit_tile_domain.cc
+        unit_current_domain.cc
     )
+    this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)

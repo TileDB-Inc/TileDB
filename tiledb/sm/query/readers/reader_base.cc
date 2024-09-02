@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/reader_base.h"
+#include "tiledb/common/indexed_list.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -55,8 +56,7 @@
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/apply_with_type.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 using dimension_size_type = uint32_t;
 
@@ -72,108 +72,32 @@ class ReaderBaseStatusException : public StatusException {
 /* ****************************** */
 
 ReaderBase::ReaderBase(
-    stats::Stats* stats,
-    shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates)
-    : StrategyBase(
-          stats,
-          logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout)
-    , condition_(condition)
+    stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
+    : StrategyBase(stats, logger, params)
+    , memory_tracker_(params.query_memory_tracker())
+    , condition_(params.condition())
     , user_requested_timestamps_(false)
     , use_timestamps_(false)
     , initial_data_loaded_(false)
-    , max_batch_size_(config.get<uint64_t>("vfs.max_batch_size").value())
-    , min_batch_gap_(config.get<uint64_t>("vfs.min_batch_gap").value())
-    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value())
-    , aggregate_buffers_(aggregate_buffers) {
-  if (array != nullptr)
-    fragment_metadata_ = array->fragment_metadata();
+    , max_batch_size_(config_.get<uint64_t>("vfs.max_batch_size").value())
+    , min_batch_gap_(config_.get<uint64_t>("vfs.min_batch_gap").value())
+    , min_batch_size_(config_.get<uint64_t>("vfs.min_batch_size").value())
+    , aggregate_buffers_(params.aggregate_buffers()) {
+  if (params.array() != nullptr)
+    fragment_metadata_ = params.array()->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
 
-  if (layout_ == Layout::GLOBAL_ORDER && subarray.range_num() > 1) {
+  if (layout_ == Layout::GLOBAL_ORDER && subarray_.range_num() > 1) {
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range reads are not supported on a "
         "global order query.");
   }
 
   // Validate the aggregates and store the requested aggregates by field name.
-  for (auto& aggregate : default_channel_aggregates) {
+  for (auto& aggregate : params.default_channel_aggregates()) {
     aggregate.second->validate_output_buffer(
         aggregate.first, aggregate_buffers_);
     aggregates_[aggregate.second->field_name()].emplace_back(aggregate.second);
-  }
-}
-
-/* ********************************* */
-/*          STATIC FUNCTIONS         */
-/* ********************************* */
-
-template <class T>
-void ReaderBase::compute_result_space_tiles(
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<T>& array_tile_domain,
-    const std::vector<TileDomain<T>>& frag_tile_domains,
-    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) {
-  auto fragment_num = (unsigned)frag_tile_domains.size();
-  auto dim_num = array_tile_domain.dim_num();
-  std::vector<T> start_coords;
-  const T* coords;
-  start_coords.resize(dim_num);
-
-  // For all tile coordinates
-  for (const auto& tc : tile_coords) {
-    coords = (T*)(&(tc[0]));
-    start_coords = array_tile_domain.start_coords(coords);
-
-    // Create result space tile and insert into the map
-    auto r = result_space_tiles.emplace(coords, ResultSpaceTile<T>());
-    auto& result_space_tile = r.first->second;
-    result_space_tile.set_start_coords(start_coords);
-
-    // Add fragment info to the result space tile
-    for (unsigned f = 0; f < fragment_num; ++f) {
-      // Check if the fragment overlaps with the space tile
-      if (!frag_tile_domains[f].in_tile_domain(coords))
-        continue;
-
-      // Check if any previous fragment covers this fragment
-      // for the tile identified by `coords`
-      bool covered = false;
-      for (unsigned j = 0; j < f; ++j) {
-        if (frag_tile_domains[j].covers(coords, frag_tile_domains[f])) {
-          covered = true;
-          break;
-        }
-      }
-
-      // Exclude this fragment from the space tile
-      if (covered)
-        continue;
-
-      // Include this fragment in the space tile
-      auto frag_domain = frag_tile_domains[f].domain_slice();
-      auto frag_idx = frag_tile_domains[f].id();
-      result_space_tile.append_frag_domain(frag_idx, frag_domain);
-      auto tile_idx = frag_tile_domains[f].tile_pos(coords);
-      ResultTile result_tile(
-          frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
-      result_space_tile.set_result_tile(frag_idx, result_tile);
-    }
   }
 }
 
@@ -441,14 +365,14 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
                          !dups || timestamps_needed);
 }
 
-Status ReaderBase::load_tile_offsets(
+void ReaderBase::load_tile_offsets(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
-  const auto status = parallel_for(
-      storage_manager_->compute_tp(),
+  throw_if_not_ok(parallel_for(
+      &resources_.compute_tp(),
       0,
       relevant_fragments.size(),
       [&](const uint64_t i) {
@@ -466,24 +390,20 @@ Status ReaderBase::load_tile_offsets(
           filtered_names.emplace_back(name);
         }
 
-        RETURN_NOT_OK(fragment->load_tile_offsets(
-            *encryption_key, std::move(filtered_names)));
+        fragment->loaded_metadata()->load_tile_offsets(
+            *encryption_key, filtered_names);
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-Status ReaderBase::load_tile_var_sizes(
+void ReaderBase::load_tile_var_sizes(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
 
-  const auto status = parallel_for(
-      storage_manager_->compute_tp(),
+  throw_if_not_ok(parallel_for(
+      &resources_.compute_tp(),
       0,
       relevant_fragments.size(),
       [&](const uint64_t i) {
@@ -503,44 +423,80 @@ Status ReaderBase::load_tile_var_sizes(
             continue;
           }
 
-          throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
+          fragment->loaded_metadata()->load_tile_var_sizes(
+              *encryption_key, name);
         }
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-Status ReaderBase::load_processed_conditions() {
+void ReaderBase::load_tile_metadata(
+    const RelevantFragments& relevant_fragments,
+    const std::vector<std::string>& names) {
+  auto timer_se = stats_->start_timer("load_tile_metadata");
+  const auto encryption_key = array_->encryption_key();
+
+  throw_if_not_ok(parallel_for(
+      &resources_.compute_tp(),
+      0,
+      relevant_fragments.size(),
+      [&](const uint64_t i) {
+        auto frag_idx = relevant_fragments[i];
+        auto& fragment = fragment_metadata_[frag_idx];
+
+        // Generate the list of name with aggregates.
+        const auto& schema = fragment->array_schema();
+        std::vector<std::string> to_load;
+        for (auto& n : names) {
+          // Not a member of array schema, this field was added in array
+          // schema evolution, ignore for this fragment's tile metadata.
+          if (!schema->is_field(n)) {
+            continue;
+          }
+
+          if (aggregates_.count(n) != 0) {
+            to_load.emplace_back(n);
+          }
+        }
+
+        fragment->loaded_metadata()->load_tile_max_values(
+            *encryption_key, to_load);
+        fragment->loaded_metadata()->load_tile_min_values(
+            *encryption_key, to_load);
+        fragment->loaded_metadata()->load_tile_sum_values(
+            *encryption_key, to_load);
+        fragment->loaded_metadata()->load_tile_null_count_values(
+            *encryption_key, to_load);
+
+        return Status::Ok();
+      }));
+}
+
+void ReaderBase::load_processed_conditions() {
   auto timer_se = stats_->start_timer("load_processed_conditions");
   const auto encryption_key = array_->encryption_key();
 
   // Load all fragments in parallel.
-  const auto status = parallel_for(
-      storage_manager_->compute_tp(),
+  throw_if_not_ok(parallel_for(
+      &resources_.compute_tp(),
       0,
       fragment_metadata_.size(),
       [&](const uint64_t i) {
         auto& fragment = fragment_metadata_[i];
 
         if (fragment->has_delete_meta()) {
-          RETURN_NOT_OK(fragment->load_processed_conditions(*encryption_key));
+          fragment->loaded_metadata()->load_processed_conditions(
+              *encryption_key);
         }
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
 Status ReaderBase::read_and_unfilter_attribute_tiles(
-    const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<NameToLoad>& names,
+    const std::vector<ResultTile*>& result_tiles) {
   // The filtered data here contains the memory allocations for all of the
   // filtered data that is read by `read_attribute_tiles`. To prevent
   // modifications to the filter pipeline at the moment, the `result_tiles`
@@ -558,7 +514,8 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
   // been used and the tiles are unfiltered so the data can be deleted.
   auto filtered_data{read_attribute_tiles(names, result_tiles)};
   for (auto& name : names) {
-    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+    RETURN_NOT_OK(
+        unfilter_tiles(name.name(), name.validity_only(), result_tiles));
   }
 
   return Status::Ok();
@@ -566,36 +523,36 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
 
 Status ReaderBase::read_and_unfilter_coordinate_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles) {
   // See the comment in 'read_and_unfilter_attribute_tiles' to get more
   // information about the lifetime of this object.
   auto filtered_data{read_coordinate_tiles(names, result_tiles)};
   for (auto& name : names) {
-    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+    RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
   }
 
   return Status::Ok();
 }
 
-std::vector<FilteredData> ReaderBase::read_attribute_tiles(
-    const std::vector<std::string>& names,
+std::list<FilteredData> ReaderBase::read_attribute_tiles(
+    const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
-std::vector<FilteredData> ReaderBase::read_coordinate_tiles(
+std::list<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
-  return read_tiles(names, result_tiles);
+  return read_tiles(NameToLoad::from_string_vec(names), result_tiles);
 }
 
-std::vector<FilteredData> ReaderBase::read_tiles(
-    const std::vector<std::string>& names,
+std::list<FilteredData> ReaderBase::read_tiles(
+    const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
-  std::vector<FilteredData> filtered_data;
+  std::list<FilteredData> filtered_data;
 
   // Shortcut for empty tile vec.
   if (result_tiles.empty() || names.empty()) {
@@ -604,16 +561,19 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 
   uint64_t num_tiles_read{0};
   std::vector<ThreadPool::Task> read_tasks;
-  filtered_data.reserve(names.size());
 
   // Run all attributes independently.
-  for (auto name : names) {
+  for (auto n : names) {
+    auto& name = n.name();
+    auto val_only = n.validity_only();
+
     // Create the filtered data blocks. This will also kick off the read for the
     // data blocks right after the memory is allocated so that we can optimize
     // read and memory allocations.
     const bool var_sized{array_schema_.var_size(name)};
     const bool nullable{array_schema_.is_nullable(name)};
     filtered_data.emplace_back(
+        resources_,
         *this,
         min_batch_size_,
         max_batch_size_,
@@ -623,8 +583,9 @@ std::vector<FilteredData> ReaderBase::read_tiles(
         name,
         var_sized,
         nullable,
-        storage_manager_,
-        read_tasks);
+        val_only,
+        read_tasks,
+        memory_tracker_);
 
     // Go through each tiles and create the attribute tiles.
     for (auto tile : result_tiles) {
@@ -640,7 +601,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 
       // Construct a TileSizes class.
       ResultTile::TileSizes tile_sizes{
-          fragment, name, var_sized, nullable, tile_idx};
+          fragment, name, var_sized, nullable, val_only, tile_idx};
 
       // Construct a tile data class.
       // See the explanation in 'read_and_unfilter_attribute_tiles' for more
@@ -652,8 +613,12 @@ std::vector<FilteredData> ReaderBase::read_tiles(
       // 'unfilter_tiles' so that the filter pipeline can stop using the
       // 'ResultTile' object to get access to the filtered data.
       ResultTile::TileData tile_data{
-          filtered_data.back().fixed_filtered_data(fragment.get(), tile),
-          filtered_data.back().var_filtered_data(fragment.get(), tile),
+          val_only ?
+              nullptr :
+              filtered_data.back().fixed_filtered_data(fragment.get(), tile),
+          val_only ?
+              nullptr :
+              filtered_data.back().var_filtered_data(fragment.get(), tile),
           filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
 
       // Initialize the tile(s)
@@ -678,7 +643,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
   stats_->add_counter("num_tiles_read", num_tiles_read);
 
   // Wait for the read tasks to finish.
-  auto statuses{storage_manager_->io_tp()->wait_all_status(read_tasks)};
+  auto statuses{resources_.io_tp().wait_all_status(read_tasks)};
   for (const auto& st : statuses) {
     throw_if_not_ok(st);
   }
@@ -689,6 +654,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 tuple<Status, optional<uint64_t>, optional<uint64_t>, optional<uint64_t>>
 ReaderBase::load_tile_chunk_data(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable,
@@ -710,25 +676,29 @@ ReaderBase::load_tile_chunk_data(
   }
 
   const auto t = &tile_tuple->fixed_tile();
-  const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+  const auto t_var =
+      var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
   const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
   const FilterPipeline& filters = array_schema_.filters(name);
-  if (!var_size ||
-      !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
+  if (!validity_only) {
+    if (!var_size || !filters.skip_offsets_filtering(
+                         t_var->type(), array_schema_.version())) {
+      if (var_size) {
+        unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
+      } else {
+        unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+      }
+    }
+
     if (var_size) {
-      unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
-    } else {
-      unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+      unfiltered_tile_var_size = t_var->load_chunk_data(tile_chunk_var_data);
     }
   }
 
-  if (var_size) {
-    unfiltered_tile_var_size = t_var->load_chunk_data(tile_chunk_var_data);
-  }
   if (nullable) {
     unfiltered_tile_validity_size =
         t_validity->load_chunk_data(tile_chunk_validity_data);
@@ -747,7 +717,7 @@ Status ReaderBase::zip_tile_coordinates(
         array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
-      RETURN_NOT_OK(tile->zip_coordinates());
+      tile->zip_coordinates();
     }
   }
   return Status::Ok();
@@ -755,6 +725,7 @@ Status ReaderBase::zip_tile_coordinates(
 
 Status ReaderBase::post_process_unfiltered_tile(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable) const {
@@ -777,7 +748,7 @@ Status ReaderBase::post_process_unfiltered_tile(
 
   throw_if_not_ok(zip_tile_coordinates(name, &t));
 
-  if (var_size) {
+  if (var_size && !validity_only) {
     auto& t_var = tile_tuple->var_tile();
     t_var.clear_filtered_buffer();
     throw_if_not_ok(zip_tile_coordinates(name, &t_var));
@@ -795,7 +766,8 @@ Status ReaderBase::post_process_unfiltered_tile(
 
 Status ReaderBase::unfilter_tiles(
     const std::string& name,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const bool validity_only,
+    const std::vector<ResultTile*>& result_tiles) {
   const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
                                                          "unfilter_coord_tiles";
 
@@ -817,7 +789,7 @@ Status ReaderBase::unfilter_tiles(
 
   // Compute parallelization parameters.
   uint64_t num_range_threads = 1;
-  const auto num_threads = storage_manager_->compute_tp()->concurrency_level();
+  const auto num_threads = resources_.compute_tp().concurrency_level();
   if (chunking && num_tiles < num_threads) {
     // Ceil the division between thread_num and num_tiles.
     num_range_threads = 1 + ((num_threads - 1) / num_tiles);
@@ -834,17 +806,18 @@ Status ReaderBase::unfilter_tiles(
 
   // Pre-compute chunk offsets.
   auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
+      &resources_.compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
         auto&& [st, tile_size, tile_var_size, tile_validity_size] =
             load_tile_chunk_data(
                 name,
+                validity_only,
                 result_tiles[i],
                 var_size,
                 nullable,
                 tiles_chunk_data[i],
                 tiles_chunk_var_data[i],
                 tiles_chunk_validity_data[i]);
-        RETURN_NOT_OK(st);
+        throw_if_not_ok(st);
         unfiltered_tile_size[i] = tile_size.value();
         unfiltered_tile_var_size[i] = tile_var_size.value();
         unfiltered_tile_validity_size[i] = tile_validity_size.value();
@@ -857,14 +830,15 @@ Status ReaderBase::unfilter_tiles(
 
   // Unfilter all tiles/chunks in parallel using the precomputed offsets.
   status = parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       num_tiles,
       0,
       num_range_threads,
       [&](uint64_t i, uint64_t range_thread_idx) {
-        return unfilter_tile(
+        throw_if_not_ok(unfilter_tile(
             name,
+            validity_only,
             result_tiles[i],
             var_size,
             nullable,
@@ -872,14 +846,15 @@ Status ReaderBase::unfilter_tiles(
             num_range_threads,
             tiles_chunk_data[i],
             tiles_chunk_var_data[i],
-            tiles_chunk_validity_data[i]);
+            tiles_chunk_validity_data[i]));
+        return Status::Ok();
       });
   RETURN_CANCEL_OR_ERROR(status);
 
   // Perform required post-processing of unfiltered tiles
   for (size_t i = 0; i < num_tiles; i++) {
     RETURN_NOT_OK(post_process_unfiltered_tile(
-        name, result_tiles[i], var_size, nullable));
+        name, validity_only, result_tiles[i], var_size, nullable));
   }
 
   return Status::Ok();
@@ -887,6 +862,7 @@ Status ReaderBase::unfilter_tiles(
 
 Status ReaderBase::unfilter_tile(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable,
@@ -910,7 +886,7 @@ Status ReaderBase::unfilter_tile(
   }
 
   auto t = &tile_tuple->fixed_tile();
-  auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+  auto t_var = var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
   auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
   FilterPipeline fixed_filters;
@@ -918,18 +894,20 @@ Status ReaderBase::unfilter_tile(
   FilterPipeline validity_filters;
 
   // Create our filter pipelines
-  if (!var_size) {
-    fixed_filters = array_schema_.filters(name);
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &fixed_filters, array_->get_encryption_key()));
-  } else {
-    fixed_filters = array_schema_.cell_var_offsets_filters();
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &fixed_filters, array_->get_encryption_key()));
+  if (!validity_only) {
+    if (!var_size) {
+      fixed_filters = array_schema_.filters(name);
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &fixed_filters, array_->get_encryption_key()));
+    } else {
+      fixed_filters = array_schema_.cell_var_offsets_filters();
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &fixed_filters, array_->get_encryption_key()));
 
-    var_filters = array_schema_.filters(name);
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &var_filters, array_->get_encryption_key()));
+      var_filters = array_schema_.filters(name);
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &var_filters, array_->get_encryption_key()));
+    }
   }
 
   if (nullable) {
@@ -939,48 +917,52 @@ Status ReaderBase::unfilter_tile(
   }
 
   bool skip_offsets_filtering = false;
-  if (var_size) {
+  if (var_size && !validity_only) {
     skip_offsets_filtering = var_filters.skip_offsets_filtering(
         t_var->type(), array_schema_.version());
   }
 
-  auto concurrency_level = storage_manager_->compute_tp()->concurrency_level();
+  auto concurrency_level = resources_.compute_tp().concurrency_level();
 
-  // Unfiltered fixed data
-  if (!skip_offsets_filtering &&
-      thread_idx <= tile_chunk_fixed_data.filtered_chunks_.size() - 1) {
-    // Compute chunk boundaries
-    auto&& [t_min, t_max] = compute_chunk_min_max(
-        tile_chunk_fixed_data.chunk_offsets_.size(), num_threads, thread_idx);
+  if (!validity_only) {
+    // Unfiltered fixed data
+    if (!skip_offsets_filtering &&
+        thread_idx <= tile_chunk_fixed_data.filtered_chunks_.size() - 1) {
+      // Compute chunk boundaries
+      auto&& [t_min, t_max] = compute_chunk_min_max(
+          tile_chunk_fixed_data.chunk_offsets_.size(), num_threads, thread_idx);
 
-    // Reverse the tile filters.
-    RETURN_NOT_OK(fixed_filters.run_reverse(
-        stats_,
-        t,
-        nullptr,
-        tile_chunk_fixed_data,
-        t_min,
-        t_max,
-        concurrency_level,
-        storage_manager_->config()));
-  }
+      // Reverse the tile filters.
+      stats_->add_counter("tiles_unfiltered", 1);
+      RETURN_NOT_OK(fixed_filters.run_reverse(
+          stats_,
+          t,
+          nullptr,
+          tile_chunk_fixed_data,
+          t_min,
+          t_max,
+          concurrency_level,
+          resources_.config()));
+    }
 
-  // Prevent processing past the end of chunks in case there are more
-  // threads than chunks.
-  if (var_size &&
-      thread_idx <= tile_chunk_var_data.filtered_chunks_.size() - 1) {
-    auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
-        tile_chunk_var_data.chunk_offsets_.size(), num_threads, thread_idx);
-    // Reverse the filters of tile var data
-    RETURN_NOT_OK(var_filters.run_reverse(
-        stats_,
-        t_var,
-        skip_offsets_filtering ? t : nullptr,
-        tile_chunk_var_data,
-        tvar_min,
-        tvar_max,
-        concurrency_level,
-        storage_manager_->config()));
+    // Prevent processing past the end of chunks in case there are more
+    // threads than chunks.
+    if (var_size &&
+        thread_idx <= tile_chunk_var_data.filtered_chunks_.size() - 1) {
+      auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
+          tile_chunk_var_data.chunk_offsets_.size(), num_threads, thread_idx);
+      // Reverse the filters of tile var data
+      stats_->add_counter("tiles_unfiltered", 1);
+      RETURN_NOT_OK(var_filters.run_reverse(
+          stats_,
+          t_var,
+          skip_offsets_filtering ? t : nullptr,
+          tile_chunk_var_data,
+          tvar_min,
+          tvar_max,
+          concurrency_level,
+          resources_.config()));
+    }
   }
 
   // Prevent processing past the end of chunks in case there are more
@@ -994,6 +976,7 @@ Status ReaderBase::unfilter_tile(
         thread_idx);
 
     // Reverse the tile validity filters.
+    stats_->add_counter("tiles_unfiltered", 1);
     RETURN_NOT_OK(validity_filters.run_reverse(
         stats_,
         t_validity,
@@ -1002,7 +985,7 @@ Status ReaderBase::unfilter_tile(
         tval_min,
         tval_max,
         concurrency_level,
-        storage_manager_->config()));
+        resources_.config()));
   }
 
   return Status::Ok();
@@ -1014,7 +997,7 @@ uint64_t ReaderBase::offsets_bytesize() const {
 }
 
 uint64_t ReaderBase::get_attribute_tile_size(
-    const std::string& name, unsigned f, uint64_t t) {
+    const std::string& name, unsigned f, uint64_t t) const {
   uint64_t tile_size = 0;
   if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
     return tile_size;
@@ -1023,7 +1006,8 @@ uint64_t ReaderBase::get_attribute_tile_size(
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_.var_size(name)) {
-    tile_size += fragment_metadata_[f]->tile_var_size(name, t);
+    tile_size +=
+        fragment_metadata_[f]->loaded_metadata()->tile_var_size(name, t);
   }
 
   if (array_schema_.is_nullable(name)) {
@@ -1034,11 +1018,34 @@ uint64_t ReaderBase::get_attribute_tile_size(
   return tile_size;
 }
 
+uint64_t ReaderBase::get_attribute_persisted_tile_size(
+    const std::string& name, unsigned f, uint64_t t) const {
+  uint64_t tile_size = 0;
+  if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
+    return tile_size;
+  }
+
+  tile_size +=
+      fragment_metadata_[f]->loaded_metadata()->persisted_tile_size(name, t);
+
+  if (array_schema_.var_size(name)) {
+    tile_size +=
+        fragment_metadata_[f]->loaded_metadata()->persisted_tile_var_size(
+            name, t);
+  }
+
+  if (array_schema_.is_nullable(name)) {
+    tile_size +=
+        fragment_metadata_[f]->loaded_metadata()->persisted_tile_validity_size(
+            name, t);
+  }
+
+  return tile_size;
+}
+
 template <class T>
-void ReaderBase::compute_result_space_tiles(
-    const Subarray& subarray,
-    const Subarray& partitioner_subarray,
-    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const {
+std::pair<TileDomain<T>, std::vector<TileDomain<T>>>
+ReaderBase::compute_tile_domains(const Subarray& partitioner_subarray) const {
   // For easy reference
   auto domain = array_schema_.domain().domain();
   auto tile_extents = array_schema_.domain().tile_extents();
@@ -1059,18 +1066,9 @@ void ReaderBase::compute_result_space_tiles(
     }
   }
 
-  // Get tile coords and array domain
-  const auto& tile_coords = subarray.tile_coords();
-  TileDomain<T> array_tile_domain(
-      UINT32_MAX, domain, domain, tile_extents, tile_order);
-
-  // Compute result space tiles
-  compute_result_space_tiles<T>(
-      fragment_metadata_,
-      tile_coords,
-      array_tile_domain,
-      frag_tile_domains,
-      result_space_tiles);
+  return {
+      TileDomain<T>(UINT32_MAX, domain, domain, tile_extents, tile_order),
+      frag_tile_domains};
 }
 
 bool ReaderBase::has_coords() const {
@@ -1094,10 +1092,7 @@ ReaderBase::cache_dimension_label_data() {
   std::vector<const void*> non_empty_domains(fragment_metadata_.size());
   std::vector<uint64_t> frag_first_array_tile_idx(fragment_metadata_.size());
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_metadata_.size(),
-      [&](unsigned f) {
+      &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](unsigned f) {
         non_empty_domains[f] =
             fragment_metadata_[f]->non_empty_domain()[0].data();
         auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
@@ -1141,12 +1136,10 @@ void ReaderBase::validate_attribute_order(
   auto index_name = index_dim->name();
 
   // See if some values will already be processed by previous fragments.
-  AttributeOrderValidator validator(attribute_name, fragment_metadata_.size());
+  AttributeOrderValidator validator(
+      attribute_name, fragment_metadata_.size(), query_memory_tracker_);
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_metadata_.size(),
-      [&](uint64_t f) {
+      &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](uint64_t f) {
         validator.find_fragments_to_check(
             array_min_idx, array_max_idx, f, non_empty_domains);
 
@@ -1154,10 +1147,7 @@ void ReaderBase::validate_attribute_order(
       }));
 
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_metadata_.size(),
-      [&](int64_t f) {
+      &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](int64_t f) {
         validator.validate_without_loading_tiles<IndexType, AttributeType>(
             index_dim,
             increasing_data,
@@ -1178,7 +1168,7 @@ void ReaderBase::validate_attribute_order(
 
     // Validate bounds not validated using tile data.
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
+        &resources_.compute_tp(),
         0,
         fragment_metadata_.size(),
         [&](unsigned f) {
@@ -1227,38 +1217,22 @@ void ReaderBase::validate_attribute_order(
 }
 
 // Explicit template instantiations
-template void ReaderBase::compute_result_space_tiles<int8_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const int8_t*, ResultSpaceTile<int8_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<uint8_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const uint8_t*, ResultSpaceTile<uint8_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<int16_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const int16_t*, ResultSpaceTile<int16_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<uint16_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const uint16_t*, ResultSpaceTile<uint16_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<int32_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const int32_t*, ResultSpaceTile<int32_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<uint32_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const uint32_t*, ResultSpaceTile<uint32_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<int64_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const int64_t*, ResultSpaceTile<int64_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<uint64_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const uint64_t*, ResultSpaceTile<uint64_t>>&) const;
+template std::pair<TileDomain<int8_t>, std::vector<TileDomain<int8_t>>>
+ReaderBase::compute_tile_domains<int8_t>(const Subarray&) const;
+template std::pair<TileDomain<uint8_t>, std::vector<TileDomain<uint8_t>>>
+ReaderBase::compute_tile_domains<uint8_t>(const Subarray&) const;
+template std::pair<TileDomain<int16_t>, std::vector<TileDomain<int16_t>>>
+ReaderBase::compute_tile_domains<int16_t>(const Subarray&) const;
+template std::pair<TileDomain<uint16_t>, std::vector<TileDomain<uint16_t>>>
+ReaderBase::compute_tile_domains<uint16_t>(const Subarray&) const;
+template std::pair<TileDomain<int32_t>, std::vector<TileDomain<int32_t>>>
+ReaderBase::compute_tile_domains<int32_t>(const Subarray&) const;
+template std::pair<TileDomain<uint32_t>, std::vector<TileDomain<uint32_t>>>
+ReaderBase::compute_tile_domains<uint32_t>(const Subarray&) const;
+template std::pair<TileDomain<int64_t>, std::vector<TileDomain<int64_t>>>
+ReaderBase::compute_tile_domains<int64_t>(const Subarray&) const;
+template std::pair<TileDomain<uint64_t>, std::vector<TileDomain<uint64_t>>>
+ReaderBase::compute_tile_domains<uint64_t>(const Subarray&) const;
 template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<int8_t>();
 template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
@@ -1332,5 +1306,11 @@ template void ReaderBase::validate_attribute_order<uint64_t>(
     std::vector<const void*>&,
     std::vector<uint64_t>&);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
+
+template <>
+IndexedList<tiledb::sm::ResultTile>::IndexedList(
+    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(memory_tracker->get_resource(sm::MemoryType::RESULT_TILE)) {
+}

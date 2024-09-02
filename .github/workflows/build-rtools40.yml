@@ -17,6 +17,28 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 1
+      - name: Get vcpkg commit to checkout
+        id: vcpkg_commit
+        shell: bash
+        run: |
+          echo "ref=$(grep -oP '(?<=set\(VCPKG_COMMIT_STRING )\w*' cmake/Options/TileDBToolchain.cmake | head -n 1)" >> "$GITHUB_OUTPUT"
+      # We clone vcpkg ourselves because having FetchContent do it inside
+      # the build directory causes compilation errors due to long paths.
+      - name: Checkout vcpkg repository
+        uses: actions/checkout@v3
+        with:
+          repository: microsoft/vcpkg
+          path: vcpkg
+          ref: ${{ steps.vcpkg_commit.outputs.ref }}
+          # Vcpkg requires fetching all commits.
+          fetch-depth: 0
+      # Configure required environment variables for vcpkg to use
+      # GitHub's Action Cache
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - name: Install rtools40 if needed
         uses: r-windows/install-rtools@master
       - name: Building TileDB with Rtools40
@@ -27,6 +49,8 @@ jobs:
         env:
           TILEDB_HOME: ${{ github.workspace }}
           MINGW_ARCH: ${{ matrix.msystem }}
+          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         shell: c:\rtools40\usr\bin\bash.exe --login {0}
       - name: "Upload binaries"
         uses: actions/upload-artifact@v3

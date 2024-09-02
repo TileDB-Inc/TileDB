@@ -39,6 +39,7 @@
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 
 using namespace tiledb::common;
 
@@ -101,6 +102,54 @@ Status array_consolidation_request_deserialize(
     Config** config,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
+
+/**
+ * Serialize a consolidation plan request via Cap'n Proto.
+ *
+ * @param fragment_size maximum fragment size for the cosnolidateion plan.
+ * @param config config object to serialize.
+ * @param serialization_type format to serialize into Cap'n Proto or JSON.
+ * @param request buffer to store serialized bytes in.
+ */
+void serialize_consolidation_plan_request(
+    uint64_t fragment_size,
+    const Config& config,
+    SerializationType serialization_type,
+    Buffer& request);
+
+/**
+ * Deserialize a consolidation plan request via Cap'n Proto.
+ *
+ * @param serialization_type format the data is serialized in: Cap'n Proto of
+ * JSON.
+ * @param response buffer to read serialized bytes from.
+ * @return the deserialized maximum fragment size
+ */
+uint64_t deserialize_consolidation_plan_request(
+    SerializationType serialization_type, const Buffer& request);
+
+/**
+ * Serialize a consolidation plan response via Cap'n Proto.
+ *
+ * @param consolidation_plan consolidation plan to serialize.
+ * @param serialization_type format to serialize into Cap'n Proto or JSON.
+ * @param response buffer to store serialized bytes in.
+ */
+void serialize_consolidation_plan_response(
+    const ConsolidationPlan& consolidation_plan,
+    SerializationType serialization_type,
+    Buffer& response);
+
+/**
+ * Deserialize a consolidation plan response via Cap'n Proto.
+ *
+ * @param serialization_type format the data is serialized in: Cap'n Proto of
+ * JSON.
+ * @param response buffer to read serialized bytes from.
+ * @return the deserialized consolidation plan info
+ */
+std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
+    SerializationType serialization_type, const Buffer& response);
 
 }  // namespace serialization
 }  // namespace sm

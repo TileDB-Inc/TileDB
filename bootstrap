@@ -34,22 +34,22 @@ Configuration:
     --help                          print this message
     --prefix=PREFIX                 install files in tree rooted at PREFIX
                                     ['"${default_prefix}"']
-    --enable-vcpkg                  use vcpkg for downloading and building dependencies
+    --vcpkg-base-triplet=TRIPLET    vcpkg base triplet to use when building with sanitizers
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
-    --force-build-all-deps          force building of all dependencies, even those
-                                    already installed at system-level
+    --linkage                       specify the linkage of tiledb. Defaults to shared.
+                                    [static|shared]
     --remove-deprecations           build TileDB without any deprecated APIs
     --disable-werror                disables use of -Werror during build
     --disable-cpp-api               disables building of the TileDB C++ API
     --disable-tests                 disables building the TileDB tests
     --disable-stats                 disables internal TileDB statistics
     --disable-avx2                  disables use of AVX2 instructions
-    --disable-webp                  disables building of webp library and linkage test
-    --disable-vcpkg                 disables use of vcpkg for downloading and building dependencies
-    --enable-static-tiledb          enables building TileDB as a static library
+    --disable-webp                  disables building of webp library
+    --enable-static-tiledb          enables building TileDB as a static library (deprecated, use --linkage=static)
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
+                                    Must manually specify a vcpkg base triplet.
     --enable-debug                  enable debug build
     --enable-assertions             enable assertions in compiled code
     --enable-release-symbols        enable create symbols for release build
@@ -63,10 +63,7 @@ Configuration:
     --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
-    --enable-_crc32                 enables building of crc32 library and linkage test
-    --enable-abseil                 enables building of abseil library and linkage test
     --enable-experimental-features  enables experimental TileDB features
-    --enable-rest-tests             enables REST tests
     --enable-aws-s3-config          enables AWS S3 configuration for tests
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
@@ -88,7 +85,7 @@ Example:
 
 # Parse arguments
 prefix_dirs="${default_prefix}"
-tiledb_vcpkg="ON"
+vcpkg_base_triplet=""
 dependency_dir="${default_dependency}"
 sanitizer=""
 build_type="Release"
@@ -100,10 +97,9 @@ tiledb_gcs="OFF"
 tiledb_werror="ON"
 tiledb_tests="ON"
 tiledb_cpp_api="ON"
-tiledb_force_all_deps="OFF"
 tiledb_remove_deprecations="OFF"
 tiledb_stats="ON"
-tiledb_static="OFF"
+build_shared_libs="OFF"
 tiledb_disable_avx2=""
 tiledb_assertions="OFF"
 tiledb_serialization="OFF"
@@ -111,21 +107,19 @@ tiledb_tools="OFF"
 tiledb_ccache="OFF"
 tiledb_arrow_tests="OFF"
 tiledb_experimental_features="OFF"
-tiledb_build_crc32="OFF"
 tiledb_build_webp="ON"
-tiledb_build_abseil="OFF"
-tiledb_tests_enable_rest="OFF"
 tiledb_tests_aws_s3_config="OFF"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
-    --enable-vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
-                    tiledb_vcpkg="ON";;
+    --vcpkg-base-triplet=*)   vcpkg_base_triplet=`arg "$1"`
+                                vcpkg_base_triplet="-DTILEDB_VCPKG_BASE_TRIPLET=${vcpkg_base_triplet}";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
-    --force-build-all-deps) tiledb_force_all_deps="ON";;
+    --linkage=*) linkage=`arg "$1"`;;
+    --force-build-all-deps) echo "Argument '--force-build-all-deps' has no effect and will be removed in a future version. Vcpkg builds all dependencies by default, please consult the guide in doc/dev/BUILD.md or vcpkg's documentation to see how to provide your own dependencies.";;
     --remove-deprecations) tiledb_remove_deprecations="ON";;
     --disable-werror) tiledb_werror="OFF";;
     --disable-tests) tiledb_tests="OFF";;
@@ -133,7 +127,6 @@ while test $# != 0; do
     --disable-stats) tiledb_stats="OFF";;
     --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
     --disable-webp) tiledb_build_webp="OFF";;
-    --disable-vcpkg) tiledb_vcpkg="OFF";;
     --enable-assertions) tiledb_assertions="ON";;
     --enable-debug) build_type="Debug";;
     --enable-release-symbols) build_type="RelWithDebInfo";;
@@ -144,16 +137,14 @@ while test $# != 0; do
     --enable-azure) tiledb_azure="ON";;
     --enable-gcs) tiledb_gcs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
-    --enable-static-tiledb) tiledb_static="ON";;
+    --enable-static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
+                            enable_static_tiledb="ON";;
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
     --enable-tools) tiledb_tools="ON";;
     --enable-ccache) tiledb_ccache="ON";;
     --enable-arrow-tests) tiledb_arrow_tests="ON";;
-    --enable-_crc32) tiledb_build_crc32="ON";;
-    --enable-abseil) tiledb_build_abseil="ON";;
     --enable-experimental-features) tiledb_experimental_features="ON";;
-    --enable-rest-tests) tiledb_tests_enable_rest="ON";;
     --enable-aws-s3-config) tiledb_tests_aws_s3_config="ON";;
     --enable=*) s=`arg "$1"`
                 enable_multiple+="${enable_multiple:+,}${s}";;
@@ -167,8 +158,6 @@ done
 IFS=',' read -ra enables <<< "$enable_multiple"
 for en in "${enables[@]}"; do
   case "$en" in
-    vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
-           tiledb_vcpkg="ON";;
     assertions) tiledb_assertions="ON";;
     debug) build_type="Debug";;
     release-symbols) build_type="RelWithDebInfo";;
@@ -181,23 +170,30 @@ for en in "${enables[@]}"; do
     tools) tiledb_tools="ON";;
     ccache) tiledb_ccache="ON";;
     arrow-tests) tiledb_arrow_tests="ON";;
-    _crc32) tiledb_build_crc32="ON";;
-    abseil) tiledb_build_abseil="ON";;
     hdfs) tiledb_hdfs="ON";;
-    static-tiledb) tiledb_static="ON";;
+    static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
+                    enable_static_tiledb="ON";;
     experimental-features) tiledb_experimental_features="ON";;
-    rest-tests) tiledb_tests_enable_rest="ON";;
     aws-s3-config) tiledb_tests_aws_s3_config="ON";;
     *) die "Unknown option: --enable-$en" ;;
   esac
 done
 
-if [ "${tiledb_build_abseil}" = "ON" ]; then
-    echo "Argument '--build-abseil' is obsolete and will be removed in TileDB 2.18"
-fi
-
 if [ "${source_dir}" = "${binary_dir}" ]; then
     die "cannot build the project in the source directory! Out-of-source build is enforced!"
+fi
+
+if [ "${linkage}" = "shared" ] || [ "${linkage}" = "" ]; then
+    build_shared_libs="ON"
+elif [ "${linkage}" = "static" ] || [ "${enable_static_tiledb}" = "ON" ]; then
+    build_shared_libs="OFF"
+else
+    die "unknown linkage: ${linkage}"
+fi
+
+# Fail if both --linkage=shared and --enable-static-tiledb are specified
+if [ "${linkage}" = "shared" ] && [ "${enable_static_tiledb}" = "ON" ]; then
+    die "cannot specify both --linkage=shared and --enable-static-tiledb"
 fi
 
 # Check clang compiler
@@ -231,7 +227,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_C_COMPILER="${c_compiler}" \
     -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
-    -DTILEDB_VCPKG=${tiledb_vcpkg} \
+    -DBUILD_SHARED_LIBS=${build_shared_libs} \
     -DTILEDB_ASSERTIONS=${tiledb_assertions} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DTILEDB_HDFS=${tiledb_hdfs} \
@@ -243,19 +239,16 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_WERROR=${tiledb_werror} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \
     -DTILEDB_STATS=${tiledb_stats} \
-    -DTILEDB_STATIC=${tiledb_static} \
     -DTILEDB_TESTS=${tiledb_tests} \
     -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
-    -DTILEDB_CRC32=${tiledb_build_crc32} \
     -DTILEDB_WEBP=${tiledb_build_webp} \
-    -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DTILEDB_REMOVE_DEPRECATIONS=${tiledb_remove_deprecations} \
-    -DSANITIZER="${sanitizer}" \
+    -DTILEDB_SANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
-    -DTILEDB_TESTS_ENABLE_REST=${tiledb_tests_enable_rest} \
     -DTILEDB_TESTS_AWS_S3_CONFIG=${tiledb_tests_aws_s3_config} \
     ${tiledb_disable_avx2} \
+    ${vcpkg_base_triplet} \
     "${source_dir}" || die "failed to configure the project"
 
-echo 'bootstrap success. Run "make" to build, "make check" to test, or "make -C tiledb install" to install.'
+echo 'bootstrap success. Run "make" to build, "make check" to test, or "make install" to install.'

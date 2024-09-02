@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,58 +28,38 @@
 
 #include "mgc_dict.h"
 
-#include "tiledb/sm/compressors/util/gzip_wrappers.h"
+#include "magic_mgc.zst.h_"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/compressors/zstd_compressor.h"
 
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm::magic_dict {
 
-static const char magic_mgc_compressed_bytes[] = {
-#include "magic_mgc_gzipped.bin"
-};
-
-shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer_;
-
-void* magic_dict::uncompressed_magic_dict_ = nullptr;
-
-static magic_dict magic_dict_object;
-
-magic_dict::magic_dict() {
+void prepare_data(span<uint8_t> expanded_buffer) {
+  ConstBuffer input(magic_mgc_compressed_bytes, magic_mgc_compressed_size);
+  PreallocatedBuffer output(expanded_buffer.data(), expanded_buffer.size());
+  ZStd::ZSTD_Decompress_Context ctx;
+  ZStd::decompress(ctx, input, output);
 }
 
-void magic_dict::prepare_data() {
-  if (uncompressed_magic_dict_)
-    return;
+int magic_mgc_embedded_load(magic_t magic) {
+  auto buffer = expanded_buffer();
 
-  expanded_buffer_ = make_shared<tiledb::sm::ByteVecValue>(HERE());
-  if (!gzip_decompress(
-           expanded_buffer_,
-           reinterpret_cast<const uint8_t*>(&magic_mgc_compressed_bytes[0]))
-           .ok()) {
-    throw std::runtime_error("gzip_decompress failure!");
-  }
-
-  uncompressed_magic_dict_ = expanded_buffer_.get()->data();
-}
-
-int magic_dict::magic_mgc_embedded_load(magic_t magic) {
-  if (!uncompressed_magic_dict_)
-    prepare_data();
-
-  void* data[1] = {uncompressed_magic_dict_};
-  size_t sizes[1] = {expanded_buffer_->size()};
+  void* data = const_cast<unsigned char*>(buffer.data());
+  size_t size = buffer.size();
   // zero ok, non-zero error
-  return magic_load_buffers(magic, &data[0], &sizes[0], 1);
+  return magic_load_buffers(magic, &data, &size, 1);
 }
 
-const shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer() {
-  if (!uncompressed_magic_dict_)
-    prepare_data();
-  return expanded_buffer_;
+span<const uint8_t> expanded_buffer() {
+  static std::vector<uint8_t> expanded_buffer(magic_mgc_decompressed_size);
+  static std::once_flag once_flag;
+  // Thread-safe initialization of the expanded data.
+  std::call_once(once_flag, [&]() { prepare_data(expanded_buffer); });
+  return expanded_buffer;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::magic_dict

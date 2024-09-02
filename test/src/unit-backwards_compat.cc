@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,12 +34,15 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/temporary_local_directory.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
 
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -52,8 +55,13 @@ namespace {
 static const std::string arrays_dir =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
 
+static const std::string groups_dir =
+    std::string(TILEDB_TEST_INPUTS_DIR) + "/groups";
+
 template <typename T>
 void set_query_coords(
+    Context& ctx,
+    Array* array,
     const Domain& domain,
     Query* query,
     void** coordinates,
@@ -72,8 +80,11 @@ void set_query_coords(
     static_cast<T*>(*expected_coordinates)[i] = 1;
   }
 
-  query->set_coordinates<T>(static_cast<T*>(*coordinates), ndim);
-  query->set_subarray<T>(static_cast<T*>(subarray), 2 * ndim);
+  Subarray sub(ctx, *array);
+  sub.set_subarray<T>(static_cast<T*>(subarray), 2 * ndim);
+
+  query->set_data_buffer<T>("__coords", static_cast<T*>(*coordinates), ndim);
+  query->set_subarray(sub);
 
   std::free(subarray);
 }
@@ -83,6 +94,7 @@ void set_query_dimension_buffer(
     const Domain& domain,
     const uint64_t dim_idx,
     Query* query,
+    Subarray* subarray,
     void** buffer,
     void** expected_buffer) {
   Dimension dimension = domain.dimension(dim_idx);
@@ -95,8 +107,9 @@ void set_query_dimension_buffer(
   static_cast<T*>(*expected_buffer)[0] = 1;
 
   auto dom = dimension.domain<T>();
-  query->set_buffer<T>(dimension.name(), static_cast<T*>(*buffer), buffer_size);
-  query->add_range(dim_idx, dom.first, dom.second);
+  query->set_data_buffer<T>(
+      dimension.name(), static_cast<T*>(*buffer), buffer_size);
+  subarray->add_range(dim_idx, dom.first, dom.second);
 }
 
 template <typename T>
@@ -104,6 +117,7 @@ void set_query_var_dimension_buffer(
     const Domain& domain,
     const uint64_t dim_idx,
     Query* query,
+    Subarray* subarray,
     uint64_t** offsets,
     void** buffer,
     uint64_t** expected_offsets,
@@ -122,9 +136,10 @@ void set_query_var_dimension_buffer(
 
   memset(*offsets, 0, sizeof(uint64_t));
   memset(*buffer, 0, buffer_size);
-  query->set_buffer<T>(
-      dimension.name(), *offsets, 1, static_cast<T*>(*buffer), buffer_size);
-  query->add_range(dim_idx, std::string("1"), std::string("1"));
+  query->set_data_buffer<T>(
+      dimension.name(), static_cast<T*>(*buffer), buffer_size);
+  query->set_offsets_buffer(dimension.name(), *offsets, 1);
+  subarray->add_range(dim_idx, std::string("1"), std::string("1"));
 }
 
 }  // namespace
@@ -136,8 +151,8 @@ TEST_CASE(
   std::string array_uri(arrays_dir + "/dense_array_v1_3_0");
   REQUIRE_THROWS_WITH(
       Array(ctx, array_uri, TILEDB_READ),
-      "[TileDB::Array] Error: [TileDB::ArrayDirectory] Error: Reading data "
-      "past end of serialized data size.");
+      Catch::Matchers::EndsWith(
+          "Reading data past end of serialized data size."));
 }
 
 template <typename T>
@@ -189,10 +204,12 @@ TEST_CASE(
   std::vector<int> coords_read(8);
 
   Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read)
-      .set_coordinates(coords_read);
+      .set_data_buffer("__coords", coords_read);
   query_r.submit();
 
   // Note: If you encounter a failure here, in particular with a_read[0] == 100
@@ -275,7 +292,9 @@ TEST_CASE(
         uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             set_buffer_wrapper<std::byte>(
                 query,
                 attribute_name,
@@ -493,43 +512,43 @@ TEST_CASE(
       switch (domain.type()) {
         case TILEDB_INT8:
           set_query_coords<int8_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT8:
           set_query_coords<uint8_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT16:
           set_query_coords<int16_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT16:
           set_query_coords<uint16_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT32:
           set_query_coords<int32_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT32:
           set_query_coords<uint32_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT64:
           set_query_coords<int64_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT64:
           set_query_coords<uint64_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_FLOAT32:
           set_query_coords<float>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_FLOAT64:
           set_query_coords<double>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_DATETIME_YEAR:
         case TILEDB_DATETIME_MONTH:
@@ -554,7 +573,7 @@ TEST_CASE(
         case TILEDB_TIME_FS:
         case TILEDB_TIME_AS:
           set_query_coords<int64_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         default:
           REQUIRE(false);
@@ -577,7 +596,9 @@ TEST_CASE(
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             REQUIRE(
                 static_cast<std::byte*>(std::get<1>(buffer))[0] ==
                 static_cast<std::byte>(1));
@@ -700,7 +721,7 @@ TEST_CASE(
     Query query_w(ctx, old_array);
     query_w.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a", a_write)
-        .set_coordinates(coords_write);
+        .set_data_buffer("__coords", coords_write);
     query_w.submit();
     old_array.close();
 
@@ -711,10 +732,12 @@ TEST_CASE(
 
     Array array(ctx, old_array_name, TILEDB_READ);
     Query query_r(ctx, array);
-    query_r.set_subarray(subarray)
+    Subarray subarray_r(ctx, array);
+    subarray_r.set_subarray(subarray);
+    query_r.set_subarray(subarray_r)
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", a_read)
-        .set_coordinates(coords_read);
+        .set_data_buffer("__coords", coords_read);
     query_r.submit();
     array.close();
 
@@ -771,6 +794,8 @@ TEST_CASE(
 
       auto query = new Query(encrypted ? ctx_encrypt : ctx, *array);
 
+      auto subarray = new Subarray(ctx, *array);
+
       std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
       for (auto attr : array->schema().attributes()) {
@@ -780,7 +805,9 @@ TEST_CASE(
         uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             set_buffer_wrapper<std::byte>(
                 query,
                 attribute_name,
@@ -1008,43 +1035,43 @@ TEST_CASE(
         switch (dim.type()) {
           case TILEDB_INT8:
             set_query_dimension_buffer<int8_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_UINT8:
             set_query_dimension_buffer<uint8_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_INT16:
             set_query_dimension_buffer<int16_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_UINT16:
             set_query_dimension_buffer<uint16_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_INT32:
             set_query_dimension_buffer<int32_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_UINT32:
             set_query_dimension_buffer<uint32_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_INT64:
             set_query_dimension_buffer<int64_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_UINT64:
             set_query_dimension_buffer<uint64_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_FLOAT32:
             set_query_dimension_buffer<float>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_FLOAT64:
             set_query_dimension_buffer<double>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_DATETIME_YEAR:
           case TILEDB_DATETIME_MONTH:
@@ -1069,13 +1096,14 @@ TEST_CASE(
           case TILEDB_TIME_FS:
           case TILEDB_TIME_AS:
             set_query_dimension_buffer<int64_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_STRING_ASCII: {
             set_query_var_dimension_buffer<char>(
                 domain,
                 i,
                 query,
+                subarray,
                 &offsets,
                 &buffer,
                 &expected_offsets,
@@ -1092,6 +1120,7 @@ TEST_CASE(
       }
 
       // Submit query
+      query->set_subarray(*subarray);
       query->submit();
       delete query;
 
@@ -1118,7 +1147,9 @@ TEST_CASE(
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             REQUIRE(
                 static_cast<std::byte*>(std::get<1>(buffer))[0] ==
                 static_cast<std::byte>(1));
@@ -1233,17 +1264,6 @@ TEST_CASE(
     "Backwards compatibility: Upgrades an array of older version and "
     "write/read it",
     "[backwards-compat][upgrade-version][write-read-new-version]") {
-  bool serialize = false, refactored_query_v2 = false;
-  SECTION("no serialization") {
-    serialize = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled") {
-    serialize = true;
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-
   std::string array_name(arrays_dir + "/non_split_coords_v1_4_0");
   Context ctx;
   std::string schema_folder;
@@ -1260,20 +1280,16 @@ TEST_CASE(
   std::vector<int> d2_read1(4);
 
   Query query_read1(ctx, array_read1);
-  query_read1.set_subarray(subarray_read1)
+  Subarray subarray_r(ctx, array_read1);
+  subarray_r.set_subarray(subarray_read1);
+  query_read1.set_subarray(subarray_r)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read1)
       .set_data_buffer("d1", d1_read1)
       .set_data_buffer("d2", d2_read1);
 
   ServerQueryBuffers server_buffers;
-  submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_read1,
-      server_buffers,
-      serialize,
-      refactored_query_v2);
+  query_read1.submit();
   array_read1.close();
 
   for (int i = 0; i < 4; i++) {
@@ -1294,30 +1310,12 @@ TEST_CASE(
   query_write.set_data_buffer("d1", d1_write);
   query_write.set_data_buffer("d2", d2_write);
 
-  submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_write,
-      server_buffers,
-      serialize,
-      refactored_query_v2);
+  query_write.submit_and_finalize();
 
   array_write.close();
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
-
-  if (serialize) {
-    FragmentInfo deserialized_fragment_info(ctx, array_name);
-    tiledb_fragment_info_serialize(
-        ctx.ptr().get(),
-        array_name.c_str(),
-        fragment_info.ptr().get(),
-        deserialized_fragment_info.ptr().get(),
-        tiledb_serialization_type_t(0));
-    fragment_info = deserialized_fragment_info;
-  }
-
   fragment_uri = fragment_info.fragment_uri(1);
 
   // old version fragment
@@ -1333,19 +1331,15 @@ TEST_CASE(
   std::vector<int> d2_read2(4);
 
   Query query_read2(ctx, array_read2);
-  query_read2.set_subarray(subarray_read2)
+  Subarray subarray_r2(ctx, array_read2);
+  subarray_r2.set_subarray(subarray_read2);
+  query_read2.set_subarray(subarray_r2)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read2)
       .set_data_buffer("d1", d1_read2)
       .set_data_buffer("d2", d2_read2);
 
-  submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_read2,
-      server_buffers,
-      serialize,
-      refactored_query_v2);
+  query_read2.submit();
   array_read2.close();
 
   for (int i = 0; i < 2; i++) {
@@ -1419,4 +1413,54 @@ TEST_CASE(
     assert_group_metadata<uint64_t>(
         g, "u64", TILEDB_UINT64, 0x7777777777777777);
   }
+}
+
+TEST_CASE(
+    "Backwards compatibility: Test v1 groups",
+    "[backwards-compat][group][v1]") {
+  Context ctx;
+  VFS vfs(ctx);
+
+  // Copy the group to a temporary directory because we will be modifying it.
+  tiledb::sm::TemporaryLocalDirectory temp_dir;
+  std::filesystem::copy(
+      groups_dir + "/group_v1",
+      temp_dir.path(),
+      std::filesystem::copy_options::recursive);
+
+  // Read the group
+  {
+    Group g{ctx, temp_dir.path(), TILEDB_READ};
+
+    CHECK(g.dump(false) != "");
+    CHECK(g.member_count() == 1);
+  }
+
+  // Add a member to the group
+  {
+    Group g{ctx, temp_dir.path(), TILEDB_WRITE};
+
+    Group::create(ctx, temp_dir.path() + "/subgroup2");
+
+    g.add_member("subgroup2", true, "subgroup2");
+
+    g.close();
+  }
+
+  // Read the group again
+  {
+    Group g{ctx, temp_dir.path(), TILEDB_READ};
+
+    CHECK(g.dump(false) != "");
+    CHECK(g.member_count() == 2);
+    CHECK(g.member(1).name() == "subgroup2");
+  }
+
+  // Read the raw group details files
+  auto children = vfs.ls(temp_dir.path() + "/__group");
+  CHECK(children.size() == 2);
+  std::sort(children.begin(), children.end());
+  CHECK(!tiledb::sm::utils::parse::ends_with(children[0], "_1"));
+  // This is the file written by this test.
+  CHECK(tiledb::sm::utils::parse::ends_with(children[1], "_1"));
 }

@@ -53,14 +53,12 @@ ChecksumSHA256Filter* ChecksumSHA256Filter::clone_impl() const {
   return tdb_new(ChecksumSHA256Filter, filter_data_type_);
 }
 
-void ChecksumSHA256Filter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "ChecksumSHA256");
+std::ostream& ChecksumSHA256Filter::output(std::ostream& os) const {
+  os << "ChecksumSHA256";
+  return os;
 }
 
-Status ChecksumSHA256Filter::run_forward(
+void ChecksumSHA256Filter::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -68,7 +66,7 @@ Status ChecksumSHA256Filter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // Set output buffer to input buffer
-  RETURN_NOT_OK(output->append_view(input));
+  throw_if_not_ok(output->append_view(input));
   // Add original input metadata as a view to the output metadata
   throw_if_not_ok(output_metadata->append_view(input_metadata));
 
@@ -82,17 +80,16 @@ Status ChecksumSHA256Filter::run_forward(
   uint32_t part_md_size = Crypto::SHA256_DIGEST_BYTES + sizeof(uint64_t);
   uint32_t metadata_size =
       (total_num_parts * part_md_size) + (2 * sizeof(uint32_t));
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(
+      output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
 
   // Checksum all parts
   for (auto& part : metadata_parts)
-    RETURN_NOT_OK(checksum_part(&part, output_metadata));
+    throw_if_not_ok(checksum_part(&part, output_metadata));
   for (auto& part : data_parts)
-    RETURN_NOT_OK(checksum_part(&part, output_metadata));
-
-  return Status::Ok();
+    throw_if_not_ok(checksum_part(&part, output_metadata));
 }
 
 Status ChecksumSHA256Filter::run_reverse(

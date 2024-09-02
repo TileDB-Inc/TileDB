@@ -1,5 +1,5 @@
 /**
- * @file tiledeb/api/c_api/data_order/test/unit_capi_data_order.cc
+ * @file tiledb/api/c_api/data_order/test/unit_capi_data_order.cc
  *
  * @section LICENSE
  *

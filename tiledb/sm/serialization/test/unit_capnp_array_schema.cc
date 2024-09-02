@@ -33,7 +33,7 @@
 #include <capnp/message.h>
 
 #include <test/support/tdb_catch.h>
-
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -101,14 +101,22 @@ TEST_CASE(
   SECTION("Internal dimension label") {
     // Create dimension label array schema.
     Status st;
-    auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
-    std::vector<shared_ptr<Dimension>> dims{
-        make_shared<Dimension>(HERE(), "index", Datatype::UINT32)};
+    auto schema = make_shared<ArraySchema>(
+        HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
+    std::vector<shared_ptr<Dimension>> dims{make_shared<Dimension>(
+        HERE(),
+        "index",
+        Datatype::UINT32,
+        tiledb::test::get_test_memory_tracker())};
     uint32_t domain1[2]{1, 64};
     st = dims[0]->set_domain(&domain1[0]);
     REQUIRE(st.ok());
     st = schema->set_domain(make_shared<Domain>(
-        HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR));
+        HERE(),
+        Layout::ROW_MAJOR,
+        dims,
+        Layout::ROW_MAJOR,
+        tiledb::test::get_test_memory_tracker()));
     REQUIRE(st.ok());
     st = schema->add_attribute(
         make_shared<Attribute>(HERE(), "label", Datatype::FLOAT64));
@@ -153,8 +161,8 @@ TEST_CASE(
       message.initRoot<tiledb::sm::serialization::capnp::DimensionLabel>();
   tiledb::sm::serialization::dimension_label_to_capnp(
       *dim_label.get(), &builder, true);
-  auto dim_label_clone =
-      tiledb::sm::serialization::dimension_label_from_capnp(builder);
+  auto dim_label_clone = tiledb::sm::serialization::dimension_label_from_capnp(
+      builder, tiledb::test::get_test_memory_tracker());
 
   // Check dimension label properties and components.
   CHECK(dim_label->has_schema() == dim_label_clone->has_schema());

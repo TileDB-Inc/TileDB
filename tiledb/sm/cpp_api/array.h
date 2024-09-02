@@ -349,28 +349,6 @@ class Array {
    * Deletes the fragments written between the input timestamps of an array
    * with the input uri.
    *
-   * @param uri The URI of the fragments' parent Array.
-   * @param timestamp_start The epoch start timestamp in milliseconds.
-   * @param timestamp_end The epoch end timestamp in milliseconds. Use
-   * UINT64_MAX for the current timestamp.
-   */
-  TILEDB_DEPRECATED
-  void delete_fragments(
-      const std::string& uri,
-      uint64_t timestamp_start,
-      uint64_t timestamp_end) const {
-    throw std::logic_error(
-        "This method is deprecated. Please use "
-        "Array::delete_fragments(ctx, uri, timestamp_start, timestamp_end)");
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_delete_fragments_v2(
-        ctx.ptr().get(), uri.c_str(), timestamp_start, timestamp_end));
-  }
-
-  /**
-   * Deletes the fragments written between the input timestamps of an array
-   * with the input uri.
-   *
    * @param ctx TileDB context
    * @param uri The URI of the fragments' parent Array.
    * @param timestamp_start The epoch start timestamp in milliseconds.
@@ -431,6 +409,22 @@ class Array {
     ctx.handle_error(
         tiledb_array_get_schema(c_ctx, array_.get(), &array_schema));
     schema_ = ArraySchema(ctx, array_schema);
+  }
+
+  // clang-format off
+  /**
+   * @copybrief Array::open(tiledb_query_type_t)
+   *
+   * See @ref Array::open(tiledb_query_type_t) "Array::open"
+   */
+  // clang-format on
+  void open(tiledb_query_type_t query_type, uint64_t timestamp) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+
+    ctx.handle_error(
+        tiledb_array_set_open_timestamp_end(c_ctx, array_.get(), timestamp));
+    open(query_type);
   }
 
   // clang-format off
@@ -600,7 +594,7 @@ class Array {
   }
 
   /**
-   * @brief Consolidates the fragments of an encrypted array into a single
+   * @brief Consolidates the fragments with the input uris into a single
    * fragment.
    *
    * You must first finalize all queries to the array before consolidation can
@@ -609,71 +603,37 @@ class Array {
    *
    * **Example:**
    * @code{.cpp}
-   * // Load AES-256 key from disk, environment variable, etc.
-   * uint8_t key[32] = ...;
+   * const char* fragment_uris[2] = {
+   * "__1712657401931_1712657401931_285cf8a0eff4df875a04cfbea96d5c00_21",
+   * "__1712657401948_1712657401948_285cf8a0efdsafas6a5a04cfbesajads_21"};
+   *
    * tiledb::Array::consolidate(
    *     ctx,
    *     "s3://bucket-name/array-name",
-   *     TILEDB_AES_256_GCM,
-   *     key,
-   *     sizeof(key));
+   *      fragment_uris,
+   *      2,
+   *      config);
    * @endcode
    *
    * @param ctx TileDB context
    * @param array_uri The URI of the TileDB array to be consolidated.
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   * @param key_length Length in bytes of the encryption key.
+   * @param fragment_uris Fragment names of the fragments to consolidate. The
+   *     names can be recovered using tiledb_fragment_info_get_fragment_name_v2.
+   * @param num_fragments The number of fragments to consolidate.
    * @param config Configuration parameters for the consolidation.
    */
-  TILEDB_DEPRECATED
   static void consolidate(
       const Context& ctx,
-      const std::string& uri,
-      tiledb_encryption_type_t encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
+      const std::string& array_uri,
+      const char* fragment_uris[],
+      const size_t num_fragments,
       Config* const config = nullptr) {
-    ctx.handle_error(tiledb_array_consolidate_with_key(
+    ctx.handle_error(tiledb_array_consolidate_fragments(
         ctx.ptr().get(),
-        uri.c_str(),
-        encryption_type,
-        encryption_key,
-        key_length,
+        array_uri.c_str(),
+        fragment_uris,
+        num_fragments,
         config ? config->ptr().get() : nullptr));
-  }
-
-  // clang-format off
-  /**
-   * @copybrief Array::consolidate(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&)
-   *
-   * See @ref Array::consolidate(
-   *     const Context&,
-   *     const std::string&,
-   *     tiledb_encryption_type_t,
-   *     const void*,
-   *     uint32_t,const Config&) "Array::consolidate"
-   *
-   * @param ctx TileDB context
-   * @param array_uri The URI of the TileDB array to be consolidated.
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   * @param config Configuration parameters for the consolidation.
-   */
-  // clang-format on
-  static void consolidate(
-      const Context& ctx,
-      const std::string& uri,
-      tiledb_encryption_type_t encryption_type,
-      const std::string& encryption_key,
-      Config* const config = nullptr) {
-    return consolidate(
-        ctx,
-        uri,
-        encryption_type,
-        encryption_key.data(),
-        (uint32_t)encryption_key.size(),
-        config);
   }
 
   /**
@@ -735,101 +695,6 @@ class Array {
     ctx.handle_error(
         tiledb_array_schema_load(ctx.ptr().get(), uri.c_str(), &schema));
     return ArraySchema(ctx, schema);
-  }
-
-  /**
-   * Loads the array schema from an encrypted array.
-   *
-   * **Example:**
-   * @code{.cpp}
-   * auto schema = tiledb::Array::load_schema(ctx,
-   * "s3://bucket-name/array-name", key_type, key, key_len);
-   * @endcode
-   *
-   * @param ctx The TileDB context.
-   * @param uri The array URI.
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   * @param key_length Length in bytes of the encryption key.
-   * @return The loaded ArraySchema object.
-   */
-  TILEDB_DEPRECATED
-  static ArraySchema load_schema(
-      const Context& ctx,
-      const std::string& uri,
-      tiledb_encryption_type_t encryption_type,
-      const void* encryption_key,
-      uint32_t key_length) {
-    tiledb_array_schema_t* schema;
-    ctx.handle_error(tiledb_array_schema_load_with_key(
-        ctx.ptr().get(),
-        uri.c_str(),
-        encryption_type,
-        encryption_key,
-        key_length,
-        &schema));
-    return ArraySchema(ctx, schema);
-  }
-
-  /**
-   * @brief Creates a new encrypted TileDB array given an input schema.
-   *
-   * **Example:**
-   * @code{.cpp}
-   * // Load AES-256 key from disk, environment variable, etc.
-   * uint8_t key[32] = ...;
-   * tiledb::Array::create("s3://bucket-name/array-name", schema,
-   *    TILEDB_AES_256_GCM, key, sizeof(key));
-   * @endcode
-   *
-   * @param uri URI where array will be created.
-   * @param schema The array schema.
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   * @param key_length Length in bytes of the encryption key.
-   */
-  TILEDB_DEPRECATED
-  static void create(
-      const std::string& uri,
-      const ArraySchema& schema,
-      tiledb_encryption_type_t encryption_type,
-      const void* encryption_key,
-      uint32_t key_length) {
-    auto& ctx = schema.context();
-    tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    ctx.handle_error(tiledb_array_schema_check(c_ctx, schema.ptr().get()));
-    ctx.handle_error(tiledb_array_create_with_key(
-        c_ctx,
-        uri.c_str(),
-        schema.ptr().get(),
-        encryption_type,
-        encryption_key,
-        key_length));
-  }
-
-  // clang-format off
-  /**
-   * @copybrief Array::create(const std::string&,const ArraySchema&,tiledb_encryption_type_t,const void*,uint32_t)
-   *
-   * See @ref Array::create(const std::string&,const ArraySchema&,tiledb_encryption_type_t,const void*,uint32_t) "Array::create"
-   *
-   * @param uri URI where array will be created.
-   * @param schema The array schema.
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   */
-  // clang-format on
-  static void create(
-      const std::string& uri,
-      const ArraySchema& schema,
-      tiledb_encryption_type_t encryption_type,
-      const std::string& encryption_key) {
-    return create(
-        uri,
-        schema,
-        encryption_type,
-        encryption_key.data(),
-        (uint32_t)encryption_key.size());
   }
 
   /**
@@ -1112,93 +977,6 @@ class Array {
   }
 
   /**
-   * @brief Consolidates the metadata of an encrypted array.
-   *
-   * You must first finalize all queries to the array before consolidation can
-   * begin (as consolidation temporarily acquires an exclusive lock on the
-   * array).
-   *
-   * **Example:**
-   * @code{.cpp}
-   * // Load AES-256 key from disk, environment variable, etc.
-   * uint8_t key[32] = ...;
-   * tiledb::Array::consolidate_metadata(
-   *     ctx,
-   *     "s3://bucket-name/array-name",
-   *     TILEDB_AES_256_GCM,
-   *     key,
-   *     sizeof(key));
-   * @endcode
-   *
-   * @param ctx TileDB context
-   * @param array_uri The URI of the TileDB array whose
-   *     metadata will be consolidated.
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   * @param key_length Length in bytes of the encryption key.
-   * @param config Configuration parameters for the consolidation.
-   */
-  TILEDB_DEPRECATED
-  static void consolidate_metadata(
-      const Context& ctx,
-      const std::string& uri,
-      tiledb_encryption_type_t encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      Config* const config = nullptr) {
-    Config local_cfg;
-    Config* config_aux = config;
-    if (!config_aux) {
-      config_aux = &local_cfg;
-    }
-
-    (*config_aux)["sm.consolidation.mode"] = "array_meta";
-    consolidate(
-        ctx, uri, encryption_type, encryption_key, key_length, config_aux);
-  }
-
-  // clang-format off
-  /**
-   * @copybrief Array::consolidate_metadata(const Context&, const std::string&, tiledb_encryption_type_t, const void*,uint32_t, const Config&)
-   *
-   * See @ref Array::consolidate_metadata(
-   *     const Context&,
-   *     const std::string&,
-   *     tiledb_encryption_type_t,
-   *     const void*,
-   *     uint32_t,const Config&) "Array::consolidate_metadata"
-   *
-   * @param ctx TileDB context
-   * @param array_uri The URI of the TileDB array whose
-   *     metadata will be consolidated.
-   * @param encryption_type The encryption type to use.
-   * @param encryption_key The encryption key to use.
-   * @param config Configuration parameters for the consolidation.
-   */
-  // clang-format on
-  static void consolidate_metadata(
-      const Context& ctx,
-      const std::string& uri,
-      tiledb_encryption_type_t encryption_type,
-      const std::string& encryption_key,
-      Config* const config = nullptr) {
-    Config local_cfg;
-    Config* config_aux = config;
-    if (!config_aux) {
-      config_aux = &local_cfg;
-    }
-
-    (*config_aux)["sm.consolidation.mode"] = "array_meta";
-    consolidate(
-        ctx,
-        uri,
-        encryption_type,
-        encryption_key.data(),
-        (uint32_t)encryption_key.size(),
-        config_aux);
-  }
-
-  /**
    * @brief Upgrades an array to the latest format version.
    *
    *
@@ -1358,13 +1136,6 @@ class Array {
     key->resize(key_len);
     std::memcpy((void*)key->data(), key_c, key_len);
   }
-
-/* ********************************* */
-/*           DEPRECATED API          */
-/* ********************************* */
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-#include "array_deprecated.h"
-#endif  // TILEDB_REMOVE_DEPRECATIONS
 
  private:
   /* ********************************* */

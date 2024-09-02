@@ -33,6 +33,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -45,6 +46,14 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+/** Class for locally generated status exceptions. */
+class GenericTileIOException : public StatusException {
+ public:
+  explicit GenericTileIOException(const std::string& msg)
+      : StatusException("GenericTileIO", msg) {
+  }
+};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -59,78 +68,73 @@ GenericTileIO::GenericTileIO(ContextResources& resources, const URI& uri)
 /*               API              */
 /* ****************************** */
 
-Tile GenericTileIO::load(
+shared_ptr<Tile> GenericTileIO::load(
     ContextResources& resources,
     const URI& uri,
     uint64_t offset,
-    const EncryptionKey& encryption_key) {
+    const EncryptionKey& encryption_key,
+    shared_ptr<MemoryTracker> memory_tracker) {
   GenericTileIO tile_io(resources, uri);
 
   // Get encryption key from config
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
     EncryptionKey cfg_enc_key(resources.config());
-    auto&& [st1, tile_opt] =
-        tile_io.read_generic(offset, cfg_enc_key, resources.config());
-    throw_if_not_ok(st1);
-    return std::move(*tile_opt);
+    return tile_io.read_generic(
+        offset, cfg_enc_key, resources.config(), memory_tracker);
   } else {
-    auto&& [st1, tile_opt] =
-        tile_io.read_generic(offset, encryption_key, resources.config());
-    throw_if_not_ok(st1);
-    return std::move(*tile_opt);
+    return tile_io.read_generic(
+        offset, encryption_key, resources.config(), memory_tracker);
   }
 
   stdx::unreachable();
 }
 
-tuple<Status, optional<Tile>> GenericTileIO::read_generic(
+shared_ptr<Tile> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
-    const Config& config) {
+    const Config& config,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto&& header = read_generic_tile_header(resources_, uri_, file_offset);
 
   if (encryption_key.encryption_type() !=
       (EncryptionType)header.encryption_type) {
-    return {
-        LOG_STATUS(Status_TileIOError(
-            "Error reading generic tile; tile is encrypted with " +
-            encryption_type_str((EncryptionType)header.encryption_type) +
-            " but given key is for " +
-            encryption_type_str(encryption_key.encryption_type()))),
-        nullopt};
+    throw GenericTileIOException(
+        "Error reading generic tile; tile is encrypted with " +
+        encryption_type_str((EncryptionType)header.encryption_type) +
+        " but given key is for " +
+        encryption_type_str(encryption_key.encryption_type()));
   }
 
-  RETURN_NOT_OK_TUPLE(
-      configure_encryption_filter(&header, encryption_key), nullopt);
+  configure_encryption_filter(&header, encryption_key);
 
   const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
   std::vector<char> filtered_data(header.persisted_size);
-  Tile tile(
+  shared_ptr<Tile> tile = make_shared<Tile>(
+      HERE(),
       header.version_number,
       (Datatype)header.datatype,
       header.cell_size,
       0,
       header.tile_size,
       filtered_data.data(),
-      header.persisted_size);
+      header.persisted_size,
+      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
 
   // Read the tile.
-  RETURN_NOT_OK_TUPLE(
-      resources_.vfs().read(
-          uri_,
-          file_offset + tile_data_offset,
-          tile.filtered_data(),
-          header.persisted_size),
-      nullopt);
+  throw_if_not_ok(resources_.vfs().read(
+      uri_,
+      file_offset + tile_data_offset,
+      tile->filtered_data(),
+      header.persisted_size));
 
   // Unfilter
-  assert(tile.filtered());
-  header.filters.run_reverse_generic_tile(&resources_.stats(), tile, config);
-  assert(!tile.filtered());
+  assert(tile->filtered());
+  header.filters.run_reverse_generic_tile(&resources_.stats(), *tile, config);
+  assert(!tile->filtered());
 
-  return {Status::Ok(), std::move(tile)};
+  return tile;
 }
 
 GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
@@ -171,28 +175,39 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
   return header;
 }
 
-Status GenericTileIO::write_generic(
-    WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
+void GenericTileIO::store_data(
+    ContextResources& resources,
+    const URI& uri,
+    shared_ptr<WriterTile> tile,
+    const EncryptionKey& encryption_key) {
+  GenericTileIO tile_io(resources, uri);
+  uint64_t nbytes = 0;
+  tile_io.write_generic(tile, encryption_key, &nbytes);
+  throw_if_not_ok(resources.vfs().close_file(uri));
+}
+
+void GenericTileIO::write_generic(
+    shared_ptr<WriterTile> tile,
+    const EncryptionKey& encryption_key,
+    uint64_t* nbytes) {
   // Create a header
   GenericTileHeader header;
-  RETURN_NOT_OK(init_generic_tile_header(tile, &header, encryption_key));
+  init_generic_tile_header(tile.get(), &header, encryption_key);
 
   // Filter tile
   assert(!tile->filtered());
-  RETURN_NOT_OK(header.filters.run_forward(
-      &resources_.stats(), tile, nullptr, &resources_.compute_tp()));
+  header.filters.run_forward(
+      &resources_.stats(), tile.get(), nullptr, &resources_.compute_tp());
   header.persisted_size = tile->filtered_buffer().size();
   assert(tile->filtered());
 
-  RETURN_NOT_OK(write_generic_tile_header(&header));
+  write_generic_tile_header(&header);
 
-  RETURN_NOT_OK(resources_.vfs().write(
+  throw_if_not_ok(resources_.vfs().write(
       uri_, tile->filtered_buffer().data(), tile->filtered_buffer().size()));
 
   *nbytes = GenericTileIO::GenericTileHeader::BASE_SIZE +
             header.filter_pipeline_size + header.persisted_size;
-
-  return Status::Ok();
 }
 
 template <class T>
@@ -208,7 +223,7 @@ void GenericTileIO::serialize_generic_tile_header(
   header.filters.serialize(serializer);
 }
 
-Status GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
+void GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   SizeComputationSerializer fp_size_computation_serializer;
   header->filters.serialize(fp_size_computation_serializer);
   header->filter_pipeline_size = fp_size_computation_serializer.size();
@@ -221,12 +236,10 @@ Status GenericTileIO::write_generic_tile_header(GenericTileHeader* header) {
   serialize_generic_tile_header(serializer, *header);
 
   // Write buffer to file
-  RETURN_NOT_OK(resources_.vfs().write(uri_, data.data(), data.size()));
-
-  return Status::Ok();
+  throw_if_not_ok(resources_.vfs().write(uri_, data.data(), data.size()));
 }
 
-Status GenericTileIO::configure_encryption_filter(
+void GenericTileIO::configure_encryption_filter(
     GenericTileHeader* header, const EncryptionKey& encryption_key) const {
   switch ((EncryptionType)header->encryption_type) {
     case EncryptionType::NO_ENCRYPTION:
@@ -235,20 +248,18 @@ Status GenericTileIO::configure_encryption_filter(
     case EncryptionType::AES_256_GCM: {
       auto* f = header->filters.get_filter<EncryptionAES256GCMFilter>();
       if (f == nullptr)
-        return Status_TileIOError(
+        throw GenericTileIOException(
             "Error getting generic tile; no encryption filter.");
       f->set_key(encryption_key);
       break;
     }
     default:
-      return Status_TileIOError(
+      throw GenericTileIOException(
           "Error getting generic tile; invalid encryption type.");
   }
-
-  return Status::Ok();
 }
 
-Status GenericTileIO::init_generic_tile_header(
+void GenericTileIO::init_generic_tile_header(
     WriterTile* tile,
     GenericTileHeader* header,
     const EncryptionKey& encryption_key) const {
@@ -262,10 +273,8 @@ Status GenericTileIO::init_generic_tile_header(
       constants::generic_tile_compression_level,
       tile->type()));
 
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+  throw_if_not_ok(FilterPipeline::append_encryption_filter(
       &header->filters, encryption_key));
-
-  return Status::Ok();
 }
 
 }  // namespace sm

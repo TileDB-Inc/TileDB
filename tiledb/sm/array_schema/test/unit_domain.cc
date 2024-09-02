@@ -38,9 +38,12 @@
 
 #include <test/support/tdb_catch.h>
 
+#include "src/mem_helpers.h"
+
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 template <class T, int n>
 inline T& dom_buffer_offset(void* p) {
@@ -112,8 +115,14 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
   dom_buffer_offset<uint8_t, 71>(p) = null_tile_extent2;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto dom{Domain::deserialize(
-      deserializer, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR)};
+  FilterPipeline fp;
+  auto dom{tiledb::sm::Domain::deserialize(
+      deserializer,
+      10,
+      Layout::ROW_MAJOR,
+      Layout::ROW_MAJOR,
+      fp,
+      tiledb::test::get_test_memory_tracker())};
   CHECK(dom->dim_num() == dim_num);
 
   auto dim1{dom->dimension_ptr("d1")};
@@ -127,4 +136,9 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
   CHECK(dim2->type() == type2);
   CHECK(dim2->cell_val_num() == cell_val_num2);
   CHECK(dim2->filters().size() == num_filters2);
+}
+
+TEST_CASE("Domain: Test dimension_ptr is not oob", "[domain][oob]") {
+  auto d = tiledb::sm::Domain(tiledb::test::get_test_memory_tracker());
+  REQUIRE_THROWS(d.dimension_ptr(0));
 }

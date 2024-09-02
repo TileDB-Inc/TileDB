@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,10 +34,12 @@
 #include "../string/string_api_internal.h"
 #include "enumeration_api_experimental.h"
 #include "enumeration_api_internal.h"
+#include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
 
 capi_return_t tiledb_enumeration_alloc(
+    tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
     uint32_t cell_val_num,
@@ -65,6 +67,9 @@ capi_return_t tiledb_enumeration_alloc(
   }
 
   try {
+    auto memory_tracker = ctx->context().resources().create_memory_tracker();
+    memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ENUMERATION_CREATE);
+
     *enumeration = tiledb_enumeration_handle_t::make_handle(
         std::string(name),
         datatype,
@@ -73,9 +78,33 @@ capi_return_t tiledb_enumeration_alloc(
         data,
         data_size,
         offsets,
-        offsets_size);
+        offsets_size,
+        memory_tracker);
   } catch (...) {
     *enumeration = nullptr;
+    throw;
+  }
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_enumeration_extend(
+    tiledb_enumeration_t* old_enumeration,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size,
+    tiledb_enumeration_t** new_enumeration) {
+  ensure_enumeration_is_valid(old_enumeration);
+  ensure_output_pointer_is_valid(new_enumeration);
+
+  auto new_enmr =
+      old_enumeration->extend(data, data_size, offsets, offsets_size);
+
+  try {
+    *new_enumeration = tiledb_enumeration_handle_t::make_handle(new_enmr);
+  } catch (...) {
+    *new_enumeration = nullptr;
     throw;
   }
 
@@ -89,7 +118,7 @@ void tiledb_enumeration_free(tiledb_enumeration_t** enumeration) {
 }
 
 capi_return_t tiledb_enumeration_get_name(
-    tiledb_enumeration_t* enumeration, tiledb_string_t** name) {
+    tiledb_enumeration_t* enumeration, tiledb_string_handle_t** name) {
   ensure_enumeration_is_valid(enumeration);
   ensure_output_pointer_is_valid(name);
   *name = tiledb_string_handle_t::make_handle(enumeration->name());
@@ -147,16 +176,44 @@ capi_return_t tiledb_enumeration_get_offsets(
 capi_return_t tiledb_enumeration_dump(
     tiledb_enumeration_t* enumeration, FILE* out) {
   ensure_enumeration_is_valid(enumeration);
-  enumeration->dump(out);
+  ensure_cstream_handle_is_valid(out);
+
+  std::stringstream ss;
+  ss << *enumeration;
+  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  if (r != ss.str().size()) {
+    throw CAPIException(
+        "Error writing enumeration " + enumeration->name() + " to file");
+  }
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_enumeration_dump_str(
+    tiledb_enumeration_t* enumeration, tiledb_string_handle_t** out) {
+  ensure_enumeration_is_valid(enumeration);
+  ensure_output_pointer_is_valid(out);
+  std::stringstream ss;
+  ss << *enumeration;
+  *out = tiledb_string_handle_t::make_handle(ss.str());
   return TILEDB_OK;
 }
 
 }  // namespace tiledb::api
 
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_enumeration_handle_t& enumeration) {
+  os << *enumeration.enumeration_;
+  return os;
+}
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 
-capi_return_t tiledb_enumeration_alloc(
+template <auto f>
+constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
+
+CAPI_INTERFACE(
+    enumeration_alloc,
     tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
@@ -166,8 +223,8 @@ capi_return_t tiledb_enumeration_alloc(
     uint64_t data_size,
     const void* offsets,
     uint64_t offsets_size,
-    tiledb_enumeration_t** enumeration) noexcept {
-  return api_entry_context<tiledb::api::tiledb_enumeration_alloc>(
+    tiledb_enumeration_t** enumeration) {
+  return api_entry<tiledb::api::tiledb_enumeration_alloc>(
       ctx,
       name,
       type,
@@ -180,62 +237,99 @@ capi_return_t tiledb_enumeration_alloc(
       enumeration);
 }
 
-void tiledb_enumeration_free(tiledb_enumeration_t** enumeration) noexcept {
+CAPI_INTERFACE(
+    enumeration_extend,
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_t* old_enumeration,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size,
+    tiledb_enumeration_t** new_enumeration) {
+  return api_entry_context<tiledb::api::tiledb_enumeration_extend>(
+      ctx,
+      old_enumeration,
+      data,
+      data_size,
+      offsets,
+      offsets_size,
+      new_enumeration);
+}
+
+CAPI_INTERFACE_VOID(enumeration_free, tiledb_enumeration_t** enumeration) {
   return api_entry_void<tiledb::api::tiledb_enumeration_free>(enumeration);
 }
 
-capi_return_t tiledb_enumeration_get_name(
+CAPI_INTERFACE(
+    enumeration_get_name,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    tiledb_string_t** name) noexcept {
+    tiledb_string_handle_t** name) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_name>(
       ctx, enumeration, name);
 }
 
-capi_return_t tiledb_enumeration_get_type(
+CAPI_INTERFACE(
+    enumeration_get_type,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    tiledb_datatype_t* type) noexcept {
+    tiledb_datatype_t* type) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_type>(
       ctx, enumeration, type);
 }
 
-capi_return_t tiledb_enumeration_get_cell_val_num(
+CAPI_INTERFACE(
+    enumeration_get_cell_val_num,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    uint32_t* cell_val_num) noexcept {
+    uint32_t* cell_val_num) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_cell_val_num>(
       ctx, enumeration, cell_val_num);
 }
 
-capi_return_t tiledb_enumeration_get_ordered(
+CAPI_INTERFACE(
+    enumeration_get_ordered,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    int* ordered) noexcept {
+    int* ordered) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_ordered>(
       ctx, enumeration, ordered);
 }
 
-capi_return_t tiledb_enumeration_get_data(
+CAPI_INTERFACE(
+    enumeration_get_data,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
     const void** data,
-    uint64_t* data_size) noexcept {
+    uint64_t* data_size) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_data>(
       ctx, enumeration, data, data_size);
 }
 
-capi_return_t tiledb_enumeration_get_offsets(
+CAPI_INTERFACE(
+    enumeration_get_offsets,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
     const void** offsets,
-    uint64_t* offsets_size) noexcept {
+    uint64_t* offsets_size) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_offsets>(
       ctx, enumeration, offsets, offsets_size);
 }
 
-capi_return_t tiledb_enumeration_dump(
-    tiledb_ctx_t* ctx, tiledb_enumeration_t* enumeration, FILE* out) noexcept {
+CAPI_INTERFACE(
+    enumeration_dump,
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_t* enumeration,
+    FILE* out) {
   return api_entry_context<tiledb::api::tiledb_enumeration_dump>(
+      ctx, enumeration, out);
+}
+
+CAPI_INTERFACE(
+    enumeration_dump_str,
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_handle_t* enumeration,
+    tiledb_string_handle_t** out) {
+  return api_entry_context<tiledb::api::tiledb_enumeration_dump_str>(
       ctx, enumeration, out);
 }

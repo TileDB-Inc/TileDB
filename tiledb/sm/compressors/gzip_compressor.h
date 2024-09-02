@@ -33,7 +33,7 @@
 #ifndef TILEDB_GZIP_H
 #define TILEDB_GZIP_H
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/common.h"
 
 #include <cmath>
 
@@ -55,9 +55,8 @@ class GZip {
    * @param level Compression level.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
-   * @return Status
    */
-  static Status compress(
+  static void compress(
       int level, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
@@ -65,18 +64,16 @@ class GZip {
    *
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
-   * @return Status
    */
-  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static void compress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
    *
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
-   * @return Status
    */
-  static Status decompress(
+  static void decompress(
       ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
   /** Returns the compression overhead for the given input. */

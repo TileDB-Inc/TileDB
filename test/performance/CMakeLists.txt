@@ -26,12 +26,10 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+find_package(Catch2 REQUIRED)
 
 # These options not exposed in bootstrap script.
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
-option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
-
 
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
@@ -86,7 +84,7 @@ target_link_libraries(tiledb_explore_msys_handle_leakage
 
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
-target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE -Dtiledb_EXPORTS)
 
 target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"

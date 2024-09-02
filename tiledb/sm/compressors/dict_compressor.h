@@ -34,7 +34,6 @@
 #define TILEDB_DICT_COMPRESSOR_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger.h"
 #include "tiledb/sm/misc/endian.h"
 
 #include <map>

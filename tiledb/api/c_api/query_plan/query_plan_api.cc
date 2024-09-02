@@ -49,7 +49,6 @@ capi_return_t tiledb_query_get_plan(
   }
 
   sm::QueryPlan plan(*query->query_);
-
   *rv = tiledb_string_handle_t::make_handle(plan.dump_json());
 
   return TILEDB_OK;
@@ -59,10 +58,11 @@ capi_return_t tiledb_query_get_plan(
 
 using tiledb::api::api_entry_with_context;
 
-capi_return_t tiledb_query_get_plan(
+CAPI_INTERFACE(
+    query_get_plan,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_string_handle_t** rv) noexcept {
+    tiledb_string_handle_t** rv) {
   return api_entry_with_context<tiledb::api::tiledb_query_get_plan>(
       ctx, query, rv);
 }

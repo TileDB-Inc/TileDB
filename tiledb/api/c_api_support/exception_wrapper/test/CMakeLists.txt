@@ -34,3 +34,54 @@ commence(unit_test capi_exception_wrapper)
       # top-level dependency required for the test.
       capi_context_stub)
 conclude(unit_test)
+
+#
+# Hook Tests
+#
+# These following two unit test runners are a pair, one compiled without an API
+# hook compiled in, one without. They run the same test, although with different
+# expectations about the results. The hook is specified in two different ways:
+# * In the ordinary way, with an additional include directory
+# * Specifically for testing, with a compile definition.
+# The two different ways are used to verify that the hook is activated or not
+# as appropriate.
+#
+# Changing the API hook changes the API object libraries. The API hook is
+# perforce a low-level mechanism. It changes the definition of C API calls. The
+# exception handler is intertwined with a few of the API classes, notably the
+# handles for context and error (and config gets pulled in as a dependency). As
+# a result, whereas the without-hook test runner can use an existing object
+# library, the with-hook ones needs to recompile an equivalent.
+#
+
+# Hook tests without the hook
+commence(unit_test capi_ew_without_hook)
+  this_target_sources(
+      unit_capi_hook.cc
+      unit_capi_hook_without.cc)
+  this_target_object_libraries(
+      capi_context_stub)
+conclude(unit_test)
+
+# Hook tests with the hook included.
+commence(unit_test capi_ew_with_hook)
+  this_target_sources(
+      unit_capi_hook.cc
+      unit_capi_hook_with.cc
+      ../../../c_api/config/config_api.cc
+      ../../../c_api/context/context_api.cc
+      ../../../c_api/error/error_api.cc
+      ../../../../sm/storage_manager/context.cc
+      ../../../../sm/storage_manager/context_resources.cc
+  )
+  this_target_link_libraries(export)
+  this_target_object_libraries(
+      exception_wrapper
+      rest_client
+      storage_manager_stub
+      vfs
+  )
+  target_compile_definitions(unit_capi_ew_with_hook PUBLIC WITH_HOOK)
+  target_include_directories(
+      unit_capi_ew_with_hook PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hook)
+conclude(unit_test)

@@ -26,25 +26,26 @@
 #
 
 # Add custom target 'examples_cpp'
-add_custom_target(examples_cpp DEPENDS tiledb_shared)
+add_custom_target(examples_cpp)
 
 # Function that builds an executable per example
 function(build_TileDB_example_cppapi TARGET)
   add_executable(${TARGET}_cpp EXCLUDE_FROM_ALL ${TARGET}.cc)
-  target_link_libraries(${TARGET}_cpp PUBLIC local_install tiledb_shared)
+  target_link_libraries(${TARGET}_cpp PUBLIC local_install tiledb)
   if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
     target_link_libraries(${TARGET}_cpp PUBLIC pthread dl)
-  endif()
-  if (TILEDB_TESTS_ENABLE_REST)
-    target_compile_definitions(${TARGET}_cpp PRIVATE -DTILEDB_TESTS_ENABLE_REST)
   endif()
   add_dependencies(examples_cpp ${TARGET}_cpp)
 endfunction()
 
 # Get the example sources
 file(GLOB TILEDB_EXAMPLE_SOURCES_CPPAPI "*.cc")
+
+if(TILEDB_REMOVE_DEPRECATIONS)
+  list(FILTER TILEDB_EXAMPLE_SOURCES_CPPAPI EXCLUDE REGEX "async")
+endif()
 
 # Iterate over all example sources and call the build function
 foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CPPAPI})
@@ -66,7 +67,7 @@ foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CPPAPI})
       target_link_libraries(png_ingestion_webp_cpp PRIVATE "${PNG_LIBRARIES}")
       target_include_directories(png_ingestion_webp_cpp PRIVATE "${PNG_INCLUDE_DIRS}")
       target_compile_definitions(png_ingestion_webp_cpp PRIVATE "${PNG_DEFINITIONS}")
-      find_package(Webp_EP REQUIRED)
+      find_package(WebP REQUIRED)
       target_link_libraries(png_ingestion_webp_cpp PRIVATE WebP::webp)
       target_compile_definitions(png_ingestion_webp_cpp PRIVATE -DTILEDB_WEBP)
     endif()

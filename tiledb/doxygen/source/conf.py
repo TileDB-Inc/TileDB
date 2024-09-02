@@ -76,9 +76,9 @@ copyright = '2023 TileDB, Inc'
 author = 'TileDB, Inc.'
 
 # The short X.Y version.
-version = '2.18'
+version = '2.27'
 # The full version, including alpha/beta/rc tags.
-release = '2.18.0'
+release = '2.27.0'
 
 # Breathe extension configuration.
 doxygen_xml_dir = os.path.join(TILEDB_BUILD_DIR, 'xml/')
@@ -87,11 +87,12 @@ cpp_api_src_path = os.path.join(TILEDB_SRC_PATH, 'tiledb/sm/cpp_api/')
 breathe_projects = {'TileDB-C': doxygen_xml_dir, 'TileDB-C++': doxygen_xml_dir}
 breathe_default_project = 'TileDB-C'
 breathe_projects_source = {
-    'TileDB-C': (c_api_src_path, ['tiledb.h', 'tiledb_experimental.h', 'tiledb_serialization.h']),
+    'TileDB-C': (c_api_src_path, ['tiledb.h', 'tiledb_deprecated.h', 'tiledb_experimental.h', 'tiledb_serialization.h']),
     'TileDB-C++': (cpp_api_src_path, ['tiledb', 'tiledb_experimental'])
 }
 breathe_domain_by_file_pattern = {
     '*/c_api/tiledb.h': 'c',
+    '*/c_api/tiledb_deprecated.h': 'c',
     '*/c_api/tiledb_experimental.h': 'c',
     '*/c_api/tiledb_serialization.h': 'c',
     '*/cpp_api/tiledb': 'cpp',
@@ -107,7 +108,7 @@ c_id_attributes = ['TILEDB_EXPORT', 'TILEDB_NOEXCEPT', 'TILEDB_DEPRECATED_EXPORT
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

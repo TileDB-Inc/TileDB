@@ -32,6 +32,7 @@
  */
 
 #include <future>
+#include <numeric>
 
 #include "unit_data_block.h"
 
@@ -58,8 +59,8 @@ using NullMover2 = ItemMover<NullPolicy, two_stage, Block>;
 TEST_CASE(
     "BlocksAndPorts: Create Source and Sink with DataBlock",
     "[blocks_and_ports]") {
-  auto pn = Source<NullMover2, DataBlock>{};
-  auto cn = Sink<NullMover2, DataBlock>{};
+  auto pn = Source<NullMover2, DataBlock<>>{};
+  auto cn = Sink<NullMover2, DataBlock<>>{};
 
   attach(pn, cn);
 }
@@ -69,11 +70,11 @@ TEST_CASE(
  */
 TEST_CASE(
     "BlocksAndPorts: Manual set source port values", "[blocks_and_ports]") {
-  auto source = Source<NullMover2, DataBlock>{};
-  auto sink = Sink<NullMover2, DataBlock>{};
+  auto source = Source<NullMover2, DataBlock<>>{};
+  auto sink = Sink<NullMover2, DataBlock<>>{};
 
-  DataBlock x{DataBlock::max_size()};
-  DataBlock y{DataBlock::max_size()};
+  DataBlock<> x{DataBlock<>::max_size()};
+  DataBlock<> y{DataBlock<>::max_size()};
 
   SECTION("set source in bound pair") {
     attach(source, sink);
@@ -90,7 +91,7 @@ TEST_CASE(
   }
 }
 
-bool zeroize(DataBlock& x) {
+bool zeroize(DataBlock<>& x) {
   for (auto& j : x) {
     j = std::byte{0};
   }
@@ -100,15 +101,15 @@ bool zeroize(DataBlock& x) {
   return e == x.end();
 }
 
-void iotize(DataBlock& x) {
+void iotize(DataBlock<>& x) {
   std::iota(
       reinterpret_cast<uint8_t*>(x.begin()),
       reinterpret_cast<uint8_t*>(x.end()),
       uint8_t{0});
 }
 
-bool check_iotized(DataBlock& x) {
-  bool ret = [&](DataBlock& z) {
+bool check_iotized(DataBlock<>& x) {
+  bool ret = [&](DataBlock<>& z) {
     uint8_t b{0};
     for (auto&& j : z) {
       if (static_cast<uint8_t>(j) != b) {
@@ -124,8 +125,8 @@ bool check_iotized(DataBlock& x) {
   return ret;
 }
 
-bool check_zeroized(DataBlock& x) {
-  bool ret = [&](DataBlock& z) {
+bool check_zeroized(DataBlock<>& x) {
+  bool ret = [&](DataBlock<>& z) {
     uint8_t b{0};
     for (auto&& j : z) {
       if (static_cast<uint8_t>(j) != b) {
@@ -144,18 +145,18 @@ bool check_zeroized(DataBlock& x) {
  * Test operation of inject and extract.
  */
 TEST_CASE("BlocksAndPorts: Manual extract sink values", "[blocks_and_ports]") {
-  auto source = Source<NullMover2, DataBlock>{};
-  auto sink = Sink<NullMover2, DataBlock>{};
+  auto source = Source<NullMover2, DataBlock<>>{};
+  auto sink = Sink<NullMover2, DataBlock<>>{};
 
-  DataBlock x{DataBlock::max_size()};
-  DataBlock y{DataBlock::max_size()};
+  DataBlock<> x{DataBlock<>::max_size()};
+  DataBlock<> y{DataBlock<>::max_size()};
 
   SECTION("set source in unbound pair") {
     CHECK_THROWS(sink.extract().has_value() == false);
   }
   SECTION("set source in bound pair") {
-    CHECK(x.size() == DataBlock::max_size());
-    CHECK(y.size() == DataBlock::max_size());
+    CHECK(x.size() == DataBlock<>::max_size());
+    CHECK(y.size() == DataBlock<>::max_size());
     iotize(x);
     zeroize(y);
     check_iotized(x);
@@ -180,11 +181,11 @@ TEST_CASE("BlocksAndPorts: Manual extract sink values", "[blocks_and_ports]") {
 TEST_CASE(
     "BlocksAndPorts: Manual transfer from Source to Sink",
     "[blocks_and_ports]") {
-  Source<ManualMover2, DataBlock> source;
-  Sink<ManualMover2, DataBlock> sink;
+  Source<ManualMover2, DataBlock<>> source;
+  Sink<ManualMover2, DataBlock<>> sink;
 
-  DataBlock x{DataBlock::max_size()};
-  DataBlock y{DataBlock::max_size()};
+  DataBlock<> x{DataBlock<>::max_size()};
+  DataBlock<> y{DataBlock<>::max_size()};
 
   [[maybe_unused]] auto dx = x.data();
   [[maybe_unused]] auto dy = y.data();
@@ -268,11 +269,11 @@ TEST_CASE(
 TEST_CASE(
     "BlocksAndPorts: Manual transfer from Source to Sink, async policy",
     "[blocks_and_ports]") {
-  Source<AsyncMover2, DataBlock> source;
-  Sink<AsyncMover2, DataBlock> sink;
+  Source<AsyncMover2, DataBlock<>> source;
+  Sink<AsyncMover2, DataBlock<>> sink;
 
-  DataBlock x{DataBlock::max_size()};
-  DataBlock y{DataBlock::max_size()};
+  DataBlock<> x{DataBlock<>::max_size()};
+  DataBlock<> y{DataBlock<>::max_size()};
 
   [[maybe_unused]] auto dx = x.data();
   [[maybe_unused]] auto dy = y.data();
@@ -312,11 +313,11 @@ TEST_CASE(
 TEST_CASE(
     "BlocksAndPorts: Async transfer from Source to Sink",
     "[blocks_and_ports]") {
-  Source<AsyncMover2, DataBlock> source;
-  Sink<AsyncMover2, DataBlock> sink;
+  Source<AsyncMover2, DataBlock<>> source;
+  Sink<AsyncMover2, DataBlock<>> sink;
 
-  DataBlock x{DataBlock::max_size()};
-  DataBlock y{DataBlock::max_size()};
+  DataBlock<> x{DataBlock<>::max_size()};
+  DataBlock<> y{DataBlock<>::max_size()};
 
   [[maybe_unused]] auto dx = x.data();
   [[maybe_unused]] auto dy = y.data();
@@ -333,7 +334,7 @@ TEST_CASE(
   auto state_machine = sink.get_mover();
   CHECK(str(state_machine->state()) == "st_00");
 
-  std::optional<DataBlock> b;
+  std::optional<DataBlock<>> b;
 
   auto source_node = [&]() {
     CHECK(source.inject(x) == true);
@@ -389,8 +390,8 @@ TEST_CASE(
 TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  Source<AsyncMover2, DataBlock> source;
-  Sink<AsyncMover2, DataBlock> sink;
+  Source<AsyncMover2, DataBlock<>> source;
+  Sink<AsyncMover2, DataBlock<>> sink;
 
   attach(source, sink);
 
@@ -411,7 +412,7 @@ TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
 
-  auto p = PoolAllocator<DataBlock::max_size()>{};
+  auto p = PoolAllocator<DataBlock<>::max_size()>{};
   size_t init_allocations = p.num_allocations();
 
   size_t max_allocated = 0;
@@ -432,7 +433,7 @@ TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      source.inject(make_data_block(*i++));
+      source.inject(DataBlock<>{*i++});
       max_allocated = std::max(max_allocated, p.num_allocated());
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));

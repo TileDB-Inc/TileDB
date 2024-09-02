@@ -27,9 +27,9 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 #
-# Object library for other units to depend upon
+# Object library `context_resources`
 #
 commence(object_library context_resources)
     this_target_sources(context_resources.cc)
-    this_target_object_libraries(baseline config stats thread_pool vfs)
+    this_target_object_libraries(baseline config rest_client stats thread_pool vfs)
 conclude(object_library)

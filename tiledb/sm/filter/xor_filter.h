@@ -66,9 +66,6 @@ class XORFilter : public Filter {
       : Filter(FilterType::FILTER_XOR, filter_data_type) {
   }
 
-  /** Dumps the filter details in ASCII format in the selected output. */
-  void dump(FILE* out) const override;
-
   /**
    * Checks if the filter is applicable to the input datatype.
    *
@@ -90,7 +87,7 @@ class XORFilter : public Filter {
    * element in the part, and then the differences of each consecutive pair
    * of elements.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -112,6 +109,10 @@ class XORFilter : public Filter {
       FilterBuffer* output,
       const Config& config) const override;
 
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  std::ostream& output(std::ostream& os) const override;
+
  private:
   /**
    * Run forward, templated on the tile type.
@@ -119,7 +120,7 @@ class XORFilter : public Filter {
   template <
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

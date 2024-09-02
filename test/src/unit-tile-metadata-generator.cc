@@ -30,10 +30,15 @@
  * Tests the TileMetadataGenerator class.
  */
 
+#include <random>
+
+#include <test/support/src/mem_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
@@ -78,7 +83,8 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Generate the array schema.
   uint64_t num_cells = empty_tile ? 0 : 1000;
-  ArraySchema schema;
+  ArraySchema schema(
+      ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema.set_capacity(num_cells);
   Attribute a("a", tiledb_type);
   a.set_cell_val_num(cell_val_num);
@@ -101,7 +107,8 @@ TEMPLATE_LIST_TEST_CASE(
       false,
       nullable,
       cell_val_num * sizeof(T),
-      tiledb_type);
+      tiledb_type,
+      tiledb::test::create_test_memory_tracker());
   auto tile_buff = writer_tile.fixed_tile().data_as<T>();
   uint8_t* nullable_buff = nullptr;
   if (nullable) {
@@ -256,14 +263,22 @@ TEMPLATE_LIST_TEST_CASE(
   auto type = tiledb::impl::type_to_tiledb<T>();
 
   // Generate the array schema.
-  ArraySchema schema;
+  ArraySchema schema(
+      ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema.set_capacity(4);
   Attribute a("a", (Datatype)type.tiledb_type);
   CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), a)).ok());
 
   // Initialize a new tile.
   auto tiledb_type = static_cast<Datatype>(type.tiledb_type);
-  WriterTileTuple writer_tile(schema, 4, false, false, sizeof(T), tiledb_type);
+  WriterTileTuple writer_tile(
+      schema,
+      4,
+      false,
+      false,
+      sizeof(T),
+      tiledb_type,
+      tiledb::test::create_test_memory_tracker());
   auto tile_buff = writer_tile.fixed_tile().data_as<T>();
 
   // Once an overflow happens, the computation should abort, try to add a few
@@ -289,7 +304,13 @@ TEMPLATE_LIST_TEST_CASE(
   if constexpr (std::is_signed_v<T>) {
     // Initialize a new tile.
     WriterTileTuple writer_tile(
-        schema, 4, false, false, sizeof(T), tiledb_type);
+        schema,
+        4,
+        false,
+        false,
+        sizeof(T),
+        tiledb_type,
+        tiledb::test::create_test_memory_tracker());
     auto tile_buff = writer_tile.fixed_tile().data_as<T>();
 
     // Once an overflow happens, the computation should abort, try to add a few
@@ -327,11 +348,12 @@ TEST_CASE(
   bool empty_tile = test == "empty tile";
 
   uint64_t max_string_size = 100;
-  uint64_t num_strings = 2000;
+  int num_strings = 2000;
 
   // Generate the array schema.
   uint64_t num_cells = empty_tile ? 0 : 20;
-  ArraySchema schema;
+  ArraySchema schema(
+      ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema.set_capacity(num_cells);
   Attribute a("a", Datatype::STRING_ASCII);
   a.set_cell_val_num(constants::var_num);
@@ -340,7 +362,7 @@ TEST_CASE(
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> strings;
   strings.reserve(num_strings);
-  for (uint64_t i = 0; i < num_strings; i++) {
+  for (int i = 0; i < num_strings; i++) {
     strings.emplace_back(tiledb::test::random_string(rand() % max_string_size));
   }
   std::sort(strings.begin(), strings.end());
@@ -356,7 +378,13 @@ TEST_CASE(
 
   // Initialize tile.
   WriterTileTuple writer_tile(
-      schema, num_cells, true, nullable, 1, Datatype::CHAR);
+      schema,
+      num_cells,
+      true,
+      nullable,
+      1,
+      Datatype::CHAR,
+      tiledb::test::create_test_memory_tracker());
   auto offsets_tile_buff = writer_tile.offset_tile().data_as<offsets_t>();
 
   // Initialize a new nullable tile.
@@ -387,8 +415,8 @@ TEST_CASE(
 
     *offsets_tile_buff = offset;
     auto& val = strings[values[i]];
-    CHECK(
-        writer_tile.var_tile().write_var(val.c_str(), offset, val.size()).ok());
+    CHECK_NOTHROW(
+        writer_tile.var_tile().write_var(val.c_str(), offset, val.size()));
 
     offset += val.size();
     offsets_tile_buff++;
@@ -431,7 +459,8 @@ TEST_CASE(
     "TileMetadataGenerator: var data tiles same string, different lengths",
     "[tile-metadata-generator][var-data][same-length]") {
   // Generate the array schema.
-  ArraySchema schema;
+  ArraySchema schema(
+      ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema.set_capacity(2);
   Attribute a("a", Datatype::CHAR);
   a.set_cell_val_num(constants::var_num);
@@ -439,14 +468,21 @@ TEST_CASE(
 
   // Store '123' and '12'
   // Initialize offsets tile.
-  WriterTileTuple writer_tile(schema, 2, true, false, 1, Datatype::CHAR);
+  WriterTileTuple writer_tile(
+      schema,
+      2,
+      true,
+      false,
+      1,
+      Datatype::CHAR,
+      tiledb::test::create_test_memory_tracker());
   auto offsets_tile_buff = writer_tile.offset_tile().data_as<offsets_t>();
   offsets_tile_buff[0] = 0;
   offsets_tile_buff[1] = 3;
 
   // Initialize var tile.
   std::string data = "12312";
-  CHECK(writer_tile.var_tile().write_var(data.c_str(), 0, 5).ok());
+  CHECK_NOTHROW(writer_tile.var_tile().write_var(data.c_str(), 0, 5));
   writer_tile.var_tile().set_size(5);
 
   // Call the tile metadata generator.

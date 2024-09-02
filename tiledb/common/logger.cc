@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,8 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/spdlog.h>
+
 #ifndef _WIN32
 #include <spdlog/sinks/stdout_color_sinks.h>
 #endif
@@ -41,6 +43,24 @@
 #include "tiledb/common/logger.h"
 
 namespace tiledb::common {
+
+spdlog::level::level_enum to_spdlog_level(Logger::Level lvl) {
+  switch (lvl) {
+    case Logger::Level::FATAL:
+      return spdlog::level::critical;
+    case Logger::Level::ERR:
+      return spdlog::level::err;
+    case Logger::Level::WARN:
+      return spdlog::level::warn;
+    case Logger::Level::INFO:
+      return spdlog::level::info;
+    case Logger::Level::DBG:
+      return spdlog::level::debug;
+    default:
+      assert(lvl == Logger::Level::TRACE);
+      return spdlog::level::trace;
+  }
+}
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -127,10 +147,6 @@ Status Logger::status(const Status& st) {
   return st;
 }
 
-void Logger::status_no_return_value(const Status& st) {
-  logger_->error(st.message());
-}
-
 void Logger::trace(const std::string& msg) {
   logger_->trace(msg);
 }
@@ -187,6 +203,10 @@ void Logger::critical(const std::stringstream& msg) {
 void Logger::fatal(const std::stringstream& msg) {
   logger_->error(msg.str());
   exit(1);
+}
+
+bool Logger::should_log(Logger::Level lvl) {
+  return logger_->should_log(to_spdlog_level(lvl));
 }
 
 void Logger::set_level(Logger::Level lvl) {

@@ -1,11 +1,11 @@
 /**
- * @file compile_array_schema_main.cc
+ * @file compile_uri_format_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,18 @@
  * THE SOFTWARE.
  */
 
+#include "../generate_uri.h"
 #include "../parse_uri.h"
 
+using namespace tiledb::storage_format;
+using namespace tiledb::sm::utils::parse;
+
 int main() {
-  std::pair<uint64_t, uint64_t> x;
-  (void)tiledb::sm::utils::parse::get_timestamp_range(tiledb::sm::URI{}, &x);
+  (void)generate_timestamped_name(1, 2, 1);
+  (void)generate_timestamped_name(1, 1);
+  (void)generate_consolidated_fragment_name(
+      tiledb::sm::URI{}, tiledb::sm::URI{}, 1);
+
+  (void)is_element_of(tiledb::sm::URI{}, tiledb::sm::URI{});
   return 0;
 }

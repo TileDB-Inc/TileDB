@@ -58,6 +58,16 @@ class GlobalOrderWriter : public WriterBase {
    * by successive query submissions until the query is finalized.
    */
   struct GlobalWriteState {
+    /** Deleted Default Constructor. */
+    GlobalWriteState() = delete;
+
+    /**
+     * Constructor.
+     *
+     * @param memory_tracker The memory tracker for the underlying containers.
+     */
+    explicit GlobalWriteState(shared_ptr<MemoryTracker> memory_tracker);
+
     /**
      * Stores the last tile of each attribute/dimension for each write
      * operation. The key is the attribute/dimension name. For fixed-sized
@@ -66,7 +76,7 @@ class GlobalOrderWriter : public WriterBase {
      * second tile is the values tile. In both cases, the third tile stores a
      * validity tile for nullable attributes.
      */
-    std::unordered_map<std::string, WriterTileTupleVector> last_tiles_;
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector> last_tiles_;
 
     /**
      * Stores the last offset into the var size tile buffer for var size
@@ -75,13 +85,13 @@ class GlobalOrderWriter : public WriterBase {
      * Note: Once tiles are created with the correct size from the beginning,
      * this variable can go awaty.
      */
-    std::unordered_map<std::string, uint64_t> last_var_offsets_;
+    tdb::pmr::unordered_map<std::string, uint64_t> last_var_offsets_;
 
     /**
      * Stores the number of cells written for each attribute/dimension across
      * the write operations.
      */
-    std::unordered_map<std::string, uint64_t> cells_written_;
+    tdb::pmr::unordered_map<std::string, uint64_t> cells_written_;
 
     /** The fragment metadata that the writer will focus on. */
     shared_ptr<FragmentMetadata> frag_meta_;
@@ -108,20 +118,14 @@ class GlobalOrderWriter : public WriterBase {
   GlobalOrderWriter(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout,
+      StrategyParams& params,
       uint64_t fragment_size,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
       std::vector<std::string>& processed_conditions,
       Query::CoordsInfo& coords_info_,
       bool remote_query,
-      optional<std::string> fragment_name = nullopt,
-      bool skip_checks_serialization = false);
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~GlobalOrderWriter();
@@ -307,7 +311,7 @@ class GlobalOrderWriter : public WriterBase {
    */
   Status prepare_full_tiles(
       const std::set<uint64_t>& coord_dups,
-      std::unordered_map<std::string, WriterTileTupleVector>* tiles) const;
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -379,7 +383,7 @@ class GlobalOrderWriter : public WriterBase {
   uint64_t num_tiles_to_write(
       uint64_t start,
       uint64_t tile_num,
-      std::unordered_map<std::string, WriterTileTupleVector>& tiles);
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles);
 
   /**
    * Close the current fragment and start a new one. The closed fragment will

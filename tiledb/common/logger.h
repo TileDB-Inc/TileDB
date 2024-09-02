@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,29 +29,14 @@
  *
  * This file defines class Logger, which is implemented as a wrapper around
  * `spdlog`. By policy `spdlog` must remain encapsulated as an implementation
- * and not be exposed as a dependency of the TileDB library. Accordingly, this
- * header should not be included as a header in any other header file. For
- * inclusion in a header (notably for use within the definition of
- * template-dependent functions), include the header `logger_public.h`.
- *
- * The reason for this restriction is a technical limitation in template
- * instantiation. Part of the interface to `spdlog` consists of template
- * functions with variadic template arguments. Instantiation of such function
- * does not instantiate a variadic function (for exmaple `printf`) but rather a
- * function with a fixed number of arguments that depend upon the argument list.
- * Such variadic template argument lists cannot be forwarded across the
- * boundaries of compilation units, so exposing variadic template arguments
- * necessarily exposes the dependency upon `spdlog`. Thus this file `logger.h`,
- * which does have such arguments, must remain entirely within the library, but
- * `logger_public.h`, which does not have such arguments, may be exposed without
- * creating an additional external dependency.
+ * and not be exposed as a dependency of the TileDB library.
  */
 
 #pragma once
 #ifndef TILEDB_LOGGER_H
 #define TILEDB_LOGGER_H
 
-#include <spdlog/spdlog.h>
+#include <spdlog/fmt/fmt.h>
 #include <atomic>
 #include <sstream>
 
@@ -59,8 +44,11 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 
-namespace tiledb {
-namespace common {
+namespace spdlog {
+class logger;
+}
+
+namespace tiledb::common {
 
 /** Definition of class Logger. */
 class Logger {
@@ -123,12 +111,15 @@ class Logger {
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    *     details.
-   * @param arg positional argument to format.
-   * @param args optional additional positional arguments to format.
+   * @param args positional arguments to format.
    */
-  template <typename Arg1, typename... Args>
-  void trace(std::string_view fmt, const Arg1& arg1, const Args&... args) {
-    logger_->trace(fmt::runtime(fmt), arg1, args...);
+  template <typename... Args>
+  void trace(fmt::format_string<Args...> fmt, Args&&... args) {
+    // Check that this level is enabled to avoid needlessly formatting the
+    // string.
+    if (!should_log(Level::TRACE))
+      return;
+    trace(fmt::format(fmt, std::forward<Args...>(args)...));
   }
 
   /**
@@ -157,12 +148,15 @@ class Logger {
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    *     details.
-   * @param arg positional argument to format.
-   * @param args optional additional positional arguments to format.
+   * @param args positional arguments to format.
    */
-  template <typename Arg1, typename... Args>
-  void debug(std::string_view fmt, const Arg1& arg1, const Args&... args) {
-    logger_->debug(fmt::runtime(fmt), arg1, args...);
+  template <typename... Args>
+  void debug(fmt::format_string<Args...> fmt, Args&&... args) {
+    // Check that this level is enabled to avoid needlessly formatting the
+    // string.
+    if (!should_log(Level::DBG))
+      return;
+    debug(fmt::format(fmt, std::forward<Args>(args)...));
   }
 
   /**
@@ -191,12 +185,15 @@ class Logger {
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    *     details.
-   * @param arg positional argument to format.
-   * @param args optional additional positional arguments to format.
+   * @param args positional arguments to format.
    */
-  template <typename Arg1, typename... Args>
-  void info(std::string_view fmt, const Arg1& arg1, const Args&... args) {
-    logger_->info(fmt::runtime(fmt), arg1, args...);
+  template <typename... Args>
+  void info(fmt::format_string<Args...> fmt, Args&&... args) {
+    // Check that this level is enabled to avoid needlessly formatting the
+    // string.
+    if (!should_log(Level::INFO))
+      return;
+    info(fmt::format(fmt, std::forward<Args>(args)...));
   }
 
   /**
@@ -225,12 +222,15 @@ class Logger {
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    *     details.
-   * @param arg positional argument to format.
-   * @param args optional additional positional arguments to format.
+   * @param args positional arguments to format.
    */
-  template <typename Arg1, typename... Args>
-  void warn(std::string_view fmt, const Arg1& arg1, const Args&... args) {
-    logger_->warn(fmt::runtime(fmt), arg1, args...);
+  template <typename... Args>
+  void warn(fmt::format_string<Args...> fmt, Args&&... args) {
+    // Check that this level is enabled to avoid needlessly formatting the
+    // string.
+    if (!should_log(Level::WARN))
+      return;
+    warn(fmt::format(fmt, std::forward<Args>(args)...));
   }
 
   /**
@@ -258,12 +258,15 @@ class Logger {
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
    * details.
-   * @param arg1 positional argument to format.
-   * @param args optional additional positional arguments to format.
+   * @param args positional arguments to format.
    */
-  template <typename Arg1, typename... Args>
-  void error(std::string_view fmt, const Arg1& arg1, const Args&... args) {
-    logger_->error(fmt::runtime(fmt), arg1, args...);
+  template <typename... Args>
+  void error(fmt::format_string<Args...> fmt, Args&&... args) {
+    // Check that this level is enabled to avoid needlessly formatting the
+    // string.
+    if (!should_log(Level::ERR))
+      return;
+    error(fmt::format(fmt, std::forward<Args>(args)...));
   }
 
   /**
@@ -288,19 +291,28 @@ class Logger {
   void critical(const std::stringstream& msg);
 
   /**
+   * A formatted critical statment.
+   *
+   * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
+   *     details.
+   * @param args positional arguments to format.
+   */
+  template <typename... Args>
+  void critical(fmt::format_string<Args...> fmt, Args&&... args) {
+    // Check that this level is enabled to avoid needlessly formatting the
+    // string.
+    if (!should_log(Level::FATAL))
+      return;
+    critical(fmt::format(fmt, std::forward<Args>(args)...));
+  }
+
+  /**
    * Log a message from a Status object and return
    * the same Status object
    *
    * @param st The Status object to log
    */
   Status status(const Status& st);
-
-  /**
-   * Log a message from a Status object without returning it.
-   *
-   * @param st The Status object to log
-   */
-  void status_no_return_value(const Status& st);
 
   /**
    * Log an error and exit with a non-zero status.
@@ -324,17 +336,11 @@ class Logger {
   void fatal(const std::stringstream& msg);
 
   /**
-   * A formatted critical statment.
+   * Check whether events of a given level are logged.
    *
-   * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
-   *     details.
-   * @param arg positional argument to format.
-   * @param args optional additional positional arguments to format.
+   * @param lvl The level of events to check.
    */
-  template <typename Arg1, typename... Args>
-  void critical(std::string_view fmt, const Arg1& arg1, const Args&... args) {
-    logger_->critical(fmt::runtime(fmt), arg1, args...);
-  }
+  bool should_log(Logger::Level lvl);
 
   /**
    * Set the logger level.
@@ -443,8 +449,7 @@ inline Status logger_format_from_string(
   return Status::Ok();
 }
 
-}  // namespace common
-}  // namespace tiledb
+}  // namespace tiledb::common
 
 // Also include the public-permissible logger functions here.
 #include "tiledb/common/logger_public.h"

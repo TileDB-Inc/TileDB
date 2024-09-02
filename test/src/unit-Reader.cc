@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,12 +31,15 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/legacy/reader.h"
@@ -68,12 +71,15 @@ struct ReaderFx {
   const char* ARRAY_NAME = "reader";
   tiledb_array_t* array_ = nullptr;
 
+  shared_ptr<MemoryTracker> tracker_;
+
   ReaderFx();
   ~ReaderFx();
 };
 
 ReaderFx::ReaderFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
+    : fs_vec_(vfs_test_get_fs_vec())
+    , tracker_(tiledb::test::create_test_memory_tracker()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 
@@ -152,29 +158,35 @@ TEST_CASE_METHOD(
   uint64_t tmp_size = 0;
   Config config;
   Context context(config);
+  LocalQueryStateMachine lq_state_machine{LocalQueryState::uninitialized};
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
   buffers.emplace(
       "a", tiledb::sm::QueryBuffer(nullptr, nullptr, &tmp_size, &tmp_size));
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> aggregate_buffers;
   std::optional<QueryCondition> condition;
   ThreadPool tp_cpu(4), tp_io(4);
-  Array array(URI(array_name_), context.storage_manager());
+  Array array(context.resources(), URI(array_name_));
   CHECK(array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0)
             .ok());
   Subarray subarray(&array, &g_helper_stats, g_helper_logger());
   DefaultChannelAggregates default_channel_aggregates;
-  Reader reader(
-      &g_helper_stats,
-      g_helper_logger(),
-      context.storage_manager(),
-      &array,
+  auto params = StrategyParams(
+      context.resources(),
+      array.memory_tracker(),
+      tracker_,
+      lq_state_machine,
+      CancellationSource(context.storage_manager()),
+      array.opened_array(),
       config,
+      nullopt,
       buffers,
       aggregate_buffers,
       subarray,
       Layout::ROW_MAJOR,
       condition,
-      default_channel_aggregates);
+      default_channel_aggregates,
+      false);
+  Reader reader(&g_helper_stats, g_helper_logger(), params);
   unsigned dim_num = 2;
   auto size = 2 * sizeof(int32_t);
   int32_t domain_vec[] = {1, 10, 1, 15};
@@ -234,17 +246,17 @@ TEST_CASE_METHOD(
   TileDomain<int32_t> array_tile_domain(
       UINT32_MAX, domain, dsd, tile_extents, layout);
 
-  auto d1{make_shared<Dimension>(HERE(), "d1", Datatype::INT32)};
+  auto d1{make_shared<Dimension>(HERE(), "d1", Datatype::INT32, tracker_)};
   CHECK(d1->set_domain(domain_vec).ok());
   CHECK(d1->set_tile_extent(&tile_extents_vec[0]).ok());
-  auto d2{make_shared<Dimension>(HERE(), "d2", Datatype::INT32)};
+  auto d2{make_shared<Dimension>(HERE(), "d2", Datatype::INT32, tracker_)};
   CHECK(d2->set_domain(&domain_vec[2]).ok());
   CHECK(d2->set_tile_extent(&tile_extents_vec[1]).ok());
-  auto dom{make_shared<Domain>(HERE())};
+  auto dom{make_shared<Domain>(HERE(), tracker_)};
   CHECK(dom->add_dimension(d1).ok());
   CHECK(dom->add_dimension(d2).ok());
 
-  auto schema = make_shared<ArraySchema>(HERE());
+  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE, tracker_);
   CHECK(schema->set_domain(dom).ok());
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
@@ -252,10 +264,10 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        nullptr,
         schema,
-        URI(),
+        generate_fragment_uri(&array),
         std::make_pair<uint64_t, uint64_t>(0, 0),
+        tracker_,
         true);
     fragments.emplace_back(std::move(fragment));
   }
@@ -267,49 +279,39 @@ TEST_CASE_METHOD(
       tile_coords,
       array_tile_domain,
       frag_tile_domains,
-      result_space_tiles);
+      result_space_tiles,
+      tiledb::test::get_test_memory_tracker());
   CHECK(result_space_tiles.size() == 6);
 
-  // Result tiles for fragment #1
-  ResultTile result_tile_1_0_1(1, 0, *fragments[0]);
-  ResultTile result_tile_1_2_1(1, 2, *fragments[0]);
-
-  // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0, *fragments[1]);
-
-  // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0, *fragments[2]);
-  ResultTile result_tile_3_0_3(3, 2, *fragments[2]);
-
   // Initialize result_space_tiles
-  ResultSpaceTile<int32_t> rst_1_0;
+  ResultSpaceTile<int32_t> rst_1_0(tiledb::test::get_test_memory_tracker());
   rst_1_0.set_start_coords({3, 1});
   rst_1_0.append_frag_domain(2, ds2);
   rst_1_0.append_frag_domain(1, ds1);
-  rst_1_0.set_result_tile(1, result_tile_1_0_1);
-  rst_1_0.set_result_tile(2, result_tile_1_0_2);
-  ResultSpaceTile<int32_t> rst_1_2;
+  rst_1_0.set_result_tile(1, 0, *fragments[0]);
+  rst_1_0.set_result_tile(2, 0, *fragments[1]);
+  ResultSpaceTile<int32_t> rst_1_2(tiledb::test::get_test_memory_tracker());
   rst_1_2.set_start_coords({3, 11});
   rst_1_2.append_frag_domain(1, ds1);
-  rst_1_2.set_result_tile(1, result_tile_1_2_1);
-  ResultSpaceTile<int32_t> rst_2_0;
+  rst_1_2.set_result_tile(1, 2, *fragments[0]);
+  ResultSpaceTile<int32_t> rst_2_0(tiledb::test::get_test_memory_tracker());
   rst_2_0.set_start_coords({5, 1});
   rst_2_0.append_frag_domain(3, ds3);
-  rst_2_0.set_result_tile(3, result_tile_2_0_3);
-  ResultSpaceTile<int32_t> rst_2_2;
+  rst_2_0.set_result_tile(3, 0, *fragments[2]);
+  ResultSpaceTile<int32_t> rst_2_2(tiledb::test::get_test_memory_tracker());
   rst_2_2.set_start_coords({5, 11});
-  ResultSpaceTile<int32_t> rst_3_0;
+  ResultSpaceTile<int32_t> rst_3_0(tiledb::test::get_test_memory_tracker());
   rst_3_0.set_start_coords({7, 1});
   rst_3_0.append_frag_domain(3, ds3);
-  rst_3_0.set_result_tile(3, result_tile_3_0_3);
-  ResultSpaceTile<int32_t> rst_3_2;
+  rst_3_0.set_result_tile(3, 2, *fragments[2]);
+  ResultSpaceTile<int32_t> rst_3_2(tiledb::test::get_test_memory_tracker());
   rst_3_2.set_start_coords({7, 11});
 
   // Check correctness
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[0][0])] == rst_1_0);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[1][0])] == rst_1_2);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[2][0])] == rst_2_0);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[3][0])] == rst_2_2);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[4][0])] == rst_3_0);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[5][0])] == rst_3_2);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[0][0])) == rst_1_0);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[1][0])) == rst_1_2);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[2][0])) == rst_2_0);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[3][0])) == rst_2_2);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[4][0])) == rst_3_0);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[5][0])) == rst_3_2);
 }

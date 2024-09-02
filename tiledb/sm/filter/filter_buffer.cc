@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,8 +40,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 FilterBuffer::BufferOrView::BufferOrView(const shared_ptr<Buffer>& buffer) {
   underlying_buffer_ = buffer;
@@ -211,6 +210,8 @@ std::vector<ConstBuffer> FilterBuffer::buffers_as(Datatype datatype) const {
     case Datatype::FLOAT64:
       return buffers_as<double>();
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::BOOL:
     case Datatype::UINT8:
       return buffers_as<uint8_t>();
@@ -652,5 +653,4 @@ template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint32_t>() const;
 template std::vector<ConstBuffer> FilterBuffer::buffers_as<int64_t>() const;
 template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint64_t>() const;
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

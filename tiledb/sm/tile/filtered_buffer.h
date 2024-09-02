@@ -35,7 +35,7 @@
 
 #include <vector>
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/common.h"
 
 using namespace tiledb::common;
 

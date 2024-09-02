@@ -25,17 +25,6 @@
 #
 set -xeuo pipefail
 
-# Check for clean configure with tests disabled
-# This will not validate linkage, but we can't
-# build all variations separately right now.
-
-CONFIG_TMP_PATH=`mktemp -d`
-pushd $CONFIG_TMP_PATH
-$GITHUB_WORKSPACE/bootstrap $bootstrap_args --disable-tests
-popd
-
-###############################################
-
 # Build and test libtiledb
 
 # Set up arguments for bootstrap.sh

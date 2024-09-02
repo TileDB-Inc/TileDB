@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/consolidator/consolidator.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
@@ -53,11 +54,21 @@ class GroupMetaConsolidator : public Consolidator {
   /**
    * Constructor.
    *
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of all Consolidator classes on StorageManager.
+   * For now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * GroupMetaConsolidator(ContextResources&, const Config&).
+   *
+   * @param resources The context resources.
    * @param config Config.
-   * @param storage_manager Storage manager.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    */
   explicit GroupMetaConsolidator(
-      const Config& config, StorageManager* storage_manager);
+      ContextResources& resources,
+      const Config& config,
+      StorageManager* storage_manager);
 
   /** Destructor. */
   ~GroupMetaConsolidator() = default;
@@ -83,14 +94,14 @@ class GroupMetaConsolidator : public Consolidator {
       const char* group_name,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length);
+      uint32_t key_length) override;
 
   /**
    * Performs the vacuuming operation.
    *
    * @param group_name URI of group to consolidate.
    */
-  void vacuum(const char* group_name);
+  void vacuum(const char* group_name) override;
 
  private:
   /* ********************************* */

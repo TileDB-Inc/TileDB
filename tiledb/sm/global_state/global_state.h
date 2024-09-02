@@ -37,7 +37,6 @@
 #include <set>
 #include <string>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
@@ -67,9 +66,8 @@ class GlobalState {
    * Initializes all TileDB global state in an idempotent and threadsafe way.
    *
    * @param config The TileDB configuration parameters (or nullptr).
-   * @return Status
    */
-  Status init(const Config& config = Config());
+  void init(const Config& config = Config());
 
   /**
    * Register the given StorageManger instance.

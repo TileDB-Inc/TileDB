@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -42,19 +43,14 @@ using namespace tiledb::test;
 
 /** Tests for CPP API partial attribute write. */
 struct CppPartialAttrWriteFx {
-  // Constants.
-  const std::string ARRAY_NAME = "test_partial_attr_write_array";
+  VFSTestSetup vfs_test_setup_;
 
   // TileDB context.
   Context ctx_;
-  VFS vfs_;
-
-  // Buffers to allocate on server side for serialized queries
-  test::ServerQueryBuffers server_buffers_;
+  const std::string array_name_;
 
   // Constructors/destructors.
   CppPartialAttrWriteFx();
-  ~CppPartialAttrWriteFx();
 
   // Functions.
   void create_sparse_array(bool allows_dups = false);
@@ -63,8 +59,6 @@ struct CppPartialAttrWriteFx {
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp,
-      const bool serialized,
-      const bool refactored_query_v2,
       std::unique_ptr<Array>& array,
       std::unique_ptr<Query>& query);
   void write_sparse_dims_and_a1(
@@ -73,40 +67,23 @@ struct CppPartialAttrWriteFx {
       std::vector<uint64_t> dim2,
       std::vector<int> a1,
       uint64_t timestamp,
-      const bool serialized,
-      const bool refactored_query_v2,
       std::unique_ptr<Array>& array,
       std::unique_ptr<Query>& query);
-  void write_sparse_a1(
-      Query& query,
-      std::vector<int> a1,
-      const bool serialized,
-      const bool refactored_query_v2);
-  void write_sparse_a2(
-      Query& query,
-      std::vector<int64_t> a2,
-      const bool serialized,
-      const bool refactored_query_v2);
+  void write_sparse_a1(Query& query, std::vector<int> a1);
+  void write_sparse_a2(Query& query, std::vector<int64_t> a2);
   void read_sparse(
       std::vector<int>& a1,
       std::vector<int64_t>& a2,
       std::vector<uint64_t>& dim1,
       std::vector<uint64_t>& dim2);
-
-  void remove_array();
-  void remove_array(const std::string& array_name);
-  bool is_array(const std::string& array_name);
 };
 
 CppPartialAttrWriteFx::CppPartialAttrWriteFx()
-    : vfs_(ctx_) {
+    : array_name_(vfs_test_setup_.array_uri("test_partial_attr_write_array")) {
   Config config;
   config["sm.allow_separate_attribute_writes"] = "true";
-  ctx_ = Context(config);
-  vfs_ = VFS(ctx_);
-}
-
-CppPartialAttrWriteFx::~CppPartialAttrWriteFx() {
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
 }
 
 void CppPartialAttrWriteFx::create_sparse_array(bool allows_dups) {
@@ -140,7 +117,7 @@ void CppPartialAttrWriteFx::create_sparse_array(bool allows_dups) {
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  Array::create(ARRAY_NAME, schema);
+  Array::create(array_name_, schema);
 }
 
 void CppPartialAttrWriteFx::write_sparse_dims(
@@ -148,12 +125,14 @@ void CppPartialAttrWriteFx::write_sparse_dims(
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
     uint64_t timestamp,
-    const bool serialized,
-    const bool refactored_query_v2,
     std::unique_ptr<Array>& array,
     std::unique_ptr<Query>& query) {
   // Open array.
-  array = std::make_unique<Array>(ctx_, ARRAY_NAME, TILEDB_WRITE, timestamp);
+  array = std::make_unique<Array>(
+      ctx_,
+      array_name_,
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   query = std::make_unique<Query>(ctx_, *array, TILEDB_WRITE);
@@ -161,15 +140,7 @@ void CppPartialAttrWriteFx::write_sparse_dims(
   query->set_data_buffer("d1", dim1);
   query->set_data_buffer("d2", dim2);
 
-  CHECK(
-      TILEDB_OK == test::submit_query_wrapper(
-                       ctx_,
-                       ARRAY_NAME,
-                       query.get(),
-                       server_buffers_,
-                       serialized,
-                       refactored_query_v2,
-                       false));
+  query->submit();
 }
 
 void CppPartialAttrWriteFx::write_sparse_dims_and_a1(
@@ -178,12 +149,14 @@ void CppPartialAttrWriteFx::write_sparse_dims_and_a1(
     std::vector<uint64_t> dim2,
     std::vector<int> a1,
     uint64_t timestamp,
-    const bool serialized,
-    const bool refactored_query_v2,
     std::unique_ptr<Array>& array,
     std::unique_ptr<Query>& query) {
   // Open array.
-  array = std::make_unique<Array>(ctx_, ARRAY_NAME, TILEDB_WRITE, timestamp);
+  array = std::make_unique<Array>(
+      ctx_,
+      array_name_,
+      TILEDB_WRITE,
+      tiledb::TemporalPolicy(tiledb::TimeTravel, timestamp));
 
   // Create query.
   query = std::make_unique<Query>(ctx_, *array, TILEDB_WRITE);
@@ -192,51 +165,19 @@ void CppPartialAttrWriteFx::write_sparse_dims_and_a1(
   query->set_data_buffer("d2", dim2);
   query->set_data_buffer("a1", a1);
 
-  CHECK(
-      TILEDB_OK == test::submit_query_wrapper(
-                       ctx_,
-                       ARRAY_NAME,
-                       query.get(),
-                       server_buffers_,
-                       serialized,
-                       refactored_query_v2,
-                       false));
+  query->submit();
 }
 
-void CppPartialAttrWriteFx::write_sparse_a1(
-    Query& query,
-    std::vector<int> a1,
-    const bool serialized,
-    const bool refactored_query_v2) {
+void CppPartialAttrWriteFx::write_sparse_a1(Query& query, std::vector<int> a1) {
   query.set_data_buffer("a1", a1);
 
-  CHECK(
-      TILEDB_OK == test::submit_query_wrapper(
-                       ctx_,
-                       ARRAY_NAME,
-                       &query,
-                       server_buffers_,
-                       serialized,
-                       refactored_query_v2,
-                       false));
+  query.submit();
 }
 
 void CppPartialAttrWriteFx::write_sparse_a2(
-    Query& query,
-    std::vector<int64_t> a2,
-    const bool serialized,
-    const bool refactored_query_v2) {
+    Query& query, std::vector<int64_t> a2) {
   query.set_data_buffer("a2", a2);
-
-  CHECK(
-      TILEDB_OK == test::submit_query_wrapper(
-                       ctx_,
-                       ARRAY_NAME,
-                       &query,
-                       server_buffers_,
-                       serialized,
-                       refactored_query_v2,
-                       false));
+  query.submit();
 }
 
 void CppPartialAttrWriteFx::read_sparse(
@@ -245,7 +186,7 @@ void CppPartialAttrWriteFx::read_sparse(
     std::vector<uint64_t>& dim1,
     std::vector<uint64_t>& dim2) {
   // Open array.
-  Array array(ctx_, ARRAY_NAME, TILEDB_READ);
+  Array array(ctx_, array_name_, TILEDB_READ);
 
   // Create query.
   Query query(ctx_, array, TILEDB_READ);
@@ -263,32 +204,15 @@ void CppPartialAttrWriteFx::read_sparse(
   array.close();
 }
 
-void CppPartialAttrWriteFx::remove_array(const std::string& array_name) {
-  if (!is_array(array_name)) {
-    return;
-  }
-
-  vfs_.remove_dir(array_name);
-}
-
-void CppPartialAttrWriteFx::remove_array() {
-  remove_array(ARRAY_NAME);
-}
-
-bool CppPartialAttrWriteFx::is_array(const std::string& array_name) {
-  return vfs_.is_dir(array_name);
-}
-
 TEST_CASE_METHOD(
     CppPartialAttrWriteFx,
     "CPP API: Test partial attribute write, not all dimensions set on first "
     "write",
     "[cppapi][partial-attribute-write][not-all-dims-set]") {
-  remove_array();
   create_sparse_array();
 
   // Open array.
-  Array array(ctx_, ARRAY_NAME, TILEDB_WRITE);
+  Array array(ctx_, array_name_, TILEDB_WRITE);
 
   // Create query.
   std::vector<uint64_t> dim1(10);
@@ -300,22 +224,12 @@ TEST_CASE_METHOD(
       "Query: [check_buffer_names] Dimension buffer d2 is not set");
 
   array.close();
-
-  remove_array();
 }
 
 TEST_CASE_METHOD(
     CppPartialAttrWriteFx,
     "CPP API: Test partial attribute write, basic test",
-    "[cppapi][partial-attribute-write][basic]") {
-  bool serialized = false, refactored_query_v2 = false;
-#ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-  remove_array();
+    "[cppapi][partial-attribute-write][basic][rest]") {
   create_sparse_array();
 
   // Write fragment, seperating dimensions and attributes.
@@ -326,14 +240,10 @@ TEST_CASE_METHOD(
       {1, 1, 1, 2, 3, 4, 3, 3},
       {1, 2, 4, 3, 1, 2, 3, 4},
       1,
-      serialized,
-      refactored_query_v2,
       array,
       query);
-  write_sparse_a1(
-      *query, {0, 1, 2, 3, 4, 5, 6, 7}, serialized, refactored_query_v2);
-  write_sparse_a2(
-      *query, {8, 9, 10, 11, 12, 13, 14, 15}, serialized, refactored_query_v2);
+  write_sparse_a1(*query, {0, 1, 2, 3, 4, 5, 6, 7});
+  write_sparse_a2(*query, {8, 9, 10, 11, 12, 13, 14, 15});
   query->finalize();
   array->close();
 
@@ -348,22 +258,12 @@ TEST_CASE_METHOD(
   CHECK(a2 == std::vector<int64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
   CHECK(dim1 == std::vector<uint64_t>({1, 1, 1, 2, 3, 4, 3, 3}));
   CHECK(dim2 == std::vector<uint64_t>({1, 2, 4, 3, 1, 2, 3, 4}));
-
-  remove_array();
 }
 
 TEST_CASE_METHOD(
     CppPartialAttrWriteFx,
     "CPP API: Test partial attribute write, basic test 2",
-    "[cppapi][partial-attribute-write][basic2]") {
-  bool serialized = false, refactored_query_v2 = false;
-#ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-  remove_array();
+    "[cppapi][partial-attribute-write][basic2][rest]") {
   create_sparse_array();
 
   // Write fragment, seperating dimensions and attributes.
@@ -375,12 +275,9 @@ TEST_CASE_METHOD(
       {1, 2, 4, 3, 1, 2, 3, 4},
       {0, 1, 2, 3, 4, 5, 6, 7},
       1,
-      serialized,
-      refactored_query_v2,
       array,
       query);
-  write_sparse_a2(
-      *query, {8, 9, 10, 11, 12, 13, 14, 15}, serialized, refactored_query_v2);
+  write_sparse_a2(*query, {8, 9, 10, 11, 12, 13, 14, 15});
   query->finalize();
   array->close();
 
@@ -395,22 +292,12 @@ TEST_CASE_METHOD(
   CHECK(a2 == std::vector<int64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
   CHECK(dim1 == std::vector<uint64_t>({1, 1, 1, 2, 3, 4, 3, 3}));
   CHECK(dim2 == std::vector<uint64_t>({1, 2, 4, 3, 1, 2, 3, 4}));
-
-  remove_array();
 }
 
 TEST_CASE_METHOD(
     CppPartialAttrWriteFx,
     "CPP API: Test partial attribute write, rewrite",
-    "[cppapi][partial-attribute-write][rewrite]") {
-  bool serialized = false, refactored_query_v2 = false;
-#ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-  remove_array();
+    "[cppapi][partial-attribute-write][rewrite][rest]") {
   create_sparse_array();
 
   // Write fragment.
@@ -421,24 +308,16 @@ TEST_CASE_METHOD(
       {1, 1, 1, 2, 3, 4, 3, 3},
       {1, 2, 4, 3, 1, 2, 3, 4},
       1,
-      serialized,
-      refactored_query_v2,
       array,
       query);
-  write_sparse_a1(
-      *query, {0, 1, 2, 3, 4, 5, 6, 7}, serialized, refactored_query_v2);
+  write_sparse_a1(*query, {0, 1, 2, 3, 4, 5, 6, 7});
 
   // Try to rewrite an attribute, will throw an exception.
   CHECK_THROWS_WITH(
-      write_sparse_a1(
-          *query,
-          {8, 9, 10, 11, 12, 13, 14, 15},
-          serialized,
-          refactored_query_v2),
+      write_sparse_a1(*query, {8, 9, 10, 11, 12, 13, 14, 15}),
       "[TileDB::Query] Error: Buffer a1 was already written");
 
-  write_sparse_a2(
-      *query, {8, 9, 10, 11, 12, 13, 14, 15}, serialized, refactored_query_v2);
+  write_sparse_a2(*query, {8, 9, 10, 11, 12, 13, 14, 15});
 
   query->finalize();
   array->close();
@@ -454,22 +333,12 @@ TEST_CASE_METHOD(
   CHECK(a2 == std::vector<int64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
   CHECK(dim1 == std::vector<uint64_t>({1, 1, 1, 2, 3, 4, 3, 3}));
   CHECK(dim2 == std::vector<uint64_t>({1, 2, 4, 3, 1, 2, 3, 4}));
-
-  remove_array();
 }
 
 TEST_CASE_METHOD(
     CppPartialAttrWriteFx,
     "CPP API: Test partial attribute write, missing attributes",
-    "[cppapi][partial-attribute-write][missing-attributes]") {
-  bool serialized = false, refactored_query_v2 = false;
-#ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-  remove_array();
+    "[cppapi][partial-attribute-write][missing-attributes][rest]") {
   create_sparse_array();
 
   // Write fragment, seperating dimensions and attributes.
@@ -480,14 +349,15 @@ TEST_CASE_METHOD(
       {1, 1, 1, 2, 3, 4, 3, 3},
       {1, 2, 4, 3, 1, 2, 3, 4},
       1,
-      serialized,
-      refactored_query_v2,
       array,
       query);
-  write_sparse_a1(
-      *query, {0, 1, 2, 3, 4, 5, 6, 7}, serialized, refactored_query_v2);
-  CHECK_THROWS_WITH(
-      query->finalize(), "UnorderWriter: Not all buffers already written");
+  write_sparse_a1(*query, {0, 1, 2, 3, 4, 5, 6, 7});
+  if (vfs_test_setup_.is_rest()) {
+    CHECK_THROWS(query->finalize());
+  } else {
+    CHECK_THROWS_WITH(
+        query->finalize(), "UnorderWriter: Not all buffers already written");
+  }
   array->close();
 
   size_t buffer_size = 8;
@@ -501,6 +371,4 @@ TEST_CASE_METHOD(
   CHECK(a2 == std::vector<int64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
   CHECK(dim1 == std::vector<uint64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
   CHECK(dim2 == std::vector<uint64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
-
-  remove_array();
 }

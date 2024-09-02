@@ -33,7 +33,7 @@
 #ifndef TILEDB_DOUBLE_DELTA_H
 #define TILEDB_DOUBLE_DELTA_H
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/common.h"
 
 using namespace tiledb::common;
 
@@ -90,7 +90,6 @@ class DoubleDelta {
    * @param type The type of the input values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
-   * @return Status
    *
    * @note The function will fail with an error in two cases: (i) the output
    *     buffer incurs a memory allocation error, and (ii) some double delta
@@ -101,7 +100,7 @@ class DoubleDelta {
    *     resulting in a positive number. However, both these two cases are
    *     extreme.
    */
-  static Status compress(
+  static void compress(
       Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
@@ -110,9 +109,8 @@ class DoubleDelta {
    * @param type The type of the original decompressed values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
-   * @return Status
    */
-  static Status decompress(
+  static void decompress(
       Datatype type,
       ConstBuffer* input_buffer,
       PreallocatedBuffer* output_buffer);
@@ -127,7 +125,7 @@ class DoubleDelta {
 
   /** Templated version of *compress* on the type of buffer values. */
   template <class T>
-  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static void compress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Calculates the bitsize all the double deltas will have. Note that
@@ -137,10 +135,9 @@ class DoubleDelta {
    * @param in The input buffer.
    * @param num The number of values in the buffer.
    * @param bitsize The bitsize of the double deltas to be retrieved.
-   * @return Status
    */
   template <class T>
-  static Status compute_bitsize(T* in, uint64_t num, unsigned int* bitsize);
+  static void compute_bitsize(T* in, uint64_t num, unsigned int* bitsize);
 
   /**
    * Decompression function.
@@ -148,10 +145,9 @@ class DoubleDelta {
    * @tparam The datatype of the values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
-   * @return Status
    */
   template <class T>
-  static Status decompress(
+  static void decompress(
       ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
   /**
@@ -164,9 +160,8 @@ class DoubleDelta {
    *     This parameters represents some state about the current chunk.
    * @param bit_in_chunk Part of the chunk state. Stores the current bit
    *     in the chunk the next read will start from.
-   * @return Status
    */
-  static Status read_double_delta(
+  static void read_double_delta(
       ConstBuffer* buff,
       int64_t* double_delta,
       int bitsize,
@@ -185,9 +180,8 @@ class DoubleDelta {
    *     This parameters represents some state about the current chunk.
    * @param bit_in_chunk Part of the chunk state. Stores the current bit
    *     in the chunk the next write will start from.
-   * @return Status
    */
-  static Status write_double_delta(
+  static void write_double_delta(
       Buffer* buff,
       int64_t double_delta,
       int bitsize,

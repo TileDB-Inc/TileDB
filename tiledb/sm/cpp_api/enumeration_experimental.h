@@ -77,6 +77,103 @@ class Enumeration {
   }
 
   /**
+   * Extend this enumeration using the provided values.
+   *
+   * @param values The values to extend the enumeration with.
+   * @return The newly created enumeration.
+   */
+  template <typename T, impl::enable_trivial<T>* = nullptr>
+  Enumeration extend(std::vector<T> values) {
+    if (values.size() == 0) {
+      throw TileDBError(
+          "Unable to extend an enumeration with an empty vector.");
+    }
+
+    if (cell_val_num() == TILEDB_VAR_NUM) {
+      throw TileDBError(
+          "Error extending var sized enumeration with fixed size data.");
+    }
+
+    if constexpr (std::is_same_v<T, bool>) {
+      // This awkward dance for std::vector<bool> is due to the fact that
+      // C++ provides a template specialization that uses a bitmap which does
+      // not provide `data()` member method.
+      std::vector<uint8_t> converted(values.size());
+      for (size_t i = 0; i < values.size(); i++) {
+        converted[i] = values[i] ? 1 : 0;
+      }
+
+      return extend(converted.data(), converted.size() * sizeof(T), nullptr, 0);
+    } else {
+      return extend(values.data(), values.size() * sizeof(T), nullptr, 0);
+    }
+  }
+
+  /**
+   * Extend this enumeration using the provided string values.
+   *
+   * @param values The string values to extend the enumeration with.
+   * @return The newly created enumeration.
+   */
+  template <typename T, impl::enable_trivial<T>* = nullptr>
+  Enumeration extend(std::vector<std::basic_string<T>>& values) {
+    if (values.size() == 0) {
+      throw TileDBError(
+          "Unable to extend an enumeration with an empty vector.");
+    }
+
+    if (cell_val_num() != TILEDB_VAR_NUM) {
+      throw TileDBError(
+          "Error extending fixed sized enumeration with var size data.");
+    }
+
+    uint64_t total_size = 0;
+    for (auto v : values) {
+      total_size += v.size() * sizeof(T);
+    }
+
+    std::vector<uint8_t> data(total_size, 0);
+    std::vector<uint64_t> offsets;
+    offsets.reserve(values.size());
+    uint64_t curr_offset = 0;
+
+    for (auto v : values) {
+      std::memcpy(data.data() + curr_offset, v.data(), v.size() * sizeof(T));
+      offsets.push_back(curr_offset);
+      curr_offset += v.size() * sizeof(T);
+    }
+
+    return extend(
+        data.data(),
+        data.size(),
+        offsets.data(),
+        offsets.size() * sizeof(uint64_t));
+  }
+
+  /**
+   * Extend this enumeration using the provided pointers.
+   *
+   * @return The newly created enumeration.
+   */
+  Enumeration extend(
+      const void* data,
+      uint64_t data_size,
+      const void* offsets,
+      uint64_t offsets_size) {
+    tiledb_enumeration_t* old_enmr = enumeration_.get();
+    tiledb_enumeration_t* new_enmr = nullptr;
+    ctx_.get().handle_error(tiledb_enumeration_extend(
+        ctx_.get().ptr().get(),
+        old_enmr,
+        data,
+        data_size,
+        offsets,
+        offsets_size,
+        &new_enmr));
+    return Enumeration(ctx_, new_enmr);
+  }
+
+  /**
    * Get the name of the enumeration
    *
    * @return std::string The name of the enumeration.
@@ -99,6 +196,14 @@ class Enumeration {
     ctx_.get().handle_error(tiledb_string_free(&enmr_name));
 
     return ret;
+  }
+
+  /**
+   * Get the context of the enumeration
+   * @return Context The context of the enumeration.
+   */
+  Context context() const {
+    return ctx_;
   }
 
   /**
@@ -209,29 +314,54 @@ class Enumeration {
     return ret;
   }
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
   /**
    * Dump a string representation of the Enumeration to the given FILE pointer.
    *
-   * @param out A FILE pointer to write to. stdout is used if nullptr is passed.
+   * @param out A FILE pointer to write to. Defaults to `stdout`.
    */
-  void dump(FILE* out = nullptr) const {
+  TILEDB_DEPRECATED
+  void dump(FILE* out = stdout) const {
     ctx_.get().handle_error(tiledb_enumeration_dump(
         ctx_.get().ptr().get(), enumeration_.get(), out));
   }
+#endif
 
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
 
   /**
+   * Create an empty enumeration.
+   *
+   * @param ctx The context to use.
+   * @param name The name of the enumeration.
+   * @param type The datatype of the enumeration values. This is automatically
+   *        deduced if not provided.
+   * @param cell_val_num The number of values per cell.
+   * @param ordered Whether or not to consider this enumeration ordered.
+   * @return Enumeration The newly constructed enumeration.
+   */
+  static Enumeration create_empty(
+      const Context& ctx,
+      const std::string& name,
+      tiledb_datatype_t type,
+      uint32_t cell_val_num,
+      bool ordered = false) {
+    return create(
+        ctx, name, type, cell_val_num, ordered, nullptr, 0, nullptr, 0);
+  }
+
+  /**
    * Create an enumeration from a vector of trivial values (i.e., int's or other
    * integral or floating point values)
    *
    * @param ctx The context to use.
-   * @param values The list of values to use for this enumeration.
+   * @param name The name of the enumeration.
+   * @param values A vector of enumeration values
    * @param ordered Whether or not to consider this enumeration ordered.
-   * @param type The datatype of the enumeration values. This is automatically
-   *        deduced if not provided.
+   * @param type A specific type if you want to override the default.
+   * @return Enumeration The newly constructed enumeration.
    */
   template <typename T, impl::enable_trivial<T>* = nullptr>
   static Enumeration create(
@@ -279,13 +409,13 @@ class Enumeration {
    * Create an enumeration from a vector of strings
    *
    * @param ctx The context to use.
-   * @param values The vector of values for the enumeration.
-   * @param ordered Whether to consider the enumerationv alues as ordered.
-   * @param type The datatype of the enumeration values. This is automatically
-   *        deduced if not provided. However, this can be used to override the
-   *        deduced type if need be. For instance, TILEDB_STRING_ASCII is the
-   *        default type for strings but TILEDB_STRING_UTF8 can be specified.
+   * @param name The name of the enumeration.
+   * @param values A vector of enumeration values
+   * @param ordered Whether or not to consider this enumeration ordered.
+   * @param type A specific type if you want to override the default.
+   * @return Enumeration The newly constructed enumeration.
    */
+
   template <typename T, impl::enable_trivial<T>* = nullptr>
   static Enumeration create(
       const Context& ctx,
@@ -330,8 +460,9 @@ class Enumeration {
    * Create an enumeration
    *
    * @param ctx The context to use.
+   * @param name The name of the enumeration.
    * @param type The datatype of the enumeration values.
-   * @param cell_val_num The cell_val_num of the enumeration.
+   * @param cell_val_num The number of values per cell of the values.
    * @param ordered Whether this enumeration should be considered ordered.
    * @param data A pointer to a buffer of values for this enumeration.
    * @param data_size The size of the buffer pointed to by data.
@@ -377,6 +508,24 @@ class Enumeration {
   /** Pointer to the TileDB C Enumeration object. */
   std::shared_ptr<tiledb_enumeration_t> enumeration_;
 };
+
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+/** Converts the array schema into a string representation. */
+inline std::ostream& operator<<(
+    std::ostream& os, const Enumeration& enumeration) {
+  const auto& ctx = enumeration.context();
+  tiledb_string_t* tdb_string;
+
+  ctx.handle_error(tiledb_enumeration_dump_str(
+      ctx.ptr().get(), enumeration.ptr().get(), &tdb_string));
+
+  os << impl::convert_to_string(&tdb_string).value();
+
+  return os;
+}
 
 }  // namespace tiledb
 

@@ -4,7 +4,7 @@ title: Format Specification
 
 **Notes:**
 
-* The current TileDB format version number is **20** (`uint32_t`).
+* The current TileDB format version number is **22** (`uint32_t`).
 * Data written by TileDB and referenced in this document is **little-endian**
   with the following exceptions:
 
@@ -14,6 +14,7 @@ title: Format Specification
 ## Table of Contents
 
 * **Array**
+   * [Format Version History](./history.md)
    * [File hierarchy](./array_file_hierarchy.md)
    * [Array Schema](./array_schema.md)
    * [Fragment](./fragment.md)
@@ -25,4 +26,5 @@ title: Format Specification
 * **Other**
    * [Consolidated Fragment Metadata File](./consolidated_fragment_metadata_file.md)
    * [Filter Pipeline](./filter_pipeline.md)
-   * [Vacuum Pipeline](./vacuum_file.md)
+   * [Timestamped Name](./timestamped_name.md)
+   * [Vacuum File](./vacuum_file.md)

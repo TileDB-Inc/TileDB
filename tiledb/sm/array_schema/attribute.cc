@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,6 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -48,8 +47,7 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for locally generated status exceptions. */
 class AttributeStatusException : public StatusException {
@@ -58,6 +56,8 @@ class AttributeStatusException : public StatusException {
       : StatusException("Attribute", msg) {
   }
 };
+
+using AttributeException = AttributeStatusException;
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -83,25 +83,11 @@ Attribute::Attribute(
     , name_(name)
     , type_(type)
     , order_(order) {
-  set_default_fill_value();
-
-  // If ordered, check the number of values of cells is supported.
   if (order_ != DataOrder::UNORDERED_DATA) {
     ensure_ordered_attribute_datatype_is_valid(type_);
-    if (type == Datatype::STRING_ASCII) {
-      if (cell_val_num_ != constants::var_num) {
-        throw std::invalid_argument(
-            "Ordered attributes with datatype '" + datatype_str(type_) +
-            "' must have cell_val_num=1.");
-      }
-    } else {
-      if (cell_val_num_ != 1) {
-        throw std::invalid_argument(
-            "Ordered attributes with datatype '" + datatype_str(type_) +
-            "' must have cell_val_num=1.");
-      }
-    }
   }
+  validate_cell_val_num(cell_val_num_);
+  set_default_fill_value();
 }
 
 Attribute::Attribute(
@@ -123,6 +109,7 @@ Attribute::Attribute(
     , fill_value_validity_(fill_value_validity)
     , order_(order)
     , enumeration_name_(enumeration_name) {
+  validate_cell_val_num(cell_val_num_);
 }
 
 /* ********************************* */
@@ -202,33 +189,6 @@ Attribute Attribute::deserialize(
       enmr_name);
 }
 
-void Attribute::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-  // Dump
-  fprintf(out, "### Attribute ###\n");
-  fprintf(out, "- Name: %s\n", name_.c_str());
-  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
-  fprintf(out, "- Nullable: %s\n", (nullable_ ? "true" : "false"));
-  if (!var_size())
-    fprintf(out, "- Cell val num: %u\n", cell_val_num_);
-  else
-    fprintf(out, "- Cell val num: var\n");
-  fprintf(out, "- Filters: %u", (unsigned)filters_.size());
-  filters_.dump(out);
-  fprintf(out, "\n");
-  fprintf(out, "- Fill value: %s", fill_value_str().c_str());
-  if (nullable_) {
-    fprintf(out, "\n");
-    fprintf(out, "- Fill value validity: %u", fill_value_validity_);
-  }
-  if (order_ != DataOrder::UNORDERED_DATA) {
-    fprintf(out, "\n");
-    fprintf(out, "- Data ordering: %s", data_order_str(order_).c_str());
-  }
-  fprintf(out, "\n");
-}
-
 const FilterPipeline& Attribute::filters() const {
   return filters_;
 }
@@ -301,22 +261,41 @@ void Attribute::serialize(
 }
 
 void Attribute::set_cell_val_num(unsigned int cell_val_num) {
-  if (type_ == Datatype::ANY) {
-    throw AttributeStatusException(
+  validate_cell_val_num(cell_val_num);
+  cell_val_num_ = cell_val_num;
+  set_default_fill_value();
+}
+
+void Attribute::validate_cell_val_num(unsigned int cell_val_num) const {
+  if (type_ == Datatype::ANY && cell_val_num != constants::var_num) {
+    throw AttributeException(
         "Cannot set number of values per cell; Attribute datatype `ANY` is "
         "always variable-sized");
   }
 
-  if (order_ != DataOrder::UNORDERED_DATA && type_ != Datatype::STRING_ASCII &&
-      cell_val_num != 1) {
-    throw AttributeStatusException(
-        "Cannot set number of values per cell; An ordered attribute with "
-        "datatype '" +
-        datatype_str(type_) + "' can only have cell_val_num=1.");
+  // If ordered, check the number of values of cells is supported.
+  if (order_ != DataOrder::UNORDERED_DATA) {
+    if (type_ == Datatype::STRING_ASCII) {
+      if (cell_val_num != constants::var_num) {
+        throw AttributeException(
+            "Cannot set number of values per cell; Ordered attributes with "
+            "datatype '" +
+            datatype_str(type_) +
+            "' must have `cell_val_num=constants::var_num`.");
+      }
+    } else {
+      if (cell_val_num != 1) {
+        throw AttributeException(
+            "Ordered attributes with datatype '" + datatype_str(type_) +
+            "' must have `cell_val_num=1`.");
+      }
+    }
   }
 
-  cell_val_num_ = cell_val_num;
-  set_default_fill_value();
+  // check zero last so we get the more informative error first
+  if (cell_val_num == 0) {
+    throw AttributeException("Cannot set zero values per cell");
+  }
 }
 
 void Attribute::set_nullable(const bool nullable) {
@@ -480,21 +459,45 @@ ByteVecValue Attribute::default_fill_value(
   return fillvalue;
 }
 
-std::string Attribute::fill_value_str() const {
-  std::string ret;
+}  // namespace tiledb::sm
 
-  auto v_size = datatype_size(type_);
-  uint64_t num = fill_value_.size() / v_size;
-  auto v = fill_value_.data();
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a) {
+  os << "### Attribute ###\n";
+  os << "- Name: " << a.name() << std::endl;
+  os << "- Type: " << datatype_str(a.type()) << std::endl;
+  os << "- Nullable: " << (a.nullable() ? "true" : "false") << std::endl;
+  if (!a.var_size())
+    os << "- Cell val num: " << a.cell_val_num() << std::endl;
+  else
+    os << "- Cell val num: var\n";
+  os << "- Filters: " << a.filters().size();
+  os << a.filters();
+  os << std::endl;
+
+  os << "- Fill value: ";
+  auto v_size = tiledb::sm::datatype_size(a.type());
+  uint64_t num = a.fill_value().size() / v_size;
+  auto v = a.fill_value().data();
   for (uint64_t i = 0; i < num; ++i) {
-    ret += utils::parse::to_str(v, type_);
+    os << tiledb::sm::utils::parse::to_str(v, a.type());
     v += v_size;
     if (i != num - 1)
-      ret += ", ";
+      os << ", ";
   }
 
-  return ret;
-}
+  if (a.nullable()) {
+    os << std::endl;
+    os << "- Fill value validity: " << std::to_string(a.fill_value_validity());
+  }
+  if (a.order() != tiledb::sm::DataOrder::UNORDERED_DATA) {
+    os << std::endl;
+    os << "- Data ordering: " << data_order_str(a.order());
+  }
+  if (a.get_enumeration_name().has_value()) {
+    os << std::endl;
+    os << "- Enumeration name: " << a.get_enumeration_name().value();
+  }
+  os << std::endl;
 
-}  // namespace sm
-}  // namespace tiledb
+  return os;
+}

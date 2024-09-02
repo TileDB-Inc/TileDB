@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -54,14 +54,20 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 class ArraySerializationException : public StatusException {
  public:
   explicit ArraySerializationException(const std::string& message)
       : StatusException("[TileDB::Serialization][Array]", message) {
+  }
+};
+
+class ArraySerializationDisabledException : public ArraySerializationException {
+ public:
+  explicit ArraySerializationDisabledException()
+      : ArraySerializationException(
+            "Cannot (de)serialize; serialization not enabled.") {
   }
 };
 
@@ -99,10 +105,10 @@ Status metadata_from_capnp(
 
   for (size_t i = 0; i < num_entries; i++) {
     auto entry_reader = entries_reader[i];
-    auto key = std::string{std::string_view{
-        entry_reader.getKey().cStr(), entry_reader.getKey().size()}};
-    Datatype type = Datatype::UINT8;
-    RETURN_NOT_OK(datatype_enum(entry_reader.getType(), &type));
+    auto entry_key = entry_reader.getKey();
+    auto key =
+        std::string{std::string_view{entry_key.cStr(), entry_key.size()}};
+    Datatype type = datatype_enum(entry_reader.getType());
     uint32_t value_num = entry_reader.getValueNum();
 
     auto value_ptr = entry_reader.getValue();
@@ -205,10 +211,8 @@ Status array_to_capnp(
       // If this is the Cloud server, it should load and serialize metadata
       // If this is the client, it should have previously received the array
       // metadata from the Cloud server, so it should just serialize it
-      Metadata* metadata = nullptr;
-      // Get metadata. If not loaded, load it first.
-      RETURN_NOT_OK(array->metadata(&metadata));
-      RETURN_NOT_OK(metadata_to_capnp(metadata, &array_metadata_builder));
+      auto& metadata = array->metadata();
+      RETURN_NOT_OK(metadata_to_capnp(&metadata, &array_metadata_builder));
     }
   } else {
     if (array->non_empty_domain_computed()) {
@@ -227,11 +231,12 @@ Status array_to_capnp(
   return Status::Ok();
 }
 
-Status array_from_capnp(
+void array_from_capnp(
     const capnp::Array::Reader& array_reader,
-    StorageManager* storage_manager,
+    ContextResources& resources,
     Array* array,
-    const bool client_side) {
+    const bool client_side,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
   // want to serialized a query object TileDB >= 2.5 no longer needs to receive
@@ -239,33 +244,26 @@ Status array_from_capnp(
   if (array_reader.hasUri()) {
     array->set_uri_serialized(array_reader.getUri().cStr());
   }
-  array->set_timestamp_start(array_reader.getStartTimestamp());
-  array->set_timestamp_end(array_reader.getEndTimestamp());
 
   if (array_reader.hasQueryType()) {
     auto query_type_str = array_reader.getQueryType();
     QueryType query_type = QueryType::READ;
-    RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
+    throw_if_not_ok(query_type_enum(query_type_str, &query_type));
     array->set_query_type(query_type);
-    if (!array->is_open()) {
-      array->set_serialized_array_open();
-    }
 
-    array->set_timestamp_end_opened_at(array_reader.getOpenedAtEndTimestamp());
-    if (array->timestamp_end_opened_at() == UINT64_MAX) {
-      if (query_type == QueryType::READ) {
-        array->set_timestamp_end_opened_at(
-            tiledb::sm::utils::time::timestamp_now_ms());
-      } else if (
-          query_type == QueryType::WRITE ||
-          query_type == QueryType::MODIFY_EXCLUSIVE ||
-          query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
-        array->set_timestamp_end_opened_at(0);
-      } else {
-        throw StatusException(Status_SerializationError(
-            "Cannot open array; Unsupported query type."));
-      }
-    }
+    array->set_timestamps(
+        array_reader.getStartTimestamp(),
+        array_reader.getEndTimestamp(),
+        query_type == QueryType::READ);
+  } else {
+    array->set_timestamps(
+        array_reader.getStartTimestamp(),
+        array_reader.getEndTimestamp(),
+        false);
+  };
+
+  if (!array->is_open()) {
+    array->set_serialized_array_open();
   }
 
   if (array_reader.hasArraySchemasAll()) {
@@ -275,70 +273,81 @@ Status array_from_capnp(
     if (all_schemas_reader.hasEntries()) {
       auto entries = array_reader.getArraySchemasAll().getEntries();
       for (auto array_schema_build : entries) {
-        auto schema{array_schema_from_capnp(
-            array_schema_build.getValue(), array->array_uri())};
-        schema.set_array_uri(array->array_uri());
-        all_schemas[array_schema_build.getKey()] =
-            make_shared<ArraySchema>(HERE(), schema);
+        auto schema = array_schema_from_capnp(
+            array_schema_build.getValue(), array->array_uri(), memory_tracker);
+        schema->set_array_uri(array->array_uri());
+        all_schemas[array_schema_build.getKey()] = schema;
       }
     }
-    array->set_array_schemas_all(all_schemas);
+    array->set_array_schemas_all(std::move(all_schemas));
   }
 
   if (array_reader.hasArraySchemaLatest()) {
     auto array_schema_latest_reader = array_reader.getArraySchemaLatest();
     auto array_schema_latest{array_schema_from_capnp(
-        array_schema_latest_reader, array->array_uri())};
-    array_schema_latest.set_array_uri(array->array_uri());
-    array->set_array_schema_latest(
-        make_shared<ArraySchema>(HERE(), array_schema_latest));
+        array_schema_latest_reader, array->array_uri(), memory_tracker)};
+    array_schema_latest->set_array_uri(array->array_uri());
+    array->set_array_schema_latest(array_schema_latest);
   }
 
   // Deserialize array directory
   if (array_reader.hasArrayDirectory()) {
     const auto& array_directory_reader = array_reader.getArrayDirectory();
     auto array_dir = array_directory_from_capnp(
-        array_directory_reader,
-        storage_manager->resources(),
-        array->array_uri());
-    array->set_array_directory(*array_dir);
+        array_directory_reader, resources, array->array_uri());
+    array->set_array_directory(std::move(*array_dir));
+  } else {
+    array->set_array_directory(ArrayDirectory(resources, array->array_uri()));
   }
 
   if (array_reader.hasFragmentMetadataAll()) {
-    array->fragment_metadata().clear();
-    array->fragment_metadata().reserve(
-        array_reader.getFragmentMetadataAll().size());
-    for (auto frag_meta_reader : array_reader.getFragmentMetadataAll()) {
-      auto meta = make_shared<FragmentMetadata>(HERE());
-      RETURN_NOT_OK(fragment_metadata_from_capnp(
-          array->array_schema_latest_ptr(),
-          frag_meta_reader,
-          meta,
-          storage_manager,
-          array->memory_tracker()));
-      if (client_side) {
-        meta->set_rtree_loaded();
+    auto fragment_metadata = array->fragment_metadata();
+    fragment_metadata.clear();
+    auto fragment_metadata_all_reader = array_reader.getFragmentMetadataAll();
+    fragment_metadata.reserve(fragment_metadata_all_reader.size());
+    for (auto frag_meta_reader : fragment_metadata_all_reader) {
+      auto meta = make_shared<FragmentMetadata>(
+          HERE(),
+          &resources,
+          array->memory_tracker(),
+          frag_meta_reader.getVersion());
+
+      auto schema = array->array_schema_latest_ptr();
+      if (frag_meta_reader.hasArraySchemaName()) {
+        auto fragment_array_schema_name =
+            frag_meta_reader.getArraySchemaName().cStr();
+        schema = array->array_schemas_all().at(fragment_array_schema_name);
+      } else if (array->array_schemas_all().size() > 1) {
+        throw ArraySerializationException(
+            "Cannot deserialize fragment metadata without an array schema name "
+            "in the case of arrays with evolved schemas.");
       }
-      array->fragment_metadata().emplace_back(meta);
+
+      // pass the right schema to deserialize fragment metadata
+      throw_if_not_ok(
+          fragment_metadata_from_capnp(schema, frag_meta_reader, meta));
+      if (client_side) {
+        meta->loaded_metadata()->set_rtree_loaded();
+      }
+      fragment_metadata.emplace_back(meta);
     }
+    array->set_fragment_metadata(std::move(fragment_metadata));
   }
 
   if (array_reader.hasNonEmptyDomain()) {
     const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
     // Deserialize
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
     array->set_non_empty_domain_computed(true);
   }
 
   if (array_reader.hasArrayMetadata()) {
     const auto& array_metadata_reader = array_reader.getArrayMetadata();
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         metadata_from_capnp(array_metadata_reader, array->unsafe_metadata()));
     array->set_metadata_loaded(true);
   }
-
-  return Status::Ok();
 }
 
 Status array_open_to_capnp(
@@ -437,6 +446,7 @@ Status metadata_serialize(
 
 Status metadata_deserialize(
     Metadata* metadata,
+    const Config& config,
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
   if (metadata == nullptr)
@@ -460,11 +470,20 @@ Status metadata_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            config.get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader msg_reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         auto reader = msg_reader.getRoot<capnp::ArrayMetadata>();
 
         // Deserialize
@@ -543,11 +562,12 @@ Status array_serialize(
   return Status::Ok();
 }
 
-Status array_deserialize(
+void array_deserialize(
     Array* array,
     SerializationType serialize_type,
     const Buffer& serialized_buffer,
-    StorageManager* storage_manager) {
+    ContextResources& resources,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -559,36 +579,43 @@ Status array_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_builder);
         capnp::Array::Reader array_reader = array_builder.asReader();
-        RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
+        array_from_capnp(array_reader, resources, array, true, memory_tracker);
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit = resources.config()
+                             .get<uint64_t>("rest.capnp_traversal_limit")
+                             .value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         capnp::Array::Reader array_reader = reader.getRoot<capnp::Array>();
-        RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
+        array_from_capnp(array_reader, resources, array, true, memory_tracker);
         break;
       }
       default: {
-        return LOG_STATUS(Status_SerializationError(
-            "Error deserializing array; Unknown serialization type "
-            "passed"));
+        throw ArraySerializationException(
+            "Error deserializing array; Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status_SerializationError(
+    throw ArraySerializationException(
         "Error deserializing array; kj::Exception: " +
-        std::string(e.getDescription().cStr())));
+        std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing array; exception " + std::string(e.what())));
+    throw ArraySerializationException(
+        "Error deserializing array; exception " + std::string(e.what()));
   }
-
-  return Status::Ok();
 }
 
 Status array_open_serialize(
@@ -701,34 +728,33 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status array_deserialize(
-    Array*, SerializationType, const Buffer&, StorageManager*) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot deserialize; serialization not enabled."));
+void array_deserialize(
+    Array*,
+    SerializationType,
+    const Buffer&,
+    ContextResources&,
+    shared_ptr<MemoryTracker>) {
+  throw ArraySerializationDisabledException();
 }
 
 Status array_open_serialize(const Array&, SerializationType, Buffer*) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+  throw ArraySerializationDisabledException();
 }
 
 Status array_open_deserialize(Array*, SerializationType, const Buffer&) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot deserialize; serialization not enabled."));
+  throw ArraySerializationDisabledException();
+  ;
 }
 
 Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+  throw ArraySerializationDisabledException();
 }
 
-Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot deserialize; serialization not enabled."));
+Status metadata_deserialize(
+    Metadata*, const Config&, SerializationType, const Buffer&) {
+  throw ArraySerializationDisabledException();
 }
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

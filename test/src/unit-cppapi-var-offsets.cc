@@ -33,25 +33,15 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
 
 struct VariableOffsetsFx {
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  test::ServerQueryBuffers server_buffers_;
+  test::VFSTestSetup vfs_test_setup_;
 
-  void create_sparse_array(const std::string& array_name) {
-    Context ctx;
-    VFS vfs(ctx);
-
-    // Create the array
-    if (vfs.is_dir(array_name))
-      vfs.remove_dir(array_name);
-
+  void create_sparse_array(Context ctx, const std::string& array_name) {
     Domain dom(ctx);
     dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))
         .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 2));
@@ -86,14 +76,11 @@ struct VariableOffsetsFx {
     query.set_offsets_buffer("attr", data_offsets);
 
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_);
-    REQUIRE(rc == TILEDB_OK);
+    if (layout == TILEDB_GLOBAL_ORDER) {
+      query.submit_and_finalize();
+    } else {
+      query.submit();
+    }
 
     array.close();
   }
@@ -118,14 +105,11 @@ struct VariableOffsetsFx {
         reinterpret_cast<uint64_t*>(data_offsets.data()),
         data_offsets.size());
 
-    /* TODO: enable this when sc21681 is fixed
-      // Submit query
-      auto rc = test::submit_query_wrapper(
-          ctx, array_name, &query, server_buffers_, serialize_,
-      refactored_query_v2_); REQUIRE(rc == TILEDB_OK);
-    */
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
+    if (layout == TILEDB_GLOBAL_ORDER) {
+      query.submit_and_finalize();
+    } else {
+      query.submit();
+    }
 
     array.close();
   }
@@ -147,15 +131,7 @@ struct VariableOffsetsFx {
     query.set_offsets_buffer("attr", attr_off);
 
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_,
-        false);
-    REQUIRE(rc == TILEDB_OK);
+    query.submit();
 
     // Check the element offsets are properly returned
     CHECK(attr_val == expected_data);
@@ -182,12 +158,6 @@ struct VariableOffsetsFx {
     query.set_offsets_buffer(
         "attr", reinterpret_cast<uint64_t*>(attr_off.data()), attr_off.size());
 
-    /* TODO: enable this when sc21681 is fixed
-        // Submit query
-      auto rc = test::submit_query_wrapper(
-          ctx, array_name, &query, server_buffers_, serialize_,
-      refactored_query_v2_, false); REQUIRE(rc == TILEDB_OK);
-    */
     CHECK_NOTHROW(query.submit());
 
     // Check the element offsets are properly returned
@@ -223,30 +193,16 @@ struct VariableOffsetsFx {
     query.set_offsets_buffer("attr", attr_off);
 
     // Check that first partial read returns expected results
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_,
-        false);
-    REQUIRE(rc == TILEDB_OK);
+    query.submit();
+
     Query::Status status = query.query_status();
     CHECK(status == Query::Status::INCOMPLETE);
     CHECK(attr_val == exp_data_part1);
     CHECK(attr_off == exp_off_part1);
 
     // Check that second partial read returns expected results
-    rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_,
-        false);
-    REQUIRE(rc == TILEDB_OK);
+    query.submit();
+
     status = query.query_status();
     CHECK(status == Query::Status::COMPLETE);
     CHECK(attr_val == exp_data_part2);
@@ -270,19 +226,13 @@ struct VariableOffsetsFx {
     // Query outside unwritten coordinates of the array
     int64_t d1_start = 1, d1_end = 2;
     int64_t d2_start = 3, d2_end = 4;
-    query.add_range("d1", d1_start, d1_end);
-    query.add_range("d2", d2_start, d2_end);
+    Subarray subarray(ctx, array);
+    subarray.add_range("d1", d1_start, d1_end);
+    subarray.add_range("d2", d2_start, d2_end);
+    query.set_subarray(subarray);
 
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_,
-        false);
-    REQUIRE(rc == TILEDB_OK);
+    query.submit();
 
     // Check the element offsets are properly returned
     uint64_t offset_elem_num = 0, data_vals_num = 0, validity_elem_num = 0;
@@ -295,14 +245,7 @@ struct VariableOffsetsFx {
     array.close();
   }
 
-  void create_dense_array(const std::string& array_name) {
-    Context ctx;
-    VFS vfs(ctx);
-
-    // Create the array
-    if (vfs.is_dir(array_name))
-      vfs.remove_dir(array_name);
-
+  void create_dense_array(Context ctx, const std::string& array_name) {
     Domain dom(ctx);
     dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))
         .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 2));
@@ -353,14 +296,11 @@ struct VariableOffsetsFx {
     }
 
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_);
-    REQUIRE(rc == TILEDB_OK);
+    if (layout == TILEDB_GLOBAL_ORDER) {
+      query.submit_and_finalize();
+    } else {
+      query.submit();
+    }
 
     array.close();
   }
@@ -404,13 +344,11 @@ struct VariableOffsetsFx {
           Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
     }
 
-    /* TODO: enable this when sc21681 is fixed
-      auto rc = test::submit_query_wrapper(
-          ctx, array_name, &query, server_buffers_, serialize_,
-      refactored_query_v2_); REQUIRE(rc == TILEDB_OK);
-    */
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
+    if (layout == TILEDB_GLOBAL_ORDER) {
+      query.submit_and_finalize();
+    } else {
+      query.submit();
+    }
 
     array.close();
   }
@@ -441,15 +379,7 @@ struct VariableOffsetsFx {
     query.set_offsets_buffer("attr", attr_off);
 
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_,
-        false);
-    REQUIRE(rc == TILEDB_OK);
+    query.submit();
 
     // Check the element offsets are properly returned
     CHECK(attr_val == expected_data);
@@ -486,12 +416,6 @@ struct VariableOffsetsFx {
     query.set_offsets_buffer(
         "attr", reinterpret_cast<uint64_t*>(attr_off.data()), attr_off.size());
 
-    /* TODO: enable this when sc21681 is fixed
-      // Submit query
-      auto rc = test::submit_query_wrapper(
-          ctx, array_name, &query, server_buffers_, serialize_,
-      refactored_query_v2_, false); REQUIRE(rc == TILEDB_OK);
-    */
     CHECK_NOTHROW(query.submit());
     query.finalize();
 
@@ -522,28 +446,12 @@ struct VariableOffsetsFx {
     query.set_offsets_buffer("attr", attr_off);
 
     // Check that first partial read returns expected results
-    auto rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_,
-        false);
-    REQUIRE(rc == TILEDB_OK);
+    query.submit();
     CHECK(attr_val == exp_data_part1);
     CHECK(attr_off == exp_off_part1);
 
     // Check that second partial read returns expected results
-    rc = test::submit_query_wrapper(
-        ctx,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_,
-        false);
-    REQUIRE(rc == TILEDB_OK);
+    query.submit();
     CHECK(attr_val == exp_data_part2);
     CHECK(attr_off == exp_off_part2);
 
@@ -554,16 +462,12 @@ struct VariableOffsetsFx {
 TEST_CASE_METHOD(
     VariableOffsetsFx,
     "C++ API: Test element offsets : sparse array",
-    "[var-offsets][element-offset][sparse]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = true;
-  refactored_query_v2_ = GENERATE(true, false);
-#endif
-  std::string array_name = "test_element_offset";
-  create_sparse_array(array_name);
+    "[var-offsets][element-offset][sparse][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("test_element_offset");
+  auto ctx = vfs_test_setup_.ctx();
+  create_sparse_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
-  Context ctx;
 
   SECTION("Byte offsets (default case)") {
     Config config = ctx.config();
@@ -608,7 +512,8 @@ TEST_CASE_METHOD(
     Config config;
     // Change config of offsets format from bytes to elements
     config["sm.var_offsets.mode"] = "elements";
-    Context ctx(config);
+    vfs_test_setup_.update_config(config.ptr().get());
+    ctx = vfs_test_setup_.ctx();
 
     std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
 
@@ -645,26 +550,17 @@ TEST_CASE_METHOD(
       }
     }
   }
-
-  // Clean up
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }
 
 TEST_CASE_METHOD(
     VariableOffsetsFx,
     "C++ API: Test element offsets : dense array",
-    "[var-offsets][element-offset][dense]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = true;
-  refactored_query_v2_ = GENERATE(true, false);
-#endif
-  std::string array_name = "test_element_offset";
-  create_dense_array(array_name);
+    "[var-offsets][element-offset][dense][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("test_element_offset");
+  auto ctx = vfs_test_setup_.ctx();
+  create_dense_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
-  Context ctx;
 
   SECTION("Byte offsets (default case)") {
     Config config = ctx.config();
@@ -687,7 +583,8 @@ TEST_CASE_METHOD(
     Config config;
     // Change config of offsets format from bytes to elements
     config["sm.var_offsets.mode"] = "elements";
-    Context ctx(config);
+    vfs_test_setup_.update_config(config.ptr().get());
+    ctx = vfs_test_setup_.ctx();
 
     std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
 
@@ -702,25 +599,16 @@ TEST_CASE_METHOD(
       read_and_check_dense_array(ctx, array_name, data, element_offsets);
     }
   }
-
-  // Clean up
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }
 
 TEST_CASE_METHOD(
     VariableOffsetsFx,
     "C++ API: Test offsets extra element: sparse array",
-    "[var-offsets][extra-offset][sparse]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = true;
-  refactored_query_v2_ = GENERATE(true, false);
-#endif
-  std::string array_name = "test_extra_offset";
-  create_sparse_array(array_name);
+    "[var-offsets][extra-offset][sparse][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("test_extra_offset");
+  auto ctx = vfs_test_setup_.ctx();
+  create_sparse_array(ctx, array_name);
 
-  Context ctx;
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   std::vector<uint64_t> data_offsets = {0, 4, 12, 20};
   std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
@@ -752,7 +640,8 @@ TEST_CASE_METHOD(
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
 
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
@@ -793,7 +682,8 @@ TEST_CASE_METHOD(
 
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
 
         // Write data with extra element indicating the total number of elements
         element_offsets.push_back(data.size());
@@ -834,7 +724,8 @@ TEST_CASE_METHOD(
 
       SECTION("Query unwritten coordinates") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
 
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
@@ -874,7 +765,8 @@ TEST_CASE_METHOD(
       }
 
       SECTION("User offsets buffer too small") {
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
 
         Array array_w(ctx, array_name, TILEDB_WRITE);
         std::vector<int64_t> d1 = {1, 2, 3, 4};
@@ -1000,8 +892,8 @@ TEST_CASE_METHOD(
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
-        Context ctx(config);
-
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
 
@@ -1081,7 +973,8 @@ TEST_CASE_METHOD(
 
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
 
         // Write data with extra element indicating total number of elements
         element_offsets.push_back(data.size());
@@ -1103,25 +996,28 @@ TEST_CASE_METHOD(
                 data_elem_off_part2,
                 TILEDB_ROW_MAJOR);
           }
-          SECTION("Global order read") {
-            partial_read_and_check_sparse_array(
-                ctx,
-                array_name,
-                data_part1,
-                data_elem_off_part1,
-                data_part2,
-                data_elem_off_part2,
-                TILEDB_GLOBAL_ORDER);
-          }
-          SECTION("Unordered read") {
-            partial_read_and_check_sparse_array(
-                ctx,
-                array_name,
-                data_part1,
-                data_elem_off_part1,
-                data_part2,
-                data_elem_off_part2,
-                TILEDB_UNORDERED);
+          // SC-45586
+          if (!vfs_test_setup_.is_rest()) {
+            SECTION("Global order read") {
+              partial_read_and_check_sparse_array(
+                  ctx,
+                  array_name,
+                  data_part1,
+                  data_elem_off_part1,
+                  data_part2,
+                  data_elem_off_part2,
+                  TILEDB_GLOBAL_ORDER);
+            }
+            SECTION("Unordered read") {
+              partial_read_and_check_sparse_array(
+                  ctx,
+                  array_name,
+                  data_part1,
+                  data_elem_off_part1,
+                  data_part2,
+                  data_elem_off_part2,
+                  TILEDB_UNORDERED);
+            }
           }
         }
         SECTION("Global order write") {
@@ -1137,25 +1033,28 @@ TEST_CASE_METHOD(
                 data_elem_off_part2,
                 TILEDB_ROW_MAJOR);
           }
-          SECTION("Global order read") {
-            partial_read_and_check_sparse_array(
-                ctx,
-                array_name,
-                data_part1,
-                data_elem_off_part1,
-                data_part2,
-                data_elem_off_part2,
-                TILEDB_GLOBAL_ORDER);
-          }
-          SECTION("Unordered read") {
-            partial_read_and_check_sparse_array(
-                ctx,
-                array_name,
-                data_part1,
-                data_elem_off_part1,
-                data_part2,
-                data_elem_off_part2,
-                TILEDB_UNORDERED);
+          // SC-45586
+          if (!vfs_test_setup_.is_rest()) {
+            SECTION("Global order read") {
+              partial_read_and_check_sparse_array(
+                  ctx,
+                  array_name,
+                  data_part1,
+                  data_elem_off_part1,
+                  data_part2,
+                  data_elem_off_part2,
+                  TILEDB_GLOBAL_ORDER);
+            }
+            SECTION("Unordered read") {
+              partial_read_and_check_sparse_array(
+                  ctx,
+                  array_name,
+                  data_part1,
+                  data_elem_off_part1,
+                  data_part2,
+                  data_elem_off_part2,
+                  TILEDB_UNORDERED);
+            }
           }
         }
       }
@@ -1167,7 +1066,8 @@ TEST_CASE_METHOD(
             ctx, array_name, data, data_offsets, TILEDB_UNORDERED);
 
         // Submit read query
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
         Array array(ctx, array_name, TILEDB_READ);
         Query query(ctx, array, TILEDB_READ);
 
@@ -1240,25 +1140,16 @@ TEST_CASE_METHOD(
       }
     }
   }
-
-  // Clean up
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }
 
 TEST_CASE_METHOD(
     VariableOffsetsFx,
     "C++ API: Test offsets extra element: dense array",
-    "[var-offsets][extra-offset][dense]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = true;
-  refactored_query_v2_ = GENERATE(true, false);
-#endif
-  std::string array_name = "test_extra_offset";
-  create_dense_array(array_name);
+    "[var-offsets][extra-offset][dense][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("test_extra_offset");
+  auto ctx = vfs_test_setup_.ctx();
+  create_dense_array(ctx, array_name);
 
-  Context ctx;
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   std::vector<uint64_t> data_offsets = {0, 4, 12, 20};
   std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
@@ -1276,10 +1167,13 @@ TEST_CASE_METHOD(
 
     SECTION("Extra element") {
       config["sm.var_offsets.extra_element"] = "true";
+      vfs_test_setup_.update_config(config.ptr().get());
+      ctx = vfs_test_setup_.ctx();
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
 
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
@@ -1298,8 +1192,8 @@ TEST_CASE_METHOD(
 
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
-        Context ctx(config);
-
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
         // Write data with extra element indicating the total number of
         // elements
         element_offsets.push_back(data.size());
@@ -1316,71 +1210,75 @@ TEST_CASE_METHOD(
         }
       }
 
-      SECTION("User offsets buffer too small") {
-        // Use element offsets to cover this code path as well
-        config["sm.var_offsets.mode"] = "elements";
-        Context ctx(config);
+      // SC-45586
+      if (!vfs_test_setup_.is_rest()) {
+        SECTION("User offsets buffer too small") {
+          // Use element offsets to cover this code path as well
+          config["sm.var_offsets.mode"] = "elements";
+          vfs_test_setup_.update_config(config.ptr().get());
+          ctx = vfs_test_setup_.ctx();
 
-        Array array_w(ctx, array_name, TILEDB_WRITE);
-        Query query_w(ctx, array_w, TILEDB_WRITE);
-        query_w.set_layout(TILEDB_ROW_MAJOR)
-            .set_subarray(
-                Subarray(ctx, array_w).set_subarray<int64_t>({1, 2, 1, 2}));
+          Array array_w(ctx, array_name, TILEDB_WRITE);
+          Query query_w(ctx, array_w, TILEDB_WRITE);
+          query_w.set_layout(TILEDB_ROW_MAJOR)
+              .set_subarray(
+                  Subarray(ctx, array_w).set_subarray<int64_t>({1, 2, 1, 2}));
 
-        // Try to write without allocating memory for the extra element
-        query_w.set_data_buffer("attr", data);
-        query_w.set_offsets_buffer("attr", element_offsets);
-        CHECK_THROWS(query_w.submit());
+          // Try to write without allocating memory for the extra element
+          query_w.set_data_buffer("attr", data);
+          query_w.set_offsets_buffer("attr", element_offsets);
+          CHECK_THROWS(query_w.submit());
 
-        // Write data with extra element
-        element_offsets.push_back(data.size());
-        query_w.set_data_buffer("attr", data);
-        query_w.set_offsets_buffer("attr", element_offsets);
-        CHECK_NOTHROW(query_w.submit());
-        array_w.close();
+          // Write data with extra element
+          element_offsets.push_back(data.size());
+          query_w.set_data_buffer("attr", data);
+          query_w.set_offsets_buffer("attr", element_offsets);
+          CHECK_NOTHROW(query_w.submit());
+          array_w.close();
 
-        // Submit read query
-        Array array_r(ctx, array_name, TILEDB_READ);
-        Query query_r(ctx, array_r, TILEDB_READ);
+          // Submit read query
+          Array array_r(ctx, array_name, TILEDB_READ);
+          Query query_r(ctx, array_r, TILEDB_READ);
 
-        // Assume no size for the extra element
-        std::vector<int32_t> attr_val(data.size());
-        std::vector<uint64_t> attr_off(element_offsets.size() - 1);
-        query_r.set_data_buffer("attr", attr_val);
-        query_r.set_offsets_buffer("attr", attr_off);
-        query_r.set_subarray(
-            Subarray(ctx, array_r).set_subarray<int64_t>({1, 2, 1, 2}));
+          // Assume no size for the extra element
+          std::vector<int32_t> attr_val(data.size());
+          std::vector<uint64_t> attr_off(element_offsets.size() - 1);
+          query_r.set_data_buffer("attr", attr_val);
+          query_r.set_offsets_buffer("attr", attr_off);
+          query_r.set_subarray(
+              Subarray(ctx, array_r).set_subarray<int64_t>({1, 2, 1, 2}));
 
-        // First partial read because offsets don't fit
-        CHECK_NOTHROW(query_r.submit());
-        CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
-        std::vector<int32_t> data_exp1 = {1, 2, 3, 0, 0, 0};
-        std::vector<uint64_t> data_off_exp1 = {0, 1, 3, 0};
-        // check returned data
-        auto data_num = query_r.result_buffer_elements()["attr"].second;
-        CHECK(data_num == 3);
-        CHECK(attr_val == data_exp1);
-        // check returned offsets
-        auto offset_num = query_r.result_buffer_elements()["attr"].first;
-        CHECK(offset_num == 3);
-        CHECK(attr_off == data_off_exp1);
+          // First partial read because offsets don't fit
+          CHECK_NOTHROW(query_r.submit());
+          CHECK(query_r.query_status() == Query::Status::INCOMPLETE);
+          std::vector<int32_t> data_exp1 = {1, 2, 3, 0, 0, 0};
+          std::vector<uint64_t> data_off_exp1 = {0, 1, 3, 0};
+          // check returned data
+          auto data_num = query_r.result_buffer_elements()["attr"].second;
+          CHECK(data_num == 3);
+          CHECK(attr_val == data_exp1);
+          // check returned offsets
+          auto offset_num = query_r.result_buffer_elements()["attr"].first;
+          CHECK(offset_num == 3);
+          CHECK(attr_off == data_off_exp1);
 
-        // Second partial read
-        reset_read_buffers(attr_val, attr_off);
-        CHECK_NOTHROW(query_r.submit());
-        CHECK(query_r.query_status() == Query::Status::COMPLETE);
-        std::vector<int32_t> data_exp2 = {4, 5, 6, 0, 0, 0};
-        std::vector<uint64_t> data_off_exp2 = {0, 2, 3, 0};
-        // check returned data
-        data_num = query_r.result_buffer_elements()["attr"].second;
-        CHECK(data_num == 3);
-        CHECK(attr_val == data_exp2);
-        // check returned offsets
-        offset_num = query_r.result_buffer_elements()["attr"].first;
-        CHECK(offset_num == 3);
-        CHECK(attr_off == data_off_exp2);
+          // Second partial read
+          reset_read_buffers(attr_val, attr_off);
+          CHECK_NOTHROW(query_r.submit());
+          CHECK(query_r.query_status() == Query::Status::COMPLETE);
+          std::vector<int32_t> data_exp2 = {4, 5, 6, 0, 0, 0};
+          std::vector<uint64_t> data_off_exp2 = {0, 2, 3, 0};
+          // check returned data
+          data_num = query_r.result_buffer_elements()["attr"].second;
+          CHECK(data_num == 3);
+          CHECK(attr_val == data_exp2);
+          // check returned offsets
+          offset_num = query_r.result_buffer_elements()["attr"].first;
+          CHECK(offset_num == 3);
+          CHECK(attr_off == data_off_exp2);
 
-        array_r.close();
+          array_r.close();
+        }
       }
     }
   }
@@ -1416,7 +1314,8 @@ TEST_CASE_METHOD(
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
 
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
@@ -1424,7 +1323,6 @@ TEST_CASE_METHOD(
         // Expect an extra element offset on each read
         data_off_part1.push_back(sizeof(data_part1[0]) * data_part1.size());
         data_off_part2.push_back(sizeof(data_part2[0]) * data_part2.size());
-
         SECTION("Ordered write") {
           write_dense_array(
               ctx, array_name, data, data_offsets, TILEDB_ROW_MAJOR);
@@ -1448,44 +1346,48 @@ TEST_CASE_METHOD(
               data_off_part2);
         }
       }
+      // SC-45586
+      if (!vfs_test_setup_.is_rest()) {
+        SECTION("Element offsets") {
+          config["sm.var_offsets.mode"] = "elements";
+          vfs_test_setup_.update_config(config.ptr().get());
+          ctx = vfs_test_setup_.ctx();
 
-      SECTION("Element offsets") {
-        config["sm.var_offsets.mode"] = "elements";
-        Context ctx(config);
+          // Write data with extra element indicating total number of elements
+          element_offsets.push_back(data.size());
 
-        // Write data with extra element indicating total number of elements
-        element_offsets.push_back(data.size());
+          // Expect an extra element offset on each read
+          data_elem_off_part1.push_back(data_part1.size());
+          data_elem_off_part2.push_back(data_part2.size());
 
-        // Expect an extra element offset on each read
-        data_elem_off_part1.push_back(data_part1.size());
-        data_elem_off_part2.push_back(data_part2.size());
-
-        SECTION("Ordered write") {
-          write_dense_array(
-              ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
-          partial_read_and_check_dense_array(
-              ctx,
-              array_name,
-              data_part1,
-              data_elem_off_part1,
-              data_part2,
-              data_elem_off_part2);
-        }
-        SECTION("Global order write") {
-          write_dense_array(
-              ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
-          partial_read_and_check_dense_array(
-              ctx,
-              array_name,
-              data_part1,
-              data_elem_off_part1,
-              data_part2,
-              data_elem_off_part2);
+          SECTION("Ordered write") {
+            write_dense_array(
+                ctx, array_name, data, element_offsets, TILEDB_ROW_MAJOR);
+            partial_read_and_check_dense_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_elem_off_part1,
+                data_part2,
+                data_elem_off_part2);
+          }
+          SECTION("Global order write") {
+            write_dense_array(
+                ctx, array_name, data, element_offsets, TILEDB_GLOBAL_ORDER);
+            partial_read_and_check_dense_array(
+                ctx,
+                array_name,
+                data_part1,
+                data_elem_off_part1,
+                data_part2,
+                data_elem_off_part2);
+          }
         }
       }
 
       SECTION("User offsets buffer too small") {
-        Context ctx(config);
+        vfs_test_setup_.update_config(config.ptr().get());
+        ctx = vfs_test_setup_.ctx();
         // Write data with extra element
         data_offsets.push_back(sizeof(data[0]) * data.size());
         write_dense_array(
@@ -1566,24 +1468,15 @@ TEST_CASE_METHOD(
       }
     }
   }
-
-  // Clean up
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }
 
 TEST_CASE_METHOD(
     VariableOffsetsFx,
     "C++ API: Test 32-bit offsets: sparse array",
-    "[var-offsets][32bit-offset][sparse]") {
-#ifdef TILEDB_SERIALIZATION
-  /* TODO: set this to true this when sc21681 is fixed */
-  serialize_ = false;
-  // refactored_query_v2_ = GENERATE(true, false);
-#endif
-  std::string array_name = "test_32bit_offset";
-  create_sparse_array(array_name);
+    "[var-offsets][32bit-offset][sparse][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("test_32bit_offset");
+  auto ctx = vfs_test_setup_.ctx();
+  create_sparse_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   // Create 32 bit byte offsets buffer to use
@@ -1592,7 +1485,8 @@ TEST_CASE_METHOD(
   Config config;
   // Change config of offsets bitsize from 64 to 32
   config["sm.var_offsets.bitsize"] = 32;
-  Context ctx(config);
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx = vfs_test_setup_.ctx();
 
   SECTION("Byte offsets (default case)") {
     CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
@@ -1634,7 +1528,8 @@ TEST_CASE_METHOD(
   SECTION("Element offsets") {
     // Change config of offsets format from bytes to elements
     config["sm.var_offsets.mode"] = "elements";
-    Context ctx(config);
+    vfs_test_setup_.update_config(config.ptr().get());
+    ctx = vfs_test_setup_.ctx();
 
     // Create 32 bit element offsets buffer to use
     std::vector<uint32_t> data_element_offsets = {0, 1, 3, 5};
@@ -1675,7 +1570,8 @@ TEST_CASE_METHOD(
 
   SECTION("Extra element") {
     config["sm.var_offsets.extra_element"] = "true";
-    Context ctx(config);
+    vfs_test_setup_.update_config(config.ptr().get());
+    ctx = vfs_test_setup_.ctx();
 
     // Check the extra element is included in the offsets
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
@@ -1714,28 +1610,15 @@ TEST_CASE_METHOD(
       }
     }
   }
-
-  // Clean up
-  config["sm.var_offsets.extra_element"] = "false";
-  config["sm.var_offsets.mode"] = "bytes";
-  config["sm.var_offsets.bitsize"] = 64;
-  Context ctx2(config);
-  VFS vfs(ctx2);
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }
 
 TEST_CASE_METHOD(
     VariableOffsetsFx,
     "C++ API: Test 32-bit offsets: dense array",
-    "[var-offsets][32bit-offset][dense]") {
-#ifdef TILEDB_SERIALIZATION
-  /* TODO: set this to true this when sc21681 is fixed */
-  serialize_ = false;
-  refactored_query_v2_ = GENERATE(true, false);
-#endif
-  std::string array_name = "test_32bit_offset";
-  create_dense_array(array_name);
+    "[var-offsets][32bit-offset][dense][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("test_32bit_offset");
+  auto ctx = vfs_test_setup_.ctx();
+  create_dense_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   // Create 32 bit offsets byte buffer to use
@@ -1744,7 +1627,8 @@ TEST_CASE_METHOD(
   Config config;
   // Change config of offsets bitsize from 64 to 32
   config["sm.var_offsets.bitsize"] = 32;
-  Context ctx(config);
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx = vfs_test_setup_.ctx();
 
   SECTION("Byte offsets (default case)") {
     CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
@@ -1764,7 +1648,8 @@ TEST_CASE_METHOD(
   SECTION("Element offsets") {
     // Change config of offsets format from bytes to elements
     config["sm.var_offsets.mode"] = "elements";
-    Context ctx(config);
+    vfs_test_setup_.update_config(config.ptr().get());
+    ctx = vfs_test_setup_.ctx();
 
     // Create 32 bit element offsets buffer to use
     std::vector<uint32_t> data_element_offsets = {0, 1, 3, 5};
@@ -1783,7 +1668,8 @@ TEST_CASE_METHOD(
 
   SECTION("Extra element") {
     config["sm.var_offsets.extra_element"] = "true";
-    Context ctx(config);
+    vfs_test_setup_.update_config(config.ptr().get());
+    ctx = vfs_test_setup_.ctx();
 
     // Check the extra element is included in the offsets
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
@@ -1800,22 +1686,15 @@ TEST_CASE_METHOD(
       read_and_check_dense_array(ctx, array_name, data, data_byte_offsets);
     }
   }
-
-  // Clean up
-  config["sm.var_offsets.extra_element"] = "false";
-  config["sm.var_offsets.mode"] = "bytes";
-  config["sm.var_offsets.bitsize"] = 64;
-  Context ctx2(config);
-  VFS vfs(ctx2);
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }
 
 TEST_CASE_METHOD(
     VariableOffsetsFx,
     "C++ API: Test 32-bit offsets: sparse array with string dimension",
-    "[var-offsets-dim][32bit-offset][sparse]") {
-  std::string array_name = "test_32bit_offset_string_dim";
+    "[var-offsets-dim][32bit-offset][sparse][rest]") {
+  std::string array_name =
+      vfs_test_setup_.array_uri("test_32bit_offset_string_dim");
+  auto ctx = vfs_test_setup_.ctx();
 
   /*
     Write an array with string dimension and make sure we get back
@@ -1829,7 +1708,6 @@ TEST_CASE_METHOD(
 
   // Create and write array
   {
-    Context ctx;
     Domain domain(ctx);
     domain.add_dimension(
         Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr));
@@ -1857,7 +1735,8 @@ TEST_CASE_METHOD(
     config["sm.var_offsets.bitsize"] = 32;
     // Add extra element
     config["sm.var_offsets.extra_element"] = "true";
-    Context ctx(config);
+    vfs_test_setup_.update_config(config.ptr().get());
+    ctx = vfs_test_setup_.ctx();
 
     std::vector<uint32_t> offsets_back(5);
     std::string data_back;
@@ -1865,7 +1744,9 @@ TEST_CASE_METHOD(
 
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, std::string("aa"), std::string("dddd"));
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, std::string("aa"), std::string("dddd"));
+    query.set_subarray(subarray);
     query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
     query.set_offsets_buffer(
         "dim1", (uint64_t*)offsets_back.data(), offsets_back.size());
@@ -1888,7 +1769,8 @@ TEST_CASE_METHOD(
     config["sm.var_offsets.bitsize"] = 32;
     // Add extra element
     config["sm.var_offsets.extra_element"] = "true";
-    Context ctx(config);
+    vfs_test_setup_.update_config(config.ptr().get());
+    ctx = vfs_test_setup_.ctx();
 
     std::vector<uint32_t> offsets_back(14);
 
@@ -1904,7 +1786,9 @@ TEST_CASE_METHOD(
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
     // this query range should return empty result
-    query.add_range(0, std::string("xyz"), std::string("xyz"));
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, std::string("xyz"), std::string("xyz"));
+    query.set_subarray(subarray);
     query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
 
     // here we set the buffer at an offset of 2*uint64_t (== 4 * uint32_t)
@@ -1922,9 +1806,108 @@ TEST_CASE_METHOD(
       CHECK(offsets_back[idx] == guard_val);
     }
   }
+}
 
-  Context ctx;
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
+    "C++ API: Test sm.var_offsets.extra_element: sparse array with string "
+    "dimension",
+    "[var-offsets-dim][extra-offset][sparse][rest]") {
+  std::string array_name =
+      vfs_test_setup_.array_uri("test_32bit_offset_string_dim");
+  auto ctx = vfs_test_setup_.ctx();
+
+  /*
+   * Use the `sm.var_offsets.extra_element` option on the write
+   * side and read side respectively and make sure that we can
+   * read back the same logical data and offsets that we put in.
+   */
+
+  const std::string data = "abcdefghij";
+
+  // Starting offsets of each value; does not include "extra offset" (added by
+  // write or read if needed)
+  const std::vector<uint64_t> data_elem_offsets = {0, 0, 2, 5, 6};
+
+  auto do_write_extra_offset = GENERATE(true, false);
+  auto do_read_extra_offset = GENERATE(true, false);
+
+  // Create and write array
+  {
+    Domain domain(ctx);
+    domain.add_dimension(
+        Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr));
+
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+
+    tiledb::Array::create(array_name, schema);
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
+
+    Config config;
+
+    std::vector<uint64_t> write_offsets = data_elem_offsets;
+
+    Query query(ctx, array, TILEDB_WRITE);
+    if (do_write_extra_offset) {
+      config["sm.var_offsets.extra_element"] = "true";
+      query.set_config(config);
+      write_offsets.push_back(data.size());
+    }
+
+    query.set_data_buffer("dim1", (char*)data.data(), data.size());
+    query.set_offsets_buffer(
+        "dim1", (uint64_t*)(write_offsets.data()), write_offsets.size());
+
+    query.set_layout(TILEDB_UNORDERED);
+    query.submit();
+    query.finalize();
+    array.close();
+  }
+
+  // Read contents back
+  {
+    Config config;
+    if (do_read_extra_offset) {
+      config["sm.var_offsets.extra_element"] = "true";
+    }
+
+    const uint64_t expect_num_read_offsets =
+        data_elem_offsets.size() + (do_read_extra_offset ? 1 : 0);
+    std::vector<uint64_t> read_offsets(expect_num_read_offsets, 0xFFFFFFFF);
+
+    std::string read_data;
+    read_data.resize(data.size());
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, std::string(""), std::string("zzzzz"));
+    query.set_config(config);
+    query.set_subarray(subarray);
+    query.set_data_buffer("dim1", (char*)read_data.data(), read_data.size());
+    query.set_offsets_buffer(
+        "dim1", (uint64_t*)read_offsets.data(), read_offsets.size());
+
+    query.submit();
+
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    const auto results = query.result_buffer_elements();
+    const uint64_t num_read_offsets = results.at("dim1").first;
+    const uint64_t num_read_bytes = results.at("dim1").second;
+
+    CHECK(num_read_offsets == expect_num_read_offsets);
+    CHECK(num_read_bytes == data.size());
+    CHECK(read_data == data);
+
+    const std::vector<uint64_t> read_offsets_starts(
+        read_offsets.begin(), read_offsets.begin() + data_elem_offsets.size());
+    CHECK(data_elem_offsets == read_offsets_starts);
+
+    if (do_read_extra_offset) {
+      CHECK(num_read_bytes == read_offsets.back());
+    }
+  }
 }

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,6 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
 
 #include <numeric>
 
@@ -243,6 +242,9 @@ struct CPPMaxFragmentSizeFx {
       uint64_t max_fragment_size = std::numeric_limits<uint64_t>::max()) {
     auto config = ctx_.config();
     config["sm.consolidation.max_fragment_size"] = max_fragment_size;
+    config["sm.mem.consolidation.buffers_weight"] = "1";
+    config["sm.mem.consolidation.reader_weight"] = "5000";
+    config["sm.mem.consolidation.writer_weight"] = "5000";
     Array::consolidate(ctx_, array_name, &config);
   }
 

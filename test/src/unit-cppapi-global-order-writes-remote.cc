@@ -36,14 +36,10 @@
 
 #include <cstring>
 #include <iostream>
+#include <numeric>
 
 using namespace tiledb;
-
-#ifndef TILEDB_TESTS_ENABLE_REST
-constexpr bool rest_tests = false;
-#else
-constexpr bool rest_tests = true;
-#endif
+using namespace tiledb::test;
 
 template <typename T>
 struct RemoteGlobalOrderWriteFx {
@@ -51,6 +47,7 @@ struct RemoteGlobalOrderWriteFx {
       uint64_t total_cells,
       uint64_t extent,
       uint64_t submit_cell_count,
+      tiledb_array_type_t array_type,
       bool is_var = true,
       bool is_nullable = true)
       : is_var_(is_var)
@@ -58,21 +55,10 @@ struct RemoteGlobalOrderWriteFx {
       , submit_cell_count_(submit_cell_count)
       , total_cell_count_(total_cells)
       , extent_(extent)
-      , fs_vec_(test::vfs_test_get_fs_vec()) {
-    REQUIRE(test::vfs_test_init(fs_vec_, &ctx_c_, &vfs_c_).ok());
-    ctx_ = Context(ctx_c_);
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    if constexpr (rest_tests) {
-      array_uri_ = "tiledb://unit/";
-    }
-    array_uri_ += temp_dir + array_name_;
-    test::vfs_test_create_temp_dir(ctx_c_, vfs_c_, temp_dir);
-  }
-
-  ~RemoteGlobalOrderWriteFx() {
-    Array::delete_array(ctx_, array_uri_);
-    REQUIRE(test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok());
-  }
+      , array_name_{"global-array-" + std::to_string(total_cell_count_)}
+      , array_uri_(vfs_test_setup_.array_uri(array_name_))
+      , ctx_(vfs_test_setup_.ctx())
+      , array_type_(array_type){};
 
   // Create a simple dense array
   void create_array() {
@@ -80,12 +66,10 @@ struct RemoteGlobalOrderWriteFx {
     domain.add_dimension(Dimension::create<uint64_t>(
         ctx_, "cols", {{1, total_cell_count_}}, extent_));
 
-    auto array_type = GENERATE(TILEDB_DENSE, TILEDB_SPARSE);
-
-    ArraySchema schema(ctx_, array_type);
+    ArraySchema schema(ctx_, array_type_);
     schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
-    if (array_type == TILEDB_SPARSE) {
+    if (array_type_ == TILEDB_SPARSE) {
       schema.set_capacity(extent_);
     }
 
@@ -103,20 +87,20 @@ struct RemoteGlobalOrderWriteFx {
     Array::create(array_uri_, schema);
 
     Array array(ctx_, array_uri_, TILEDB_READ);
-    CHECK(array.schema().array_type() == array_type);
+    CHECK(array.schema().array_type() == array_type_);
     CHECK(
         array.schema()
             .domain()
             .dimension(0)
             .template domain<uint64_t>()
             .second == total_cell_count_);
-    if (array_type == TILEDB_SPARSE) {
+    if (array_type_ == TILEDB_SPARSE) {
       CHECK(array.schema().capacity() == extent_);
     }
     array.close();
   }
 
-  void write_array() {
+  void write_array(bool check_finalize_fails = false) {
     Array array(ctx_, array_uri_, TILEDB_WRITE);
     Query query(ctx_, array);
     query.set_layout(TILEDB_GLOBAL_ORDER);
@@ -182,6 +166,13 @@ struct RemoteGlobalOrderWriteFx {
       if (i + submit_cell_count_ < total_cell_count_) {
         query.submit();
       } else {
+        if (vfs_test_setup_.is_rest()) {
+          if (check_finalize_fails) {
+            CHECK_THROWS_WITH(
+                query.finalize(),
+                Catch::Matchers::ContainsSubstring("submit_and_finalize"));
+          }
+        }
         // IMPORTANT: Submit final write query and close the array.
         // We must do this within loop; Else our buffers will be out of scope.
         query.submit_and_finalize();
@@ -371,17 +362,17 @@ struct RemoteGlobalOrderWriteFx {
     read_array(extent_);
   }
 
-  Context ctx_;
   bool is_var_;
   bool is_nullable_;
   const unsigned submit_cell_count_;
   const uint64_t total_cell_count_;
   const uint64_t extent_;
 
-  const std::string array_name_ =
-      "global-array-" + std::to_string(total_cell_count_);
-  // Full URI initialized using fs_vec_ random temp directory.
+  const std::string array_name_;
+  test::VFSTestSetup vfs_test_setup_;
   std::string array_uri_;
+  Context ctx_;
+  tiledb_array_type_t array_type_;
 
   // Vectors to store all the data wrote to the array.
   // + We will use these vectors to validate subsequent read.
@@ -391,15 +382,14 @@ struct RemoteGlobalOrderWriteFx {
   std::string var_data_wrote_;
   std::vector<uint64_t> var_offsets_wrote_;
   std::vector<uint8_t> var_validity_wrote_;
-
-  // Vector of supported filsystems
-  tiledb_ctx_handle_t* ctx_c_{nullptr};
-  tiledb_vfs_handle_t* vfs_c_{nullptr};
-  const std::vector<std::unique_ptr<test::SupportedFs>> fs_vec_;
 };
 
 typedef std::tuple<uint64_t, float> TestTypes;
-TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
+TEMPLATE_LIST_TEST_CASE(
+    "Global order remote writes",
+    "[rest][global][global-order][write]",
+    TestTypes) {
+  auto array_type = GENERATE(TILEDB_DENSE, TILEDB_SPARSE);
   typedef TestType T;
   uint64_t cells;
   uint64_t extent;
@@ -411,7 +401,8 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 20;
     extent = 10;
     chunk_size = 3;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
 
@@ -419,7 +410,8 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 20;
     extent = 10;
     chunk_size = 19;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
 
@@ -427,7 +419,8 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 20;
     extent = 10;
     chunk_size = 20;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
 
@@ -435,7 +428,8 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 20;
     extent = 10;
     chunk_size = 10;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
 
@@ -444,7 +438,8 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 20;
     extent = 10;
     chunk_size = 5;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
 
@@ -452,7 +447,8 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 20;
     extent = 5;
     chunk_size = 6;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
 
@@ -460,7 +456,8 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 20;
     extent = 5;
     chunk_size = 3;  // Should not divide evenly into `cells` for this test.
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
 
@@ -468,7 +465,8 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 50;
     extent = 5;
     chunk_size = 12;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
 
@@ -476,7 +474,17 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     cells = 50;
     extent = 10;
     chunk_size = 18;
-    RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
+    RemoteGlobalOrderWriteFx<T> fx(
+        cells, extent, chunk_size, array_type, var, nullable);
     fx.run_test();
   }
+}
+
+TEST_CASE(
+    "Remote global order writes finalize errors",
+    "[rest][global][global-order][write][finalize]") {
+  auto array_type = GENERATE(TILEDB_DENSE, TILEDB_SPARSE);
+  RemoteGlobalOrderWriteFx<uint64_t> fx(20, 10, 3, array_type, true, true);
+  fx.create_array();
+  fx.write_array(true);
 }

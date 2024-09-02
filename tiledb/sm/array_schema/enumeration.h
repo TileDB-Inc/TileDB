@@ -36,12 +36,15 @@
 #include <iostream>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 namespace tiledb::sm {
+
+class MemoryTracker;
 
 /** Defines an array enumeration */
 class Enumeration {
@@ -84,6 +87,7 @@ class Enumeration {
    *        offsets buffer. Must be null if cell_var_num is not var_num.
    * @param offsets_size The size of the buffer pointed to by offsets. Must be
    *        zero of cell_var_num is not var_num.
+   * @param memory_tracker The memory tracker associated with this Enumeration.
    * @return shared_ptr<Enumeration> The created enumeration.
    */
   static shared_ptr<const Enumeration> create(
@@ -94,7 +98,8 @@ class Enumeration {
       const void* data,
       uint64_t data_size,
       const void* offsets,
-      uint64_t offsets_size) {
+      uint64_t offsets_size,
+      shared_ptr<MemoryTracker> memory_tracker) {
     return create(
         name,
         "",
@@ -104,7 +109,8 @@ class Enumeration {
         data,
         data_size,
         offsets,
-        offsets_size);
+        offsets_size,
+        memory_tracker);
   }
 
   /** Create a new Enumeration
@@ -122,6 +128,7 @@ class Enumeration {
    *        offsets buffer. Must be null if cell_var_num is not var_num.
    * @param offsets_size The size of the buffer pointed to by offsets. Must be
    *        zero of cell_var_num is not var_num.
+   * @param memory_tracker The memory tracker associated with this Enumeration.
    * @return shared_ptr<Enumeration> The created enumeration.
    */
   static shared_ptr<const Enumeration> create(
@@ -133,7 +140,8 @@ class Enumeration {
       const void* data,
       uint64_t data_size,
       const void* offsets,
-      uint64_t offsets_size) {
+      uint64_t offsets_size,
+      shared_ptr<MemoryTracker> memory_tracker) {
     struct EnableMakeShared : public Enumeration {
       EnableMakeShared(
           const std::string& name,
@@ -144,7 +152,8 @@ class Enumeration {
           const void* data,
           uint64_t data_size,
           const void* offsets,
-          uint64_t offsets_size)
+          uint64_t offsets_size,
+          shared_ptr<MemoryTracker> memory_tracker)
           : Enumeration(
                 name,
                 path_name,
@@ -154,7 +163,8 @@ class Enumeration {
                 data,
                 data_size,
                 offsets,
-                offsets_size) {
+                offsets_size,
+                memory_tracker) {
       }
     };
     return make_shared<EnableMakeShared>(
@@ -167,16 +177,47 @@ class Enumeration {
         data,
         data_size,
         offsets,
-        offsets_size);
+        offsets_size,
+        memory_tracker);
   }
 
   /**
    * Deserialize an enumeration
    *
    * @param deserializer The deserializer to deserialize from.
+   * @param memory_tracker The memory tracker associated with this Enumeration.
    * @return A new Enumeration.
    */
-  static shared_ptr<const Enumeration> deserialize(Deserializer& deserializer);
+  static shared_ptr<const Enumeration> deserialize(
+      Deserializer& deserializer, shared_ptr<MemoryTracker> memory_tracker);
+
+  /**
+   * Create a new enumeration by extending an existing enumeration's
+   * list of values.
+   *
+   * The returned Enumeration can then be used by the
+   * ArraySchemaEvolution::extend_enumeration to update the schema.
+   *
+   * @param data A pointer to the enumerations values to add.
+   * @param data_size The length of the buffer pointed to by data.
+   * @param offsets A pointer to a buffer of offsets data. Must be provided
+   *        if and only if the enumeration being extended is var sized.
+   * @param offsets_size The size of the offsets buffer or zero if no buffer
+   *        is supplied.
+   * @return shared_ptr<Enumeration> The extended enumeration.
+   */
+  shared_ptr<const Enumeration> extend(
+      const void* data,
+      uint64_t data_size,
+      const void* offsets,
+      uint64_t offsets_size) const;
+
+  /**
+   * Check if this enumeration is an extension of the provided Enumeration.
+   *
+   * @return bool Whether this enumeration is an extension or not.
+   */
+  bool is_extension_of(shared_ptr<const Enumeration> other) const;
 
   /**
    * Serializes the enumeration into a buffer.
@@ -219,6 +260,15 @@ class Enumeration {
    */
   uint32_t cell_val_num() const {
     return cell_val_num_;
+  }
+
+  /**
+   * Get the value map of the enumeration
+   * @return const tdb::pmr::unordered_map<std::string_view, uint64_t>& The
+   *        value map of the enumeration.
+   */
+  const tdb::pmr::unordered_map<std::string_view, uint64_t>& value_map() const {
+    return value_map_;
   }
 
   /**
@@ -278,7 +328,8 @@ class Enumeration {
              size of the buffer pointed to.
    */
   span<uint8_t> data() const {
-    return {static_cast<uint8_t*>(data_.data()), data_.size()};
+    return {
+        static_cast<uint8_t*>(data_.data()), static_cast<size_t>(data_.size())};
   }
 
   /**
@@ -288,7 +339,9 @@ class Enumeration {
    *         the size of the buffer pointed to.
    */
   span<uint8_t> offsets() const {
-    return {static_cast<uint8_t*>(offsets_.data()), offsets_.size()};
+    return {
+        static_cast<uint8_t*>(offsets_.data()),
+        static_cast<size_t>(offsets_.size())};
   }
 
   /**
@@ -300,13 +353,6 @@ class Enumeration {
    *         constants::missing_enumeration_value if not found.
    */
   uint64_t index_of(const void* data, uint64_t size) const;
-
-  /**
-   * Dump a textual representation of the Enumeration to the FILE
-   *
-   * @param out A file pointer to write to. If out is nullptr, use stdout
-   */
-  void dump(FILE* out) const;
 
  private:
   /* ********************************* */
@@ -328,6 +374,7 @@ class Enumeration {
    *        offsets buffer. Must be null if cell_var_num is not var_num.
    * @param offsets_size The size of the buffer pointed to by offsets. Must be
    *        zero of cell_var_num is not var_num.
+   * @param memory_tracker The memory tracker.
    */
   Enumeration(
       const std::string& name,
@@ -338,11 +385,17 @@ class Enumeration {
       const void* data,
       uint64_t data_size,
       const void* offsets,
-      uint64_t offsets_size);
+      uint64_t offsets_size,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * The memory tracker of the Enumeration.
+   */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The name of this Enumeration stored in the enumerations directory. */
   std::string name_;
@@ -366,7 +419,7 @@ class Enumeration {
   Buffer offsets_;
 
   /** Map of values to indices */
-  std::unordered_map<std::string_view, uint64_t> value_map_;
+  tdb::pmr::unordered_map<std::string_view, uint64_t> value_map_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -387,3 +440,7 @@ class Enumeration {
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_DOMAIN_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::Enumeration& enumeration);

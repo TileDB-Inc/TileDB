@@ -77,6 +77,19 @@ void CountAggregatorBase<ValidityPolicy>::aggregate_data(
 }
 
 template <class ValidityPolicy>
+void CountAggregatorBase<ValidityPolicy>::aggregate_tile_with_frag_md(
+    TileMetadata& tile_metadata) {
+  uint64_t count;
+  if constexpr (std::is_same<ValidityPolicy, NonNull>::value) {
+    count = tile_metadata.count();
+  } else {
+    count = tile_metadata.null_count();
+  }
+
+  count_ += count;
+}
+
+template <class ValidityPolicy>
 void CountAggregatorBase<ValidityPolicy>::copy_to_user_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
@@ -91,11 +104,7 @@ void CountAggregatorBase<ValidityPolicy>::copy_to_user_buffer(
 NullCountAggregator::NullCountAggregator(FieldInfo field_info)
     : CountAggregatorBase(field_info)
     , field_info_(field_info) {
-  if (!field_info_.is_nullable_) {
-    throw CountAggregatorStatusException(
-        "NullCount aggregates must only be requested for nullable "
-        "attributes.");
-  }
+  ensure_field_nullable(field_info);
 }
 
 // Explicit template instantiations

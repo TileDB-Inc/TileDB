@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2023-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
     dimension_label_api.cc
@@ -33,21 +34,13 @@ list(APPEND SOURCES
 gather_sources(${SOURCES})
 
 #
-# Object library for other units to depend upon
+# Object library for dimension label
 #
-add_library(capi_dimension_label_stub OBJECT ${SOURCES})
-target_link_libraries(capi_dimension_label_stub PUBLIC capi_context_stub $<TARGET_OBJECTS:capi_context_stub>)
-target_link_libraries(capi_dimension_label_stub PUBLIC capi_datatype $<TARGET_OBJECTS:capi_datatype>)
-target_link_libraries(capi_dimension_label_stub PUBLIC capi_data_order $<TARGET_OBJECTS:capi_data_order>)
-target_link_libraries(capi_dimension_label_stub PUBLIC array_schema $<TARGET_OBJECTS:array_schema>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_dimension_label_stub EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_dimension_label_stub PRIVATE capi_dimension_label_stub)
-target_link_libraries(compile_capi_dimension_label_stub PRIVATE generic_tile_io)
-target_sources(compile_capi_dimension_label_stub PRIVATE test/compile_capi_dimension_label_main.cc)
-add_dependencies(all_link_complete compile_capi_dimension_label_stub)
+commence(object_library capi_dimension_label_stub)
+  this_target_sources(dimension_label_api.cc)
+  this_target_link_libraries(export)
+  this_target_object_libraries(capi_datatype capi_data_order capi_context_stub)
+  this_target_object_libraries(array_schema)
+conclude(object_library)
 
 add_test_subdirectory()

@@ -33,7 +33,6 @@ include(object_library)
 # only. `exception_wrapper.cc` is an empty source file needed to allow the
 # OBJECT syntax.
 
-# No actual source files at present.
 list(APPEND SOURCES
     exception_wrapper.cc
 )

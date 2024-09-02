@@ -185,7 +185,7 @@ The filter metadata for `TILEDB_FILTER_CHECKSUM_{MD5,SHA256}` has internal forma
 
 ### Encryption Filters
 
-If the array is **encrypted**, TileDB uses an extra internal filter `INTERNAL_FILTER_AES_256_GCM` for AES encryption.
+If the array is **encrypted**, TileDB uses an extra internal filter at the end of the pipeline for AES encryption.
 
 The encryption filter metadata have the following on-disk format:
 
@@ -193,37 +193,12 @@ The encryption filter metadata have the following on-disk format:
 | :--- | :--- | :--- |
 | Num metadata parts | `uint32_t` | Number of encrypted metadata parts |
 | Num data parts | `uint32_t` | Number of encrypted data parts |
-| AES Metadata Part 1 | `AESPartMD` | Metadata part 1 |
+| AES Metadata Part 1 | `AESPart` | Metadata part 1 |
 | … | … | … |
-| AES Metadata Part N | `AESPartMD` | Metadata part N |
+| AES Metadata Part N | `AESPart` | Metadata part N |
 | AES Data Part 1 | `AESPart` | Data part 1 |
 | … | … | … |
 | AES Data Part N | `AESPart` | Data part N |
-
-The `AESPartMD` field has the following on-disk format:
-
-| **Field** | **Type** | **Description** |
-| :--- | :--- | :--- |
-| Num metadata parts | `uint32_t` | Number of metadata parts |
-| Num data parts | `uint32_t` | Number of data parts |
-| Plaintext length for metadata part 1 | `uint32_t` | Number of bytes of plaintext metadata part 1 |
-| Ciphertext length for metadata part 1 | `uint32_t` | Number of bytes of ciphertext metadata part 1 |
-| IV bytes for metadata part 1 | `uint32_t` | Number of bytes of AES-256-GCM IV bytes for metadata part 1 |
-| Tag bytes for metadata part 1 | `uint32_t` | Number of bytes of AES-256-GCM tag for metadata part 1 |
-| … | … | … |
-| Plaintext length for metadata part N | `uint32_t` | Number of bytes of plaintext metadata part N |
-| Ciphertext length for metadata part N | `uint32_t` | Number of bytes of ciphertext metadata part N |
-| IV bytes for metadata part N | `uint32_t` | Number of bytes of AES-256-GCM IV bytes for metadata part N |
-| Tag bytes for metadata part N | `uint32_t` | Number of bytes of AES-256-GCM tag for metadata part N |
-| Plaintext length for data part 1 | `uint32_t` | Number of bytes of plaintext data part 1 |
-| Ciphertext length for data part 1 | `uint32_t` | Number of bytes of ciphertext data part 1 |
-| IV bytes for data part 1 | `uint32_t` | Number of bytes of AES-256-GCM IV bytes for data part 1 |
-| Tag bytes for data part 1 | `uint32_t` | Number of bytes of AES-256-GCM tag for data part 1 |
-| … | … | … |
-| Plaintext length for data part N | `uint32_t` | Number of bytes of plaintext data part N |
-| Ciphertext length for data part N | `uint32_t` | Number of bytes of ciphertext data part N |
-| IV bytes for data part N | `uint32_t` | Number of bytes of AES-256-GCM IV bytes for data part N |
-| Tag bytes for data part N | `uint32_t` | Number of bytes of AES-256-GCM tag for data part N |
 
 The original metadata is **not** included in the metadata output.
 

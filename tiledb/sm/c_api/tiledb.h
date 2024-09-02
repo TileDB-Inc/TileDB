@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -55,6 +55,8 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/array/array_api_external.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_external.h"
 #include "tiledb/api/c_api/attribute/attribute_api_external.h"
 #include "tiledb/api/c_api/buffer/buffer_api_external.h"
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
@@ -95,10 +97,22 @@ typedef enum {
 
 /** Query condition operator. */
 typedef enum {
-/** Helper macro for defining query condition operator enums. */
-#define TILEDB_QUERY_CONDITION_OP_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_QUERY_CONDITION_OP_ENUM
+  /** Less-than operator */
+  TILEDB_LT = 0,
+  /** Less-than-or-equal operator */
+  TILEDB_LE = 1,
+  /** Greater-than operator */
+  TILEDB_GT = 2,
+  /** Greater-than-or-equal operator */
+  TILEDB_GE = 3,
+  /** Equal operator */
+  TILEDB_EQ = 4,
+  /** Not-equal operator */
+  TILEDB_NE = 5,
+  /** IN set membership operator. */
+  TILEDB_IN = 6,
+  /** NOT IN set membership operator. */
+  TILEDB_NOT_IN = 7,
 } tiledb_query_condition_op_t;
 
 /** Query condition combination operator. */
@@ -108,22 +122,6 @@ typedef enum {
 #include "tiledb_enum.h"
 #undef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM
 } tiledb_query_condition_combination_op_t;
-
-/** Array type. */
-typedef enum {
-/** Helper macro for defining array type enums. */
-#define TILEDB_ARRAY_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_ARRAY_TYPE_ENUM
-} tiledb_array_type_t;
-
-/** Tile or cell layout. */
-typedef enum {
-/** Helper macro for defining layout type enums. */
-#define TILEDB_LAYOUT_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_LAYOUT_ENUM
-} tiledb_layout_t;
 
 /** Encryption type. */
 typedef enum {
@@ -144,46 +142,6 @@ typedef enum {
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-
-/**
- * Returns a string representation of the given array type.
- *
- * @param array_type Array type
- * @param str Set to point to a constant string representation of the array type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_type_to_str(
-    tiledb_array_type_t array_type, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a array type from the given string.
- *
- * @param str String representation to parse
- * @param array_type Set to the parsed array type
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_type_from_str(
-    const char* str, tiledb_array_type_t* array_type) TILEDB_NOEXCEPT;
-
-/**
- * Returns a string representation of the given layout.
- *
- * @param layout Layout
- * @param str Set to point to a constant string representation of the layout
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t
-tiledb_layout_to_str(tiledb_layout_t layout, const char** str) TILEDB_NOEXCEPT;
-
-/**
- * Parses a layout from the given string.
- *
- * @param str String representation to parse
- * @param layout Set to the parsed layout
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_layout_from_str(
-    const char* str, tiledb_layout_t* layout) TILEDB_NOEXCEPT;
 
 /**
  * Returns a string representation of the given encryption type.
@@ -289,9 +247,6 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
-/** A TileDB array schema. */
-typedef struct tiledb_array_schema_t tiledb_array_schema_t;
-
 /** A TileDB query condition object. */
 typedef struct tiledb_query_condition_t tiledb_query_condition_t;
 
@@ -300,634 +255,6 @@ typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
 /** A consolidation plan object. */
 typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;
-
-/* ********************************* */
-/*            ARRAY SCHEMA           */
-/* ********************************* */
-
-/**
- * Creates a TileDB array schema object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_type The array type.
- * @param array_schema The TileDB array schema to be created.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_alloc(
-    tiledb_ctx_t* ctx,
-    tiledb_array_type_t array_type,
-    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
-
-/**
- * Destroys an array schema, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_free(&array_schema);
- * @endcode
- *
- * @param array_schema The array schema to be destroyed.
- */
-TILEDB_EXPORT void tiledb_array_schema_free(
-    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
-
-/**
- * Adds an attribute to an array schema.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_attribute_t* attr;
- * tiledb_attribute_alloc(ctx, "my_attr", TILEDB_INT32, &attr);
- * tiledb_array_schema_add_attribute(ctx, array_schema, attr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param attr The attribute to be added.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_add_attribute(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_attribute_t* attr) TILEDB_NOEXCEPT;
-
-/**
- * Sets whether the array can allow coordinate duplicates or not.
- * Applicable only to sparse arrays (it errors out if set to `1` for dense
- * arrays).
- *
- * **Example:**
- *
- * @code{.c}
- * int allows_dups = 1;
- * tiledb_array_schema_set_allows_dups(ctx, array_schema, allows_dups);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param allows_dups Whether or not the array allows coordinate duplicates.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_allows_dups(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    int allows_dups) TILEDB_NOEXCEPT;
-
-/**
- * Gets whether the array can allow coordinate duplicates or not.
- * It should always be `0` for dense arrays.
- *
- * **Example:**
- *
- * @code{.c}
- * int allows_dups;
- * tiledb_array_schema_get_allows_dups(ctx, array_schema, &allows_dups);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param allows_dups Whether or not the array allows coordinate duplicates.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_allows_dups(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    int* allows_dups) TILEDB_NOEXCEPT;
-
-/**
- * Returns the array schema version.
- *
- * **Example:**
- *
- * @code{.c}
- * uint32_t version;
- * tiledb_array_schema_get_version(ctx, array_schema, &version);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param version The version.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_version(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    uint32_t* version) TILEDB_NOEXCEPT;
-
-/**
- * Sets a domain for the array schema.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_domain_t* domain;
- * tiledb_domain_alloc(ctx, &domain);
- * // -- Add dimensions to the domain here -- //
- * tiledb_array_schema_set_domain(ctx, array_schema, domain);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param domain The domain to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_domain(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_domain_t* domain) TILEDB_NOEXCEPT;
-
-/**
- * Sets the tile capacity. Applies to sparse arrays only.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_set_capacity(ctx, array_schema, 10000);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param capacity The capacity of a sparse data tile. Note that
- * sparse data tiles exist in sparse fragments, which can be created
- * in sparse arrays only. For more details,
- * see [tutorials/tiling-sparse.html](tutorials/tiling-sparse.html).
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_capacity(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    uint64_t capacity) TILEDB_NOEXCEPT;
-
-/**
- * Sets the cell order.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param cell_order The cell order to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_cell_order(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_layout_t cell_order) TILEDB_NOEXCEPT;
-
-/**
- * Sets the tile order.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_COL_MAJOR);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param tile_order The tile order to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_tile_order(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_layout_t tile_order) TILEDB_NOEXCEPT;
-
-/**
- * Sets the filter list to use for the coordinates.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_filter_list_alloc(ctx, &filter_list);
- * tiledb_filter_list_add_filter(ctx, filter_list, filter);
- * tiledb_array_schema_set_coords_filter_list(ctx, array_schema, filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param filter_list The filter list to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_coords_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Sets the filter list to use for the offsets of variable-sized attribute
- * values.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_filter_list_alloc(ctx, &filter_list);
- * tiledb_filter_list_add_filter(ctx, filter_list, filter);
- * tiledb_array_schema_set_offsets_filter_list(ctx, array_schema, filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param filter_list The filter list to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_offsets_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Sets the filter list to use for the validity array of nullable attribute
- * values.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_filter_list_alloc(ctx, &filter_list);
- * tiledb_filter_list_add_filter(ctx, filter_list, filter);
- * tiledb_array_schema_set_validity_filter_list(ctx, array_schema, filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param filter_list The filter list to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_set_validity_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Checks the correctness of the array schema.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_check(ctx, array_schema);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @return `TILEDB_OK` if the array schema is correct and `TILEDB_ERR` upon any
- *     error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_check(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the schema of an array from the disk, creating an array schema
- * struct.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_load(ctx, "s3://tiledb_bucket/my_array", &array_schema);
- * // Make sure to free the array schema in the end
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The array whose schema will be retrieved.
- * @param array_schema The array schema to be retrieved, or `NULL` upon error.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_load(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the schema of an encrypted array from the disk, creating an array
- * schema struct.
- *
- * **Example:**
- *
- * @code{.c}
- * // Load AES-256 key from disk, environment variable, etc.
- * uint8_t key[32] = ...;
- * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_load_with_key(
- *     ctx, "s3://tiledb_bucket/my_array", TILEDB_AES_256_GCM,
- *     key, sizeof(key), &array_schema);
- * // Make sure to free the array schema in the end
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The array whose schema will be retrieved.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
- * @param array_schema The array schema to be retrieved, or `NULL` upon error.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_schema_load_with_key(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the array type.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_load(ctx, "s3://tiledb_bucket/my_array", array_schema);
- * tiledb_array_type_t* array_type;
- * tiledb_array_schema_get_array_type(ctx, array_schema, &array_type);
- * // Make sure to free the array schema in the end
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param array_type The array type to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_array_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_array_type_t* array_type) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the capacity.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t capacity;
- * tiledb_array_schema_get_capacity(ctx, array_schema, &capacity);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param capacity The capacity to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_capacity(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    uint64_t* capacity) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the cell order.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_layout_t cell_order;
- * tiledb_array_schema_get_cell_order(ctx, array_schema, &cell_order);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param cell_order The cell order to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_cell_order(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_layout_t* cell_order) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the filter list used for the coordinates.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_array_schema_get_coords_filter_list(ctx, array_schema, &filter_list);
- * tiledb_filter_list_free(ctx, &filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param filter_list The filter list to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_coords_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the filter list used for the offsets.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_array_schema_get_offsets_filter_list(ctx, array_schema, &filter_list);
- * tiledb_filter_list_free(ctx, &filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param filter_list The filter list to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_offsets_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the filter list used for validity maps.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_array_schema_get_validity_filter_list(ctx, array_schema,
- * &filter_list); tiledb_filter_list_free(ctx, &filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param filter_list The filter list to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_validity_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the array domain.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_domain_t* domain;
- * tiledb_array_schema_get_domain(ctx, array_schema, &domain);
- * // Make sure to delete domain in the end
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param domain The array domain to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_domain(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_domain_t** domain) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the tile order.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_layout_t tile_order;
- * tiledb_array_schema_get_tile_order(ctx, array_schema, &tile_order);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param tile_order The tile order to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_tile_order(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_layout_t* tile_order) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the number of array attributes.
- *
- * **Example:**
- *
- * @code{.c}
- * uint32_t attr_num;
- * tiledb_array_schema_get_attribute_num(ctx, array_schema, &attr_num);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param attribute_num The number of attributes to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_attribute_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    uint32_t* attribute_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves an attribute given its index.
- *
- * Attributes are ordered the same way they were defined
- * when constructing the array schema.
- *
- * **Example:**
- *
- * The following retrieves the first attribute in the schema.
- *
- * @code{.c}
- * tiledb_attribute_t* attr;
- * tiledb_array_schema_get_attribute_from_index(ctx, array_schema, 0, &attr);
- * // Make sure to delete the retrieved attribute in the end.
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param index The index of the attribute to retrieve.
- * @param attr The attribute object to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_attribute_from_index(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    uint32_t index,
-    tiledb_attribute_t** attr) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves an attribute given its name (key).
- *
- * **Example:**
- *
- * The following retrieves the first attribute in the schema.
- *
- * @code{.c}
- * tiledb_attribute_t* attr;
- * tiledb_array_schema_get_attribute_from_name(
- *     ctx, array_schema, "attr_0", &attr);
- * // Make sure to delete the retrieved attribute in the end.
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param name The name (key) of the attribute to retrieve.
- * @param attr THe attribute object to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_get_attribute_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    const char* name,
-    tiledb_attribute_t** attr) TILEDB_NOEXCEPT;
-
-/**
- * Checks whether the array schema has an attribute of the given name.
- *
- * **Example:**
- *
- * @code{.c}
- * int32_t has_attr;
- * tiledb_array_schema_has_attribute(ctx, array_schema, "attr_0", &has_attr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param name The name of the attribute to check for.
- * @param has_attr Set to `1` if the array schema has an attribute of the
- *      given name, else `0`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    const char* name,
-    int32_t* has_attr) TILEDB_NOEXCEPT;
-
-/**
- * Dumps the array schema in ASCII format in the selected output.
- *
- * **Example:**
- *
- * The following prints the array schema dump in standard output.
- *
- * @code{.c}
- * tiledb_array_schema_dump(ctx, array_schema, stdout);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_schema The array schema.
- * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
-    FILE* out) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               QUERY               */
@@ -1029,36 +356,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_config(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_config_t** config) TILEDB_NOEXCEPT;
-/**
- * Indicates that the query will write or read a subarray, and provides
- * the appropriate information.
- *
- * **Example:**
- *
- * The following sets a 2D subarray [0,10], [20, 30] to the query.
- *
- * @code{.c}
- * uint64_t subarray[] = { 0, 10, 20, 30};
- * tiledb_query_set_subarray(ctx, query, subarray);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The TileDB query.
- * @param subarray The subarray in which the array read/write will be
- *     constrained on. It should be a sequence of [low, high] pairs (one
- *     pair per dimension). For the case of writes, this is meaningful only
- *     for dense arrays. Note that `subarray` must have the same type as the
- *     domain.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- *
- * @note This will error if the query is already initialized.
- *
- * @note This function will error for writes to sparse arrays.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_set_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const void* subarray) TILEDB_NOEXCEPT;
 
 /**
  * Indicates that the query will write or read a subarray, and provides
@@ -1447,57 +744,6 @@ TILEDB_EXPORT int32_t
 tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) TILEDB_NOEXCEPT;
 
 /**
- * Submits a TileDB query in asynchronous mode.
- *
- * **Examples:**
- *
- * Submit without a callback.
- *
- * @code{.c}
- * tiledb_query_submit_async(ctx, query, NULL, NULL);
- * @endcode
- *
- * Submit with a callback function `print` that takes as input message
- * `msg` and prints it upon completion of the query.
- *
- * @code{.c}
- * const char* msg = "Query completed";
- * tiledb_query_submit_async(ctx, &query, foo, msg);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The query to be submitted.
- * @param callback The function to be called when the query completes.
- * @param callback_data The data to be passed to the \p callback function.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- *
- * @note `tiledb_query_finalize` must be invoked after finish writing in
- *     global layout (via repeated invocations of `tiledb_query_submit`),
- *     in order to flush any internal state.
- *
- * @note For the case of reads, if the returned status is `TILEDB_INCOMPLETE`,
- *    TileDB could not fit the entire result in the user's buffers. In this
- *    case, the user should consume the read results (if any), optionally
- *    reset the buffers with `tiledb_query_set_buffer`, and then resubmit the
- *    query until the status becomes `TILEDB_COMPLETED`. If all buffer sizes
- *    after the termination of this function become 0, then this means that
- *    **no** useful data was read into the buffers, implying that larger
- *    buffers are needed for the query to proceed. In this case, the users
- *    must reallocate their buffers (increasing their size), reset the buffers
- *    with `tiledb_query_set_buffer`, and resubmit the query.
- *
- * @note \p callback will be executed in a thread managed by TileDB's internal
- *    thread pool. To allow TileDB to reuse the thread and avoid starving the
- *    thread pool, long-running callbacks should be dispatched to another
- *    thread.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_submit_async(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    void (*callback)(void*),
-    void* callback_data) TILEDB_NOEXCEPT;
-
-/**
  * Checks if the query has returned any results. Applicable only to
  * read queries; it sets `has_results` to `0 in the case of writes.
  *
@@ -1598,360 +844,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_array(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_array_t** array) TILEDB_NOEXCEPT;
-/**
- * Adds a 1D range along a subarray dimension index, which is in the form
- * (start, end, stride). The datatype of the range components
- * must be the same as the type of the domain of the array in the query.
- *
- * **Example:**
- *
- * @code{.c}
- * uint32_t dim_idx = 2;
- * int64_t start = 10;
- * int64_t end = 20;
- * tiledb_query_add_range(ctx, query, dim_idx, &start, &end, nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The query to add the range to.
- * @param dim_idx The index of the dimension to add the range to.
- * @param start The range start.
- * @param end The range end.
- * @param stride The range stride.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The stride is currently unsupported. Use `nullptr` as the
- *     stride argument.
- */
-
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    uint32_t dim_idx,
-    const void* start,
-    const void* end,
-    const void* stride) TILEDB_NOEXCEPT;
-
-/**
- * Adds a 1D range along a subarray dimension name, which is in the form
- * (start, end, stride). The datatype of the range components
- * must be the same as the type of the domain of the array in the query.
- *
- * **Example:**
- *
- * @code{.c}
- * char* dim_name = "rows";
- * int64_t start = 10;
- * int64_t end = 20;
- * tiledb_query_add_range_by_name(ctx, query, dim_name, &start, &end, nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The query to add the range to.
- * @param dim_name The name of the dimension to add the range to.
- * @param start The range start.
- * @param end The range end.
- * @param stride The range stride.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The stride is currently unsupported. Use `nullptr` as the
- *     stride argument.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range_by_name(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* dim_name,
-    const void* start,
-    const void* end,
-    const void* stride) TILEDB_NOEXCEPT;
-
-/**
- * Adds a 1D variable-sized range along a subarray dimension index, which is in
- * the form (start, end). Applicable only to variable-sized dimensions.
- *
- * **Example:**
- *
- * @code{.c}
- * uint32_t dim_idx = 2;
- * char start[] = "a";
- * char end[] = "bb";
- * tiledb_query_add_range_var(ctx, query, dim_idx, start, 1, end, 2);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The query to add the range to.
- * @param dim_idx The index of the dimension to add the range to.
- * @param start The range start.
- * @param start_size The size of the range start in bytes.
- * @param end The range end.
- * @param end_size The size of the range end in bytes.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range_var(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t start_size,
-    const void* end,
-    uint64_t end_size) TILEDB_NOEXCEPT;
-
-/**
- * Adds a 1D variable-sized range along a subarray dimension name, which is in
- * the form (start, end). Applicable only to variable-sized dimensions.
- *
- * **Example:**
- *
- * @code{.c}
- * char* dim_name = "rows";
- * char start[] = "a";
- * char end[] = "bb";
- * tiledb_query_add_range_var_by_name(ctx, query, dim_name, start, 1, end, 2);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param query The query to add the range to.
- * @param dim_name The name of the dimension to add the range to.
- * @param start The range start.
- * @param start_size The size of the range start in bytes.
- * @param end The range end.
- * @param end_size The size of the range end in bytes.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_range_var_by_name(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* dim_name,
-    const void* start,
-    uint64_t start_size,
-    const void* end,
-    uint64_t end_size) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the number of ranges of the query subarray along a given dimension
- * index.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t range_num;
- * tiledb_query_get_range_num(ctx, query, dim_idx, &range_num);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param query The query.
- * @param dim_idx The index of the dimension whose range number to retrieve.
- * @param range_num The number of ranges to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint32_t dim_idx,
-    uint64_t* range_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the number of ranges of the query subarray along a given dimension
- * name.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t range_num;
- * tiledb_query_get_range_num_from_name(ctx, query, dim_name, &range_num);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param query The query.
- * @param dim_name The name of the dimension whose range number to retrieve.
- * @param range_num The number of ranges to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_num_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* dim_name,
-    uint64_t* range_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a specific range of the query subarray along a given dimension
- * index.
- *
- * **Example:**
- *
- * @code{.c}
- * const void* start;
- * const void* end;
- * const void* stride;
- * tiledb_query_get_range(
- *     ctx, query, dim_idx, range_idx, &start, &end, &stride);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param query The query.
- * @param dim_idx The index of the dimension to retrieve the range from.
- * @param range_idx The index of the range to retrieve.
- * @param start The range start to retrieve.
- * @param end The range end to retrieve.
- * @param stride The range stride to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a specific range of the query subarray along a given dimension
- * name.
- *
- * **Example:**
- *
- * @code{.c}
- * const void* start;
- * const void* end;
- * const void* stride;
- * tiledb_query_get_range_from_name(
- *     ctx, query, dim_name, range_idx, &start, &end, &stride);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param query The query.
- * @param dim_name The name of the dimension to retrieve the range from.
- * @param range_idx The index of the range to retrieve.
- * @param start The range start to retrieve.
- * @param end The range end to retrieve.
- * @param stride The range stride to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* dim_name,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a range's start and end size for a given variable-length
- * dimension index at a given range index.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t start_size;
- * uint64_t end_size;
- * tiledb_query_get_range_var_size(
- *     ctx, query, dim_idx, range_idx, &start_size, &end_size);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param query The query.
- * @param dim_idx The index of the dimension to retrieve the range from.
- * @param range_idx The index of the range to retrieve.
- * @param start_size range start size in bytes
- * @param end_size range end size in bytes
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    uint64_t* start_size,
-    uint64_t* end_size) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a range's start and end size for a given variable-length
- * dimension name at a given range index.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t start_size;
- * uint64_t end_size;
- * tiledb_query_get_range_var_size_from_name(
- *     ctx, query, dim_name, range_idx, &start_size, &end_size);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param query The query.
- * @param dim_name The name of the dimension to retrieve the range from.
- * @param range_idx The index of the range to retrieve.
- * @param start_size range start size in bytes
- * @param end_size range end size in bytes
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var_size_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* dim_name,
-    uint64_t range_idx,
-    uint64_t* start_size,
-    uint64_t* end_size) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a specific range of the query subarray along a given
- * variable-length dimension index.
- *
- * **Example:**
- *
- * @code{.c}
- * const void* start;
- * const void* end;
- * tiledb_query_get_range_var(
- *     ctx, query, dim_idx, range_idx, &start, &end);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param query The query.
- * @param dim_idx The index of the dimension to retrieve the range from.
- * @param range_idx The index of the range to retrieve.
- * @param start The range start to retrieve.
- * @param end The range end to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    void* start,
-    void* end) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a specific range of the query subarray along a given
- * variable-length dimension name.
- *
- * **Example:**
- *
- * @code{.c}
- * const void* start;
- * const void* end;
- * tiledb_query_get_range_var_from_name(
- *     ctx, query, dim_name, range_idx, &start, &end);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param query The query.
- * @param dim_name The name of the dimension to retrieve the range from.
- * @param range_idx The index of the range to retrieve.
- * @param start The range start to retrieve.
- * @param end The range end to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char* dim_name,
-    uint64_t range_idx,
-    void* start,
-    void* end) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the estimated result size for a fixed-sized attribute/dimension.
@@ -2857,9 +1749,16 @@ TILEDB_EXPORT int32_t tiledb_array_set_open_timestamp_start(
 
 /**
  * Sets the ending timestamp to use when opening (and reopening) the array.
- * This is an inclusive bound. The UINT64_MAX timestamp is a reserved timestamp
- * that will be interpretted as the current timestamp when an array is opened.
- * The default value is `UINT64_MAX`.
+ * This is an inclusive bound. The default value is `UINT64_MAX`.
+ *
+ * When opening the array for reads, this value will be used to determine the
+ * ending timestamp of fragments to load. A value of `UINT64_MAX` will be
+ * translated to the current timestamp at which the array is opened.
+ *
+ * When opening the array for writes, this value will be used to determine the
+ * timestamp to write new fragments. A value of `UINT64_MAX` will use the
+ * current timestamp at which the array is opened. A value of 0 will use the
+ * current timestamp at which the fragment is written.
  *
  * **Example:**
  *
@@ -2936,34 +1835,6 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t* timestamp_end) TILEDB_NOEXCEPT;
-
-/**
- * Deletes array fragments written between the input timestamps.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_delete_fragments(
- *   ctx, array, "hdfs:///temp/my_array", 0, UINT64_MAX);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array to delete the fragments from.
- * @param uri The URI of the fragments' parent Array.
- * @param timestamp_start The epoch timestamp in milliseconds.
- * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
- *   the current timestamp.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note This function was deprecated in release 2.18 in favor of
- * tiledb_array_delete_fragments_v2.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_fragments(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* uri,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end) TILEDB_NOEXCEPT;
 
 /**
  * Deletes array fragments written between the input timestamps.
@@ -3241,34 +2112,41 @@ TILEDB_EXPORT int32_t tiledb_array_create(
     const tiledb_array_schema_t* array_schema) TILEDB_NOEXCEPT;
 
 /**
- * Creates a new encrypted TileDB array given an input schema.
- *
- * Encrypted arrays can only be created through this function.
+ * Deletes all written array data.
  *
  * **Example:**
  *
  * @code{.c}
- * uint8_t key[32] = ...;
- * tiledb_array_create_with_key(
- *     ctx, "hdfs:///tiledb_arrays/my_array", array_schema,
- *     TILEDB_AES_256_GCM, key, sizeof(key));
+ * tiledb_array_delete(ctx, "hdfs:///temp/my_array");
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array_uri The array name.
- * @param array_schema The array schema.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
+ * @param uri The Array's URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_create_with_key(
+TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
+    TILEDB_NOEXCEPT;
+
+/**
+ * Upgrades an array to the latest format version.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* array_uri="test_array";
+ * tiledb_array_upgrade_version(ctx, array_uri);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The uri of the array.
+ * @param config Configuration parameters for the upgrade
+ *     (`nullptr` means default, which will use the config from `ctx`).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    const tiledb_array_schema_t* array_schema,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) TILEDB_NOEXCEPT;
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
  * Depending on the consoliation mode in the config, consolidates either the
@@ -3298,40 +2176,6 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate(
     tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /**
- * Depending on the consoliation mode in the config, consolidates either the
- * fragment files, fragment metadata files, or array metadata files into a
- * single file.
- *
- * **Example:**
- *
- * @code{.c}
- * uint8_t key[32] = ...;
- * tiledb_array_consolidate_with_key(
- *     ctx, "hdfs:///tiledb_arrays/my_array",
- *     TILEDB_AES_256_GCM, key, sizeof(key), nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array to be consolidated.
- * @param encryption_type The encryption type to use.
- * @param encryption_key The encryption key to use.
- * @param key_length Length in bytes of the encryption key.
- * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
- *     The `sm.consolidation.mode` parameter determines which type of
- *     consolidation to perform.
- *
- * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_consolidate_with_key(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
-/**
  * Cleans up the array, such as consolidated fragments and array metadata.
  * Note that this will coarsen the granularity of time traveling (see docs
  * for more information).
@@ -3355,7 +2199,12 @@ TILEDB_EXPORT int32_t tiledb_array_vacuum(
 
 /**
  * Retrieves the non-empty domain from an array. This is the union of the
- * non-empty domains of the array fragments.
+ * non-empty domains of the array fragments. This API only works for arrays that
+ * have numeric dimensions and all dimensions of the same type.
+ *
+ * The domain passed in is memory that can contain the number of dimensions * 2
+ * * sizeof(type of dimension). The previous two is because we return the non
+ * empty domain as min/max. Dimensions are returned in order.
  *
  * **Example:**
  *
@@ -4123,36 +2972,13 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) TILEDB_NOEXCEPT;
 
 /**
- * Gets the name of a fragment. Deprecated, use
- * \p tiledb_fragment_info_get_fragment_name_v2 instead.
- *
- * **Example:**
- *
- * @code{.c}
- * const char* name;
- * tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param fragment_info The fragment info object.
- * @param fid The index of the fragment of interest.
- * @param name The fragment name to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_fragment_info_get_fragment_name(
-    tiledb_ctx_t* ctx,
-    tiledb_fragment_info_t* fragment_info,
-    uint32_t fid,
-    const char** name) TILEDB_NOEXCEPT;
-
-/**
  * Gets the name of a fragment.
  *
  * **Example:**
  *
  * @code{.c}
  * tiledb_string_t* name;
- * tiledb_fragment_info_get_fragment_name(ctx, fragment_info, 1, &name);
+ * tiledb_fragment_info_get_fragment_name_v2(ctx, fragment_info, 1, &name);
  * // Remember to free the string with tiledb_string_free when you are done with
  * // it.
  * @endcode
@@ -4919,5 +3745,12 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_dump(
 #ifdef __cplusplus
 }
 #endif
+
+/* ********************************* */
+/*           DEPRECATED API          */
+/* ********************************* */
+#ifndef TILEDB_REMOVE_DEPRECATIONS
+#include "tiledb_deprecated.h"
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
 #endif  // TILEDB_H

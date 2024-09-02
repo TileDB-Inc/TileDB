@@ -40,7 +40,7 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -54,26 +54,16 @@ class FragmentInfo {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  FragmentInfo();
+  FragmentInfo() = delete;
 
   /** Constructor. */
-  FragmentInfo(const URI& array_uri, StorageManager* storage_manager);
+  FragmentInfo(const URI& array_uri, ContextResources& resources);
 
   /** Destructor. */
   ~FragmentInfo();
 
-  /** Copy constructor. */
-  FragmentInfo(const FragmentInfo& fragment_info);
-
-  /** Move constructor. */
-  FragmentInfo(FragmentInfo&& fragment_info);
-
-  /** Copy-assign operator. */
-  FragmentInfo& operator=(const FragmentInfo& fragment_info);
-
-  /** Move-assign operator. */
-  FragmentInfo& operator=(FragmentInfo&& fragment_info);
+  DISABLE_COPY_AND_COPY_ASSIGN(FragmentInfo);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentInfo);
 
   /* ********************************* */
   /*                API                */
@@ -298,6 +288,34 @@ class FragmentInfo {
       const URI& new_fragment_uri,
       const std::vector<TimestampedURI>& to_replace);
 
+  /**
+   * Returns the array schemas and fragment metadata for the given array.
+   * The function will focus only on relevant schemas and metadata as
+   * dictated by the input URI manager.
+   *
+   * @param array_dir The ArrayDirectory object used to retrieve the
+   *     various URIs in the array directory.
+   * @param memory_tracker The memory tracker of the array
+   *     for which the fragment metadata is loaded.
+   * @param enc_key The encryption key to use.
+   * @return tuple latest ArraySchema, map of all array schemas and
+   * vector of FragmentMetadata
+   *        ArraySchema The array schema to be retrieved after the
+   *           array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   *        fragment_metadata The fragment metadata to be retrieved
+   *           after the array is opened.
+   */
+  static tuple<
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+      std::vector<shared_ptr<FragmentMetadata>>>
+  load_array_schemas_and_fragment_metadata(
+      ContextResources& resources,
+      const ArrayDirectory& array_dir,
+      shared_ptr<MemoryTracker> memory_tracker,
+      const EncryptionKey& enc_key);
+
   /** Returns the vector with the info about individual fragments. */
   const std::vector<SingleFragmentInfo>& single_fragment_info_vec() const;
 
@@ -329,6 +347,11 @@ class FragmentInfo {
   /** Returns the config. */
   inline const Config& config() const {
     return config_;
+  }
+
+  /** Returns the context resources. */
+  inline ContextResources* resources() const {
+    return resources_;
   }
 
   // Accessors
@@ -395,8 +418,8 @@ class FragmentInfo {
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> single_fragment_info_vec_;
 
-  /** The storage manager. */
-  StorageManager* storage_manager_;
+  /** The context resources. */
+  ContextResources* resources_;
 
   /** The URIs of the fragments to vacuum. */
   std::vector<URI> to_vacuum_;
@@ -456,15 +479,6 @@ class FragmentInfo {
   Status replace(
       const SingleFragmentInfo& new_single_fragment_info,
       const std::vector<TimestampedURI>& to_replace);
-
-  /** Returns a copy of this object. */
-  FragmentInfo clone() const;
-
-  /**
-   * Swaps the contents (all field values) of this object with the
-   * given object.
-   */
-  void swap(FragmentInfo& fragment_info);
 };
 
 }  // namespace sm

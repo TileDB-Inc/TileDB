@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,17 +40,16 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/webp_filter.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
@@ -60,12 +59,11 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-class WriterBaseStatusException : public StatusException {
+class WriterBaseException : public StatusException {
  public:
-  explicit WriterBaseStatusException(const std::string& message)
+  explicit WriterBaseException(const std::string& message)
       : StatusException("WriterBase", message) {
   }
 };
@@ -77,27 +75,13 @@ class WriterBaseStatusException : public StatusException {
 WriterBase::WriterBase(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
+    StrategyParams& params,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
-    bool skip_checks_serialization)
-    : StrategyBase(
-          stats,
-          logger->clone("Writer", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout)
+    optional<std::string> fragment_name)
+    : StrategyBase(stats, logger->clone("Writer", ++logger_id_), params)
     , disable_checks_consolidation_(disable_checks_consolidation)
     , coords_info_(coords_info)
     , check_coord_dups_(false)
@@ -107,21 +91,15 @@ WriterBase::WriterBase(
     , written_fragment_info_(written_fragment_info)
     , remote_query_(remote_query) {
   // Sanity checks
-  if (storage_manager_ == nullptr) {
-    throw WriterBaseStatusException(
-        "Cannot initialize query; Storage manager not set");
-  }
-
-  if (!skip_checks_serialization && buffers_.empty()) {
-    throw WriterBaseStatusException(
-        "Cannot initialize writer; Buffers not set");
+  if (!params.skip_checks_serialization() && buffers_.empty()) {
+    throw WriterBaseException("Cannot initialize writer; Buffers not set");
   }
 
   if (array_schema_.dense() &&
       (layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR)) {
     for (const auto& b : buffers_) {
       if (array_schema_.is_dim(b.first)) {
-        throw WriterBaseStatusException(
+        throw WriterBaseException(
             "Cannot initialize writer; Sparse coordinates for dense arrays "
             "cannot be provided if the query layout is ROW_MAJOR or COL_MAJOR");
       }
@@ -132,19 +110,19 @@ WriterBase::WriterBase(
   const char *check_coord_dups, *check_coord_oob, *check_global_order;
   const char* dedup_coords;
   if (!config_.get("sm.check_coord_dups", &check_coord_dups).ok()) {
-    throw WriterBaseStatusException("Cannot get setting");
+    throw WriterBaseException("Cannot get setting");
   }
 
   if (!config_.get("sm.check_coord_oob", &check_coord_oob).ok()) {
-    throw WriterBaseStatusException("Cannot get setting");
+    throw WriterBaseException("Cannot get setting");
   }
 
   if (!config_.get("sm.check_global_order", &check_global_order).ok()) {
-    throw WriterBaseStatusException("Cannot get setting");
+    throw WriterBaseException("Cannot get setting");
   }
 
   if (!config_.get("sm.dedup_coords", &dedup_coords).ok()) {
-    throw WriterBaseStatusException("Cannot get setting");
+    throw WriterBaseException("Cannot get setting");
   }
 
   assert(check_coord_dups != nullptr && dedup_coords != nullptr);
@@ -159,7 +137,7 @@ WriterBase::WriterBase(
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    throw WriterBaseStatusException(
+    throw WriterBaseException(
         "Cannot initialize writer; Unsupported offsets format in "
         "configuration");
   }
@@ -167,19 +145,19 @@ WriterBase::WriterBase(
            .get<bool>(
                "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
            .ok()) {
-    throw WriterBaseStatusException("Cannot get setting");
+    throw WriterBaseException("Cannot get setting");
   }
   assert(found);
 
   if (!config_
            .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
            .ok()) {
-    throw WriterBaseStatusException("Cannot get setting");
+    throw WriterBaseException("Cannot get setting");
   }
   assert(found);
 
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    throw WriterBaseStatusException(
+    throw WriterBaseException(
         "Cannot initialize writer; Unsupported offsets bitsize in "
         "configuration");
   }
@@ -187,12 +165,12 @@ WriterBase::WriterBase(
   // Check subarray is valid for strategy is set or set it to default if unset.
   if (subarray_.is_set()) {
     if (!array_schema_.dense()) {
-      throw WriterBaseStatusException(
+      throw WriterBaseException(
           "Cannot initialize write; Non-default subarray are not supported in "
           "sparse writes");
     }
     if (subarray_.range_num() > 1) {
-      throw WriterBaseStatusException(
+      throw WriterBaseException(
           "Cannot initialize writer; Multi-range dense writes are not "
           "supported");
     }
@@ -204,7 +182,7 @@ WriterBase::WriterBase(
     check_extra_element();
   }
 
-  if (!skip_checks_serialization) {
+  if (!params.skip_checks_serialization()) {
     // Consolidation might set a subarray that is not tile aligned.
     if (!disable_checks_consolidation) {
       check_subarray();
@@ -225,12 +203,12 @@ WriterBase::WriterBase(
   auto new_fragment_str =
       fragment_name.has_value() ?
           fragment_name.value() :
-          storage_format::generate_fragment_name(timestamp, write_version);
+          storage_format::generate_timestamped_name(timestamp, write_version);
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
-  throw_if_not_ok(utils::parse::get_timestamp_range(
-      fragment_uri_, &fragment_timestamp_range_));
+  FragmentID fragment_id{fragment_uri_};
+  fragment_timestamp_range_ = fragment_id.timestamp_range();
 }
 
 WriterBase::~WriterBase() {
@@ -285,7 +263,7 @@ void WriterBase::check_var_attr_offsets() const {
     // Allow the initial offset to be equal to the size, this indicates
     // the first and only value in the buffer is to be empty
     if (prev_offset > *buffer_val_size) {
-      throw WriterBaseStatusException(
+      throw WriterBaseException(
           "Invalid offsets for attribute " + attr + "; offset " +
           std::to_string(prev_offset) + " specified for buffer of size " +
           std::to_string(*buffer_val_size));
@@ -294,7 +272,7 @@ void WriterBase::check_var_attr_offsets() const {
     for (uint64_t i = 1; i < num_offsets; i++) {
       uint64_t cur_offset = get_offset_buffer_element(buffer_off, i);
       if (cur_offset < prev_offset)
-        throw WriterBaseStatusException(
+        throw WriterBaseException(
             "Invalid offsets for attribute " + attr +
             "; offsets must be given in "
             "strictly ascending order.");
@@ -306,7 +284,7 @@ void WriterBase::check_var_attr_offsets() const {
            get_offset_buffer_element(
                buffer_off, (i < num_offsets - 1 ? i + 1 : i)) !=
                *buffer_val_size))
-        throw WriterBaseStatusException(
+        throw WriterBaseException(
             "Invalid offsets for attribute " + attr + "; offset " +
             std::to_string(cur_offset) + " specified at index " +
             std::to_string(i) + " for buffer of size " +
@@ -324,6 +302,14 @@ void WriterBase::refresh_config() {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
+shared_ptr<FragmentMetadata> WriterBase::create_fragment_metadata() {
+  return make_shared<FragmentMetadata>(
+      HERE(),
+      &resources_,
+      query_memory_tracker_,
+      array_->array_schema_latest().write_version());
+}
+
 Status WriterBase::add_written_fragment_info(const URI& uri) {
   written_fragment_info_.emplace_back(uri, fragment_timestamp_range_);
   return Status::Ok();
@@ -340,10 +326,7 @@ Status WriterBase::calculate_hilbert_values(
   // Calculate Hilbert values in parallel
   assert(hilbert_values.size() >= coords_info_.coords_num_);
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      coords_info_.coords_num_,
-      [&](uint64_t c) {
+      &resources_.compute_tp(), 0, coords_info_.coords_num_, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim{array_schema_.dimension_ptr(d)};
@@ -355,7 +338,7 @@ Status WriterBase::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
+  RETURN_NOT_OK_ELSE(status, logger_->error(status.message()));
 
   return Status::Ok();
 }
@@ -393,7 +376,7 @@ void WriterBase::check_buffer_sizes() const {
               "given for ";
         ss << "attribute '" << attr << "'";
         ss << " (" << expected_validity_num << " != " << cell_num << ")";
-        throw WriterBaseStatusException(ss.str());
+        throw WriterBaseException(ss.str());
       }
     } else {
       if (expected_cell_num != cell_num) {
@@ -401,7 +384,7 @@ void WriterBase::check_buffer_sizes() const {
         ss << "Buffer sizes check failed; Invalid number of cells given for ";
         ss << "attribute '" << attr << "'";
         ss << " (" << expected_cell_num << " != " << cell_num << ")";
-        throw WriterBaseStatusException(ss.str());
+        throw WriterBaseException(ss.str());
       }
     }
   }
@@ -434,7 +417,7 @@ Status WriterBase::check_coord_oob() const {
 
   // Check if all coordinates fall in the domain in parallel
   auto status = parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       coords_info_.coords_num_,
       0,
@@ -455,12 +438,11 @@ Status WriterBase::check_coord_oob() const {
 void WriterBase::check_subarray() const {
   if (array_schema_.dense()) {
     if (subarray_.range_num() != 1) {
-      throw WriterBaseStatusException(
-          "Multi-range dense writes are not supported");
+      throw WriterBaseException("Multi-range dense writes are not supported");
     }
 
     if (layout_ == Layout::GLOBAL_ORDER && !subarray_.coincides_with_tiles()) {
-      throw WriterBaseStatusException(
+      throw WriterBaseException(
           "Cannot initialize query; In global writes for dense arrays, the "
           "subarray must coincide with the tile bounds");
     }
@@ -539,7 +521,7 @@ bool is_sorted_buffer(
                  buffer.is_sorted_str<std::less_equal<std::string_view>>() :
                  buffer.is_sorted_str<std::greater_equal<std::string_view>>();
     default:
-      throw WriterBaseStatusException(
+      throw WriterBaseException(
           "Unexpected datatype '" + datatype_str(type) +
           "' for an ordered attribute.");
   }
@@ -566,7 +548,7 @@ void WriterBase::check_attr_order() const {
     // Check the attribute sort. This assumes all ordered attributes are fixed
     // except STRING_ASCII which is assumed to always be variable.
     if (!is_sorted_buffer(buffer, attr->type(), increasing)) {
-      throw WriterBaseStatusException(
+      throw WriterBaseException(
           "The data for attribute '" + name +
           "' is not in the expected order.");
     }
@@ -607,42 +589,34 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
   file_uris.reserve(buffer_name.size() * 3);
 
   for (const auto& name : buffer_name) {
-    auto&& [status, uri] = meta->uri(name);
-    RETURN_NOT_OK(status);
-
-    file_uris.emplace_back(*uri);
+    file_uris.emplace_back(meta->uri(name));
     if (array_schema_.var_size(name)) {
-      auto&& [status, var_uri] = meta->var_uri(name);
-      RETURN_NOT_OK(status);
-
-      file_uris.emplace_back(*var_uri);
+      file_uris.emplace_back(meta->var_uri(name));
     }
     if (array_schema_.is_nullable(name)) {
-      auto&& [status, validity_uri] = meta->validity_uri(name);
-      RETURN_NOT_OK(status);
-
-      file_uris.emplace_back(*validity_uri);
+      file_uris.emplace_back(meta->validity_uri(name));
     }
   }
 
-  auto status = parallel_for(
-      storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_uri = file_uris[i];
         if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
-          storage_manager_->vfs()->finalize_and_close_file(file_uri);
+          resources_.vfs().finalize_and_close_file(file_uri);
         } else {
-          RETURN_NOT_OK(storage_manager_->vfs()->close_file(file_uri));
+          throw_if_not_ok(resources_.vfs().close_file(file_uri));
         }
         return Status::Ok();
       });
 
-  RETURN_NOT_OK(status);
+  throw_if_not_ok(status);
 
   return Status::Ok();
 }
 
 std::vector<NDRange> WriterBase::compute_mbrs(
-    const std::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
+    const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
+    const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
 
   // Applicable only if there are coordinates
@@ -662,8 +636,8 @@ std::vector<NDRange> WriterBase::compute_mbrs(
 
   // Compute MBRs
   std::vector<NDRange> mbrs(tile_num);
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, tile_num, [&](uint64_t i) {
         mbrs[i].resize(dim_num);
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -688,7 +662,7 @@ std::vector<NDRange> WriterBase::compute_mbrs(
 void WriterBase::set_coords_metadata(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
-    const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
+    const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles,
     const std::vector<NDRange>& mbrs,
     shared_ptr<FragmentMetadata> meta) const {
   // Applicable only if there are coordinates
@@ -702,11 +676,8 @@ void WriterBase::set_coords_metadata(
   }
 
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      start_tile_idx,
-      end_tile_idx,
-      [&](uint64_t i) {
-        throw_if_not_ok(meta->set_mbr(i - start_tile_idx, mbrs[i]));
+      &resources_.compute_tp(), start_tile_idx, end_tile_idx, [&](uint64_t i) {
+        meta->set_mbr(i - start_tile_idx, mbrs[i]);
         return Status::Ok();
       });
   throw_if_not_ok(status);
@@ -720,8 +691,8 @@ void WriterBase::set_coords_metadata(
 
 Status WriterBase::compute_tiles_metadata(
     uint64_t tile_num,
-    std::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
-  auto compute_tp = storage_manager_->compute_tp();
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
+  auto* compute_tp = &resources_.compute_tp();
 
   // Parallelize over attributes?
   if (tiles.size() > tile_num) {
@@ -729,7 +700,7 @@ Status WriterBase::compute_tiles_metadata(
       auto tiles_it = tiles.begin();
       std::advance(tiles_it, i);
       const auto& attr = tiles_it->first;
-      auto& attr_tiles = tiles[attr];
+      auto& attr_tiles = tiles.at(attr);
       const auto type = array_schema_.type(attr);
       const auto is_dim = array_schema_.is_dim(attr);
       const auto var_size = array_schema_.var_size(attr);
@@ -797,11 +768,11 @@ Status WriterBase::create_fragment(
   // Create the directories.
   // Create the fragment directory, the directory for the new fragment
   // URI, and the commit directory.
-  throw_if_not_ok(storage_manager_->vfs()->create_dir(
-      array_dir.get_fragments_dir(write_version)));
-  throw_if_not_ok(storage_manager_->vfs()->create_dir(fragment_uri_));
-  throw_if_not_ok(storage_manager_->vfs()->create_dir(
-      array_dir.get_commits_dir(write_version)));
+  throw_if_not_ok(
+      resources_.vfs().create_dir(array_dir.get_fragments_dir(write_version)));
+  throw_if_not_ok(resources_.vfs().create_dir(fragment_uri_));
+  throw_if_not_ok(
+      resources_.vfs().create_dir(array_dir.get_commits_dir(write_version)));
 
   // Create fragment metadata.
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
@@ -810,28 +781,28 @@ Status WriterBase::create_fragment(
       buffers_.count(constants::delete_timestamps) != 0;
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
-      storage_manager_,
-      nullptr,
+      &resources_,
       array_->array_schema_latest_ptr(),
       fragment_uri_,
       timestamp_range,
+      query_memory_tracker_,
       dense,
       has_timestamps,
       has_delete_metadata);
 
-  RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
+  frag_meta->init(subarray_.ndrange(0));
   return Status::Ok();
 }
 
 Status WriterBase::filter_tiles(
-    std::unordered_map<std::string, WriterTileTupleVector>* tiles) {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
-        RETURN_CANCEL_OR_ERROR(
-            filter_tiles(tiles_it->first, &tiles_it->second));
+        throw_if_not_ok(filter_tiles(tiles_it->first, &tiles_it->second));
+        throw_if_cancelled();
         return Status::Ok();
       });
 
@@ -863,11 +834,11 @@ Status WriterBase::filter_tiles(
   }
 
   // For fixed size, process everything, for var size, everything minus offsets.
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, args.size(), [&](uint64_t i) {
         const auto& [tile, offset_tile, contains_offsets, is_nullable] =
             args[i];
-        RETURN_NOT_OK(filter_tile(
+        throw_if_not_ok(filter_tile(
             name, tile, offset_tile, contains_offsets, is_nullable));
         return Status::Ok();
       });
@@ -876,9 +847,9 @@ Status WriterBase::filter_tiles(
   // Process offsets for var size.
   if (var_size) {
     auto status = parallel_for(
-        storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+        &resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
           auto& tile = (*tiles)[i];
-          RETURN_NOT_OK(
+          throw_if_not_ok(
               filter_tile(name, &tile.offset_tile(), nullptr, true, false));
           return Status::Ok();
         });
@@ -920,7 +891,7 @@ Status WriterBase::filter_tile(
   }
 
   // Append an encryption filter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+  throw_if_not_ok(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
   // Check if chunk or tile level filtering/unfiltering is appropriate
@@ -928,12 +899,8 @@ Status WriterBase::filter_tile(
       array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
-  RETURN_NOT_OK(filters.run_forward(
-      stats_,
-      tile,
-      offsets_tile,
-      storage_manager_->compute_tp(),
-      use_chunking));
+  filters.run_forward(
+      stats_, tile, offsets_tile, &resources_.compute_tp(), use_chunking);
   assert(tile->filtered());
 
   return Status::Ok();
@@ -970,8 +937,14 @@ Status WriterBase::init_tiles(
       coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTileTuple(
-        array_schema_, cell_num_per_tile, var_size, nullable, cell_size, type));
+    tiles->emplace_back(
+        array_schema_,
+        cell_num_per_tile,
+        var_size,
+        nullable,
+        cell_size,
+        type,
+        query_memory_tracker_);
   }
 
   return Status::Ok();
@@ -1001,7 +974,7 @@ void WriterBase::check_extra_element() {
         get_offset_buffer_element(buffer_off, num_offsets - 1);
 
     if (last_offset != max_offset) {
-      throw WriterBaseStatusException(
+      throw WriterBaseException(
           "Invalid offsets for attribute " + attr +
           "; the last offset: " + std::to_string(last_offset) +
           " is not equal to the size of the data buffer: " +
@@ -1061,14 +1034,14 @@ Status WriterBase::write_tiles(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
     shared_ptr<FragmentMetadata> frag_meta,
-    std::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
   auto timer_se = stats_->start_timer("write_num_tiles");
 
   assert(!tiles->empty());
 
   std::vector<ThreadPool::Task> tasks;
   for (auto& it : *tiles) {
-    tasks.push_back(storage_manager_->io_tp()->execute([&, this]() {
+    tasks.push_back(resources_.io_tp().execute([&, this]() {
       auto& attr = it.first;
       auto& tiles = it.second;
       RETURN_CANCEL_OR_ERROR(write_tiles(
@@ -1092,7 +1065,7 @@ Status WriterBase::write_tiles(
   }
 
   // Wait for writes and check all statuses
-  auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
+  auto statuses = resources_.io_tp().wait_all_status(tasks);
   for (auto& st : statuses)
     RETURN_NOT_OK(st);
 
@@ -1117,25 +1090,10 @@ Status WriterBase::write_tiles(
   // For easy reference
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
-  auto&& [status, uri] = frag_meta->uri(name);
-  RETURN_NOT_OK(status);
+  auto uri = frag_meta->uri(name);
 
-  Status st;
-  optional<URI> var_uri;
-  if (!var_size)
-    var_uri = URI("");
-  else {
-    tie(st, var_uri) = frag_meta->var_uri(name);
-    RETURN_NOT_OK(st);
-  }
-
-  optional<URI> validity_uri;
-  if (!nullable)
-    validity_uri = URI("");
-  else {
-    tie(st, validity_uri) = frag_meta->validity_uri(name);
-    RETURN_NOT_OK(st);
-  }
+  URI var_uri = var_size ? frag_meta->var_uri(name) : URI("");
+  URI validity_uri = nullable ? frag_meta->validity_uri(name) : URI("");
 
   // Compute and set var buffer sizes for the min/max metadata
   const auto has_min_max_md = has_min_max_metadata(name, var_size);
@@ -1149,8 +1107,8 @@ Status WriterBase::write_tiles(
        ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
-    RETURN_NOT_OK(storage_manager_->vfs()->write(
-        *uri,
+    throw_if_not_ok(resources_.vfs().write(
+        uri,
         t.filtered_buffer().data(),
         t.filtered_buffer().size(),
         remote_global_order_write));
@@ -1159,8 +1117,8 @@ Status WriterBase::write_tiles(
 
     if (var_size) {
       auto& t_var = tile.var_tile();
-      RETURN_NOT_OK(storage_manager_->vfs()->write(
-          *var_uri,
+      throw_if_not_ok(resources_.vfs().write(
+          var_uri,
           t_var.filtered_buffer().data(),
           t_var.filtered_buffer().size(),
           remote_global_order_write));
@@ -1184,8 +1142,8 @@ Status WriterBase::write_tiles(
 
     if (nullable) {
       auto& t_val = tile.validity_tile();
-      RETURN_NOT_OK(storage_manager_->vfs()->write(
-          *validity_uri,
+      throw_if_not_ok(resources_.vfs().write(
+          validity_uri,
           t_val.filtered_buffer().data(),
           t_val.filtered_buffer().size(),
           remote_global_order_write));
@@ -1199,19 +1157,13 @@ Status WriterBase::write_tiles(
   // writes
   if (close_files) {
     std::vector<URI> closing_uris;
-    auto&& [st1, uri] = frag_meta->uri(name);
-    RETURN_NOT_OK(st1);
-    closing_uris.push_back(*uri);
+    closing_uris.push_back(frag_meta->uri(name));
 
     if (var_size) {
-      auto&& [st2, var_uri] = frag_meta->var_uri(name);
-      RETURN_NOT_OK(st2);
-      closing_uris.push_back(*var_uri);
+      closing_uris.push_back(frag_meta->var_uri(name));
     }
     if (nullable) {
-      auto&& [st2, validity_uri] = frag_meta->validity_uri(name);
-      RETURN_NOT_OK(st2);
-      closing_uris.push_back(*validity_uri);
+      closing_uris.push_back(frag_meta->validity_uri(name));
     }
     for (auto& u : closing_uris) {
       if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1219,11 +1171,10 @@ Status WriterBase::write_tiles(
         // requirement of remote global order writes, it should only be
         // done if this code is executed as a result of a remote query
         if (remote_query()) {
-          RETURN_NOT_OK(
-              storage_manager_->vfs()->flush_multipart_file_buffer(u));
+          throw_if_not_ok(resources_.vfs().flush_multipart_file_buffer(u));
         }
       } else {
-        RETURN_NOT_OK(storage_manager_->vfs()->close_file(u));
+        throw_if_not_ok(resources_.vfs().close_file(u));
       }
     }
   }
@@ -1235,5 +1186,18 @@ bool WriterBase::remote_query() const {
   return remote_query_;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
+
+template <>
+IndexedList<tiledb::sm::WriterTileTuple>::IndexedList(
+    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(memory_tracker->get_resource(sm::MemoryType::WRITER_TILE_DATA)) {
+}
+
+template <>
+IndexedList<tiledb::common::IndexedList<tiledb::sm::WriterTileTuple>>::
+    IndexedList(shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(memory_tracker->get_resource(sm::MemoryType::WRITER_TILE_DATA)) {
+}

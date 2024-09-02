@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2019-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2019-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -48,11 +48,12 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 class Attribute;
+class Dimension;
+}  // namespace tiledb::sm
 
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 /** Class for query status exceptions. */
 class SerializationStatusException : public StatusException {
@@ -143,14 +144,6 @@ inline URI deserialize_array_uri_to_absolute(
   return array_uri.join_path(uri);
 }
 
-};  // namespace serialization
-};  // namespace sm
-};  // namespace tiledb
-
-namespace tiledb {
-namespace sm {
-class Dimension;
-namespace serialization {
 namespace utils {
 
 /**
@@ -187,6 +180,8 @@ Status set_capnp_array_ptr(
     case tiledb::sm::Datatype::STRING_ASCII:
     case tiledb::sm::Datatype::STRING_UTF8:
     case tiledb::sm::Datatype::BLOB:
+    case tiledb::sm::Datatype::GEOM_WKB:
+    case tiledb::sm::Datatype::GEOM_WKT:
     case tiledb::sm::Datatype::BOOL:
     case tiledb::sm::Datatype::UINT8:
       builder.setUint8(kj::arrayPtr(static_cast<const uint8_t*>(ptr), size));
@@ -268,6 +263,8 @@ Status set_capnp_scalar(
       builder.setInt8(*static_cast<const int8_t*>(value));
       break;
     case tiledb::sm::Datatype::BLOB:
+    case tiledb::sm::Datatype::GEOM_WKB:
+    case tiledb::sm::Datatype::GEOM_WKT:
     case tiledb::sm::Datatype::BOOL:
     case tiledb::sm::Datatype::UINT8:
       builder.setUint8(*static_cast<const uint8_t*>(value));
@@ -377,6 +374,8 @@ Status copy_capnp_list(
         RETURN_NOT_OK(copy_capnp_list<int8_t>(reader.getInt8(), buffer));
       break;
     case tiledb::sm::Datatype::BLOB:
+    case tiledb::sm::Datatype::GEOM_WKB:
+    case tiledb::sm::Datatype::GEOM_WKT:
     case tiledb::sm::Datatype::BOOL:
     case tiledb::sm::Datatype::UINT8:
       if (reader.hasUint8())
@@ -484,14 +483,10 @@ Status serialize_non_empty_domain_rv(
  */
 template <typename CapnpT>
 Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
-  auto&& [st, nonEmptyDomain_opt] = array->non_empty_domain();
-  RETURN_NOT_OK(st);
-  if (nonEmptyDomain_opt.has_value()) {
-    return serialize_non_empty_domain_rv(
-        builder,
-        nonEmptyDomain_opt.value(),
-        array->array_schema_latest().dim_num());
-  }
+  return serialize_non_empty_domain_rv(
+      builder,
+      array->non_empty_domain(),
+      array->array_schema_latest().dim_num());
 
   return Status::Ok();
 }
@@ -503,21 +498,19 @@ std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
       (capnp::NonEmptyDomainList::Reader)reader;
 
   NDRange ndRange;
-  if (r.hasNonEmptyDomains() && r.getNonEmptyDomains().size() > 0) {
-    auto nonEmptyDomains = r.getNonEmptyDomains();
-
-    for (uint32_t i = 0; i < nonEmptyDomains.size(); i++) {
-      auto nonEmptyDomainObj = nonEmptyDomains[i];
+  if (r.hasNonEmptyDomains()) {
+    auto non_empty_domains = r.getNonEmptyDomains();
+    for (auto non_empty_domain : non_empty_domains) {
       // We always store nonEmptyDomain as uint8 lists for the heterogeneous/var
       // length version
-      auto list = nonEmptyDomainObj.getNonEmptyDomain().getUint8();
+      auto list = non_empty_domain.getNonEmptyDomain().getUint8();
       std::vector<uint8_t> vec(list.size());
       for (uint32_t index = 0; index < list.size(); index++) {
         vec[index] = list[index];
       }
 
-      if (nonEmptyDomainObj.hasSizes()) {
-        auto sizes = nonEmptyDomainObj.getSizes();
+      if (non_empty_domain.hasSizes()) {
+        auto sizes = non_empty_domain.getSizes();
         ndRange.emplace_back(vec.data(), vec.size(), sizes[0]);
       } else {
         ndRange.emplace_back(vec.data(), vec.size());
@@ -700,9 +693,7 @@ Status deserialize_coords(
 }
 
 }  // namespace utils
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization
 
 #endif  // TILEDB_SERIALIZATION
 
