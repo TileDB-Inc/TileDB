@@ -101,15 +101,7 @@ jobs:
 
       - name: Configure TileDB CMake
         run: |
-          cmake -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DTILEDB_WERROR=ON \
-            -DTILEDB_S3=ON \
-            -DTILEDB_GCS=ON \
-            -DTILEDB_AZURE=ON \
-            -DTILEDB_SERIALIZATION=ON \
-            -DTILEDB_TESTS=OFF \
-            -DBUILD_SHARED_LIBS=OFF
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DTILEDB_WERROR=ON -DTILEDB_S3=ON -DTILEDB_GCS=ON -DTILEDB_AZURE=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_TESTS=OFF -DBUILD_SHARED_LIBS=OFF
 
       - name: Build TileDB
         run: cmake --build build -j2 --config Release --target tiledb
