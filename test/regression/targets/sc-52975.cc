@@ -47,8 +47,8 @@ std::vector<uint8_t> get_attr_validity();
 std::vector<std::pair<int8_t, int8_t>> get_subarrays();
 
 TEST_CASE(
-    "PJD: Attempt to reproduce bug",
-    "[reproducer][bug][scXXXXX][!shouldfail]") {
+    "SC-52975: Subarray values lead to incorrect read.",
+    "[reproducer][bug][sc52975][!shouldfail]") {
   std::string array_uri = "test_reproducer";
 
   std::size_t successes = 0;
