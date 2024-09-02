@@ -1152,7 +1152,7 @@ class Query {
   /**
    * Return the layout that will be used to execute the query.
    *
-   * This is usually set by the user but cen be overridden by TileDB in cases
+   * This is usually set by the user but can be overridden by TileDB in cases
    * where the data order would not have an observable difference, like queries
    * with only aggregates.
    */
