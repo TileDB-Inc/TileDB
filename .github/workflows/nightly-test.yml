@@ -99,6 +99,9 @@ jobs:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v4
 
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
       - name: Configure TileDB CMake
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DTILEDB_WERROR=ON -DTILEDB_S3=ON -DTILEDB_GCS=ON -DTILEDB_AZURE=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_TESTS=OFF -DBUILD_SHARED_LIBS=OFF
@@ -110,15 +113,16 @@ jobs:
         run: cmake --install build --config Release --prefix dist
 
       - name: Configure CMake example
+        # Configure with Ninja to use a single-config generator and put the executable in the same path across platforms.
         run: |
-          & cmake -B examples/cmake_project/build -S examples/cmake_project "-DCMAKE_PREFIX_PATH=$($PWD.Path)/dist;$($PWD.Path)/build/vcpkg_installed/${{ matrix.triplet }}"
+          & cmake -G Ninja -B examples/cmake_project/build -S examples/cmake_project -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=$($PWD.Path)/dist;$($PWD.Path)/build/vcpkg_installed/${{ matrix.triplet }}"
         shell: pwsh
 
       - name: Build CMake example
-        run: cmake --build examples/cmake_project/build -j2 --config Release
+        run: cmake --build examples/cmake_project/build -j2
 
       - name: Run CMake example
-        run: examples/cmake_project/build/Release/tiledb_example
+        run: examples/cmake_project/build/tiledb_example
 
   create_issue_on_fail:
     permissions:
