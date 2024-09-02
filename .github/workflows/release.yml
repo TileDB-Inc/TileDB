@@ -49,17 +49,17 @@ jobs:
             triplet: x64-windows-release
           - platform: linux-x86_64
             os: ubuntu-20.04
-            manylinux: true
+            manylinux: quay.io/pypa/manylinux2014_x86_64
             triplet: x64-linux-release
           - platform: linux-x86_64-noavx2
             os: ubuntu-20.04
             cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
             triplet: x64-linux-release
-            manylinux: true
+            manylinux: quay.io/pypa/manylinux2014_x86_64
           - platform: linux-aarch64
             os: ubuntu-20.04
             triplet: arm64-linux-release
-            manylinux: true
+            manylinux: quay.io/pypa/manylinux2014_aarch64
           - platform: macos-x86_64
             os: macos-12
             MACOSX_DEPLOYMENT_TARGET: 11
@@ -70,7 +70,7 @@ jobs:
             MACOSX_DEPLOYMENT_TARGET: 11
             triplet: arm64-osx-release
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || '' }}
+    container: ${{ matrix.manylinux || '' }}
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
