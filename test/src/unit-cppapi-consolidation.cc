@@ -279,7 +279,6 @@ TEST_CASE(
   SECTION("Throws exception") {
     throws = true;
     create_array_2d(array_name);
-    // order matters
     // In this case we request to consolidate frag2 and frag4. We can see that
     // frag1 has been created prior to frag3 so the first condition to abort
     // the consolidation is satisfied. Additionally, frag1's
@@ -304,7 +303,6 @@ TEST_CASE(
   SECTION("Throws exception because of overlap in extended domain") {
     throws = true;
     create_array_2d(array_name);
-    // order matters
     // In this case we request to consolidate frag1 and frag3. We can see that
     // frag2 has been created prior to frag3 so the first condition to abort
     // the consolidation is satisfied. Additionally, even though frag2's
@@ -331,7 +329,6 @@ TEST_CASE(
       "fragment") {
     throws = true;
     create_array_2d(array_name);
-    // order matters
     // In this case we request to consolidate frag1 and frag3. Before this main
     // consolidation we run another secondary consolidation between frag2 and
     // frag4. The consolidated frag2_frag4 has been created after frag3 but its
@@ -371,7 +368,6 @@ TEST_CASE(
 
   SECTION("Does not throw exception") {
     create_array_2d(array_name);
-    // order matters
     // In this case we request to consolidate frag1 and frag2. We can see that
     // frag3 has not been created prior to frag3 so the first condition to abort
     // the consolidation is not satisfied. Frag3's domain intersects with the
