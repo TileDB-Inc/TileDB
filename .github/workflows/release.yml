@@ -38,11 +38,50 @@ jobs:
           path: |
             build/tiledb-*.tar.gz*
 
+  Package-Binary-Release-Arm64-Linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout TileDB
+        uses: actions/checkout@v4
+
+      - uses: uraimo/run-on-arch-action@v2
+        name: Build artifact
+        with:
+          base_image: quay.io/pypa/manylinux2014_aarch64
+          setup: |
+            mkdir -p "${PWD}/artifacts"
+          dockerRunArgs: |
+            -v ${PWD}/artifacts:/artifacts
+          run: |
+            cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_INSTALL_PREFIX=./dist \
+            -DTILEDB_INSTALL_LIBDIR=lib \
+            -DTILEDB_S3=ON \
+            -DTILEDB_AZURE=ON \
+            -DTILEDB_GCS=ON \
+            -DTILEDB_HDFS=ON \
+            -DTILEDB_SERIALIZATION=ON \
+            -DTILEDB_WEBP=ON \
+            -DTILEDB_TESTS=OFF \
+            -DVCPKG_TARGET_TRIPLET=arm64-linux-release \
+            && cmake --build build --config Release --target package \
+            && cp build/tiledb-*.tar.gz* /artifacts
+      - run: ls -al ${PWD}/artifacts
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: |
+            artifacts/tiledb-*.tar.gz*
+
+
   Package-Binary-Release:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-arm64, macos-x86_64, linux-x86_64, linux-x86_64-noavx2, linux-aarch64, windows-x86_64]
+        platform: [macos-arm64, macos-x86_64, linux-x86_64, linux-x86_64-noavx2, windows-x86_64]
         include:
           - platform: windows-x86_64
             os: windows-2019
@@ -56,10 +95,6 @@ jobs:
             cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux2014_x86_64
-          - platform: linux-aarch64
-            os: ubuntu-20.04
-            triplet: arm64-linux-release
-            manylinux: quay.io/pypa/manylinux2014_aarch64
           - platform: macos-x86_64
             os: macos-12
             MACOSX_DEPLOYMENT_TARGET: 11
@@ -138,7 +173,9 @@ jobs:
         if: failure() # only run this job if the build step failed
 
   Test-Release-Artifacts:
-    needs: Package-Binary-Release
+    needs:
+      - Package-Binary-Release
+      - Package-Binary-Release-Arm64-Linux
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
