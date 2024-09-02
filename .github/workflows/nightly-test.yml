@@ -110,7 +110,7 @@ jobs:
         run: cmake --install build --config Release --prefix dist
 
       - name: Configure CMake example
-        run: cmake -B examples/cmake_project/build -S examples/cmake_project -DCMAKE_PREFIX_PATH=$PWD.Path/dist;$PWD.Path/build/vcpkg_installed/${{ matrix.triplet }}
+        run: $ cmake -B examples/cmake_project/build -S examples/cmake_project "-DCMAKE_PREFIX_PATH=$($PWD.Path)/dist;$($PWD.Path)/build/vcpkg_installed/${{ matrix.triplet }}"
         shell: pwsh
 
       - name: Build CMake example
