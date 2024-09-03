@@ -27,7 +27,8 @@
 # TileDB Toolchain Setup
 ############################################################
 
-if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+if (NOT DEFINED CMAKE_TOOLCHAIN_FILE
+    OR DEFINED CMAKE_TOOLCHAIN_FILE AND NOT EXISTS ${vcpkg_SOURCE_DIR})
     if(DEFINED ENV{VCPKG_ROOT})
         set(CMAKE_TOOLCHAIN_FILE
             "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
