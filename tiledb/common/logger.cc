@@ -142,6 +142,10 @@ void Logger::fatal(const char* msg) {
   exit(1);
 }
 
+void Logger::log(Logger::Level level, const char* msg) {
+  logger_->log(to_spdlog_level(level), msg);
+}
+
 Status Logger::status(const Status& st) {
   logger_->error(st.message());
   return st;
@@ -176,6 +180,10 @@ void Logger::fatal(const std::string& msg) {
   exit(1);
 }
 
+void Logger::log(Logger::Level level, const std::string& msg) {
+  logger_->log(to_spdlog_level(level), msg);
+}
+
 void Logger::trace(const std::stringstream& msg) {
   logger_->trace(msg.str());
 }
@@ -203,6 +211,10 @@ void Logger::critical(const std::stringstream& msg) {
 void Logger::fatal(const std::stringstream& msg) {
   logger_->error(msg.str());
   exit(1);
+}
+
+void Logger::log(Logger::Level level, const std::stringstream& msg) {
+  logger_->log(to_spdlog_level(level), msg.str());
 }
 
 bool Logger::should_log(Logger::Level lvl) {

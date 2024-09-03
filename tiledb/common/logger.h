@@ -336,6 +336,45 @@ class Logger {
   void fatal(const std::stringstream& msg);
 
   /**
+   * Logs a message at the given level with no formatting.
+   * 
+   * @param lvl The level of the log message.
+   * @param msg The message to log.
+   */
+  void log(const Level lvl, const char* msg);
+
+  /**
+   * Logs a message at the given level with no formatting.
+   * 
+   * @param lvl The level of the log message.
+   * @param msg The message to log.
+   */
+  void log(const Level lvl, const std::string& msg);
+
+  /**
+   * Logs a message at the given level with no formatting.
+   * 
+   * @param lvl The level of the log message.
+   * @param msg The message to log.
+   */
+  void log(const Level lvl, const std::stringstream& msg);
+
+  /**
+   * Logs a formatted message at the given level.
+   * 
+   * @param lvl The level of the log message.
+   * @param msg The message to log.
+   */
+  template <typename... Args>
+  void log(const Level lvl, fmt::format_string<Args...> fmt, Args&&... args) {
+    // Check that this level is enabled to avoid needlessly formatting the
+    // string.
+    if (!should_log(lvl))
+      return;
+    log(lvl, fmt::format(fmt, std::forward<Args>(args)...));
+  }
+
+  /**
    * Check whether events of a given level are logged.
    *
    * @param lvl The level of events to check.
