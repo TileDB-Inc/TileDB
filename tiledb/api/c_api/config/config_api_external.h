@@ -728,6 +728,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The delay factor to exponentially wait until further retries of a failed
  *    REST request <br>
  *    **Default**: 1.25
+ * - `rest.curl.retry_errors` <br>
+ *    If true any curl requests that returned an error will be retried <br>
+ *    **Default**: true
  * - `rest.curl.verbose` <br>
  *    Set curl to run in verbose mode for REST requests <br>
  *    curl will print to stdout with this option

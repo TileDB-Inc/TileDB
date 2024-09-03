@@ -420,6 +420,9 @@ class Curl {
   /** Max curl buffer size for received data. */
   uint64_t curl_buffer_size_;
 
+  /* Retry requests with curl errors */
+  bool retry_curl_errors_;
+
   /**
    * Populates the curl slist with authorization (token or username+password),
    * and any extra headers.

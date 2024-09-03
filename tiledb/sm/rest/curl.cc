@@ -237,7 +237,8 @@ Curl::Curl(const std::shared_ptr<Logger>& logger)
     , retry_delay_factor_(0)
     , retry_initial_delay_ms_(0)
     , logger_(logger->clone("curl ", ++logger_id_))
-    , verbose_(false) {
+    , verbose_(false)
+    , retry_curl_errors_(true) {
 }
 
 Status Curl::init(
@@ -321,6 +322,10 @@ Status Curl::init(
 
   RETURN_NOT_OK(config_->get<uint64_t>(
       "rest.curl.buffer_size", &curl_buffer_size_, &found));
+  assert(found);
+
+  RETURN_NOT_OK(config_->get<bool>(
+      "rest.curl.retry_errors", &retry_curl_errors_, &found));
   assert(found);
 
   return Status::Ok();
@@ -625,6 +630,10 @@ bool Curl::should_retry_based_on_http_status(long http_code) const {
 }
 
 bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
+  if (!retry_curl_errors_) {
+    return false;
+  }
+
   switch (curl_code) {
     // Curl status of okay or non transient errors shouldn't be retried
     case CURLE_OK:
