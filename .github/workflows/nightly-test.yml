@@ -99,6 +99,12 @@ jobs:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v4
 
+      - name: Setup MSVC toolset
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        if: runner.os == 'Windows'
+        with:
+          arch: x64
+
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@v5
 
@@ -122,7 +128,7 @@ jobs:
         run: cmake --build examples/cmake_project/build -j2
 
       - name: Run CMake example
-        run: examples/cmake_project/build/tiledb_example
+        run: examples/cmake_project/build/ExampleExe
 
   create_issue_on_fail:
     permissions:
