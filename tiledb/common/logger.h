@@ -337,7 +337,7 @@ class Logger {
 
   /**
    * Logs a message at the given level with no formatting.
-   * 
+   *
    * @param lvl The level of the log message.
    * @param msg The message to log.
    */
@@ -345,7 +345,7 @@ class Logger {
 
   /**
    * Logs a message at the given level with no formatting.
-   * 
+   *
    * @param lvl The level of the log message.
    * @param msg The message to log.
    */
@@ -353,7 +353,7 @@ class Logger {
 
   /**
    * Logs a message at the given level with no formatting.
-   * 
+   *
    * @param lvl The level of the log message.
    * @param msg The message to log.
    */
@@ -361,7 +361,7 @@ class Logger {
 
   /**
    * Logs a formatted message at the given level.
-   * 
+   *
    * @param lvl The level of the log message.
    * @param msg The message to log.
    */
