@@ -41,7 +41,7 @@ static void write_array(const std::string& array_uri);
 
 TEST_CASE(
     "Subarray range expansion bug",
-    "[bug][sc53970][subarray-range-expansion][!shouldfail]") {
+    "[bug][sc53970][subarray-range-expansion]") {
   std::string array_uri = "test_array_schema_dump";
 
   // Test setup
@@ -78,7 +78,7 @@ TEST_CASE(
 
   // The expected result are a single matching cell of (0, 1507468.6)
   REQUIRE(dim[0] == 0);
-  REQUIRE(abs(attr[0] - 1507468.6) < 0.00000005);
+  REQUIRE(abs(attr[0] - 1507468.6f) < 0.00000005);
 
   // Check we didn't get any extra results
   REQUIRE(dim[1] == -1);

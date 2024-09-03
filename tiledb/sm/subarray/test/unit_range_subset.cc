@@ -528,6 +528,36 @@ TEMPLATE_TEST_CASE_SIG(
       check_subset_range_values(range_subset, 3, data3[0], data3[1]);
     }
   }
+
+  SECTION("Overlapping, encompassing ranges") {
+    // Note: this test is intended to duplicate regression test sc-53970,
+    // validating that a range which is fully encompassed within another
+    // will merge as expected.
+
+    // Add ranges.
+    T data1[2] = {3, 3};
+    T data2[2] = {1, 10};
+    std::vector<Range> ranges = {
+        Range(data1, 2 * sizeof(T)), Range(data2, 2 * sizeof(T))};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 2);
+
+    // Sort and merge ranges.
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 1);
+      check_subset_range_values(range_subset, 0, data2[0], data2[1]);
+    } else {
+      CHECK(range_subset.num_ranges() == 2);
+      check_subset_range_values(range_subset, 0, data2[0], data2[1]);
+      check_subset_range_values(range_subset, 1, data1[0], data1[1]);
+    }
+  }
 }
 
 TEST_CASE(
