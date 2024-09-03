@@ -91,6 +91,27 @@ struct HeaderCbData {
 };
 
 /**
+ * Wraps opaque user data to be invoked with a write callback.
+ */
+struct WriteCbState {
+  /** Default constructor. */
+  WriteCbState()
+      : reset(true)
+      , arg(NULL)
+      , skip_retries(false) {
+  }
+
+  /** True if this is the first write callback invoked in a request retry. */
+  bool reset;
+
+  /** The opaque user data to pass to the write callback. */
+  void* arg;
+
+  /** True if the internal curl retries should be skipped. */
+  bool skip_retries;
+};
+
+/**
  * This callback function gets called by libcurl as soon as a header has been
  * received. libcurl buffers headers and delivers only "full" headers, one by
  * one, to this callback. This callback should return the number of bytes
@@ -343,6 +364,15 @@ class Curl {
    */
   tuple<Status, optional<long>> last_http_status_code();
 
+  /**
+   * Checks if the request should be retried
+   *
+   * @param curl_code the curl code of the attempted request
+   * @param http_code http code to check
+   * @return retry or not
+   */
+  bool should_retry_request(CURLcode curl_code, long http_request) const;
+
  private:
   /**
    * A libcurl initializer instance. This should remain
@@ -482,17 +512,16 @@ class Curl {
       const char* const url, const uint8_t retry_number) const;
 
   /**
-   * Common code shared between variants of 'make_curl_options_request'.
+   * Set needed options on the curl request
    *
-   * @param stats The stats instance to record into
    * @param url URL to fetch
-   * @param curl_code Set to the return value of the curl call
-   * @return Status
+   * @param write_cb Callback to invoke as response data is received.
+   * @param write_cb_state A data pointer to pass to the write callback.
    */
-  Status make_curl_request_options_common(
-      stats::Stats* const stats,
+  void set_curl_request_options(
       const char* const url,
-      CURLcode* const curl_code) const;
+      size_t (*write_cb)(void*, size_t, size_t, void*),
+      WriteCbState& write_cb_state) const;
 
   /**
    * Check the given curl code for errors, returning a TileDB error status if
@@ -520,10 +549,18 @@ class Curl {
   /**
    * Checks the curl http status code to see if it matches a list of http
    * requests to retry
-   * @param retry true if the http code matches the retry list
-   * @return Status
+   * @param http_code http code to check
+   * @return true if should be retried, false otherwise
    */
-  Status should_retry_based_on_http_status(bool* retry) const;
+  bool should_retry_based_on_http_status(long http_code) const;
+
+  /**
+   * Checks the curl return code to see if the request should be retried
+   *
+   * @param curl_code the curl code to check
+   * @return retry or not
+   */
+  bool should_retry_based_on_curl_code(CURLcode curl_code) const;
 };
 
 }  // namespace sm
