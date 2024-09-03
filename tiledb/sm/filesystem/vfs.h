@@ -75,6 +75,10 @@
 #include "tiledb/sm/filesystem/azure.h"
 #endif  // HAVE_AZURE
 
+namespace tiledb::common {
+class LogDuration;
+}
+
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
@@ -173,6 +177,8 @@ struct VFSParameters {
       , read_ahead_cache_size_(
             config.get<uint64_t>("vfs.read_ahead_cache_size").value())
       , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value())
+      , log_operations_(
+            config.get<bool>("vfs.log_operations", Config::must_find))
       , read_logging_mode_(ReadLoggingMode::DISABLED) {
     auto log_mode = config.get<std::string>("vfs.read_logging_mode").value();
     if (log_mode == "") {
@@ -207,6 +213,9 @@ struct VFSParameters {
 
   /** The byte size to read-ahead for each read. */
   uint64_t read_ahead_size_;
+
+  /** Whether to log all VFS operations. */
+  bool log_operations_;
 
   /** The read logging mode to use. */
   ReadLoggingMode read_logging_mode_;
@@ -1030,6 +1039,30 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param nbytes The number of bytes requested.
    */
   void log_read(const URI& uri, uint64_t offset, uint64_t nbytes);
+
+  /**
+   * Returns an object whose scope defines the start and end of a VFS operation,
+   * if enabled in config.
+   *
+   * @param uri The URI of the object being operated on.
+   * @param operation_name The name of the operation. Defaults to the name of
+   * the calling function.
+   */
+  optional<LogDuration> start_operation(
+      const URI& uri, const std::string_view operation_name) const;
+
+  /**
+   * Returns an object whose scope defines the start and end of a VFS operation,
+   * if enabled in config.
+   *
+   * @param uri The URI of the object being operated on.
+   * @param operation_name The name of the operation. Defaults to the name of
+   * the calling function.
+   */
+  optional<LogDuration> start_operation(
+      const URI& source,
+      const URI& destination,
+      const std::string_view operation_name) const;
 };
 
 }  // namespace tiledb::sm
