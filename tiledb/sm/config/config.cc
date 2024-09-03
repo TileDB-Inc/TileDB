@@ -174,6 +174,7 @@ const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
+const std::string VFS_LOG_OPERATIONS = "false";
 const std::string Config::VFS_READ_LOGGING_MODE = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
@@ -402,6 +403,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("vfs.min_batch_gap", Config::VFS_MIN_BATCH_GAP),
     std::make_pair("vfs.min_batch_size", Config::VFS_MIN_BATCH_SIZE),
     std::make_pair("vfs.read_ahead_size", Config::VFS_READ_AHEAD_SIZE),
+    std::make_pair("vfs.log_operations", VFS_LOG_OPERATIONS),
     std::make_pair(
         "vfs.read_ahead_cache_size", Config::VFS_READ_AHEAD_CACHE_SIZE),
     std::make_pair(
