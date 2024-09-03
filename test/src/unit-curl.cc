@@ -212,4 +212,10 @@ TEST_CASE("Test retry logic", "[rest-client][retries]") {
   // and http error not in retry list
   http_code = 504;
   REQUIRE(curl.should_retry_request(curl_code, http_code) == true);
+
+  // Curl error in retry list but retries disabled in config
+  REQUIRE(cfg.set("rest.curl.retry_errors", "false").ok());
+  rc = curl.init(&cfg, extra_headers, &res_headers, &res_mtx);
+  curl_code = CURLE_RECV_ERROR;
+  REQUIRE(curl.should_retry_request(curl_code, http_code) == false);
 }
