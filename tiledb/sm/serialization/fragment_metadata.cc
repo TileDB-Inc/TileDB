@@ -372,6 +372,8 @@ Status fragment_metadata_from_capnp(
   }
   frag_meta->last_tile_cell_num() = frag_meta_reader.getLastTileCellNum();
 
+  frag_meta->loaded_metadata()->set_loaded_metadata(loaded_metadata);
+
   if (frag_meta_reader.hasRtree()) {
     auto data = frag_meta_reader.getRtree();
     auto& domain = fragment_array_schema->domain();
@@ -412,8 +414,6 @@ Status fragment_metadata_from_capnp(
     generic_tile_offsets_from_capnp(
         frag_meta_reader.getGtOffsets(), frag_meta->generic_tile_offsets());
   }
-
-  frag_meta->loaded_metadata()->set_loaded_metadata(loaded_metadata);
 
   return Status::Ok();
 }
