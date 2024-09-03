@@ -57,7 +57,7 @@ ContextResources::ContextResources(
     , compute_tp_(compute_thread_count)
     , io_tp_(io_thread_count)
     , stats_(make_shared<stats::Stats>(HERE(), stats_name))
-    , vfs_(stats_.get(), &compute_tp_, &io_tp_, config)
+    , vfs_(stats_.get(), logger_.get(), &compute_tp_, &io_tp_, config)
     , rest_client_{RestClientFactory::make(
           *(stats_.get()),
           config_,

@@ -138,7 +138,8 @@ std::string local_path() {
 TEST_CASE("VFS: Test long local paths", "[vfs]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
-  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, Config{}};
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, Config{}};
 
   SECTION("- Deep hierarchy") {
     // Create a nested path with a long total length
@@ -209,7 +210,8 @@ TEMPLATE_LIST_TEST_CASE(
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   Config config = set_config_params();
-  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
 
   URI path = fs.temp_dir_.add_trailing_slash();
 
@@ -443,7 +445,8 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   Config config = set_config_params(disable_multipart, max_parallel_ops);
-  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
 
   // Getting file_size on a nonexistent blob shouldn't crash on Azure
   uint64_t nbytes = 0;
@@ -562,7 +565,8 @@ TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
   // Will be configured from environment variables.
   Config config;
 
-  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
+  VFS vfs{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, config};
   REQUIRE(vfs.supports_uri_scheme(test_file));
 
   uint64_t nbytes = 0;
@@ -573,7 +577,8 @@ TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
-  VFS vfs_ls{&g_helper_stats, &compute_tp, &io_tp, Config{}};
+  VFS vfs_ls{
+      &g_helper_stats, g_helper_logger().get(), &compute_tp, &io_tp, Config{}};
 
   std::string path = local_path();
   std::string dir = path + "ls_dir";

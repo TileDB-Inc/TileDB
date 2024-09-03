@@ -58,6 +58,7 @@ capi_return_t tiledb_vfs_alloc(
 
   // Create VFS object
   auto& resources{ctx->resources()};
+  auto logger{resources.logger().get()};
   auto& stats{resources.stats()};
   auto& compute_tp{resources.compute_tp()};
   auto& io_tp{resources.io_tp()};
@@ -65,7 +66,8 @@ capi_return_t tiledb_vfs_alloc(
   if (config) {
     ctx_config.inherit((config->config()));
   }
-  *vfs = tiledb_vfs_t::make_handle(&stats, &compute_tp, &io_tp, ctx_config);
+  *vfs = tiledb_vfs_t::make_handle(
+      &stats, logger, &compute_tp, &io_tp, ctx_config);
 
   return TILEDB_OK;
 }

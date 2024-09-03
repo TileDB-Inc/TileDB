@@ -443,7 +443,12 @@ VFSTestBase::VFSTestBase(
     : test_tree_(test_tree)
     , compute_(4)
     , io_(4)
-    , vfs_(&tiledb::test::g_helper_stats, &io_, &compute_, create_test_config())
+    , vfs_(
+          &tiledb::test::g_helper_stats,
+          tiledb::test::g_helper_logger().get(),
+          &io_,
+          &compute_,
+          create_test_config())
     , prefix_(prefix)
     , temp_dir_(tiledb::test::test_dir(prefix_))
     , is_supported_(vfs_.supports_uri_scheme(temp_dir_)) {

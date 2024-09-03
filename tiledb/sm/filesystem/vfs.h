@@ -306,11 +306,13 @@ class VFS : private VFSBase, protected S3_within_VFS {
 
   /** Constructor.
    * @param parent_stats The parent stats to inherit from.
+   * @param logger The logger to use. Optional, can be nullptr.
    * @param compute_tp Thread pool for compute-bound tasks.
    * @param io_tp Thread pool for io-bound tasks.
    * @param config Configuration parameters.
    **/
   VFS(stats::Stats* parent_stats,
+      Logger* logger,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
       const Config& config);
@@ -947,6 +949,9 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * pass-by-reference initialization of filesystems' config_ member variables.
    **/
   Config config_;
+
+  /** Logger. */
+  Logger* logger_;
 
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;

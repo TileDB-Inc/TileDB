@@ -58,12 +58,14 @@ namespace tiledb::sm {
 
 VFS::VFS(
     stats::Stats* const parent_stats,
+    Logger* const logger,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config& config)
     : VFSBase(parent_stats)
     , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
+    , logger_(logger)
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
     , vfs_params_(VFSParameters(config)) {

@@ -88,6 +88,7 @@ int32_t tiledb_filestore_schema_create(
     // Get the file size, calculate a reasonable tile extent
     tiledb::sm::VFS vfs(
         &context.resources().stats(),
+        context.resources().logger().get(),
         context.compute_tp(),
         context.io_tp(),
         context.resources().config());
@@ -200,6 +201,7 @@ int32_t tiledb_filestore_uri_import(
   // Get the file size
   tiledb::sm::VFS vfs(
       &context.resources().stats(),
+      context.resources().logger().get(),
       context.compute_tp(),
       context.io_tp(),
       context.resources().config());
@@ -388,6 +390,7 @@ int32_t tiledb_filestore_uri_export(
   tiledb::sm::Context& context = ctx->context();
   tiledb::sm::VFS vfs(
       &context.resources().stats(),
+      context.resources().logger().get(),
       context.compute_tp(),
       context.io_tp(),
       context.resources().config());
