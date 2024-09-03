@@ -796,15 +796,15 @@ Status ArraySchema::add_attribute(
     shared_ptr<const Attribute> attr, bool check_special) {
   // Sanity check
   if (attr == nullptr) {
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Cannot add attribute; Input attribute is null"));
+    throw ArraySchemaException("Cannot add attribute; Input attribute is null");
   }
 
   // Do not allow attributes with special names
   if (check_special && attr->name().find(constants::special_name_prefix) == 0) {
-    std::string msg = "Cannot add attribute; Attribute names starting with '";
-    msg += std::string(constants::special_name_prefix) + "' are reserved";
-    return LOG_STATUS(Status_ArraySchemaError(msg));
+    throw ArraySchemaException(
+        "Cannot add attribute '" + attr->name() +
+        "'; Attribute names starting with '" +
+        std::string(constants::special_name_prefix) + "' are reserved.");
   }
 
   auto enmr_name = attr->get_enumeration_name();
@@ -812,34 +812,33 @@ Status ArraySchema::add_attribute(
     // The referenced enumeration must exist when the attribut is added
     auto iter = enumeration_map_.find(enmr_name.value());
     if (iter == enumeration_map_.end()) {
-      std::string msg =
-          "Cannot add attribute; Attribute refers to an "
-          "unknown enumeration named '" +
-          enmr_name.value() + "'.";
-      return LOG_STATUS(Status_ArraySchemaError(msg));
+      throw ArraySchemaException(
+          "Cannot add attribute '" + attr->name() +
+          "'; Attribute refers to an unknown enumeration named '" +
+          enmr_name.value() + "'.");
     }
 
     // This attribute must have an integral datatype to support Enumerations
     if (!datatype_is_integer(attr->type())) {
-      std::string msg = "Unable to use enumeration with attribute '" +
-                        attr->name() +
-                        "', attribute must have an integral data type, not " +
-                        datatype_str(attr->type());
-      return LOG_STATUS(Status_ArraySchemaError(msg));
+      throw ArraySchemaException(
+          "Unable to use enumeration with attribute '" + attr->name() +
+          "', attribute must have an integral data type, not " +
+          datatype_str(attr->type()));
     }
 
     // The attribute must have a cell_val_num of 1
     if (attr->cell_val_num() != 1) {
-      std::string msg =
-          "Attributes with enumerations must have a cell_val_num of 1.";
-      return LOG_STATUS(Status_ArraySchemaError(msg));
+      throw ArraySchemaException(
+          "Cannot add attribute '" + attr->name() +
+          "'; Attributes with enumerations must have a cell_val_num of 1.");
     }
 
     auto enmr = get_enumeration(enmr_name.value());
     if (enmr == nullptr) {
       throw ArraySchemaException(
-          "Cannot add attribute referencing enumeration '" + enmr_name.value() +
-          "' as the enumeration has not been loaded.");
+          "Cannot add attribute '" + attr->name() +
+          "' referencing enumeration '" + enmr_name.value() +
+          "'; The enumeration has not been loaded.");
     }
 
     // The +1 here is because of 0 being a valid index into the enumeration.
