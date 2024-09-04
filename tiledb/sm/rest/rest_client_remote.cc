@@ -970,7 +970,13 @@ size_t RestClientRemote::query_post_call_back(
       // data when deserializing read queries, this will return an
       // error status.
       st = serialization::query_deserialize(
-          aux, serialization_type_, true, copy_state, query, compute_tp_);
+          aux,
+          serialization_type_,
+          true,
+          copy_state,
+          query,
+          compute_tp_,
+          memory_tracker_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         return return_wrapper(bytes_processed);
@@ -988,7 +994,8 @@ size_t RestClientRemote::query_post_call_back(
           true,
           copy_state,
           query,
-          compute_tp_);
+          compute_tp_,
+          memory_tracker_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         return return_wrapper(bytes_processed);
@@ -1073,7 +1080,13 @@ Status RestClientRemote::finalize_query_to_rest(const URI& uri, Query* query) {
 
   // Deserialize data returned
   return serialization::query_deserialize(
-      returned_data, serialization_type_, true, nullptr, query, compute_tp_);
+      returned_data,
+      serialization_type_,
+      true,
+      nullptr,
+      query,
+      compute_tp_,
+      memory_tracker_);
 }
 
 Status RestClientRemote::submit_and_finalize_query_to_rest(

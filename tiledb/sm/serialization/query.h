@@ -174,6 +174,8 @@ Status query_serialize(
  *      query's buffer sizes are updated directly. If it is not null, the buffer
  *      sizes are not modified but the entries in the map are.
  * @param query Query to deserialize into
+ * @param compute_tp Compute thread pool to use
+ * @param memory_tracker Memory tracker to use
  */
 Status query_deserialize(
     span<const char> serialized_buffer,
@@ -181,7 +183,8 @@ Status query_deserialize(
     bool clientside,
     CopyState* copy_state,
     Query* query,
-    ThreadPool* compute_tp);
+    ThreadPool* compute_tp,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize an estimated result size map for all fields from a query object

@@ -2596,12 +2596,12 @@ Status query_deserialize(
     bool clientside,
     CopyState* copy_state,
     Query* query,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Create an original, serialized copy of the 'query' that we will revert
   // to if we are unable to deserialize 'serialized_buffer'.
   BufferList original_bufferlist(
-      query->resources().serialization_memory_tracker()->get_resource(
-          MemoryType::SERIALIZATION_BUFFER));
+      memory_tracker->get_resource(MemoryType::SERIALIZATION_BUFFER));
   RETURN_NOT_OK(
       query_serialize(query, serialize_type, clientside, original_bufferlist));
 
@@ -3181,7 +3181,8 @@ Status query_deserialize(
     bool,
     CopyState*,
     Query*,
-    ThreadPool*) {
+    ThreadPool*,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

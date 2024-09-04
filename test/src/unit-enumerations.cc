@@ -3007,7 +3007,9 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 
 void EnumerationFx::ser_des_query(
     Query* q_in, Query* q_out, bool client_side, SerializationType stype) {
-  SerializationBuffer buf{tdb::pmr::polymorphic_allocator<char>{}};
+  auto tracker = tiledb::test::get_test_memory_tracker();
+  SerializationBuffer buf{
+      tracker->get_resource(MemoryType::SERIALIZATION_BUFFER)};
   BufferList blist{buf.get_allocator()};
 
   throw_if_not_ok(
@@ -3021,7 +3023,8 @@ void EnumerationFx::ser_des_query(
       client_side,
       nullptr,
       q_out,
-      &(ctx_.resources().compute_tp())));
+      &(ctx_.resources().compute_tp()),
+      tracker));
 }
 
 void EnumerationFx::ser_des_array(

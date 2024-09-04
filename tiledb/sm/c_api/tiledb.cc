@@ -2683,7 +2683,8 @@ int32_t tiledb_deserialize_query(
       client_side == 1,
       nullptr,
       query->query_,
-      &ctx->resources().compute_tp()));
+      &ctx->resources().compute_tp(),
+      ctx->resources().serialization_memory_tracker()));
 
   return TILEDB_OK;
 }
@@ -2780,7 +2781,8 @@ int32_t tiledb_deserialize_query_and_array(
       client_side == 1,
       nullptr,
       (*query)->query_,
-      &ctx->resources().compute_tp()));
+      &ctx->resources().compute_tp(),
+      ctx->resources().serialization_memory_tracker()));
 
   return TILEDB_OK;
 }
