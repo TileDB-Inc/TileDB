@@ -330,8 +330,7 @@ void Consolidator::array_vacuum(
   }
 
   auto mode = Consolidator::mode_from_config(config, true);
-  auto consolidator =
-      Consolidator::create(parent, mode, config);
+  auto consolidator = Consolidator::create(parent, mode, config);
   consolidator->vacuum(array_name);
 }
 

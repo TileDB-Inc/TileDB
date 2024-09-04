@@ -159,7 +159,7 @@ class SupervisionBase {
   friend class WhiteboxSupervisionBase;
 
  public:
-  using activity_type = Mixin::ActivityMixin;
+  using activity_type = typename Mixin::ActivityMixin;
 
  private:
   /**
@@ -213,7 +213,7 @@ class ParentBase : public Mixin::SupervisionMixin,
   /**
    * The type of the job handle to be held by an instance of `class Job`
    */
-  using job_handle_type = Base::registry_handle_type;
+  using job_handle_type = typename Base::registry_handle_type;
 
  private:
   /**
@@ -229,13 +229,13 @@ class ParentBase : public Mixin::SupervisionMixin,
   ParentBase() = delete;
 
   template <class... Args>
-  explicit ParentBase(Mixin::ActivityMixin& activity, Args&&... args)
+  explicit ParentBase(typename Mixin::ActivityMixin& activity, Args&&... args)
       : Mixin::SupervisionMixin(activity, std::forward<Args>(args)...) {
   }
 
   static constexpr bool is_parent = true;
 
-  using job_size_type = Base::size_type;
+  using job_size_type = typename Base::size_type;
 
   /**
    * The current number of jobs in this registry.
@@ -272,7 +272,7 @@ class NonparentBase : public Mixin::SupervisionMixin {
   friend class WhiteboxNonparentBase;
 
  public:
-  explicit NonparentBase(Mixin::ActivityMixin& activity)
+  explicit NonparentBase(typename Mixin::ActivityMixin& activity)
       : Mixin::SupervisionMixin(activity) {
   }
 
@@ -420,7 +420,6 @@ class ActivityBase {
   }
 };
 
-
 //----------------------------------
 // Child
 //----------------------------------
@@ -433,7 +432,7 @@ class ChildBase : public Mixin::ActivityMixin {
   friend class test::WhiteboxChildBase;
 
  public:
-  using parent_type = Mixin::ParentMixin;
+  using parent_type = typename Mixin::ParentMixin;
 
  private:
   /**
@@ -445,7 +444,8 @@ class ChildBase : public Mixin::ActivityMixin {
    * This alias definition repeats the one in ParentBase. Were it not to be
    * repeated,
    */
-  using job_handle_type = Registry<ChildBase<Mixin>>::registry_handle_type;
+  using job_handle_type =
+      typename Registry<ChildBase<Mixin>>::registry_handle_type;
 
   /**
    * The job handle for this job, as provided by its parent
@@ -715,12 +715,12 @@ struct JobSystem {
   /**
    * `JobParent` should be used only as an interface, not as a base class.
    */
-  using JobParent = Mixin::ParentMixin;
+  using JobParent = typename Mixin::ParentMixin;
 
-  using parent_type = Mixin::ParentMixin;
-  using child_type = Mixin::ChildMixin;
-  using nonparent_type = Mixin::NonparentMixin;
-  using nonchild_type = Mixin::NonchildMixin;
+  using parent_type = typename Mixin::ParentMixin;
+  using child_type = typename Mixin::ChildMixin;
+  using nonparent_type = typename Mixin::NonparentMixin;
+  using nonchild_type = typename Mixin::NonchildMixin;
   /**
    * The root class of a job tree.
    */
@@ -772,6 +772,6 @@ struct JobSystem {
   };
 };
 
-}  // namespace tiledb::common
+}  // namespace tiledb::common::job
 
 #endif  // TILEDB_CONTEXT_JOB_H

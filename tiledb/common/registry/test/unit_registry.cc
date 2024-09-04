@@ -57,9 +57,7 @@ struct Item {
 void check_size(const item_registry_type& r, item_registry_type::size_type n) {
   CHECK(r.size() == n);
   item_registry_type::size_type m{0};
-  auto f{[&m](const item_registry_type::value_type&) -> void {
-    ++m;
-  }};
+  auto f{[&m](const item_registry_type::value_type&) -> void { ++m; }};
   r.for_each(f);
   CHECK(r.size() == m);
 }
@@ -98,19 +96,19 @@ TEST_CASE("Registry - construct and add, two nested") {
  */
 TEST_CASE("Registry - construct and add, two interleaved") {
   item_registry_type r;
-  check_size(r,0);
+  check_size(r, 0);
   {
     auto i1{std::make_shared<Item>(r)};
     i1->register_shared_ptr(i1);
-    check_size(r,1);
+    check_size(r, 1);
     {
       auto i2{std::make_shared<Item>(r)};
       i2->register_shared_ptr(i2);
-      check_size(r,2);
+      check_size(r, 2);
       i1.reset();
-      check_size(r,1);
+      check_size(r, 1);
     }
-    check_size(r,0);
+    check_size(r, 0);
   }
-  check_size(r,0);
+  check_size(r, 0);
 }

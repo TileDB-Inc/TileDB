@@ -66,7 +66,6 @@ enum class EncryptionType : uint8_t;
 
 /** The storage manager that manages pretty much nothing in TileDB. */
 class StorageManagerCanonical {
-
   /*
    * Friend declaration allows `class Context` to construct `StorageManager`
    * objects.

@@ -82,7 +82,8 @@ struct JobResourceMixin {
    public:
     ActivityMixin() = delete;
     explicit ActivityMixin(StorageManager& sm)
-        : ActivityBase<Self>(), sm_(sm){};
+        : ActivityBase<Self>()
+        , sm_(sm){};
 
     /**
      * Accessor for the storage manager associated with this activity.
@@ -99,8 +100,7 @@ struct JobResourceMixin {
    public:
     ChildMixin() = delete;
     explicit ChildMixin(ParentMixin& parent)
-        : ChildBase<
-              Self>{parent, parent.parent_storage_manager()} {
+        : ChildBase<Self>{parent, parent.parent_storage_manager()} {
     }
   };
 

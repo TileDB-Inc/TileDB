@@ -48,9 +48,7 @@ class StorageManagerStub {
 
  public:
   static constexpr bool is_overriding_class = true;
-  StorageManagerStub(
-      ContextResources&,
-      const Config& config)
+  StorageManagerStub(ContextResources&, const Config& config)
       : config_(config) {
   }
 

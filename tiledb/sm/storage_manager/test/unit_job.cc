@@ -380,7 +380,6 @@ struct TestMixin : public tiledb::common::job::NullMixin {
         : NonparentBase<Self>(activity) {
     }
   };
-
 };
 using mixin_job_system = tcj::JobSystem<TestMixin>;
 

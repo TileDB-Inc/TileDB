@@ -685,12 +685,8 @@ Status FragmentConsolidator::create_queries(
   // is not a user input prone to errors).
 
   // Create read query
-  query_r = tdb_unique_ptr<Query>(tdb_new(
-      Query,
-      *this,
-      array_for_reads,
-      nullopt,
-      read_memory_budget));
+  query_r = tdb_unique_ptr<Query>(
+      tdb_new(Query, *this, array_for_reads, nullopt, read_memory_budget));
   throw_if_not_ok(query_r->set_layout(Layout::GLOBAL_ORDER));
 
   // Dense consolidation will do a tile aligned read.
@@ -716,11 +712,7 @@ Status FragmentConsolidator::create_queries(
 
   // Create write query
   query_w = tdb_unique_ptr<Query>(tdb_new(
-      Query,
-      *this,
-      array_for_writes,
-      fragment_name,
-      write_memory_budget));
+      Query, *this, array_for_writes, fragment_name, write_memory_budget));
   throw_if_not_ok(query_w->set_layout(Layout::GLOBAL_ORDER));
   throw_if_not_ok(query_w->disable_checks_consolidation());
   query_w->set_fragment_size(config_.max_fragment_size_);

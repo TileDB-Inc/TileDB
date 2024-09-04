@@ -248,11 +248,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
 
       // Create the range query.
       range_queries_.emplace_back(tdb_new(
-          DimensionLabelQuery,
-          *this,
-          dim_label,
-          dim_label_ref,
-          label_ranges));
+          DimensionLabelQuery, *this, dim_label, dim_label_ref, label_ranges));
       label_range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
     } catch (const StatusException& err) {
       throw DimensionLabelQueryException(

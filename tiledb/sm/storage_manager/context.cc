@@ -156,19 +156,17 @@ Status get_config_thread_count(
 }
 
 /**
-   * Obtain the number of threads in a compute thread pool from a configuration
-   *
-   * Returns the maximum of the configured value and the thread count returned
-   * from get_config_thread_count().
-   *
-   * @param config A configuration that specifies the compute thread
-   * @return Compute thread count
+ * Obtain the number of threads in a compute thread pool from a configuration
+ *
+ * Returns the maximum of the configured value and the thread count returned
+ * from get_config_thread_count().
+ *
+ * @param config A configuration that specifies the compute thread
+ * @return Compute thread count
  */
-size_t get_compute_thread_count(
-    Logger& logger, const Config& config) {
+size_t get_compute_thread_count(Logger& logger, const Config& config) {
   uint64_t config_thread_count{0};
-  if (!get_config_thread_count(logger, config, config_thread_count)
-           .ok()) {
+  if (!get_config_thread_count(logger, config, config_thread_count).ok()) {
     throw std::logic_error("Cannot get compute thread count");
   }
 
@@ -190,8 +188,7 @@ size_t get_compute_thread_count(
 
 size_t get_io_thread_count(Logger& logger, const Config& config) {
   uint64_t config_thread_count{0};
-  if (!get_config_thread_count(logger, config, config_thread_count)
-           .ok()) {
+  if (!get_config_thread_count(logger, config, config_thread_count).ok()) {
     throw std::logic_error("Cannot get config thread count");
   }
 
@@ -236,8 +233,7 @@ Context::Context(const Config& config)
     : ContextBase(config)
     , JobRoot{storage_manager_}
     , context_handle_(ContextRegistry::get().register_context(*this))
-    , last_error_(nullopt)
-{
+    , last_error_(nullopt) {
   /*
    * Logger class is not yet C.41-compliant
    */

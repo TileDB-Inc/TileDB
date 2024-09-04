@@ -33,6 +33,4 @@
 
 #include "context_registry.h"
 
-namespace tiledb::sm {
-
-}  // namespace tiledb::sm
+namespace tiledb::sm {}  // namespace tiledb::sm

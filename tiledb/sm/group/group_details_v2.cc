@@ -30,8 +30,8 @@
  * This file implements TileDB Group Details V2
  */
 
-#include "group.h"
 #include "tiledb/sm/group/group_details_v2.h"
+#include "group.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 

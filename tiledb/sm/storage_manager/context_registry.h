@@ -46,7 +46,6 @@ namespace tiledb::sm {
 class Context;
 
 class ContextRegistry {
-
   friend class Context;
   using registry_type = common::Registry<Context>;
 

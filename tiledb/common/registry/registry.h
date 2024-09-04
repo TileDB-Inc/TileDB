@@ -167,7 +167,7 @@ class Registry {
   /**
    * The iterator type is only visible to friends.
    */
-  using registry_iterator_type = registry_list_type::iterator;
+  using registry_iterator_type = typename registry_list_type::iterator;
 
   /**
    * List of entries with this registry
@@ -200,7 +200,7 @@ class Registry {
   /**
    * The return type of `size()` is forwarded from its underlying container.
    */
-  using size_type = registry_list_type::size_type;
+  using size_type = typename registry_list_type::size_type;
 
   /**
    * The handle type. A registered class should have a member variable of this
@@ -218,7 +218,7 @@ class Registry {
   const registry_handle_type register_item(value_type& item) {
     lock_guard_type lg(m_);
     registry_list_.emplace_back(item, *this);
-    cv_.notify_all();   // `emplace_back` adds one to the registry size
+    cv_.notify_all();  // `emplace_back` adds one to the registry size
     /*
      * `emplace_back` returns a reference to the list member, not its iterator.
      * We have to construct an iterator instead.
@@ -261,27 +261,23 @@ class Registry {
    * @param f A callable object of type F
    */
   template <class F>
-  void for_each(F f) const
-  {
+  void for_each(F f) const {
     lock_guard_type lg(m_);
     /*
      * We iterate over entries, but apply the function to valid items. Thus we
      * need to provide `for_each` with an adapter.
      */
-    auto g{
-        [&f](const RegistryEntry<T>& entry) -> void {
-          /*
-           * We can only iterate over items that have registered `shared_ptr`.
-           * Otherwise we might iterate over a dangling reference.
-           */
-          auto item_ptr{entry.item_ptr_.lock()};
-          if (item_ptr) {
-            f(*item_ptr);
-          }
-        }
-    };
-    std::for_each(
-        registry_list_.begin(), registry_list_.end(), g);
+    auto g{[&f](const RegistryEntry<T>& entry) -> void {
+      /*
+       * We can only iterate over items that have registered `shared_ptr`.
+       * Otherwise we might iterate over a dangling reference.
+       */
+      auto item_ptr{entry.item_ptr_.lock()};
+      if (item_ptr) {
+        f(*item_ptr);
+      }
+    }};
+    std::for_each(registry_list_.begin(), registry_list_.end(), g);
   }
 
  private:
@@ -301,7 +297,7 @@ class Registry {
   void deregister(registry_iterator_type& iter) {
     lock_guard_type lg(m_);
     registry_list_.erase(iter);
-    cv_.notify_all();   // `erase` subtracts one from the registry size
+    cv_.notify_all();  // `erase` subtracts one from the registry size
   }
 };
 
@@ -340,7 +336,7 @@ class RegistryHandle {
    * immediate erasure of the entry; there's no separate index or other
    * secondary structure required.
    */
-  using referential_type = Registry<T>::registry_iterator_type;
+  using referential_type = typename Registry<T>::registry_iterator_type;
 
   /**
    * The iterator that comprises the underlying data of this handle.
@@ -478,6 +474,6 @@ class RegistryHandle {
   }
 };
 
-}  // namespace tiledb::sm
+}  // namespace tiledb::common
 
 #endif  // TILEDB_REGISTRY_H

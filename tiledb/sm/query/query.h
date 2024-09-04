@@ -55,8 +55,8 @@
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/storage_manager/job.h"
 #include "tiledb/sm/storage_manager/cancellation_source.h"
+#include "tiledb/sm/storage_manager/job.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
