@@ -252,7 +252,14 @@ single_fragment_info_from_capnp(
       single_frag_info_reader.getFragmentSize(),
       meta->non_empty_domain(),
       expanded_non_empty_domain,
-      meta};
+      meta,
+      // This workaround is unfortunately absolutely necessary. With this
+      // workaround we can ship this change in FragmentInfo independently
+      // and when we break the circular dependency between FragmentMetadata
+      // and LoadedFragmentMetadata, we can remove this workaround,
+      // construct LoadedFragmentMetadata objects independenly for which
+      // SingleFragmentInfo objects can have exclusive ownership.
+      meta->loaded_metadata_shared()};
 
   return {Status::Ok(), single_frag_info};
 }
@@ -269,7 +276,7 @@ Status single_fragment_info_to_capnp(
   RETURN_NOT_OK(
       fragment_metadata_to_capnp(*single_frag_info.meta(), &frag_meta_builder));
   rtree_to_capnp(
-      single_frag_info.meta()->loaded_metadata()->rtree(), &frag_meta_builder);
+      single_frag_info.loaded_fragment_metadata()->rtree(), &frag_meta_builder);
 
   // set fragment size
   single_frag_info_builder->setFragmentSize(single_frag_info.fragment_size());
