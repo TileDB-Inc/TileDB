@@ -1,5 +1,5 @@
 /**
- * @file   log_duration.h
+ * @file   log_duration_instrument.h
  *
  * @section LICENSE
  *
@@ -30,10 +30,12 @@
  * This file defines class `LogDuration`.
  */
 
-#ifndef TILEDB_LOG_DURATION_H
-#define TILEDB_LOG_DURATION_H
+#ifndef TILEDB_LOG_DURATION_INSTRUMENT_H
+#define TILEDB_LOG_DURATION_INSTRUMENT_H
 
 #include <spdlog/fmt/fmt.h>
+
+#include <spdlog/fmt/chrono.h>
 
 #include "tiledb/common/logger.h"
 
@@ -43,74 +45,56 @@ namespace tiledb::common {
  * Emits log messages on the start and end of a scope, noting the scope's
  * duration.
  */
-class LogDuration {
+class LogDurationInstrument {
  public:
-  LogDuration() = delete;
+  LogDurationInstrument() = delete;
 
-  DISABLE_COPY_AND_COPY_ASSIGN(LogDuration);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(LogDuration);
+  DISABLE_COPY_AND_COPY_ASSIGN(LogDurationInstrument);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(LogDurationInstrument);
 
   /**
    * Constructor.
-   *
-   * The log level is set to TRACE.
    *
    * @param logger The logger to use.
    * @param fmt The format string to describe the operation.
    * @param args Arguments for the format string.
    */
   template <typename... Args>
-  constexpr LogDuration(
+  LogDurationInstrument(
       Logger* logger,
       // fmt::format_string<Args...> fmt,
       const std::string& fmt,
-      Args&&... args)
-      : LogDuration(
-            logger,
-            Logger::Level::TRACE,
-            std::move(fmt),
-            std::forward<Args>(args)...) {
-  }
-
-  /**
-   * Constructor.
-   *
-   * @param logger The logger to use.
-   * @param level The level to log the event.
-   * @param fmt The format string to describe the operation.
-   * @param args Arguments for the format string.
-   */
-  template <typename... Args>
-  constexpr LogDuration(
-      Logger* logger,
-      Logger::Level level,
-      // fmt::format_string<Args...> fmt,
-      const std::string& fmt,
-      Args&&... args)
-      : level_(level) {
+      Args&&... args) {
     assert(logger);
 
-    if (logger->should_log(level_)) {
+    if (logger->should_log(DefaultLevel)) {
       logger_ = logger;
       // event_name_ = fmt::format(fmt, std::forward<Args>(args)...);
       // Forwarding args in make_format_args causes an error.
       event_name_ = fmt::vformat(fmt, fmt::make_format_args(args...));
-      logger_->log(level_, "{} started", event_name_);
       start_ = std::chrono::high_resolution_clock::now();
+      system_time_start_ = std::chrono::system_clock::now();
     }
   }
 
-  ~LogDuration() {
+  ~LogDurationInstrument() {
     if (logger_) {
       auto end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<float, std::chrono::milliseconds::period> duration =
           end - start_;
-      logger_->log(level_, "{} took {} ms", event_name_, duration.count());
+      logger_->log(
+          DefaultLevel,
+          "{} started at {:%Y-%m-%d %X} and took {}",
+          event_name_,
+          system_time_start_,
+          duration);
     }
   }
 
  private:
-  Logger::Level level_;
+  /** Level used for logging. */
+  static constexpr Logger::Level DefaultLevel = Logger::Level::TRACE;
+
   /**
    * A pointer to the logger to use for logging.
    *
@@ -118,10 +102,21 @@ class LogDuration {
    * level and no event should be emitted.
    */
   Logger* logger_;
+
+  /** High-resolution time point of the operation's start. */
   std::chrono::time_point<std::chrono::high_resolution_clock> start_;
+
+  /**
+   * System time point of the operation's start.
+   *
+   * We use it to format the operation's start time.
+   */
+  std::chrono::time_point<std::chrono::system_clock> system_time_start_;
+
+  /** Name of the event that will be logged. */
   std::string event_name_;
 };
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_LOG_DURATION_H
+#endif  // TILEDB_LOG_DURATION_INSTRUMENT_H

@@ -546,8 +546,7 @@ class Config {
    *    <br>
    *    **Default**: 10485760
    * -  `vfs.log_operations` <br>
-   *    Enables logging of the start and end of all VFS operations in trace
-   *    mode. <br>
+   *    Enables logging all VFS operations in trace mode. <br>
    *    **Default**: false
    * - `vfs.min_parallel_size` <br>
    *    The minimum number of bytes in a parallel VFS operation

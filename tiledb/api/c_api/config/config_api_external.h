@@ -373,7 +373,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
  *    **Default**: 10485760
  * -  `vfs.log_operations` <br>
- *    Enables logging of the start and end of all VFS operations in trace mode.
+ *    Enables logging all VFS operations in trace mode.
  *    <br>
  *    **Default**: false
  * - `vfs.min_parallel_size` <br>

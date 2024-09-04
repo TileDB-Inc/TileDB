@@ -76,7 +76,7 @@
 #endif  // HAVE_AZURE
 
 namespace tiledb::common {
-class LogDuration;
+class LogDurationInstrument;
 }
 
 using namespace tiledb::common;
@@ -1048,7 +1048,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param operation_name The name of the operation. Defaults to the name of
    * the calling function.
    */
-  optional<LogDuration> start_operation(
+  optional<LogDurationInstrument> start_operation(
       const URI& uri, const std::string_view operation_name) const;
 
   /**
@@ -1059,7 +1059,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param operation_name The name of the operation. Defaults to the name of
    * the calling function.
    */
-  optional<LogDuration> start_operation(
+  optional<LogDurationInstrument> start_operation(
       const URI& source,
       const URI& destination,
       const std::string_view operation_name) const;

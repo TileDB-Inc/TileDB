@@ -32,7 +32,7 @@
 
 #include "vfs.h"
 #include "path_win.h"
-#include "tiledb/common/log_duration.h"
+#include "tiledb/common/log_duration_instrument.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
@@ -1666,32 +1666,27 @@ void VFS::log_read(const URI& uri, uint64_t offset, uint64_t nbytes) {
   LOG_INFO("VFS Read: " + read_to_log);
 }
 
-optional<LogDuration> VFS::start_operation(
+optional<LogDurationInstrument> VFS::start_operation(
     const URI& uri, const std::string_view operation_name) const {
   if (!vfs_params_.log_operations_ || logger_ == nullptr) {
     return nullopt;
   }
-  // Construct LogDuration in-place to take advantage of RVO.
-  return optional<LogDuration>(
-      std::in_place,
-      logger_,
-      "Starting {} on {}",
-      operation_name,
-      uri.to_string());
+  // Construct LogDurationInstrument in-place to take advantage of RVO.
+  return std::make_optional<LogDurationInstrument>(
+      logger_, "{} on {}", operation_name, uri.to_string());
 }
 
-optional<LogDuration> VFS::start_operation(
+optional<LogDurationInstrument> VFS::start_operation(
     const URI& source,
     const URI& destination,
     const std::string_view operation_name) const {
   if (!vfs_params_.log_operations_ || logger_ == nullptr) {
     return nullopt;
   }
-  // Construct LogDuration in-place to take advantage of RVO.
-  return optional<LogDuration>(
-      std::in_place,
+  // Construct LogDurationInstrument in-place to take advantage of RVO.
+  return std::make_optional<LogDurationInstrument>(
       logger_,
-      "Starting {} from {} to {}",
+      "{} from {} to {}",
       operation_name,
       source.to_string(),
       destination.to_string());

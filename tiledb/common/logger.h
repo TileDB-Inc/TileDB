@@ -369,8 +369,9 @@ class Logger {
   void log(const Level lvl, fmt::format_string<Args...> fmt, Args&&... args) {
     // Check that this level is enabled to avoid needlessly formatting the
     // string.
-    if (!should_log(lvl))
+    if (!should_log(lvl)) {
       return;
+    }
     log(lvl, fmt::format(fmt, std::forward<Args>(args)...));
   }
 
