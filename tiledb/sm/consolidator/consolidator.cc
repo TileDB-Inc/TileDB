@@ -250,8 +250,10 @@ void Consolidator::fragments_consolidate(
     }
 
     // Consolidate
-    auto fragment_consolidator = make_shared<FragmentConsolidator>(
-        HERE(), resources, config, storage_manager);
+    auto consolidator = Consolidator::create(
+        resources, ConsolidationMode::FRAGMENT, config, storage_manager);
+    auto fragment_consolidator =
+        dynamic_cast<FragmentConsolidator*>(consolidator.get());
     throw_if_not_ok(fragment_consolidator->consolidate_fragments(
         array_name,
         encryption_type,
