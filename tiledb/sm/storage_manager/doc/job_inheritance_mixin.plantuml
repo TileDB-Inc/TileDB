@@ -1,0 +1,50 @@
+@startuml
+
+title Inheritance before and after mixin
+
+skinparam packageStyle rectangle
+
+
+package Original {
+    class "<Base>" as B
+    note left : The original base class
+    class "<Derived>" as D
+    note left : The original derived class
+    B <|-d- D
+}
+
+' Hidden note tweaks layout
+note "N1" as N1
+Original .d. N1
+N1 .l. "Derived-Mix Group"
+hide N1
+
+package "Base-Mix Group" {
+    class "<Base>Base" as BaseBase
+    class "<Base>Mixin" as BaseMixin {
+        +<Base>Mixin(<Base>Base&)
+    }
+    note right of BaseBase
+     The original base class
+     becomes the base of the
+     mixed version of that class.
+    end note
+    BaseBase <|-- BaseMixin
+}
+
+package "Derived-Mix Group" {
+    class "<Derived>Base" as DerivedBase {
+    }
+    class "<Derived>Mixin" as DerivedMixin {
+        +<Derived>Mixin(<Derived>Base&)
+    }
+    BaseMixin <|-d- DerivedBase
+    note right of DerivedBase
+     The original derived class
+     now derives from the mixed
+     version of the base class.
+    end note
+    DerivedBase <|-d- DerivedMixin
+}
+
+@enduml

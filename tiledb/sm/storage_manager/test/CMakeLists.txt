@@ -1,5 +1,5 @@
 #
-# tiledb/sm/storage_manager/CMakeLists.txt
+# tiledb/sm/storage_manager/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -23,15 +23,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-include(common NO_POLICY_SCOPE)
-include(object_library)
+include(unit_test)
 
 #
-# Object library `context_resources`
+# Test runner `unit_context`
 #
-commence(object_library context_resources)
-    this_target_sources(context_resources.cc)
-    this_target_object_libraries(baseline config rest_client stats thread_pool vfs)
-conclude(object_library)
-
-add_test_subdirectory()
+commence(unit_test context)
+    this_target_sources(unit_job.cc)
+    #
+    # Temporary substitute for a `job` object library
+    #
+    this_target_sources(
+        ../cancellation_source.cc
+        ../context.cc
+        ../job.cc
+    )
+    this_target_object_libraries(context_resources)
+    # This is defined in c_api_test_support, but we're using it temporarily here
+    # in order to test the code that will allow the stub to go away
+    this_target_object_libraries(storage_manager_stub)
+conclude(unit_test)

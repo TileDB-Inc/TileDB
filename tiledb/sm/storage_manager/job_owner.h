@@ -1,5 +1,5 @@
 /**
- * @file cancellation_source.cc
+ * @file tiledb/sm/storage_manager/job_registry.h
  *
  * @section LICENSE
  *
@@ -27,20 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file defines `class CancellationSource`.
+ * This file defines class JobRegistry, a type-specific version of Registry.
  */
 
-#include "cancellation_source.h"
-#include "storage_manager.h"
-
-namespace tiledb::sm {
-
-LegacyCancellationSource::LegacyCancellationSource(StorageManager& sm)
-    : sm_(sm) {
-}
-
-bool LegacyCancellationSource::cancellation_in_progress() const {
-  return sm_.cancellation_in_progress();
-}
+#ifndef TILEDB_JOB_OWNER_H
+#define TILEDB_JOB_OWNER_H
 
 }  // namespace tiledb::sm
+
+#endif  // TILEDB_CONTEXT_H

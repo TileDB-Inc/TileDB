@@ -1,5 +1,5 @@
 /**
- * @file cancellation_source.cc
+ * @file compile_job_stub_main.cc
  *
  * @section LICENSE
  *
@@ -24,23 +24,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file defines `class CancellationSource`.
  */
 
-#include "cancellation_source.h"
-#include "storage_manager.h"
+#include "../job.h"
 
-namespace tiledb::sm {
-
-LegacyCancellationSource::LegacyCancellationSource(StorageManager& sm)
-    : sm_(sm) {
+int main() {
+  tiledb::sm::Config config;
+  tiledb::sm::Context context(config);
+  tiledb::sm::Job job(context);
+  return 0;
 }
-
-bool LegacyCancellationSource::cancellation_in_progress() const {
-  return sm_.cancellation_in_progress();
-}
-
-}  // namespace tiledb::sm

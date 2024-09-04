@@ -1,0 +1,33 @@
+@startuml
+
+title Class Structure with Mixin
+
+package "Upper Half" {
+    ActivityBase <|-d- ActivityMixin
+    ActivityMixin <|-d- ChildBase
+    ActivityMixin <|-d- NonchildBase
+    ChildBase <|-d- ChildMixin
+    NonchildBase <|-d- NonchildMixin
+}
+
+package "Lower Half" {
+    SupervisionBase <|-d- SupervisionMixin
+    SupervisionMixin <|-d- ParentBase
+    SupervisionMixin <|-d- NonparentBase
+    ParentBase <|-d- ParentMixin
+    NonparentBase <|-d- NonparentMixin
+}
+
+package "JobSystem" {
+    JobRoot --u-* NonchildMixin
+    JobRoot --u-* ParentMixin
+    JobBranch --u-* ChildMixin
+    JobBranch --u-* ParentMixin
+    JobLeaf --u--* ChildMixin
+    JobLeaf --u--* NonparentMixin
+    JobIsolate --u-* NonchildMixin
+    JobIsolate --u-* NonparentMixin
+    JobRoot -d[hidden]- JobLeaf
+}
+
+@enduml

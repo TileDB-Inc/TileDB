@@ -36,7 +36,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/job.h"
 
 using namespace tiledb::common;
 
@@ -47,10 +47,8 @@ namespace tiledb::sm {
 /* ****************************** */
 
 ArrayMetaConsolidator::ArrayMetaConsolidator(
-    ContextResources& resources,
-    const Config& config,
-    StorageManager* storage_manager)
-    : Consolidator(resources, storage_manager) {
+    JobParent& parent, const Config& config)
+    : Consolidator(parent) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());

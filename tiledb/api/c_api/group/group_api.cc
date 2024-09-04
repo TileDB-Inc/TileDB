@@ -496,7 +496,7 @@ capi_return_t tiledb_group_consolidate_metadata(
   ensure_group_uri_argument_is_valid(group_uri);
 
   auto cfg = (config == nullptr) ? ctx->config() : config->config();
-  tiledb::sm::Group::consolidate_metadata(ctx->resources(), group_uri, cfg);
+  tiledb::sm::Group::consolidate_metadata(ctx->context(), group_uri, cfg);
 
   return TILEDB_OK;
 }
@@ -506,7 +506,7 @@ capi_return_t tiledb_group_vacuum_metadata(
   ensure_group_uri_argument_is_valid(group_uri);
 
   auto cfg = (config == nullptr) ? ctx->config() : config->config();
-  sm::Group::vacuum_metadata(ctx->resources(), group_uri, cfg);
+  sm::Group::vacuum_metadata(ctx->context(), group_uri, cfg);
 
   return TILEDB_OK;
 }

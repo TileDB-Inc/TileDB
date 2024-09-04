@@ -37,7 +37,7 @@
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/job.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
@@ -50,9 +50,8 @@ namespace tiledb::sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-FragmentMetaConsolidator::FragmentMetaConsolidator(
-    ContextResources& resources, StorageManager* storage_manager)
-    : Consolidator(resources, storage_manager) {
+FragmentMetaConsolidator::FragmentMetaConsolidator(JobParent& parent)
+    : Consolidator(parent) {
 }
 
 /* ****************************** */

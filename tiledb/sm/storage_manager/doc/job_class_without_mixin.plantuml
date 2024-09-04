@@ -1,0 +1,17 @@
+@startuml
+
+title Class Structure without Mixin
+
+package "Upper Half" {
+    Activity <|-d- Child
+    Activity <|-d- Nonchild
+}
+
+package "Lower Half" {
+    Supervision <|-d- Parent
+    Supervision <|-d- Nonparent
+}
+
+"Upper Half" <-d- "Lower Half"
+
+@enduml

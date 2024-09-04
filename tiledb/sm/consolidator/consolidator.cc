@@ -42,7 +42,7 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/job.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb::common;
@@ -53,28 +53,37 @@ namespace tiledb::sm {
 /*          FACTORY METHODS          */
 /* ********************************* */
 
-/** Factory function to create the consolidator depending on mode. */
+/**
+ * Factory function to create the consolidator depending on mode.
+ */
 shared_ptr<Consolidator> Consolidator::create(
-    ContextResources& resources,
-    const ConsolidationMode mode,
-    const Config& config,
-    StorageManager* storage_manager) {
+    JobParent& parent, const ConsolidationMode mode, const Config& config) {
   switch (mode) {
-    case ConsolidationMode::FRAGMENT_META:
-      return make_shared<FragmentMetaConsolidator>(
-          HERE(), resources, storage_manager);
-    case ConsolidationMode::FRAGMENT:
-      return make_shared<FragmentConsolidator>(
-          HERE(), resources, config, storage_manager);
-    case ConsolidationMode::ARRAY_META:
-      return make_shared<ArrayMetaConsolidator>(
-          HERE(), resources, config, storage_manager);
-    case ConsolidationMode::COMMITS:
-      return make_shared<CommitsConsolidator>(
-          HERE(), resources, storage_manager);
-    case ConsolidationMode::GROUP_META:
-      return make_shared<GroupMetaConsolidator>(
-          HERE(), resources, config, storage_manager);
+    case ConsolidationMode::FRAGMENT_META: {
+      auto job{make_shared<FragmentMetaConsolidator>(HERE(), parent)};
+      job->register_shared_ptr(job);
+      return job;
+    }
+    case ConsolidationMode::FRAGMENT: {
+      auto job{make_shared<FragmentConsolidator>(HERE(), parent, config)};
+      job->register_shared_ptr(job);
+      return job;
+    }
+    case ConsolidationMode::ARRAY_META: {
+      auto job{make_shared<ArrayMetaConsolidator>(HERE(), parent, config)};
+      job->register_shared_ptr(job);
+      return job;
+    }
+    case ConsolidationMode::COMMITS: {
+      auto job{make_shared<CommitsConsolidator>(HERE(), parent)};
+      job->register_shared_ptr(job);
+      return job;
+    }
+    case ConsolidationMode::GROUP_META: {
+      auto job{make_shared<GroupMetaConsolidator>(HERE(), parent, config)};
+      job->register_shared_ptr(job);
+      return job;
+    }
     default:
       return nullptr;
   }
@@ -109,10 +118,9 @@ ConsolidationMode Consolidator::mode_from_config(
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Consolidator::Consolidator(
-    ContextResources& resources, StorageManager* storage_manager)
-    : resources_(resources)
-    , storage_manager_(storage_manager)
+Consolidator::Consolidator(JobParent& parent)
+    : JobBranch(parent)
+    , resources_(parent.resources())
     , consolidator_memory_tracker_(resources_.create_memory_tracker())
     , stats_(resources_.stats().create_child("Consolidator"))
     , logger_(resources_.logger()->clone("Consolidator", ++logger_id_)) {
@@ -138,13 +146,13 @@ void Consolidator::vacuum([[maybe_unused]] const char* array_name) {
 }
 
 void Consolidator::array_consolidate(
-    ContextResources& resources,
+    JobParent& parent,
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length,
-    const Config& config,
-    StorageManager* storage_manager) {
+    const Config& config) {
+  auto& resources{parent.resources()};
   // Check array URI
   URI array_uri(array_name);
   if (array_uri.is_invalid()) {
@@ -190,22 +198,21 @@ void Consolidator::array_consolidate(
 
     // Consolidate
     auto mode = Consolidator::mode_from_config(config);
-    auto consolidator =
-        Consolidator::create(resources, mode, config, storage_manager);
+    auto consolidator = Consolidator::create(parent, mode, config);
     throw_if_not_ok(consolidator->consolidate(
         array_name, encryption_type, encryption_key, key_length));
   }
 }
 
 void Consolidator::fragments_consolidate(
-    ContextResources& resources,
+    JobParent& parent,
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length,
     const std::vector<std::string> fragment_uris,
-    const Config& config,
-    StorageManager* storage_manager) {
+    const Config& config) {
+  auto& resources{parent.resources()};
   // Check array URI
   URI array_uri(array_name);
   if (array_uri.is_invalid()) {
@@ -246,8 +253,8 @@ void Consolidator::fragments_consolidate(
   }
 
   // Consolidate
-  auto consolidator = Consolidator::create(
-      resources, ConsolidationMode::FRAGMENT, config, storage_manager);
+  auto consolidator =
+      Consolidator::create(parent, ConsolidationMode::FRAGMENT, config);
   auto fragment_consolidator =
       dynamic_cast<FragmentConsolidator*>(consolidator.get());
   throw_if_not_ok(fragment_consolidator->consolidate_fragments(
@@ -313,10 +320,8 @@ void Consolidator::write_consolidated_commits_file(
 }
 
 void Consolidator::array_vacuum(
-    ContextResources& resources,
-    const char* array_name,
-    const Config& config,
-    StorageManager* storage_manager) {
+    JobParent& parent, const char* array_name, const Config& config) {
+  auto& resources{parent.resources()};
   URI array_uri(array_name);
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(
@@ -326,7 +331,7 @@ void Consolidator::array_vacuum(
 
   auto mode = Consolidator::mode_from_config(config, true);
   auto consolidator =
-      Consolidator::create(resources, mode, config, storage_manager);
+      Consolidator::create(parent, mode, config);
   consolidator->vacuum(array_name);
 }
 

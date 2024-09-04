@@ -304,6 +304,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/cancellation_source.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context_resources.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/job.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/range_subset.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/relevant_fragment_generator.cc

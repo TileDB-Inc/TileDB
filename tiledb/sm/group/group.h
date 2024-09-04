@@ -42,6 +42,7 @@
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/sm/storage_manager/job.h"
 
 using namespace tiledb::common;
 
@@ -229,7 +230,7 @@ class Group {
   /**
    * Consolidates the metadata of a group into a single file.
    *
-   * @param resources The context resources.
+   * @param parent The parent of this consolidation job
    * @param group_name The name of the group whose metadata will be
    *     consolidated.
    * @param config Configuration parameters for the consolidation
@@ -237,14 +238,12 @@ class Group {
    *      this instance).
    */
   static void consolidate_metadata(
-      ContextResources& resources,
-      const char* group_name,
-      const Config& config);
+      JobParent& parent, const char* group_name, const Config& config);
 
   /**
    * Vacuums the consolidated metadata files of a group.
    *
-   * @param resources The context resources.
+   * @param parent The parent of this consolidation job
    * @param group_name The name of the group whose metadata will be
    *     vacuumed.
    * @param config Configuration parameters for vacuuming
@@ -252,9 +251,7 @@ class Group {
    *      this instance).
    */
   static void vacuum_metadata(
-      ContextResources& resources,
-      const char* group_name,
-      const Config& config);
+      JobParent& parent, const char* group_name, const Config& config);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;

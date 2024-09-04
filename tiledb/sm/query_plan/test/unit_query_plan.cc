@@ -44,7 +44,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;
@@ -65,9 +65,9 @@ struct QueryPlanFx {
 
   TemporaryLocalDirectory temp_dir_;
   Config cfg_;
+  tiledb::sm::Context ctx_;
   shared_ptr<Logger> logger_;
-  ContextResources resources_;
-  shared_ptr<StorageManager> sm_;
+  ContextResources& resources_;
 };
 
 tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
@@ -110,10 +110,11 @@ URI QueryPlanFx::array_uri(const std::string& array_name) {
 }
 
 QueryPlanFx::QueryPlanFx()
-    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    : cfg_()
+    , ctx_(cfg_)
+    , memory_tracker_(tiledb::test::create_test_memory_tracker())
     , logger_(make_shared<Logger>(HERE(), "foo"))
-    , resources_(cfg_, logger_, 1, 1, "")
-    , sm_(make_shared<StorageManager>(resources_, logger_, cfg_)) {
+    , resources_(ctx_.resources()) {
 }
 
 TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
@@ -126,8 +127,7 @@ TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
   REQUIRE(st.ok());
 
   shared_ptr<Array> array_shared = std::move(array);
-  Query query(
-      resources_, CancellationSource(sm_.get()), sm_.get(), array_shared);
+  Query query(ctx_, array_shared);
   REQUIRE(query.set_layout(Layout::ROW_MAJOR).ok());
 
   stats::Stats stats("foo");

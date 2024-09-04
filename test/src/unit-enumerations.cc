@@ -2462,18 +2462,10 @@ TEST_CASE_METHOD(
   auto qc1 = create_qc("attr1", (int)2, QueryConditionOp::EQ);
   qc1.set_use_enumeration(false);
 
-  Query q1(
-      ctx_.resources(),
-      ctx_.cancellation_source(),
-      ctx_.storage_manager(),
-      array);
+  Query q1(ctx_, array);
   throw_if_not_ok(q1.set_condition(qc1));
 
-  Query q2(
-      ctx_.resources(),
-      ctx_.cancellation_source(),
-      ctx_.storage_manager(),
-      array);
+  Query q2(ctx_, array);
   ser_des_query(&q1, &q2, client_side, ser_type);
 
   auto qc2 = q2.condition();
@@ -2506,18 +2498,10 @@ TEST_CASE_METHOD(
 
   throw_if_not_ok(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc3));
 
-  Query q1(
-      ctx_.resources(),
-      ctx_.cancellation_source(),
-      ctx_.storage_manager(),
-      array);
+  Query q1(ctx_, array);
   throw_if_not_ok(q1.set_condition(qc3));
 
-  Query q2(
-      ctx_.resources(),
-      ctx_.cancellation_source(),
-      ctx_.storage_manager(),
-      array);
+  Query q2(ctx_, array);
   ser_des_query(&q1, &q2, client_side, ser_type);
 
   auto qc4 = q2.condition();

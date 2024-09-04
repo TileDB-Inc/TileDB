@@ -1,5 +1,5 @@
 #
-# tiledb/sm/storage_manager/CMakeLists.txt
+# tiledb/common/registry/CMakeLists.txt
 #
 # The MIT License
 #
@@ -22,16 +22,5 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-
-include(common NO_POLICY_SCOPE)
-include(object_library)
-
-#
-# Object library `context_resources`
-#
-commence(object_library context_resources)
-    this_target_sources(context_resources.cc)
-    this_target_object_libraries(baseline config rest_client stats thread_pool vfs)
-conclude(object_library)
 
 add_test_subdirectory()

@@ -418,11 +418,8 @@ int32_t tiledb_query_alloc(
   }
 
   // Create query
-  (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
-      ctx->resources(),
-      ctx->cancellation_source(),
-      ctx->storage_manager(),
-      array->array_);
+  (*query)->query_ =
+      new (std::nothrow) tiledb::sm::Query(ctx->context(), array->array_);
   if ((*query)->query_ == nullptr) {
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
@@ -1711,13 +1708,12 @@ int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   api::ensure_config_is_valid_if_present(config);
   tiledb::sm::Consolidator::array_consolidate(
-      ctx->resources(),
+      ctx->context(),
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
-      (config == nullptr) ? ctx->config() : config->config(),
-      ctx->storage_manager());
+      (config == nullptr) ? ctx->config() : config->config());
   return TILEDB_OK;
 }
 
@@ -1737,14 +1733,13 @@ int32_t tiledb_array_consolidate_fragments(
   }
 
   tiledb::sm::Consolidator::fragments_consolidate(
-      ctx->resources(),
+      ctx->context(),
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
       uris,
-      (config == nullptr) ? ctx->config() : config->config(),
-      ctx->storage_manager());
+      (config == nullptr) ? ctx->config() : config->config());
 
   return TILEDB_OK;
 }
@@ -1752,10 +1747,9 @@ int32_t tiledb_array_consolidate_fragments(
 int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   tiledb::sm::Consolidator::array_vacuum(
-      ctx->resources(),
+      ctx->context(),
       array_uri,
-      (config == nullptr) ? ctx->config() : config->config(),
-      ctx->storage_manager());
+      (config == nullptr) ? ctx->config() : config->config());
 
   return TILEDB_OK;
 }
@@ -2751,11 +2745,8 @@ int32_t tiledb_deserialize_query_and_array(
   }
 
   // Create query
-  (*query)->query_ = new (std::nothrow) tiledb::sm::Query(
-      ctx->resources(),
-      ctx->cancellation_source(),
-      ctx->storage_manager(),
-      (*array)->array_);
+  (*query)->query_ =
+      new (std::nothrow) tiledb::sm::Query(ctx->context(), (*array)->array_);
   if ((*query)->query_ == nullptr) {
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
@@ -3336,11 +3327,7 @@ capi_return_t tiledb_handle_query_plan_request(
   api::ensure_buffer_is_valid(request);
   api::ensure_buffer_is_valid(response);
 
-  tiledb::sm::Query query(
-      ctx->resources(),
-      ctx->cancellation_source(),
-      ctx->storage_manager(),
-      array->array_);
+  tiledb::sm::Query query(ctx->context(), array->array_);
   tiledb::sm::serialization::deserialize_query_plan_request(
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       request->buffer(),

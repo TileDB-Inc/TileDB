@@ -175,7 +175,7 @@ TEST_CASE_METHOD(
       array.memory_tracker(),
       tracker_,
       lq_state_machine,
-      CancellationSource(context.storage_manager()),
+      context.make_cancellation_source(),
       array.opened_array(),
       config,
       nullopt,

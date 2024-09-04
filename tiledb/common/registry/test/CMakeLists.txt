@@ -1,9 +1,9 @@
 #
-# tiledb/sm/storage_manager/CMakeLists.txt
+# tiledb/common/registry/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2023-2024 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +23,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-include(common NO_POLICY_SCOPE)
-include(object_library)
+include(unit_test)
 
 #
-# Object library `context_resources`
+# Test runner `unit_registry`
 #
-commence(object_library context_resources)
-    this_target_sources(context_resources.cc)
-    this_target_object_libraries(baseline config rest_client stats thread_pool vfs)
-conclude(object_library)
-
-add_test_subdirectory()
+commence(unit_test registry)
+  this_target_sources(unit_registry.cc)
+  # no object library; registry is header-only
+conclude(unit_test)

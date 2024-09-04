@@ -66,14 +66,7 @@ class DimensionLabelQuery : public Query {
   /**
    * Constructor for queries to read or write label data.
    *
-   * This is a transitional constructor in the sense that we are working
-   * on removing the dependency of the Query class on StorageManager.
-   * For now, we still need to keep the storage_manager argument, but once the
-   * dependency is gone, the signature will be
-   * DimensionLabelQuery(ContextResources&, shared_ptr<Array>, ...).
-   *
-   * @param resources The context resources.
-   * @param storage_manager Storage manager object.
+   * @param parent The parent of this query as a job
    * @param dim_label Opened dimension label for the query.
    * @param dim_label_ref Description of the dimension label.
    * @param parent_subarray Subarray of the parent array.
@@ -83,8 +76,7 @@ class DimensionLabelQuery : public Query {
    * @param fragment_name Name to use when writing the fragment.
    */
   DimensionLabelQuery(
-      ContextResources& resources,
-      StorageManager* storage_manager,
+      JobParent& parent,
       shared_ptr<Array> dim_label,
       const DimensionLabel& dim_label_ref,
       const Subarray& parent_subarray,
@@ -95,21 +87,13 @@ class DimensionLabelQuery : public Query {
   /**
    * Constructor for range queries.
    *
-   * This is a transitional constructor in the sense that we are working
-   * on removing the dependency of the Query class on StorageManager.
-   * For now, we still need to keep the storage_manager argument, but once the
-   * dependency is gone, the signature will be
-   * DimensionLabelQuery(ContextResources&, shared_ptr<Array>, ...).
-   *
-   * @param resources The context resources.
-   * @param storage_manager Storage manager object.
+   * @param parent The parent of this query as a job
    * @param dim_label Opened dimension label for the query.
    * @param dim_label_ref Description of the dimension label.
    * @param label_ranges Label ranges to read index ranges from.
    */
   DimensionLabelQuery(
-      ContextResources& resources,
-      StorageManager* storage_manager,
+      JobParent& parent,
       shared_ptr<Array> dim_label,
       const DimensionLabel& dim_label_ref,
       const std::vector<Range>& label_ranges);

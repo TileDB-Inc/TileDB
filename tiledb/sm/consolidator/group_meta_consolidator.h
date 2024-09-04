@@ -54,21 +54,10 @@ class GroupMetaConsolidator : public Consolidator {
   /**
    * Constructor.
    *
-   * This is a transitional constructor in the sense that we are working
-   * on removing the dependency of all Consolidator classes on StorageManager.
-   * For now we still need to keep the storage_manager argument, but once the
-   * dependency is gone the signature will be
-   * GroupMetaConsolidator(ContextResources&, const Config&).
-   *
-   * @param resources The context resources.
+   * @param parent The parent of this consolidation job
    * @param config Config.
-   * @param storage_manager A StorageManager pointer.
-   *    (this will go away in the near future)
    */
-  explicit GroupMetaConsolidator(
-      ContextResources& resources,
-      const Config& config,
-      StorageManager* storage_manager);
+  explicit GroupMetaConsolidator(JobParent& parent, const Config& config);
 
   /** Destructor. */
   ~GroupMetaConsolidator() = default;

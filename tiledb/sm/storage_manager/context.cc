@@ -46,62 +46,40 @@ class ContextException : public StatusException {
   }
 };
 
-static common::Logger::Level get_log_level(const Config& config);
-
-/* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
-/* ****************************** */
-
-// Constructor.  Note order of construction:  storage_manager depends on the
-// preceding members to be initialized for its initialization.
-Context::Context(const Config& config)
-    : last_error_(nullopt)
-    , logger_(make_shared<Logger>(
-          HERE(),
-          logger_prefix_ + std::to_string(++logger_id_),
-          get_log_level(config)))
-    , resources_(
-          config,
-          logger_,
-          get_compute_thread_count(config),
-          get_io_thread_count(config),
-          // TODO: Remove `.StorageManager` from statistic names
-          // We're sticking with `Context.StorageManager` here because
-          // it is part of the public facing API.
-          "Context.StorageManager")
-    , storage_manager_{resources_, logger_, config} {
-  /*
-   * Logger class is not yet C.41-compliant
-   */
-  init_loggers(config);
+/**
+ * Obtain the log level from a configuration.
+ *
+ * Supports the initialization of `class Context`
+ */
+common::Logger::Level get_log_level(const Config& config) {
+  auto cfg_level = config.get<std::string>("config.logging_level");
+  if (cfg_level == "0") {
+    return Logger::Level::FATAL;
+  } else if (cfg_level == "1") {
+    return Logger::Level::ERR;
+  } else if (cfg_level == "2") {
+    return Logger::Level::WARN;
+  } else if (cfg_level == "3") {
+    return Logger::Level::INFO;
+  } else if (cfg_level == "4") {
+    return Logger::Level::DBG;
+  } else if (cfg_level == "5") {
+    return Logger::Level::TRACE;
+  } else {
+    return Logger::Level::ERR;
+  }
 }
 
-/* ****************************** */
-/*                API             */
-/* ****************************** */
-
-optional<std::string> Context::last_error() {
-  std::lock_guard<std::mutex> lock(mtx_);
-  return last_error_;
-}
-
-void Context::save_error(const Status& st) {
-  std::lock_guard<std::mutex> lock(mtx_);
-  last_error_ = st.to_string();
-}
-
-void Context::save_error(const std::string& msg) {
-  std::lock_guard<std::mutex> lock(mtx_);
-  last_error_ = msg;
-}
-
-void Context::save_error(const StatusException& st) {
-  std::lock_guard<std::mutex> lock(mtx_);
-  last_error_ = st.what();
-}
-
-Status Context::get_config_thread_count(
-    const Config& config, uint64_t& config_thread_count_ret) {
+/**
+ * Obtain the thread count to use for initializing `class Context`, taking into
+ * account a number of legacy configuration variables.
+ *
+ * @param logger Logger to use to record misconfigurations
+ * @param config The configuration to examine
+ * @param max_thread_count The return value
+ */
+Status get_config_thread_count(
+    Logger& logger, const Config& config, uint64_t& max_thread_count) {
   // The "sm.num_async_threads", "sm.num_reader_threads",
   // "sm.num_tbb_threads", "sm.num_writer_threads", and "sm.num_vfs_threads"
   // have been removed. If they are set, we will log an error message.
@@ -117,7 +95,7 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_async_threads", &num_async_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_async_threads);
-    logger_->error(
+    logger.error(
         "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_async_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\".");
@@ -128,7 +106,7 @@ Status Context::get_config_thread_count(
       "sm.num_reader_threads", &num_reader_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_reader_threads);
-    logger_->error(
+    logger.error(
         "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_reader_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\".");
@@ -139,7 +117,7 @@ Status Context::get_config_thread_count(
       "sm.num_writer_threads", &num_writer_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_writer_threads);
-    logger_->error(
+    logger.error(
         "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_writer_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\".");
@@ -150,7 +128,7 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_vfs_threads);
-    logger_->error(
+    logger.error(
         "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_vfs_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\".");
@@ -166,20 +144,31 @@ Status Context::get_config_thread_count(
   if (found) {
     config_thread_count =
         std::max(config_thread_count, static_cast<uint64_t>(num_tbb_threads));
-    logger_->error(
+    logger.error(
         "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_tbb_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\".");
   }
 
-  config_thread_count_ret = static_cast<size_t>(config_thread_count);
+  max_thread_count = static_cast<size_t>(config_thread_count);
 
   return Status::Ok();
 }
 
-size_t Context::get_compute_thread_count(const Config& config) {
+/**
+   * Obtain the number of threads in a compute thread pool from a configuration
+   *
+   * Returns the maximum of the configured value and the thread count returned
+   * from get_config_thread_count().
+   *
+   * @param config A configuration that specifies the compute thread
+   * @return Compute thread count
+ */
+size_t get_compute_thread_count(
+    Logger& logger, const Config& config) {
   uint64_t config_thread_count{0};
-  if (!get_config_thread_count(config, config_thread_count).ok()) {
+  if (!get_config_thread_count(logger, config, config_thread_count)
+           .ok()) {
     throw std::logic_error("Cannot get compute thread count");
   }
 
@@ -199,9 +188,10 @@ size_t Context::get_compute_thread_count(const Config& config) {
       std::max(config_thread_count, compute_concurrency_level));
 }
 
-size_t Context::get_io_thread_count(const Config& config) {
+size_t get_io_thread_count(Logger& logger, const Config& config) {
   uint64_t config_thread_count{0};
-  if (!get_config_thread_count(config, config_thread_count).ok()) {
+  if (!get_config_thread_count(logger, config, config_thread_count)
+           .ok()) {
     throw std::logic_error("Cannot get config thread count");
   }
 
@@ -219,6 +209,68 @@ size_t Context::get_io_thread_count(const Config& config) {
 
   return static_cast<size_t>(
       std::max(config_thread_count, io_concurrency_level));
+}
+
+/**
+ * Note order of construction: `storage_manager_` depends on the
+ * preceding members to be initialized for its initialization.
+ */
+ContextBase::ContextBase(const Config& config)
+    : logger_(make_shared<Logger>(
+          HERE(),
+          logger_prefix_ + std::to_string(++logger_id_),
+          get_log_level(config)))
+    , resources_(
+          config,
+          logger_,
+          get_compute_thread_count(*logger_, config),
+          get_io_thread_count(*logger_, config),
+          // TODO: Remove `.StorageManager` from statistic names
+          // We're sticking with `Context.StorageManager` here because
+          // it is part of the public facing API.
+          "Context.StorageManager")
+    , storage_manager_{resources_, config} {
+}
+
+Context::Context(const Config& config)
+    : ContextBase(config)
+    , JobRoot{storage_manager_}
+    , context_handle_(ContextRegistry::get().register_context(*this))
+    , last_error_(nullopt)
+{
+  /*
+   * Logger class is not yet C.41-compliant
+   */
+  init_loggers(config);
+}
+
+/**
+ * @section Implementation
+ *
+ * At present cancellation is still in `StorageManager`.
+ */
+void Context::cancel_all_tasks() {
+  storage_manager_.cancel_all_tasks();
+}
+
+optional<std::string> Context::last_error() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  return last_error_;
+}
+
+void Context::save_error(const Status& st) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  last_error_ = st.to_string();
+}
+
+void Context::save_error(const std::string& msg) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  last_error_ = msg;
+}
+
+void Context::save_error(const StatusException& st) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  last_error_ = st.what();
 }
 
 void Context::init_loggers(const Config& config) {
@@ -248,25 +300,6 @@ void Context::init_loggers(const Config& config) {
 
   global_logger().set_level(static_cast<Logger::Level>(level));
   logger_->set_level(static_cast<Logger::Level>(level));
-}
-
-common::Logger::Level get_log_level(const Config& config) {
-  auto cfg_level = config.get<std::string>("config.logging_level");
-  if (cfg_level == "0") {
-    return Logger::Level::FATAL;
-  } else if (cfg_level == "1") {
-    return Logger::Level::ERR;
-  } else if (cfg_level == "2") {
-    return Logger::Level::WARN;
-  } else if (cfg_level == "3") {
-    return Logger::Level::INFO;
-  } else if (cfg_level == "4") {
-    return Logger::Level::DBG;
-  } else if (cfg_level == "5") {
-    return Logger::Level::TRACE;
-  } else {
-    return Logger::Level::ERR;
-  }
 }
 
 }  // namespace tiledb::sm

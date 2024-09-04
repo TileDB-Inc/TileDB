@@ -115,7 +115,7 @@ capi_return_t tiledb_ctx_is_supported_fs(
 }
 
 capi_return_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
-  throw_if_not_ok(ctx->storage_manager()->cancel_all_tasks());
+  ctx->cancel_all_tasks();
   return TILEDB_OK;
 }
 
