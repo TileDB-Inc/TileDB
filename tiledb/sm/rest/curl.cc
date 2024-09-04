@@ -762,8 +762,6 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
     case CURLE_PROXY:              /* 97 - proxy handshake error */
     case CURLE_SSL_CLIENTCERT:     /* 98 - client-side certificate required */
     case CURLE_UNRECOVERABLE_POLL: /* 99 - poll/select returned fatal error */
-    case CURLE_TOO_LARGE:          /* 100 - a value/data met its maximum */
-    case CURLE_ECH_REQUIRED:       /* 101 - ECH tried but failed */
       return true;
     default:
       return false;
