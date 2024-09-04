@@ -78,16 +78,20 @@ class LogDurationInstrument {
   }
 
   ~LogDurationInstrument() {
-    if (logger_) {
-      auto end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<float, std::chrono::milliseconds::period> duration =
-          end - start_;
-      logger_->log(
-          DefaultLevel,
-          "{} started at {:%Y-%m-%d %X} and took {}",
-          event_name_,
-          system_time_start_,
-          duration);
+    try {
+      if (logger_) {
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float, std::chrono::milliseconds::period>
+            duration = end - start_;
+        logger_->log(
+            DefaultLevel,
+            "{} started at {:%Y-%m-%d %X} and lasted {}",
+            event_name_,
+            system_time_start_,
+            duration);
+      }
+    } catch (...) {
+      // Ignore exceptions inside destructor.
     }
   }
 
