@@ -714,7 +714,7 @@ TEST_CASE(
 
 TEST_CASE("VFS: Test remove_dir_if_empty", "[vfs][remove-dir-if-empty]") {
   ThreadPool tp(1);
-  VFS vfs{&g_helper_stats, &tp, &tp, Config{}};
+  VFS vfs{&g_helper_stats, g_helper_logger().get(), &tp, &tp, Config{}};
 
   std::string path = local_path();
   std::string dir = path + "remove_dir_if_empty/";
