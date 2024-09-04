@@ -110,6 +110,9 @@ class Config {
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
 
+  /** If we should retry Curl errors in requests to REST. */
+  static const std::string REST_CURL_RETRY_ERRORS;
+
   /** If the array enumerations should be loaded on array open */
   static const std::string REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN;
 
