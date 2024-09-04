@@ -62,14 +62,14 @@ class LogDurationInstrument {
   template <typename... Args>
   LogDurationInstrument(
       Logger* logger,
-      // fmt::format_string<Args...> fmt,
+      // Ideally this would be a fmt::format_string<Args...> but it fails with
+      // weird constexpr-related compile errors.
       const std::string& fmt,
       Args&&... args) {
     assert(logger);
 
     if (logger->should_log(DefaultLevel)) {
       logger_ = logger;
-      // event_name_ = fmt::format(fmt, std::forward<Args>(args)...);
       // Forwarding args in make_format_args causes an error.
       event_name_ = fmt::vformat(fmt, fmt::make_format_args(args...));
       start_ = std::chrono::high_resolution_clock::now();
