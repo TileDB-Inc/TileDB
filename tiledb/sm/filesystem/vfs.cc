@@ -427,6 +427,17 @@ Status VFS::remove_dir(const URI& uri) const {
   return Status::Ok();
 }
 
+void VFS::remove_dir_if_empty(const URI& uri) const {
+  if (uri.is_file()) {
+#ifdef _WIN32
+    win_.remove_dir_if_empty(uri.to_path());
+#else
+    posix_.remove_dir_if_empty(uri.to_path());
+#endif
+  }
+  // Object stores do not have directories.
+}
+
 void VFS::remove_dirs(
     ThreadPool* compute_tp, const std::vector<URI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {

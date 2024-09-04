@@ -1003,6 +1003,60 @@ TEST_CASE("C++ API: Group close group with error", "[cppapi][group][error]") {
 }
 
 TEST_CASE(
+    "C++ API: Group delete recursive", "[cppapi][group][delete][recursive]") {
+  // Initialize context and VFS.
+  // NOTE: This test makes sense to only run on the local filesystem.
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
+
+  // Setup group structure
+  tiledb::create_group(ctx, "my_group");
+  tiledb::create_group(ctx, "my_group/my_subgroup");
+  auto schema =
+      tiledb::ArraySchema(ctx, TILEDB_DENSE)
+          .set_domain(tiledb::Domain(ctx).add_dimension(
+              tiledb::Dimension::create<int32_t>(ctx, "d1", {0, 100}, 10)))
+          .add_attribute(tiledb::Attribute(ctx, "a1", TILEDB_INT32));
+  tiledb::Array::create("my_group/my_array", schema);
+
+  {
+    // Add group members.
+    tiledb::Group g{ctx, "my_group", TILEDB_WRITE};
+    g.add_member("my_subgroup", true);
+    g.add_member("my_array", true);
+  }
+
+  // Create some empty directories to make sure that deleting the group will not
+  // delete them.
+  bool add_empty_dirs = GENERATE(true, false);
+  if (add_empty_dirs) {
+    vfs.create_dir("my_group/my_subgroup/my_data");
+    vfs.create_dir("my_group/my_array/my_data");
+  }
+
+  // Recursively delete the group.
+  {
+    tiledb::Group g{ctx, "my_group", TILEDB_MODIFY_EXCLUSIVE};
+    g.delete_group("my_group", true);
+  }
+
+  if (add_empty_dirs) {
+    // Check that the custom directories are preserved.
+    REQUIRE(vfs.is_dir("my_group/my_subgroup/my_data"));
+    REQUIRE(vfs.is_dir("my_group/my_array/my_data"));
+
+    REQUIRE_FALSE(vfs.is_dir("my_group/my_array/__schema"));
+    REQUIRE_FALSE(vfs.is_dir("my_group/my_subgroup/__tiledb_group.tdb"));
+
+    // Cleanup
+    vfs.remove_dir("my_group");
+  } else {
+    // Check that the entire directory and its subdirectories are gone.
+    REQUIRE_FALSE(vfs.is_dir("my_group"));
+  }
+}
+
+TEST_CASE(
     "C++ API: Group with Relative URI members, write/read, rest",
     "[cppapi][group][relative][rest]") {
   VFSTestSetup vfs_test_setup;
