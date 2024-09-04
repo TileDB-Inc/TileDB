@@ -733,6 +733,7 @@ void Array::delete_array(ContextResources& resources, const URI& uri) {
     dirs.emplace_back(URI(parent_dir + array_dir_name));
   }
   vfs.remove_dirs(&resources.compute_tp(), dirs);
+  vfs.remove_dir_if_empty(array_dir.uri());
 }
 
 void Array::delete_array(const URI& uri) {

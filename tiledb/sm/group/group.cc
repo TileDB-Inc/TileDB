@@ -387,6 +387,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
       dirs.emplace_back(URI(parent_dir + group_dir_name));
     }
     vfs.remove_dirs(&compute_tp, dirs);
+    vfs.remove_dir_if_empty(group_dir.uri());
   }
   // Clear metadata and other pending changes to avoid patching a deleted group.
   metadata_.clear();
