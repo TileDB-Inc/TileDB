@@ -518,14 +518,18 @@ TEST_CASE(
   };
 
   cleanup();
+  std::string cons_buffer_size;
 
-  bool more_than_one_loop = false;
-  SECTION("More than one loop write") {
-    more_than_one_loop = true;
+  SECTION("More than one loop write, one row or more at the time") {
+    cons_buffer_size = "30";
+  }
+
+  SECTION("More than one loop write, one or two tiles at the time") {
+    cons_buffer_size = "10";
   }
 
   SECTION("One loop write") {
-    more_than_one_loop = false;
+    cons_buffer_size = "10000";  // needed only to speed up consolidation
   }
 
   // Remove the array at the end of this test.
@@ -582,10 +586,7 @@ TEST_CASE(
   // the creation of two new fragments.
   tiledb::Config cfg;
   cfg.set("sm.consolidation.max_fragment_size", "150");
-  cfg.set("sm.consolidation.buffer_size", "10000");  // speed up consolidation
-  if (more_than_one_loop) {
-    cfg.set("sm.consolidation.buffer_size", "10");
-  }
+  cfg.set("sm.consolidation.buffer_size", cons_buffer_size);
 
   ctx = Context(cfg);
   Array::consolidate(ctx, array_name);
