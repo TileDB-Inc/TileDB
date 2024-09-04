@@ -315,11 +315,11 @@ void check_save_to_file() {
   ss << "vfs.gcs.multi_part_size 5242880\n";
   ss << "vfs.gcs.request_timeout_ms 3000\n";
   ss << "vfs.gcs.use_multi_part_upload true\n";
+  ss << "vfs.log_operations true\n";
   ss << "vfs.max_batch_size 104857600\n";
   ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
   ss << "vfs.min_parallel_size 10485760\n";
-  ss << "vfs.log_operations true\n";
   ss << "vfs.read_ahead_cache_size 10485760\n";
   ss << "vfs.read_ahead_size 102400\n";
   ss << "vfs.s3.bucket_canned_acl NOT_SET\n";
