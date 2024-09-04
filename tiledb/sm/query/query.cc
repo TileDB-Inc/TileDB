@@ -1762,7 +1762,21 @@ bool Query::is_aggregate(std::string output_field_name) const {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
+Layout Query::effective_layout() const {
+  // If the user has not set a layout, it will default to row-major, which will
+  // use the legacy reader on sparse arrays, and fail if aggregates were
+  // specified. However, if only aggregates are specified and no regular data
+  // buffers, the layout doesn't matter and we can transparently switch to the
+  // much more efficient unordered layout.
+  if (type_ == QueryType::READ && !array_schema_->dense() && has_aggregates() &&
+      buffers_.empty()) {
+    return Layout::UNORDERED;
+  }
+  return layout_;
+}
+
 Status Query::create_strategy(bool skip_checks_serialization) {
+  auto layout = effective_layout();
   auto params = StrategyParams(
       resources_,
       array_->memory_tracker(),
@@ -1775,16 +1789,16 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       buffers_,
       aggregate_buffers_,
       subarray_,
-      layout_,
+      layout,
       condition_,
       default_channel_aggregates_,
       skip_checks_serialization);
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
-    if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
+    if (layout == Layout::COL_MAJOR || layout == Layout::ROW_MAJOR) {
       if (!array_schema_->dense()) {
         return Status_QueryError(
             "Cannot create strategy; sparse writes do not support layout " +
-            layout_str(layout_));
+            layout_str(layout));
       }
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           OrderedWriter,
@@ -1795,11 +1809,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           coords_info_,
           remote_query_,
           fragment_name_));
-    } else if (layout_ == Layout::UNORDERED) {
+    } else if (layout == Layout::UNORDERED) {
       if (array_schema_->dense()) {
         return Status_QueryError(
             "Cannot create strategy; dense writes do not support layout " +
-            layout_str(layout_));
+            layout_str(layout));
       }
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           UnorderedWriter,
@@ -1811,7 +1825,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           written_buffers_,
           remote_query_,
           fragment_name_));
-    } else if (layout_ == Layout::GLOBAL_ORDER) {
+    } else if (layout == Layout::GLOBAL_ORDER) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           GlobalOrderWriter,
           stats_->create_child("Writer"),
@@ -1826,7 +1840,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           fragment_name_));
     } else {
       return Status_QueryError(
-          "Cannot create strategy; unsupported layout " + layout_str(layout_));
+          "Cannot create strategy; unsupported layout " + layout_str(layout));
     }
   } else if (type_ == QueryType::READ) {
     bool all_dense = true;
@@ -1854,7 +1868,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           params,
           dimension_label_increasing_));
     } else if (use_refactored_sparse_unordered_with_dups_reader(
-                   layout_, *array_schema_)) {
+                   layout, *array_schema_)) {
       if (Query::non_overlapping_ranges() || !subarray_.is_set() ||
           subarray_.range_num() == 1) {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1870,9 +1884,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             params));
       }
     } else if (
-        use_refactored_sparse_global_order_reader(layout_, *array_schema_) &&
+        use_refactored_sparse_global_order_reader(layout, *array_schema_) &&
         !array_schema_->dense() &&
-        (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
+        (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
       if (Query::non_overlapping_ranges() || !subarray_.is_set() ||
           subarray_.range_num() == 1) {

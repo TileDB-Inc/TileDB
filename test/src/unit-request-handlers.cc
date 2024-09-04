@@ -32,6 +32,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include "test/support/src/helpers.h"
 #include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
@@ -41,6 +42,7 @@
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -67,6 +69,7 @@ struct RequestHandlerFx {
   Config cfg_;
   Context ctx_;
   EncryptionKey enc_key_;
+  shared_ptr<ArraySchema> schema_;
 };
 
 struct HandleLoadArraySchemaRequestFx : RequestHandlerFx {
@@ -75,11 +78,17 @@ struct HandleLoadArraySchemaRequestFx : RequestHandlerFx {
   }
 
   virtual shared_ptr<ArraySchema> create_schema() override;
-  shared_ptr<ArraySchema> call_handler(
+
+  std::tuple<
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+  call_handler(
       serialization::LoadArraySchemaRequest req, SerializationType stype);
 
   shared_ptr<const Enumeration> create_string_enumeration(
       std::string name, std::vector<std::string>& values);
+
+  shared_ptr<ArraySchema> schema_add_attribute(const std::string& attr_name);
 };
 
 struct HandleQueryPlanRequestFx : RequestHandlerFx {
@@ -116,15 +125,23 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
 
 TEST_CASE_METHOD(
     HandleLoadArraySchemaRequestFx,
-    "tiledb_handle_load_array_schema_request - default request",
+    "tiledb_handle_load_array_schema_request - no enumerations",
     "[request_handler][load_array_schema][default]") {
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
-  auto schema =
-      call_handler(serialization::LoadArraySchemaRequest(false), stype);
+  auto schema_response =
+      call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
+  auto schema = std::get<0>(schema_response);
   REQUIRE(schema->has_enumeration("enmr"));
   REQUIRE(schema->get_loaded_enumeration_names().size() == 0);
+  tiledb::test::schema_equiv(*schema, *schema_);
+
+  // We did not evolve the schema so there should only be one.
+  auto all_schemas = std::get<1>(schema_response);
+  REQUIRE(all_schemas.size() == 1);
+  tiledb::test::schema_equiv(
+      *all_schemas.find(schema->name())->second, *schema_);
 }
 
 TEST_CASE_METHOD(
@@ -134,12 +151,57 @@ TEST_CASE_METHOD(
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   create_array();
-  auto schema =
-      call_handler(serialization::LoadArraySchemaRequest(true), stype);
+  REQUIRE(cfg_.set("rest.load_enumerations_on_array_open", "true").ok());
+  auto schema_response =
+      call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
+  auto schema = std::get<0>(schema_response);
   REQUIRE(schema->has_enumeration("enmr"));
   REQUIRE(schema->get_loaded_enumeration_names().size() == 1);
   REQUIRE(schema->get_loaded_enumeration_names()[0] == "enmr");
   REQUIRE(schema->get_enumeration("enmr") != nullptr);
+  tiledb::test::schema_equiv(*schema, *schema_);
+
+  // We did not evolve the schema so there should only be one.
+  auto all_schemas = std::get<1>(schema_response);
+  REQUIRE(all_schemas.size() == 1);
+  tiledb::test::schema_equiv(
+      *all_schemas.find(schema->name())->second, *schema_);
+}
+
+TEST_CASE_METHOD(
+    HandleLoadArraySchemaRequestFx,
+    "tiledb_handle_load_array_schema_request - multiple schemas",
+    "[request_handler][load_array_schema][schema-evolution]") {
+  auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
+  std::string load_enums = GENERATE("true", "false");
+
+  create_array();
+
+  std::vector<shared_ptr<ArraySchema>> all_schemas{schema_};
+  all_schemas.push_back(schema_add_attribute("b"));
+  all_schemas.push_back(schema_add_attribute("c"));
+  all_schemas.push_back(schema_add_attribute("d"));
+
+  REQUIRE(cfg_.set("rest.load_enumerations_on_array_open", load_enums).ok());
+  auto schema_response =
+      call_handler(serialization::LoadArraySchemaRequest(cfg_), stype);
+  auto schema = std::get<0>(schema_response);
+  if (load_enums == "true") {
+    REQUIRE(schema->has_enumeration("enmr"));
+    REQUIRE(schema->get_loaded_enumeration_names().size() == 1);
+    REQUIRE(schema->get_loaded_enumeration_names()[0] == "enmr");
+    REQUIRE(schema->get_enumeration("enmr") != nullptr);
+  }
+  // The latest schema should be equal to the last applied evolution.
+  tiledb::test::schema_equiv(*schema, *all_schemas.back());
+
+  // Validate schemas returned from the request in the order they were created.
+  auto r_all_schemas = std::get<1>(schema_response);
+  std::map<std::string, shared_ptr<ArraySchema>> resp(
+      r_all_schemas.begin(), r_all_schemas.end());
+  for (int i = 0; const auto& s : resp) {
+    tiledb::test::schema_equiv(*s.second, *all_schemas[i++]);
+  }
 }
 
 TEST_CASE_METHOD(
@@ -358,7 +420,9 @@ TEST_CASE_METHOD(
 RequestHandlerFx::RequestHandlerFx(const std::string uri)
     : memory_tracker_(tiledb::test::create_test_memory_tracker())
     , uri_(uri)
-    , ctx_(cfg_) {
+    , ctx_(cfg_)
+    , schema_(make_shared<ArraySchema>(
+          ArrayType::DENSE, ctx_.resources().ephemeral_memory_tracker())) {
   delete_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 }
@@ -417,9 +481,28 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
       tiledb::test::create_test_memory_tracker());
 }
 
+shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::schema_add_attribute(
+    const std::string& attr_name) {
+  tiledb::Context ctx;
+  tiledb::ArraySchemaEvolution ase(ctx);
+  auto attr = tiledb::Attribute::create<int32_t>(ctx, attr_name);
+  ase.add_attribute(attr);
+  // Evolve and update the original schema member variable.
+  schema_ = ase.ptr()->array_schema_evolution_->evolve_schema(schema_);
+  // Apply the schema evolution.
+  Array::evolve_array_schema(
+      this->ctx_.resources(),
+      this->uri_,
+      ase.ptr()->array_schema_evolution_,
+      this->enc_key_);
+
+  // Return the new evolved schema for validation.
+  return schema_;
+}
+
 shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   // Create a schema to serialize
-  auto schema =
+  schema_ =
       make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
   auto dim =
       make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
@@ -428,20 +511,23 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
 
   auto dom = make_shared<Domain>(HERE(), memory_tracker_);
   throw_if_not_ok(dom->add_dimension(dim));
-  throw_if_not_ok(schema->set_domain(dom));
+  throw_if_not_ok(schema_->set_domain(dom));
 
   std::vector<std::string> values = {"pig", "cow", "chicken", "dog", "cat"};
   auto enmr = create_string_enumeration("enmr", values);
-  schema->add_enumeration(enmr);
+  schema_->add_enumeration(enmr);
 
   auto attr = make_shared<Attribute>(HERE(), "attr", Datatype::INT32);
   attr->set_enumeration_name("enmr");
-  throw_if_not_ok(schema->add_attribute(attr));
+  throw_if_not_ok(schema_->add_attribute(attr));
 
-  return schema;
+  return schema_;
 }
 
-shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::call_handler(
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+HandleLoadArraySchemaRequestFx::call_handler(
     serialization::LoadArraySchemaRequest req, SerializationType stype) {
   // If this looks weird, its because we're using the public C++ API to create
   // these objets instead of the internal APIs elsewhere in this test suite.
@@ -467,7 +553,7 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::call_handler(
   REQUIRE(rval == TILEDB_OK);
 
   return serialization::deserialize_load_array_schema_response(
-      stype, resp_buf->buffer(), memory_tracker_);
+      uri_, stype, resp_buf->buffer(), memory_tracker_);
 }
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {

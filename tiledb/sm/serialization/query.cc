@@ -621,7 +621,8 @@ Status read_state_from_capnp(
     const capnp::ReadState::Reader& read_state_reader,
     Query* query,
     Reader* reader,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto read_state = reader->read_state();
 
   read_state->overflowed_ = read_state_reader.getOverflowed();
@@ -641,7 +642,7 @@ Status read_state_from_capnp(
         // If the current partition is unsplittable, this means we need to make
         // sure the tile_overlap for the current is computed because we won't go
         // to the next partition
-        read_state->unsplittable_));
+        read_state->unsplittable_ && !client_side));
   }
 
   return Status::Ok();
@@ -669,7 +670,8 @@ Status dense_read_state_from_capnp(
     const capnp::ReadState::Reader& read_state_reader,
     Query* query,
     DenseReader* reader,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto read_state = reader->read_state();
 
   read_state->overflowed_ = read_state_reader.getOverflowed();
@@ -689,7 +691,7 @@ Status dense_read_state_from_capnp(
         // If the current partition is unsplittable, this means we need to make
         // sure the tile_overlap for the current is computed because we won't go
         // to the next partition
-        read_state->unsplittable_));
+        read_state->unsplittable_ && !client_side));
   }
 
   return Status::Ok();
@@ -1097,7 +1099,8 @@ Status reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
     Reader* reader,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto array = query->array();
 
   // Layout
@@ -1113,7 +1116,12 @@ Status reader_from_capnp(
   // Read state
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(read_state_from_capnp(
-        array, reader_reader.getReadState(), query, reader, compute_tp));
+        array,
+        reader_reader.getReadState(),
+        query,
+        reader,
+        compute_tp,
+        client_side));
 
   // Query condition
   if (reader_reader.hasCondition()) {
@@ -1174,7 +1182,8 @@ Status dense_reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
     DenseReader* reader,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto array = query->array();
 
   // Layout
@@ -1190,7 +1199,12 @@ Status dense_reader_from_capnp(
   // Read state
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(dense_read_state_from_capnp(
-        array, reader_reader.getReadState(), query, reader, compute_tp));
+        array,
+        reader_reader.getReadState(),
+        query,
+        reader,
+        compute_tp,
+        client_side));
 
   // Query condition
   if (reader_reader.hasCondition()) {
@@ -2161,14 +2175,16 @@ Status query_from_capnp(
           reader_reader,
           query,
           dynamic_cast<DenseReader*>(query->strategy()),
-          compute_tp));
+          compute_tp,
+          context == SerializationContext::CLIENT));
     } else {
       auto reader_reader = query_reader.getReader();
       RETURN_NOT_OK(reader_from_capnp(
           reader_reader,
           query,
           dynamic_cast<Reader*>(query->strategy()),
-          compute_tp));
+          compute_tp,
+          context == SerializationContext::CLIENT));
     }
   } else if (query_type == QueryType::WRITE) {
     auto writer_reader = query_reader.getWriter();

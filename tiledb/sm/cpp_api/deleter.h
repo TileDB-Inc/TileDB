@@ -74,94 +74,140 @@ class Deleter {
   /* ********************************* */
 
   void operator()(tiledb_vfs_fh_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_vfs_fh_free(&p);
   }
 
   void operator()(tiledb_array_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_array_free(&p);
   }
 
   void operator()(tiledb_subarray_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_subarray_free(&p);
   }
 
   void operator()(tiledb_query_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_query_free(&p);
   }
 
   void operator()(tiledb_query_condition_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_query_condition_free(&p);
   }
 
   void operator()(tiledb_array_schema_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_array_schema_free(&p);
   }
 
   void operator()(tiledb_array_schema_evolution_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_array_schema_evolution_free(&p);
   }
 
   void operator()(tiledb_attribute_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_attribute_free(&p);
   }
 
   void operator()(tiledb_dimension_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_dimension_free(&p);
   }
 
   void operator()(tiledb_dimension_label_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_dimension_label_free(&p);
   }
 
   void operator()(tiledb_domain_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_domain_free(&p);
   }
 
   void operator()(tiledb_current_domain_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_current_domain_free(&p);
   }
 
   void operator()(tiledb_ndrectangle_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_ndrectangle_free(&p);
   }
 
   void operator()(tiledb_enumeration_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_enumeration_free(&p);
   }
 
   void operator()(tiledb_vfs_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_vfs_free(&p);
   }
 
   void operator()(tiledb_filter_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_filter_free(&p);
   }
 
   void operator()(tiledb_filter_list_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_filter_list_free(&p);
   }
 
   void operator()(tiledb_fragment_info_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_fragment_info_free(&p);
   }
 
   void operator()(tiledb_error_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_error_free(&p);
   }
 
   void operator()(tiledb_group_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_group_free(&p);
   }
 
   void operator()(tiledb_consolidation_plan_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_consolidation_plan_free(&p);
   }
 
   void operator()(tiledb_query_channel_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_query_channel_free(ctx_->ptr().get(), &p);
   }
 
   void operator()(tiledb_channel_operation_t* p) const {
+    if (p == nullptr)
+      return;
     tiledb_aggregate_free(ctx_->ptr().get(), &p);
   }
 

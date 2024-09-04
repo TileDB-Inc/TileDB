@@ -372,6 +372,8 @@ Status fragment_metadata_from_capnp(
   }
   frag_meta->last_tile_cell_num() = frag_meta_reader.getLastTileCellNum();
 
+  frag_meta->loaded_metadata()->set_loaded_metadata(loaded_metadata);
+
   if (frag_meta_reader.hasRtree()) {
     auto data = frag_meta_reader.getRtree();
     auto& domain = fragment_array_schema->domain();
@@ -388,6 +390,8 @@ Status fragment_metadata_from_capnp(
     // deserialize it as well in that way.
     frag_meta->loaded_metadata()->rtree().deserialize(
         deserializer, &domain, constants::format_version);
+
+    frag_meta->loaded_metadata()->set_rtree_loaded();
   }
 
   // It's important to do this here as init_domain depends on some fields
@@ -410,8 +414,6 @@ Status fragment_metadata_from_capnp(
     generic_tile_offsets_from_capnp(
         frag_meta_reader.getGtOffsets(), frag_meta->generic_tile_offsets());
   }
-
-  frag_meta->loaded_metadata()->set_loaded_metadata(loaded_metadata);
 
   return Status::Ok();
 }
@@ -534,6 +536,25 @@ void fragment_meta_sizes_offsets_to_capnp(
         builder[i].set(j, tile_validity_offsets[i][j]);
       }
     }
+  }
+
+  rtree_to_capnp(frag_meta.loaded_metadata()->rtree(), frag_meta_builder);
+}
+
+void rtree_to_capnp(
+    const RTree& rtree, capnp::FragmentMetadata::Builder* frag_meta_builder) {
+  // TODO: Can this be done better? Does this make a lot of copies?
+  SizeComputationSerializer size_computation_serializer;
+  rtree.serialize(size_computation_serializer);
+  if (size_computation_serializer.size() != 0) {
+    std::vector<uint8_t> buff(size_computation_serializer.size());
+    Serializer serializer(buff.data(), buff.size());
+    rtree.serialize(serializer);
+
+    auto vec = kj::Vector<uint8_t>();
+    vec.addAll(
+        kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
+    frag_meta_builder->setRtree(vec.asPtr());
   }
 }
 
@@ -688,19 +709,6 @@ Status fragment_metadata_to_capnp(
       ned_builder,
       frag_meta.non_empty_domain(),
       frag_meta.array_schema()->dim_num()));
-
-  // TODO: Can this be done better? Does this make a lot of copies?
-  SizeComputationSerializer size_computation_serializer;
-  frag_meta.loaded_metadata()->rtree().serialize(size_computation_serializer);
-
-  std::vector<uint8_t> buff(size_computation_serializer.size());
-  Serializer serializer(buff.data(), buff.size());
-  frag_meta.loaded_metadata()->rtree().serialize(serializer);
-
-  auto vec = kj::Vector<uint8_t>();
-  vec.addAll(
-      kj::ArrayPtr<uint8_t>(static_cast<uint8_t*>(buff.data()), buff.size()));
-  frag_meta_builder->setRtree(vec.asPtr());
 
   auto gt_offsets_builder = frag_meta_builder->initGtOffsets();
   generic_tile_offsets_to_capnp(

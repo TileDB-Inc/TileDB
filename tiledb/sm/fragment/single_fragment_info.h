@@ -119,24 +119,20 @@ class SingleFragmentInfo {
   }
 
   /** Dumps the single fragment info in ASCII format in the selected output. */
-  void dump(const std::vector<Datatype>& dim_types, FILE* out) const {
-    if (out == nullptr)
-      out = stdout;
-
-    std::stringstream ss;
-    ss << "  > URI: " << uri_.c_str() << "\n";
-    ss << "  > Type: " << (sparse_ ? "sparse" : "dense") << "\n";
-    ss << "  > Non-empty domain: " << non_empty_domain_str(dim_types).c_str()
+  void dump_single_fragment_info(
+      std::ostream& os, const std::vector<Datatype>& dim_types) const {
+    os << "  > URI: " << uri_.c_str() << "\n";
+    os << "  > Schema name: " << array_schema_name_ << "\n";
+    os << "  > Type: " << (sparse_ ? "sparse" : "dense") << "\n";
+    os << "  > Non-empty domain: " << non_empty_domain_str(dim_types).c_str()
        << "\n";
-    ss << "  > Size: " << fragment_size_ << "\n";
-    ss << "  > Cell num: " << cell_num_ << "\n";
-    ss << "  > Timestamp range: [" << timestamp_range_.first << ", "
+    os << "  > Size: " << fragment_size_ << "\n";
+    os << "  > Cell num: " << cell_num_ << "\n";
+    os << "  > Timestamp range: [" << timestamp_range_.first << ", "
        << timestamp_range_.second << "]\n";
-    ss << "  > Format version: " << version_ << "\n";
-    ss << "  > Has consolidated metadata: "
+    os << "  > Format version: " << version_ << "\n";
+    os << "  > Has consolidated metadata: "
        << (has_consolidated_footer_ ? "yes" : "no") << "\n";
-
-    fprintf(out, "%s", ss.str().c_str());
   }
 
   /** Returns `true` if the fragment is sparse. */

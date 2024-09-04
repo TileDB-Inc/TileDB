@@ -52,14 +52,16 @@ class ArraySchema;
 class Dimension;
 class MemoryTracker;
 class SerializationBuffer;
+class URI;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
 
 class LoadArraySchemaRequest {
  public:
-  LoadArraySchemaRequest(bool include_enumerations = false)
-      : include_enumerations_(include_enumerations) {
+  explicit LoadArraySchemaRequest(const Config& config)
+      : include_enumerations_(config.get<bool>(
+            "rest.load_enumerations_on_array_open", Config::must_find)) {
   }
 
   inline bool include_enumerations() const {
@@ -210,11 +212,15 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType serialization_type, span<const char> data);
 
 void serialize_load_array_schema_response(
-    const ArraySchema& schema,
+    const Array& array,
     SerializationType serialization_type,
     SerializationBuffer& data);
 
-shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+deserialize_load_array_schema_response(
+    const URI& uri,
     SerializationType serialization_type,
     span<const char> data,
     shared_ptr<MemoryTracker> memory_tracker);

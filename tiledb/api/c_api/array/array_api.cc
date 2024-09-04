@@ -37,6 +37,7 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/array_schema/array_schema_operations.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/rest/rest_client.h"
 
@@ -46,50 +47,32 @@ capi_return_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
+  // Create array schema
+  ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(array_schema);
 
-  auto uri = tiledb::sm::URI(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIException("Invalid input uri.");
-  }
+  // Use a default constructed config to load the schema with default options.
+  *array_schema = tiledb_array_schema_t::make_handle(
+      load_array_schema(ctx->context(), sm::URI(array_uri), sm::Config()));
 
-  if (uri.is_tiledb()) {
-    auto& rest_client = ctx->context().rest_client();
-    auto&& [st, array_schema_rest] =
-        rest_client.get_array_schema_from_rest(uri);
-    if (!st.ok()) {
-      throw CAPIException("Failed to load array schema; " + st.message());
-    }
-    *array_schema =
-        tiledb_array_schema_t::make_handle(*(array_schema_rest->get()));
-  } else {
-    // Create key
-    tiledb::sm::EncryptionKey key;
-    throw_if_not_ok(
-        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
+  return TILEDB_OK;
+}
 
-    // Load URIs from the array directory
-    optional<tiledb::sm::ArrayDirectory> array_dir;
-    try {
-      array_dir.emplace(
-          ctx->resources(),
-          uri,
-          0,
-          UINT64_MAX,
-          tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-    } catch (const std::logic_error& le) {
-      throw CAPIException(
-          "Failed to load array schema; " +
-          Status_ArrayDirectoryError(le.what()).message());
-    }
+capi_return_t tiledb_array_schema_load_with_config(
+    tiledb_ctx_t* ctx,
+    tiledb_config_t* config,
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) {
+  ensure_context_is_valid(ctx);
+  ensure_config_is_valid(config);
+  ensure_output_pointer_is_valid(array_schema);
 
-    // Load latest array schema
-    auto tracker = ctx->resources().ephemeral_memory_tracker();
-    auto&& array_schema_latest =
-        array_dir->load_array_schema_latest(key, tracker);
-    *array_schema =
-        tiledb_array_schema_t::make_handle(*(array_schema_latest.get()));
-  }
+  // Use passed config or context config to load the schema with set options.
+  *array_schema = tiledb_array_schema_t::make_handle(load_array_schema(
+      ctx->context(),
+      sm::URI(array_uri),
+      config ? config->config() : ctx->config()));
+
   return TILEDB_OK;
 }
 
@@ -104,4 +87,15 @@ CAPI_INTERFACE(
     tiledb_array_schema_t** array_schema) {
   return api_entry_with_context<tiledb::api::tiledb_array_schema_load>(
       ctx, array_uri, array_schema);
+}
+
+CAPI_INTERFACE(
+    array_schema_load_with_config,
+    tiledb_ctx_t* ctx,
+    tiledb_config_t* config,
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) {
+  return api_entry_with_context<
+      tiledb::api::tiledb_array_schema_load_with_config>(
+      ctx, config, array_uri, array_schema);
 }
