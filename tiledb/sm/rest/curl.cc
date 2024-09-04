@@ -324,9 +324,8 @@ Status Curl::init(
       "rest.curl.buffer_size", &curl_buffer_size_, &found));
   assert(found);
 
-  RETURN_NOT_OK(config_->get<bool>(
-      "rest.curl.retry_errors", &retry_curl_errors_, &found));
-  assert(found);
+  retry_curl_errors_ =
+      config_->get<bool>("rest.curl.retry_errors", Config::must_find);
 
   return Status::Ok();
 }
@@ -563,7 +562,7 @@ Status Curl::make_curl_request_common(
     CURLcode tmp_curl_code = curl_easy_perform_instrumented(url, i);
 
     long http_code = 0;
-    if (tmp_curl_code != CURLE_OK) {
+    if (tmp_curl_code == CURLE_OK) {
       if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) !=
           CURLE_OK) {
         return LOG_STATUS(Status_RestError(
@@ -772,11 +771,6 @@ bool Curl::should_retry_based_on_curl_code(CURLcode curl_code) const {
 }
 
 bool Curl::should_retry_request(CURLcode curl_code, long http_code) const {
-  CURL* curl = curl_.get();
-  if (curl == nullptr)
-    throw std::runtime_error(
-        "Cannot make curl request; curl instance is null.");
-
   if (curl_code != CURLE_OK) {
     return should_retry_based_on_curl_code(curl_code);
   } else {
