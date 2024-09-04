@@ -91,6 +91,11 @@ struct CPPArrayFx {
         attrs.push_back(str_attr);
       }
       {
+        auto str_attr = Attribute(ctx, "utf_string3", TILEDB_STRING_UTF8);
+        str_attr.set_cell_val_num(TILEDB_VAR_NUM);
+        attrs.push_back(str_attr);
+      }
+      {
         auto str_attr = Attribute(ctx, "tiledb_char", TILEDB_CHAR);
         str_attr.set_cell_val_num(TILEDB_VAR_NUM);
         attrs.push_back(str_attr);
