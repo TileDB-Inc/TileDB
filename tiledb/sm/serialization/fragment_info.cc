@@ -253,8 +253,6 @@ single_fragment_info_from_capnp(
       meta->non_empty_domain(),
       expanded_non_empty_domain,
       meta};
-  // This is needed so that we don't try to load rtee from disk
-  single_frag_info.meta()->loaded_metadata()->set_rtree_loaded();
 
   return {Status::Ok(), single_frag_info};
 }
@@ -270,6 +268,8 @@ Status single_fragment_info_to_capnp(
   auto frag_meta_builder = single_frag_info_builder->initMeta();
   RETURN_NOT_OK(
       fragment_metadata_to_capnp(*single_frag_info.meta(), &frag_meta_builder));
+  rtree_to_capnp(
+      single_frag_info.meta()->loaded_metadata()->rtree(), &frag_meta_builder);
 
   // set fragment size
   single_frag_info_builder->setFragmentSize(single_frag_info.fragment_size());
