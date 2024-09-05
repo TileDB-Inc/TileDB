@@ -127,8 +127,6 @@ Consolidator::Consolidator(JobParent& parent)
   consolidator_memory_tracker_->set_type(MemoryTrackerType::CONSOLIDATOR);
 }
 
-Consolidator::~Consolidator() = default;
-
 /* ****************************** */
 /*               API              */
 /* ****************************** */

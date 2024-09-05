@@ -143,6 +143,8 @@ struct JobResourceMixin {
         , activity_(activity) {
     }
 
+    virtual ~ParentMixin() = default;
+
     /**
      * Accessor for the resources of this Parent
      *

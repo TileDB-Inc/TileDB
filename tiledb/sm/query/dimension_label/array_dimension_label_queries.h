@@ -67,6 +67,11 @@ class ArrayDimensionLabelQueries : public JobBranch {
   ArrayDimensionLabelQueries() = delete;
 
   /**
+   * Virtual destructor is override from `JobBranch`.
+   */
+  ~ArrayDimensionLabelQueries() override = default;
+
+  /**
    * Constructor.
    *
    * @param parent The parent of this query as a job

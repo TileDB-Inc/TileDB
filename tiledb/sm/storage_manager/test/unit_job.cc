@@ -248,6 +248,7 @@ class TestJobRoot : protected TestJobRootBase, public JobRoot {
   TestJobRoot()
       : TestJobRootBase(), JobRoot(Base::sm_) {
   }
+  ~TestJobRoot() override = default;
   ContextResources& resources() const override {
     return Base::resources_;
   }
@@ -264,6 +265,7 @@ class TestJobBranch : public JobBranch {
   TestJobBranch(JobParent& parent)
       : JobBranch(parent) {
   }
+  ~TestJobBranch() override = default;
   ContextResources& resources() const override {
     return parent().resources();
   }

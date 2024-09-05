@@ -85,6 +85,11 @@ class Consolidator : public JobBranch {
   explicit Consolidator(JobParent& parent);
 
  public:
+  /**
+   * Virtual destructor is override from `JobBranch`.
+   */
+  ~Consolidator() override = default;
+
   /* ********************************* */
   /*          FACTORY METHODS          */
   /* ********************************* */
@@ -110,13 +115,6 @@ class Consolidator : public JobBranch {
    */
   static ConsolidationMode mode_from_config(
       const Config& config, const bool vacuum_mode = false);
-
-  /* ********************************* */
-  /*            DESTRUCTORS            */
-  /* ********************************* */
-
-  /** Destructor. */
-  virtual ~Consolidator();
 
   /* ********************************* */
   /*                API                */

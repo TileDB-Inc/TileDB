@@ -124,7 +124,7 @@ class Context : public ContextBase, public JobRoot {
   explicit Context(const Config&);
 
   /** Destructor. */
-  ~Context() = default;
+  ~Context() override = default;
 
   /* ********************************* */
   /*                API                */
