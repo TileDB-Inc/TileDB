@@ -1289,9 +1289,7 @@ std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
   }
 
   if (!ssl_cfg.ca_path().empty()) {
-    LOG_WARN(
-        "Azure ignores the `ssl.ca_path` configuration key, "
-        "use `ssl.ca_file` instead");
+    transport_opts.CAPath = ssl_cfg.ca_path();
   }
 
   if (ssl_cfg.verify() == false) {

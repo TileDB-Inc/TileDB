@@ -116,10 +116,7 @@ TEST_CASE("Azure - CAPATH - ssl.ca_path", "[ssl_config][azure]") {
   auto cfg = azure_base_config();
   REQUIRE(cfg.set("ssl.verify_ssl", "true").ok());
   REQUIRE(cfg.set("ssl.ca_path", get_test_ca_path()).ok());
-
-  // The Azure client does not support setting the CAPATH in libcurl so
-  // this is an expected failure.
-  check_failure(Filesystem::AZURE, cfg);
+  check_success(Filesystem::AZURE, cfg);
 }
 
 Config gcs_base_config() {
