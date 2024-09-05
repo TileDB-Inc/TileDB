@@ -30,6 +30,7 @@
  * Tests the `SerializationBuffer` class.
  */
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/buffer/buffer.h"
 
@@ -40,14 +41,18 @@ using namespace tiledb::sm;
 TEST_CASE(
     "SerializationBuffer: Test default constructor",
     "[serialization_buffer][default_constructor]") {
-  SerializationBuffer buff{tdb::pmr::polymorphic_allocator<char>()};
+  SerializationBuffer buff{
+      tiledb::test::get_test_memory_tracker()->get_resource(
+          MemoryType::SERIALIZATION_BUFFER)};
   CHECK(static_cast<span<const char>>(buff).empty());
 }
 
 TEST_CASE(
     "SerializationBuffer: Test owned buffer",
     "[serialization_buffer][owned_buffer]") {
-  SerializationBuffer buff{tdb::pmr::polymorphic_allocator<char>()};
+  SerializationBuffer buff{
+      tiledb::test::get_test_memory_tracker()->get_resource(
+          MemoryType::SERIALIZATION_BUFFER)};
   auto data = {'a', 'b', 'c', 'd'};
   buff.assign(data);
   CHECK(buff.is_owned());
@@ -59,33 +64,14 @@ TEST_CASE(
   // buffer's read-only span.
   CHECK(buff.owned_mutable_span().data() == buff_span.data());
   CHECK(buff.owned_mutable_span().size() == buff_span.size());
-
-  // Test copying
-  auto copied = buff;
-  span<const char> copied_span = copied;
-  // The copied buffer should have the same size as the original buffer.
-  CHECK(copied.size() == buff.size());
-  // The copied buffer should point to a different memory location.
-  CHECK(copied_span.data() != buff_span.data());
-  // The copied buffer should contain the same data as the original buffer.
-  CHECK(memcmp(copied_span.data(), buff_span.data(), buff_span.size()) == 0);
-
-  // Test moving
-  auto moved = std::move(buff);
-  span<const char> moved_span = moved;
-  // The moved buffer should have the same size as the original buffer.
-  CHECK(moved.size() == data.size());
-  // The original buffer should be left empty after the move.
-  CHECK(buff.size() == 0);
-  // The moved buffer should point to the same memory location as the original
-  // was pointing to.
-  CHECK(moved_span.data() == buff_span.data());
 }
 
 TEST_CASE(
     "SerializationBuffer: Test non-owned buffer",
     "[serialization_buffer][non_owned]") {
-  SerializationBuffer buff{tdb::pmr::polymorphic_allocator<char>()};
+  SerializationBuffer buff{
+      tiledb::test::get_test_memory_tracker()->get_resource(
+          MemoryType::SERIALIZATION_BUFFER)};
   auto data = {'a', 'b', 'c', 'd'};
   buff.assign(SerializationBuffer::NonOwned, data);
   CHECK_FALSE(buff.is_owned());
@@ -96,31 +82,14 @@ TEST_CASE(
   CHECK(buff_span.data() == data.begin());
   // Accessing the owned mutable span should throw.
   CHECK_THROWS(buff.owned_mutable_span());
-
-  // Test copying
-  auto copied = buff;
-  span<const char> copied_span = copied;
-  // The copied buffer should have the same size as the original buffer.
-  CHECK(copied.size() == buff.size());
-  // The copied buffer should point to the same memory location.
-  CHECK(copied_span.data() == buff_span.data());
-
-  // Test moving
-  auto moved = std::move(buff);
-  span<const char> moved_span = moved;
-  // The moved buffer should have the same size as the original buffer.
-  CHECK(moved.size() == data.size());
-  // The original buffer should be left empty after the move.
-  CHECK(buff.size() == 0);
-  // The moved buffer should point to the same memory location as the original
-  // was pointing to.
-  CHECK(moved_span.data() == buff_span.data());
 }
 
 TEST_CASE(
     "SerializationBuffer: Test owned null-terminated buffer",
     "[serialization_buffer][owned][null_terminated]") {
-  SerializationBuffer buff{tdb::pmr::polymorphic_allocator<char>()};
+  SerializationBuffer buff{
+      tiledb::test::get_test_memory_tracker()->get_resource(
+          MemoryType::SERIALIZATION_BUFFER)};
   std::string_view data = "abcd";
   buff.assign_null_terminated(data);
   span<const char> buff_span = buff;

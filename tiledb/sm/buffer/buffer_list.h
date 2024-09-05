@@ -35,6 +35,8 @@
 
 #include <vector>
 
+#include "tiledb/common/indexed_list.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 
@@ -55,12 +57,12 @@ class BufferList {
   /**
    * Constructor.
    *
-   * @param alloc Allocator for the serialization buffers.
+   * @param memory_tracker Memory tracker the serialization buffers.
    */
-  BufferList(const tdb::pmr::polymorphic_allocator<SerializationBuffer>& alloc);
+  BufferList(shared_ptr<sm::MemoryTracker> memory_tracker);
 
-  // There is no need to implement the full allocator pattern in BufferList for
-  // now.
+  DISABLE_COPY_AND_COPY_ASSIGN(BufferList);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(BufferList);
 
   /**
    * Returns the buffer list's allocator.
@@ -68,22 +70,6 @@ class BufferList {
   tdb::pmr::polymorphic_allocator<SerializationBuffer> get_allocator() const {
     return buffers_.get_allocator();
   }
-
-  /**
-   * Adds the given buffer to the list.
-   *
-   * This BufferList takes ownership of the given SerializationBuffer instance
-   * (which is why it takes an rvalue reference). This is to support efficient
-   * appends without having to make potentially large memcpy calls.
-   *
-   * In order to avoid expensive copying of owned buffers, callers should ensure
-   * that buffer's allocator is the same as the allocator used to construct the
-   * BufferList.
-   *
-   * @param buffer The buffer to add
-   * @return Status
-   */
-  Status add_buffer(SerializationBuffer&& buffer);
 
   /**
    * Constructs in place and adds a new SerializationBuffer to the list.
@@ -178,7 +164,7 @@ class BufferList {
 
  private:
   /** The underlying list of SerializationBuffers. */
-  tdb::pmr::vector<SerializationBuffer> buffers_;
+  tiledb::common::IndexedList<SerializationBuffer> buffers_;
 
   /** The index of the buffer containing the current global offset. */
   size_t current_buffer_index_;

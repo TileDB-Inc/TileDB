@@ -39,19 +39,21 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+template <>
+IndexedList<sm::SerializationBuffer>::IndexedList(
+    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(
+          memory_tracker->get_resource(sm::MemoryType::SERIALIZATION_BUFFER)) {
+}
+
 namespace sm {
 
-BufferList::BufferList(
-    const tdb::pmr::polymorphic_allocator<SerializationBuffer>& alloc)
-    : buffers_(alloc)
+BufferList::BufferList(shared_ptr<sm::MemoryTracker> memory_tracker)
+    : buffers_(memory_tracker)
     , current_buffer_index_(0)
     , current_relative_offset_(0)
     , offset_(0) {
-}
-
-Status BufferList::add_buffer(SerializationBuffer&& buffer) {
-  buffers_.emplace_back(std::move(buffer));
-  return Status::Ok();
 }
 
 const SerializationBuffer& BufferList::get_buffer(uint64_t index) const {

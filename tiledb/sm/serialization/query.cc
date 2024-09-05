@@ -2600,8 +2600,7 @@ Status query_deserialize(
     shared_ptr<MemoryTracker> memory_tracker) {
   // Create an original, serialized copy of the 'query' that we will revert
   // to if we are unable to deserialize 'serialized_buffer'.
-  BufferList original_bufferlist(
-      memory_tracker->get_resource(MemoryType::SERIALIZATION_BUFFER));
+  BufferList original_bufferlist(memory_tracker);
   RETURN_NOT_OK(
       query_serialize(query, serialize_type, clientside, original_bufferlist));
 

@@ -51,10 +51,6 @@ struct tiledb_buffer_list_handle_t
       : buffer_list_(std::forward<decltype(args)>(args)...) {
   }
 
-  inline void set_buffer_list(tiledb::sm::BufferList& buffer_list) {
-    buffer_list_ = buffer_list;
-  }
-
   [[nodiscard]] inline tiledb::sm::BufferList& buffer_list() {
     return buffer_list_;
   }

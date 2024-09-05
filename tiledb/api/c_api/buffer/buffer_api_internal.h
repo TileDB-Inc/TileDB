@@ -54,8 +54,9 @@ struct tiledb_buffer_handle_t
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
 
-  explicit tiledb_buffer_handle_t(tiledb::sm::SerializationBuffer&& buffer)
-      : buffer_(std::move(buffer))
+  explicit tiledb_buffer_handle_t(
+      size_t size, decltype(buffer_)::allocator_type allocator)
+      : buffer_(size, allocator)
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
 
@@ -76,10 +77,6 @@ struct tiledb_buffer_handle_t
 
   inline tiledb::sm::Datatype datatype() const {
     return datatype_;
-  }
-
-  inline void set_buffer(tiledb::sm::SerializationBuffer& buffer) {
-    buffer_ = buffer;
   }
 
   [[nodiscard]] inline tiledb::sm::SerializationBuffer& buffer() {

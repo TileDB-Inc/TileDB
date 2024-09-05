@@ -31,6 +31,7 @@
  * Tests the `BufferList` class.
  */
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 
@@ -40,24 +41,21 @@
 using namespace tiledb::sm;
 
 TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
-  BufferList buffer_list{tdb::pmr::polymorphic_allocator<char>()};
+  auto tracker = tiledb::test::get_test_memory_tracker();
+  BufferList buffer_list{tracker};
   REQUIRE(buffer_list.num_buffers() == 0);
   REQUIRE(buffer_list.total_size() == 0);
 
-  SerializationBuffer buff1{buffer_list.get_allocator()},
-      buff2{buffer_list.get_allocator()};
+  auto& buff1{buffer_list.emplace_buffer()};
+  auto& buff2{buffer_list.emplace_buffer()};
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
   buff1.assign(span(data1, sizeof(data1)));
   buff2.assign(span(data2, sizeof(data2)));
   REQUIRE(static_cast<span<const char>>(buff1).data() != nullptr);
   REQUIRE(static_cast<span<const char>>(buff2).data() != nullptr);
 
-  REQUIRE(buffer_list.add_buffer(std::move(buff1)).ok());
-  REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
   REQUIRE(buffer_list.num_buffers() == 2);
   REQUIRE(buffer_list.total_size() == sizeof(data1) + sizeof(data2));
-  REQUIRE(static_cast<span<const char>>(buff1).data() == nullptr);
-  REQUIRE(static_cast<span<const char>>(buff2).data() == nullptr);
 
   span<const char> b1 = buffer_list.get_buffer(0);
   span<const char> b2 = buffer_list.get_buffer(1);
@@ -69,20 +67,18 @@ TEST_CASE("BufferList: Test append", "[buffer][bufferlist]") {
 }
 
 TEST_CASE("BufferList: Test read", "[buffer][bufferlist]") {
-  BufferList buffer_list{tdb::pmr::polymorphic_allocator<char>()};
+  BufferList buffer_list{tiledb::test::get_test_memory_tracker()};
   char data[10];
 
   REQUIRE_THROWS(buffer_list.read(data, 1));
   REQUIRE_NOTHROW(buffer_list.read(data, 0));
   REQUIRE_NOTHROW(buffer_list.read(nullptr, 0));
 
-  SerializationBuffer buff1{buffer_list.get_allocator()},
-      buff2{buffer_list.get_allocator()};
+  auto& buff1{buffer_list.emplace_buffer()};
+  auto& buff2{buffer_list.emplace_buffer()};
   const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
   buff1.assign(span(data1, sizeof(data1)));
   buff2.assign(span(data2, sizeof(data2)));
-  REQUIRE(buffer_list.add_buffer(std::move(buff1)).ok());
-  REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
 
   REQUIRE_NOTHROW(buffer_list.read(data, 2));
   REQUIRE(data[0] == 1);

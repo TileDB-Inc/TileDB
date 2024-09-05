@@ -30,7 +30,6 @@
 #include "../buffer_list.h"
 
 int main() {
-  tiledb::sm::BufferList(
-      tdb::pmr::polymorphic_allocator<tiledb::sm::SerializationBuffer>{});
+  tiledb::sm::BufferList(nullptr);
   return 0;
 }

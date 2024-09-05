@@ -45,8 +45,7 @@ capi_return_t tiledb_buffer_list_alloc(
   ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(buffer_list);
   *buffer_list = tiledb_buffer_list_handle_t::make_handle(
-      ctx->resources().serialization_memory_tracker()->get_resource(
-          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
+      ctx->resources().serialization_memory_tracker());
   return TILEDB_OK;
 }
 
@@ -98,16 +97,20 @@ capi_return_t tiledb_buffer_list_flatten(
 
   // Create a serialization buffer
   const auto nbytes = buffer_list->buffer_list().total_size();
-  tiledb::sm::SerializationBuffer buf(
+  *buffer = tiledb_buffer_t::make_handle(
       buffer_list->buffer_list().total_size(),
       ctx->resources().serialization_memory_tracker()->get_resource(
           tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
-  // Read all into the dest buffer
-  buffer_list->buffer_list().reset_offset();
-  buffer_list->buffer_list().read(buf.owned_mutable_span().data(), nbytes);
-
-  *buffer = tiledb_buffer_t::make_handle(std::move(buf));
+  try {
+    // Read all into the dest buffer
+    buffer_list->buffer_list().reset_offset();
+    buffer_list->buffer_list().read(
+        (*buffer)->buffer().owned_mutable_span().data(), nbytes);
+  } catch (...) {
+    tiledb_buffer_t::break_handle(*buffer);
+    throw;
+  }
 
   return TILEDB_OK;
 }

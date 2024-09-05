@@ -492,52 +492,8 @@ class SerializationBuffer {
       , buffer_(buffer_owner_) {
   }
 
-  /** Default copy constructor. */
-  SerializationBuffer(const SerializationBuffer& other)
-      : buffer_owner_(other.buffer_owner_)
-      // If we are copying an owned buffer, we must update buffer_ to point to
-      // the new buffer_owner_, otherwise we keep the existing buffer_.
-      , buffer_(other.is_owned() ? buffer_owner_ : other.buffer_) {
-  }
-
-  /** Default copy assignment operator. */
-  SerializationBuffer& operator=(const SerializationBuffer& other) {
-    buffer_owner_ = other.buffer_owner_;
-    buffer_ = other.is_owned() ? buffer_owner_ : other.buffer_;
-    return *this;
-  }
-
-  /** Default move constructor. */
-  // Use of noexcept is important to avoid copies when BufferList is being
-  // resized.
-  SerializationBuffer(SerializationBuffer&& other) noexcept
-      : buffer_owner_(std::move(other.buffer_owner_))
-      // Invalidate the buffer_ from other to avoid use-after-move bugs.
-      , buffer_(std::exchange(other.buffer_, {})) {
-  }
-
-  /** Default move assignment operator. */
-  SerializationBuffer& operator=(SerializationBuffer&& other) {
-    buffer_owner_ = std::move(other.buffer_owner_);
-    buffer_ = std::exchange(other.buffer_, {});
-    return *this;
-  }
-
-  /** Allocator-aware copy constructor. */
-  SerializationBuffer(
-      const SerializationBuffer& other, const allocator_type& alloc)
-      : buffer_owner_(other.buffer_owner_, alloc)
-      , buffer_(other.is_owned() ? buffer_owner_ : other.buffer_) {
-  }
-
-  /** Allocator-aware move constructor. */
-  SerializationBuffer(SerializationBuffer&& other, const allocator_type& alloc)
-      : buffer_owner_(std::move(other.buffer_owner_), alloc)
-      // We can't copy the buffer_ from other because the buffer might be
-      // reallocated if the allocators are different.
-      , buffer_(other.is_owned() ? buffer_owner_ : other.buffer_) {
-    other.buffer_ = {};
-  }
+  DISABLE_COPY_AND_COPY_ASSIGN(SerializationBuffer);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(SerializationBuffer);
 
   /**
    * Constructor for an owned buffer of a given size.
@@ -566,14 +522,6 @@ class SerializationBuffer {
       const allocator_type& alloc)
       : buffer_owner_(alloc)
       , buffer_(static_cast<const char*>(data), size) {
-  }
-
-  /**
-   * Returns the buffer's allocator. This is required to make the type
-   * allocator-aware.
-   */
-  inline allocator_type get_allocator() const noexcept {
-    return buffer_owner_.get_allocator();
   }
 
   /**

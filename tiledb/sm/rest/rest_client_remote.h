@@ -599,11 +599,6 @@ class RestClientRemote : public RestClient {
    * @return Status
    */
   Status ensure_json_null_delimited_string(Buffer* buffer);
-
-  /**
-   * Gets the memory resource for the serialization buffers.
-   */
-  tdb::pmr::memory_resource* serialization_buffer_resource() const;
 };
 
 }  // namespace tiledb::sm
