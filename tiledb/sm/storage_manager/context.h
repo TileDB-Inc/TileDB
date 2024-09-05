@@ -165,7 +165,7 @@ class Context : public ContextBase, public JobRoot {
   /**
    * Derived from `JobRoot`
    */
-  [[nodiscard]] ContextResources& resources() override {
+  [[nodiscard]] ContextResources& resources() const override {
     return resources_;
   }
 

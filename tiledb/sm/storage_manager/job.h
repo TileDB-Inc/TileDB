@@ -157,7 +157,7 @@ struct JobResourceMixin {
      * Each class derived from `Parent` implements its own resources accessor.
      * Typically this accessor will simply return its own member variable.
      */
-    [[nodiscard]] virtual ContextResources& resources() = 0;
+    [[nodiscard]] virtual ContextResources& resources() const = 0;
 
     /**
      * Factory for cancellation source objects that are tied to the cancellation

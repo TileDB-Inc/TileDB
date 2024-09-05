@@ -250,7 +250,7 @@ class ArrayDimensionLabelQueries : public JobBranch {
   /**
    * Derived from `JobBranch`
    */
-  ContextResources& resources() override {
+  ContextResources& resources() const override {
     return resources_;
   }
 };

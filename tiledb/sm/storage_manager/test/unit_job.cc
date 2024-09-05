@@ -232,18 +232,24 @@ TEST_CASE("job::Child - construct and size") {
   CHECK(jf.context_.number_of_jobs() == 0);
 }
 
-class TestJobRoot : public JobRoot {
+
+class TestJobRootBase {
+ protected:
   Config config_{};
-  ContextResources resources_{
+  mutable ContextResources resources_{
       config_, std::make_shared<Logger>("log"), 1, 1, ""};
   StorageManager sm_{resources_, config_};
+  TestJobRootBase() = default;
+};
 
+class TestJobRoot : protected TestJobRootBase, public JobRoot {
+  using Base = TestJobRootBase;
  public:
   TestJobRoot()
-      : JobRoot(sm_) {
+      : TestJobRootBase(), JobRoot(Base::sm_) {
   }
-  ContextResources& resources() override {
-    return resources_;
+  ContextResources& resources() const override {
+    return Base::resources_;
   }
 };
 static_assert(TestJobRoot::is_parent);
@@ -258,7 +264,7 @@ class TestJobBranch : public JobBranch {
   TestJobBranch(JobParent& parent)
       : JobBranch(parent) {
   }
-  ContextResources& resources() override {
+  ContextResources& resources() const override {
     return parent().resources();
   }
 };
@@ -297,15 +303,20 @@ TEST_CASE("TestJobLeaf - construct from branch") {
   TestJobLeaf leaf{branch};
 }
 
-class TestJobIsolate : public JobIsolate {
+class TestJobIsolateBase {
+ protected:
   Config config_{};
   ContextResources resources_{
       config_, std::make_shared<Logger>("log"), 1, 1, ""};
   StorageManager sm_{resources_, config_};
+  TestJobIsolateBase() = default;
+};
 
+class TestJobIsolate : protected TestJobIsolateBase, public JobIsolate {
+  using Base = TestJobIsolateBase;
  public:
   TestJobIsolate()
-      : JobIsolate(sm_) {
+      : TestJobIsolateBase(), JobIsolate(Base::sm_) {
   }
 };
 static_assert(!TestJobIsolate::is_parent);
