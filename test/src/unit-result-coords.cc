@@ -33,7 +33,6 @@
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/cpp_api/array.h"
 
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/query/readers/result_coords.h"

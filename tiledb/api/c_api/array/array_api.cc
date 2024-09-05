@@ -100,14 +100,10 @@ capi_return_t tiledb_array_schema_load_with_config(
 capi_return_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array) {
   ensure_output_pointer_is_valid(array);
-  // Check array URI
-  auto uri = tiledb::sm::URI(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIException("Cannot create TileDB array object; Invalid URI");
-  }
 
   // Create Array object
-  *array = tiledb_array_t::make_handle(ctx->resources(), uri);
+  *array = tiledb_array_t::make_handle(
+      ctx->resources(), URI(array_uri, URI::must_be_valid));
   return TILEDB_OK;
 }
 
@@ -123,12 +119,7 @@ capi_return_t tiledb_array_create(
     const tiledb_array_schema_t* array_schema) {
   ensure_array_schema_is_valid(array_schema);
 
-  // Check array name
-  tiledb::sm::URI uri(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIException("Cannot create array; Invalid URI");
-  }
-
+  tiledb::sm::URI uri(array_uri, URI::must_be_valid);
   if (uri.is_tiledb()) {
     auto& rest_client = ctx->context().rest_client();
     throw_if_not_ok(rest_client.post_array_schema_to_rest(
@@ -202,28 +193,30 @@ capi_return_t tiledb_array_reopen(tiledb_array_t* array) {
 
 capi_return_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* array_uri) {
   // Create Array object
-  auto uri = tiledb::sm::URI(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIException("Cannot create TileDB array object; Invalid URI");
-  }
+  auto uri = tiledb::sm::URI(array_uri, URI::must_be_valid);
   tiledb_array_t* array = tiledb_array_t::make_handle(ctx->resources(), uri);
 
   // Open the array for exclusive modification
-  throw_if_not_ok(array->open(
-      tiledb::sm::QueryType::MODIFY_EXCLUSIVE,
-      tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      nullptr,
-      0));
+  try {
+    throw_if_not_ok(array->open(
+        QueryType::MODIFY_EXCLUSIVE,
+        EncryptionType::NO_ENCRYPTION,
+        nullptr,
+        0));
+  } catch (...) {
+    tiledb_array_t::break_handle(array);
+    throw;
+  }
 
-  // Delete array
+  // Delete the array
   try {
     array->delete_array(uri);
-  } catch (std::exception& e) {
-    auto st = Status_ArrayError(e.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
+  } catch (...) {
+    throw_if_not_ok(array->close());
+    tiledb_array_t::break_handle(array);
+    throw;
   }
+  tiledb_array_t::break_handle(array);
 
   return TILEDB_OK;
 }
@@ -233,24 +226,23 @@ capi_return_t tiledb_array_delete_fragments_v2(
     const char* uri_str,
     uint64_t timestamp_start,
     uint64_t timestamp_end) {
-  auto uri = tiledb::sm::URI(uri_str);
-  if (uri.is_invalid()) {
-    throw CAPIException("Cannot delete fragments; Invalid input uri");
-  }
-
   // Allocate an array object
+  auto uri = tiledb::sm::URI(uri_str, URI::must_be_valid);
   tiledb_array_t* array = tiledb_array_t::make_handle(ctx->resources(), uri);
 
-  // Set array open timestamps
-  array->set_timestamp_start(timestamp_start);
-  array->set_timestamp_end(timestamp_end);
-
-  // Open the array for exclusive modification
-  throw_if_not_ok(array->open(
-      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
+  // Set array open timestamps and open the array for exclusive modification
+  try {
+    array->set_timestamp_start(timestamp_start);
+    array->set_timestamp_end(timestamp_end);
+    throw_if_not_ok(array->open(
+        static_cast<QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+        static_cast<EncryptionType>(TILEDB_NO_ENCRYPTION),
+        nullptr,
+        0));
+  } catch (...) {
+    tiledb_array_t::break_handle(array);
+    throw;
+  }
 
   // Delete fragments
   try {
@@ -258,7 +250,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
   } catch (...) {
     throw_if_not_ok(array->close());
     tiledb_array_t::break_handle(array);
-    throw CAPIException("Failed to delete fragments");
+    throw;
   }
 
   // Close and delete the array
@@ -273,11 +265,6 @@ capi_return_t tiledb_array_delete_fragments_list(
     const char* uri_str,
     const char* fragment_uris[],
     const size_t num_fragments) {
-  auto uri = URI(uri_str);
-  if (uri.is_invalid()) {
-    throw CAPIException("Failed to delete fragments list; Invalid input uri");
-  }
-
   if (num_fragments < 1) {
     throw CAPIException(
         "Failed to delete fragments list; Invalid input number of fragments");
@@ -298,14 +285,20 @@ capi_return_t tiledb_array_delete_fragments_list(
   }
 
   // Allocate an array object
-  tiledb_array_t* array = tiledb_array_t::make_handle(ctx->resources(), uri);
+  tiledb_array_t* array = tiledb_array_t::make_handle(
+      ctx->resources(), URI(uri_str, URI::must_be_valid));
 
   // Open the array for exclusive modification
-  throw_if_not_ok(array->open(
-      static_cast<QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
+  try {
+    throw_if_not_ok(array->open(
+        static_cast<QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+        static_cast<EncryptionType>(TILEDB_NO_ENCRYPTION),
+        nullptr,
+        0));
+  } catch (...) {
+    tiledb_array_t::break_handle(array);
+    throw;
+  }
 
   // Delete fragments list
   try {
@@ -370,19 +363,13 @@ capi_return_t tiledb_array_get_open_timestamp_end(
 }
 
 capi_return_t tiledb_array_get_schema(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_array_schema_t** array_schema) {
+    tiledb_array_t* array, tiledb_array_schema_t** array_schema) {
   ensure_array_is_valid(array);
   ensure_output_pointer_is_valid(array_schema);
 
   // Get schema
   auto&& [st, array_schema_get] = array->get_array_schema();
-  if (!st.ok()) {
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
+  throw_if_not_ok(st);
   *array_schema = tiledb_array_schema_t::make_handle(array_schema_get.value());
 
   return TILEDB_OK;
@@ -392,17 +379,7 @@ capi_return_t tiledb_array_get_query_type(
     tiledb_array_t* array, tiledb_query_type_t* query_type) {
   ensure_array_is_valid(array);
   ensure_output_pointer_is_valid(query_type);
-
-  // Get query_type
-  tiledb::sm::QueryType type;
-  try {
-    type = array->get_query_type();
-  } catch (StatusException& e) {
-    return TILEDB_ERR;
-  }
-
-  *query_type = static_cast<tiledb_query_type_t>(type);
-
+  *query_type = static_cast<tiledb_query_type_t>(array->get_query_type());
   return TILEDB_OK;
 }
 
@@ -417,19 +394,10 @@ capi_return_t tiledb_array_get_uri(
 capi_return_t tiledb_array_upgrade_version(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   ensure_config_is_valid_if_present(config);
-
-  // Check array name
-  tiledb::sm::URI uri(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIException("Cannot upgrade array version; Invalid URI");
-  }
-
-  // Upgrade version
   tiledb::sm::Array::upgrade_version(
       ctx->resources(),
-      uri,
+      URI(array_uri, URI::must_be_valid),
       (config == nullptr) ? ctx->config() : config->config());
-
   return TILEDB_OK;
 }
 
@@ -551,15 +519,12 @@ capi_return_t tiledb_array_encryption_type(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t* encryption_type) {
-  // Sanity checks
-  if (array_uri == nullptr || encryption_type == nullptr) {
-    return TILEDB_ERR;
-  }
+  ensure_output_pointer_is_valid(encryption_type);
 
   // Get encryption type
   tiledb::sm::EncryptionType enc;
   sm::Array::encryption_type(
-      ctx->resources(), tiledb::sm::URI(array_uri), &enc);
+      ctx->resources(), URI(array_uri, URI::must_be_valid), &enc);
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
   return TILEDB_OK;
@@ -572,11 +537,8 @@ capi_return_t tiledb_array_put_metadata(
     uint32_t value_num,
     const void* value) {
   ensure_array_is_valid(array);
-
-  // Put metadata
   array->put_metadata(
       key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value);
-
   return TILEDB_OK;
 }
 
@@ -660,26 +622,17 @@ capi_return_t tiledb_array_evolve(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_evolution_t* array_schema_evolution) {
-  if (array_schema_evolution == nullptr ||
-      array_schema_evolution->array_schema_evolution_ == nullptr) {
-    throw CAPIException(
-        "Cannot evolve array; Invalid array schema evolution object");
-  }
-
-  // Check array name
-  tiledb::sm::URI uri(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIException("Cannot evolve array; Invalid URI");
-  }
+  ensure_array_schema_evolution_is_valid(array_schema_evolution);
 
   // Create key
   tiledb::sm::EncryptionKey key;
   throw_if_not_ok(
       key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
+
   // Evolve schema
   tiledb::sm::Array::evolve_array_schema(
       ctx->resources(),
-      uri,
+      URI(array_uri, URI::must_be_valid),
       array_schema_evolution->array_schema_evolution_,
       key);
 
@@ -882,7 +835,7 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_array_schema_t** array_schema) {
-  return api_entry_with_context<tiledb::api::tiledb_array_get_schema>(
+  return api_entry_context<tiledb::api::tiledb_array_get_schema>(
       ctx, array, array_schema);
 }
 

@@ -34,6 +34,7 @@
 #include "../array_api_experimental.h"
 #include "../array_api_external.h"
 #include "../array_api_internal.h"
+#include "test/support/src/temporary_local_directory.h"
 #include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_internal.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_array.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_context.h"
@@ -62,8 +63,6 @@ TEST_CASE(
     rc = tiledb_array_schema_load(ctx.context, TEST_URI, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  REQUIRE_NOTHROW(tiledb_array_schema_free(&schema));
-  CHECK(schema == nullptr);
 }
 
 TEST_CASE(
@@ -81,13 +80,9 @@ TEST_CASE(
         nullptr, config, TEST_URI, &schema);
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
-  SECTION("null config") {
-    // Note: a null config is actually valid and will use the context's config.
-    // This test case merely fails without the proper overhead setup.
-    rc = tiledb_array_schema_load_with_config(
-        ctx.context, nullptr, TEST_URI, &schema);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /*
+   * No "null config" section here; `nullptr` is a valid `config` argument.
+   */
   SECTION("null uri") {
     rc = tiledb_array_schema_load_with_config(
         ctx.context, config, nullptr, &schema);
@@ -98,8 +93,6 @@ TEST_CASE(
         ctx.context, config, TEST_URI, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  REQUIRE_NOTHROW(tiledb_array_schema_free(&schema));
-  CHECK(schema == nullptr);
 }
 
 TEST_CASE("C API: tiledb_array_alloc argument validation", "[capi][array]") {
@@ -109,6 +102,8 @@ TEST_CASE("C API: tiledb_array_alloc argument validation", "[capi][array]") {
   SECTION("success") {
     rc = tiledb_array_alloc(ctx.context, TEST_URI, &array);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE_NOTHROW(tiledb_array_free(&array));
+    CHECK(array == nullptr);
   }
   SECTION("null context") {
     rc = tiledb_array_alloc(nullptr, TEST_URI, &array);
@@ -122,8 +117,6 @@ TEST_CASE("C API: tiledb_array_alloc argument validation", "[capi][array]") {
     rc = tiledb_array_alloc(ctx.context, TEST_URI, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  REQUIRE_NOTHROW(tiledb_array_free(&array));
-  CHECK(array == nullptr);
 }
 
 TEST_CASE("C API: tiledb_array_free argument validation", "[capi][array]") {
@@ -147,6 +140,7 @@ TEST_CASE("C API: tiledb_array_free argument validation", "[capi][array]") {
 TEST_CASE("C API: tiledb_array_create argument validation", "[capi][array]") {
   capi_return_t rc;
   ordinary_context ctx{};
+  TemporaryLocalDirectory temp_dir{TEST_URI};
   tiledb_dimension_t* d1;
   tiledb_dimension_t* d2;
   tiledb_domain_t* domain;
@@ -185,11 +179,12 @@ TEST_CASE("C API: tiledb_array_create argument validation", "[capi][array]") {
   REQUIRE_NOTHROW(tiledb_array_schema_add_attribute(ctx.context, schema, attr));
 
   SECTION("success") {
-    rc = tiledb_array_create(ctx.context, TEST_URI, schema);
+    rc = tiledb_array_create(ctx.context, temp_dir.path().c_str(), schema);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE_NOTHROW(tiledb_array_delete(ctx.context, temp_dir.path().c_str()));
   }
   SECTION("null context") {
-    rc = tiledb_array_create(nullptr, TEST_URI, schema);
+    rc = tiledb_array_create(nullptr, temp_dir.path().c_str(), schema);
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null uri") {
@@ -197,12 +192,11 @@ TEST_CASE("C API: tiledb_array_create argument validation", "[capi][array]") {
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null schema") {
-    rc = tiledb_array_create(ctx.context, TEST_URI, nullptr);
+    rc = tiledb_array_create(ctx.context, temp_dir.path().c_str(), nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 
   // Clean up
-  REQUIRE_NOTHROW(tiledb_array_delete(ctx.context, TEST_URI));
   REQUIRE_NOTHROW(tiledb_dimension_free(&d1));
   CHECK(d1 == nullptr);
   REQUIRE_NOTHROW(tiledb_dimension_free(&d2));

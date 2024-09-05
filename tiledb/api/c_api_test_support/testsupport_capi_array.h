@@ -33,6 +33,7 @@
 #ifndef TILEDB_TESTSUPPORT_CAPI_ARRAY_H
 #define TILEDB_TESTSUPPORT_CAPI_ARRAY_H
 
+#include "test/support/src/temporary_local_directory.h"
 #include "testsupport_capi_context.h"
 #include "tiledb/api/c_api/array/array_api_external.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
@@ -52,6 +53,9 @@ class ordinary_array_exception : public StatusException {
 
 /**
  * Base class for an ordinary array.
+ *
+ * Note that this base class does not create a schema object.
+ * As such, the underlying array object should not be opened or closed.
  */
 class ordinary_array_without_schema {
  private:
@@ -94,6 +98,7 @@ struct ordinary_array : public ordinary_array_without_schema {
   tiledb_domain_t* domain;
   tiledb_attribute_t* attr;
   tiledb_array_schema_t* schema;
+  TemporaryLocalDirectory temp_dir{"unit_capi_array"};
 
  public:
   ordinary_array(bool is_var = false) {
@@ -193,6 +198,10 @@ struct ordinary_array : public ordinary_array_without_schema {
     if (rc != TILEDB_OK) {
       throw std::logic_error("error closing test array");
     }
+  }
+
+  [[nodiscard]] const char* uri() {
+    return temp_dir.path().c_str();
   }
 };
 

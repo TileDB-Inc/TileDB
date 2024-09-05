@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,8 +39,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** URI functions of all kinds, involving both syntax and filesystem.
  *
@@ -50,6 +49,14 @@ namespace sm {
  */
 class URI {
  public:
+  /* ****************************** */
+  /*        OTHER CONSTANTS         */
+  /* ****************************** */
+
+  /** Marker class to enforce URI is valid with URI::is_invalid overload */
+  class MustBeValidMarker {};
+  static constexpr MustBeValidMarker must_be_valid{};
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -88,6 +95,13 @@ class URI {
    * @param get_abs should local files become absolute
    */
   explicit URI(std::string_view path, const bool& get_abs);
+
+  /**
+   * Constructor. Throws if the given path is invalid (nullptr or empty).
+   *
+   * @param path String converted into an absolute path and stored as a URI.
+   */
+  explicit URI(const char* path, const MustBeValidMarker&);
 
   /** Destructor. */
   ~URI();
@@ -373,7 +387,6 @@ struct URIHasher {
   }
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_URI_H

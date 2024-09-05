@@ -61,6 +61,19 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
+/**
+ * Returns after successfully validating an array schema evolution.
+ *
+ * @param schema_evolution Possibly-valid pointer to an array schema evolution
+ */
+inline void ensure_array_schema_evolution_is_valid(
+    const tiledb_array_schema_evolution_t* schema_evolution) {
+  if (schema_evolution == nullptr ||
+      schema_evolution->array_schema_evolution_ == nullptr) {
+    throw CAPIException("Invalid TileDB array schema evolution object");
+  }
+}
+
 }  // namespace tiledb::api
 
 #endif  // TILEDB_CAPI_ARRAY_SCHEMA_EVOLUTION_INTERNAL_H

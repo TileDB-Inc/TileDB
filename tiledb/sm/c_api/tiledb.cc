@@ -1903,40 +1903,36 @@ int32_t tiledb_deserialize_query_and_array(
     const char* array_uri,
     tiledb_query_t** query,
     tiledb_array_t** array) {
-  // Sanity check
-  if (query == nullptr) {
-    return TILEDB_ERR;
-  }
   ensure_buffer_is_valid(buffer);
+  ensure_output_pointer_is_valid(query);
   ensure_output_pointer_is_valid(array);
 
-  // Check array URI
-  auto uri = tiledb::sm::URI(array_uri);
-  if (uri.is_invalid()) {
-    throw CAPIException("Cannot deserialize query and array; Invalid URI");
-  }
-
   // Create array object
-  *array = tiledb_array_t::make_handle(ctx->resources(), uri);
+  *array = tiledb_array_t::make_handle(
+      ctx->resources(), tiledb::sm::URI(array_uri, URI::must_be_valid));
 
   // First deserialize the array included in the query
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_LOAD);
-  throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
-      buffer->buffer(),
-      (tiledb::sm::SerializationType)serialize_type,
-      *(*array)->array(),
-      ctx->resources(),
-      memory_tracker));
+  try {
+    throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
+        buffer->buffer(),
+        (tiledb::sm::SerializationType)serialize_type,
+        *(*array)->array(),
+        ctx->resources(),
+        memory_tracker));
+  } catch (...) {
+    tiledb_array_t::break_handle(*array);
+    throw;
+  }
 
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
   if (*query == nullptr) {
-    auto st = Status_Error(
-        "Failed to allocate TileDB query object; Memory allocation failed");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    tiledb_array_t::break_handle(*array);
+    throw CAPIException(
+        "Failed to deserialize query and array; "
+        "TileDB query object allocation failed.");
   }
 
   // Create query
@@ -1946,24 +1942,29 @@ int32_t tiledb_deserialize_query_and_array(
       ctx->storage_manager(),
       (*array)->array());
   if ((*query)->query_ == nullptr) {
-    auto st = Status_Error(
-        "Failed to allocate TileDB query object; Memory allocation failed");
     delete *query;
     *query = nullptr;
     tiledb_array_t::break_handle(*array);
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    throw CAPIException(
+        "Failed to deserialize query and array; "
+        "TileDB query object allocation failed.");
   }
 
-  throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
-      buffer->buffer(),
-      (tiledb::sm::SerializationType)serialize_type,
-      client_side == 1,
-      nullptr,
-      (*query)->query_,
+  try {
+    throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
+        buffer->buffer(),
+        (tiledb::sm::SerializationType)serialize_type,
+        client_side == 1,
+        nullptr,
+        (*query)->query_,
       &ctx->resources().compute_tp(),
       ctx->resources().serialization_memory_tracker()));
+  } catch (...) {
+    delete *query;
+    *query = nullptr;
+    tiledb_array_t::break_handle(*array);
+    throw;
+  }
 
   return TILEDB_OK;
 }
