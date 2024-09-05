@@ -33,6 +33,7 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -187,14 +188,14 @@ tiledb::sm::ConsolidationPlan CppConsolidationPlanFx::call_handler(
     const Array& array,
     tiledb::sm::SerializationType stype) {
   auto req_buf = tiledb_buffer_handle_t::make_handle(
-      array.ptr()
-          ->array_->opened_array()
+      ctx_.ptr()
+          .get()
           ->resources()
           .serialization_memory_tracker()
           ->get_resource(tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
   auto resp_buf = tiledb_buffer_handle_t::make_handle(
-      array.ptr()
-          ->array_->opened_array()
+      ctx_.ptr()
+          .get()
           ->resources()
           .serialization_memory_tracker()
           ->get_resource(tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
