@@ -1318,6 +1318,10 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
+  if (client_ != nullptr) {
+    return Status::Ok();
+  }
+
   auto s3_config_source = s3_params_.config_source_;
   if (s3_config_source != "auto" && s3_config_source != "config_files" &&
       s3_config_source != "sts_profile_with_web_identity") {
@@ -1325,22 +1329,6 @@ Status S3::init_client() const {
         "Unknown 'vfs.s3.config_source' config value " + s3_config_source +
         "; supported values are 'auto', 'config_files' and "
         "'sts_profile_with_web_identity'");
-  }
-
-  if (client_ != nullptr) {
-    // Check credentials. If expired, refresh it
-    if (credentials_provider_) {
-      Aws::Auth::AWSCredentials credentials =
-          credentials_provider_->GetAWSCredentials();
-      if (credentials.IsExpired()) {
-        throw S3Exception("AWS credentials are expired.");
-      } else if (!s3_params_.no_sign_request_ && credentials.IsEmpty()) {
-        throw S3Exception(
-            "AWS credentials were not provided. For public S3 data, consider "
-            "setting the vfs.s3.no_sign_request config option.");
-      }
-    }
-    return Status::Ok();
   }
 
   // ClientConfiguration should be lazily init'ed here in init_client to avoid
