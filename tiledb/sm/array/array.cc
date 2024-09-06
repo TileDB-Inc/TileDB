@@ -822,6 +822,9 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
   // Dedupe requested names and filter out anything already loaded.
   std::unordered_set<std::string> enmrs_to_load;
   for (auto& enmr_name : enumeration_names) {
+    if (!schema->has_enumeration(enmr_name)) {
+      continue;
+    }
     if (schema->is_enumeration_loaded(enmr_name)) {
       continue;
     }
@@ -830,7 +833,7 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 
   // Only attempt to load enumerations if we have at least one Enumeration
   // to load.
-  if (enmrs_to_load.size() > 0) {
+  if (!enmrs_to_load.empty()) {
     std::vector<shared_ptr<const Enumeration>> loaded;
 
     if (remote_) {
@@ -872,9 +875,12 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
   }
 
   // Return the requested list of enumerations
-  std::vector<shared_ptr<const Enumeration>> ret(enumeration_names.size());
-  for (size_t i = 0; i < enumeration_names.size(); i++) {
-    ret[i] = schema->get_enumeration(enumeration_names[i]);
+  std::vector<shared_ptr<const Enumeration>> ret(enmrs_to_load.size());
+  for (size_t i = 0; const auto& name : enmrs_to_load) {
+    if (!schema->has_enumeration(name)) {
+      continue;
+    }
+    ret[i++] = schema->get_enumeration(name);
   }
   return ret;
 }
