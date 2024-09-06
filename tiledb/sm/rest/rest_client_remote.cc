@@ -1532,10 +1532,13 @@ Status RestClientRemote::ensure_json_null_delimited_string(Buffer* buffer) {
 }
 
 Status RestClientRemote::post_consolidation_to_rest(
-    const URI& uri, const Config& config) {
+    const URI& uri,
+    const Config& config,
+    const std::vector<std::string>* fragment_uris) {
   Buffer buff;
-  RETURN_NOT_OK(serialization::array_consolidation_request_serialize(
-      config, serialization_type_, &buff));
+  serialization::array_consolidation_request_serialize(
+      config, fragment_uris, serialization_type_, &buff);
+
   // Wrap in a list
   BufferList serialized;
   RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));

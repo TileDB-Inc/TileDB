@@ -43,6 +43,7 @@
 // clang-format on
 
 #include "tiledb/common/logger_public.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/consolidation.h"
@@ -71,34 +72,73 @@ class ConsolidationSerializationDisabledException
 
 #ifdef TILEDB_SERIALIZATION
 
-Status array_consolidation_request_to_capnp(
+void array_consolidation_request_to_capnp(
     const Config& config,
+    const std::vector<std::string>* fragment_uris,
     capnp::ArrayConsolidationRequest::Builder*
         array_consolidation_request_builder) {
+  // Validate input arguments to be sure that what we are serializing make sense
+  auto mode = Consolidator::mode_from_config(config);
+  if (mode != ConsolidationMode::FRAGMENT &&
+      (fragment_uris != nullptr && !fragment_uris->empty())) {
+    throw ConsolidationSerializationException(
+        "[array_consolidation_request_to_capnp] Error serializing "
+        "consolidation request. A non-empty fragment list should only be "
+        "provided for fragment consolidation.");
+  }
+
   auto config_builder = array_consolidation_request_builder->initConfig();
-  RETURN_NOT_OK(config_to_capnp(config, &config_builder));
-  return Status::Ok();
+  throw_if_not_ok(config_to_capnp(config, &config_builder));
+
+  if (fragment_uris != nullptr && !fragment_uris->empty()) {
+    auto fragment_list_builder =
+        array_consolidation_request_builder->initFragments(
+            fragment_uris->size());
+    size_t i = 0;
+    for (auto& fragment_uri : *fragment_uris) {
+      const auto& relative_fragment_uri =
+          serialize_array_uri_to_relative(URI(fragment_uri));
+      fragment_list_builder.set(i, relative_fragment_uri);
+      i++;
+    }
+  }
 }
 
-Status array_consolidation_request_from_capnp(
+std::pair<Config, std::optional<std::vector<std::string>>>
+array_consolidation_request_from_capnp(
+    const std::string& array_uri,
     const capnp::ArrayConsolidationRequest::Reader&
-        array_consolidation_request_reader,
-    tdb_unique_ptr<Config>* config) {
+        array_consolidation_request_reader) {
   auto config_reader = array_consolidation_request_reader.getConfig();
-  RETURN_NOT_OK(config_from_capnp(config_reader, config));
-  return Status::Ok();
+  tdb_unique_ptr<Config> decoded_config = nullptr;
+  throw_if_not_ok(config_from_capnp(config_reader, &decoded_config));
+
+  std::vector<std::string> fragment_uris;
+  if (array_consolidation_request_reader.hasFragments()) {
+    auto fragment_reader = array_consolidation_request_reader.getFragments();
+    fragment_uris.reserve(fragment_reader.size());
+    for (const auto& fragment_uri : fragment_reader) {
+      fragment_uris.emplace_back(deserialize_array_uri_to_absolute(
+          fragment_uri.cStr(), URI(array_uri)));
+    }
+
+    return {*decoded_config, fragment_uris};
+  } else {
+    return {*decoded_config, std::nullopt};
+  }
 }
 
-Status array_consolidation_request_serialize(
+void array_consolidation_request_serialize(
     const Config& config,
+    const std::vector<std::string>* fragment_uris,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArrayConsolidationRequest::Builder ArrayConsolidationRequestBuilder =
         message.initRoot<capnp::ArrayConsolidationRequest>();
-    RETURN_NOT_OK(array_consolidation_request_to_capnp(
-        config, &ArrayConsolidationRequestBuilder));
+    array_consolidation_request_to_capnp(
+        config, fragment_uris, &ArrayConsolidationRequestBuilder);
 
     serialized_buffer->reset_size();
     serialized_buffer->reset_offset();
@@ -110,45 +150,46 @@ Status array_consolidation_request_serialize(
         const auto json_len = capnp_json.size();
         const char nul = '\0';
         // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        throw_if_not_ok(serialized_buffer->realloc(json_len + 1));
+        throw_if_not_ok(serialized_buffer->write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(serialized_buffer->write(&nul, 1));
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
         kj::ArrayPtr<const char> message_chars = protomessage.asChars();
         const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        throw_if_not_ok(serialized_buffer->realloc(nbytes));
+        throw_if_not_ok(
+            serialized_buffer->write(message_chars.begin(), nbytes));
         break;
       }
       default: {
-        return LOG_STATUS(Status_SerializationError(
-            "Error serializing config; Unknown serialization type "
-            "passed"));
+        throw ConsolidationSerializationException(
+            "[array_consolidation_request_serialize] Error serializing config; "
+            "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing config; kj::Exception: " +
-        std::string(e.getDescription().cStr())));
+    throw ConsolidationSerializationException(
+        "[array_consolidation_request_serialize] Error serializing config; "
+        "kj::Exception: " +
+        std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing config; exception " + std::string(e.what())));
+    throw ConsolidationSerializationException(
+        "[array_consolidation_request_serialize] Error serializing config; "
+        "exception " +
+        std::string(e.what()));
   }
-
-  return Status::Ok();
 }
 
-Status array_consolidation_request_deserialize(
-    Config** config,
+std::pair<Config, std::optional<std::vector<std::string>>>
+array_consolidation_request_deserialize(
+    const std::string& array_uri,
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
   try {
-    tdb_unique_ptr<Config> decoded_config = nullptr;
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
@@ -162,8 +203,8 @@ Status array_consolidation_request_deserialize(
         capnp::ArrayConsolidationRequest::Reader
             array_consolidation_request_reader =
                 array_consolidation_request_builder.asReader();
-        RETURN_NOT_OK(array_consolidation_request_from_capnp(
-            array_consolidation_request_reader, &decoded_config));
+        return array_consolidation_request_from_capnp(
+            array_uri, array_consolidation_request_reader);
         break;
       }
       case SerializationType::CAPNP: {
@@ -175,32 +216,27 @@ Status array_consolidation_request_deserialize(
         capnp::ArrayConsolidationRequest::Reader
             array_consolidation_request_reader =
                 reader.getRoot<capnp::ArrayConsolidationRequest>();
-        RETURN_NOT_OK(array_consolidation_request_from_capnp(
-            array_consolidation_request_reader, &decoded_config));
+        return array_consolidation_request_from_capnp(
+            array_uri, array_consolidation_request_reader);
         break;
       }
       default: {
-        return LOG_STATUS(Status_SerializationError(
-            "Error deserializing config; Unknown serialization type "
-            "passed"));
+        throw ConsolidationSerializationException(
+            "[array_consolidation_request_deserialize] Error deserializing "
+            "config; Unknown serialization type passed");
       }
     }
-
-    if (decoded_config == nullptr)
-      return LOG_STATUS(Status_SerializationError(
-          "Error serializing config; deserialized config is null"));
-
-    *config = decoded_config.release();
   } catch (kj::Exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing config; kj::Exception: " +
-        std::string(e.getDescription().cStr())));
+    throw ConsolidationSerializationException(
+        "[array_consolidation_request_deserialize] Error deserializing config; "
+        "kj::Exception: " +
+        std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    return LOG_STATUS(Status_SerializationError(
-        "Error deserializing config; exception " + std::string(e.what())));
+    throw ConsolidationSerializationException(
+        "[array_consolidation_request_deserialize] Error deserializing config; "
+        "exception " +
+        std::string(e.what()));
   }
-
-  return Status::Ok();
 }
 
 void consolidation_plan_request_to_capnp(
@@ -435,16 +471,18 @@ std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
 
 #else
 
-Status array_consolidation_request_serialize(
-    const Config&, SerializationType, Buffer*) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+void array_consolidation_request_serialize(
+    const Config&,
+    const std::vector<std::string>*,
+    SerializationType,
+    Buffer*) {
+  throw ConsolidationSerializationDisabledException();
 }
 
-Status array_consolidation_request_deserialize(
-    Config**, SerializationType, const Buffer&) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot deserialize; serialization not enabled."));
+std::pair<Config, std::optional<std::vector<std::string>>>
+array_consolidation_request_deserialize(
+    const std::string&, SerializationType, const Buffer&) {
+  throw ConsolidationSerializationDisabledException();
 }
 
 void serialize_consolidation_plan_request(

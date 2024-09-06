@@ -432,10 +432,14 @@ class RestClientRemote : public RestClient {
    *
    * @param uri Array URI
    * @param config config
+   * @param fragment_uris The uris of the fragments to be consolidated if this
+   * is a request for fragment list consolidation
    * @return
    */
   Status post_consolidation_to_rest(
-      const URI& uri, const Config& config) override;
+      const URI& uri,
+      const Config& config,
+      const std::vector<std::string>* fragment_uris = nullptr) override;
 
   /**
    * Post array vacuum request to the REST server.
