@@ -33,6 +33,8 @@
 #include <fstream>
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -43,7 +45,7 @@ using namespace tiledb;
 
 struct CPPEnumerationFx {
   CPPEnumerationFx();
-  ~CPPEnumerationFx();
+  ~CPPEnumerationFx() = default;
 
   template <typename T>
   void check_dump(const T& val);
@@ -51,6 +53,7 @@ struct CPPEnumerationFx {
   void create_array(bool with_empty_enumeration = false);
   void rm_array();
 
+  tiledb::test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
   Context ctx_;
   VFS vfs_;
@@ -325,6 +328,82 @@ TEST_CASE_METHOD(
     "[enumeration][array-load-all-enumerations]") {
   auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr);
   REQUIRE(rc != TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP API: Load All Enumerations - All Schemas",
+    "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
+  create_array();
+  auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
+  auto schema = array.load_schema(ctx_, uri_);
+  REQUIRE(
+      schema.ptr()->array_schema()->has_enumeration("an_enumeration") == true);
+  REQUIRE(
+      schema.ptr()->array_schema()->is_enumeration_loaded("an_enumeration") ==
+      false);
+  std::string schema_name_1 = schema.ptr()->array_schema()->name();
+
+  // Evolve once to add an enumeration.
+  ArraySchemaEvolution ase(ctx_);
+  std::vector<std::string> var_values{"one", "two", "three"};
+  auto var_enmr = tiledb::Enumeration::create(ctx_, "ase_var_enmr", var_values);
+  ase.add_enumeration(var_enmr);
+  auto attr4 = Attribute::create<uint16_t>(ctx_, "attr4");
+  AttributeExperimental::set_enumeration_name(ctx_, attr4, "ase_var_enmr");
+  ase.add_attribute(attr4);
+  ase.array_evolve(uri_);
+  array.reopen();
+  ArrayExperimental::load_all_enumerations(ctx_, array);
+  auto all_schemas = array.ptr()->array_->array_schemas_all();
+  schema = array.load_schema(ctx_, uri_);
+  std::string schema_name_2 = schema.ptr()->array_schema()->name();
+
+  // Check all schemas.
+  CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
+  CHECK(
+      all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+      true);
+  CHECK(all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
+  CHECK(
+      all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
+      true);
+  CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
+  CHECK(
+      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
+
+  // Evolve a second time to drop an enumeration.
+  ArraySchemaEvolution ase2(ctx_);
+  ase2.drop_enumeration("an_enumeration");
+  ase2.drop_attribute("attr1");
+  CHECK_NOTHROW(ase2.array_evolve(uri_));
+  // Apply evolution to the array and reopen.
+  CHECK_NOTHROW(array.close());
+  CHECK_NOTHROW(array.open(TILEDB_READ));
+  ArrayExperimental::load_all_enumerations(ctx_, array);
+  all_schemas = array.ptr()->array_->array_schemas_all();
+  schema = array.load_schema(ctx_, uri_);
+  std::string schema_name_3 = schema.ptr()->array_schema()->name();
+
+  // Check all schemas.
+  CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
+  CHECK(
+      all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+      true);
+  CHECK(all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
+  CHECK(
+      all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
+      true);
+  CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
+  CHECK(
+      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
+  CHECK(all_schemas[schema_name_3]->has_enumeration("an_enumeration") == false);
+  CHECK(all_schemas[schema_name_3]->has_enumeration("ase_var_enmr") == true);
+  CHECK(
+      all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
 }
 
 TEST_CASE_METHOD(
@@ -663,13 +742,11 @@ TEST_CASE_METHOD(
 }
 
 CPPEnumerationFx::CPPEnumerationFx()
-    : uri_("enumeration_test_array")
-    , vfs_(ctx_) {
-  rm_array();
-}
-
-CPPEnumerationFx::~CPPEnumerationFx() {
-  rm_array();
+    : uri_(vfs_test_setup_.array_uri("enumeration_test_array"))
+    , vfs_(vfs_test_setup_.ctx()) {
+  if (!vfs_test_setup_.is_rest()) {
+    rm_array();
+  }
 }
 
 template <typename T>

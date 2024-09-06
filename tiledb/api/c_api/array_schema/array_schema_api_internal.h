@@ -41,8 +41,6 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
 
-using namespace tiledb::sm;
-
 /** Handle `struct` for API ArraySchema objects. */
 struct tiledb_array_schema_handle_t
     : public tiledb::api::CAPIHandle<tiledb_array_schema_handle_t> {
@@ -50,18 +48,20 @@ struct tiledb_array_schema_handle_t
   static constexpr std::string_view object_type_name{"array_schema"};
 
  private:
-  using array_schema_type = shared_ptr<ArraySchema>;
+  using array_schema_type = shared_ptr<tiledb::sm::ArraySchema>;
   array_schema_type array_schema_;
 
  public:
   template <class... Args>
   explicit tiledb_array_schema_handle_t(Args... args)
-      : array_schema_{
-            make_shared<ArraySchema>(HERE(), std::forward<Args>(args)...)} {
+      : array_schema_{make_shared<tiledb::sm::ArraySchema>(
+            HERE(), std::forward<Args>(args)...)} {
   }
 
-  explicit tiledb_array_schema_handle_t(const ArraySchema& array_schema)
-      : array_schema_{make_shared<ArraySchema>(HERE(), array_schema)} {
+  explicit tiledb_array_schema_handle_t(
+      const tiledb::sm::ArraySchema& array_schema)
+      : array_schema_{
+            make_shared<tiledb::sm::ArraySchema>(HERE(), array_schema)} {
   }
 
   /**
@@ -76,21 +76,21 @@ struct tiledb_array_schema_handle_t
   }
 
   Status add_attribute(
-      shared_ptr<const Attribute> attr, bool check_special = true) {
+      shared_ptr<const tiledb::sm::Attribute> attr, bool check_special = true) {
     return array_schema_->add_attribute(attr, check_special);
   }
 
   void add_dimension_label(
-      ArraySchema::dimension_size_type dim_id,
+      tiledb::sm::ArraySchema::dimension_size_type dim_id,
       const std::string& name,
-      DataOrder label_order,
-      Datatype label_type,
+      tiledb::sm::DataOrder label_order,
+      tiledb::sm::Datatype label_type,
       bool check_name = true) {
     array_schema_->add_dimension_label(
         dim_id, name, label_order, label_type, check_name);
   }
 
-  void add_enumeration(shared_ptr<const Enumeration> enmr) {
+  void add_enumeration(shared_ptr<const tiledb::sm::Enumeration> enmr) {
     return array_schema_->add_enumeration(enmr);
   }
 
@@ -98,15 +98,15 @@ struct tiledb_array_schema_handle_t
     return array_schema_->allows_dups();
   }
 
-  ArrayType array_type() const {
+  tiledb::sm::ArrayType array_type() const {
     return array_schema_->array_type();
   }
 
-  const URI& array_uri() const {
+  const tiledb::sm::URI& array_uri() const {
     return array_schema_->array_uri();
   }
 
-  ArraySchema::attribute_size_type attribute_num() const {
+  tiledb::sm::ArraySchema::attribute_size_type attribute_num() const {
     return array_schema_->attribute_num();
   }
 
@@ -114,48 +114,50 @@ struct tiledb_array_schema_handle_t
     return array_schema_->capacity();
   }
 
-  Layout cell_order() const {
+  tiledb::sm::Layout cell_order() const {
     return array_schema_->cell_order();
   }
 
-  const FilterPipeline& cell_validity_filters() const {
+  const tiledb::sm::FilterPipeline& cell_validity_filters() const {
     return array_schema_->cell_validity_filters();
   }
 
-  const FilterPipeline& cell_var_offsets_filters() const {
+  const tiledb::sm::FilterPipeline& cell_var_offsets_filters() const {
     return array_schema_->cell_var_offsets_filters();
   }
 
-  void check(const Config& cfg) const {
+  void check(const tiledb::sm::Config& cfg) const {
     array_schema_->check(cfg);
   }
 
-  const FilterPipeline& coords_filters() const {
+  const tiledb::sm::FilterPipeline& coords_filters() const {
     return array_schema_->coords_filters();
   }
 
-  const DimensionLabel& dimension_label(
-      ArraySchema::dimension_label_size_type i) const {
+  const tiledb::sm::DimensionLabel& dimension_label(
+      tiledb::sm::ArraySchema::dimension_label_size_type i) const {
     return array_schema_->dimension_label(i);
   }
 
-  const DimensionLabel& dimension_label(const std::string& name) const {
+  const tiledb::sm::DimensionLabel& dimension_label(
+      const std::string& name) const {
     return array_schema_->dimension_label(name);
   }
 
-  const Dimension* dimension_ptr(ArraySchema::dimension_size_type i) const {
+  const tiledb::sm::Dimension* dimension_ptr(
+      tiledb::sm::ArraySchema::dimension_size_type i) const {
     return array_schema_->dimension_ptr(i);
   }
 
-  const Dimension* dimension_ptr(const std::string& name) const {
+  const tiledb::sm::Dimension* dimension_ptr(const std::string& name) const {
     return array_schema_->dimension_ptr(name);
   }
 
-  ArraySchema::dimension_label_size_type dim_label_num() const {
+  tiledb::sm::ArraySchema::dimension_label_size_type dim_label_num() const {
     return array_schema_->dim_label_num();
   }
 
-  shared_ptr<CurrentDomain> get_current_domain() const {
+  shared_ptr<tiledb::sm::CurrentDomain> get_current_domain() const {
     return array_schema_->get_current_domain();
   }
 
@@ -175,61 +177,67 @@ struct tiledb_array_schema_handle_t
     array_schema_->set_capacity(capacity);
   }
 
-  void set_current_domain(shared_ptr<CurrentDomain> current_domain) {
+  void set_current_domain(
+      shared_ptr<tiledb::sm::CurrentDomain> current_domain) {
     array_schema_->set_current_domain(current_domain);
   }
 
   void set_dimension_label_filter_pipeline(
-      const std::string& label_name, const FilterPipeline& pipeline) {
+      const std::string& label_name,
+      const tiledb::sm::FilterPipeline& pipeline) {
     array_schema_->set_dimension_label_filter_pipeline(label_name, pipeline);
   }
 
   void set_dimension_label_tile_extent(
       const std::string& label_name,
-      const Datatype type,
+      const tiledb::sm::Datatype type,
       const void* tile_extent) {
     array_schema_->set_dimension_label_tile_extent(
         label_name, type, tile_extent);
   }
 
-  Status set_domain(shared_ptr<Domain> domain) {
+  Status set_domain(shared_ptr<tiledb::sm::Domain> domain) {
     return array_schema_->set_domain(domain);
   }
 
-  Status set_cell_order(Layout cell_order) {
+  Status set_cell_order(tiledb::sm::Layout cell_order) {
     return array_schema_->set_cell_order(cell_order);
   }
 
-  Status set_cell_validity_filter_pipeline(const FilterPipeline& pipeline) {
+  Status set_cell_validity_filter_pipeline(
+      const tiledb::sm::FilterPipeline& pipeline) {
     return array_schema_->set_cell_validity_filter_pipeline(pipeline);
   }
 
-  Status set_cell_var_offsets_filter_pipeline(const FilterPipeline& pipeline) {
+  Status set_cell_var_offsets_filter_pipeline(
+      const tiledb::sm::FilterPipeline& pipeline) {
     return array_schema_->set_cell_var_offsets_filter_pipeline(pipeline);
   }
 
-  Status set_coords_filter_pipeline(const FilterPipeline& pipeline) {
+  Status set_coords_filter_pipeline(
+      const tiledb::sm::FilterPipeline& pipeline) {
     return array_schema_->set_coords_filter_pipeline(pipeline);
   }
 
-  Status set_tile_order(Layout tile_order) {
+  Status set_tile_order(tiledb::sm::Layout tile_order) {
     return array_schema_->set_tile_order(tile_order);
   }
 
-  shared_ptr<const Attribute> shared_attribute(
-      ArraySchema::attribute_size_type id) const {
+  shared_ptr<const tiledb::sm::Attribute> shared_attribute(
+      tiledb::sm::ArraySchema::attribute_size_type id) const {
     return array_schema_->shared_attribute(id);
   }
 
-  shared_ptr<const Attribute> shared_attribute(const std::string& name) const {
+  shared_ptr<const tiledb::sm::Attribute> shared_attribute(
+      const std::string& name) const {
     return array_schema_->shared_attribute(name);
   }
 
-  shared_ptr<Domain> shared_domain() const {
+  shared_ptr<tiledb::sm::Domain> shared_domain() const {
     return array_schema_->shared_domain();
   }
 
-  Layout tile_order() const {
+  tiledb::sm::Layout tile_order() const {
     return array_schema_->tile_order();
   }
 
