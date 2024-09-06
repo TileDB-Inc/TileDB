@@ -859,8 +859,8 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 
       loaded = rest_client->post_enumerations_from_rest(
           array_uri_,
-          array_dir_timestamp_start_,
-          array_dir_timestamp_end_,
+          schema->timestamp_range().first,
+          schema->timestamp_range().second,
           this,
           names_to_load,
           memory_tracker_);
