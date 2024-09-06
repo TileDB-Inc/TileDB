@@ -787,6 +787,7 @@ TEST_CASE_METHOD(
 
 CPPEnumerationFx::CPPEnumerationFx()
     : uri_(vfs_test_setup_.array_uri("enumeration_test_array"))
+    , ctx_(vfs_test_setup_.ctx())
     , vfs_(vfs_test_setup_.ctx()) {
 }
 
