@@ -1051,25 +1051,23 @@ class VFS : private VFSBase, protected S3_within_VFS {
   void log_read(const URI& uri, uint64_t offset, uint64_t nbytes);
 
   /**
-   * Returns an object whose scope defines the start and end of a VFS operation,
-   * if enabled in config.
+   * Creates a LogDurationInstrument, if enabled in config.
    *
    * @param uri The URI of the object being operated on.
    * @param operation_name The name of the operation. Defaults to the name of
    * the calling function.
    */
-  optional<LogDurationInstrument> start_operation(
+  optional<LogDurationInstrument> make_log_duration_instrument(
       const URI& uri, const std::string_view operation_name) const;
 
   /**
-   * Returns an object whose scope defines the start and end of a VFS operation,
-   * if enabled in config.
+   * Creates a LogDurationInstrument, if enabled in config.
    *
    * @param uri The URI of the object being operated on.
    * @param operation_name The name of the operation. Defaults to the name of
    * the calling function.
    */
-  optional<LogDurationInstrument> start_operation(
+  optional<LogDurationInstrument> make_log_duration_instrument(
       const URI& source,
       const URI& destination,
       const std::string_view operation_name) const;

@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class `LogDuration`.
+ * This file defines class `LogDurationInstrument`.
  */
 
 #ifndef TILEDB_LOG_DURATION_INSTRUMENT_H
