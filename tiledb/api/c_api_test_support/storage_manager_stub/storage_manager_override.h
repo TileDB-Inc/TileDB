@@ -48,15 +48,15 @@ class StorageManagerStub {
 
  public:
   static constexpr bool is_overriding_class = true;
-  StorageManagerStub(
-      ContextResources&,
-      const std::shared_ptr<common::Logger>&,
-      const Config& config)
+  StorageManagerStub(ContextResources&, const Config& config)
       : config_(config) {
   }
 
-  inline Status cancel_all_tasks() {
-    return Status{};
+  void cancel_all_tasks() {
+  }
+
+  bool cancellation_in_progress() const {
+    return false;
   }
 };
 

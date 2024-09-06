@@ -57,9 +57,7 @@ class StorageManagerException : public StatusException {
  * the constructor signature as yet.
  */
 StorageManagerCanonical::StorageManagerCanonical(
-    ContextResources& resources,
-    const shared_ptr<Logger>&,  // unused
-    const Config& config)
+    ContextResources& resources, const Config& config)
     : vfs_(resources.vfs())
     , cancellation_in_progress_(false)
     , config_(config)
@@ -73,7 +71,7 @@ StorageManagerCanonical::StorageManagerCanonical(
 StorageManagerCanonical::~StorageManagerCanonical() {
   global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
 
-  throw_if_not_ok(cancel_all_tasks());
+  cancel_all_tasks();
 
   bool found{false};
   bool use_malloc_trim{false};
@@ -89,7 +87,7 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::cancel_all_tasks() {
+void StorageManagerCanonical::cancel_all_tasks() {
   // Check if there is already a "cancellation" in progress.
   bool handle_cancel = false;
   {
@@ -112,8 +110,6 @@ Status StorageManagerCanonical::cancel_all_tasks() {
     std::unique_lock<std::mutex> lck(cancellation_in_progress_mtx_);
     cancellation_in_progress_ = false;
   }
-
-  return Status::Ok();
 }
 
 bool StorageManagerCanonical::cancellation_in_progress() const {

@@ -1,5 +1,5 @@
 /**
- * @file cancellation_source.cc
+ * @file tiledb/sm/storage_manager/context_registry.cc
  *
  * @section LICENSE
  *
@@ -27,20 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file defines `class CancellationSource`.
+ * This file defines the remainder `class ContextRegistry`.
+ *
  */
 
-#include "cancellation_source.h"
-#include "storage_manager.h"
+#include "context_registry.h"
 
-namespace tiledb::sm {
-
-LegacyCancellationSource::LegacyCancellationSource(StorageManager& sm)
-    : sm_(sm) {
-}
-
-bool LegacyCancellationSource::cancellation_in_progress() const {
-  return sm_.cancellation_in_progress();
-}
-
-}  // namespace tiledb::sm
+namespace tiledb::sm {}  // namespace tiledb::sm

@@ -52,7 +52,7 @@ class Subarray;
 
 enum class QueryType : uint8_t;
 
-class ArrayDimensionLabelQueries {
+class ArrayDimensionLabelQueries : public JobBranch {
  public:
   /**
    * Size type for the number of dimensions of an array and for dimension
@@ -67,16 +67,14 @@ class ArrayDimensionLabelQueries {
   ArrayDimensionLabelQueries() = delete;
 
   /**
+   * Virtual destructor is override from `JobBranch`.
+   */
+  ~ArrayDimensionLabelQueries() override = default;
+
+  /**
    * Constructor.
    *
-   * This is a transitional constructor in the sense that we are working
-   * on removing the dependency of the Query class on StorageManager.
-   * For now, we still need to keep the storage_manager argument, but once the
-   * dependency is gone, the signature will be
-   * ArrayDimensionLabelQueries(ContextResources&, Array*, ...).
-   *
-   * @param resources The context resources.
-   * @param storage_manager Storage manager object.
+   * @param parent The parent of this query as a job
    * @param array Parent array the dimension labels are defined on.
    * @param subarray Subarray for the query on the parent array.
    * @param label_buffers A map of query buffers containing label data.
@@ -85,8 +83,7 @@ class ArrayDimensionLabelQueries {
    * @param fragment_name Optional fragment name for writing fragments.
    */
   ArrayDimensionLabelQueries(
-      ContextResources& resources,
-      StorageManager* storage_manager,
+      JobParent& parent,
       Array* array,
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
@@ -169,9 +166,6 @@ class ArrayDimensionLabelQueries {
  private:
   /** The context resources. */
   ContextResources& resources_;
-
-  /** The storage manager. */
-  StorageManager* storage_manager_;
 
   /** Map from label name to dimension label opened by this query. */
   std::unordered_map<std::string, shared_ptr<Array>> dimension_labels_;
@@ -257,6 +251,13 @@ class ArrayDimensionLabelQueries {
       const URI& dim_label_uri,
       const std::string& dim_label_name,
       const QueryType& query_type);
+
+  /**
+   * Derived from `JobBranch`
+   */
+  ContextResources& resources() const override {
+    return resources_;
+  }
 };
 
 }  // namespace tiledb::sm

@@ -68,12 +68,8 @@ struct tiledb_ctx_handle_t
     return ctx_.resources().config();
   }
 
-  inline tiledb::sm::StorageManager* storage_manager() {
-    return ctx_.storage_manager();
-  }
-
-  inline tiledb::sm::CancellationSource cancellation_source() {
-    return ctx_.cancellation_source();
+  inline void cancel_all_tasks() {
+    return ctx_.cancel_all_tasks();
   }
 
   inline tiledb::sm::RestClient& rest_client() {

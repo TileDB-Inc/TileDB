@@ -1,0 +1,45 @@
+@startuml
+title Job Class Relationships
+
+package Root {
+    package "Upper Half" {
+        class "Nonchild" as Nonchild_Root
+    }
+    package "Lower Half" {
+        class "Parent" as Parent_Root
+    }
+    Nonchild_Root <-d- Parent_Root
+}
+
+package Branch {
+    package "Upper Half" {
+        class "Child" as Child_Branch
+    }
+    package "Lower Half" {
+        class "Parent" as Parent_Branch
+    }
+    Child_Branch <-d- Parent_Branch
+}
+Parent_Root <--> Child_Branch
+
+package Leaf {
+    package "Upper Half" {
+        class "Child" as Child_Leaf
+    }
+    package "Lower Half" {
+        class "Nonparent" as Parent_Leaf
+    }
+    Child_Leaf <-d- Parent_Leaf
+}
+Parent_Branch <--> Child_Leaf
+
+package Isolate {
+    package "Upper Half" {
+        class "Nonchild" as Child_Isolate
+    }
+    package "Lower Half" {
+        class "Nonparent" as Parent_Isolate
+    }
+    Child_Isolate <-d- Parent_Isolate
+}
+@enduml

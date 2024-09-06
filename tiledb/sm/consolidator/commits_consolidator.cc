@@ -32,13 +32,9 @@
 
 #include "tiledb/sm/consolidator/commits_consolidator.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/common/stdx_string.h"
-#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/job.h"
 
 using namespace tiledb::common;
 
@@ -48,9 +44,8 @@ namespace tiledb::sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-CommitsConsolidator::CommitsConsolidator(
-    ContextResources& resources, StorageManager* storage_manager)
-    : Consolidator(resources, storage_manager) {
+CommitsConsolidator::CommitsConsolidator(JobParent& parent)
+    : Consolidator(parent) {
 }
 
 /* ****************************** */

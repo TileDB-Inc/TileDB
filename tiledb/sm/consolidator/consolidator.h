@@ -38,6 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/storage_manager/job.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 #include <vector>
@@ -68,8 +69,27 @@ enum class ConsolidationMode {
 };
 
 /** Handles array consolidation. */
-class Consolidator {
+class Consolidator : public JobBranch {
  public:
+  /**
+   * Default constructor is deleted
+   */
+  Consolidator() = delete;
+
+ protected:
+  /**
+   * Constructor is protected.
+   *
+   * @param parent The parent of this consolidation job
+   */
+  explicit Consolidator(JobParent& parent);
+
+ public:
+  /**
+   * Virtual destructor is override from `JobBranch`.
+   */
+  ~Consolidator() override = default;
+
   /* ********************************* */
   /*          FACTORY METHODS          */
   /* ********************************* */
@@ -77,25 +97,14 @@ class Consolidator {
   /**
    * Factory method to make a new Consolidator instance given the config mode.
    *
-   * @section Maturity Notes
-   * This is a transitional method in the sense that we are working
-   * on removing the dependency of the Consolidator classes on StorageManager.
-   * For now we still need to keep the storage_manager argument, but once the
-   * dependency is gone the signature will be create(ContextResources&, ...).
-   *
-   * @param resources The context resources.
+   * @param parent The parent of consolidator to be created
    * @param mode Consolidation mode.
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default).
-   * @param storage_manager A StorageManager pointer.
-   *    (this will go away in the near future)
    * @return New Consolidator instance or nullptr on error.
    */
   static shared_ptr<Consolidator> create(
-      ContextResources& resources,
-      const ConsolidationMode mode,
-      const Config& config,
-      StorageManager* storage_manager);
+      JobParent& parent, const ConsolidationMode mode, const Config& config);
 
   /**
    * Returns the ConsolidationMode from the config.
@@ -106,13 +115,6 @@ class Consolidator {
    */
   static ConsolidationMode mode_from_config(
       const Config& config, const bool vacuum_mode = false);
-
-  /* ********************************* */
-  /*            DESTRUCTORS            */
-  /* ********************************* */
-
-  /** Destructor. */
-  virtual ~Consolidator();
 
   /* ********************************* */
   /*                API                */
@@ -144,15 +146,8 @@ class Consolidator {
   /**
    * Consolidates the fragments of an array into a single one.
    *
-   * @section Maturity Notes
-   * This is a transitional method in the sense that we are working
-   * on removing the dependency of the Consolidator classes on StorageManager.
-   * For now we still need to keep the storage_manager argument, but once the
-   * dependency is gone the signature will be
-   * array_consolidate(ContextResources&, ...).
-   *
-   * @param resources The context resources.
-   * @param array_name The name of the array to be consolidated.
+   * @param parent The context under which this consolidation operates
+   * @param array_name The name of the array to be consolidated
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
@@ -160,30 +155,20 @@ class Consolidator {
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @param storage_manager A StorageManager pointer.
-   *    (this will go away in the near future)
    */
   static void array_consolidate(
-      ContextResources& resources,
+      JobParent& parent,
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length,
-      const Config& config,
-      StorageManager* storage_manager);
+      const Config& config);
 
   /**
    * Consolidates the fragments of an array into a single one.
    *
-   * @section Maturity Notes
-   * This is a transitional method in the sense that we are working
-   * on removing the dependency of the Consolidator classes on StorageManager.
-   * For now we still need to keep the storage_manager argument, but once the
-   * dependency is gone the signature will be
-   * fragments_consolidate(ContextResources&, ...).
-   *
-   * @param resources The context resources.
-   * @param array_name The name of the array to be consolidated.
+   * @param parent The context under which this consolidation operates
+   * @param array_name The name of the array to be consolidated
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
@@ -192,18 +177,15 @@ class Consolidator {
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @param storage_manager A StorageManager pointer.
-   *    (this will go away in the near future)
    */
   static void fragments_consolidate(
-      ContextResources& resources,
+      JobParent& parent,
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
       uint32_t key_length,
       const std::vector<std::string> fragment_uris,
-      const Config& config,
-      StorageManager* storage_manager);
+      const Config& config);
 
   /**
    * Writes a consolidated commits file.
@@ -224,24 +206,12 @@ class Consolidator {
    * metadata. Note that this will coarsen the granularity of time traveling
    * (see docs for more information).
    *
-   * @section Maturity Notes
-   * This is a transitional method in the sense that we are working
-   * on removing the dependency of the Consolidator classes on StorageManager.
-   * For now we still need to keep the storage_manager argument, but once the
-   * dependency is gone the signature will be
-   * array_vacuum(ContextResources&, ...).
-   *
-   * @param resources The context resources.
+   * @param parent The context under which this vacuum operates
    * @param array_name The name of the array to be vacuumed.
    * @param config Configuration parameters for vacuuming.
-   * @param storage_manager A StorageManager pointer.
-   *    (this will go away in the near future)
    */
   static void array_vacuum(
-      ContextResources& resources,
-      const char* array_name,
-      const Config& config,
-      StorageManager* storage_manager);
+      JobParent& parent, const char* array_name, const Config& config);
 
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
@@ -261,20 +231,11 @@ class Consolidator {
   /* ********************************* */
 
   /**
-   * Constructor.
-   *
-   * Constructs a Consolidator object given a ContextResources reference.
-   * This is a transitional constructor in the sense that we are working
-   * on removing the dependency of the Consolidator class on StorageManager. For
-   * now we still need to keep the storage_manager argument, but once the
-   * dependency is gone the signature will be Consolidator(ContextResources&).
-   *
-   * @param resources The context resources.
-   * @param storage_manager A StorageManager pointer.
-   *    (this will go away in the near future)
+   * Derived from `JobBranch`
    */
-  explicit Consolidator(
-      ContextResources& resources, StorageManager* storage_manager);
+  ContextResources& resources() const override {
+    return resources_;
+  }
 
   /**
    * Checks if the array is remote.
@@ -284,14 +245,11 @@ class Consolidator {
   void check_array_uri(const char* array_name);
 
   /* ********************************* */
-  /*       PROTECTED ATTRIBUTES        */
+  /*       Member Variables            */
   /* ********************************* */
 
   /** Resources used to perform the operation. */
   ContextResources& resources_;
-
-  /** The storage manager. */
-  StorageManager* storage_manager_;
 
   /** The consolidator memory tracker. */
   shared_ptr<MemoryTracker> consolidator_memory_tracker_;

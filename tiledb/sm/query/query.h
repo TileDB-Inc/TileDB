@@ -56,6 +56,7 @@
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/cancellation_source.h"
+#include "tiledb/sm/storage_manager/job.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
@@ -68,8 +69,14 @@ class ArrayDimensionLabelQueries;
 enum class QueryStatus : uint8_t;
 enum class QueryType : uint8_t;
 
-/** Processes a (read/write) query. */
-class Query {
+/**
+ * Processes any query.
+ *
+ * `class Query` is a `JobBranch`. It's a supervised activity in an obvious way,
+ * typically running directly under a context. It's also a job parent because
+ * dimension label queries have ordinary queries inside them.
+ */
+class Query : public JobBranch {
  public:
   /* ********************************* */
   /*          PUBLIC DATATYPES         */
@@ -139,31 +146,17 @@ class Query {
    * case the query will be used as writes and the given URI should be used
    * for the name of the new fragment to be created.
    *
-   * @section Maturity
-   *
-   * This is a transitional constructor. There is still a `StorageManager`
-   * argument, and there is also a vestige of it with the `CancellationSource`
-   * argument. These argument now only pertain to job control of query with
-   * respect to its context. Once this facility is rewritten, these constructor
-   * argument may be dropped.
-   *
    * @pre Array must be a properly opened array.
    *
-   * @param resources The context resources.
-   * @param cancellation_source A source of external cancellation events
-   * @param storage_manager Storage manager object.
+   * @param parent The parent of this query as a job
    * @param array The array that is being queried.
-   * @param fragment_uri The full URI for the new fragment. Only used for
+   * @param fragment_name The full URI for the new fragment. Only used for
    * writes.
-   * @param fragment_base_uri Optional base name for new fragment. Only used for
-   *     writes and only if fragment_uri is empty.
    * @param memory_budget Total memory budget. If set to nullopt, the value
    *     will be obtained from the sm.mem.total_budget config option.
    */
   Query(
-      ContextResources& resources,
-      CancellationSource cancellation_source,
-      StorageManager* storage_manager,
+      JobParent& parent,
       shared_ptr<Array> array,
       optional<std::string> fragment_name = nullopt,
       optional<uint64_t> memory_budget = nullopt);
@@ -986,9 +979,6 @@ class Query {
    */
   CancellationSource cancellation_source_;
 
-  /** The storage manager. */
-  StorageManager* storage_manager_;
-
   /** The query strategy. */
   tdb_unique_ptr<IQueryStrategy> strategy_;
 
@@ -1203,6 +1193,13 @@ class Query {
 
   /** Copies the data from the aggregates to the user buffers. */
   void copy_aggregates_data_to_user_buffer();
+
+  /**
+   * Derived from `JobBranch`
+   */
+  ContextResources& resources() const override {
+    return resources_;
+  }
 };
 
 }  // namespace tiledb::sm

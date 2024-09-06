@@ -40,7 +40,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/job.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 #include <iostream>
@@ -187,10 +187,8 @@ void FragmentConsolidationWorkspace::resize_buffers(
 /* ****************************** */
 
 FragmentConsolidator::FragmentConsolidator(
-    ContextResources& resources,
-    const Config& config,
-    StorageManager* storage_manager)
-    : Consolidator(resources, storage_manager) {
+    JobParent& parent, const Config& config)
+    : Consolidator(parent) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw FragmentConsolidatorException(st.message());
@@ -687,14 +685,8 @@ Status FragmentConsolidator::create_queries(
   // is not a user input prone to errors).
 
   // Create read query
-  query_r = tdb_unique_ptr<Query>(tdb_new(
-      Query,
-      resources_,
-      CancellationSource(storage_manager_),
-      storage_manager_,
-      array_for_reads,
-      nullopt,
-      read_memory_budget));
+  query_r = tdb_unique_ptr<Query>(
+      tdb_new(Query, *this, array_for_reads, nullopt, read_memory_budget));
   throw_if_not_ok(query_r->set_layout(Layout::GLOBAL_ORDER));
 
   // Dense consolidation will do a tile aligned read.
@@ -720,13 +712,7 @@ Status FragmentConsolidator::create_queries(
 
   // Create write query
   query_w = tdb_unique_ptr<Query>(tdb_new(
-      Query,
-      resources_,
-      CancellationSource(storage_manager_),
-      storage_manager_,
-      array_for_writes,
-      fragment_name,
-      write_memory_budget));
+      Query, *this, array_for_writes, fragment_name, write_memory_budget));
   throw_if_not_ok(query_w->set_layout(Layout::GLOBAL_ORDER));
   throw_if_not_ok(query_w->disable_checks_consolidation());
   query_w->set_fragment_size(config_.max_fragment_size_);

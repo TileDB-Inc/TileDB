@@ -50,15 +50,14 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
-    ContextResources& resources,
-    StorageManager* storage_manager,
+    JobParent& parent,
     Array* array,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
     const optional<std::string>& fragment_name)
-    : resources_(resources)
-    , storage_manager_(storage_manager)
+    : JobBranch(parent)
+    , resources_(parent.resources())
     , label_range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
     , label_data_queries_by_dim_idx_(subarray.dim_num())
     , range_query_status_{QueryStatus::UNINITIALIZED}
@@ -249,12 +248,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
 
       // Create the range query.
       range_queries_.emplace_back(tdb_new(
-          DimensionLabelQuery,
-          resources_,
-          storage_manager_,
-          dim_label,
-          dim_label_ref,
-          label_ranges));
+          DimensionLabelQuery, *this, dim_label, dim_label_ref, label_ranges));
       label_range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
     } catch (const StatusException& err) {
       throw DimensionLabelQueryException(
@@ -283,8 +277,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
       // Create the data query.
       data_queries_.emplace_back(tdb_new(
           DimensionLabelQuery,
-          resources_,
-          storage_manager_,
+          *this,
           dim_label,
           dim_label_ref,
           subarray,
@@ -335,8 +328,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
       // Create the dimension label query.
       data_queries_.emplace_back(tdb_new(
           DimensionLabelQuery,
-          resources_,
-          storage_manager_,
+          *this,
           dim_label,
           dim_label_ref,
           subarray,

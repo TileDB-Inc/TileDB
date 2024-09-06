@@ -50,30 +50,39 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 
-using namespace tiledb::common;
-
 namespace tiledb::sm {
 
+class Context;
 class Query;
 
 enum class EncryptionType : uint8_t;
 
 /** The storage manager that manages pretty much nothing in TileDB. */
 class StorageManagerCanonical {
- public:
+  /*
+   * Friend declaration allows `class Context` to construct `StorageManager`
+   * objects.
+   */
+  friend class Context;
+  friend struct ContextBase;  // temporary class
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /**
-   * Complete, C.41-compliant constructor
+   * Constructor is private, available only to its friend `class Context`.
+   *
+   * As preparations to `StorageManager` proceed, making the constructor
+   * `private` is a natural step. Exactly one class still has a `StorageManager`
+   * member variable, and that's `class Context`.
    *
    * The `resources` argument is only used for its `vfs()` member function. This
    * is the VFS instance that's waited on in `cancel_all_tasks`.
@@ -82,10 +91,7 @@ class StorageManagerCanonical {
    * @param resources Resource object from associated context
    * @param config The configuration parameters.
    */
-  StorageManagerCanonical(
-      ContextResources& resources,
-      const shared_ptr<Logger>& logger,
-      const Config& config);
+  StorageManagerCanonical(ContextResources& resources, const Config& config);
 
  public:
   /** Destructor. */
@@ -99,7 +105,7 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /** Cancels all background tasks. */
-  Status cancel_all_tasks();
+  void cancel_all_tasks();
 
   /** Returns true while all tasks are being cancelled. */
   bool cancellation_in_progress() const;

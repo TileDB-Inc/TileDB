@@ -33,11 +33,11 @@
 #ifndef TILEDB_CONTEXT_H
 #define TILEDB_CONTEXT_H
 
+#include "context_registry.h"
+#include "job.h"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/cancellation_source.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
@@ -52,10 +52,64 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 /**
+ * Base class for `Context`
+ *
+ * This class exists to deal with order-of-initialization between
+ * `StorageManager` and `CancellationSource`. A cancellation source is required
+ * for the base class `JobRoot`, but currently the constructor for
+ * `CancellationSource` requires a pointer to a storage manager. This class
+ * breaks what would otherwise be a cycle by moving the `StorageManager` member
+ * variable into a base class.
+ *
+ * This class won't need to exist once `StorageManager` is gone.
+ */
+struct ContextBase {
+  /** The class logger. */
+  shared_ptr<Logger> logger_;
+
+  /**
+   * Initializer for `logger_prefix_` cannot throw during static initialization.
+   */
+  static std::string build_logger_prefix() noexcept {
+    try {
+      return std::to_string(
+                 std::chrono::duration_cast<std::chrono::nanoseconds>(
+                     std::chrono::system_clock::now().time_since_epoch())
+                     .count()) +
+             "-Context: ";
+    } catch (...) {
+      try {
+        return {"TimeError-Context:"};
+      } catch (...) {
+        return {};
+      }
+    }
+  }
+
+  /** The class unique logger prefix */
+  inline static std::string logger_prefix_{build_logger_prefix()};
+
+  /**
+   * Counter for generating unique identifiers for `Logger` objects.
+   */
+  inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** The class resources. */
+  mutable ContextResources resources_;
+
+  /**
+   * The storage manager.
+   */
+  StorageManager storage_manager_;
+
+  explicit ContextBase(const Config& config);
+};
+
+/**
  * This class manages the context for the C API, wrapping a
  * storage manager object.
  */
-class Context {
+class Context : public ContextBase, public JobRoot {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -70,7 +124,7 @@ class Context {
   explicit Context(const Config&);
 
   /** Destructor. */
-  ~Context() = default;
+  ~Context() override = default;
 
   /* ********************************* */
   /*                API                */
@@ -94,21 +148,24 @@ class Context {
    */
   void save_error(const StatusException& st);
 
-  /** Pointer to the underlying storage manager. */
-  inline StorageManager* storage_manager() {
-    return &storage_manager_;
-  }
+  /**
+   * Cancel all free-running activity under this context.
+   *
+   * This function is synchronous. It does not return until all activity under
+   * the context has ended.
+   *
+   * @section Maturity
+   *
+   * At the present time, not all activities that can operate under a context
+   * are interruptible by the context. They'll all eventually end, but it may
+   * not be promptly.
+   */
+  void cancel_all_tasks();
 
-  /** Pointer to the underlying storage manager. */
-  inline const StorageManager* storage_manager() const {
-    return &storage_manager_;
-  }
-
-  inline CancellationSource cancellation_source() const {
-    return CancellationSource(storage_manager());
-  }
-
-  [[nodiscard]] inline ContextResources& resources() const {
+  /**
+   * Derived from `JobRoot`
+   */
+  [[nodiscard]] ContextResources& resources() const override {
     return resources_;
   }
 
@@ -142,6 +199,11 @@ class Context {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /**
+   * The handle of this context within the context registry.
+   */
+  ContextRegistry::handle_type context_handle_;
+
   /** The last error occurred. */
   optional<std::string> last_error_{nullopt};
 
@@ -150,63 +212,9 @@ class Context {
    */
   std::mutex mtx_;
 
-  /** The class logger. */
-  shared_ptr<Logger> logger_;
-
-  /** The class unique logger prefix */
-  inline static std::string logger_prefix_ =
-      std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count()) +
-      "-Context: ";
-
-  /**
-   * Counter for generating unique identifiers for `Logger` objects.
-   */
-  inline static std::atomic<uint64_t> logger_id_ = 0;
-
-  /** The class resources. */
-  mutable ContextResources resources_;
-
-  /**
-   * The storage manager.
-   */
-  StorageManager storage_manager_;
-
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
-
-  /**
-   * Get maximum number of threads to use in thread pools, based on config
-   * parameters.
-   *
-   * @param config The Config to look up max thread information from.
-   * @param max_thread_count (out) Variable to store max thread count.
-   * @return Status of request.
-   */
-  Status get_config_thread_count(
-      const Config& config, uint64_t& max_thread_count);
-
-  /**
-   * Get number of threads to use in compute thread pool, based on config
-   * parameters.  Will return the max of the configured value and the max thread
-   * count returned by get_max_thread_count()
-   *
-   * @param config The Config to look up the compute thread information from.
-   * @return Compute thread count.
-   */
-  size_t get_compute_thread_count(const Config& config);
-
-  /**
-   * Get number of threads to use in io thread pool, based on config
-   * parameters.  Will return the max of the configured value and the max thread
-   * count returned by get_max_thread_count()
-   *
-   * @param config The Config to look up the io thread information from.
-   * @return IO thread count.
-   */
-  size_t get_io_thread_count(const Config& config);
 
   /**
    * Initializes global and local logger.

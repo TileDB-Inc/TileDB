@@ -567,29 +567,28 @@ void Group::set_metadata_loaded(const bool metadata_loaded) {
 }
 
 void Group::consolidate_metadata(
-    ContextResources& resources, const char* group_name, const Config& config) {
+    JobParent& parent, const char* group_name, const Config& config) {
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
     throw GroupException("Cannot consolidate group metadata; Invalid URI");
   }
   // Check if group exists
-  if (object_type(resources, group_uri) != ObjectType::GROUP) {
+  if (object_type(parent.resources(), group_uri) != ObjectType::GROUP) {
     throw GroupException(
         "Cannot consolidate group metadata; Group does not exist");
   }
 
   // Consolidate
   // Encryption credentials are loaded by Group from config
-  StorageManager sm(resources, resources.logger(), config);
-  auto consolidator = Consolidator::create(
-      resources, ConsolidationMode::GROUP_META, config, &sm);
+  auto consolidator =
+      Consolidator::create(parent, ConsolidationMode::GROUP_META, config);
   throw_if_not_ok(consolidator->consolidate(
       group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 }
 
 void Group::vacuum_metadata(
-    ContextResources& resources, const char* group_name, const Config& config) {
+    JobParent& parent, const char* group_name, const Config& config) {
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
@@ -597,13 +596,12 @@ void Group::vacuum_metadata(
   }
 
   // Check if group exists
-  if (object_type(resources, group_uri) != ObjectType::GROUP) {
+  if (object_type(parent.resources(), group_uri) != ObjectType::GROUP) {
     throw GroupException("Cannot vacuum group metadata; Group does not exist");
   }
 
-  StorageManager sm(resources, resources.logger(), config);
-  auto consolidator = Consolidator::create(
-      resources, ConsolidationMode::GROUP_META, config, &sm);
+  auto consolidator =
+      Consolidator::create(parent, ConsolidationMode::GROUP_META, config);
   consolidator->vacuum(group_name);
 }
 

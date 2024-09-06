@@ -83,13 +83,12 @@ static uint64_t get_effective_memory_budget(
 /* ****************************** */
 
 Query::Query(
-    ContextResources& resources,
-    CancellationSource cancellation_source,
-    StorageManager* storage_manager,
+    JobParent& parent,
     shared_ptr<Array> array,
     optional<std::string> fragment_name,
     optional<uint64_t> memory_budget)
-    : resources_(resources)
+    : JobBranch(parent)
+    , resources_(parent.resources())
     , stats_(resources_.stats().create_child("Query"))
     , logger_(resources_.logger()->clone("Query", ++logger_id_))
     , query_memory_tracker_(resources_.memory_tracker_manager().create_tracker(
@@ -107,8 +106,7 @@ Query::Query(
           (type_ == QueryType::READ || array_schema_->dense()) ?
               Layout::ROW_MAJOR :
               Layout::UNORDERED)
-    , cancellation_source_(cancellation_source)
-    , storage_manager_(storage_manager)
+    , cancellation_source_(parent.make_cancellation_source())
     , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
@@ -497,7 +495,7 @@ Status Query::submit_and_finalize() {
   }
 
   init();
-  throw_if_not_ok(storage_manager_->query_submit(this));
+  throw_if_not_ok(storage_manager()->query_submit(this));
 
   throw_if_not_ok(strategy_->finalize());
   status_ = QueryStatus::COMPLETED;
@@ -714,8 +712,7 @@ void Query::init() {
       // Initialize the dimension label queries.
       dim_label_queries_ = tdb_unique_ptr<ArrayDimensionLabelQueries>(tdb_new(
           ArrayDimensionLabelQueries,
-          resources_,
-          storage_manager_,
+          *this,
           array_,
           subarray_,
           label_buffers_,
@@ -1638,7 +1635,7 @@ Status Query::submit() {
     return Status::Ok();
   }
   init();
-  throw_if_not_ok(storage_manager_->query_submit(this));
+  throw_if_not_ok(storage_manager()->query_submit(this));
 
   reset_coords_markers();
   return Status::Ok();

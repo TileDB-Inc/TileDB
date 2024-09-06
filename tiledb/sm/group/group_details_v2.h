@@ -42,7 +42,6 @@
 #include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
