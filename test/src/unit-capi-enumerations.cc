@@ -117,3 +117,5 @@ TEST_CASE(
   rc = tiledb_array_get_enumeration(ctx, array, nullptr, &enmr);
   REQUIRE(rc == TILEDB_ERR);
 }
+
+// XXX TOUCH

@@ -80,13 +80,20 @@ class ArraySchemaException : public StatusException {
 /* ****************************** */
 
 ArraySchema::ArraySchema(
-    ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker)
+    ArrayType array_type,
+    shared_ptr<MemoryTracker> memory_tracker,
+    std::optional<std::pair<uint64_t, uint64_t>> timestamp_range)
     : memory_tracker_(memory_tracker)
     , uri_(URI())
     , array_uri_(URI())
     , version_(constants::format_version)
-    , timestamp_range_(std::make_pair(
-          utils::time::timestamp_now_ms(), utils::time::timestamp_now_ms()))
+    , timestamp_range_(
+          timestamp_range.has_value() ? std::make_pair(
+                                            timestamp_range.value().first,
+                                            timestamp_range.value().second) :
+                                        std::make_pair(
+                                            utils::time::timestamp_now_ms(),
+                                            utils::time::timestamp_now_ms()))
     , name_("")
     , array_type_(array_type)
     , allows_dups_(false)
@@ -121,7 +128,7 @@ ArraySchema::ArraySchema(
       Datatype::UINT8));
 
   // Generate URI and name for ArraySchema
-  generate_uri();
+  generate_uri(timestamp_range);
 }
 
 ArraySchema::ArraySchema(

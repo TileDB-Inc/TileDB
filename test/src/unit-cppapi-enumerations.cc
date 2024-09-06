@@ -750,3 +750,5 @@ void CPPEnumerationFx::rm_array() {
     vfs_.remove_dir(uri_);
   }
 }
+
+// XXX TOUCH
