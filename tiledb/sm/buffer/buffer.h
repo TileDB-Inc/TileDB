@@ -444,9 +444,6 @@ class ConstBuffer : public BufferBase {
  * The buffer can be either owned by this class (happens in cases of
  * serialization) or not (typically user-managed, happens in cases of
  * deserialization).
- *
- * The buffer's content can be read from as a span of bytes. It cannot be
- * modified, only replaced.
  */
 class SerializationBuffer {
  private:
