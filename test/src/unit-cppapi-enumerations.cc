@@ -403,6 +403,51 @@ TEST_CASE_METHOD(
   CHECK(
       all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
       true);
+
+  // Evolve a third time to add an enumeration with a name equal to a previously
+  // dropped enumeration.
+  ArraySchemaEvolution ase3(ctx_);
+  auto old_enmr = Enumeration::create(ctx_, "an_enumeration", var_values);
+  ase3.add_enumeration(old_enmr);
+  auto attr5 = Attribute::create<uint16_t>(ctx_, "attr5");
+  AttributeExperimental::set_enumeration_name(ctx_, attr5, "an_enumeration");
+  ase.add_attribute(attr5);
+  CHECK_NOTHROW(ase3.array_evolve(uri_));
+
+  // Apply evolution to the array and reopen.
+  CHECK_NOTHROW(array.close());
+  CHECK_NOTHROW(array.open(TILEDB_READ));
+  ArrayExperimental::load_all_enumerations(ctx_, array);
+  all_schemas = array.ptr()->array_->array_schemas_all();
+  schema = array.load_schema(ctx_, uri_);
+  std::string schema_name_4 = schema.ptr()->array_schema()->name();
+
+  // Check all schemas.
+  CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
+  CHECK(
+      all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+      true);
+  CHECK(all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
+  CHECK(
+      all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
+      true);
+  CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
+  CHECK(
+      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
+  CHECK(all_schemas[schema_name_3]->has_enumeration("an_enumeration") == false);
+  CHECK(all_schemas[schema_name_3]->has_enumeration("ase_var_enmr") == true);
+  CHECK(
+      all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
+  CHECK(all_schemas[schema_name_4]->has_enumeration("an_enumeration") == true);
+  CHECK(
+      all_schemas[schema_name_4]->is_enumeration_loaded("an_enumeration") ==
+      true);
+  CHECK(all_schemas[schema_name_4]->has_enumeration("ase_var_enmr") == true);
+  CHECK(
+      all_schemas[schema_name_4]->is_enumeration_loaded("ase_var_enmr") ==
+      true);
 }
 
 TEST_CASE_METHOD(
