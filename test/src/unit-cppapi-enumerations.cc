@@ -51,7 +51,6 @@ struct CPPEnumerationFx {
   void check_dump(const T& val);
 
   void create_array(bool with_empty_enumeration = false);
-  void rm_array();
 
   tiledb::test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
@@ -347,7 +346,7 @@ TEST_CASE_METHOD(
   // Evolve once to add an enumeration.
   ArraySchemaEvolution ase(ctx_);
   std::vector<std::string> var_values{"one", "two", "three"};
-  auto var_enmr = tiledb::Enumeration::create(ctx_, "ase_var_enmr", var_values);
+  auto var_enmr = Enumeration::create(ctx_, "ase_var_enmr", var_values);
   ase.add_enumeration(var_enmr);
   auto attr4 = Attribute::create<uint16_t>(ctx_, "attr4");
   AttributeExperimental::set_enumeration_name(ctx_, attr4, "ase_var_enmr");
@@ -744,9 +743,6 @@ TEST_CASE_METHOD(
 CPPEnumerationFx::CPPEnumerationFx()
     : uri_(vfs_test_setup_.array_uri("enumeration_test_array"))
     , vfs_(vfs_test_setup_.ctx()) {
-  if (!vfs_test_setup_.is_rest()) {
-    rm_array();
-  }
 }
 
 template <typename T>
@@ -820,10 +816,4 @@ void CPPEnumerationFx::create_array(bool with_empty_enumeration) {
   CHECK_NOTHROW(query.submit());
   query.finalize();
   array.close();
-}
-
-void CPPEnumerationFx::rm_array() {
-  if (vfs_.is_dir(uri_)) {
-    vfs_.remove_dir(uri_);
-  }
 }
