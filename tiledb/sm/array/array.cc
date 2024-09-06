@@ -809,8 +809,16 @@ shared_ptr<const Enumeration> Array::get_enumeration(
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
 
-  return get_enumerations(
-      {enumeration_name}, opened_array_->array_schema_latest_ptr())[0];
+  auto schema = opened_array_->array_schema_latest_ptr();
+  if (!schema->has_enumeration(enumeration_name)) {
+    throw ArrayException(
+        "Unable to get enumeration; Enumeration '" + enumeration_name +
+        "' does not exist.");
+  } else if (schema->is_enumeration_loaded(enumeration_name)) {
+    return schema->get_enumeration(enumeration_name);
+  }
+
+  return get_enumerations({enumeration_name}, schema)[0];
 }
 
 std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
@@ -822,14 +830,15 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 
   // Dedupe requested names and filter out anything already loaded.
   std::unordered_set<std::string> enmrs_to_load;
+  std::vector<shared_ptr<const Enumeration>> ret;
   for (auto& enmr_name : enumeration_names) {
     if (!schema->has_enumeration(enmr_name)) {
       continue;
+    } else if (schema->is_enumeration_loaded(enmr_name)) {
+      ret.push_back(schema->get_enumeration(enmr_name));
+    } else {
+      enmrs_to_load.insert(enmr_name);
     }
-    if (schema->is_enumeration_loaded(enmr_name)) {
-      continue;
-    }
-    enmrs_to_load.insert(enmr_name);
   }
 
   // Only attempt to load enumerations if we have at least one Enumeration
@@ -876,12 +885,11 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
   }
 
   // Return the requested list of enumerations
-  std::vector<shared_ptr<const Enumeration>> ret(enmrs_to_load.size());
-  for (size_t i = 0; const auto& name : enmrs_to_load) {
+  for (const auto& name : enmrs_to_load) {
     if (!schema->has_enumeration(name)) {
       continue;
     }
-    ret[i++] = schema->get_enumeration(name);
+    ret.push_back(schema->get_enumeration(name));
   }
   return ret;
 }
