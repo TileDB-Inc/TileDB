@@ -413,9 +413,7 @@ Status FragmentConsolidator::consolidate_fragments(
   // of the fragments which are selected for consolidation (which is equal to
   // the non-empty domain of the resulting consolidated fragment) overlaps with
   // any fragment created prior to this subset, then the subset is marked as
-  // non-consolidatable. Recall that the fragment that results from
-  // consolidating a subset of fragments containing at least one dense fragment
-  // is always a dense fragment. Therefore, empty regions in the non-emtpy
+  // non-consolidatable. Therefore, empty regions in the non-emtpy
   // domain of the consolidated fragment will be filled with special values.
   // Those values may erroneously overwrite older valid cell values.
   if (array_for_reads->array_schema_latest().array_type() == ArrayType::DENSE) {
@@ -431,6 +429,10 @@ Status FragmentConsolidator::consolidate_fragments(
       max_timestamp = std::max(max_timestamp, range.second);
     }
 
+    // Expand domain to full tiles
+    auto expanded_union_non_empty_domains = union_non_empty_domains;
+    domain.expand_to_tiles(&expanded_union_non_empty_domains);
+
     // Now iterate all fragments and see if the consolidation can lead to data
     // loss
     for (auto& frag_info : frag_info_vec) {
@@ -440,16 +442,12 @@ Status FragmentConsolidator::consolidate_fragments(
         continue;
       }
 
-      // Expand domain to full tiles
-      auto expanded_union_non_empty_domains = union_non_empty_domains;
-      domain.expand_to_tiles(&expanded_union_non_empty_domains);
-
       // Check domain and timestamp overlap. Do timestamp check first as it is
       // cheaper. We compare the current fragment's start timestamp against the
       // upper bound we calculated previously.
       auto timestamp_range{frag_info.timestamp_range()};
-      bool timestamp_before = !(timestamp_range.first > max_timestamp);
-      if (timestamp_before &&
+      bool timestamp_overlap = !(timestamp_range.first > max_timestamp);
+      if (timestamp_overlap &&
           domain.overlap(
               expanded_union_non_empty_domains, frag_info.non_empty_domain())) {
         throw FragmentConsolidatorException(

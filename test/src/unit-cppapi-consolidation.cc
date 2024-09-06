@@ -265,7 +265,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test consolidation with wrong fragment list",
-    "[cppapi][consolidation][fragment_list_consolidation]") {
+    "[cppapi][consolidation][fragment-list-consolidation]") {
   std::string array_name = "cppapi_consolidation";
   remove_array(array_name);
 
