@@ -237,13 +237,10 @@ RestClientRemote::post_array_schema_from_rest(
     bool include_enumerations) {
   serialization::LoadArraySchemaRequest req(config);
 
-  Buffer buf;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   serialization::serialize_load_array_schema_request(
-      config, req, serialization_type_, buf);
-
-  // Wrap in a list
-  BufferList serialized;
-  throw_if_not_ok(serialized.add_buffer(std::move(buf)));
+      config, req, serialization_type_, buff);
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -279,12 +276,10 @@ RestClientRemote::post_array_schema_from_rest(
 
 Status RestClientRemote::post_array_schema_to_rest(
     const URI& uri, const ArraySchema& array_schema) {
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::array_schema_serialize(
-      array_schema, serialization_type_, &buff, false));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      array_schema, serialization_type_, buff, false));
 
   const auto creation_access_credentials_name{
       config_->get<std::string>("rest.creation_access_credentials_name")};
@@ -324,12 +319,10 @@ void RestClientRemote::post_array_from_rest(
     throw RestClientException("Error getting remote array; array is null.");
   }
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   throw_if_not_ok(
-      serialization::array_open_serialize(*array, serialization_type_, &buff));
-  // Wrap in a list
-  BufferList serialized;
-  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
+      serialization::array_open_serialize(*array, serialization_type_, buff));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -386,16 +379,14 @@ void RestClientRemote::post_delete_fragments_to_rest(
     Array* array,
     uint64_t timestamp_start,
     uint64_t timestamp_end) {
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   serialization::serialize_delete_fragments_timestamps_request(
       array->config(),
       timestamp_start,
       timestamp_end,
       serialization_type_,
-      &buff);
-  // Wrap in a list
-  BufferList serialized;
-  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
+      buff);
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -420,12 +411,10 @@ void RestClientRemote::post_delete_fragments_to_rest(
 
 void RestClientRemote::post_delete_fragments_list_to_rest(
     const URI& uri, Array* array, const std::vector<URI>& fragment_uris) {
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   serialization::serialize_delete_fragments_list_request(
-      array->config(), fragment_uris, serialization_type_, &buff);
-  // Wrap in a list
-  BufferList serialized;
-  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
+      array->config(), fragment_uris, serialization_type_, buff);
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -594,12 +583,10 @@ Status RestClientRemote::post_array_metadata_to_rest(
     return LOG_STATUS(Status_RestError(
         "Error posting array metadata to REST; array is null."));
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::metadata_serialize(
-      array->unsafe_metadata(), serialization_type_, &buff));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      array->unsafe_metadata(), serialization_type_, buff));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -644,13 +631,10 @@ RestClientRemote::post_enumerations_from_rest(
     return {};
   }
 
-  Buffer buf;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   serialization::serialize_load_enumerations_request(
-      array->config(), enumeration_names, serialization_type_, buf);
-
-  // Wrap in a list
-  BufferList serialized;
-  throw_if_not_ok(serialized.add_buffer(std::move(buf)));
+      array->config(), enumeration_names, serialization_type_, buff);
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -693,13 +677,10 @@ void RestClientRemote::post_query_plan_from_rest(
         "Error submitting query plan to REST; null array.");
   }
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   serialization::serialize_query_plan_request(
       query.config(), query, serialization_type_, buff);
-
-  // Wrap in a list
-  BufferList serialized;
-  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -792,9 +773,9 @@ Status RestClientRemote::post_query_submit(
   }
 
   // Serialize query to send
-  BufferList serialized;
+  BufferList serialized{memory_tracker_};
   RETURN_NOT_OK(serialization::query_serialize(
-      query, serialization_type_, true, &serialized));
+      query, serialization_type_, true, serialized));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -961,9 +942,14 @@ size_t RestClientRemote::query_post_call_back(
       // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
-      aux.reset_offset();
       st = serialization::query_deserialize(
-          aux, serialization_type_, true, copy_state, query, compute_tp_);
+          aux,
+          serialization_type_,
+          true,
+          copy_state,
+          query,
+          compute_tp_,
+          memory_tracker_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         return return_wrapper(bytes_processed);
@@ -974,7 +960,15 @@ size_t RestClientRemote::query_post_call_back(
       // data when deserializing read queries, this will return an
       // error status.
       st = serialization::query_deserialize(
-          *scratch, serialization_type_, true, copy_state, query, compute_tp_);
+          // Pass only the part of the buffer after the offset. The offset is
+          // important as we've been advancing it in the code.
+          scratch->cur_span(),
+          serialization_type_,
+          true,
+          copy_state,
+          query,
+          compute_tp_,
+          memory_tracker_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
         return return_wrapper(bytes_processed);
@@ -1022,9 +1016,9 @@ size_t RestClientRemote::query_post_call_back(
 
 Status RestClientRemote::finalize_query_to_rest(const URI& uri, Query* query) {
   // Serialize data to send
-  BufferList serialized;
+  BufferList serialized{memory_tracker_};
   RETURN_NOT_OK(serialization::query_serialize(
-      query, serialization_type_, true, &serialized));
+      query, serialization_type_, true, serialized));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1058,9 +1052,14 @@ Status RestClientRemote::finalize_query_to_rest(const URI& uri, Query* query) {
   }
 
   // Deserialize data returned
-  returned_data.reset_offset();
   return serialization::query_deserialize(
-      returned_data, serialization_type_, true, nullptr, query, compute_tp_);
+      returned_data,
+      serialization_type_,
+      true,
+      nullptr,
+      query,
+      compute_tp_,
+      memory_tracker_);
 }
 
 Status RestClientRemote::submit_and_finalize_query_to_rest(
@@ -1077,9 +1076,9 @@ Status RestClientRemote::submit_and_finalize_query_to_rest(
   auto rest_scratch = query->rest_scratch();
 
   // Serialize query to send
-  BufferList serialized;
+  BufferList serialized{memory_tracker_};
   RETURN_NOT_OK(serialization::query_serialize(
-      query, serialization_type_, true, &serialized));
+      query, serialization_type_, true, serialized));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1205,9 +1204,9 @@ Status RestClientRemote::get_query_est_result_sizes(
   }
 
   // Serialize query to send
-  BufferList serialized;
+  BufferList serialized{memory_tracker_};
   RETURN_NOT_OK(serialization::query_serialize(
-      query, serialization_type_, true, &serialized));
+      query, serialization_type_, true, serialized));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1257,12 +1256,10 @@ std::string RestClientRemote::redirect_uri(const std::string& cache_key) {
 
 Status RestClientRemote::post_array_schema_evolution_to_rest(
     const URI& uri, ArraySchemaEvolution* array_schema_evolution) {
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::array_schema_evolution_serialize(
-      array_schema_evolution, serialization_type_, &buff, false));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      array_schema_evolution, serialization_type_, buff, false));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1290,12 +1287,10 @@ Status RestClientRemote::post_fragment_info_from_rest(
     return LOG_STATUS(Status_RestError(
         "Error getting fragment info from REST; fragment info is null."));
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::fragment_info_request_serialize(
-      *fragment_info, serialization_type_, &buff));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      *fragment_info, serialization_type_, buff));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1333,12 +1328,10 @@ Status RestClientRemote::post_group_metadata_from_rest(
         "Error posting group metadata from REST; group is null."));
   }
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::group_metadata_serialize(
-      group, serialization_type_, &buff, false));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      group, serialization_type_, buff, false));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1380,12 +1373,10 @@ Status RestClientRemote::put_group_metadata_to_rest(
         "Error posting group metadata to REST; group is null."));
   }
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::group_metadata_serialize(
-      group, serialization_type_, &buff, true));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      group, serialization_type_, buff, true));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1410,12 +1401,10 @@ Status RestClientRemote::post_group_create_to_rest(
         Status_RestError("Error posting group to REST; group is null."));
   }
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(
-      serialization::group_create_serialize(group, serialization_type_, &buff));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      serialization::group_create_serialize(group, serialization_type_, buff));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1438,12 +1427,10 @@ Status RestClientRemote::post_group_from_rest(const URI& uri, Group* group) {
         Status_RestError("Error posting group to REST; group is null."));
   }
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(
-      serialization::group_serialize(group, serialization_type_, &buff));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      serialization::group_serialize(group, serialization_type_, buff));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1481,13 +1468,10 @@ Status RestClientRemote::patch_group_to_rest(const URI& uri, Group* group) {
         Status_RestError("Error patching group to REST; group is null."));
   }
 
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(
-      serialization::group_update_serialize(group, serialization_type_, &buff));
-
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      serialization::group_update_serialize(group, serialization_type_, buff));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1533,12 +1517,10 @@ Status RestClientRemote::ensure_json_null_delimited_string(Buffer* buffer) {
 
 Status RestClientRemote::post_consolidation_to_rest(
     const URI& uri, const Config& config) {
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::array_consolidation_request_serialize(
-      config, serialization_type_, &buff));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      config, serialization_type_, buff));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1558,12 +1540,10 @@ Status RestClientRemote::post_consolidation_to_rest(
 
 Status RestClientRemote::post_vacuum_to_rest(
     const URI& uri, const Config& config) {
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::array_vacuum_request_serialize(
-      config, serialization_type_, &buff));
-  // Wrap in a list
-  BufferList serialized;
-  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+      config, serialization_type_, buff));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1584,13 +1564,10 @@ Status RestClientRemote::post_vacuum_to_rest(
 std::vector<std::vector<std::string>>
 RestClientRemote::post_consolidation_plan_from_rest(
     const URI& uri, const Config& config, uint64_t fragment_size) {
-  Buffer buff;
+  BufferList serialized{memory_tracker_};
+  auto& buff = serialized.emplace_buffer();
   serialization::serialize_consolidation_plan_request(
       fragment_size, config, serialization_type_, buff);
-
-  // Wrap in a list
-  BufferList serialized;
-  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
 
   // Init curl and form the URL
   Curl curlc(logger_);

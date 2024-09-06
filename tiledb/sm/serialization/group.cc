@@ -364,34 +364,25 @@ Status group_create_to_capnp(
 }
 
 Status group_serialize(
-    Group* group, SerializationType serialize_type, Buffer* serialized_buffer) {
+    Group* group,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Group::Builder groupBuilder = message.initRoot<capnp::Group>();
     RETURN_NOT_OK(group_to_capnp(group, &groupBuilder));
-
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
 
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::Group>();
         kj::String capnp_json = json.encode(groupBuilder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -416,7 +407,7 @@ Status group_serialize(
 Status group_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -471,35 +462,26 @@ Status group_deserialize(
 }
 
 Status group_details_serialize(
-    Group* group, SerializationType serialize_type, Buffer* serialized_buffer) {
+    Group* group,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Group::GroupDetails::Builder groupDetailsBuilder =
         message.initRoot<capnp::Group::GroupDetails>();
     RETURN_NOT_OK(group_details_to_capnp(group, &groupDetailsBuilder));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::Group::GroupDetails>();
         kj::String capnp_json = json.encode(groupDetailsBuilder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -524,7 +506,7 @@ Status group_details_serialize(
 Status group_details_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -584,35 +566,24 @@ Status group_details_deserialize(
 Status group_update_serialize(
     const Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::GroupUpdate::Builder groupUpdateBuilder =
         message.initRoot<capnp::GroupUpdate>();
     RETURN_NOT_OK(group_update_to_capnp(group, &groupUpdateBuilder));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupUpdate>();
         kj::String capnp_json = json.encode(groupUpdateBuilder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -637,7 +608,7 @@ Status group_update_serialize(
 Status group_update_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -696,35 +667,24 @@ Status group_update_deserialize(
 Status group_create_serialize(
     const Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::GroupCreate::Builder group_create_builder =
         message.initRoot<capnp::GroupCreate>();
     RETURN_NOT_OK(group_create_to_capnp(group, &group_create_builder));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupCreate>();
         kj::String capnp_json = json.encode(group_create_builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -749,7 +709,7 @@ Status group_create_serialize(
 Status group_metadata_serialize(
     Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     bool load) {
   try {
     ::capnp::MallocMessageBuilder message;
@@ -758,28 +718,17 @@ Status group_metadata_serialize(
     RETURN_NOT_OK(
         group_metadata_to_capnp(group, &group_metadata_builder, load));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupCreate>();
         kj::String capnp_json = json.encode(group_metadata_builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -804,42 +753,46 @@ Status group_metadata_serialize(
 
 #else
 
-Status group_serialize(Group*, SerializationType, Buffer*) {
+Status group_serialize(Group*, SerializationType, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_deserialize(Group*, SerializationType, const Buffer&) {
+Status group_deserialize(Group*, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status group_details_serialize(Group*, SerializationType, Buffer*) {
+Status group_details_serialize(
+    Group*, SerializationType, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_details_deserialize(Group*, SerializationType, const Buffer&) {
+Status group_details_deserialize(Group*, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status group_update_serialize(const Group*, SerializationType, Buffer*) {
+Status group_update_serialize(
+    const Group*, SerializationType, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_update_deserialize(Group*, SerializationType, const Buffer&) {
+Status group_update_deserialize(Group*, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status group_create_serialize(const Group*, SerializationType, Buffer*) {
+Status group_create_serialize(
+    const Group*, SerializationType, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_metadata_serialize(Group*, SerializationType, Buffer*, bool) {
+Status group_metadata_serialize(
+    Group*, SerializationType, SerializationBuffer&, bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

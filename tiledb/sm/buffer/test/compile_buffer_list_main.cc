@@ -30,6 +30,6 @@
 #include "../buffer_list.h"
 
 int main() {
-  tiledb::sm::BufferList();
+  tiledb::sm::BufferList(nullptr);
   return 0;
 }

@@ -135,16 +135,7 @@ size_t buffer_list_read_memory_callback(
   const size_t max_nbytes = size * nmemb;
 
   // The buffer list tracks the current offset internally.
-  uint64_t num_read = 0;
-  auto st = buffer_list->read_at_most(dest, max_nbytes, &num_read);
-  if (!st.ok()) {
-    LOG_ERROR(
-        "Cannot copy libcurl POST data; BufferList read failed: " +
-        st.to_string());
-    return CURL_READFUNC_ABORT;
-  }
-
-  return num_read;
+  return buffer_list->read_at_most(dest, max_nbytes);
 }
 
 /**
@@ -157,11 +148,12 @@ size_t buffer_list_read_memory_callback(
 static int buffer_list_seek_callback(
     void* userp, curl_off_t offset, int origin) {
   BufferList* data = static_cast<BufferList*>(userp);
-  Status status = data->seek(offset, origin);
-  if (status.ok())
+  try {
+    data->seek(offset, origin);
     return CURL_SEEKFUNC_OK;
-
-  return CURL_SEEKFUNC_FAIL;
+  } catch (...) {
+    return CURL_SEEKFUNC_FAIL;
+  }
 }
 
 size_t write_header_callback(

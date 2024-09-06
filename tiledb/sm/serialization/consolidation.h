@@ -46,8 +46,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Buffer;
 class Config;
+class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
@@ -88,7 +88,7 @@ Status array_consolidation_request_to_capnp(
 Status array_consolidation_request_serialize(
     const Config& config,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize consolidation request via Cap'n Proto
@@ -101,7 +101,7 @@ Status array_consolidation_request_serialize(
 Status array_consolidation_request_deserialize(
     Config** config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 /**
  * Serialize a consolidation plan request via Cap'n Proto.
@@ -115,7 +115,7 @@ void serialize_consolidation_plan_request(
     uint64_t fragment_size,
     const Config& config,
     SerializationType serialization_type,
-    Buffer& request);
+    SerializationBuffer& request);
 
 /**
  * Deserialize a consolidation plan request via Cap'n Proto.
@@ -126,7 +126,7 @@ void serialize_consolidation_plan_request(
  * @return the deserialized maximum fragment size
  */
 uint64_t deserialize_consolidation_plan_request(
-    SerializationType serialization_type, const Buffer& request);
+    SerializationType serialization_type, span<const char> request);
 
 /**
  * Serialize a consolidation plan response via Cap'n Proto.
@@ -138,7 +138,7 @@ uint64_t deserialize_consolidation_plan_request(
 void serialize_consolidation_plan_response(
     const ConsolidationPlan& consolidation_plan,
     SerializationType serialization_type,
-    Buffer& response);
+    SerializationBuffer& response);
 
 /**
  * Deserialize a consolidation plan response via Cap'n Proto.
@@ -149,7 +149,7 @@ void serialize_consolidation_plan_response(
  * @return the deserialized consolidation plan info
  */
 std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
-    SerializationType serialization_type, const Buffer& response);
+    SerializationType serialization_type, span<const char> response);
 
 }  // namespace serialization
 }  // namespace sm

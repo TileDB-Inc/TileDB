@@ -47,12 +47,8 @@ struct tiledb_buffer_list_handle_t
   tiledb::sm::BufferList buffer_list_;
 
  public:
-  explicit tiledb_buffer_list_handle_t()
-      : buffer_list_() {
-  }
-
-  inline void set_buffer_list(tiledb::sm::BufferList& buffer_list) {
-    buffer_list_ = buffer_list;
+  explicit tiledb_buffer_list_handle_t(auto&&... args)
+      : buffer_list_(std::forward<decltype(args)>(args)...) {
   }
 
   [[nodiscard]] inline tiledb::sm::BufferList& buffer_list() {

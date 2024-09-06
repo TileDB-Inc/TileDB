@@ -35,6 +35,9 @@
 
 #include <vector>
 
+#include "tiledb/common/indexed_list.h"
+#include "tiledb/common/memory_tracker.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;
@@ -42,38 +45,50 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Buffer;
+class SerializationBuffer;
 
 /**
- * A simple flat list of Buffers. This class also offers some convenience
- * functions for reading from the list of buffers as if it was a contiguous
- * buffer.
+ * A simple flat list of SerializationBuffers. This class also offers some
+ * convenience functions for reading from the list of buffers as if it was a
+ * contiguous buffer.
  */
 class BufferList {
  public:
-  /** Constructor. */
-  BufferList();
-
   /**
-   * Adds the given buffer to the list.
+   * Constructor.
    *
-   * This BufferList takes ownership of the given Buffer instance (which is why
-   * it takes an rvalue reference). This is to support efficient appends without
-   * having to make potentially large memcpy calls.
-   *
-   * @param buffer The buffer to add
-   * @return Status
+   * @param memory_tracker Memory tracker the serialization buffers.
    */
-  Status add_buffer(Buffer&& buffer);
+  BufferList(shared_ptr<sm::MemoryTracker> memory_tracker);
+
+  DISABLE_COPY_AND_COPY_ASSIGN(BufferList);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(BufferList);
 
   /**
-   * Gets the Buffer in the list at the given index.
+   * Returns the buffer list's allocator.
+   */
+  tdb::pmr::polymorphic_allocator<SerializationBuffer> get_allocator() const {
+    return buffers_.get_allocator();
+  }
+
+  /**
+   * Constructs in place and adds a new SerializationBuffer to the list.
+   *
+   * @param args Arguments to pass to the SerializationBuffer constructor. Do
+   * not specify the allocator.
+   * @return Reference to the new buffer instance
+   */
+  SerializationBuffer& emplace_buffer(auto&&... args) {
+    return buffers_.emplace_back(std::forward<decltype(args)>(args)...);
+  }
+
+  /**
+   * Gets the SerializationBuffer in the list at the given index.
    *
    * @param index Index of buffer to get
-   * @param buffer Set to point to the buffer instance
-   * @return Status
+   * @return Reference to the buffer instance
    */
-  Status get_buffer(uint64_t index, const Buffer** buffer) const;
+  const SerializationBuffer& get_buffer(uint64_t index) const;
 
   /** Returns the number of buffers in the list. */
   uint64_t num_buffers() const;
@@ -89,7 +104,7 @@ class BufferList {
    * @param nbytes The number of bytes to read.
    * @return Status
    */
-  Status read(void* dest, uint64_t nbytes);
+  void read(void* dest, uint64_t nbytes);
 
   /**
    * Similar to `Status read(void* dest, uint64_t nbytes)` but does not return
@@ -97,10 +112,9 @@ class BufferList {
    *
    * @param dest The buffer to read the data into.
    * @param nbytes The maximum number of bytes to read.
-   * @param bytes_read Will be set to the number of bytes actually read.
-   * @return Status
+   * @return The number of bytes actually read.
    */
-  Status read_at_most(void* dest, uint64_t nbytes, uint64_t* bytes_read);
+  uint64_t read_at_most(void* dest, uint64_t nbytes);
 
   /**
    * Seek to an offset, similar to lseek or fseek
@@ -119,9 +133,8 @@ class BufferList {
    *
    * @param offset Offset to seek to.
    * @param whence Location to seek from.
-   * @return Status
    */
-  Status seek(off_t offset, int whence);
+  void seek(off_t offset, int whence);
 
   /** Resets the current offset for reading. */
   void reset_offset();
@@ -136,7 +149,7 @@ class BufferList {
    * @param current_relative_offset The current relative offset within the
    * current buffer.
    *
-   * */
+   */
   void set_offset(
       const size_t current_buffer_index,
       const uint64_t current_relative_offset);
@@ -150,8 +163,8 @@ class BufferList {
   std::tuple<size_t, uint64_t> get_offset() const;
 
  private:
-  /** The underlying list of Buffers. */
-  std::vector<Buffer> buffers_;
+  /** The underlying list of SerializationBuffers. */
+  tiledb::common::IndexedList<SerializationBuffer> buffers_;
 
   /** The index of the buffer containing the current global offset. */
   size_t current_buffer_index_;
@@ -161,16 +174,6 @@ class BufferList {
 
   /** The current global offset. */
   uint64_t offset_;
-
-  /**
-   * Reads from the current offset into the given destination.
-   *
-   * @param dest The buffer to read the data into. If null will perform seek.
-   * @param nbytes The number of bytes to read.
-   * @param bytes_read Set to the number of bytes actually read.
-   * @return Status
-   */
-  Status read(void* dest, uint64_t nbytes, uint64_t* bytes_read);
 };
 
 }  // namespace sm

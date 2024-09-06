@@ -89,7 +89,7 @@ Status fragment_info_request_from_capnp(
 Status fragment_info_request_serialize(
     const FragmentInfo& fragment_info,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::FragmentInfoRequest::Builder fragment_info_req_builder =
@@ -97,27 +97,16 @@ Status fragment_info_request_serialize(
     RETURN_NOT_OK(fragment_info_request_to_capnp(
         fragment_info, &fragment_info_req_builder));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(fragment_info_req_builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -145,7 +134,7 @@ Status fragment_info_request_serialize(
 Status fragment_info_request_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -400,7 +389,7 @@ Status fragment_info_to_capnp(
 Status fragment_info_serialize(
     const FragmentInfo& fragment_info,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side) {
   try {
     // Serialize
@@ -409,27 +398,16 @@ Status fragment_info_serialize(
 
     RETURN_NOT_OK(fragment_info_to_capnp(fragment_info, &builder, client_side));
 
-    // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -455,7 +433,7 @@ Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {
   if (fragment_info == nullptr)
     return LOG_STATUS(
@@ -523,7 +501,7 @@ Status fragment_info_deserialize(
 #else
 
 Status fragment_info_serialize(
-    const FragmentInfo&, SerializationType, Buffer*, bool) {
+    const FragmentInfo&, SerializationType, SerializationBuffer&, bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -532,20 +510,20 @@ Status fragment_info_deserialize(
     FragmentInfo*,
     SerializationType,
     const URI&,
-    const Buffer&,
+    span<const char>,
     shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 
 Status fragment_info_request_serialize(
-    const FragmentInfo&, SerializationType, Buffer*) {
+    const FragmentInfo&, SerializationType, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status fragment_info_request_deserialize(
-    FragmentInfo*, SerializationType, const Buffer&) {
+    FragmentInfo*, SerializationType, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

@@ -43,7 +43,7 @@ namespace tiledb {
 namespace sm {
 
 class Group;
-class Buffer;
+class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
@@ -57,7 +57,9 @@ namespace serialization {
  * @return Status
  */
 Status group_serialize(
-    Group* group, SerializationType serialize_type, Buffer* serialized_buffer);
+    Group* group,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize a group via Cap'n proto
@@ -70,7 +72,7 @@ Status group_serialize(
 Status group_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 /**
  * Serialize a group details via Cap'n Prto
@@ -82,7 +84,9 @@ Status group_deserialize(
  * @return Status
  */
 Status group_details_serialize(
-    Group* group, SerializationType serialize_type, Buffer* serialized_buffer);
+    Group* group,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize a group details via Cap'n proto
@@ -95,7 +99,7 @@ Status group_details_serialize(
 Status group_details_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 /**
  * Serialize a group's update state via Cap'n Prto
@@ -109,7 +113,7 @@ Status group_details_deserialize(
 Status group_update_serialize(
     const Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize a group's update state via Cap'n proto
@@ -122,7 +126,7 @@ Status group_update_serialize(
 Status group_update_deserialize(
     Group* group,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 /**
  * Serialize a group's creation state via Cap'n Prto
@@ -136,7 +140,7 @@ Status group_update_deserialize(
 Status group_create_serialize(
     const Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Serialize a group metadata for remote POSTING
@@ -152,7 +156,7 @@ Status group_create_serialize(
 Status group_metadata_serialize(
     Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     bool load);
 
 }  // namespace serialization

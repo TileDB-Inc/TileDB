@@ -48,10 +48,10 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class Buffer;
 class ArraySchema;
 class Dimension;
 class MemoryTracker;
+class SerializationBuffer;
 class URI;
 enum class SerializationType : uint8_t;
 
@@ -157,12 +157,12 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
 Status array_schema_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side);
 
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker);
 
 Status nonempty_domain_serialize(
@@ -170,32 +170,34 @@ Status nonempty_domain_serialize(
     const void* nonempty_domain,
     bool is_empty,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 Status nonempty_domain_deserialize(
     const Array* array,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     void* nonempty_domain,
     bool* is_empty);
 
 Status nonempty_domain_serialize(
-    Array* array, SerializationType serialize_type, Buffer* serialized_buffer);
+    Array* array,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer);
 
 Status nonempty_domain_deserialize(
     Array* array,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type);
 
 Status max_buffer_sizes_serialize(
     Array* array,
     const void* subarray,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 Status max_buffer_sizes_deserialize(
     const ArraySchema& schema,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
@@ -204,13 +206,15 @@ void serialize_load_array_schema_request(
     const Config& config,
     const LoadArraySchemaRequest& req,
     SerializationType serialization_type,
-    Buffer& data);
+    SerializationBuffer& data);
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
-    SerializationType serialization_type, const Buffer& data);
+    SerializationType serialization_type, span<const char> data);
 
 void serialize_load_array_schema_response(
-    const Array& array, SerializationType serialization_type, Buffer& data);
+    const Array& array,
+    SerializationType serialization_type,
+    SerializationBuffer& data);
 
 std::tuple<
     shared_ptr<ArraySchema>,
@@ -218,7 +222,7 @@ std::tuple<
 deserialize_load_array_schema_response(
     const URI& uri,
     SerializationType serialization_type,
-    const Buffer& data,
+    span<const char> data,
     shared_ptr<MemoryTracker> memory_tracker);
 
 }  // namespace serialization

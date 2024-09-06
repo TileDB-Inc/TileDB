@@ -50,7 +50,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class Array;
-class Buffer;
+class SerializationBuffer;
 class BufferList;
 class ContextResources;
 class Query;
@@ -140,7 +140,7 @@ using CopyState =
  * @param memory_tracker Memory tracker to use for allocations.
  */
 Status array_from_query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     Array& array,
     ContextResources& resources,
@@ -159,7 +159,7 @@ Status query_serialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    BufferList* serialized_buffer);
+    BufferList& serialized_buffer);
 
 /**
  * Deserialize a query. This takes a buffer containing serialized query
@@ -174,14 +174,17 @@ Status query_serialize(
  *      query's buffer sizes are updated directly. If it is not null, the buffer
  *      sizes are not modified but the entries in the map are.
  * @param query Query to deserialize into
+ * @param compute_tp Compute thread pool to use
+ * @param memory_tracker Memory tracker to use
  */
 Status query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     bool clientside,
     CopyState* copy_state,
     Query* query,
-    ThreadPool* compute_tp);
+    ThreadPool* compute_tp,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize an estimated result size map for all fields from a query object
@@ -196,7 +199,7 @@ Status query_est_result_size_serialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize estimated result sizes into the query object
@@ -212,7 +215,7 @@ Status query_est_result_size_deserialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 #ifdef TILEDB_SERIALIZATION
 

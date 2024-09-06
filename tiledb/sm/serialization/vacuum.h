@@ -45,8 +45,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Buffer;
 class Config;
+class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
@@ -86,7 +86,7 @@ Status array_vacuum_request_to_capnp(
 Status array_vacuum_request_serialize(
     const Config& config,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize vacuum request via Cap'n Proto
@@ -99,7 +99,7 @@ Status array_vacuum_request_serialize(
 Status array_vacuum_request_deserialize(
     Config** config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 }  // namespace serialization
 }  // namespace sm
