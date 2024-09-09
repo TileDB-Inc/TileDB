@@ -33,6 +33,7 @@
 #include "tiledb/sm/consolidator/fragment_consolidator.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -405,6 +406,60 @@ Status FragmentConsolidator::consolidate_fragments(
     throw FragmentConsolidatorException(
         "Cannot consolidate; Found " + std::to_string(count) + " of " +
         std::to_string(fragment_uris.size()) + " required fragments.");
+  }
+
+  // In case we have a dense array check that the fragments can be consolidated
+  // without data loss. More specifically, if the union of the non-empty domains
+  // of the fragments which are selected for consolidation (which is equal to
+  // the non-empty domain of the resulting consolidated fragment) overlaps with
+  // any fragment created prior to this subset, then the subset is marked as
+  // non-consolidatable. Therefore, empty regions in the non-emtpy
+  // domain of the consolidated fragment will be filled with special values.
+  // Those values may erroneously overwrite older valid cell values.
+  if (array_for_reads->array_schema_latest().array_type() == ArrayType::DENSE) {
+    // Search every other fragment in this array if any of them overlaps in
+    // ranges and its timestamp range falls between the range of the fragments
+    // to consolidate throw error
+
+    // First calculate the max timestamp among the fragments which are selected
+    // for consolidation and use it as an upper bound.
+    uint64_t max_timestamp = std::numeric_limits<uint64_t>::min();
+    for (const auto& item : to_consolidate) {
+      const auto& range = item.timestamp_range();
+      max_timestamp = std::max(max_timestamp, range.second);
+    }
+
+    // Expand domain to full tiles
+    auto expanded_union_non_empty_domains = union_non_empty_domains;
+    domain.expand_to_tiles(&expanded_union_non_empty_domains);
+
+    // Now iterate all fragments and see if the consolidation can lead to data
+    // loss
+    for (auto& frag_info : frag_info_vec) {
+      // Ignore the fragments that are requested to be consolidated
+      auto uri = frag_info.uri().last_path_part();
+      if (to_consolidate_set.count(uri) != 0) {
+        continue;
+      }
+
+      // Check domain and timestamp overlap. Do timestamp check first as it is
+      // cheaper. We compare the current fragment's start timestamp against the
+      // upper bound we calculated previously.
+      auto timestamp_range{frag_info.timestamp_range()};
+      bool timestamp_overlap = !(timestamp_range.first > max_timestamp);
+      if (timestamp_overlap &&
+          domain.overlap(
+              expanded_union_non_empty_domains, frag_info.non_empty_domain())) {
+        throw FragmentConsolidatorException(
+            "Cannot consolidate; The non-empty domain of the fragment with "
+            "URI: " +
+            uri +
+            " overlaps with the union of the non-empty domains of the "
+            "fragments selected for consolidation and was created before "
+            "these fragments. For more information refer to our "
+            "documentation on consolidation for Dense arrays.");
+      }
+    }
   }
 
   FragmentConsolidationWorkspace cw(consolidator_memory_tracker_);
