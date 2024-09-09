@@ -285,7 +285,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumerations From Disk - Array::get_enumeration",
-    "[enumeration][array-get-enumeration]") {
+    "[enumeration][array-get-enumeration][rest]") {
   create_array();
   auto array = Array(ctx_, uri_, TILEDB_READ);
   auto enmr = ArrayExperimental::get_enumeration(ctx_, array, "an_enumeration");
@@ -299,7 +299,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumerations From Disk - Attribute::get_enumeration_name",
-    "[enumeration][attr-get-enumeration-name]") {
+    "[enumeration][attr-get-enumeration-name][rest]") {
   create_array();
   auto schema = Array::load_schema(ctx_, uri_);
 
@@ -315,7 +315,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Array::load_all_enumerations",
-    "[enumeration][array-load-all-enumerations]") {
+    "[enumeration][array-load-all-enumerations][rest]") {
   create_array();
   auto array = Array(ctx_, uri_, TILEDB_READ);
   REQUIRE_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
@@ -324,7 +324,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: Array load_all_enumerations - Check nullptr",
-    "[enumeration][array-load-all-enumerations]") {
+    "[enumeration][array-load-all-enumerations][rest]") {
   auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr);
   REQUIRE(rc != TILEDB_OK);
 }
@@ -463,7 +463,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: ArraySchemaEvolution - Add Enumeration - Check nullptr",
-    "[enumeration][array-schema-evolution][error]") {
+    "[enumeration][array-schema-evolution][error][rest]") {
   auto rc = tiledb_array_schema_evolution_add_enumeration(
       ctx_.ptr().get(), nullptr, nullptr);
   REQUIRE(rc != TILEDB_OK);
@@ -482,7 +482,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: ArraySchemaEvolution - Extend Enumeration - Check nullptr",
-    "[enumeration][array-schema-evolution][drop-enumeration]") {
+    "[enumeration][array-schema-evolution][drop-enumeration][rest]") {
   std::vector<std::string> values = {"fred", "wilma", "barney", "pebbles"};
   auto enmr = Enumeration::create(ctx_, enmr_name, values);
 
@@ -507,7 +507,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: ArraySchemaEvolution - Drop Enumeration - Check nullptr",
-    "[enumeration][array-schema-evolution][drop-enumeration]") {
+    "[enumeration][array-schema-evolution][drop-enumeration][rest]") {
   auto rc = tiledb_array_schema_evolution_drop_enumeration(
       ctx_.ptr().get(), nullptr, "foo");
   REQUIRE(rc != TILEDB_OK);
@@ -521,7 +521,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Basic",
-    "[enumeration][query][basic]") {
+    "[enumeration][query][basic][rest]") {
   // Basic smoke test. Check that a simple query condition applied against
   // an array returns sane results.
   create_array();
@@ -557,7 +557,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Negation",
-    "[enumeration][query][negation]") {
+    "[enumeration][query][negation][rest]") {
   // Another basic query test, the only twist here is that we're checking
   // that query condition negation works as expected.
   create_array();
@@ -596,7 +596,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Combination",
-    "[enumeration][query][combination]") {
+    "[enumeration][query][combination][rest]") {
   // Same test as before except using multi-condition query condtions
   create_array();
 
@@ -652,7 +652,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Invalid Enumeration Value is Always False",
-    "[enumeration][query][basic]") {
+    "[enumeration][query][basic][rest]") {
   create_array();
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
@@ -686,7 +686,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Invalid Enumeration Value Accepted by EQ",
-    "[enumeration][query][basic]") {
+    "[enumeration][query][basic][rest]") {
   create_array();
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
@@ -713,7 +713,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Invalid Enumeration Value Accepted by IN",
-    "[enumeration][query][basic]") {
+    "[enumeration][query][basic][rest]") {
   create_array();
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
@@ -740,7 +740,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Set Use Enumeration",
-    "[enumeration][query][set-use-enumeration]") {
+    "[enumeration][query][set-use-enumeration][rest]") {
   QueryCondition qc(ctx_);
   qc.init("attr1", "fred", 4, TILEDB_EQ);
   REQUIRE_NOTHROW(
@@ -752,7 +752,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: Enumeration Query - Check nullptr",
-    "[enumeration][query][check-nullptr]") {
+    "[enumeration][query][check-nullptr][rest]") {
   auto rc =
       tiledb_query_condition_set_use_enumeration(ctx_.ptr().get(), nullptr, 0);
   REQUIRE(rc != TILEDB_OK);
@@ -761,7 +761,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Attempt to query on empty enumeration",
-    "[enumeration][query][empty-results]") {
+    "[enumeration][query][empty-results][rest]") {
   create_array(true);
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
