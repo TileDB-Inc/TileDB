@@ -808,8 +808,16 @@ shared_ptr<const Enumeration> Array::get_enumeration(
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
 
-  return get_enumerations(
-      {enumeration_name}, opened_array_->array_schema_latest_ptr())[0];
+  auto schema = opened_array_->array_schema_latest_ptr();
+  if (!schema->has_enumeration(enumeration_name)) {
+    throw ArrayException(
+        "Unable to get enumeration; Enumeration '" + enumeration_name +
+        "' does not exist.");
+  } else if (schema->is_enumeration_loaded(enumeration_name)) {
+    return schema->get_enumeration(enumeration_name);
+  }
+
+  return get_enumerations({enumeration_name}, schema)[0];
 }
 
 std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
@@ -847,8 +855,8 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 
       loaded = rest_client->post_enumerations_from_rest(
           array_uri_,
-          array_dir_timestamp_start_,
-          array_dir_timestamp_end_,
+          schema->timestamp_range().first,
+          schema->timestamp_range().second,
           this,
           names_to_load,
           memory_tracker_);
