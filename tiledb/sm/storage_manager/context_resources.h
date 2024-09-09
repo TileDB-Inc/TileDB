@@ -135,6 +135,15 @@ class ContextResources {
    */
   shared_ptr<MemoryTracker> ephemeral_memory_tracker() const;
 
+  /**
+   * Return the serialization memory tracker.
+   *
+   * Use this tracker on serialization buffers.
+   *
+   * @return The serialization MemoryTracker.
+   */
+  shared_ptr<MemoryTracker> serialization_memory_tracker() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -145,6 +154,9 @@ class ContextResources {
 
   /** The ephemeral MemoryTracker. */
   mutable shared_ptr<MemoryTracker> ephemeral_memory_tracker_;
+
+  /** The MemoryTracker for serialization operations. */
+  mutable shared_ptr<MemoryTracker> serialization_memory_tracker_;
 
   /** The MemoryTrackerReporter for this context. */
   mutable shared_ptr<MemoryTrackerReporter> memory_tracker_reporter_;

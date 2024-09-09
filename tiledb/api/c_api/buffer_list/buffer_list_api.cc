@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/memory_tracker.h"
 
 #include "../buffer/buffer_api_internal.h"
 #include "buffer_list_api_external.h"
@@ -39,9 +40,12 @@
 
 namespace tiledb::api {
 
-capi_return_t tiledb_buffer_list_alloc(tiledb_buffer_list_t** buffer_list) {
+capi_return_t tiledb_buffer_list_alloc(
+    tiledb_ctx_handle_t* ctx, tiledb_buffer_list_t** buffer_list) {
+  ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(buffer_list);
-  *buffer_list = tiledb_buffer_list_handle_t::make_handle();
+  *buffer_list = tiledb_buffer_list_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker());
   return TILEDB_OK;
 }
 
@@ -67,11 +71,11 @@ capi_return_t tiledb_buffer_list_get_buffer(
   ensure_output_pointer_is_valid(buffer);
 
   // Get the underlying buffer
-  const tiledb::sm::Buffer* b;
-  throw_if_not_ok(buffer_list->buffer_list().get_buffer(buffer_idx, &b));
+  span<const char> b = buffer_list->buffer_list().get_buffer(buffer_idx);
 
   // Create a non-owning wrapper of the underlying buffer
-  *buffer = tiledb_buffer_handle_t::make_handle(b->data(), b->size());
+  *buffer = tiledb_buffer_handle_t::make_handle(
+      b.data(), b.size(), buffer_list->buffer_list().get_allocator());
 
   return TILEDB_OK;
 }
@@ -85,33 +89,28 @@ capi_return_t tiledb_buffer_list_get_total_size(
 }
 
 capi_return_t tiledb_buffer_list_flatten(
-    tiledb_buffer_list_t* buffer_list, tiledb_buffer_t** buffer) {
+    tiledb_ctx_handle_t* ctx,
+    tiledb_buffer_list_t* buffer_list,
+    tiledb_buffer_t** buffer) {
   ensure_buffer_list_is_valid(buffer_list);
   ensure_output_pointer_is_valid(buffer);
 
-  // Create a buffer instance
-  auto buf = tiledb_buffer_handle_t::make_handle();
-
-  // Resize the dest buffer
+  // Create a serialization buffer
   const auto nbytes = buffer_list->buffer_list().total_size();
-  auto st = buf->buffer().realloc(nbytes);
-  if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
+  *buffer = tiledb_buffer_t::make_handle(
+      buffer_list->buffer_list().total_size(),
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
+
+  try {
+    // Read all into the dest buffer
+    buffer_list->buffer_list().reset_offset();
+    buffer_list->buffer_list().read(
+        (*buffer)->buffer().owned_mutable_span().data(), nbytes);
+  } catch (...) {
+    tiledb_buffer_t::break_handle(*buffer);
+    throw;
   }
-
-  // Read all into the dest buffer
-  buffer_list->buffer_list().reset_offset();
-  st = buffer_list->buffer_list().read(buf->buffer().data(), nbytes);
-  if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
-
-  // Set the result size
-  buf->buffer().set_size(nbytes);
-
-  *buffer = buf;
 
   return TILEDB_OK;
 }
@@ -120,10 +119,11 @@ capi_return_t tiledb_buffer_list_flatten(
 
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
+using tiledb::api::api_entry_with_context;
 
 CAPI_INTERFACE(
     buffer_list_alloc, tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
-  return api_entry_context<tiledb::api::tiledb_buffer_list_alloc>(
+  return api_entry_with_context<tiledb::api::tiledb_buffer_list_alloc>(
       ctx, buffer_list);
 }
 
@@ -164,6 +164,6 @@ CAPI_INTERFACE(
     tiledb_ctx_t* ctx,
     tiledb_buffer_list_t* buffer_list,
     tiledb_buffer_t** buffer) {
-  return api_entry_context<tiledb::api::tiledb_buffer_list_flatten>(
+  return api_entry_with_context<tiledb::api::tiledb_buffer_list_flatten>(
       ctx, buffer_list, buffer);
 }

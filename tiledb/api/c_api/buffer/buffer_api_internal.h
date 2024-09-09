@@ -45,18 +45,30 @@ struct tiledb_buffer_handle_t
   static constexpr std::string_view object_type_name{"buffer"};
 
  private:
-  tiledb::sm::Buffer buffer_;
+  tiledb::sm::SerializationBuffer buffer_;
   tiledb::sm::Datatype datatype_;
 
  public:
-  explicit tiledb_buffer_handle_t()
-      : buffer_()
+  explicit tiledb_buffer_handle_t(decltype(buffer_)::allocator_type allocator)
+      : buffer_(allocator)
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
 
-  explicit tiledb_buffer_handle_t(void* data, uint64_t size)
-      : buffer_(data, size)
+  explicit tiledb_buffer_handle_t(
+      size_t size, decltype(buffer_)::allocator_type allocator)
+      : buffer_(size, allocator)
       , datatype_(tiledb::sm::Datatype::UINT8) {
+  }
+
+  explicit tiledb_buffer_handle_t(
+      const void* data,
+      uint64_t size,
+      decltype(buffer_)::allocator_type allocator)
+      : buffer_(allocator)
+      , datatype_(tiledb::sm::Datatype::UINT8) {
+    buffer_.assign(
+        tiledb::sm::SerializationBuffer::NonOwned,
+        span(static_cast<const char*>(data), size));
   }
 
   inline void set_datatype(tiledb::sm::Datatype datatype) {
@@ -67,15 +79,11 @@ struct tiledb_buffer_handle_t
     return datatype_;
   }
 
-  inline void set_buffer(tiledb::sm::Buffer& buffer) {
-    buffer_ = buffer;
-  }
-
-  [[nodiscard]] inline tiledb::sm::Buffer& buffer() {
+  [[nodiscard]] inline tiledb::sm::SerializationBuffer& buffer() {
     return buffer_;
   }
 
-  [[nodiscard]] inline const tiledb::sm::Buffer& buffer() const {
+  [[nodiscard]] inline const tiledb::sm::SerializationBuffer& buffer() const {
     return buffer_;
   }
 };

@@ -621,7 +621,8 @@ Status read_state_from_capnp(
     const capnp::ReadState::Reader& read_state_reader,
     Query* query,
     Reader* reader,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto read_state = reader->read_state();
 
   read_state->overflowed_ = read_state_reader.getOverflowed();
@@ -641,7 +642,7 @@ Status read_state_from_capnp(
         // If the current partition is unsplittable, this means we need to make
         // sure the tile_overlap for the current is computed because we won't go
         // to the next partition
-        read_state->unsplittable_));
+        read_state->unsplittable_ && !client_side));
   }
 
   return Status::Ok();
@@ -669,7 +670,8 @@ Status dense_read_state_from_capnp(
     const capnp::ReadState::Reader& read_state_reader,
     Query* query,
     DenseReader* reader,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto read_state = reader->read_state();
 
   read_state->overflowed_ = read_state_reader.getOverflowed();
@@ -689,7 +691,7 @@ Status dense_read_state_from_capnp(
         // If the current partition is unsplittable, this means we need to make
         // sure the tile_overlap for the current is computed because we won't go
         // to the next partition
-        read_state->unsplittable_));
+        read_state->unsplittable_ && !client_side));
   }
 
   return Status::Ok();
@@ -1097,7 +1099,8 @@ Status reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
     Reader* reader,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto array = query->array();
 
   // Layout
@@ -1113,7 +1116,12 @@ Status reader_from_capnp(
   // Read state
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(read_state_from_capnp(
-        array, reader_reader.getReadState(), query, reader, compute_tp));
+        array,
+        reader_reader.getReadState(),
+        query,
+        reader,
+        compute_tp,
+        client_side));
 
   // Query condition
   if (reader_reader.hasCondition()) {
@@ -1174,7 +1182,8 @@ Status dense_reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
     DenseReader* reader,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    bool client_side) {
   auto array = query->array();
 
   // Layout
@@ -1190,7 +1199,12 @@ Status dense_reader_from_capnp(
   // Read state
   if (reader_reader.hasReadState())
     RETURN_NOT_OK(dense_read_state_from_capnp(
-        array, reader_reader.getReadState(), query, reader, compute_tp));
+        array,
+        reader_reader.getReadState(),
+        query,
+        reader,
+        compute_tp,
+        client_side));
 
   // Query condition
   if (reader_reader.hasCondition()) {
@@ -2161,14 +2175,16 @@ Status query_from_capnp(
           reader_reader,
           query,
           dynamic_cast<DenseReader*>(query->strategy()),
-          compute_tp));
+          compute_tp,
+          context == SerializationContext::CLIENT));
     } else {
       auto reader_reader = query_reader.getReader();
       RETURN_NOT_OK(reader_from_capnp(
           reader_reader,
           query,
           dynamic_cast<Reader*>(query->strategy()),
-          compute_tp));
+          compute_tp,
+          context == SerializationContext::CLIENT));
     }
   } else if (query_type == QueryType::WRITE) {
     auto writer_reader = query_reader.getWriter();
@@ -2277,7 +2293,7 @@ Status query_from_capnp(
 }
 
 Status array_from_query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     Array& array,
     ContextResources& resources,
@@ -2289,10 +2305,7 @@ Status array_from_query_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Query::Builder query_builder =
             message_builder.initRoot<capnp::Query>();
-        json.decode(
-            kj::StringPtr(
-                static_cast<const char*>(serialized_buffer.cur_data())),
-            query_builder);
+        json.decode(kj::StringPtr(serialized_buffer.data()), query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         array_from_capnp(
@@ -2301,7 +2314,7 @@ Status array_from_query_deserialize(
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
-        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.cur_data()))
+        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.data()))
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
@@ -2316,9 +2329,8 @@ Status array_from_query_deserialize(
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
-                    serialized_buffer.cur_data()),
-                (serialized_buffer.size() - serialized_buffer.offset()) /
-                    sizeof(::capnp::word)),
+                    serialized_buffer.data()),
+                serialized_buffer.size() / sizeof(::capnp::word)),
             readerOptions);
 
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
@@ -2346,7 +2358,7 @@ Status query_serialize(
     Query* query,
     SerializationType serialize_type,
     bool clientside,
-    BufferList* serialized_buffer) {
+    BufferList& serialized_buffer) {
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status_SerializationError(
         "Cannot serialize query; json format not supported."));
@@ -2366,27 +2378,15 @@ Status query_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(query_builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        Buffer header;
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(header.realloc(json_len + 1));
-        RETURN_NOT_OK(header.write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(header.write(&nul, 1));
-        RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
+        serialized_buffer.emplace_buffer().assign_null_terminated(capnp_json);
         // TODO: At this point the buffer data should also be serialized.
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
 
         // Write the serialized query
-        Buffer header;
-        RETURN_NOT_OK(header.realloc(message_chars.size()));
-        RETURN_NOT_OK(
-            header.write(message_chars.begin(), message_chars.size()));
-        RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(header)));
+        serialized_buffer.emplace_buffer().assign(protomessage.asChars());
 
         // Concatenate buffers to end of message
         if (serialize_buffers) {
@@ -2399,61 +2399,73 @@ Status query_serialize(
             if (buffer.buffer_var_size_ != nullptr &&
                 buffer.buffer_var_ != nullptr) {
               // Variable size buffers.
-              Buffer data;
-              Buffer var(buffer.buffer_var_, *buffer.buffer_var_size_);
 
               // If we are not appending offsets we can use non-owning
               // buffers.
               if (query_buffer_storage.has_value()) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                Buffer prepend_data(
-                    buffer_cache.buffer_.data(), buffer_cache.buffer_.size());
-                Buffer prepend_var_data(
-                    buffer_cache.buffer_var_.data(),
-                    buffer_cache.buffer_var_.size());
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(prepend_data)));
+
+                serialized_buffer.emplace_buffer(
+                    SerializationBuffer::NonOwned,
+                    buffer_cache.buffer_.data(),
+                    buffer_cache.buffer_.size());
 
                 if (buffer_cache.buffer_.size() > 0) {
+                  SerializationBuffer& data =
+                      serialized_buffer.emplace_buffer();
+                  data.assign(span(
+                      reinterpret_cast<const char*>(buffer.buffer_),
+                      *buffer.buffer_size_));
                   // Ensure ascending order for appended user offsets.
                   // Copy user offsets so we don't modify buffer in client
                   // code.
-                  throw_if_not_ok(
-                      data.write(buffer.buffer_, *buffer.buffer_size_));
+                  auto data_mut = data.owned_mutable_span();
                   uint64_t var_buffer_size = buffer_cache.buffer_var_.size();
                   for (uint64_t i = 0; i < data.size();
                        i += constants::cell_var_offset_size) {
-                    *static_cast<uint64_t*>(data.data(i)) += var_buffer_size;
+                    *reinterpret_cast<uint64_t*>(data_mut.data() + i) +=
+                        var_buffer_size;
                   }
+
                 } else {
-                  data = Buffer(buffer.buffer_, *buffer.buffer_size_);
+                  serialized_buffer.emplace_buffer(
+                      SerializationBuffer::NonOwned,
+                      reinterpret_cast<const char*>(buffer.buffer_),
+                      *buffer.buffer_size_);
                 }
 
-                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(prepend_var_data)));
+                serialized_buffer.emplace_buffer(
+                    SerializationBuffer::NonOwned,
+                    buffer_cache.buffer_var_.data(),
+                    buffer_cache.buffer_var_.size());
               } else {
-                data = Buffer(buffer.buffer_, *buffer.buffer_size_);
-                RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
+                serialized_buffer.emplace_buffer(
+                    SerializationBuffer::NonOwned,
+                    buffer.buffer_,
+                    *buffer.buffer_size_);
               }
 
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(var)));
+              serialized_buffer.emplace_buffer(
+                  SerializationBuffer::NonOwned,
+                  buffer.buffer_var_,
+                  *buffer.buffer_var_size_);
             } else if (
                 buffer.buffer_size_ != nullptr && buffer.buffer_ != nullptr) {
               // Fixed size buffers.
-              Buffer data(buffer.buffer_, *buffer.buffer_size_);
-
               if (query_buffer_storage != nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                Buffer prepend(
-                    buffer_cache.buffer_.data(), buffer_cache.buffer_.size());
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(prepend)));
+                serialized_buffer.emplace_buffer(
+                    SerializationBuffer::NonOwned,
+                    buffer_cache.buffer_.data(),
+                    buffer_cache.buffer_.size());
               }
 
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
+              serialized_buffer.emplace_buffer(
+                  SerializationBuffer::NonOwned,
+                  buffer.buffer_,
+                  *buffer.buffer_size_);
             } else {
               throw StatusException(Status_SerializationError(
                   "Unable to serialize invalid query buffers."));
@@ -2461,21 +2473,19 @@ Status query_serialize(
 
             if (buffer.validity_vector_.buffer_size() != nullptr) {
               // Validity buffers.
-              Buffer data(
-                  buffer.validity_vector_.buffer(),
-                  *buffer.validity_vector_.buffer_size());
-
               if (query_buffer_storage != nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
-                Buffer prepend(
+                serialized_buffer.emplace_buffer(
+                    SerializationBuffer::NonOwned,
                     buffer_cache.buffer_validity_.data(),
                     buffer_cache.buffer_validity_.size());
-                RETURN_NOT_OK(
-                    serialized_buffer->add_buffer(std::move(prepend)));
               }
 
-              RETURN_NOT_OK(serialized_buffer->add_buffer(std::move(data)));
+              serialized_buffer.emplace_buffer(
+                  SerializationBuffer::NonOwned,
+                  buffer.validity_vector_.buffer(),
+                  *buffer.validity_vector_.buffer_size());
             }
           }
         }
@@ -2499,7 +2509,7 @@ Status query_serialize(
 }
 
 Status do_query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     const SerializationContext context,
     CopyState* const copy_state,
@@ -2518,8 +2528,7 @@ Status do_query_deserialize(
         capnp::Query::Builder query_builder =
             message_builder.initRoot<capnp::Query>();
         json.decode(
-            kj::StringPtr(
-                static_cast<const char*>(serialized_buffer.cur_data())),
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
@@ -2533,7 +2542,7 @@ Status do_query_deserialize(
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
-        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.cur_data()))
+        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.data()))
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
@@ -2547,9 +2556,8 @@ Status do_query_deserialize(
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
-                    serialized_buffer.cur_data()),
-                (serialized_buffer.size() - serialized_buffer.offset()) /
-                    sizeof(::capnp::word)),
+                    serialized_buffer.data()),
+                serialized_buffer.size() / sizeof(::capnp::word)),
             readerOptions);
 
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
@@ -2583,23 +2591,21 @@ Status do_query_deserialize(
 }
 
 Status query_deserialize(
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     bool clientside,
     CopyState* copy_state,
     Query* query,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Create an original, serialized copy of the 'query' that we will revert
   // to if we are unable to deserialize 'serialized_buffer'.
-  BufferList original_bufferlist;
+  BufferList original_bufferlist(memory_tracker);
   RETURN_NOT_OK(
-      query_serialize(query, serialize_type, clientside, &original_bufferlist));
+      query_serialize(query, serialize_type, clientside, original_bufferlist));
 
   // The first buffer is always the serialized Query object.
-  tiledb::sm::Buffer* original_buffer;
-  RETURN_NOT_OK(original_bufferlist.get_buffer(
-      0, const_cast<const tiledb::sm::Buffer**>(&original_buffer)));
-  original_buffer->reset_offset();
+  auto& original_buffer = original_bufferlist.get_buffer(0);
 
   // Similarly, we must create a copy of 'copy_state'.
   tdb_unique_ptr<CopyState> original_copy_state = nullptr;
@@ -2630,7 +2636,7 @@ Status query_deserialize(
     }
 
     const Status st2 = do_query_deserialize(
-        *original_buffer,
+        original_buffer,
         serialize_type,
         SerializationContext::BACKUP,
         copy_state,
@@ -2726,7 +2732,7 @@ Status query_est_result_size_serialize(
     Query* query,
     SerializationType serialize_type,
     bool,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::EstimatedResultSize::Builder est_result_size_builder =
@@ -2738,23 +2744,12 @@ Status query_est_result_size_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(est_result_size_builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
-        break;
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-
-        // Write the serialized query estimated results
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default:
@@ -2777,7 +2772,7 @@ Status query_est_result_size_deserialize(
     Query* query,
     SerializationType serialize_type,
     bool,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -3002,7 +2997,7 @@ Status global_write_state_from_capnp(
             std::string_view{entry.getKey().cStr(), entry.getKey().size()};
 
         if (state.hasUploadId()) {
-          deserialized_state.upload_id = state.getUploadId();
+          deserialized_state.upload_id = state.getUploadId().cStr();
         }
         if (state.hasStatus()) {
           deserialized_state.status =
@@ -3174,19 +3169,25 @@ void ordered_dim_label_reader_from_capnp(
 
 #else
 
-Status query_serialize(Query*, SerializationType, bool, BufferList*) {
+Status query_serialize(Query*, SerializationType, bool, BufferList&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status query_deserialize(
-    const Buffer&, SerializationType, bool, CopyState*, Query*, ThreadPool*) {
+    span<const char>,
+    SerializationType,
+    bool,
+    CopyState*,
+    Query*,
+    ThreadPool*,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
 
 Status array_from_query_deserialize(
-    const Buffer&,
+    span<const char>,
     SerializationType,
     Array&,
     ContextResources&,
@@ -3196,13 +3197,13 @@ Status array_from_query_deserialize(
 }
 
 Status query_est_result_size_serialize(
-    Query*, SerializationType, bool, Buffer*) {
+    Query*, SerializationType, bool, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status query_est_result_size_deserialize(
-    Query*, SerializationType, bool, const Buffer&) {
+    Query*, SerializationType, bool, span<const char>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

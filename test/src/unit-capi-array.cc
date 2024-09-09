@@ -2719,7 +2719,7 @@ TEST_CASE_METHOD(
         start_timestamp,
         end_timestamp,
         tiledb::sm::SerializationType::CAPNP,
-        &buff->buffer());
+        buff->buffer());
     rc = tiledb_handle_array_delete_fragments_timestamps_request(
         ctx_,
         array,
@@ -2755,7 +2755,7 @@ TEST_CASE_METHOD(
         array->array_->config(),
         fragments,
         tiledb::sm::SerializationType::CAPNP,
-        &buff->buffer());
+        buff->buffer());
     rc = tiledb_handle_array_delete_fragments_list_request(
         ctx_,
         array,

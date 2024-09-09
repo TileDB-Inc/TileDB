@@ -84,6 +84,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "ResultTileBitmap";
     case MemoryType::RTREE:
       return "RTree";
+    case MemoryType::SERIALIZATION_BUFFER:
+      return "SerializationBuffer";
     case MemoryType::TILE_DATA:
       return "TileData";
     case MemoryType::TILE_HILBERT_VALUES:
@@ -138,6 +140,8 @@ std::string memory_tracker_type_to_str(MemoryTrackerType type) {
       return "RestClient";
     case MemoryTrackerType::SCHEMA_EVOLUTION:
       return "SchemaEvolution";
+    case MemoryTrackerType::SERIALIZATION:
+      return "Serialization";
   }
 
   auto val = std::to_string(static_cast<uint32_t>(type));

@@ -88,7 +88,7 @@ capi_return_t tiledb_array_schema_alloc(
 
   // Create ArraySchema object
   auto memory_tracker = ctx->resources().create_memory_tracker();
-  memory_tracker->set_type(MemoryTrackerType::ARRAY_CREATE);
+  memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);
   *array_schema = tiledb_array_schema_t::make_handle(
       static_cast<tiledb::sm::ArrayType>(array_type), memory_tracker);
 

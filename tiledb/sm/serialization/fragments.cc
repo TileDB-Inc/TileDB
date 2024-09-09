@@ -79,7 +79,7 @@ void serialize_delete_fragments_timestamps_request(
     uint64_t start_timestamp,
     uint64_t end_timestamp,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   try {
     // Serialize
     ::capnp::MallocMessageBuilder message;
@@ -88,28 +88,16 @@ void serialize_delete_fragments_timestamps_request(
     fragments_timestamps_to_capnp(
         config, start_timestamp, end_timestamp, builder);
 
-    // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        throw_if_not_ok(serialized_buffer->realloc(json_len + 1));
-        throw_if_not_ok(serialized_buffer->write(capnp_json.cStr(), json_len));
-        throw_if_not_ok(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        throw_if_not_ok(serialized_buffer->realloc(nbytes));
-        throw_if_not_ok(
-            serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -130,7 +118,7 @@ void serialize_delete_fragments_timestamps_request(
 }
 
 std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
-    SerializationType serialize_type, const Buffer& serialized_buffer) {
+    SerializationType serialize_type, span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -210,7 +198,7 @@ void serialize_delete_fragments_list_request(
     const Config& config,
     const std::vector<URI>& fragments,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   if (fragments.empty()) {
     throw FragmentsSerializationException(
         "[fragments_list_serialize] Fragments vector is empty");
@@ -222,28 +210,16 @@ void serialize_delete_fragments_list_request(
     auto builder = message.initRoot<capnp::ArrayDeleteFragmentsListRequest>();
     fragments_list_to_capnp(config, fragments, builder);
 
-    // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        throw_if_not_ok(serialized_buffer->realloc(json_len + 1));
-        throw_if_not_ok(serialized_buffer->write(capnp_json.cStr(), json_len));
-        throw_if_not_ok(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        throw_if_not_ok(serialized_buffer->realloc(nbytes));
-        throw_if_not_ok(
-            serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -265,7 +241,7 @@ void serialize_delete_fragments_list_request(
 std::vector<URI> deserialize_delete_fragments_list_request(
     const URI& array_uri,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -308,25 +284,25 @@ std::vector<URI> deserialize_delete_fragments_list_request(
 
 #else
 void serialize_delete_fragments_timestamps_request(
-    uint64_t, uint64_t, SerializationType, Buffer*) {
+    uint64_t, uint64_t, SerializationType, SerializationBuffer&) {
   throw FragmentsSerializationException(
       "Cannot serialize; serialization not enabled.");
 }
 
 std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
-    SerializationType, const Buffer&) {
+    SerializationType, span<const char>) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");
 }
 
 void serialize_delete_fragments_list_request(
-    const std::vector<URI>&, SerializationType, Buffer*) {
+    const std::vector<URI>&, SerializationType, SerializationBuffer&) {
   throw FragmentsSerializationException(
       "Cannot serialize; serialization not enabled.");
 }
 
 std::vector<URI> deserialize_delete_fragments_list_request(
-    const URI&, SerializationType, const Buffer&) {
+    const URI&, SerializationType, span<const char>) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");
 }

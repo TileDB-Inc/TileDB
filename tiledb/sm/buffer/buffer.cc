@@ -42,13 +42,6 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-class BufferStatusException : public StatusException {
- public:
-  explicit BufferStatusException(const std::string& msg)
-      : StatusException("Buffer", msg) {
-  }
-};
-
 /* ****************************** */
 /*          BufferBase            */
 /* ****************************** */
@@ -139,6 +132,14 @@ Status BufferBase::read(
   }
   std::memcpy(destination, static_cast<char*>(data_) + offset, nbytes);
   return Status::Ok();
+}
+
+BufferBase::operator span<const char>() const& {
+  return {static_cast<const char*>(data()), size_};
+}
+
+span<const char> BufferBase::cur_span() const& {
+  return static_cast<span<const char>>(*this).subspan(offset_);
 }
 
 void BufferBase::assert_offset_is_valid(uint64_t offset) const {

@@ -485,3 +485,7 @@ class FragmentInfo {
 }  // namespace tiledb
 
 #endif  // TILEDB_FRAGMENT_INFO_H
+
+/** Converts the fragment info into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FragmentInfo& fragment_info);

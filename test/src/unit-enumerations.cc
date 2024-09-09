@@ -138,8 +138,6 @@ struct EnumerationFx {
   template <typename T>
   bool vec_cmp(std::vector<T> v1, std::vector<T> v2);
 
-  void flatten_buffer_list(BufferList& blist, Buffer& buf);
-
   void rm_array();
 
   shared_ptr<MemoryTracker> memory_tracker_;
@@ -2986,17 +2984,19 @@ shared_ptr<ArraySchema> EnumerationFx::ser_des_array_schema(
     shared_ptr<const ArraySchema> schema,
     bool client_side,
     SerializationType stype) {
-  Buffer buf;
+  SerializationBuffer buf{tiledb::test::get_test_memory_tracker()->get_resource(
+      MemoryType::SERIALIZATION_BUFFER)};
   throw_if_not_ok(serialization::array_schema_serialize(
-      *(schema.get()), stype, &buf, client_side));
+      *(schema.get()), stype, buf, client_side));
   return serialization::array_schema_deserialize(stype, buf, memory_tracker_);
 }
 
 shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
     ArraySchemaEvolution* ase, bool client_side, SerializationType stype) {
-  Buffer buf;
+  SerializationBuffer buf{tiledb::test::get_test_memory_tracker()->get_resource(
+      MemoryType::SERIALIZATION_BUFFER)};
   throw_if_not_ok(serialization::array_schema_evolution_serialize(
-      ase, stype, &buf, client_side));
+      ase, stype, buf, client_side));
 
   ArraySchemaEvolution* ret;
   throw_if_not_ok(serialization::array_schema_evolution_deserialize(
@@ -3007,13 +3007,18 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 
 void EnumerationFx::ser_des_query(
     Query* q_in, Query* q_out, bool client_side, SerializationType stype) {
-  Buffer buf;
-  BufferList blist;
+  auto tracker = tiledb::test::get_test_memory_tracker();
+  BufferList blist{tracker};
 
   throw_if_not_ok(
-      serialization::query_serialize(q_in, stype, client_side, &blist));
+      serialization::query_serialize(q_in, stype, client_side, blist));
 
-  flatten_buffer_list(blist, buf);
+  const auto nbytes = blist.total_size();
+  SerializationBuffer buf{
+      nbytes, tracker->get_resource(MemoryType::SERIALIZATION_BUFFER)};
+
+  blist.reset_offset();
+  blist.read(buf.owned_mutable_span().data(), nbytes);
 
   throw_if_not_ok(serialization::query_deserialize(
       buf,
@@ -3021,7 +3026,8 @@ void EnumerationFx::ser_des_query(
       client_side,
       nullptr,
       q_out,
-      &(ctx_.resources().compute_tp())));
+      &(ctx_.resources().compute_tp()),
+      tracker));
 }
 
 void EnumerationFx::ser_des_array(
@@ -3030,8 +3036,9 @@ void EnumerationFx::ser_des_array(
     Array* out,
     bool client_side,
     SerializationType stype) {
-  Buffer buf;
-  throw_if_not_ok(serialization::array_serialize(in, stype, &buf, client_side));
+  SerializationBuffer buf{tiledb::test::get_test_memory_tracker()->get_resource(
+      MemoryType::SERIALIZATION_BUFFER)};
+  throw_if_not_ok(serialization::array_serialize(in, stype, buf, client_side));
   serialization::array_deserialize(
       out, stype, buf, ctx.resources(), memory_tracker_);
 }
@@ -3075,15 +3082,6 @@ bool EnumerationFx::vec_cmp(std::vector<T> v1, std::vector<T> v2) {
   }
 
   return true;
-}
-
-void EnumerationFx::flatten_buffer_list(BufferList& blist, Buffer& buf) {
-  const auto nbytes = blist.total_size();
-  throw_if_not_ok(buf.realloc(nbytes));
-
-  blist.reset_offset();
-  throw_if_not_ok(blist.read(buf.data(), nbytes));
-  buf.set_size(nbytes);
 }
 
 void EnumerationFx::rm_array() {

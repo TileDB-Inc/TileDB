@@ -46,9 +46,9 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class Buffer;
 class ArraySchema;
 class Dimension;
+class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
@@ -131,7 +131,7 @@ Status metadata_to_capnp(
 Status array_serialize(
     Array* array,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side);
 
 /**
@@ -146,7 +146,7 @@ Status array_serialize(
 void array_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker);
 
@@ -161,7 +161,7 @@ void array_deserialize(
 Status array_open_serialize(
     const Array& array,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize an open array request via Cap'n Proto
@@ -174,18 +174,18 @@ Status array_open_serialize(
 Status array_open_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 Status metadata_serialize(
     Metadata* metadata,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 Status metadata_deserialize(
     Metadata* metadata,
     const Config& config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 }  // namespace serialization
 }  // namespace sm

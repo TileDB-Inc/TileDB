@@ -772,6 +772,8 @@ Fragment Info
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_dump
     :project: TileDB-C
+.. doxygenfunction:: tiledb_fragment_info_dump_str
+    :project: TileDB-C
 
 Experimental
 -------------

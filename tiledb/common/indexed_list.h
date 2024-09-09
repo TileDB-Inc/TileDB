@@ -81,9 +81,15 @@ class IndexedList {
    *
    */
   template <class... Args>
-  void emplace_back(Args&&... args) {
-    list_.emplace_back(std::forward<Args>(args)...);
-    vec_.emplace_back(&list_.back());
+  T& emplace_back(Args&&... args) {
+    auto& v = list_.emplace_back(std::forward<Args>(args)...);
+    vec_.emplace_back(&v);
+    return v;
+  }
+
+  /** Returns the allocator. */
+  tdb::pmr::polymorphic_allocator<T> get_allocator() const {
+    return list_.get_allocator();
   }
 
   /** Returns an iterator to the beginning of the items. */
@@ -91,8 +97,18 @@ class IndexedList {
     return list_.begin();
   }
 
+  /** Returns an iterator to the beginning of the items. */
+  typename std::list<T>::const_iterator begin() const {
+    return list_.begin();
+  }
+
   /** Returns an iterator to the end of the items. */
   typename std::list<T>::iterator end() {
+    return list_.end();
+  }
+
+  /** Returns an iterator to the end of the items. */
+  typename std::list<T>::const_iterator end() const {
     return list_.end();
   }
 

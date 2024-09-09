@@ -1188,7 +1188,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
 Status array_schema_serialize(
     const ArraySchema& array_schema,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side) {
   try {
     ::capnp::MallocMessageBuilder message;
@@ -1197,27 +1197,16 @@ Status array_schema_serialize(
     RETURN_NOT_OK(
         array_schema_to_capnp(array_schema, &arraySchemaBuilder, client_side));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(arraySchemaBuilder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -1241,7 +1230,7 @@ Status array_schema_serialize(
 
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
@@ -1291,7 +1280,7 @@ Status nonempty_domain_serialize(
     const void* nonempty_domain,
     bool is_empty,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   if (!is_empty && nonempty_domain == nullptr)
     return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; nonempty domain is null."));
@@ -1308,28 +1297,16 @@ Status nonempty_domain_serialize(
           subarray_builder, dimension, nonempty_domain));
     }
 
-    // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -1354,7 +1331,7 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     const Dimension* dimension,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     void* nonempty_domain,
     bool* is_empty) {
@@ -1429,7 +1406,7 @@ Status nonempty_domain_serialize(
     const void* nonempty_domain,
     bool is_empty,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   if (!is_empty && nonempty_domain == nullptr)
     return LOG_STATUS(Status_SerializationError(
         "Error serializing nonempty domain; nonempty domain is null."));
@@ -1448,28 +1425,16 @@ Status nonempty_domain_serialize(
           utils::serialize_subarray(subarray_builder, schema, nonempty_domain));
     }
 
-    // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -1494,7 +1459,7 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     const Array* array,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     void* nonempty_domain,
     bool* is_empty) {
@@ -1573,7 +1538,9 @@ Status nonempty_domain_deserialize(
 }
 
 Status nonempty_domain_serialize(
-    Array* array, SerializationType serialize_type, Buffer* serialized_buffer) {
+    Array* array,
+    SerializationType serialize_type,
+    SerializationBuffer& serialized_buffer) {
   try {
     // Serialize
     ::capnp::MallocMessageBuilder message;
@@ -1581,28 +1548,16 @@ Status nonempty_domain_serialize(
 
     RETURN_NOT_OK(utils::serialize_non_empty_domain(builder, array));
 
-    // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -1627,7 +1582,7 @@ Status nonempty_domain_serialize(
 
 Status nonempty_domain_deserialize(
     Array* array,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type) {
   try {
     switch (serialize_type) {
@@ -1679,7 +1634,7 @@ Status max_buffer_sizes_serialize(
     Array* array,
     const void* subarray,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   const auto& schema = array->array_schema_latest();
 
   try {
@@ -1720,28 +1675,16 @@ Status max_buffer_sizes_serialize(
       }
     }
 
-    // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -1766,7 +1709,7 @@ Status max_buffer_sizes_serialize(
 
 Status max_buffer_sizes_deserialize(
     const ArraySchema& schema,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
@@ -1859,33 +1802,22 @@ void serialize_load_array_schema_request(
     const Config& config,
     const LoadArraySchemaRequest& req,
     SerializationType serialization_type,
-    Buffer& data) {
+    SerializationBuffer& data) {
   try {
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::LoadArraySchemaRequest>();
     load_array_schema_request_to_capnp(builder, config, req);
 
-    data.reset_size();
-    data.reset_offset();
-
     switch (serialization_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        throw_if_not_ok(data.realloc(json_len + 1));
-        throw_if_not_ok(data.write(capnp_json.cStr(), json_len));
-        throw_if_not_ok(data.write(&nul, 1));
+        data.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        throw_if_not_ok(data.realloc(nbytes));
-        throw_if_not_ok(data.write(message_chars.begin(), nbytes));
+        data.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -1920,7 +1852,7 @@ LoadArraySchemaRequest load_array_schema_request_from_capnp(
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
-    SerializationType serialization_type, const Buffer& data) {
+    SerializationType serialization_type, span<const char> data) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -1928,8 +1860,7 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
             message_builder.initRoot<capnp::LoadArraySchemaRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(data.data())), builder);
+        json.decode(kj::StringPtr(data.data()), builder);
         auto reader = builder.asReader();
         return load_array_schema_request_from_capnp(reader);
       }
@@ -1979,33 +1910,24 @@ void load_array_schema_response_to_capnp(
 }
 
 void serialize_load_array_schema_response(
-    const Array& array, SerializationType serialization_type, Buffer& data) {
+    const Array& array,
+    SerializationType serialization_type,
+    SerializationBuffer& data) {
   try {
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::LoadArraySchemaResponse>();
     load_array_schema_response_to_capnp(builder, array);
 
-    data.reset_size();
-    data.reset_offset();
-
     switch (serialization_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        throw_if_not_ok(data.realloc(json_len + 1));
-        throw_if_not_ok(data.write(capnp_json.cStr(), json_len));
-        throw_if_not_ok(data.write(&nul, 1));
+        data.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        throw_if_not_ok(data.realloc(nbytes));
-        throw_if_not_ok(data.write(message_chars.begin(), nbytes));
+        data.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -2060,7 +1982,7 @@ std::tuple<
 deserialize_load_array_schema_response(
     const URI& uri,
     SerializationType serialization_type,
-    const Buffer& data,
+    span<const char> data,
     shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialization_type) {
@@ -2069,8 +1991,7 @@ deserialize_load_array_schema_response(
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
             message_builder.initRoot<capnp::LoadArraySchemaResponse>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(data.data())), builder);
+        json.decode(kj::StringPtr(data.data()), builder);
         auto reader = builder.asReader();
         return load_array_schema_response_from_capnp(
             uri, reader, memory_tracker);
@@ -2104,48 +2025,50 @@ deserialize_load_array_schema_response(
 #else
 
 Status array_schema_serialize(
-    const ArraySchema&, SerializationType, Buffer*, const bool) {
+    const ArraySchema&, SerializationType, SerializationBuffer&, const bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
-    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-Status nonempty_domain_serialize(Array*, SerializationType, Buffer*) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
-}
-
-Status nonempty_domain_deserialize(Array*, const Buffer&, SerializationType) {
-  return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
-}
-
 Status nonempty_domain_serialize(
-    const Array*, const void*, bool, SerializationType, Buffer*) {
+    Array*, SerializationType, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status nonempty_domain_deserialize(
-    const Array*, const Buffer&, SerializationType, void*, bool*) {
+    Array*, span<const char>, SerializationType) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status nonempty_domain_serialize(
+    const Array*, const void*, bool, SerializationType, SerializationBuffer&) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot serialize; serialization not enabled."));
+}
+
+Status nonempty_domain_deserialize(
+    const Array*, span<const char>, SerializationType, void*, bool*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status max_buffer_sizes_serialize(
-    Array*, const void*, SerializationType, Buffer*) {
+    Array*, const void*, SerializationType, SerializationBuffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
 Status max_buffer_sizes_deserialize(
     const ArraySchema&,
-    const Buffer&,
+    span<const char>,
     SerializationType,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
   return LOG_STATUS(Status_SerializationError(
@@ -2153,17 +2076,20 @@ Status max_buffer_sizes_deserialize(
 }
 
 void serialize_load_array_schema_request(
-    const Config&, const LoadArraySchemaRequest&, SerializationType, Buffer&) {
+    const Config&,
+    const LoadArraySchemaRequest&,
+    SerializationType,
+    SerializationBuffer&) {
   throw ArraySchemaSerializationDisabledException();
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
-    SerializationType, const Buffer&) {
+    SerializationType, span<const char>) {
   throw ArraySchemaSerializationDisabledException();
 }
 
 void serialize_load_array_schema_response(
-    const Array&, SerializationType, Buffer&) {
+    const Array&, SerializationType, SerializationBuffer&) {
   throw ArraySchemaSerializationDisabledException();
 }
 
@@ -2171,7 +2097,10 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
-    const URI&, SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+    const URI&,
+    SerializationType,
+    span<const char>,
+    shared_ptr<MemoryTracker>) {
   throw ArraySchemaSerializationDisabledException();
 }
 

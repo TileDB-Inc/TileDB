@@ -45,8 +45,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Buffer;
 class FragmentInfo;
+class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
@@ -116,7 +116,7 @@ Status fragment_info_request_to_capnp(
 Status fragment_info_serialize(
     const FragmentInfo& fragment_info,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side);
 
 /**
@@ -133,7 +133,7 @@ Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker);
 
 /**
@@ -147,7 +147,7 @@ Status fragment_info_deserialize(
 Status fragment_info_request_serialize(
     const FragmentInfo& fragment_info,
     SerializationType serialize_type,
-    Buffer* serialized_buffer);
+    SerializationBuffer& serialized_buffer);
 
 /**
  * Deserialize fragment info request via Cap'n Proto
@@ -160,7 +160,7 @@ Status fragment_info_request_serialize(
 Status fragment_info_request_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    span<const char> serialized_buffer);
 
 }  // namespace serialization
 }  // namespace sm

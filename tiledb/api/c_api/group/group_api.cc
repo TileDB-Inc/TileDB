@@ -32,6 +32,7 @@
  **/
 
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/group/group_details_v1.h"
@@ -404,6 +405,7 @@ capi_return_t tiledb_group_dump_str(
 }
 
 capi_return_t tiledb_serialize_group(
+    tiledb_ctx_handle_t* ctx,
     const tiledb_group_handle_t* group,
     tiledb_serialization_type_t serialize_type,
     int32_t,
@@ -412,14 +414,16 @@ capi_return_t tiledb_serialize_group(
   ensure_output_pointer_is_valid(buffer);
 
   // ALERT: Conditional Handle Construction
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   // We're not using throw_if_not_ok here because we have to
   // clean up our allocated buffer if serialization fails.
   auto st = tiledb::sm::serialization::group_serialize(
       &(group->group()),
       static_cast<tiledb::sm::SerializationType>(serialize_type),
-      &(buf->buffer()));
+      buf->buffer());
 
   if (!st.ok()) {
     tiledb_buffer_handle_t::break_handle(buf);
@@ -448,6 +452,7 @@ capi_return_t tiledb_deserialize_group(
 }
 
 capi_return_t tiledb_serialize_group_metadata(
+    tiledb_ctx_handle_t* ctx,
     const tiledb_group_handle_t* group,
     tiledb_serialization_type_t serialize_type,
     tiledb_buffer_t** buffer) {
@@ -455,7 +460,9 @@ capi_return_t tiledb_serialize_group_metadata(
   ensure_output_pointer_is_valid(buffer);
 
   // ALERT: Conditional Handle Construction
-  auto buf = tiledb_buffer_handle_t::make_handle();
+  auto buf = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
 
   // Get metadata to serialize, this will load it if it does not exist
   auto metadata = group->group().metadata();
@@ -463,7 +470,7 @@ capi_return_t tiledb_serialize_group_metadata(
   auto st = tiledb::sm::serialization::metadata_serialize(
       metadata,
       static_cast<tiledb::sm::SerializationType>(serialize_type),
-      &(buf->buffer()));
+      buf->buffer());
 
   if (!st.ok()) {
     tiledb_buffer_handle_t::break_handle(buf);
@@ -747,7 +754,7 @@ CAPI_INTERFACE(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer_list) {
-  return api_entry_context<tiledb::api::tiledb_serialize_group>(
+  return api_entry_with_context<tiledb::api::tiledb_serialize_group>(
       ctx, group, serialize_type, client_side, buffer_list);
 }
 
@@ -768,7 +775,7 @@ CAPI_INTERFACE(
     const tiledb_group_t* group,
     tiledb_serialization_type_t serialization_type,
     tiledb_buffer_t** buffer) {
-  return api_entry_context<tiledb::api::tiledb_serialize_group_metadata>(
+  return api_entry_with_context<tiledb::api::tiledb_serialize_group_metadata>(
       ctx, group, serialization_type, buffer);
 }
 

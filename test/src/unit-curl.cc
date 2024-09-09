@@ -182,3 +182,40 @@ TEST_CASE(
   const auto& extra_headers = resources.rest_client()->extra_headers();
   CHECK(extra_headers.at("X-Payer") == "foo");
 }
+
+TEST_CASE("Test retry logic", "[rest-client][retries]") {
+  // set the HTTP codes to retry
+  tiledb::sm::Config cfg;
+  REQUIRE(cfg.set("rest.retry_http_codes", "503").ok());
+
+  std::unordered_map<std::string, std::string> extra_headers;
+  std::unordered_map<std::string, std::string> res_headers;
+  std::mutex res_mtx;
+  Curl curl(tiledb::test::g_helper_logger());
+  auto rc = curl.init(&cfg, extra_headers, &res_headers, &res_mtx);
+
+  // http error not in retry list
+  CURLcode curl_code = CURLE_OK;
+  long http_code = 504;
+  REQUIRE(curl.should_retry_request(curl_code, http_code) == false);
+
+  // http error in retry list
+  http_code = 503;
+  REQUIRE(curl.should_retry_request(curl_code, http_code) == true);
+
+  // Curl error not in retry list
+  curl_code = CURLE_SSL_SHUTDOWN_FAILED;
+  REQUIRE(curl.should_retry_request(curl_code, http_code) == false);
+
+  // Curl error in retry list
+  curl_code = CURLE_RECV_ERROR;
+  // and http error not in retry list
+  http_code = 504;
+  REQUIRE(curl.should_retry_request(curl_code, http_code) == true);
+
+  // Curl error in retry list but retries disabled in config
+  REQUIRE(cfg.set("rest.curl.retry_errors", "false").ok());
+  rc = curl.init(&cfg, extra_headers, &res_headers, &res_mtx);
+  curl_code = CURLE_RECV_ERROR;
+  REQUIRE(curl.should_retry_request(curl_code, http_code) == false);
+}

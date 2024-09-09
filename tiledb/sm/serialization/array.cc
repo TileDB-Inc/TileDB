@@ -326,9 +326,6 @@ void array_from_capnp(
       // pass the right schema to deserialize fragment metadata
       throw_if_not_ok(
           fragment_metadata_from_capnp(schema, frag_meta_reader, meta));
-      if (client_side) {
-        meta->loaded_metadata()->set_rtree_loaded();
-      }
       fragment_metadata.emplace_back(meta);
     }
     array->set_fragment_metadata(std::move(fragment_metadata));
@@ -389,7 +386,7 @@ Status array_open_from_capnp(
 Status metadata_serialize(
     Metadata* metadata,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   if (metadata == nullptr)
     return LOG_STATUS(Status_SerializationError(
         "Error serializing array metadata; array instance is null"));
@@ -402,26 +399,16 @@ Status metadata_serialize(
     RETURN_NOT_OK(metadata_to_capnp(metadata, &builder));
 
     // Copy to buffer
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -448,7 +435,7 @@ Status metadata_deserialize(
     Metadata* metadata,
     const Config& config,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   if (metadata == nullptr)
     return LOG_STATUS(Status_SerializationError(
         "Error deserializing metadata; null metadata instance given."));
@@ -513,34 +500,23 @@ Status metadata_deserialize(
 Status array_serialize(
     Array* array,
     SerializationType serialize_type,
-    Buffer* serialized_buffer,
+    SerializationBuffer& serialized_buffer,
     const bool client_side) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Array::Builder ArrayBuilder = message.initRoot<capnp::Array>();
     RETURN_NOT_OK(array_to_capnp(array, &ArrayBuilder, client_side));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(ArrayBuilder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -565,7 +541,7 @@ Status array_serialize(
 void array_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer,
+    span<const char> serialized_buffer,
     ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker) {
   try {
@@ -621,34 +597,23 @@ void array_deserialize(
 Status array_open_serialize(
     const Array& array,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    SerializationBuffer& serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ArrayOpen::Builder arrayOpenBuilder =
         message.initRoot<capnp::ArrayOpen>();
     RETURN_NOT_OK(array_open_to_capnp(array, &arrayOpenBuilder));
 
-    serialized_buffer->reset_size();
-    serialized_buffer->reset_offset();
-
     switch (serialize_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(arrayOpenBuilder);
-        const auto json_len = capnp_json.size();
-        const char nul = '\0';
-        // size does not include needed null terminator, so add +1
-        RETURN_NOT_OK(serialized_buffer->realloc(json_len + 1));
-        RETURN_NOT_OK(serialized_buffer->write(capnp_json.cStr(), json_len));
-        RETURN_NOT_OK(serialized_buffer->write(&nul, 1));
+        serialized_buffer.assign_null_terminated(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
         kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
-        const auto nbytes = message_chars.size();
-        RETURN_NOT_OK(serialized_buffer->realloc(nbytes));
-        RETURN_NOT_OK(serialized_buffer->write(message_chars.begin(), nbytes));
+        serialized_buffer.assign(protomessage.asChars());
         break;
       }
       default: {
@@ -674,7 +639,7 @@ Status array_open_serialize(
 Status array_open_deserialize(
     Array* array,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    span<const char> serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -723,7 +688,8 @@ Status array_open_deserialize(
 
 #else
 
-Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
+Status array_serialize(
+    Array*, SerializationType, SerializationBuffer&, const bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -731,27 +697,28 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
 void array_deserialize(
     Array*,
     SerializationType,
-    const Buffer&,
+    span<const char>,
     ContextResources&,
     shared_ptr<MemoryTracker>) {
   throw ArraySerializationDisabledException();
 }
 
-Status array_open_serialize(const Array&, SerializationType, Buffer*) {
+Status array_open_serialize(
+    const Array&, SerializationType, SerializationBuffer&) {
   throw ArraySerializationDisabledException();
 }
 
-Status array_open_deserialize(Array*, SerializationType, const Buffer&) {
+Status array_open_deserialize(Array*, SerializationType, span<const char>) {
   throw ArraySerializationDisabledException();
   ;
 }
 
-Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
+Status metadata_serialize(Metadata*, SerializationType, SerializationBuffer&) {
   throw ArraySerializationDisabledException();
 }
 
 Status metadata_deserialize(
-    Metadata*, const Config&, SerializationType, const Buffer&) {
+    Metadata*, const Config&, SerializationType, const span<const char>) {
   throw ArraySerializationDisabledException();
 }
 

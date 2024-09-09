@@ -86,11 +86,7 @@ int32_t tiledb_filestore_schema_create(
   if (uri) {
     // The user provided a uri, let's examine the file and get some insights
     // Get the file size, calculate a reasonable tile extent
-    tiledb::sm::VFS vfs(
-        &context.resources().stats(),
-        context.compute_tp(),
-        context.io_tp(),
-        context.resources().config());
+    auto& vfs = ctx->resources().vfs();
     uint64_t file_size;
     throw_if_not_ok(vfs.file_size(tiledb::sm::URI(uri), &file_size));
     if (file_size) {
@@ -198,11 +194,7 @@ int32_t tiledb_filestore_uri_import(
   tiledb::sm::Context& context = ctx->context();
 
   // Get the file size
-  tiledb::sm::VFS vfs(
-      &context.resources().stats(),
-      context.compute_tp(),
-      context.io_tp(),
-      context.resources().config());
+  auto& vfs = ctx->resources().vfs();
   uint64_t file_size;
   throw_if_not_ok(vfs.file_size(tiledb::sm::URI(file_uri), &file_size));
   if (!file_size) {
@@ -386,11 +378,7 @@ int32_t tiledb_filestore_uri_export(
   ensure_uri_is_valid(file_uri);
 
   tiledb::sm::Context& context = ctx->context();
-  tiledb::sm::VFS vfs(
-      &context.resources().stats(),
-      context.compute_tp(),
-      context.io_tp(),
-      context.resources().config());
+  auto& vfs = ctx->resources().vfs();
   if (!vfs.open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_WRITE)
            .ok()) {
     throw api::CAPIException(

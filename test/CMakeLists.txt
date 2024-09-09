@@ -64,7 +64,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
   src/unit-backwards_compat.cc
-  src/unit-bufferlist.cc
   src/unit-capi-any.cc
   src/unit-capi-as_built.cc
   src/unit-capi-array.cc

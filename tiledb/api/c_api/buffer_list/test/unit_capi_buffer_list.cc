@@ -35,6 +35,7 @@
 
 #include "../buffer_list_api_external.h"
 #include "../buffer_list_api_internal.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
@@ -87,8 +88,8 @@ struct ordinary_buffer_list {
     }
   }
   ~ordinary_buffer_list() {
-    tiledb_ctx_free(&ctx);
     tiledb_buffer_list_free(&buffer_list);
+    tiledb_ctx_free(&ctx);
   }
 };
 
@@ -191,16 +192,12 @@ TEST_CASE(
 
 TEST_CASE("C API: Test BufferList get buffers", "[capi][buffer][bufferlist]") {
   // Create a testing buffer list
-  tiledb::sm::BufferList buffer_list;
-  tiledb::sm::Buffer buff1, buff2;
-  const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
-  REQUIRE(buff1.write(data1, sizeof(data1)).ok());
-  REQUIRE(buff2.write(data2, sizeof(data2)).ok());
-  REQUIRE(buffer_list.add_buffer(std::move(buff1)).ok());
-  REQUIRE(buffer_list.add_buffer(std::move(buff2)).ok());
-
   ordinary_buffer_list x;
-  x.buffer_list->set_buffer_list(buffer_list);
+  auto& buff1{x.buffer_list->buffer_list().emplace_buffer()};
+  auto& buff2{x.buffer_list->buffer_list().emplace_buffer()};
+  const char data1[3] = {1, 2, 3}, data2[4] = {4, 5, 6, 7};
+  buff1.assign(span(data1, sizeof(data1)));
+  buff2.assign(span(data2, sizeof(data2)));
 
   // Check num buffers and size
   uint64_t num_buffers = 123;

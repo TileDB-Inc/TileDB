@@ -173,7 +173,7 @@ void CppAggregatesFx<T>::generate_test_params() {
     nullable_ = GENERATE(true, false);
     allow_dups_ = GENERATE(true, false);
     set_qc_values_ = {false};
-    layout_values_ = {TILEDB_UNORDERED};
+    layout_values_ = {TILEDB_ROW_MAJOR, TILEDB_UNORDERED};
     use_dim_values_ = {true, false};
     if (nullable_ || !std::is_same<T, uint64_t>::value) {
       use_dim_values_ = {false};
@@ -195,6 +195,12 @@ void CppAggregatesFx<T>::run_all_combinations(std::function<void()> fn) {
           for (bool set_qc : set_qc_values_) {
             set_qc_ = set_qc;
             for (tiledb_layout_t layout : layout_values_) {
+              // Filter invalid combination. The legacy reader does not support
+              // aggregates, and we cannot automatically switch to unordered
+              // reads if we are requesting both the aggregates and the data.
+              if (request_data && layout != TILEDB_UNORDERED) {
+                continue;
+              }
               layout_ = layout;
               fn();
             }
@@ -1444,6 +1450,12 @@ TEST_CASE_METHOD(
       for (bool set_qc : set_qc_values_) {
         set_qc_ = set_qc;
         for (tiledb_layout_t layout : layout_values_) {
+          // Filter invalid combination. The legacy reader does not support
+          // aggregates, and we cannot automatically switch to unordered
+          // reads if we are requesting both the aggregates and the data.
+          if (request_data && layout != TILEDB_UNORDERED) {
+            continue;
+          }
           layout_ = layout;
           Query query(ctx_, array, TILEDB_READ);
 
@@ -1824,6 +1836,11 @@ TEMPLATE_LIST_TEST_CASE(
       for (bool set_qc : fx.set_qc_values_) {
         fx.set_qc_ = set_qc;
         for (tiledb_layout_t layout : fx.layout_values_) {
+          // Filter invalid combination. The legacy reader does not support
+          // aggregates, and we cannot automatically switch to unordered
+          // reads if we are requesting both the aggregates and the data.
+          if (!fx.dense_ && request_data && layout != TILEDB_UNORDERED)
+            continue;
           fx.layout_ = layout;
           Query query(fx.ctx_, array, TILEDB_READ);
 
@@ -2048,6 +2065,12 @@ TEST_CASE_METHOD(
       for (bool set_qc : set_qc_values_) {
         set_qc_ = set_qc;
         for (tiledb_layout_t layout : layout_values_) {
+          // Filter invalid combination. The legacy reader does not support
+          // aggregates, and we cannot automatically switch to unordered
+          // reads if we are requesting both the aggregates and the data.
+          if (request_data && layout != TILEDB_UNORDERED) {
+            continue;
+          }
           layout_ = layout;
           Query query(ctx_, array, TILEDB_READ);
 
@@ -2146,6 +2169,12 @@ TEST_CASE_METHOD(
     for (bool set_qc : set_qc_values_) {
       set_qc_ = set_qc;
       for (tiledb_layout_t layout : layout_values_) {
+        // Filter invalid combination. The legacy reader does not support
+        // aggregates, and we cannot automatically switch to unordered
+        // reads if we are requesting both the aggregates and the data.
+        if (layout != TILEDB_UNORDERED) {
+          continue;
+        }
         layout_ = layout;
         Query query(ctx_, array, TILEDB_READ);
 
@@ -2285,6 +2314,11 @@ TEST_CASE_METHOD(
     for (bool set_qc : set_qc_values_) {
       set_qc_ = set_qc;
       for (tiledb_layout_t layout : layout_values_) {
+        // Filter invalid combination. The legacy reader does not support
+        // aggregates, and we cannot automatically switch to unordered
+        // reads if we are requesting both the aggregates and the data.
+        if (layout != TILEDB_UNORDERED)
+          continue;
         layout_ = layout;
         Query query(ctx_, array, TILEDB_READ);
 
@@ -2365,6 +2399,11 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
       CppAggregatesFx<T>::set_qc_ = set_qc;
       for (tiledb_layout_t layout : CppAggregatesFx<T>::layout_values_) {
+        // Filter invalid combination. The legacy reader does not support
+        // aggregates, and we cannot automatically switch to unordered
+        // reads if we are requesting both the aggregates and the data.
+        if (!CppAggregatesFx<T>::dense_ && layout != TILEDB_UNORDERED)
+          continue;
         CppAggregatesFx<T>::layout_ = layout;
         Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
 

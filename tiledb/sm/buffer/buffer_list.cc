@@ -39,51 +39,45 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+template <>
+IndexedList<sm::SerializationBuffer>::IndexedList(
+    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(
+          memory_tracker->get_resource(sm::MemoryType::SERIALIZATION_BUFFER)) {
+}
+
 namespace sm {
 
-BufferList::BufferList()
-    : current_buffer_index_(0)
+BufferList::BufferList(shared_ptr<sm::MemoryTracker> memory_tracker)
+    : buffers_(memory_tracker)
+    , current_buffer_index_(0)
     , current_relative_offset_(0)
     , offset_(0) {
 }
 
-Status BufferList::add_buffer(Buffer&& buffer) {
-  buffers_.emplace_back(std::move(buffer));
-  return Status::Ok();
-}
-
-Status BufferList::get_buffer(uint64_t index, const Buffer** buffer) const {
+const SerializationBuffer& BufferList::get_buffer(uint64_t index) const {
   if (index >= buffers_.size())
-    return LOG_STATUS(Status_BufferError(
+    throw BufferStatusException(
         "Cannot get buffer " + std::to_string(index) +
-        " from buffer list; index out of bounds."));
+        " from buffer list; index out of bounds.");
 
-  *buffer = &buffers_[index];
-
-  return Status::Ok();
+  return buffers_[index];
 }
 
 uint64_t BufferList::num_buffers() const {
   return buffers_.size();
 }
 
-Status BufferList::read(void* dest, uint64_t nbytes) {
-  uint64_t bytes_read = 0;
-  RETURN_NOT_OK(read(dest, nbytes, &bytes_read));
+void BufferList::read(void* dest, uint64_t nbytes) {
+  uint64_t bytes_read = read_at_most(dest, nbytes);
 
   if (bytes_read != nbytes)
-    return LOG_STATUS(Status_BufferError(
-        "BufferList error; could not read requested byte count."));
-
-  return Status::Ok();
+    throw BufferStatusException(
+        "BufferList error; could not read requested byte count.");
 }
 
-Status BufferList::read_at_most(
-    void* dest, uint64_t nbytes, uint64_t* bytes_read) {
-  return read(dest, nbytes, bytes_read);
-}
-
-Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
+uint64_t BufferList::read_at_most(void* dest, uint64_t nbytes) {
   uint64_t bytes_left = nbytes;
   uint64_t dest_offset = 0;
   auto dest_ptr = static_cast<char*>(dest);
@@ -92,8 +86,7 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
   for (size_t idx = current_buffer_index_;
        idx < buffers_.size() && bytes_left > 0;
        ++idx) {
-    Buffer& src = buffers_[idx];
-    src.set_offset(current_relative_offset_);
+    span<const char> src = buffers_[idx];
 
     // Read from buffer
     const uint64_t bytes_in_src = src.size() - current_relative_offset_;
@@ -101,7 +94,10 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
     // If the destination pointer is not null, then read into it
     // if it is null then we are just seeking
     if (dest_ptr != nullptr)
-      RETURN_NOT_OK(src.read(dest_ptr + dest_offset, bytes_from_src));
+      memcpy(
+          dest_ptr + dest_offset,
+          src.data() + current_relative_offset_,
+          bytes_from_src);
     bytes_left -= bytes_from_src;
     dest_offset += bytes_from_src;
 
@@ -115,28 +111,24 @@ Status BufferList::read(void* dest, uint64_t nbytes, uint64_t* bytes_read) {
     }
   }
 
-  if (bytes_read != nullptr)
-    *bytes_read = nbytes - bytes_left;
-
-  return Status::Ok();
+  return nbytes - bytes_left;
 }
 
-Status BufferList::seek(off_t offset, int whence) {
+void BufferList::seek(off_t offset, int whence) {
   switch (whence) {
     case SEEK_SET:
       // We just reset the offsets to 0/start, then fall through to seek_current
       reset_offset();
-      // fall through
+      [[fallthrough]];
     case SEEK_CUR:
-      return read(nullptr, offset);
+      read(nullptr, offset);
+      break;
     case SEEK_END:
-      return Status_BufferError(
+      throw BufferStatusException(
           "SEEK_END operation not supported for BufferList");
     default:
-      return Status_BufferError("Invalid seek operation for BufferList");
+      throw BufferStatusException("Invalid seek operation for BufferList");
   }
-
-  return Status::Ok();
 }
 
 void BufferList::reset_offset() {

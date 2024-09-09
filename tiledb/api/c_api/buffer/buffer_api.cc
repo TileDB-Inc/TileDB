@@ -32,15 +32,20 @@
  **/
 
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/memory_tracker.h"
 
 #include "buffer_api_external.h"
 #include "buffer_api_internal.h"
 
 namespace tiledb::api {
 
-capi_return_t tiledb_buffer_alloc(tiledb_buffer_handle_t** buffer) {
+capi_return_t tiledb_buffer_alloc(
+    tiledb_ctx_handle_t* ctx, tiledb_buffer_handle_t** buffer) {
+  ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(buffer);
-  *buffer = tiledb_buffer_handle_t::make_handle();
+  *buffer = tiledb_buffer_handle_t::make_handle(
+      ctx->resources().serialization_memory_tracker()->get_resource(
+          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
   return TILEDB_OK;
 }
 
@@ -71,8 +76,10 @@ capi_return_t tiledb_buffer_get_data(
   ensure_output_pointer_is_valid(data);
   ensure_output_pointer_is_valid(num_bytes);
 
-  *data = buffer->buffer().data();
-  *num_bytes = buffer->buffer().size();
+  span<const char> span = buffer->buffer();
+
+  *data = const_cast<char*>(span.data());
+  *num_bytes = span.size();
 
   return TILEDB_OK;
 }
@@ -81,14 +88,9 @@ capi_return_t tiledb_buffer_set_data(
     tiledb_buffer_t* buffer, void* data, uint64_t size) {
   ensure_buffer_is_valid(buffer);
 
-  // Create a temporary Buffer object as a wrapper.
-  tiledb::sm::Buffer tmp_buffer(data, size);
-
-  // Swap with the given buffer.
-  buffer->buffer().swap(tmp_buffer);
-
-  // 'tmp_buffer' now destructs, freeing the old allocation (if any) of the
-  // given buffer.
+  buffer->buffer().assign(
+      tiledb::sm::SerializationBuffer::NonOwned,
+      span<char>(static_cast<char*>(data), size));
 
   return TILEDB_OK;
 }
@@ -97,9 +99,10 @@ capi_return_t tiledb_buffer_set_data(
 
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
+using tiledb::api::api_entry_with_context;
 
 CAPI_INTERFACE(buffer_alloc, tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) {
-  return api_entry_context<tiledb::api::tiledb_buffer_alloc>(ctx, buffer);
+  return api_entry_with_context<tiledb::api::tiledb_buffer_alloc>(ctx, buffer);
 }
 
 CAPI_INTERFACE_VOID(buffer_free, tiledb_buffer_t** buffer) {
