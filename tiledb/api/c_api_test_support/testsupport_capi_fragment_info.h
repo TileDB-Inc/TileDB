@@ -33,37 +33,102 @@
 #ifndef TILEDB_TESTSUPPORT_CAPI_FRAGMENT_INFO_H
 #define TILEDB_TESTSUPPORT_CAPI_FRAGMENT_INFO_H
 
+#include "test/support/src/temporary_local_directory.h"
 #include "testsupport_capi_context.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
+#include "tiledb/api/c_api/attribute/attribute_api_internal.h"
+#include "tiledb/api/c_api/dimension/dimension_api_internal.h"
+#include "tiledb/api/c_api/domain/domain_api_internal.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_external.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_internal.h"
 
+#include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
+
 namespace tiledb::api::test_support {
 
+class ordinary_fragment_info_exception : public StatusException {
+ public:
+  explicit ordinary_fragment_info_exception(const std::string& message = "")
+      : StatusException("error creating test fragment info", message) {
+  }
+};
+
 /**
- * Ordinary fragment info base class
+ * Base class for an ordinary fragment info object.
+ *
+ * Note that this base class is considered "empty", as it does not create a
+ * schema object to write fragments to.
+ * As such, the fragment info object should not loaded.
  */
-class ordinary_fragment_info {
+class ordinary_fragment_info_without_fragments {
  public:
   ordinary_context context{};
   tiledb_fragment_info_handle_t* fragment_info{nullptr};
 
-  ordinary_fragment_info(const char* uri = "unit_capi_fragment_info") {
+  ordinary_fragment_info_without_fragments(
+      const char* uri = "unit_capi_fragment_info") {
     auto rc = tiledb_fragment_info_alloc(context.context, uri, &fragment_info);
     if (rc != TILEDB_OK) {
-      throw std::runtime_error("error creating test fragment_info");
+      throw ordinary_fragment_info_exception();
     }
     if (fragment_info == nullptr) {
-      throw std::logic_error(
+      throw ordinary_fragment_info_exception(
           "tiledb_fragment_info_alloc returned OK but without fragment_info");
     }
   }
 
-  ~ordinary_fragment_info() {
+  ~ordinary_fragment_info_without_fragments() {
     tiledb_fragment_info_free(&fragment_info);
   }
 
   [[nodiscard]] tiledb_ctx_handle_t* ctx() const {
     return context.context;
+  }
+};
+
+/**
+ * An ordinary fragment info object with valid fragments which have been loaded.
+ *
+ * @section Maturity Notes
+ *
+ * Use of `storage_manager_stub` in the CAPI handle object libraries prevents
+ * complete linking of all objects needed to properly allocate a `fragment_info`
+ * handle object in an RAII-compliant fashion. As such, this object shall
+ * rely on already-written fragments from an array in the
+ * `TILEDB_TEST_INPUTS_DIR` until the stub library is eliminated.
+ */
+struct ordinary_fragment_info
+    : public ordinary_fragment_info_without_fragments {
+ private:
+  std::string array_uri;
+
+ public:
+  ordinary_fragment_info(bool is_var = false)
+      : array_uri{
+            is_var ? std::string(TILEDB_TEST_INPUTS_DIR) +
+                         "/arrays/zero_var_chunks_v10" :
+                     std::string(TILEDB_TEST_INPUTS_DIR) +
+                         "/arrays/non_split_coords_v1_4_0"} {
+    // Create fragment info object
+    int rc = tiledb_fragment_info_alloc(ctx(), uri(), &fragment_info);
+    if (rc != TILEDB_OK) {
+      throw ordinary_fragment_info_exception();
+    }
+    if (fragment_info == nullptr) {
+      throw ordinary_fragment_info_exception(
+          "tiledb_fragment_info_alloc returned OK but without fragment_info");
+    }
+
+    rc = tiledb_fragment_info_load(ctx(), fragment_info);
+    if (rc != TILEDB_OK) {
+      throw ordinary_fragment_info_exception(
+          "tiledb_fragment_info_load failed");
+    }
+  }
+
+  [[nodiscard]] const char* uri() {
+    return array_uri.c_str();
   }
 };
 

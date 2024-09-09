@@ -89,9 +89,7 @@ capi_return_t tiledb_fragment_info_get_fragment_name_v2(
     uint32_t fid,
     tiledb_string_t** name) {
   ensure_fragment_info_is_valid(fragment_info);
-  if (name == nullptr) {
-    throw std::invalid_argument("Name cannot be null.");
-  }
+  ensure_output_pointer_is_valid(name);
   *name =
       tiledb_string_handle_t::make_handle(fragment_info->fragment_name(fid));
   return TILEDB_OK;
@@ -100,6 +98,7 @@ capi_return_t tiledb_fragment_info_get_fragment_name_v2(
 capi_return_t tiledb_fragment_info_get_fragment_num(
     tiledb_fragment_info_t* fragment_info, uint32_t* fragment_num) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(fragment_num);
   *fragment_num = fragment_info->fragment_num();
   return TILEDB_OK;
 }
@@ -107,6 +106,7 @@ capi_return_t tiledb_fragment_info_get_fragment_num(
 capi_return_t tiledb_fragment_info_get_fragment_uri(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, const char** uri) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(uri);
   throw_if_not_ok(fragment_info->get_fragment_uri(fid, uri));
   return TILEDB_OK;
 }
@@ -114,6 +114,7 @@ capi_return_t tiledb_fragment_info_get_fragment_uri(
 capi_return_t tiledb_fragment_info_get_fragment_size(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, uint64_t* size) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(size);
   throw_if_not_ok(fragment_info->get_fragment_size(fid, size));
   return TILEDB_OK;
 }
@@ -121,6 +122,7 @@ capi_return_t tiledb_fragment_info_get_fragment_size(
 capi_return_t tiledb_fragment_info_get_dense(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, int32_t* dense) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(dense);
   throw_if_not_ok(fragment_info->get_dense(fid, dense));
   return TILEDB_OK;
 }
@@ -128,6 +130,7 @@ capi_return_t tiledb_fragment_info_get_dense(
 capi_return_t tiledb_fragment_info_get_sparse(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, int32_t* sparse) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(sparse);
   throw_if_not_ok(fragment_info->get_sparse(fid, sparse));
   return TILEDB_OK;
 }
@@ -138,6 +141,8 @@ capi_return_t tiledb_fragment_info_get_timestamp_range(
     uint64_t* start,
     uint64_t* end) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
   throw_if_not_ok(fragment_info->get_timestamp_range(fid, start, end));
   return TILEDB_OK;
 }
@@ -148,6 +153,7 @@ capi_return_t tiledb_fragment_info_get_non_empty_domain_from_index(
     uint32_t did,
     void* domain) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(domain);
   throw_if_not_ok(fragment_info->get_non_empty_domain(fid, did, domain));
   return TILEDB_OK;
 }
@@ -158,6 +164,7 @@ capi_return_t tiledb_fragment_info_get_non_empty_domain_from_name(
     const char* dim_name,
     void* domain) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(domain);
   throw_if_not_ok(fragment_info->get_non_empty_domain(fid, dim_name, domain));
   return TILEDB_OK;
 }
@@ -169,6 +176,8 @@ capi_return_t tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
     uint64_t* start_size,
     uint64_t* end_size) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
   throw_if_not_ok(fragment_info->get_non_empty_domain_var_size(
       fid, did, start_size, end_size));
   return TILEDB_OK;
@@ -181,6 +190,8 @@ capi_return_t tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
     uint64_t* start_size,
     uint64_t* end_size) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
   throw_if_not_ok(fragment_info->get_non_empty_domain_var_size(
       fid, dim_name, start_size, end_size));
   return TILEDB_OK;
@@ -193,6 +204,8 @@ capi_return_t tiledb_fragment_info_get_non_empty_domain_var_from_index(
     void* start,
     void* end) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
   throw_if_not_ok(
       fragment_info->get_non_empty_domain_var(fid, did, start, end));
   return TILEDB_OK;
@@ -205,6 +218,8 @@ capi_return_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
     void* start,
     void* end) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
   throw_if_not_ok(
       fragment_info->get_non_empty_domain_var(fid, dim_name, start, end));
   return TILEDB_OK;
@@ -213,6 +228,7 @@ capi_return_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
 capi_return_t tiledb_fragment_info_get_mbr_num(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, uint64_t* mbr_num) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(mbr_num);
   throw_if_not_ok(fragment_info->get_mbr_num(fid, mbr_num));
   return TILEDB_OK;
 }
@@ -224,6 +240,7 @@ capi_return_t tiledb_fragment_info_get_mbr_from_index(
     uint32_t did,
     void* mbr) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(mbr);
   throw_if_not_ok(fragment_info->get_mbr(fid, mid, did, mbr));
   return TILEDB_OK;
 }
@@ -235,6 +252,7 @@ capi_return_t tiledb_fragment_info_get_mbr_from_name(
     const char* dim_name,
     void* mbr) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(mbr);
   throw_if_not_ok(fragment_info->get_mbr(fid, mid, dim_name, mbr));
   return TILEDB_OK;
 }
@@ -247,6 +265,8 @@ capi_return_t tiledb_fragment_info_get_mbr_var_size_from_index(
     uint64_t* start_size,
     uint64_t* end_size) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
   throw_if_not_ok(
       fragment_info->get_mbr_var_size(fid, mid, did, start_size, end_size));
   return TILEDB_OK;
@@ -260,6 +280,8 @@ capi_return_t tiledb_fragment_info_get_mbr_var_size_from_name(
     uint64_t* start_size,
     uint64_t* end_size) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
   throw_if_not_ok(fragment_info->get_mbr_var_size(
       fid, mid, dim_name, start_size, end_size));
   return TILEDB_OK;
@@ -273,6 +295,8 @@ capi_return_t tiledb_fragment_info_get_mbr_var_from_index(
     void* start,
     void* end) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
   throw_if_not_ok(fragment_info->get_mbr_var(fid, mid, did, start, end));
   return TILEDB_OK;
 }
@@ -285,6 +309,8 @@ capi_return_t tiledb_fragment_info_get_mbr_var_from_name(
     void* start,
     void* end) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
   throw_if_not_ok(fragment_info->get_mbr_var(fid, mid, dim_name, start, end));
   return TILEDB_OK;
 }
@@ -292,6 +318,7 @@ capi_return_t tiledb_fragment_info_get_mbr_var_from_name(
 capi_return_t tiledb_fragment_info_get_cell_num(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, uint64_t* cell_num) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(cell_num);
   throw_if_not_ok(fragment_info->get_cell_num(fid, cell_num));
   return TILEDB_OK;
 }
@@ -299,6 +326,7 @@ capi_return_t tiledb_fragment_info_get_cell_num(
 capi_return_t tiledb_fragment_info_get_total_cell_num(
     tiledb_fragment_info_t* fragment_info, uint64_t* cell_num) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(cell_num);
   throw_if_not_ok(fragment_info->get_total_cell_num(cell_num));
   return TILEDB_OK;
 }
@@ -306,6 +334,7 @@ capi_return_t tiledb_fragment_info_get_total_cell_num(
 capi_return_t tiledb_fragment_info_get_version(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, uint32_t* version) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(version);
   throw_if_not_ok(fragment_info->get_version(fid, version));
   return TILEDB_OK;
 }
@@ -313,6 +342,7 @@ capi_return_t tiledb_fragment_info_get_version(
 capi_return_t tiledb_fragment_info_has_consolidated_metadata(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, int32_t* has) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(has);
   throw_if_not_ok(fragment_info->has_consolidated_metadata(fid, has));
   return TILEDB_OK;
 }
@@ -320,6 +350,7 @@ capi_return_t tiledb_fragment_info_has_consolidated_metadata(
 capi_return_t tiledb_fragment_info_get_unconsolidated_metadata_num(
     tiledb_fragment_info_t* fragment_info, uint32_t* unconsolidated) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(unconsolidated);
   *unconsolidated = fragment_info->unconsolidated_metadata_num();
   return TILEDB_OK;
 }
@@ -327,6 +358,7 @@ capi_return_t tiledb_fragment_info_get_unconsolidated_metadata_num(
 capi_return_t tiledb_fragment_info_get_to_vacuum_num(
     tiledb_fragment_info_t* fragment_info, uint32_t* to_vacuum_num) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(to_vacuum_num);
   *to_vacuum_num = fragment_info->to_vacuum_num();
   return TILEDB_OK;
 }
@@ -334,6 +366,7 @@ capi_return_t tiledb_fragment_info_get_to_vacuum_num(
 capi_return_t tiledb_fragment_info_get_to_vacuum_uri(
     tiledb_fragment_info_t* fragment_info, uint32_t fid, const char** uri) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(uri);
   throw_if_not_ok(fragment_info->get_to_vacuum_uri(fid, uri));
   return TILEDB_OK;
 }
@@ -354,6 +387,7 @@ capi_return_t tiledb_fragment_info_get_array_schema_name(
     uint32_t fid,
     const char** schema_name) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_output_pointer_is_valid(schema_name);
   throw_if_not_ok(fragment_info->get_array_schema_name(fid, schema_name));
   assert(schema_name != nullptr);
   return TILEDB_OK;
@@ -362,6 +396,7 @@ capi_return_t tiledb_fragment_info_get_array_schema_name(
 capi_return_t tiledb_fragment_info_dump(
     const tiledb_fragment_info_t* fragment_info, FILE* out) {
   ensure_fragment_info_is_valid(fragment_info);
+  ensure_cstream_handle_is_valid(out);
   fragment_info->dump(out);
   return TILEDB_OK;
 }

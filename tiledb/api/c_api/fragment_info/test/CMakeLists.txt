@@ -28,7 +28,9 @@ include(unit_test)
 
 commence(unit_test capi_fragment_info)
   this_target_sources(unit_capi_fragment_info.cc)
+  this_target_compile_definitions(-DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs/")
   this_target_object_libraries(
     capi_fragment_info_stub
+    tiledb_test_support_lib
   )
 conclude(unit_test)
