@@ -34,7 +34,6 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/vfs_helpers.h"
-#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -337,11 +336,11 @@ TEST_CASE_METHOD(
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
   auto schema = array.load_schema(ctx_, uri_);
   REQUIRE(
-      schema.ptr()->array_schema()->has_enumeration("an_enumeration") == true);
+      schema.ptr()->array_schema_->has_enumeration("an_enumeration") == true);
   REQUIRE(
-      schema.ptr()->array_schema()->is_enumeration_loaded("an_enumeration") ==
+      schema.ptr()->array_schema_->is_enumeration_loaded("an_enumeration") ==
       false);
-  std::string schema_name_1 = schema.ptr()->array_schema()->name();
+  std::string schema_name_1 = schema.ptr()->array_schema_->name();
 
   // Evolve once to add an enumeration.
   ArraySchemaEvolution ase(ctx_);
@@ -356,7 +355,7 @@ TEST_CASE_METHOD(
   ArrayExperimental::load_all_enumerations(ctx_, array);
   auto all_schemas = array.ptr()->array_->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
-  std::string schema_name_2 = schema.ptr()->array_schema()->name();
+  std::string schema_name_2 = schema.ptr()->array_schema_->name();
 
   // Check all schemas.
   CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
@@ -383,7 +382,7 @@ TEST_CASE_METHOD(
   ArrayExperimental::load_all_enumerations(ctx_, array);
   all_schemas = array.ptr()->array_->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
-  std::string schema_name_3 = schema.ptr()->array_schema()->name();
+  std::string schema_name_3 = schema.ptr()->array_schema_->name();
 
   // Check all schemas.
   CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
@@ -420,7 +419,7 @@ TEST_CASE_METHOD(
   ArrayExperimental::load_all_enumerations(ctx_, array);
   all_schemas = array.ptr()->array_->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
-  std::string schema_name_4 = schema.ptr()->array_schema()->name();
+  std::string schema_name_4 = schema.ptr()->array_schema_->name();
 
   // Check all schemas.
   CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
