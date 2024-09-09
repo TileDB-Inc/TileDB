@@ -365,15 +365,6 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
-  inline virtual Status get_array_max_buffer_sizes(
-      const URI&,
-      const ArraySchema&,
-      const void*,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
-    throw RestClientDisabledException();
-  }
-
-  /// Operation disabled in base class.
   inline virtual Status get_array_metadata_from_rest(
       const URI&, uint64_t, uint64_t, Array*) {
     throw RestClientDisabledException();

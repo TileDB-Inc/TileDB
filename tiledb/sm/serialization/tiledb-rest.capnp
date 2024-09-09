@@ -4,1370 +4,1366 @@ using Json = import "/capnp/compat/json.capnp";
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("tiledb::sm::serialization::capnp");
 
-# ** un-comment below for Go generator use **
+#** un - comment below for Go generator use **
 #using Go = import "/go.capnp";
 #$Go.package("capnp_models");
 #$Go.import("capnp_models");
 
 struct DomainArray {
-  int8 @0 :List(Int8);
-  uint8 @1 :List(UInt8);
-  int16 @2 :List(Int16);
-  uint16 @3 :List(UInt16);
-  int32 @4 :List(Int32);
-  uint32 @5 :List(UInt32);
-  int64 @6 :List(Int64);
-  uint64 @7 :List(UInt64);
-  float32 @8 :List(Float32);
-  float64 @9 :List(Float64);
+  int8 @0 : List(Int8);
+  uint8 @1 : List(UInt8);
+  int16 @2 : List(Int16);
+  uint16 @3 : List(UInt16);
+  int32 @4 : List(Int32);
+  uint32 @5 : List(UInt32);
+  int64 @6 : List(Int64);
+  uint64 @7 : List(UInt64);
+  float32 @8 : List(Float32);
+  float64 @9 : List(Float64);
 }
 
 struct KV {
-  key @0 :Text;
-  value @1 :Text;
+  key @0 : Text;
+  value @1 : Text;
 }
 
 struct Config {
-# Represents a config object
-  entries @0 :List(KV);
-  # list of key-value settings
+#Represents a config object
+  entries @0 : List(KV);
+#list of key - value settings
 }
 
 struct Array {
-  endTimestamp @0 :UInt64;
-  # ending timestamp array was opened
+  endTimestamp @0 : UInt64;
+#ending timestamp array was opened
 
-  queryType @1 :Text;
-  # Array opened for query type
+  queryType @1 : Text;
+#Array opened for query type
 
-  uri @2 :Text;
-  # Array uri
+  uri @2 : Text;
+#Array uri
 
-  startTimestamp @3 :UInt64;
-  # starting timestamp array was opened
+  startTimestamp @3 : UInt64;
+#starting timestamp array was opened
 
-  arraySchemaLatest @4 :ArraySchema;
-  # latest array schema
+  arraySchemaLatest @4 : ArraySchema;
+#latest array schema
 
-  arraySchemasAll @5 :Map(Text, ArraySchema);
-  # map of all Array Schemas
+  arraySchemasAll @5 : Map(Text, ArraySchema);
+#map of all Array Schemas
 
-  nonEmptyDomain @6 :NonEmptyDomainList;
-  # non empty domain
+  nonEmptyDomain @6 : NonEmptyDomainList;
+#non empty domain
 
-  arrayMetadata @7 :ArrayMetadata;
-  # array metadata
+  arrayMetadata @7 : ArrayMetadata;
+#array metadata
 
-  arrayDirectory @8 :ArrayDirectory;
-  # array directory (for reads)
+  arrayDirectory @8 : ArrayDirectory;
+#array directory(for reads)
 
-  fragmentMetadataAll @9 :List(FragmentMetadata);
-  # metadata for all fragments (for reads)
+  fragmentMetadataAll @9 : List(FragmentMetadata);
+#metadata for all fragments(for reads)
 
-  openedAtEndTimestamp @10 :UInt64;
-  # The ending timestamp that the array was last opened at
+  openedAtEndTimestamp @10 : UInt64;
+#The ending timestamp that the array was last opened at
 }
 
 struct ArrayOpen {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  queryType @1 :Text;
-  # Query type to open the array for
+  queryType @1 : Text;
+#Query type to open the array for
 }
 
 struct ArraySchema {
-# ArraySchema during creation or retrieval
-    arrayType @0 :Text;
-    # Type of array
+#ArraySchema during creation or retrieval
+  arrayType @0 : Text;
+#Type of array
 
-    attributes @1 :List(Attribute);
-    # Attributes of array
+  attributes @1 : List(Attribute);
+#Attributes of array
 
-    capacity @2 :UInt64;
-    # Capacity of array
+  capacity @2 : UInt64;
+#Capacity of array
 
-    cellOrder @3 :Text;
-    # Order of cells
+  cellOrder @3 : Text;
+#Order of cells
 
-    coordsFilterPipeline @4 :FilterPipeline;
-    # Type of compression for coordinates (enum)
+  coordsFilterPipeline @4 : FilterPipeline;
+#Type of compression for coordinates(enum)
 
-    domain @5 :Domain;
-    # Domain of array
+  domain @5 : Domain;
+#Domain of array
 
-    offsetFilterPipeline @6 :FilterPipeline;
-    # Compression type of cell variable offsets (enum)
+  offsetFilterPipeline @6 : FilterPipeline;
+#Compression type of cell variable offsets(enum)
 
-    tileOrder @7 :Text;
-    # Tile order setting of array
+  tileOrder @7 : Text;
+#Tile order setting of array
 
-    uri @8 :Text;
-    # URI of schema
+  uri @8 : Text;
+#URI of schema
 
-    version @9 :List(Int32);
-    # file format version
+  version @9 : List(Int32);
+#file format version
 
-    allowsDuplicates @10 :Bool;
-    # True if the array allows coordinate duplicates.
-    # Applicable only to sparse arrays.
+  allowsDuplicates @10 : Bool;
+#True if the array allows coordinate duplicates.
+#Applicable only to sparse arrays.
 
-    validityFilterPipeline @11 :FilterPipeline;
-    # Type of compression for validity buffers (enum)
+  validityFilterPipeline @11 : FilterPipeline;
+#Type of compression for validity buffers(enum)
 
-    name @12 :Text;
-    # name of array schema
+  name @12 : Text;
+#name of array schema
 
-    timestampRange @13 :List(UInt64);
-    # Timestamp range of array schema
+  timestampRange @13 : List(UInt64);
+#Timestamp range of array schema
 
-    dimensionLabels @14 :List(DimensionLabel);
-    # Dimension labels of the array
+  dimensionLabels @14 : List(DimensionLabel);
+#Dimension labels of the array
 
-    enumerations @15: List(Enumeration);
-    # Enumerations of the array
+  enumerations @15 : List(Enumeration);
+#Enumerations of the array
 
-    enumerationPathMap @16: List(KV);
-    # Enumeration name to path map
+  enumerationPathMap @16 : List(KV);
+#Enumeration name to path map
 
-    currentDomain @17 :CurrentDomain;
-    # The current domain set on the schema
+  currentDomain @17 : CurrentDomain;
+#The current domain set on the schema
 }
 
 struct DimensionLabel {
-# A label of a dimension
-    dimensionId @0 :UInt32;
-    # Index of the dimension the label is attached to
+#A label of a dimension
+  dimensionId @0 : UInt32;
+#Index of the dimension the label is attached to
 
-    name @1 :Text;
-    # Name of the dimension label
+  name @1 : Text;
+#Name of the dimension label
 
-    uri @2 :Text;
-    # URI of the existing dimension label
+  uri @2 : Text;
+#URI of the existing dimension label
 
-    attributeName @3 :Text;
-    # Name of the attribute that stores the label data
+  attributeName @3 : Text;
+#Name of the attribute that stores the label data
 
-    order @4 :Text;
-    # Order of the dimension label
+  order @4 : Text;
+#Order of the dimension label
 
-    type @5 :Text;
-    # Datatype of label data
+  type @5 : Text;
+#Datatype of label data
 
-    cellValNum @6 :UInt32;
-    # Number of cells per label value
+  cellValNum @6 : UInt32;
+#Number of cells per label value
 
-    external @7 :Bool;
-    # Is label stored in array's label directory or externally
+  external @7 : Bool;
+#Is label stored in array's label directory or externally
 
-    relative @8 :Bool;
-    # Is URI relative or absolute to array directory
+  relative @8 : Bool;
+#Is URI relative or absolute to array directory
 
-    schema @9 :ArraySchema;
-    # Label schema
+  schema @9 : ArraySchema;
+#Label schema
 }
 
 struct ArraySchemaEvolution {
-# Evolution of array schema
-    attributesToDrop @0 :List(Text);
-    # Attribute names to be dropped
+#Evolution of array schema
+  attributesToDrop @0 : List(Text);
+#Attribute names to be dropped
 
-    attributesToAdd @1 :List(Attribute);
-    # Attributes to be added
+  attributesToAdd @1 : List(Attribute);
+#Attributes to be added
 
-    timestampRange @2 :List(UInt64);
-    # Timestamp range of array schema
+  timestampRange @2 : List(UInt64);
+#Timestamp range of array schema
 
-    enumerationsToAdd @3 :List(Enumeration);
-    # Enumerations to be added
+  enumerationsToAdd @3 : List(Enumeration);
+#Enumerations to be added
 
-    enumerationsToDrop @4 :List(Text);
-    # Enumeration names to be dropped
+  enumerationsToDrop @4 : List(Text);
+#Enumeration names to be dropped
 
-    enumerationsToExtend @5 :List(Enumeration);
-    # Enumerations to be extended.
+  enumerationsToExtend @5 : List(Enumeration);
+#Enumerations to be extended.
 
-    currentDomainToExpand @6 : CurrentDomain;
-    # A CurrentDomain that we want to expand to.
+  currentDomainToExpand @6 : CurrentDomain;
+#A CurrentDomain that we want to expand to.
 }
 
 struct Attribute {
-# Attribute of array
-    cellValNum @0 :UInt32;
-    # Attribute number of values per cell
+#Attribute of array
+  cellValNum @0 : UInt32;
+#Attribute number of values per cell
 
-    name @1 :Text;
-    # Attribute name
+  name @1 : Text;
+#Attribute name
 
-    type @2 :Text;
-    # TileDB attribute datatype
+  type @2 : Text;
+#TileDB attribute datatype
 
-    filterPipeline @3 :FilterPipeline;
-    # TileDB FilterPipeline for Attribute
+  filterPipeline @3 : FilterPipeline;
+#TileDB FilterPipeline for Attribute
 
-    fillValue @4 :Data;
-    # Default fill value
+  fillValue @4 : Data;
+#Default fill value
 
-    nullable @5 :Bool;
-    # Is attribute nullable
+  nullable @5 : Bool;
+#Is attribute nullable
 
-    fillValueValidity @6 :Bool;
-    # Default validity fill value for nullable attributes
+  fillValueValidity @6 : Bool;
+#Default validity fill value for nullable attributes
 
-    order @7 :Text;
-    # The prescribed order of the data stored in the attribute
+  order @7 : Text;
+#The prescribed order of the data stored in the attribute
 
-    enumerationName @8 :Text;
-    # Name of the enumeration for this attribute, if it has one
+  enumerationName @8 : Text;
+#Name of the enumeration for this attribute, if it has one
 }
 
 struct Enumeration {
-# Enumeration of values for use by Attributes
-    name @0 :Text;
-    # Enumeration name
+#Enumeration of values for use by Attributes
+  name @0 : Text;
+#Enumeration name
 
-    pathName @1 :Text;
-    # Enumeration path name
+  pathName @1 : Text;
+#Enumeration path name
 
-    type @2 :Text;
-    # Type of the Enumeration values
+  type @2 : Text;
+#Type of the Enumeration values
 
-    cellValNum @3 :UInt32;
-    # Enumeration number of values per cell
+  cellValNum @3 : UInt32;
+#Enumeration number of values per cell
 
-    ordered @4 :Bool;
-    # Whether the enumeration is considered orderable
+  ordered @4 : Bool;
+#Whether the enumeration is considered orderable
 
-    data @5 :Data;
-    # The contents of the enumeration values
+  data @5 : Data;
+#The contents of the enumeration values
 
-    offsets @6 :Data;
-    # The contents of the enumeration offsets buffer
+  offsets @6 : Data;
+#The contents of the enumeration offsets buffer
 }
 
 struct AttributeBufferHeader {
-# Represents an attribute buffer header information
+#Represents an attribute buffer header information
 
-    name @0 :Text;
-    # Attribute name
+  name @0 : Text;
+#Attribute name
 
-    fixedLenBufferSizeInBytes @1 :UInt64;
-    # Number of bytes in the fixed-length attribute data buffer
+  fixedLenBufferSizeInBytes @1 : UInt64;
+#Number of bytes in the fixed - length attribute data buffer
 
-    varLenBufferSizeInBytes @2 :UInt64;
-    # Number of bytes in the var-length attribute data buffer
+  varLenBufferSizeInBytes @2 : UInt64;
+#Number of bytes in the var - length attribute data buffer
 
-    validityLenBufferSizeInBytes @3 :UInt64;
-    # Number of bytes in the validity data buffer
+  validityLenBufferSizeInBytes @3 : UInt64;
+#Number of bytes in the validity data buffer
 
-    originalFixedLenBufferSizeInBytes @4 :UInt64;
-    # Original user set number of bytes in the fixed-length attribute data buffer
+  originalFixedLenBufferSizeInBytes @4 : UInt64;
+#Original user set number of bytes in the fixed - length attribute data buffer
 
-    originalVarLenBufferSizeInBytes @5 :UInt64;
-    # Original user set number of bytes in the var-length attribute data buffer
+  originalVarLenBufferSizeInBytes @5 : UInt64;
+#Original user set number of bytes in the var - length attribute data buffer
 
-    originalValidityLenBufferSizeInBytes @6 :UInt64;
-    # Original user set number of bytes in the validity data buffer
+  originalValidityLenBufferSizeInBytes @6 : UInt64;
+#Original user set number of bytes in the validity data buffer
 }
 
 struct Dimension {
-# Dimension of array
+#Dimension of array
 
-    name @0 :Text;
-    # Dimension name
+  name @0 : Text;
+#Dimension name
 
-    nullTileExtent @1 :Bool;
-    # Is tile extent null
+  nullTileExtent @1 : Bool;
+#Is tile extent null
 
-    type @2 :Text;
-    # Datatype for Dimension
+  type @2 : Text;
+#Datatype for Dimension
 
-    tileExtent :union {
-      int8 @3 :Int8;
-      uint8 @4 :UInt8;
-      int16 @5 :Int16;
-      uint16 @6 :UInt16;
-      int32 @7 :Int32;
-      uint32 @8 :UInt32;
-      int64 @9 :Int64;
-      uint64 @10 :UInt64;
-      float32 @11 :Float32;
-      float64 @12 :Float64;
-    }
-    # Extent of tile
+  tileExtent : union {
+    int8 @3 : Int8;
+    uint8 @4 : UInt8;
+    int16 @5 : Int16;
+    uint16 @6 : UInt16;
+    int32 @7 : Int32;
+    uint32 @8 : UInt32;
+    int64 @9 : Int64;
+    uint64 @10 : UInt64;
+    float32 @11 : Float32;
+    float64 @12 : Float64;
+  }
+#Extent of tile
 
-    domain @13 :DomainArray;
-    # extent of domain
+  domain @13 : DomainArray;
+#extent of domain
 
-    filterPipeline @14 :FilterPipeline;
-    # TileDB FilterPipeline for Dimension
+  filterPipeline @14 : FilterPipeline;
+#TileDB FilterPipeline for Dimension
 }
 
 struct Domain {
-# Domain of array
-    cellOrder @0 :Text;
-    # Tile Order
+#Domain of array
+  cellOrder @0 : Text;
+#Tile Order
 
-    dimensions @1 :List(Dimension);
-    # Array of dimensions
+  dimensions @1 : List(Dimension);
+#Array of dimensions
 
-    tileOrder @2 :Text;
-    # Tile Order
+  tileOrder @2 : Text;
+#Tile Order
 
-    type @3 :Text;
-    # Datatype of domain
+  type @3 : Text;
+#Datatype of domain
 }
 
 struct Error {
-    code @0 :Int64;
-    message @1 :Text;
+  code @0 : Int64;
+  message @1 : Text;
 }
 
 struct FloatScaleConfig {
-  scale @0 :Float64;
-  offset @1 :Float64;
-  byteWidth @2 :UInt64;
+  scale @0 : Float64;
+  offset @1 : Float64;
+  byteWidth @2 : UInt64;
 }
 
 struct WebpConfig {
-  quality @0 :Float32;
-  # WebP lossless quality; Valid range from 0.0f-1.0f
-  format @1 :UInt8;
-  # WebP colorspace format.
-  lossless @2 :Bool;
-  # True if compression is lossless, false if lossy.
-  extentX @3: UInt16;
-  # Tile extent along X axis.
-  extentY @4: UInt16;
-  # Tile extent along Y axis.
+  quality @0 : Float32;
+#WebP lossless quality; Valid range from 0.0f - 1.0f
+  format @1 : UInt8;
+#WebP colorspace format.
+  lossless @2 : Bool;
+#True if compression is lossless, false if lossy.
+  extentX @3 : UInt16;
+#Tile extent along X axis.
+  extentY @4 : UInt16;
+#Tile extent along Y axis.
 }
 
 struct Filter {
-  type @0 :Text;
-  # filter type
+  type @0 : Text;
+#filter type
 
-  data :union {
-    text @1 :Text;
-    bytes @2 :Data;
-    int8 @3 :Int8;
-    uint8 @4 :UInt8;
-    int16 @5 :Int16;
-    uint16 @6 :UInt16;
-    int32 @7 :Int32;
-    uint32 @8 :UInt32;
-    int64 @9 :Int64;
-    uint64 @10 :UInt64;
-    float32 @11 :Float32;
-    float64 @12 :Float64;
+  data : union {
+    text @1 : Text;
+    bytes @2 : Data;
+    int8 @3 : Int8;
+    uint8 @4 : UInt8;
+    int16 @5 : Int16;
+    uint16 @6 : UInt16;
+    int32 @7 : Int32;
+    uint32 @8 : UInt32;
+    int64 @9 : Int64;
+    uint64 @10 : UInt64;
+    float32 @11 : Float32;
+    float64 @12 : Float64;
   }
-  # filter data
+#filter data
 
-  floatScaleConfig @13 :FloatScaleConfig;
+  floatScaleConfig @13 : FloatScaleConfig;
 
-  webpConfig @14 :WebpConfig;
+  webpConfig @14 : WebpConfig;
 }
 
 struct FilterPipeline {
-  filters @0 :List(Filter);
+  filters @0 : List(Filter);
 }
 
 struct Map(Key, Value) {
-  entries @0 :List(Entry);
+  entries @0 : List(Entry);
   struct Entry {
-    key @0 :Key;
-    value @1 :Value;
+    key @0 : Key;
+    value @1 : Value;
   }
 }
 
 struct MapUInt32 {
-  entries @0 :List(Entry);
+  entries @0 : List(Entry);
   struct Entry {
-    key @0 :Text;
-    value @1 :UInt32;
+    key @0 : Text;
+    value @1 : UInt32;
   }
 }
 
 struct MapInt64 {
-  entries @0 :List(Entry);
+  entries @0 : List(Entry);
   struct Entry {
-    key @0 :Text;
-    value @1 :Int64;
+    key @0 : Text;
+    value @1 : Int64;
   }
 }
 
 struct MapUInt64 {
-  entries @0 :List(Entry);
+  entries @0 : List(Entry);
   struct Entry {
-    key @0 :Text;
-    value @1 :UInt64;
+    key @0 : Text;
+    value @1 : UInt64;
   }
 }
 
 struct MapFloat64 {
-  entries @0 :List(Entry);
+  entries @0 : List(Entry);
   struct Entry {
-    key @0 :Text;
-    value @1 :Float64;
+    key @0 : Text;
+    value @1 : Float64;
   }
 }
 
 struct Stats {
-# Stats struct
+#Stats struct
 
-  timers @0 :MapFloat64;
-  # timer
+  timers @0 : MapFloat64;
+#timer
 
-  counters @1 :MapUInt64;
-  # counters
+  counters @1 : MapUInt64;
+#counters
 }
 
 struct UnorderedWriterState {
-  isCoordsPass @0 :Bool;
-  # Coordinate pass boolean for partial attribute write
+  isCoordsPass @0 : Bool;
+#Coordinate pass boolean for partial attribute write
 
   cellPos @1 : List(UInt64);
-  # Cell positions for partial attribute writes
+#Cell positions for partial attribute writes
 
   coordDups @2 : List(UInt64);
-  # Coordinate duplicates for partial attribute writes
+#Coordinate duplicates for partial attribute writes
 
   fragMeta @3 : FragmentMetadata;
-  # Fragment metadata for partial attribute writes
+#Fragment metadata for partial attribute writes
 }
 
 struct Writer {
-  # Write struct
-  checkCoordDups @0 :Bool;
+#Write struct
+  checkCoordDups @0 : Bool;
 
-  checkCoordOOB @1 :Bool;
+  checkCoordOOB @1 : Bool;
 
-  dedupCoords @2 :Bool;
+  dedupCoords @2 : Bool;
 
-  subarray @3 :DomainArray;
-  # Old-style (single-range) subarray for dense writes
+  subarray @3 : DomainArray;
+#Old - style(single - range) subarray for dense writes
 
-  subarrayRanges @4 :Subarray;
-  # The query subarray/ranges object, new style range object
+  subarrayRanges @4 : Subarray;
+#The query subarray / ranges object, new style range object
 
-  stats @5 :Stats;
-  # Stats object
+  stats @5 : Stats;
+#Stats object
 
-  globalWriteStateV1 @6 :GlobalWriteState;
-  # All the state necessary for global writes to work in TileDB Cloud
+  globalWriteStateV1 @6 : GlobalWriteState;
+#All the state necessary for global writes to work in TileDB Cloud
 
-  unorderedWriterState @7 :UnorderedWriterState;
-  # Unordered writer state
+  unorderedWriterState @7 : UnorderedWriterState;
+#Unordered writer state
 }
 
 struct SubarrayRanges {
-  # A set of 1D ranges for a subarray
+#A set of 1D ranges for a subarray
 
-  type @0 :Text;
-  # Datatype of the ranges
+  type @0 : Text;
+#Datatype of the ranges
 
-  hasDefaultRange @1:Bool;
-  # True if the range is the default range
+  hasDefaultRange @1 : Bool;
+#True if the range is the default range
 
-  buffer @2 :Data;
-  # The bytes of the ranges
+  buffer @2 : Data;
+#The bytes of the ranges
 
-  bufferSizes @3 :List(UInt64);
-  # The list of sizes per range
+  bufferSizes @3 : List(UInt64);
+#The list of sizes per range
 
-  bufferStartSizes @4 :List(UInt64);
-  # The list of start sizes per range
+  bufferStartSizes @4 : List(UInt64);
+#The list of start sizes per range
 }
 
 struct LabelSubarrayRanges {
-  # A set of label 1D ranges for a subarray
+#A set of label 1D ranges for a subarray
 
-  dimensionId @0 :UInt32;
-  # Index of the dimension the label is attached to
+  dimensionId @0 : UInt32;
+#Index of the dimension the label is attached to
 
-  name @1 :Text;
-  # Name of the dimension label
+  name @1 : Text;
+#Name of the dimension label
 
-  ranges @2 :SubarrayRanges;
-  # A set of 1D ranges for a subarray
+  ranges @2 : SubarrayRanges;
+#A set of 1D ranges for a subarray
 }
 
 struct Subarray {
-  # A Subarray
+#A Subarray
 
-  layout @0 :Text;
-  # The layout of the subarray
+  layout @0 : Text;
+#The layout of the subarray
 
-  ranges @1 :List(SubarrayRanges);
-  # List of 1D ranges, one per dimension
+  ranges @1 : List(SubarrayRanges);
+#List of 1D ranges, one per dimension
 
-  stats @2 :Stats;
-  # Stats object
+  stats @2 : Stats;
+#Stats object
 
-  relevantFragments @3 :List(UInt32);
-  # Relevant fragments
+  relevantFragments @3 : List(UInt32);
+#Relevant fragments
 
-  labelRanges @4 :List(LabelSubarrayRanges);
-  # List of 1D ranges for dimensions that have labels
+  labelRanges @4 : List(LabelSubarrayRanges);
+#List of 1D ranges for dimensions that have labels
 
-  attributeRanges @5 :Map(Text, SubarrayRanges);
-  # List of 1D ranges for each attribute
+  attributeRanges @5 : Map(Text, SubarrayRanges);
+#List of 1D ranges for each attribute
 
-  coalesceRanges @6 :Bool = true;
-  # True if Subarray should coalesce overlapping ranges.
+  coalesceRanges @6 : Bool = true;
+#True if Subarray should coalesce overlapping ranges.
 }
 
 struct SubarrayPartitioner {
-  # The subarray partitioner
+#The subarray partitioner
 
   struct PartitionInfo {
-    subarray @0 :Subarray;
-    start @1 :UInt64;
-    end @2 :UInt64;
-    splitMultiRange @3 :Bool;
+    subarray @0 : Subarray;
+    start @1 : UInt64;
+    end @2 : UInt64;
+    splitMultiRange @3 : Bool;
   }
 
   struct State {
-    start @0 :UInt64;
-    end @1 :UInt64;
-    singleRange @2 :List(Subarray);
-    multiRange @3 :List(Subarray);
+    start @0 : UInt64;
+    end @1 : UInt64;
+    singleRange @2 : List(Subarray);
+    multiRange @3 : List(Subarray);
   }
 
-  subarray @0 :Subarray;
-  # The subarray the partitioner will iterate on to produce partitions.
+  subarray @0 : Subarray;
+#The subarray the partitioner will iterate on to produce partitions.
 
-  budget @1 :List(AttributeBufferSize);
-  # Result size budget (in bytes) for all attributes.
+  budget @1 : List(AttributeBufferSize);
+#Result size budget(in bytes) for all attributes.
 
-  current @2 :PartitionInfo;
-  # The current partition info
+  current @2 : PartitionInfo;
+#The current partition info
 
-  state @3 :State;
-  # The state information for the remaining partitions to be produced
+  state @3 : State;
+#The state information for the remaining partitions to be produced
 
-  memoryBudget @4 :UInt64;
-  # The memory budget for the fixed-sized attributes and the offsets of the var-sized attributes
+  memoryBudget @4 : UInt64;
+#The memory budget for the fixed - \
+    sized attributes and the offsets of the var - sized attributes
 
-  memoryBudgetVar @5 :UInt64;
-  # The memory budget for the var-sized attributes
+  memoryBudgetVar @5 : UInt64;
+#The memory budget for the var - sized attributes
 
-  memoryBudgetValidity @6 :UInt64;
-  # The memory budget for the validity buffers
+  memoryBudgetValidity @6 : UInt64;
+#The memory budget for the validity buffers
 
-  stats @7 :Stats;
-  # Stats object
+  stats @7 : Stats;
+#Stats object
 }
 
 struct ReadState {
-  overflowed @0 :Bool;
-  # `True` if the query produced results that could not fit in some buffer.
+  overflowed @0 : Bool;
+# `True` if the query produced results that could not fit in some buffer.
 
-  unsplittable @1 :Bool;
-  # True if the current subarray partition is unsplittable.
+  unsplittable @1 : Bool;
+#True if the current subarray partition is unsplittable.
 
-  initialized @2 :Bool;
-  # True if the reader has been initialized
+  initialized @2 : Bool;
+#True if the reader has been initialized
 
-  subarrayPartitioner @3 :SubarrayPartitioner;
-  # The subarray partitioner
+  subarrayPartitioner @3 : SubarrayPartitioner;
+#The subarray partitioner
 }
 
 struct ConditionClause {
-  # A clause within a condition
+#A clause within a condition
 
-  fieldName @0 :Text;
-  # The name of the field this clause applies to
+  fieldName @0 : Text;
+#The name of the field this clause applies to
 
-  value @1 :Data;
-  # The comparison value
+  value @1 : Data;
+#The comparison value
 
-  op @2 :Text;
-  # The comparison operation
+  op @2 : Text;
+#The comparison operation
 
-  useEnumeration @3 :Bool;
-  # Whether or not to use the associated attribute's Enumeration
+  useEnumeration @3 : Bool;
+#Whether or not to use the associated attribute's Enumeration
 }
 
 struct ASTNode {
-  # A representation of the AST representing a query condition
-  isExpression @0 :Bool;
-  # True if node is an expression/compound node
+#A representation of the AST representing a query condition
+  isExpression @0 : Bool;
+#True if node is an expression / compound node
 
-  # Value node fields
-  fieldName @1 :Text;
-  # The name of the field this clause applies to
+#Value node fields
+  fieldName @1 : Text;
+#The name of the field this clause applies to
 
-  value @2 :Data;
-  # The comparison value or set membership data
+  value @2 : Data;
+#The comparison value or set membership data
 
-  op @3 :Text;
-  # The comparison operation
+  op @3 : Text;
+#The comparison operation
 
-  # Expression node fields
-  children @4 :List(ASTNode);
-  # A list of children
+#Expression node fields
+  children @4 : List(ASTNode);
+#A list of children
 
-  combinationOp @5 :Text;
-  # The combination logical operator
+  combinationOp @5 : Text;
+#The combination logical operator
 
-  useEnumeration @6 :Bool;
-  # Whether or not to use the associated attribute's Enumeration
+  useEnumeration @6 : Bool;
+#Whether or not to use the associated attribute's Enumeration
 
-  offsets @7 :Data;
-  # The offsets for set membership data
+  offsets @7 : Data;
+#The offsets for set membership data
 }
 
 struct Condition {
-  # The query condition
+#The query condition
 
-  clauses @0 :List(ConditionClause);
-  # All clauses in this condition
+  clauses @0 : List(ConditionClause);
+#All clauses in this condition
 
-  clauseCombinationOps @1 :List(Text);
-  # The operation that combines each condition
+  clauseCombinationOps @1 : List(Text);
+#The operation that combines each condition
 
-  tree @2 :ASTNode;
-  # The AST representing this condition
+  tree @2 : ASTNode;
+#The AST representing this condition
 }
 
 struct QueryReader {
-  # Read struct (can't be called reader due to class name conflict)
+#Read struct(can't be called reader due to class name conflict)
 
-  layout @0 :Text;
-  # The layout of the cells in the result of the subarray
+  layout @0 : Text;
+#The layout of the cells in the result of the subarray
 
-  subarray @1 :Subarray;
-  # The query subarray.
+  subarray @1 : Subarray;
+#The query subarray.
 
-  readState @2 :ReadState;
-  # Read state of reader
+  readState @2 : ReadState;
+#Read state of reader
 
-  condition @3 :Condition;
-  # The query condition
+  condition @3 : Condition;
+#The query condition
 
-  stats @4 :Stats;
-  # Stats object
+  stats @4 : Stats;
+#Stats object
 
-  dimLabelIncreasing @5 :Bool;
-  # True if dim label query is using increasing order, false if decreasing order.
+  dimLabelIncreasing @5 : Bool;
+#True if dim label query is using increasing order, false if decreasing order.
 }
 
 struct Delete {
-  # Delete struct
+#Delete struct
 
-  condition @0 :Condition;
-  # The delete condition
+  condition @0 : Condition;
+#The delete condition
 
-  stats @1 :Stats;
-  # Stats object
+  stats @1 : Stats;
+#Stats object
 }
 
 struct ResultCellSlab {
-# Result cell slab
+#Result cell slab
 
-    fragIdx @0 :UInt32;
-    # Fragment index
+  fragIdx @0 : UInt32;
+#Fragment index
 
-    tileIdx @1 :UInt64;
-    # Tile index
+  tileIdx @1 : UInt64;
+#Tile index
 
-    start @2 :UInt64;
-    # Start of the cell slab
+  start @2 : UInt64;
+#Start of the cell slab
 
-    length @3 :UInt64;
-    # Length of the cell slab
+  length @3 : UInt64;
+#Length of the cell slab
 }
 
 struct FragmentIndex {
-# Tile/cell index for a fragment
+#Tile / cell index for a fragment
 
-    tileIdx @0 :UInt64;
-    # Tile index
+  tileIdx @0 : UInt64;
+#Tile index
 
-    cellIdx @1 :UInt64;
-    # Cell index
+  cellIdx @1 : UInt64;
+#Cell index
 }
 
 struct ReadStateIndex {
-  resultCellSlab @0 :List(ResultCellSlab);
-  # Result cell slab.
+  resultCellSlab @0 : List(ResultCellSlab);
+#Result cell slab.
 
-  fragTileIdx @1 :List(FragmentIndex);
-  # Tile/cell index for each fragments.
+  fragTileIdx @1 : List(FragmentIndex);
+#Tile / cell index for each fragments.
 
-  doneAddingResultTiles @2 :Bool;
-  # Is the reader done adding result tiles.
+  doneAddingResultTiles @2 : Bool;
+#Is the reader done adding result tiles.
 }
 
 struct ReaderIndex {
-  # Reader struct for indexed readers.
+#Reader struct for indexed readers.
 
-  layout @0 :Text;
-  # The layout of the cells in the result of the subarray
+  layout @0 : Text;
+#The layout of the cells in the result of the subarray
 
-  subarray @1 :Subarray;
-  # The query subarray.
+  subarray @1 : Subarray;
+#The query subarray.
 
-  readState @2 :ReadStateIndex;
-  # Read state of reader
+  readState @2 : ReadStateIndex;
+#Read state of reader
 
-  condition @3 :Condition;
-  # The query condition
+  condition @3 : Condition;
+#The query condition
 
-  stats @4 :Stats;
-  # Stats object
+  stats @4 : Stats;
+#Stats object
 }
 
 struct Query {
-    attributeBufferHeaders @0 :List(AttributeBufferHeader);
-    # list of attribute buffer headers
+  attributeBufferHeaders @0 : List(AttributeBufferHeader);
+#list of attribute buffer headers
 
-    layout @1 :Text;
-    # query write layout
+  layout @1 : Text;
+#query write layout
 
-    status @2 :Text;
-    # query status
+  status @2 : Text;
+#query status
 
-    type @3 :Text;
-    # Type of query
+  type @3 : Text;
+#Type of query
 
-    writer @4 :Writer;
-    # writer contains data needed for continuation of global write order queries
+  writer @4 : Writer;
+#writer contains data needed for continuation of global write order queries
 
-    reader @5 :QueryReader;
-    # reader contains data needed for continuation of incomplete reads
+  reader @5 : QueryReader;
+#reader contains data needed for continuation of incomplete reads
 
-    array @6 :Array;
-    # Represents an open array
+  array @6 : Array;
+#Represents an open array
 
-    totalFixedLengthBufferBytes @7: UInt64;
-    # Total number of bytes in fixed size attribute buffers
+  totalFixedLengthBufferBytes @7 : UInt64;
+#Total number of bytes in fixed size attribute buffers
 
-    totalVarLenBufferBytes @8: UInt64;
-    # Total number of bytes in variable size attribute buffers
+  totalVarLenBufferBytes @8 : UInt64;
+#Total number of bytes in variable size attribute buffers
 
-    totalValidityBufferBytes @9: UInt64;
-    # Total number of bytes in validity buffers
+  totalValidityBufferBytes @9 : UInt64;
+#Total number of bytes in validity buffers
 
-    varOffsetsMode @10 :Text;
-    # This field is not longer used, it is replaced by the config
+  varOffsetsMode @10 : Text;
+#This field is not longer used, it is replaced by the config
 
-    varOffsetsAddExtraElement @11 :Bool;
-    # This field is not longer used, it is replaced by the config
+  varOffsetsAddExtraElement @11 : Bool;
+#This field is not longer used, it is replaced by the config
 
-    varOffsetsBitsize @12 :Int32;
-    # This field is not longer used, it is replaced by the config
+  varOffsetsBitsize @12 : Int32;
+#This field is not longer used, it is replaced by the config
 
-    config @13 :Config;
-    # Config set on query
+  config @13 : Config;
+#Config set on query
 
-    stats @14 :Stats;
-    # Stats object
+  stats @14 : Stats;
+#Stats object
 
-    readerIndex @15 :ReaderIndex;
-    # readerIndex contains data needed for continuation of incomplete sparse reads with index readers
+  readerIndex @15 : ReaderIndex;
+#readerIndex contains data needed for continuation of incomplete sparse reads \
+    with index readers
 
-    denseReader @16 :QueryReader;
-    # denseReader contains data needed for continuation of incomplete dense reads with dense reader
+  denseReader @16 : QueryReader;
+#denseReader contains data needed for continuation of incomplete dense reads \
+    with dense reader
 
-    delete @17 :Delete;
-    # delete contains QueryCondition representing deletion expression
+  delete @17 : Delete;
+#delete contains QueryCondition representing deletion expression
 
-    writtenFragmentInfo @18 :List(WrittenFragmentInfo);
-    # Needed in global order writes when WrittenFragmentInfo gets updated
-    # during finalize, but doesn't end up back on the client Query object
+  writtenFragmentInfo @18 : List(WrittenFragmentInfo);
+#Needed in global order writes when WrittenFragmentInfo gets updated
+#during finalize, but doesn't end up back on the client Query object
 
-    writtenBuffers @19 : List(Text);
-    # written buffers for partial attribute writes
+  writtenBuffers @19 : List(Text);
+#written buffers for partial attribute writes
 
-    orderedDimLabelReader @20 :QueryReader;
-    # orderedDimLabelReader contains data needed for dense dimension label reads.
+  orderedDimLabelReader @20 : QueryReader;
+#orderedDimLabelReader contains data needed for dense dimension label reads.
 
-    channels @21 :List(QueryChannel);
-    # channels contains the list of channels (streams of data) within a read
-    # query. It always contains at least one element, the default channel.
+  channels @21 : List(QueryChannel);
+#channels contains the list of channels(streams of data) within a read
+#query.It always contains at least one element, the default channel.
 }
 
 struct NonEmptyDomain {
-  # object representing a non-empty domain
+#object representing a non - empty domain
 
-  nonEmptyDomain @0 :DomainArray;
-  # Non-empty domain of array
+  nonEmptyDomain @0 : DomainArray;
+#Non - empty domain of array
 
-  isEmpty @1 :Bool;
-  # Is non-empty domain really empty?
+  isEmpty @1 : Bool;
+#Is non - empty domain really empty ?
 
-  sizes @2 :List(UInt64);
-  # Number of elements in DomainArray for var length
+  sizes @2 : List(UInt64);
+#Number of elements in DomainArray for var length
 }
 
 struct NonEmptyDomainList {
-  # object representing non-empty domain for heterogeneous or string dimensions
-  nonEmptyDomains @0 :List(NonEmptyDomain);
+#object representing non - empty domain for heterogeneous or string dimensions
+  nonEmptyDomains @0 : List(NonEmptyDomain);
 }
 
 struct AttributeBufferSize {
-  # object representing a buffer size of an attribute
+#object representing a buffer size of an attribute
 
-  attribute @0: Text;
-  # name of attribute
+  attribute @0 : Text;
+#name of attribute
 
-  offsetBytes @1: UInt64;
-  # size (in bytes) of offset buffer
+  offsetBytes @1 : UInt64;
+#size(in bytes) of offset buffer
 
-  dataBytes @2: UInt64;
-  # size (in bytes) of data buffer
+  dataBytes @2 : UInt64;
+#size(in bytes) of data buffer
 
-  validityBytes @3: UInt64;
-  # size (in bytes) of data buffer
-}
-
-struct MaxBufferSizes {
-  maxBufferSizes @0 :List(AttributeBufferSize);
-  # a list of max buffer sizes, one per attribute
+  validityBytes @3 : UInt64;
+#size(in bytes) of data buffer
 }
 
 struct ArrayMetadata {
-  # object representing array metadata
+#object representing array metadata
 
   struct MetadataEntry {
-    key @0 :Text;
-    type @1 :Text;
-    valueNum @2 :UInt32;
-    value @3 :Data;
-    del @4 :Bool;
+    key @0 : Text;
+    type @1 : Text;
+    valueNum @2 : UInt32;
+    value @3 : Data;
+    del @4 : Bool;
   }
 
-  entries @0 :List(MetadataEntry);
-  # list of metadata values
+  entries @0 : List(MetadataEntry);
+#list of metadata values
 }
 
 struct ArrayDirectory {
-  # object representing an array directory
+#object representing an array directory
 
   struct TimestampedURI {
-    uri @0 :Text;
-    timestampStart @1 :UInt64;
-    timestampEnd @2 :UInt64;
+    uri @0 : Text;
+    timestampStart @1 : UInt64;
+    timestampEnd @2 : UInt64;
   }
 
   struct DeleteAndUpdateTileLocation {
-    uri @0 :Text;
-    conditionMarker @1 :Text;
-    offset @2 :UInt64;
+    uri @0 : Text;
+    conditionMarker @1 : Text;
+    offset @2 : UInt64;
   }
 
-  unfilteredFragmentUris @0 :List(Text);
-  # fragment URIs
+  unfilteredFragmentUris @0 : List(Text);
+#fragment URIs
 
-  consolidatedCommitUris @1 :List(Text);
-  # consolidated commit URI set
+  consolidatedCommitUris @1 : List(Text);
+#consolidated commit URI set
 
-  arraySchemaUris @2 :List(Text);
-  # URIs of all the array schema files
+  arraySchemaUris @2 : List(Text);
+#URIs of all the array schema files
 
-  latestArraySchemaUri @3 :Text;
-  # latest array schema URI.
+  latestArraySchemaUri @3 : Text;
+#latest array schema URI.
 
-  arrayMetaUrisToVacuum @4 :List(Text);
-  # the array metadata files to vacuum
+  arrayMetaUrisToVacuum @4 : List(Text);
+#the array metadata files to vacuum
 
-  arrayMetaVacUrisToVacuum @5 :List(Text);
-  # the array metadata vac files to vacuum
+  arrayMetaVacUrisToVacuum @5 : List(Text);
+#the array metadata vac files to vacuum
 
-  commitUrisToConsolidate @6 :List(Text);
-  # the commit files to consolidate
+  commitUrisToConsolidate @6 : List(Text);
+#the commit files to consolidate
 
-  commitUrisToVacuum @7 :List(Text);
-  # the commit files to vacuum
+  commitUrisToVacuum @7 : List(Text);
+#the commit files to vacuum
 
-  consolidatedCommitUrisToVacuum @8 :List(Text);
-  # the consolidated commit files to vacuum
+  consolidatedCommitUrisToVacuum @8 : List(Text);
+#the consolidated commit files to vacuum
 
-  arrayMetaUris @9 :List(TimestampedURI);
-  # the timestamped filtered array metadata URIs, after removing
-  # the ones that need to be vacuumed and those that do not fall within
-  # [timestamp_start, timestamp_end]
+  arrayMetaUris @9 : List(TimestampedURI);
+#the timestamped filtered array metadata URIs, after removing
+#the ones that need to be vacuumed and those that do not fall within
+#[timestamp_start, timestamp_end]
 
-  fragmentMetaUris @10 :List(Text);
-  # the URIs of the consolidated fragment metadata files
+  fragmentMetaUris @10 : List(Text);
+#the URIs of the consolidated fragment metadata files
 
-  deleteAndUpdateTileLocation @11 :List(DeleteAndUpdateTileLocation);
-  # the location of delete tiles
+  deleteAndUpdateTileLocation @11 : List(DeleteAndUpdateTileLocation);
+#the location of delete tiles
 
-  timestampStart @12 :UInt64;
-   # Only the files created after timestamp_start are listed
+  timestampStart @12 : UInt64;
+#Only the files created after timestamp_start are listed
 
-  timestampEnd @13 :UInt64;
-  # Only the files created before timestamp_end are listed
+  timestampEnd @13 : UInt64;
+#Only the files created before timestamp_end are listed
 }
 
-
 struct EstimatedResultSize {
-  # object representing estimated
+#object representing estimated
   struct ResultSize {
-    # Result size
-    sizeFixed @0 :Float64;
-    sizeVar @1 :Float64;
-    sizeValidity @2 :Float64;
+#Result size
+    sizeFixed @0 : Float64;
+    sizeVar @1 : Float64;
+    sizeValidity @2 : Float64;
   }
 
   struct MemorySize {
-    # Memory Size
-    sizeFixed @0 :UInt64;
-    sizeVar @1 :UInt64;
-    sizeValidity @2 :UInt64;
+#Memory Size
+    sizeFixed @0 : UInt64;
+    sizeVar @1 : UInt64;
+    sizeValidity @2 : UInt64;
   }
 
-  resultSizes @0 :Map(Text, ResultSize);
-  memorySizes @1 :Map(Text, MemorySize);
+  resultSizes @0 : Map(Text, ResultSize);
+  memorySizes @1 : Map(Text, MemorySize);
 }
 
 struct FragmentInfoRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 }
 
 struct SingleFragmentInfo {
-  arraySchemaName @0 :Text;
-  # array schema name
+  arraySchemaName @0 : Text;
+#array schema name
 
-  meta @1 :FragmentMetadata;
-  # fragment metadata
+  meta @1 : FragmentMetadata;
+#fragment metadata
 
   fragmentSize @2 : UInt64;
-  # the size of the entire fragment directory
+#the size of the entire fragment directory
 }
 
 struct FragmentInfo {
-  arraySchemaLatest @0 :ArraySchema;
-  # latest array schema
+  arraySchemaLatest @0 : ArraySchema;
+#latest array schema
 
-  arraySchemasAll @1 :Map(Text, ArraySchema);
-  # map of all array schemas
+  arraySchemasAll @1 : Map(Text, ArraySchema);
+#map of all array schemas
 
-  fragmentInfo @2 :List(SingleFragmentInfo);
-  # information about fragments in the array
+  fragmentInfo @2 : List(SingleFragmentInfo);
+#information about fragments in the array
 
-  toVacuum @3 :List(Text);
-  # the URIs of the fragments to vacuum
+  toVacuum @3 : List(Text);
+#the URIs of the fragments to vacuum
 }
 
 struct GroupMetadata {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  metadata  @1 :ArrayMetadata;
-  # metadata attached to group
+  metadata @1 : ArrayMetadata;
+#metadata attached to group
 }
 
 struct GroupMember {
-  uri @0 :Text;
-  # URI of group Member
+  uri @0 : Text;
+#URI of group Member
 
-  type @1 :Text;
-  # type of Member, group or array
+  type @1 : Text;
+#type of Member, group or array
 
-  relative @2 :Bool;
-  # is member URI relative to group
+  relative @2 : Bool;
+#is member URI relative to group
 
-  name @3 :Text;
-  # name of member, optional
+  name @3 : Text;
+#name of member, optional
 }
 
 struct Group {
-  # Group
+#Group
 
   struct GroupDetails {
-    members @0 :List(GroupMember);
-    # list of Members in group
+    members @0 : List(GroupMember);
+#list of Members in group
 
-    metadata  @1 :ArrayMetadata;
-    # metadata attached to group
+    metadata @1 : ArrayMetadata;
+#metadata attached to group
   }
 
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  group @1 :GroupDetails  $Json.name("group");
+  group @1 : GroupDetails $Json.name("group");
 }
 
 struct GroupUpdate {
   struct GroupUpdateDetails {
-    membersToRemove @0 :List(Text) $Json.name("members_to_remove");
-    # members to remove
+    membersToRemove @0 : List(Text) $Json.name("members_to_remove");
+#members to remove
 
-    membersToAdd @1 :List(GroupMember) $Json.name("members_to_add");
-    # members to add
+    membersToAdd @1 : List(GroupMember) $Json.name("members_to_add");
+#members to add
   }
 
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  groupUpdate @1 :GroupUpdateDetails $Json.name("group_changes");
-  # group update details
+  groupUpdate @1 : GroupUpdateDetails $Json.name("group_changes");
+#group update details
 }
 
 struct GroupCreate {
-  # Create group details
+#Create group details
 
   struct GroupCreateDetails {
-  # details of a group
+#details of a group
 
-    uri @0 :Text;
-    # URI where group should be created
+    uri @0 : Text;
+#URI where group should be created
   }
 
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  groupDetails @1 :GroupCreateDetails $Json.name("group_details");
+  groupDetails @1 : GroupCreateDetails $Json.name("group_details");
 }
 
 struct GlobalWriteState {
-  cellsWritten @0 :MapUInt64;
-  # number of cells written for each attribute/dimension
+  cellsWritten @0 : MapUInt64;
+#number of cells written for each attribute / dimension
 
-  fragMeta @1 :FragmentMetadata;
-  # metadata of the global write fragment
+  fragMeta @1 : FragmentMetadata;
+#metadata of the global write fragment
 
-  lastCellCoords @2 :SingleCoord;
-  # the last cell written;
+  lastCellCoords @2 : SingleCoord;
+#the last cell written;
 
-  lastHilbertValue @3 :UInt64;
-  # last hilbert value written
+  lastHilbertValue @3 : UInt64;
+#last hilbert value written
 
-  multiPartUploadStates@4 :Map(Text, MultiPartUploadState);
-  # A mapping of URIs to multipart upload states
-  # Each file involved in a remote global order write (attr files,
-  # offsets files, etc) is partially written as a multipart upload part
-  # with each partial global order write operation (submit,
-  # submit_and_finalize). This mapping makes the multipart upload info
-  # available between partile global order write operations on the cloud side.
+  multiPartUploadStates @4 : Map(Text, MultiPartUploadState);
+#A mapping of URIs to multipart upload states
+#Each file involved in a remote global order write(attr files,
+#offsets files, etc) is partially written as a multipart upload part
+#with each partial global order write operation(submit,
+#submit_and_finalize).This mapping makes the multipart upload info
+#available between partile global order write operations on the cloud side.
 }
 
 struct SingleCoord {
-  coords @0 :List(List(UInt8));
-  # coordinate data per dimension
+  coords @0 : List(List(UInt8));
+#coordinate data per dimension
 
-  sizes @1 :List(UInt64);
-  # sizes of data per dimension
+  sizes @1 : List(UInt64);
+#sizes of data per dimension
 
-  singleOffset @2 :List(UInt64);
-  # offsets buffer for a var sized  attribute
+  singleOffset @2 : List(UInt64);
+#offsets buffer for a var sized attribute
 }
 
 struct FragmentMetadata {
   struct GenericTileOffsets {
-      rtree @0 :UInt64;
-      # RTree serialized as a blob
-      tileOffsets @1 :List(UInt64);
-      # tile offsets
-      tileVarOffsets @2 :List(UInt64);
-      # variable tile offsets
-      tileVarSizes @3 :List(UInt64);
-      # sizes of the uncompressed variable tiles offsets
-      tileValidityOffsets @4 :List(UInt64);
-      # tile validity offsets
-      tileMinOffsets @5 :List(UInt64);
-      # min tile offsets
-      tileMaxOffsets @6 :List(UInt64);
-      # max tile offsets
-      tileSumOffsets @7 :List(UInt64);
-      # tile sum offsets
-      tileNullCountOffsets @8 :List(UInt64);
-      # null count offsets
-      fragmentMinMaxSumNullCountOffset @9 :UInt64;
-      # fragment min/max/sum/nullcount offsets
-      processedConditionsOffsets @10 :UInt64;
-      # processed conditions offsets
+    rtree @0 : UInt64;
+#RTree serialized as a blob
+    tileOffsets @1 : List(UInt64);
+#tile offsets
+    tileVarOffsets @2 : List(UInt64);
+#variable tile offsets
+    tileVarSizes @3 : List(UInt64);
+#sizes of the uncompressed variable tiles offsets
+    tileValidityOffsets @4 : List(UInt64);
+#tile validity offsets
+    tileMinOffsets @5 : List(UInt64);
+#min tile offsets
+    tileMaxOffsets @6 : List(UInt64);
+#max tile offsets
+    tileSumOffsets @7 : List(UInt64);
+#tile sum offsets
+    tileNullCountOffsets @8 : List(UInt64);
+#null count offsets
+    fragmentMinMaxSumNullCountOffset @9 : UInt64;
+#fragment min / max / sum / nullcount offsets
+    processedConditionsOffsets @10 : UInt64;
+#processed conditions offsets
   }
 
-  fileSizes @0 :List(UInt64);
-  # The size of each attribute file
+  fileSizes @0 : List(UInt64);
+#The size of each attribute file
 
-  fileVarSizes @1 :List(UInt64);
-  # The size of each var attribute file
+  fileVarSizes @1 : List(UInt64);
+#The size of each var attribute file
 
-  fileValiditySizes @2 :List(UInt64);
-  # The size of each validity attribute file
+  fileValiditySizes @2 : List(UInt64);
+#The size of each validity attribute file
 
-  fragmentUri @3 :Text;
-  # The uri of the fragment this metadata belongs to
+  fragmentUri @3 : Text;
+#The uri of the fragment this metadata belongs to
 
-  hasTimestamps @4 :Bool;
-  # True if the fragment has timestamps
+  hasTimestamps @4 : Bool;
+#True if the fragment has timestamps
 
-  hasDeleteMeta @5 :Bool;
-  # True if the fragment has delete metadata
+  hasDeleteMeta @5 : Bool;
+#True if the fragment has delete metadata
 
-  sparseTileNum @6 :UInt64;
-  # The number of sparse tiles
+  sparseTileNum @6 : UInt64;
+#The number of sparse tiles
 
-  tileIndexBase@7 :UInt64;
-  # Used to track the tile index base between global order writes
+  tileIndexBase @7 : UInt64;
+#Used to track the tile index base between global order writes
 
-  tileOffsets @8 :List(List(UInt64));
-  # Tile offsets in their attribute files
+  tileOffsets @8 : List(List(UInt64));
+#Tile offsets in their attribute files
 
-  tileVarOffsets @9 :List(List(UInt64));
-  # Variable tile offsets in their attribute files
+  tileVarOffsets @9 : List(List(UInt64));
+#Variable tile offsets in their attribute files
 
-  tileVarSizes @10 :List(List(UInt64));
-  # The sizes of the uncompressed variable tiles
+  tileVarSizes @10 : List(List(UInt64));
+#The sizes of the uncompressed variable tiles
 
-  tileValidityOffsets @11 :List(List(UInt64));
-  # Validity tile offests in their attribute files
+  tileValidityOffsets @11 : List(List(UInt64));
+#Validity tile offests in their attribute files
 
-  tileMinBuffer @12 :List(List(UInt8));
-  # tile min buffers
+  tileMinBuffer @12 : List(List(UInt8));
+#tile min buffers
 
-  tileMinVarBuffer @13 :List(List(UInt8));
-  # tile min buffers for var length data
+  tileMinVarBuffer @13 : List(List(UInt8));
+#tile min buffers for var length data
 
-  tileMaxBuffer @14 :List(List(UInt8));
-  # tile max buffers
+  tileMaxBuffer @14 : List(List(UInt8));
+#tile max buffers
 
-  tileMaxVarBuffer @15 :List(List(UInt8));
-  # tile max buffers for var length data
+  tileMaxVarBuffer @15 : List(List(UInt8));
+#tile max buffers for var length data
 
-  tileSums @16 :List(List(UInt8));
-  # tile sum values
+  tileSums @16 : List(List(UInt8));
+#tile sum values
 
-  tileNullCounts @17 :List(List(UInt64));
-  # tile null count values
+  tileNullCounts @17 : List(List(UInt64));
+#tile null count values
 
-  fragmentMins @18 :List(List(UInt8));
-  # fragment min values
+  fragmentMins @18 : List(List(UInt8));
+#fragment min values
 
-  fragmentMaxs @19 :List(List(UInt8));
-  # fragment max values
+  fragmentMaxs @19 : List(List(UInt8));
+#fragment max values
 
-  fragmentSums @20 :List(UInt64);
-  # fragment sum values
+  fragmentSums @20 : List(UInt64);
+#fragment sum values
 
-  fragmentNullCounts @21 :List(UInt64);
-  # fragment null count values
+  fragmentNullCounts @21 : List(UInt64);
+#fragment null count values
 
-  version @22 :UInt32;
-  # the format version of this metadata
+  version @22 : UInt32;
+#the format version of this metadata
 
-  timestampRange @23 :List(UInt64);
-  # A pair of timestamps for fragment
+  timestampRange @23 : List(UInt64);
+#A pair of timestamps for fragment
 
-  lastTileCellNum @24 :UInt64;
-  # The number of cells in the last tile
+  lastTileCellNum @24 : UInt64;
+#The number of cells in the last tile
 
-  nonEmptyDomain @25 :NonEmptyDomainList;
-  # The non empty domain of the fragment
+  nonEmptyDomain @25 : NonEmptyDomainList;
+#The non empty domain of the fragment
 
-  rtree @26 :Data;
-  # The RTree for the MBRs serialized as a blob
+  rtree @26 : Data;
+#The RTree for the MBRs serialized as a blob
 
-  hasConsolidatedFooter @27 :Bool;
-  # if the fragment metadata footer appears in a consolidated file
+  hasConsolidatedFooter @27 : Bool;
+#if the fragment metadata footer appears in a consolidated file
 
-  gtOffsets @28 :GenericTileOffsets;
-  # the start offsets of the generic tiles stored in the metadata file
+  gtOffsets @28 : GenericTileOffsets;
+#the start offsets of the generic tiles stored in the metadata file
 
-  arraySchemaName @29 :Text;
-  # array schema name
+  arraySchemaName @29 : Text;
+#array schema name
 }
 
 struct MultiPartUploadState {
-  partNumber@0 :UInt64;
-  # The index of the next part in a multipart upload process
+  partNumber @0 : UInt64;
+#The index of the next part in a multipart upload process
 
-  uploadId@1 :Text;
-  # S3 specific ID identifying a multipart upload process for a file
+  uploadId @1 : Text;
+#S3 specific ID identifying a multipart upload process for a file
 
-  status@2 :Text;
-  # Status field used to signal an error in a multipart upload process
+  status @2 : Text;
+#Status field used to signal an error in a multipart upload process
 
-  completedParts@3 :List(CompletedPart);
-  # A list of parts that are already uploaded
+  completedParts @3 : List(CompletedPart);
+#A list of parts that are already uploaded
 
-  bufferedChunks@4 :List(BufferedChunk);
-  # S3 specific field. A partial remote global order write might not be
-  # result in a direct multipart part upload, s3 does not permit parts to be
-  # smaller than 5mb (except the last one). We buffer directly on S3 using
-  # intermediate files until we can deliver a big enough multipart part.
-  # This list helps us keep track of these intermediate buffering files.
-}
-struct CompletedPart {
-  eTag@0 :Text;
-  # S3 specific hash for the uploaded part
+  bufferedChunks @4 : List(BufferedChunk);
+#S3 specific field.A partial remote global order write might not be
+#result in a direct multipart part upload, s3 does not permit parts to be
+#smaller than 5mb(except the last one).We buffer directly on S3 using
+#intermediate files until we can deliver a big enough multipart part.
+#This list helps us keep track of these intermediate buffering files.
+} struct CompletedPart {
+  eTag @0 : Text;
+#S3 specific hash for the uploaded part
 
-  partNumber@1 :UInt64;
-  # The index of the uploaded part
+  partNumber @1 : UInt64;
+#The index of the uploaded part
 }
 
 struct WrittenFragmentInfo {
-  uri @0 :Text;
-  timestampRange @1 :List(UInt64);
+  uri @0 : Text;
+  timestampRange @1 : List(UInt64);
 }
 
 struct BufferedChunk {
-  uri@0 :Text;
-  # path to intermediate chunk which buffers
-  # a <5mb remote global order write operation
+  uri @0 : Text;
+#path to intermediate chunk which buffers
+#a < 5mb remote global order write operation
 
-  size@1 :UInt64;
-  # the size in bytes of the intermediate chunk
+  size @1 : UInt64;
+#the size in bytes of the intermediate chunk
 }
 
 struct ArrayDeleteFragmentsListRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  entries @1 :List(Text);
-  # Fragment list to delete
+  entries @1 : List(Text);
+#Fragment list to delete
 }
 
 struct ArrayDeleteFragmentsTimestampsRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  startTimestamp @1 :UInt64;
-  # Start timestamp for the delete
+  startTimestamp @1 : UInt64;
+#Start timestamp for the delete
 
-  endTimestamp @2 :UInt64;
-  # End timestamp for the delete
+  endTimestamp @2 : UInt64;
+#End timestamp for the delete
 }
 
 struct ArrayConsolidationRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  fragments @1 :List(Text);
-  # Fragment list to consolidate
+  fragments @1 : List(Text);
+#Fragment list to consolidate
 }
 
 struct ArrayVacuumRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 }
 
 struct LoadEnumerationsRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  enumerations @1 :List(Text);
-  # Enumeration names to load
+  enumerations @1 : List(Text);
+#Enumeration names to load
 }
 
 struct LoadEnumerationsResponse {
-  enumerations @0 :List(Enumeration);
-  # The loaded enumerations
+  enumerations @0 : List(Enumeration);
+#The loaded enumerations
 }
 
 struct LoadArraySchemaRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  includeEnumerations @1 :Bool;
-  # When true, include all enumeration data in the returned ArraySchema
-  # This field is only serialized for backwards compatibility. Future options
-  # that modify array schema load behavior should be handled within the Config.
+  includeEnumerations @1 : Bool;
+#When true, include all enumeration data in the returned ArraySchema
+#This field is only serialized for backwards compatibility.Future options
+#that modify array schema load behavior should be handled within the Config.
 }
 
 struct LoadArraySchemaResponse {
-  schema @0 :ArraySchema;
-  # The loaded ArraySchema
+  schema @0 : ArraySchema;
+#The loaded ArraySchema
 
-  arraySchemasAll @1 :Map(Text, ArraySchema);
-  # map of all Array Schemas
+  arraySchemasAll @1 : Map(Text, ArraySchema);
+#map of all Array Schemas
 }
 
 struct QueryPlanRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  query @1 :Query;
-  # the query for which we request the plan
+  query @1 : Query;
+#the query for which we request the plan
 }
 
 struct QueryPlanResponse {
-  queryLayout @0 :Text;
-  # query layout
+  queryLayout @0 : Text;
+#query layout
 
-  strategyName @1 :Text;
-  # name of strategy used by the query
+  strategyName @1 : Text;
+#name of strategy used by the query
 
-  arrayType @2 :Text;
-  # type of array
+  arrayType @2 : Text;
+#type of array
 
-  attributeNames @3 :List(Text);
-  # names of attributes in the query
+  attributeNames @3 : List(Text);
+#names of attributes in the query
 
-  dimensionNames @4 :List(Text);
-  # names of dimensions in the query
+  dimensionNames @4 : List(Text);
+#names of dimensions in the query
 }
 
 struct ConsolidationPlanRequest {
-  config @0 :Config;
-  # Config
+  config @0 : Config;
+#Config
 
-  fragmentSize @1 :UInt64;
-  # Maximum fragment size
+  fragmentSize @1 : UInt64;
+#Maximum fragment size
 }
 
 struct ConsolidationPlanResponse {
-  fragmentUrisPerNode @0 :List(List(Text));
-  # The uris for each node of the consolidation plan
+  fragmentUrisPerNode @0 : List(List(Text));
+#The uris for each node of the consolidation plan
 }
 
 struct QueryChannel {
-  # structure representing a query channel, that is a stream of data within
-  # a TileDB query. Such channels can be generated for the purpose of avoiding
-  # processing result items multiple times in more complex queries such as e.g.
-  # grouping queries.
+#structure representing a query channel, that is a stream of data within
+#a TileDB query.Such channels can be generated for the purpose of avoiding
+#processing result items multiple times in more complex queries such as e.g.
+#grouping queries.
 
-  default @0 :Bool;
-  # True if a channel is the default query channel
+  default @0 : Bool;
+#True if a channel is the default query channel
 
-  aggregates @1 :List(Aggregate);
-  # a list of the aggregate operations applied on this channel
+  aggregates @1 : List(Aggregate);
+#a list of the aggregate operations applied on this channel
 }
 
 struct Aggregate {
-  # structure representing a query aggregate operation
+#structure representing a query aggregate operation
 
-  outputFieldName @0 :Text;
-  # name of the result query buffers
+  outputFieldName @0 : Text;
+#name of the result query buffers
 
-  inputFieldName @1 :Text;
-  # name of the input field the aggregate is applied on
+  inputFieldName @1 : Text;
+#name of the input field the aggregate is applied on
 
-  name @2 :Text;
-  # the name of aggregate, e.g. COUNT, MEAN, SUM used for constructing the
-  # correct object during deserialization
+  name @2 : Text;
+#the name of aggregate, e.g.COUNT, MEAN, SUM used for constructing the
+#correct object during deserialization
 }
 
 struct CurrentDomain {
-  # This struct represents the current domain of an array.
-  # It is set on the schema at array creation time and can be
-  # be evolved using ArraySchemaEvolution APIs by providing an expansion
-  # of the current domain that is already set on the array schema.
+#This struct represents the current domain of an array.
+#It is set on the schema at array creation time and can be
+#be evolved using ArraySchemaEvolution APIs by providing an expansion
+#of the current domain that is already set on the array schema.
 
-  version @0 :UInt32;
-  # The format version of this feature
+  version @0 : UInt32;
+#The format version of this feature
 
-  type @1 :Text;
-  # The type of CurrentDomain (e.g. NDRECTANGLE)
+  type @1 : Text;
+#The type of CurrentDomain(e.g.NDRECTANGLE)
 
   union {
-    emptyCurrentDomain @2: Void;
-    # This is an empty CurrentDomain
+    emptyCurrentDomain @2 : Void;
+#This is an empty CurrentDomain
 
-    ndRectangle @3 :NDRectangle;
-    # This CurrentDomain is an n-dimensional rectangle
+    ndRectangle @3 : NDRectangle;
+#This CurrentDomain is an n - dimensional rectangle
   }
 }
 
 struct NDRectangle {
-  ndranges @0 :List(SubarrayRanges);
-  # List of 1D ranges, one per dimension
-  # SubarrayRanges is designed to hold multiple ranges per dimension,
-  # For CurrentDomain's NDRectangle we only need one range per dimension.
+  ndranges @0 : List(SubarrayRanges);
+#List of 1D ranges, one per dimension
+#SubarrayRanges is designed to hold multiple ranges per dimension,
+#For CurrentDomain's NDRectangle we only need one range per dimension.
 }
