@@ -679,12 +679,13 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   }
 
   // Set the processed conditions
-  meta->set_processed_conditions(processed_conditions_);
+  meta->loaded_metadata()->set_processed_conditions(processed_conditions_);
 
   // Compute fragment min/max/sum/null count and flush fragment metadata to
   // storage
-  meta->compute_fragment_min_max_sum_null_count();
-  meta->store(array_->get_encryption_key());
+  meta->loaded_metadata()->compute_fragment_min_max_sum_null_count();
+  meta->store(
+      frag_meta->loaded_metadata_shared(), array_->get_encryption_key());
 
   // Add written fragment infos
   for (auto& frag_uri : frag_uris_to_commit_) {
@@ -791,7 +792,19 @@ Status GlobalOrderWriter::global_write() {
 
     // Set new number of tiles in the fragment metadata
     auto new_num_tiles = frag_meta->tile_index_base() + num;
-    frag_meta->set_num_tiles(new_num_tiles);
+    frag_meta->set_num_tiles(
+        new_num_tiles,
+        frag_meta->loaded_metadata()->tile_offsets(),
+        frag_meta->loaded_metadata()->tile_var_offsets(),
+        frag_meta->loaded_metadata()->tile_var_sizes(),
+        frag_meta->loaded_metadata()->tile_validity_offsets(),
+        frag_meta->loaded_metadata()->tile_min_buffer(),
+        frag_meta->loaded_metadata()->tile_max_buffer(),
+        frag_meta->loaded_metadata()->tile_sums(),
+        frag_meta->loaded_metadata()->tile_null_counts());
+    if (!frag_meta->dense()) {
+      frag_meta->loaded_metadata()->rtree().set_leaf_num(new_num_tiles);
+    }
 
     if (new_num_tiles == 0) {
       throw GlobalOrderWriterException(
@@ -829,7 +842,19 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 
   // Reserve space for the last tile in the fragment metadata
   auto meta = global_write_state_->frag_meta_;
-  meta->set_num_tiles(meta->tile_index_base() + 1);
+  meta->set_num_tiles(
+      meta->tile_index_base() + 1,
+      meta->loaded_metadata()->tile_offsets(),
+      meta->loaded_metadata()->tile_var_offsets(),
+      meta->loaded_metadata()->tile_var_sizes(),
+      meta->loaded_metadata()->tile_validity_offsets(),
+      meta->loaded_metadata()->tile_min_buffer(),
+      meta->loaded_metadata()->tile_max_buffer(),
+      meta->loaded_metadata()->tile_sums(),
+      meta->loaded_metadata()->tile_null_counts());
+  if (!meta->dense()) {
+    meta->loaded_metadata()->rtree().set_leaf_num(meta->tile_index_base() + 1);
+  }
 
   // Filter last tiles
   RETURN_CANCEL_OR_ERROR(filter_last_tiles(cell_num_last_tiles));
@@ -1430,13 +1455,14 @@ Status GlobalOrderWriter::start_new_fragment() {
   RETURN_NOT_OK(close_files(frag_meta));
 
   // Set the processed conditions
-  frag_meta->set_processed_conditions(processed_conditions_);
+  frag_meta->loaded_metadata()->set_processed_conditions(processed_conditions_);
 
   // Compute fragment min/max/sum/null count
-  frag_meta->compute_fragment_min_max_sum_null_count();
+  frag_meta->loaded_metadata()->compute_fragment_min_max_sum_null_count();
 
   // Flush fragment metadata to storage
-  frag_meta->store(array_->get_encryption_key());
+  frag_meta->store(
+      frag_meta->loaded_metadata_shared(), array_->get_encryption_key());
 
   frag_uris_to_commit_.emplace_back(uri);
 

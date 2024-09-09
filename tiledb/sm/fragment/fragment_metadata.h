@@ -402,36 +402,82 @@ class FragmentMetadata {
       const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
           offsets);
 
-  /** Stores all the metadata to storage. */
-  void store(const EncryptionKey& encryption_key);
+  /**
+   * Writes the R-tree to a tile.
+   * @param loaded_metadata The loaded fragment metadata.
+   */
+  shared_ptr<WriterTile> write_rtree(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata);
+
+  /**
+   * Writes the R-tree to storage.
+   *
+   * @param loaded_metadata The loaded fragment metadata.
+   * @param encryption_key The encryption key.
+   * @param nbytes The total number of bytes written for the R-tree.
+   */
+  void store_rtree(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
+
+  /**
+   * Stores all the metadata to storage.
+   *
+   * @param loaded_metadata The loaded fragment metadata.
+   * @param encryption_key The encryption key.
+   */
+  void store(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      const EncryptionKey& encryption_key);
 
   /**
    * Stores all the metadata to storage.
    *
    * Applicable to format versions 7 to 10.
+   *
+   * @param loaded_metadata The loaded fragment metadata.
+   * @param encryption_key The encryption key.
    */
-  void store_v7_v10(const EncryptionKey& encryption_key);
+  void store_v7_v10(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      const EncryptionKey& encryption_key);
 
   /**
    * Stores all the metadata to storage.
    *
    * Applicable to format versions 11.
+   *
+   * @param loaded_metadata The loaded fragment metadata.
+   * @param encryption_key The encryption key.
    */
-  void store_v11(const EncryptionKey& encryption_key);
+  void store_v11(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      const EncryptionKey& encryption_key);
 
   /**
    * Stores all the metadata to storage.
    *
    * Applicable to format versions 12 or higher.
+   *
+   * @param loaded_metadata The loaded fragment metadata.
+   * @param encryption_key The encryption key.
    */
-  void store_v12_v14(const EncryptionKey& encryption_key);
+  void store_v12_v14(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      const EncryptionKey& encryption_key);
 
   /**
    * Stores all the metadata to storage.
    *
    * Applicable to format versions 15 or higher.
+   *
+   * @param loaded_metadata The loaded fragment metadata.
+   * @param encryption_key The encryption key.
    */
-  void store_v15_or_higher(const EncryptionKey& encryption_key);
+  void store_v15_or_higher(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      const EncryptionKey& encryption_key);
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -440,15 +486,6 @@ class FragmentMetadata {
    * @return void
    */
   void set_last_tile_cell_num(uint64_t cell_num);
-
-  /**
-   * Sets the input tile's MBR in the fragment metadata. It also expands the
-   * non-empty domain of the fragment.
-   *
-   * @param tile The tile index whose MBR will be set.
-   * @param mbr The MBR to be set.
-   */
-  void set_mbr(uint64_t tile, const NDRange& mbr);
 
   /**
    * Resizes the per-tile metadata vectors for the given number of tiles. This
@@ -477,9 +514,14 @@ class FragmentMetadata {
    * @param tid The index of the tile for which the offset is set.
    * @param step This is essentially the step by which the previous
    *     offset will be expanded. It is practically the last tile size.
+   * @param tile_offsets The tile offsets to set.
    * @return void
    */
-  void set_tile_offset(const std::string& name, uint64_t tid, uint64_t step);
+  void set_tile_offset(
+      const std::string& name,
+      uint64_t tid,
+      uint64_t step,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets);
 
   /**
    * Sets a variable tile offset for the input attribute or dimension.
@@ -488,10 +530,14 @@ class FragmentMetadata {
    * @param tid The index of the tile for which the offset is set.
    * @param step This is essentially the step by which the previous
    *     offset will be expanded. It is practically the last variable tile size.
+   * @param tile_var_offsets The variable tile offsets to set.
    * @return void
    */
   void set_tile_var_offset(
-      const std::string& name, uint64_t tid, uint64_t step);
+      const std::string& name,
+      uint64_t tid,
+      uint64_t step,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets);
 
   /**
    * Sets a variable tile size for the input attribute or dimension.
@@ -499,9 +545,14 @@ class FragmentMetadata {
    * @param name The attribute/dimension for which the size is set.
    * @param tid The index of the tile for which the offset is set.
    * @param size The size to be appended.
+   * @param tile_var_sizes The variable tile sizes to set.
    * @return void
    */
-  void set_tile_var_size(const std::string& name, uint64_t tid, uint64_t size);
+  void set_tile_var_size(
+      const std::string& name,
+      uint64_t tid,
+      uint64_t size,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes);
 
   /**
    * Sets a validity tile offset for the input attribute.
@@ -510,10 +561,14 @@ class FragmentMetadata {
    * @param tid The index of the tile for which the offset is set.
    * @param step This is essentially the step by which the previous
    *     offset will be expanded. It is practically the last tile size.
+   * @param tile_validity_offsets The validity tile offsets to set.
    * @return void
    */
   void set_tile_validity_offset(
-      const std::string& name, uint64_t tid, uint64_t step);
+      const std::string& name,
+      uint64_t tid,
+      uint64_t step,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_validity_offsets);
 
   /**
    * Sets a tile min for the fixed input attribute.
@@ -521,9 +576,14 @@ class FragmentMetadata {
    * @param name The attribute for which the min is set.
    * @param tid The index of the tile for which the min is set.
    * @param min The minimum.
+   * @param tile_min_buffer The tile min buffer.
    * @return void
    */
-  void set_tile_min(const std::string& name, uint64_t tid, const ByteVec& min);
+  void set_tile_min(
+      const std::string& name,
+      uint64_t tid,
+      const ByteVec& min,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer);
 
   /**
    * Sets a tile min size for the var input attribute.
@@ -531,10 +591,14 @@ class FragmentMetadata {
    * @param name The attribute for which the min size is set.
    * @param tid The index of the tile for which the min is set.
    * @param size The size.
+   * @param tile_min_buffer The tile min buffer.
    * @return void
    */
   void set_tile_min_var_size(
-      const std::string& name, uint64_t tid, uint64_t size);
+      const std::string& name,
+      uint64_t tid,
+      uint64_t size,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer);
 
   /**
    * Sets a tile min for the var input attribute.
@@ -542,10 +606,16 @@ class FragmentMetadata {
    * @param name The attribute for which the min is set.
    * @param tid The index of the tile for which the min is set.
    * @param min The minimum.
+   * @param tile_min_buffer The tile min buffer.
+   * @param tile_min_var_buffer The tile min var buffer.
    * @return void
    */
   void set_tile_min_var(
-      const std::string& name, uint64_t tid, const ByteVec& min);
+      const std::string& name,
+      uint64_t tid,
+      const ByteVec& min,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<char>>& tile_min_var_buffer);
 
   /**
    * Sets a tile max for the input attribute.
@@ -553,9 +623,14 @@ class FragmentMetadata {
    * @param name The attribute for which the max is set.
    * @param tid The index of the tile for which the max is set.
    * @param max The maximum.
+   * @param tile_max_buffer The tile max buffer.
    * @return void
    */
-  void set_tile_max(const std::string& name, uint64_t tid, const ByteVec& max);
+  void set_tile_max(
+      const std::string& name,
+      uint64_t tid,
+      const ByteVec& max,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer);
 
   /**
    * Sets a tile max for the var input attribute.
@@ -563,10 +638,14 @@ class FragmentMetadata {
    * @param name The attribute for which the min size is set.
    * @param tid The index of the tile for which the min is set.
    * @param size The size.
+   * @param tile_max_buffer The tile max buffer.
    * @return void
    */
   void set_tile_max_var_size(
-      const std::string& name, uint64_t tid, uint64_t size);
+      const std::string& name,
+      uint64_t tid,
+      uint64_t size,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer);
 
   /**
    * Sets a tile max for the var input attribute.
@@ -574,18 +653,33 @@ class FragmentMetadata {
    * @param name The attribute for which the min is set.
    * @param tid The index of the tile for which the min is set.
    * @param max The maximum.
+   * @param tile_max_buffer The tile max buffer.
+   * @param tile_max_var_buffer The tile max var buffer.
    * @return void
    */
   void set_tile_max_var(
-      const std::string& name, uint64_t tid, const ByteVec& max);
+      const std::string& name,
+      uint64_t tid,
+      const ByteVec& max,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<char>>& tile_max_var_buffer);
 
   /**
    * Converts min/max sizes to offsets.
    *
    * @param name The attribute for which the offsets are converted
+   * @param tile_min_var_buffer The tile min var buffer.
+   * @param tile_min_buffer The tile min buffer.
+   * @param tile_max_var_buffer The tile max var buffer.
+   * @param tile_max_buffer The tile max buffer.
    * @return void
    */
-  void convert_tile_min_max_var_sizes_to_offsets(const std::string& name);
+  void convert_tile_min_max_var_sizes_to_offsets(
+      const std::string& name,
+      tdb::pmr::vector<tdb::pmr::vector<char>>& tile_min_var_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<char>>& tile_max_var_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer);
 
   /**
    * Sets a tile sum for the input attribute.
@@ -593,9 +687,14 @@ class FragmentMetadata {
    * @param name The attribute for which the sum is set.
    * @param tid The index of the tile for which the sum is set.
    * @param sum The sum.
+   * @param tile_sums The tile sums to set.
    * @return void
    */
-  void set_tile_sum(const std::string& name, uint64_t tid, const ByteVec& sum);
+  void set_tile_sum(
+      const std::string& name,
+      uint64_t tid,
+      const ByteVec& sum,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_sums);
 
   /**
    * Sets a tile null count for the input attribute.
@@ -603,15 +702,14 @@ class FragmentMetadata {
    * @param name The attribute for which the null count is set.
    * @param tid The index of the tile for which the null count is set.
    * @param sum The null count.
+   * @param tile_null_counts The tile null counts to set.
    * @return void
    */
   void set_tile_null_count(
-      const std::string& name, uint64_t tid, uint64_t null_count);
-
-  /**
-   * Compute fragment min, max, sum, null count for all dimensions/attributes.
-   */
-  void compute_fragment_min_max_sum_null_count();
+      const std::string& name,
+      uint64_t tid,
+      uint64_t null_count,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_null_counts);
 
   /**
    * Sets array schema pointer.
@@ -644,12 +742,6 @@ class FragmentMetadata {
 
   uint64_t footer_size() const;
 
-  /** Returns the MBR of the input tile. */
-  const NDRange& mbr(uint64_t tile_idx) const;
-
-  /** Returns all the MBRs of all tiles in the fragment. */
-  const tdb::pmr::vector<NDRange>& mbrs() const;
-
   /**
    * Returns the (uncompressed) tile size for a given attribute or dimension
    * and tile index. If the attribute/dimension is var-sized, this will return
@@ -660,47 +752,6 @@ class FragmentMetadata {
    * @return The tile size.
    */
   uint64_t tile_size(const std::string& name, uint64_t tile_idx) const;
-
-  /**
-   * Retrieves the tile min value for a given attribute or dimension and tile
-   * index.
-   *
-   * @param name The input attribute/dimension.
-   * @param tile_idx The index of the tile in the metadata.
-   * @return Value.
-   */
-  template <typename T>
-  T get_tile_min_as(const std::string& name, uint64_t tile_idx) const;
-
-  /**
-   * Retrieves the tile max value for a given attribute or dimension and tile
-   * index.
-   *
-   * @tparam Type to return the data as.
-   * @param name The input attribute/dimension.
-   * @param tile_idx The index of the tile in the metadata.
-   * @return Value.
-   */
-  template <typename T>
-  T get_tile_max_as(const std::string& name, uint64_t tile_idx) const;
-
-  /**
-   * Returns the tile metadata for a tile.
-   *
-   * @param name Name of the attribute to get the data for.
-   * @param tile_idx Tile index.
-   */
-  TileMetadata get_tile_metadata(
-      const std::string& name, const uint64_t tile_idx) const;
-
-  /**
-   * Set the processed conditions. The processed conditions is the list
-   * of delete/update conditions that have already been applied for this
-   * fragment and don't need to be applied again.
-   *
-   * @param processed_conditions The processed conditions.
-   */
-  void set_processed_conditions(std::vector<std::string>& processed_conditions);
 
   /** Returns the first timestamp of the fragment timestamp range. */
   uint64_t first_timestamp() const;
@@ -1189,19 +1240,8 @@ class FragmentMetadata {
    */
   void write_has_delete_meta(Serializer& serializer) const;
 
-  /**
-   * Writes the R-tree to storage.
-   *
-   * @param encryption_key The encryption key.
-   * @param nbytes The total number of bytes written for the R-tree.
-   */
-  void store_rtree(const EncryptionKey& encryption_key, uint64_t* nbytes);
-
   /** Stores a footer with the basic information. */
   void store_footer(const EncryptionKey& encryption_key);
-
-  /** Writes the R-tree to a tile. */
-  shared_ptr<WriterTile> write_rtree();
 
   /** Writes the non-empty domain to the input buffer. */
   void write_non_empty_domain(Serializer& serializer) const;
@@ -1209,172 +1249,211 @@ class FragmentMetadata {
   /**
    * Writes the tile offsets of the input attribute or dimension to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param idx The index of the attribute or dimension.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the tile offsets.
    */
   void store_tile_offsets(
-      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the tile offsets of the input attribute or dimension idx to the
    * input buffer.
    */
-  void write_tile_offsets(unsigned idx, Serializer& serializer);
+  void write_tile_offsets(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      Serializer& serializer);
 
   /**
    * Writes the variable tile offsets of the input attribute or dimension
    * to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param idx The index of the attribute or dimension.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the tile var offsets.
    */
   void store_tile_var_offsets(
-      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the variable tile offsets of the input attribute or dimension idx
    * to the buffer.
    */
-  void write_tile_var_offsets(unsigned idx, Serializer& serializer);
+  void write_tile_var_offsets(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      Serializer& serializer);
 
   /**
    * Writes the variable tile sizes for the input attribute or dimension to
    * the buffer.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param idx The index of the attribute or dimension.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the tile var sizes.
    */
   void store_tile_var_sizes(
-      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the variable tile sizes for the input attribute or dimension
    * to storage.
    */
-  void write_tile_var_sizes(unsigned idx, Serializer& serializer);
+  void write_tile_var_sizes(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      Serializer& serializer);
 
   /**
    * Writes the validity tile offsets of the input attribute to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the validity tile
    * offsets.
    */
   void store_tile_validity_offsets(
-      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the validity tile offsets of the input attribute idx to the
    * input buffer.
    */
-  void write_tile_validity_offsets(unsigned idx, Serializer& serializer);
+  void write_tile_validity_offsets(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      Serializer& serializer);
 
   /**
    * Writes the mins of the input attribute to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the mins.
    */
   void store_tile_mins(
-      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the mins of the input attribute idx to the input buffer.
    */
-  void write_tile_mins(unsigned idx, Serializer& serializer);
+  void write_tile_mins(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      Serializer& serializer);
 
   /**
    * Writes the maxs of the input attribute to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the maxs.
    */
   void store_tile_maxs(
-      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the maxs of the input attribute idx to the input buffer.
    */
-  void write_tile_maxs(unsigned idx, Serializer& serializer);
+  void write_tile_maxs(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      Serializer& serializer);
 
   /**
    * Writes the sums of the input attribute to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the sums.
    */
   void store_tile_sums(
-      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the sums of the input attribute idx to the input buffer.
    */
-  void write_tile_sums(unsigned idx, Serializer& serializer);
+  void write_tile_sums(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      Serializer& serializer);
 
   /**
    * Writes the null counts of the input attribute to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param idx The index of the attribute.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written for the null counts.
    */
   void store_tile_null_counts(
-      unsigned idx, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the null counts of the input attribute idx to the input buffer.
    */
-  void write_tile_null_counts(unsigned idx, Serializer& serializer);
+  void write_tile_null_counts(
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      unsigned idx,
+      Serializer& serializer);
 
   /**
    * Writes the fragment min, max, sum and null count to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param num The number of attributes.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written.
    */
   void store_fragment_min_max_sum_null_count(
-      uint64_t num, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      uint64_t num,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Writes the processed conditions to storage.
    *
+   * @param loaded_metadata The loaded fragment metadata.
    * @param encryption_key The encryption key.
    * @param nbytes The total number of bytes written.
    */
   void store_processed_conditions(
-      const EncryptionKey& encryption_key, uint64_t* nbytes);
-
-  /**
-   * Compute the fragment min, max and sum values.
-   *
-   * @param name The attribute/dimension name.
-   */
-  template <class T>
-  void compute_fragment_min_max_sum(const std::string& name);
-
-  /**
-   * Compute the fragment sum value.
-   *
-   * @param idx The attribute/dimension index.
-   * @param nullable Is the attribute/dimension nullable.
-   */
-  template <class SumT>
-  void compute_fragment_sum(const uint64_t idx, const bool nullable);
-
-  /**
-   * Compute the fragment min and max values for var sized attributes.
-   *
-   * @param name The attribute/dimension name.
-   */
-  void min_max_var(const std::string& name);
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /** Writes the format version to the buffer. */
   void write_version(Serializer& serializer) const;

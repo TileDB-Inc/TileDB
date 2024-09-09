@@ -1938,8 +1938,9 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
         if (can_aggregate_tile_with_frag_md(rt)) {
           if (range_thread_idx == 0) {
             auto t = rt->tile_idx();
-            auto md =
-                fragment_metadata_[rt->frag_idx()]->get_tile_metadata(name, t);
+            auto md = fragment_metadata_[rt->frag_idx()]
+                          ->loaded_metadata()
+                          ->get_tile_metadata(name, t);
             for (auto& aggregate : aggregates) {
               aggregate->aggregate_tile_with_frag_md(md);
             }

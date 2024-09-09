@@ -632,7 +632,8 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
 
         // Get the MBR for this tile.
         const auto& mbr =
-            fragment_metadata_[rt->frag_idx()]->mbr(rt->tile_idx());
+            fragment_metadata_[rt->frag_idx()]->loaded_metadata()->mbr(
+                rt->tile_idx());
 
         // Compute bitmaps one dimension at a time.
         for (unsigned d = 0; d < dim_num; d++) {

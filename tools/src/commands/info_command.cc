@@ -228,7 +228,7 @@ void InfoCommand::write_svg_mbrs() const {
          max_y = std::numeric_limits<double>::min();
   auto fragment_metadata = array.fragment_metadata();
   for (const auto& f : fragment_metadata) {
-    const auto& mbrs = f->mbrs();
+    const auto& mbrs = f->loaded_metadata()->mbrs();
     for (const auto& mbr : mbrs) {
       auto tup = get_mbr(mbr, schema.domain());
       min_x = std::min(min_x, std::get<0>(tup));
@@ -296,7 +296,7 @@ void InfoCommand::write_text_mbrs() const {
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
     f->loaded_metadata()->load_rtree(*encryption_key);
-    const auto& mbrs = f->mbrs();
+    const auto& mbrs = f->loaded_metadata()->mbrs();
     for (const auto& mbr : mbrs) {
       auto str_mbr = mbr_to_string(mbr, schema.domain());
       for (unsigned i = 0; i < dim_num; i++) {

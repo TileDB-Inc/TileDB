@@ -332,13 +332,15 @@ struct CPPFixedTileMetadataFx {
 
           // Validate no min.
           CHECK_THROWS_WITH(
-              frag_meta[f]->get_tile_min_as<TestType>("d", tile_idx),
+              frag_meta[f]->loaded_metadata()->get_tile_min_as<TestType>(
+                  "d", tile_idx),
               "FragmentMetadata: Trying to access tile min metadata that's not "
               "present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
-              frag_meta[f]->get_tile_max_as<TestType>("d", tile_idx),
+              frag_meta[f]->loaded_metadata()->get_tile_max_as<TestType>(
+                  "d", tile_idx),
               "FragmentMetadata: Trying to access tile max metadata that's not "
               "present");
 
@@ -348,7 +350,8 @@ struct CPPFixedTileMetadataFx {
           CHECK(*(int64_t*)sum == correct_sum);
 
           // Validate the tile metadata structure.
-          auto full_tile_data = frag_meta[f]->get_tile_metadata("d", tile_idx);
+          auto full_tile_data =
+              frag_meta[f]->loaded_metadata()->get_tile_metadata("d", tile_idx);
           CHECK(correct_min == full_tile_data.min_as<uint32_t>());
           CHECK(correct_max == full_tile_data.max_as<uint32_t>());
           CHECK(correct_sum == full_tile_data.sum_as<int64_t>());
@@ -463,13 +466,13 @@ struct CPPFixedTileMetadataFx {
     if constexpr (std::is_same<TestType, std::byte>::value) {
       // Validate no min.
       CHECK_THROWS_WITH(
-          frag_meta[f]->get_tile_min_as<TestType>("a", 0),
+          frag_meta[f]->loaded_metadata()->get_tile_min_as<TestType>("a", 0),
           "FragmentMetadata: Trying to access tile min metadata that's not "
           "present");
 
       // Validate no max.
       CHECK_THROWS_WITH(
-          frag_meta[f]->get_tile_max_as<TestType>("a", 0),
+          frag_meta[f]->loaded_metadata()->get_tile_max_as<TestType>("a", 0),
           "FragmentMetadata: Trying to access tile max metadata that's not "
           "present");
 
@@ -484,7 +487,9 @@ struct CPPFixedTileMetadataFx {
           for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
             // Validate min.
             const auto min =
-                frag_meta[f]->get_tile_min_as<std::string_view>("a", tile_idx);
+                frag_meta[f]
+                    ->loaded_metadata()
+                    ->get_tile_min_as<std::string_view>("a", tile_idx);
             CHECK(min.size() == cell_val_num);
 
             // For strings, the index is stored in a signed value, switch to
@@ -498,7 +503,9 @@ struct CPPFixedTileMetadataFx {
 
             // Validate max.
             const auto max =
-                frag_meta[f]->get_tile_max_as<std::string_view>("a", tile_idx);
+                frag_meta[f]
+                    ->loaded_metadata()
+                    ->get_tile_max_as<std::string_view>("a", tile_idx);
             CHECK(max.size() == cell_val_num);
 
             // For strings, the index is stored in a signed value, switch to
@@ -519,7 +526,8 @@ struct CPPFixedTileMetadataFx {
 
             // Validate the tile metadata structure.
             auto full_tile_data =
-                frag_meta[f]->get_tile_metadata("a", tile_idx);
+                frag_meta[f]->loaded_metadata()->get_tile_metadata(
+                    "a", tile_idx);
             CHECK(
                 string_ascii_[min_idx] ==
                 full_tile_data.min_as<std::string_view>());
@@ -532,7 +540,8 @@ struct CPPFixedTileMetadataFx {
           for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
             // Validate min.
             const auto min =
-                frag_meta[f]->get_tile_min_as<TestType>("a", tile_idx);
+                frag_meta[f]->loaded_metadata()->get_tile_min_as<TestType>(
+                    "a", tile_idx);
             CHECK(
                 0 ==
                 memcmp(
@@ -540,7 +549,8 @@ struct CPPFixedTileMetadataFx {
 
             // Validate max.
             const auto max =
-                frag_meta[f]->get_tile_max_as<TestType>("a", tile_idx);
+                frag_meta[f]->loaded_metadata()->get_tile_max_as<TestType>(
+                    "a", tile_idx);
             CHECK(
                 0 ==
                 memcmp(
@@ -548,7 +558,8 @@ struct CPPFixedTileMetadataFx {
 
             // Validate the tile metadata structure.
             auto full_tile_data =
-                frag_meta[f]->get_tile_metadata("a", tile_idx);
+                frag_meta[f]->loaded_metadata()->get_tile_metadata(
+                    "a", tile_idx);
             CHECK(
                 correct_tile_mins_[f][tile_idx] ==
                 full_tile_data.min_as<TestType>());
@@ -594,7 +605,8 @@ struct CPPFixedTileMetadataFx {
     if constexpr (!std::is_same<TestType, std::byte>::value) {
       // Validate the full tile data structure for null count
       for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
-        auto full_tile_data = frag_meta[f]->get_tile_metadata("a", tile_idx);
+        auto full_tile_data =
+            frag_meta[f]->loaded_metadata()->get_tile_metadata("a", tile_idx);
         if (nullable) {
           CHECK(
               full_tile_data.null_count() ==
@@ -883,13 +895,15 @@ struct CPPVarTileMetadataFx {
 
           // Validate no min.
           CHECK_THROWS_WITH(
-              frag_meta[f]->get_tile_min_as<uint32_t>("d", tile_idx),
+              frag_meta[f]->loaded_metadata()->get_tile_min_as<uint32_t>(
+                  "d", tile_idx),
               "FragmentMetadata: Trying to access tile min metadata that's not "
               "present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
-              frag_meta[f]->get_tile_max_as<uint32_t>("d", tile_idx),
+              frag_meta[f]->loaded_metadata()->get_tile_max_as<uint32_t>(
+                  "d", tile_idx),
               "FragmentMetadata: Trying to access tile max metadata that's not "
               "present");
 
@@ -899,7 +913,8 @@ struct CPPVarTileMetadataFx {
           CHECK(*(int64_t*)sum == correct_sum);
 
           // Validate the tile metadata structure.
-          auto full_tile_data = frag_meta[f]->get_tile_metadata("d", tile_idx);
+          auto full_tile_data =
+              frag_meta[f]->loaded_metadata()->get_tile_metadata("d", tile_idx);
           CHECK(correct_min == full_tile_data.min_as<uint32_t>());
           CHECK(correct_max == full_tile_data.max_as<uint32_t>());
           CHECK(correct_sum == full_tile_data.sum_as<int64_t>());
@@ -962,7 +977,8 @@ struct CPPVarTileMetadataFx {
       for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
         // Validate min.
         const auto min =
-            frag_meta[f]->get_tile_min_as<std::string_view>("a", tile_idx);
+            frag_meta[f]->loaded_metadata()->get_tile_min_as<std::string_view>(
+                "a", tile_idx);
         int min_idx = correct_tile_mins_[f][tile_idx];
         CHECK(min.size() == strings_[min_idx].size());
         CHECK(
@@ -973,7 +989,8 @@ struct CPPVarTileMetadataFx {
 
         // Validate max.
         const auto max =
-            frag_meta[f]->get_tile_max_as<std::string_view>("a", tile_idx);
+            frag_meta[f]->loaded_metadata()->get_tile_max_as<std::string_view>(
+                "a", tile_idx);
         int max_idx = correct_tile_maxs_[f][tile_idx];
         CHECK(max.size() == strings_[max_idx].size());
         CHECK(
@@ -989,7 +1006,8 @@ struct CPPVarTileMetadataFx {
             "present");
 
         // Validate the tile metadata structure.
-        auto full_tile_data = frag_meta[f]->get_tile_metadata("a", tile_idx);
+        auto full_tile_data =
+            frag_meta[f]->loaded_metadata()->get_tile_metadata("a", tile_idx);
         CHECK(strings_[min_idx] == full_tile_data.min_as<std::string_view>());
         CHECK(strings_[max_idx] == full_tile_data.max_as<std::string_view>());
       }
@@ -1208,11 +1226,13 @@ struct CPPFixedTileMetadataPartialFx {
     // Validate attribute metadta.
     for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
       // Validate min.
-      const auto min = frag_meta[0]->get_tile_min_as<double>("a", tile_idx);
+      const auto min = frag_meta[0]->loaded_metadata()->get_tile_min_as<double>(
+          "a", tile_idx);
       CHECK(0 == memcmp(&min, &correct_tile_mins[tile_idx], sizeof(double)));
 
       // Validate max.
-      const auto max = frag_meta[0]->get_tile_max_as<double>("a", tile_idx);
+      const auto max = frag_meta[0]->loaded_metadata()->get_tile_max_as<double>(
+          "a", tile_idx);
       CHECK(0 == memcmp(&max, &correct_tile_maxs[tile_idx], sizeof(double)));
 
       // Validate sum.
@@ -1220,7 +1240,8 @@ struct CPPFixedTileMetadataPartialFx {
       CHECK(*(double*)sum - correct_tile_sums[tile_idx] < 0.0001);
 
       // Validate the tile metadata structure.
-      auto full_tile_data = frag_meta[0]->get_tile_metadata("a", tile_idx);
+      auto full_tile_data =
+          frag_meta[0]->loaded_metadata()->get_tile_metadata("a", tile_idx);
       CHECK(correct_tile_mins[tile_idx] == full_tile_data.min_as<double>());
       CHECK(correct_tile_maxs[tile_idx] == full_tile_data.max_as<double>());
       CHECK(
@@ -1381,7 +1402,8 @@ struct CPPVarTileMetadataPartialFx {
     for (uint64_t tile_idx = 0; tile_idx < 4; tile_idx++) {
       // Validate min.
       const auto min =
-          frag_meta[0]->get_tile_min_as<std::string_view>("a", tile_idx);
+          frag_meta[0]->loaded_metadata()->get_tile_min_as<std::string_view>(
+              "a", tile_idx);
       CHECK(min.size() == correct_tile_mins[tile_idx].size());
       CHECK(
           0 ==
@@ -1389,14 +1411,16 @@ struct CPPVarTileMetadataPartialFx {
 
       // Validate max.
       const auto max =
-          frag_meta[0]->get_tile_max_as<std::string_view>("a", tile_idx);
+          frag_meta[0]->loaded_metadata()->get_tile_max_as<std::string_view>(
+              "a", tile_idx);
       CHECK(max.size() == correct_tile_maxs[tile_idx].size());
       CHECK(
           0 ==
           memcmp(max.data(), correct_tile_maxs[tile_idx].data(), max.size()));
 
       // Validate the tile metadata structure.
-      auto full_tile_data = frag_meta[0]->get_tile_metadata("a", tile_idx);
+      auto full_tile_data =
+          frag_meta[0]->loaded_metadata()->get_tile_metadata("a", tile_idx);
       CHECK(
           correct_tile_mins[tile_idx] ==
           full_tile_data.min_as<std::string_view>());
@@ -1562,24 +1586,30 @@ struct CPPTileMetadataStringDimFx {
         enc_key, names);
 
     // Validate min.
-    CHECK(frag_meta[0]->get_tile_min_as<double>("a", 0) == 4);
+    CHECK(
+        frag_meta[0]->loaded_metadata()->get_tile_min_as<double>("a", 0) == 4);
     CHECK_THROWS_WITH(
-        frag_meta[0]->get_tile_min_as<std::string_view>("d1", 0),
+        frag_meta[0]->loaded_metadata()->get_tile_min_as<std::string_view>(
+            "d1", 0),
         "FragmentMetadata: Trying to access tile min metadata that's not "
         "present");
     CHECK_THROWS_WITH(
-        frag_meta[0]->get_tile_min_as<std::string_view>("d2", 0),
+        frag_meta[0]->loaded_metadata()->get_tile_min_as<std::string_view>(
+            "d2", 0),
         "FragmentMetadata: Trying to access tile min metadata that's not "
         "present");
 
     // Validate max.
-    CHECK(frag_meta[0]->get_tile_max_as<double>("a", 0) == 7);
+    CHECK(
+        frag_meta[0]->loaded_metadata()->get_tile_max_as<double>("a", 0) == 7);
     CHECK_THROWS_WITH(
-        frag_meta[0]->get_tile_max_as<std::string_view>("d1", 0),
+        frag_meta[0]->loaded_metadata()->get_tile_max_as<std::string_view>(
+            "d1", 0),
         "FragmentMetadata: Trying to access tile max metadata that's not "
         "present");
     CHECK_THROWS_WITH(
-        frag_meta[0]->get_tile_max_as<std::string_view>("d2", 0),
+        frag_meta[0]->loaded_metadata()->get_tile_max_as<std::string_view>(
+            "d2", 0),
         "FragmentMetadata: Trying to access tile max metadata that's not "
         "present");
 
@@ -1588,16 +1618,19 @@ struct CPPTileMetadataStringDimFx {
         *(double*)frag_meta[0]->loaded_metadata()->get_tile_sum("a", 0) == 22);
 
     // Validate the tile metadata structure.
-    auto full_tile_data_a = frag_meta[0]->get_tile_metadata("a", 0);
+    auto full_tile_data_a =
+        frag_meta[0]->loaded_metadata()->get_tile_metadata("a", 0);
     CHECK(4 == full_tile_data_a.min_as<double>());
     CHECK(7 == full_tile_data_a.max_as<double>());
     CHECK(22 == full_tile_data_a.sum_as<double>());
 
-    auto full_tile_data_d1 = frag_meta[0]->get_tile_metadata("d1", 0);
+    auto full_tile_data_d1 =
+        frag_meta[0]->loaded_metadata()->get_tile_metadata("d1", 0);
     CHECK("a" == full_tile_data_d1.min_as<std::string_view>());
     CHECK("dddd" == full_tile_data_d1.max_as<std::string_view>());
 
-    auto full_tile_data_d2 = frag_meta[0]->get_tile_metadata("d2", 0);
+    auto full_tile_data_d2 =
+        frag_meta[0]->loaded_metadata()->get_tile_metadata("d2", 0);
     CHECK("a" == full_tile_data_d2.min_as<std::string_view>());
     CHECK("d" == full_tile_data_d2.max_as<std::string_view>());
 

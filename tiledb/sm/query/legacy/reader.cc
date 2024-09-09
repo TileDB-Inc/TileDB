@@ -2122,7 +2122,8 @@ Status Reader::add_extra_offset() {
 
 bool Reader::sparse_tile_overwritten(
     unsigned frag_idx, uint64_t tile_idx) const {
-  const auto& mbr = fragment_metadata_[frag_idx]->mbr(tile_idx);
+  const auto& mbr =
+      fragment_metadata_[frag_idx]->loaded_metadata()->mbr(tile_idx);
   assert(!mbr.empty());
   auto fragment_num = (unsigned)fragment_metadata_.size();
   auto& domain{array_schema_.domain()};

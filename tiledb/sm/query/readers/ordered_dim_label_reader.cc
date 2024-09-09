@@ -346,9 +346,11 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
 
   if (increasing_labels_) {
     const auto min =
-        fragment_metadata_[f]->get_tile_min_as<LabelType>(label_name_, 0);
-    const auto max = fragment_metadata_[f]->get_tile_max_as<LabelType>(
-        label_name_, tile_num - 1);
+        fragment_metadata_[f]->loaded_metadata()->get_tile_min_as<LabelType>(
+            label_name_, 0);
+    const auto max =
+        fragment_metadata_[f]->loaded_metadata()->get_tile_max_as<LabelType>(
+            label_name_, tile_num - 1);
 
     if (start_range < min) {
       start_val_type = IndexValueType::LT;
@@ -362,10 +364,12 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
       end_val_type = IndexValueType::GT;
     }
   } else {
-    const auto min = fragment_metadata_[f]->get_tile_min_as<LabelType>(
-        label_name_, tile_num - 1);
+    const auto min =
+        fragment_metadata_[f]->loaded_metadata()->get_tile_min_as<LabelType>(
+            label_name_, tile_num - 1);
     const auto max =
-        fragment_metadata_[f]->get_tile_max_as<LabelType>(label_name_, 0);
+        fragment_metadata_[f]->loaded_metadata()->get_tile_max_as<LabelType>(
+            label_name_, 0);
     if (start_range > max) {
       start_val_type = IndexValueType::LT;
     } else if (start_range < min) {
@@ -383,16 +387,20 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
   if (start_val_type == IndexValueType::CONTAINED) {
     if (increasing_labels_) {
       for (; start_index < tile_num; start_index++) {
-        const auto max = fragment_metadata_[f]->get_tile_max_as<LabelType>(
-            label_name_, start_index);
+        const auto max =
+            fragment_metadata_[f]
+                ->loaded_metadata()
+                ->get_tile_max_as<LabelType>(label_name_, start_index);
         if (max >= start_range) {
           break;
         }
       }
     } else {
       for (;; start_index--) {
-        const auto max = fragment_metadata_[f]->get_tile_max_as<LabelType>(
-            label_name_, start_index);
+        const auto max =
+            fragment_metadata_[f]
+                ->loaded_metadata()
+                ->get_tile_max_as<LabelType>(label_name_, start_index);
         if (start_index == 0 || max >= start_range) {
           break;
         }
@@ -404,16 +412,20 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
   if (end_val_type == IndexValueType::CONTAINED) {
     if (increasing_labels_) {
       for (;; end_index--) {
-        const auto min = fragment_metadata_[f]->get_tile_min_as<LabelType>(
-            label_name_, end_index);
+        const auto min =
+            fragment_metadata_[f]
+                ->loaded_metadata()
+                ->get_tile_min_as<LabelType>(label_name_, end_index);
         if (end_index == 0 || min <= end_range) {
           break;
         }
       }
     } else {
       for (; end_index < tile_num; end_index++) {
-        const auto min = fragment_metadata_[f]->get_tile_min_as<LabelType>(
-            label_name_, end_index);
+        const auto min =
+            fragment_metadata_[f]
+                ->loaded_metadata()
+                ->get_tile_min_as<LabelType>(label_name_, end_index);
         if (min <= end_range) {
           break;
         }

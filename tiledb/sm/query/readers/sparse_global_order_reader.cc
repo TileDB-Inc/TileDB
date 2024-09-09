@@ -2130,8 +2130,9 @@ void SparseGlobalOrderReader<BitmapType>::process_aggregates(
         if (can_aggregate_tile_with_frag_md(result_cell_slabs[i])) {
           if (range_thread_idx == 0) {
             auto rt = result_cell_slabs[i].tile_;
-            auto md = fragment_metadata_[rt->frag_idx()]->get_tile_metadata(
-                name, rt->tile_idx());
+            auto md = fragment_metadata_[rt->frag_idx()]
+                          ->loaded_metadata()
+                          ->get_tile_metadata(name, rt->tile_idx());
             for (auto& aggregate : aggregates) {
               aggregate->aggregate_tile_with_frag_md(md);
             }

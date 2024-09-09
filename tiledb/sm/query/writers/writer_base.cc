@@ -677,7 +677,9 @@ void WriterBase::set_coords_metadata(
 
   auto status = parallel_for(
       &resources_.compute_tp(), start_tile_idx, end_tile_idx, [&](uint64_t i) {
-        meta->set_mbr(i - start_tile_idx, mbrs[i]);
+        meta->loaded_metadata()->set_mbr(
+            meta->tile_index_base(), i - start_tile_idx, mbrs[i]);
+        meta->expand_non_empty_domain(mbrs[i]);
         return Status::Ok();
       });
   throw_if_not_ok(status);
@@ -791,6 +793,8 @@ Status WriterBase::create_fragment(
       has_delete_metadata);
 
   frag_meta->init(subarray_.ndrange(0));
+  frag_meta->loaded_metadata()->resize_offsets(frag_meta->num_dims_and_attrs());
+
   return Status::Ok();
 }
 
@@ -1051,13 +1055,26 @@ Status WriterBase::write_tiles(
       const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
-        frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
+        frag_meta->convert_tile_min_max_var_sizes_to_offsets(
+            attr,
+            frag_meta->loaded_metadata()->tile_min_var_buffer(),
+            frag_meta->loaded_metadata()->tile_min_buffer(),
+            frag_meta->loaded_metadata()->tile_max_var_buffer(),
+            frag_meta->loaded_metadata()->tile_max_buffer());
 
         for (uint64_t idx = start_tile_idx; idx < end_tile_idx; idx++) {
           frag_meta->set_tile_min_var(
-              attr, idx - start_tile_idx, tiles[idx].min());
+              attr,
+              idx - start_tile_idx,
+              tiles[idx].min(),
+              frag_meta->loaded_metadata()->tile_min_buffer(),
+              frag_meta->loaded_metadata()->tile_min_var_buffer());
           frag_meta->set_tile_max_var(
-              attr, idx - start_tile_idx, tiles[idx].max());
+              attr,
+              idx - start_tile_idx,
+              tiles[idx].max(),
+              frag_meta->loaded_metadata()->tile_max_buffer(),
+              frag_meta->loaded_metadata()->tile_max_var_buffer());
         }
       }
       return Status::Ok();
@@ -1112,7 +1129,11 @@ Status WriterBase::write_tiles(
         t.filtered_buffer().data(),
         t.filtered_buffer().size(),
         remote_global_order_write));
-    frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
+    frag_meta->set_tile_offset(
+        name,
+        tile_id,
+        t.filtered_buffer().size(),
+        frag_meta->loaded_metadata()->tile_offsets());
     auto null_count = tile.null_count();
 
     if (var_size) {
@@ -1123,20 +1144,43 @@ Status WriterBase::write_tiles(
           t_var.filtered_buffer().size(),
           remote_global_order_write));
       frag_meta->set_tile_var_offset(
-          name, tile_id, t_var.filtered_buffer().size());
-      frag_meta->set_tile_var_size(name, tile_id, tile.var_pre_filtered_size());
+          name,
+          tile_id,
+          t_var.filtered_buffer().size(),
+          frag_meta->loaded_metadata()->tile_var_offsets());
+      frag_meta->set_tile_var_size(
+          name,
+          tile_id,
+          tile.var_pre_filtered_size(),
+          frag_meta->loaded_metadata()->tile_var_sizes());
       if (has_min_max_md && null_count != frag_meta->cell_num(tile_id)) {
-        frag_meta->set_tile_min_var_size(name, tile_id, tile.min().size());
-        frag_meta->set_tile_max_var_size(name, tile_id, tile.max().size());
+        frag_meta->set_tile_min_var_size(
+            name,
+            tile_id,
+            tile.min().size(),
+            frag_meta->loaded_metadata()->tile_min_buffer());
+        frag_meta->set_tile_max_var_size(
+            name,
+            tile_id,
+            tile.max().size(),
+            frag_meta->loaded_metadata()->tile_max_buffer());
       }
     } else {
       if (has_min_max_md && null_count != frag_meta->cell_num(tile_id)) {
-        frag_meta->set_tile_min(name, tile_id, tile.min());
+        frag_meta->set_tile_min(
+            name,
+            tile_id,
+            tile.min(),
+            frag_meta->loaded_metadata()->tile_min_buffer());
         frag_meta->set_tile_max(name, tile_id, tile.max());
       }
 
       if (has_sum_md) {
-        frag_meta->set_tile_sum(name, tile_id, tile.sum());
+        frag_meta->set_tile_sum(
+            name,
+            tile_id,
+            tile.sum(),
+            frag_meta->loaded_metadata()->tile_sums());
       }
     }
 
@@ -1148,8 +1192,15 @@ Status WriterBase::write_tiles(
           t_val.filtered_buffer().size(),
           remote_global_order_write));
       frag_meta->set_tile_validity_offset(
-          name, tile_id, t_val.filtered_buffer().size());
-      frag_meta->set_tile_null_count(name, tile_id, null_count);
+          name,
+          tile_id,
+          t_val.filtered_buffer().size(),
+          frag_meta->loaded_metadata()->tile_validity_offsets());
+      frag_meta->set_tile_null_count(
+          name,
+          tile_id,
+          null_count,
+          frag_meta->loaded_metadata()->tile_null_counts());
     }
   }
 
