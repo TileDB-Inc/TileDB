@@ -88,8 +88,13 @@ void GZip::compress(
   (void)deflateEnd(&strm);
 
   // Return
-  if (ret == Z_STREAM_ERROR || strm.avail_in != 0)
-    throw GZipException("Cannot compress with GZIP");
+  if (ret != Z_STREAM_END || strm.avail_in != 0) {
+    if (ret == Z_OK) {
+      throw GZipException("Cannot compress with GZIP; output buffer too small");
+    }
+    throw GZipException(
+        "Cannot compress with GZIP; error code " + std::to_string(ret));
+  }
 
   // Set size of compressed data
   uint64_t compressed_size = output_buffer->free_space() - strm.avail_out;
