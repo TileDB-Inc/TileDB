@@ -823,8 +823,7 @@ TEST_CASE_METHOD(
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
-  auto loop_num =
-      counters->find("Context.Query.Reader.internal_loop_num");
+  auto loop_num = counters->find("Context.Query.Reader.internal_loop_num");
   CHECK(5 == loop_num->second);
 
   // Check incomplete query status.

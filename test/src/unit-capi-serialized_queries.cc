@@ -101,8 +101,7 @@ struct SerializationFx {
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
-    auto loop_num =
-        counters->find("Context.Query.Reader.loop_num");
+    auto loop_num = counters->find("Context.Query.Reader.loop_num");
     REQUIRE((loop_num != counters->end()));
     REQUIRE(loop_num->second > 0);
   }
@@ -112,8 +111,7 @@ struct SerializationFx {
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
-    auto loop_num =
-        counters->find("Context.Query.Writer.attr_num");
+    auto loop_num = counters->find("Context.Query.Writer.attr_num");
     REQUIRE((loop_num != counters->end()));
     REQUIRE(loop_num->second > 0);
   }
@@ -139,8 +137,8 @@ struct SerializationFx {
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
-    auto dowork_num = counters->find(
-        "Context.Query.Deletes.dowork.timer_count");
+    auto dowork_num =
+        counters->find("Context.Query.Deletes.dowork.timer_count");
     REQUIRE((dowork_num != counters->end()));
     REQUIRE(dowork_num->second > 0);
   }
