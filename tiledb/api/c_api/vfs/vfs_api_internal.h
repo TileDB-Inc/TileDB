@@ -56,10 +56,11 @@ struct tiledb_vfs_handle_t
  public:
   explicit tiledb_vfs_handle_t(
       tiledb::sm::stats::Stats* parent_stats,
+      Logger* logger,
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
       const tiledb::sm::Config& config)
-      : vfs_{parent_stats, compute_tp, io_tp, config} {
+      : vfs_{parent_stats, logger, compute_tp, io_tp, config} {
   }
 
   vfs_type* vfs() {

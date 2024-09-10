@@ -316,6 +316,7 @@ void check_save_to_file() {
   ss << "vfs.gcs.multi_part_size 5242880\n";
   ss << "vfs.gcs.request_timeout_ms 3000\n";
   ss << "vfs.gcs.use_multi_part_upload true\n";
+  ss << "vfs.log_operations false\n";
   ss << "vfs.max_batch_size 104857600\n";
   ss << "vfs.min_batch_gap 512000\n";
   ss << "vfs.min_batch_size 20971520\n";
@@ -695,6 +696,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.min_parallel_size"] = "10485760";
   all_param_values["vfs.read_ahead_size"] = "102400";
   all_param_values["vfs.read_ahead_cache_size"] = "10485760";
+  all_param_values["vfs.log_operations"] = "false";
   all_param_values["vfs.read_logging_mode"] = "";
   all_param_values["vfs.gcs.endpoint"] = "";
   all_param_values["vfs.gcs.project_id"] = "";
@@ -769,6 +771,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["min_parallel_size"] = "10485760";
   vfs_param_values["read_ahead_size"] = "102400";
   vfs_param_values["read_ahead_cache_size"] = "10485760";
+  vfs_param_values["log_operations"] = "false";
   vfs_param_values["read_logging_mode"] = "";
   vfs_param_values["gcs.endpoint"] = "";
   vfs_param_values["gcs.project_id"] = "";

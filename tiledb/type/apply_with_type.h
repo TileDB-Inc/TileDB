@@ -116,7 +116,7 @@ inline auto apply_with_type(Fn&& f, Datatype type, Args&&... args) {
     }
     default: {
       throw std::logic_error(
-          "Datatype::" + datatype_str(type) + " is not a valid Datatype");
+          "Datatype::" + datatype_str(type) + " is not a supported Datatype");
     }
   }
 }

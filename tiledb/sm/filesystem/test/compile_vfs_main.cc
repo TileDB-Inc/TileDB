@@ -27,11 +27,13 @@
  */
 
 #include "../vfs.h"
+#include "tiledb/common/logger.h"
 
 int main() {
   static tiledb::sm::stats::Stats stats("test");
+  static tiledb::common::Logger logger("test");
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
-  tiledb::sm::VFS x{&stats, &compute_tp, &io_tp, tiledb::sm::Config{}};
+  tiledb::sm::VFS x{&stats, &logger, &compute_tp, &io_tp, tiledb::sm::Config{}};
   return 0;
 }
