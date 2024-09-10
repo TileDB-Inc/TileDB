@@ -1079,7 +1079,7 @@ TEST_CASE_METHOD(
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
   auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.loop_num");
+      counters->find("Context.Query.Reader.loop_num");
   CHECK(2 == loop_num->second);
 }
 

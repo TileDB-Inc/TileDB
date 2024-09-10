@@ -71,7 +71,7 @@
  * As mentioned above, the Stats objects used under a Context form a tree.
  * Each Stats object mentains a list of children Stats and a pointer to the
  * parent Stats object.
- * The Stats object created by ContextResources(named "Context.StorageManager")
+ * The Stats object created by ContextResources(named "Context")
  * is the only Stats constructed in a standalone fashion using the Stats
  * constructor, all the other objects under this root Stats are created via
  * the Stats::create_child API.

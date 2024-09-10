@@ -532,7 +532,7 @@ void CDenseFx::read(
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
     auto loop_num =
-        counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
+        counters->find("Context.Query.Reader.internal_loop_num");
     CHECK(2 == loop_num->second);
   }
 
@@ -661,7 +661,7 @@ void CDenseFx::read_strings(
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
     auto loop_num =
-        counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
+        counters->find("Context.Query.Reader.internal_loop_num");
     CHECK(2 == loop_num->second);
   }
 
@@ -841,7 +841,7 @@ void CDenseFx::read_fixed_strings(
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
     auto loop_num =
-        counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
+        counters->find("Context.Query.Reader.internal_loop_num");
     CHECK(expected_num_loops == loop_num->second);
   }
 

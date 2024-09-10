@@ -653,7 +653,7 @@ TEST_CASE_METHOD(
   // Make sure there was an internal loop on the reader.
   CHECK(
       stats.find(
-          "\"Context.StorageManager.Query.Reader.internal_loop_num\": 2") !=
+          "\"Context.Query.Reader.internal_loop_num\": 2") !=
       std::string::npos);
 
   remove_sparse_array();
@@ -706,7 +706,7 @@ TEST_CASE_METHOD(
   // Make sure there was an internal loop on the reader.
   CHECK(
       stats.find(
-          "\"Context.StorageManager.Query.Reader.internal_loop_num\": 2") !=
+          "\"Context.Query.Reader.internal_loop_num\": 2") !=
       std::string::npos);
 
   remove_sparse_array();
@@ -1477,7 +1477,7 @@ TEST_CASE_METHOD(
     read_sparse(a, dim1, dim2, stats, layout, 2);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 4") !=
+            "\"Context.Query.Reader.num_tiles_read\": 4") !=
         std::string::npos);
 
     // Same but skip timestamps: 4 - 1 = 3, since 0:4 array fully overlaps with
@@ -1486,7 +1486,7 @@ TEST_CASE_METHOD(
     read_sparse(a, dim1, dim2, stats, layout, 4);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 3") !=
+            "\"Context.Query.Reader.num_tiles_read\": 3") !=
         std::string::npos);
 
     // Read 2 tiles for dim1, dim2, attr a1 and 1 for timestamps: 3 * 2 + 1 = 7
@@ -1495,7 +1495,7 @@ TEST_CASE_METHOD(
     read_sparse(a, dim1, dim2, stats, layout, 6);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 7") !=
+            "\"Context.Query.Reader.num_tiles_read\": 7") !=
         std::string::npos);
 
     // Read 2 tiles for dim1, dim2, attr a1 and skip timestamps: 3 * 2, since
@@ -1503,7 +1503,7 @@ TEST_CASE_METHOD(
     read_sparse(a, dim1, dim2, stats, layout, 8);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 6") !=
+            "\"Context.Query.Reader.num_tiles_read\": 6") !=
         std::string::npos);
 
     // Read 2 tiles for dim1, dim2, attr a1 and timestamps: 4 * 2, since 3:5
@@ -1511,7 +1511,7 @@ TEST_CASE_METHOD(
     reopen_sparse(a, dim1, dim2, stats, layout, 3, 5);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 8") !=
+            "\"Context.Query.Reader.num_tiles_read\": 8") !=
         std::string::npos);
   }
 
@@ -1520,7 +1520,7 @@ TEST_CASE_METHOD(
     read_sparse(a, dim1, dim2, stats, layout, 4, &timestamps);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 4") !=
+            "\"Context.Query.Reader.num_tiles_read\": 4") !=
         std::string::npos);
   }
 
@@ -1539,7 +1539,7 @@ TEST_CASE_METHOD(
     read_sparse(a, dim1, dim2, stats, layout, 4);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 4") !=
+            "\"Context.Query.Reader.num_tiles_read\": 4") !=
         std::string::npos);
   }
 
@@ -1558,7 +1558,7 @@ TEST_CASE_METHOD(
     read_sparse(a, dim1, dim2, stats, layout, 2);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 3") !=
+            "\"Context.Query.Reader.num_tiles_read\": 3") !=
         std::string::npos);
 
     // Request timestamps - expect no timestamps getting read since fragment
@@ -1567,7 +1567,7 @@ TEST_CASE_METHOD(
     read_sparse(a, dim1, dim2, stats, layout, 4, &timestamps);
     CHECK(
         stats.find(
-            "\"Context.StorageManager.Query.Reader.num_tiles_read\": 6") !=
+            "\"Context.Query.Reader.num_tiles_read\": 6") !=
         std::string::npos);
   }
 

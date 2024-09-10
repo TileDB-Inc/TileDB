@@ -1060,7 +1060,7 @@ TEST_CASE_METHOD(
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
     auto loop_num =
-        counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
+        counters->find("Context.Query.Reader.internal_loop_num");
 
     if (one_frag) {
       CHECK(1 == loop_num->second);
@@ -1175,7 +1175,7 @@ TEST_CASE_METHOD(
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
   auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
+      counters->find("Context.Query.Reader.internal_loop_num");
   CHECK(uint64_t(num_frags * 3) == loop_num->second);
 
   // Check query status.
