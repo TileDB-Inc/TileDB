@@ -1850,8 +1850,6 @@ void load_array_schema_request_to_capnp(
     const LoadArraySchemaRequest& req) {
   auto config_builder = builder.initConfig();
   throw_if_not_ok(config_to_capnp(config, &config_builder));
-  // This boolean is only serialized to support clients using TileDB < 2.26.
-  // Future options should only be serialized within the Config object above.
   builder.setIncludeEnumerations(req.include_enumerations());
 }
 
@@ -1908,15 +1906,7 @@ void serialize_load_array_schema_request(
 
 LoadArraySchemaRequest load_array_schema_request_from_capnp(
     capnp::LoadArraySchemaRequest::Reader& reader) {
-  tdb_unique_ptr<Config> decoded_config = nullptr;
-  if (reader.hasConfig()) {
-    throw_if_not_ok(config_from_capnp(reader.getConfig(), &decoded_config));
-  } else {
-    decoded_config.reset(tdb_new(Config));
-  }
-  // We intentionally do not use the includeEnumerations field, as it is stored
-  // in the Config and set using the LoadArraySchemaRequest constructor.
-  return LoadArraySchemaRequest(*decoded_config);
+  return LoadArraySchemaRequest(reader.getIncludeEnumerations());
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
@@ -1959,31 +1949,20 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
 }
 
 void load_array_schema_response_to_capnp(
-    capnp::LoadArraySchemaResponse::Builder& builder, const Array& array) {
+    capnp::LoadArraySchemaResponse::Builder& builder,
+    const ArraySchema& schema) {
   auto schema_builder = builder.initSchema();
-  throw_if_not_ok(array_schema_to_capnp(
-      array.array_schema_latest(), &schema_builder, false));
-
-  const auto& array_schemas_all = array.array_schemas_all();
-  auto array_schemas_all_builder = builder.initArraySchemasAll();
-  auto entries_builder =
-      array_schemas_all_builder.initEntries(array_schemas_all.size());
-  uint64_t i = 0;
-  for (const auto& schema : array_schemas_all) {
-    auto entry = entries_builder[i++];
-    entry.setKey(schema.first);
-    auto schema_entry_builder = entry.initValue();
-    throw_if_not_ok(
-        array_schema_to_capnp(*(schema.second), &schema_entry_builder, false));
-  }
+  throw_if_not_ok(array_schema_to_capnp(schema, &schema_builder, false));
 }
 
 void serialize_load_array_schema_response(
-    const Array& array, SerializationType serialization_type, Buffer& data) {
+    const ArraySchema& schema,
+    SerializationType serialization_type,
+    Buffer& data) {
   try {
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::LoadArraySchemaResponse>();
-    load_array_schema_response_to_capnp(builder, array);
+    load_array_schema_response_to_capnp(builder, schema);
 
     data.reset_size();
     data.reset_offset();
@@ -2026,39 +2005,14 @@ void serialize_load_array_schema_response(
   }
 }
 
-std::tuple<
-    shared_ptr<ArraySchema>,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
-load_array_schema_response_from_capnp(
-    const URI& uri,
+shared_ptr<ArraySchema> load_array_schema_response_from_capnp(
     capnp::LoadArraySchemaResponse::Reader& reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   auto schema_reader = reader.getSchema();
-  auto schema = array_schema_from_capnp(schema_reader, URI(), memory_tracker);
-  schema->set_array_uri(uri);
-
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
-  if (reader.hasArraySchemasAll()) {
-    auto all_schemas_reader = reader.getArraySchemasAll();
-
-    if (all_schemas_reader.hasEntries()) {
-      auto entries = all_schemas_reader.getEntries();
-      for (auto array_schema_build : entries) {
-        auto schema_entry = array_schema_from_capnp(
-            array_schema_build.getValue(), schema->array_uri(), memory_tracker);
-        schema_entry->set_array_uri(schema->array_uri());
-        all_schemas[array_schema_build.getKey()] = schema_entry;
-      }
-    }
-  }
-  return {schema, all_schemas};
+  return array_schema_from_capnp(schema_reader, URI(), memory_tracker);
 }
 
-std::tuple<
-    shared_ptr<ArraySchema>,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
-deserialize_load_array_schema_response(
-    const URI& uri,
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType serialization_type,
     const Buffer& data,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -2072,8 +2026,7 @@ deserialize_load_array_schema_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(data.data())), builder);
         auto reader = builder.asReader();
-        return load_array_schema_response_from_capnp(
-            uri, reader, memory_tracker);
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
@@ -2081,8 +2034,7 @@ deserialize_load_array_schema_response(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             data.size() / sizeof(::capnp::word)));
         auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
-        return load_array_schema_response_from_capnp(
-            uri, reader, memory_tracker);
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       default: {
         throw ArraySchemaSerializationException(
@@ -2163,15 +2115,12 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
 }
 
 void serialize_load_array_schema_response(
-    const Array&, SerializationType, Buffer&) {
+    const ArraySchema&, SerializationType, Buffer&) {
   throw ArraySchemaSerializationDisabledException();
 }
 
-std::tuple<
-    shared_ptr<ArraySchema>,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
-deserialize_load_array_schema_response(
-    const URI&, SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw ArraySchemaSerializationDisabledException();
 }
 

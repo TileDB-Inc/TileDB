@@ -123,7 +123,7 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
   auto&& array_schema = load_array_schema_from_uri(
       resources_.get(), schema_uri, encryption_key, memory_tracker);
 
-  array_schema->set_array_uri(uri_.remove_trailing_slash());
+  array_schema->set_array_uri(uri_);
 
   return std::move(array_schema);
 }

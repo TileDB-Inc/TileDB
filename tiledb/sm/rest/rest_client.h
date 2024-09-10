@@ -317,10 +317,7 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
-  inline virtual std::tuple<
-      shared_ptr<ArraySchema>,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
-  post_array_schema_from_rest(
+  inline virtual shared_ptr<ArraySchema> post_array_schema_from_rest(
       const Config&, const URI&, uint64_t, uint64_t, bool) {
     throw RestClientDisabledException();
   }
