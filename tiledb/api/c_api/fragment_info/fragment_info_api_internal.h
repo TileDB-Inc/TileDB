@@ -73,10 +73,6 @@ struct tiledb_fragment_info_handle_t
     return fragment_info_->config();
   }
 
-  void dump(FILE* out) const {
-    fragment_info_->dump(out);
-  }
-
   const std::string& fragment_name(uint32_t fid) const {
     return fragment_info_->fragment_name(fid);
   }

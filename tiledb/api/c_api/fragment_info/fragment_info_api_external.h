@@ -918,6 +918,30 @@ TILEDB_EXPORT capi_return_t tiledb_fragment_info_dump(
     const tiledb_fragment_info_t* fragment_info,
     FILE* out) TILEDB_NOEXCEPT;
 
+/**
+ * Dumps the fragment info in ASCII format in the selected string output.
+ *
+ * The output string handle must be freed by the user after use.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_fragment_info_dump_str(ctx, fragment_info, &tdb_string);
+ * // Use the string
+ * tiledb_string_free(&tdb_string);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] fragment_info The fragment info object.
+ * @param[out] out The output string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_fragment_info_dump_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_fragment_info_t* fragment_info,
+    tiledb_string_t** out) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

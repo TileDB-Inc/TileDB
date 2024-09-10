@@ -1268,8 +1268,21 @@ TEST_CASE(
 TEST_CASE(
     "C API: tiledb_fragment_info_dump argument validation",
     "[capi][fragment_info]") {
-  /**
-   * This function is not conducive to a cross-platform test,
-   * as it requires a FILE*. Thus, this test case shall be omitted.
+  capi_return_t rc;
+  ordinary_fragment_info x{};
+  tiledb_string_t* out;
+  /*
+   * No "success" section here; omitted to avoid log noise.
+   */
+  SECTION("null context") {
+    rc = tiledb_fragment_info_dump_str(nullptr, x.fragment_info, &out);
+    REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
+  }
+  SECTION("null schema") {
+    rc = tiledb_fragment_info_dump_str(x.ctx(), nullptr, &out);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  /*
+   * SECTION("null file pointer"): `nullptr` is allowed; it's mapped to `stdout`
    */
 }
