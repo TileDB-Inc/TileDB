@@ -55,7 +55,7 @@ jobs:
           dockerRunArgs: |
             -v ${PWD}/artifacts:/artifacts
           install: |
-            yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd ninja-build
+            yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd 
             echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
           run: |
             make --version \
@@ -73,7 +73,7 @@ jobs:
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_WEBP=ON \
             -DTILEDB_TESTS=OFF \
-            -DVCPKG_TARGET_TRIPLET=arm64-linux-release \
+            -DVCPKG_TARGET_TRIPLET=arm64-linux-release || find . -name *.log | xargs cat \
             && cmake --build build --config Release --target package \
             && cp build/tiledb-*.tar.gz* /artifacts
       - run: ls -al ${PWD}/artifacts
