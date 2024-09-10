@@ -151,8 +151,8 @@ uint64_t GZip::overhead(uint64_t buffer_size) {
   // The zlib encoding adds 6 bytes (we don't use compression dictionary)
   // and the overhead of deflate was taken from
   // https://stackoverflow.com/a/23578269.
-  return 6 + 5 * uint64_t((std::floor(buffer_size / 16834.0)) + 1);
+  return 6 + 5 * uint64_t(std::floor(buffer_size / 16834.0) + 1);
 }
 
-};  // namespace sm
+}  // namespace sm
 }  // namespace tiledb
