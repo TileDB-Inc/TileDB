@@ -27,5 +27,5 @@ include(unit_test)
 
 commence(unit_test compressors)
     this_target_object_libraries(compressors)
-    this_target_sources(main.cc unit_dict_compressor.cc unit_delta_compressor.cc)
+    this_target_sources(main.cc unit_dict_compressor.cc unit_delta_compressor.cc unit_gzip_compressor.cc)
 conclude(unit_test)
