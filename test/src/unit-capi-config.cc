@@ -231,7 +231,7 @@ void check_save_to_file() {
   ss << "rest.curl.retry_errors true\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
-  ss << "rest.load_enumerations_on_array_open false\n";
+  ss << "rest.load_enumerations_on_array_open true\n";
   ss << "rest.load_metadata_on_array_open true\n";
   ss << "rest.load_non_empty_domain_on_array_open true\n";
   ss << "rest.retry_count 25\n";

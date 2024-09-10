@@ -33,7 +33,6 @@
 #include <fstream>
 
 #include <test/support/tdb_catch.h>
-#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -44,14 +43,14 @@ using namespace tiledb;
 
 struct CPPEnumerationFx {
   CPPEnumerationFx();
-  ~CPPEnumerationFx() = default;
+  ~CPPEnumerationFx();
 
   template <typename T>
   void check_dump(const T& val);
 
   void create_array(bool with_empty_enumeration = false);
+  void rm_array();
 
-  tiledb::test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
   Context ctx_;
   VFS vfs_;
@@ -284,7 +283,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumerations From Disk - Array::get_enumeration",
-    "[enumeration][array-get-enumeration][rest]") {
+    "[enumeration][array-get-enumeration]") {
   create_array();
   auto array = Array(ctx_, uri_, TILEDB_READ);
   auto enmr = ArrayExperimental::get_enumeration(ctx_, array, "an_enumeration");
@@ -298,7 +297,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumerations From Disk - Attribute::get_enumeration_name",
-    "[enumeration][attr-get-enumeration-name][rest]") {
+    "[enumeration][attr-get-enumeration-name]") {
   create_array();
   auto schema = Array::load_schema(ctx_, uri_);
 
@@ -314,7 +313,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Array::load_all_enumerations",
-    "[enumeration][array-load-all-enumerations][rest]") {
+    "[enumeration][array-load-all-enumerations]") {
   create_array();
   auto array = Array(ctx_, uri_, TILEDB_READ);
   REQUIRE_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
@@ -323,130 +322,9 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: Array load_all_enumerations - Check nullptr",
-    "[enumeration][array-load-all-enumerations][rest]") {
+    "[enumeration][array-load-all-enumerations]") {
   auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr);
   REQUIRE(rc != TILEDB_OK);
-}
-
-TEST_CASE_METHOD(
-    CPPEnumerationFx,
-    "CPP API: Load All Enumerations - All Schemas",
-    "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
-  create_array();
-  auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
-  auto schema = array.load_schema(ctx_, uri_);
-  REQUIRE(
-      schema.ptr()->array_schema_->has_enumeration("an_enumeration") == true);
-  REQUIRE(
-      schema.ptr()->array_schema_->is_enumeration_loaded("an_enumeration") ==
-      false);
-  std::string schema_name_1 = schema.ptr()->array_schema_->name();
-
-  // Evolve once to add an enumeration.
-  ArraySchemaEvolution ase(ctx_);
-  std::vector<std::string> var_values{"one", "two", "three"};
-  auto var_enmr = Enumeration::create(ctx_, "ase_var_enmr", var_values);
-  ase.add_enumeration(var_enmr);
-  auto attr4 = Attribute::create<uint16_t>(ctx_, "attr4");
-  AttributeExperimental::set_enumeration_name(ctx_, attr4, "ase_var_enmr");
-  ase.add_attribute(attr4);
-  ase.array_evolve(uri_);
-  array.reopen();
-  ArrayExperimental::load_all_enumerations(ctx_, array);
-  auto all_schemas = array.ptr()->array_->array_schemas_all();
-  schema = array.load_schema(ctx_, uri_);
-  std::string schema_name_2 = schema.ptr()->array_schema_->name();
-
-  // Check all schemas.
-  CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
-  CHECK(
-      all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
-      true);
-  CHECK(all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
-  CHECK(
-      all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
-      true);
-  CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
-  CHECK(
-      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
-
-  // Evolve a second time to drop an enumeration.
-  ArraySchemaEvolution ase2(ctx_);
-  ase2.drop_enumeration("an_enumeration");
-  ase2.drop_attribute("attr1");
-  CHECK_NOTHROW(ase2.array_evolve(uri_));
-  // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(array.close());
-  CHECK_NOTHROW(array.open(TILEDB_READ));
-  ArrayExperimental::load_all_enumerations(ctx_, array);
-  all_schemas = array.ptr()->array_->array_schemas_all();
-  schema = array.load_schema(ctx_, uri_);
-  std::string schema_name_3 = schema.ptr()->array_schema_->name();
-
-  // Check all schemas.
-  CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
-  CHECK(
-      all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
-      true);
-  CHECK(all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
-  CHECK(
-      all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
-      true);
-  CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
-  CHECK(
-      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
-  CHECK(all_schemas[schema_name_3]->has_enumeration("an_enumeration") == false);
-  CHECK(all_schemas[schema_name_3]->has_enumeration("ase_var_enmr") == true);
-  CHECK(
-      all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
-
-  // Evolve a third time to add an enumeration with a name equal to a previously
-  // dropped enumeration.
-  ArraySchemaEvolution ase3(ctx_);
-  auto old_enmr = Enumeration::create(ctx_, "an_enumeration", var_values);
-  ase3.add_enumeration(old_enmr);
-  auto attr5 = Attribute::create<uint16_t>(ctx_, "attr5");
-  AttributeExperimental::set_enumeration_name(ctx_, attr5, "an_enumeration");
-  ase.add_attribute(attr5);
-  CHECK_NOTHROW(ase3.array_evolve(uri_));
-
-  // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(array.close());
-  CHECK_NOTHROW(array.open(TILEDB_READ));
-  ArrayExperimental::load_all_enumerations(ctx_, array);
-  all_schemas = array.ptr()->array_->array_schemas_all();
-  schema = array.load_schema(ctx_, uri_);
-  std::string schema_name_4 = schema.ptr()->array_schema_->name();
-
-  // Check all schemas.
-  CHECK(all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
-  CHECK(
-      all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
-      true);
-  CHECK(all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
-  CHECK(
-      all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
-      true);
-  CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
-  CHECK(
-      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
-  CHECK(all_schemas[schema_name_3]->has_enumeration("an_enumeration") == false);
-  CHECK(all_schemas[schema_name_3]->has_enumeration("ase_var_enmr") == true);
-  CHECK(
-      all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
-  CHECK(all_schemas[schema_name_4]->has_enumeration("an_enumeration") == true);
-  CHECK(
-      all_schemas[schema_name_4]->is_enumeration_loaded("an_enumeration") ==
-      true);
-  CHECK(all_schemas[schema_name_4]->has_enumeration("ase_var_enmr") == true);
-  CHECK(
-      all_schemas[schema_name_4]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
 }
 
 TEST_CASE_METHOD(
@@ -462,7 +340,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: ArraySchemaEvolution - Add Enumeration - Check nullptr",
-    "[enumeration][array-schema-evolution][error][rest]") {
+    "[enumeration][array-schema-evolution][error]") {
   auto rc = tiledb_array_schema_evolution_add_enumeration(
       ctx_.ptr().get(), nullptr, nullptr);
   REQUIRE(rc != TILEDB_OK);
@@ -481,7 +359,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: ArraySchemaEvolution - Extend Enumeration - Check nullptr",
-    "[enumeration][array-schema-evolution][drop-enumeration][rest]") {
+    "[enumeration][array-schema-evolution][drop-enumeration]") {
   std::vector<std::string> values = {"fred", "wilma", "barney", "pebbles"};
   auto enmr = Enumeration::create(ctx_, enmr_name, values);
 
@@ -506,7 +384,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: ArraySchemaEvolution - Drop Enumeration - Check nullptr",
-    "[enumeration][array-schema-evolution][drop-enumeration][rest]") {
+    "[enumeration][array-schema-evolution][drop-enumeration]") {
   auto rc = tiledb_array_schema_evolution_drop_enumeration(
       ctx_.ptr().get(), nullptr, "foo");
   REQUIRE(rc != TILEDB_OK);
@@ -520,7 +398,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Basic",
-    "[enumeration][query][basic][rest]") {
+    "[enumeration][query][basic]") {
   // Basic smoke test. Check that a simple query condition applied against
   // an array returns sane results.
   create_array();
@@ -556,7 +434,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Negation",
-    "[enumeration][query][negation][rest]") {
+    "[enumeration][query][negation]") {
   // Another basic query test, the only twist here is that we're checking
   // that query condition negation works as expected.
   create_array();
@@ -595,7 +473,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Combination",
-    "[enumeration][query][combination][rest]") {
+    "[enumeration][query][combination]") {
   // Same test as before except using multi-condition query condtions
   create_array();
 
@@ -651,7 +529,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Invalid Enumeration Value is Always False",
-    "[enumeration][query][basic][rest]") {
+    "[enumeration][query][basic]") {
   create_array();
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
@@ -685,7 +563,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Invalid Enumeration Value Accepted by EQ",
-    "[enumeration][query][basic][rest]") {
+    "[enumeration][query][basic]") {
   create_array();
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
@@ -712,7 +590,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Invalid Enumeration Value Accepted by IN",
-    "[enumeration][query][basic][rest]") {
+    "[enumeration][query][basic]") {
   create_array();
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
@@ -739,7 +617,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Set Use Enumeration",
-    "[enumeration][query][set-use-enumeration][rest]") {
+    "[enumeration][query][set-use-enumeration]") {
   QueryCondition qc(ctx_);
   qc.init("attr1", "fred", 4, TILEDB_EQ);
   REQUIRE_NOTHROW(
@@ -751,7 +629,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: Enumeration Query - Check nullptr",
-    "[enumeration][query][check-nullptr][rest]") {
+    "[enumeration][query][check-nullptr]") {
   auto rc =
       tiledb_query_condition_set_use_enumeration(ctx_.ptr().get(), nullptr, 0);
   REQUIRE(rc != TILEDB_OK);
@@ -760,7 +638,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration Query - Attempt to query on empty enumeration",
-    "[enumeration][query][empty-results][rest]") {
+    "[enumeration][query][empty-results]") {
   create_array(true);
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
@@ -785,9 +663,13 @@ TEST_CASE_METHOD(
 }
 
 CPPEnumerationFx::CPPEnumerationFx()
-    : uri_(vfs_test_setup_.array_uri("enumeration_test_array"))
-    , ctx_(vfs_test_setup_.ctx())
-    , vfs_(vfs_test_setup_.ctx()) {
+    : uri_("enumeration_test_array")
+    , vfs_(ctx_) {
+  rm_array();
+}
+
+CPPEnumerationFx::~CPPEnumerationFx() {
+  rm_array();
 }
 
 template <typename T>
@@ -861,4 +743,10 @@ void CPPEnumerationFx::create_array(bool with_empty_enumeration) {
   CHECK_NOTHROW(query.submit());
   query.finalize();
   array.close();
+}
+
+void CPPEnumerationFx::rm_array() {
+  if (vfs_.is_dir(uri_)) {
+    vfs_.remove_dir(uri_);
+  }
 }

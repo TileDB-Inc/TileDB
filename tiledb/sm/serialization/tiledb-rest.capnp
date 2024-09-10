@@ -1267,16 +1267,11 @@ struct LoadArraySchemaRequest {
 
   includeEnumerations @1 :Bool;
   # When true, include all enumeration data in the returned ArraySchema
-  # This field is only serialized for backwards compatibility. Future options
-  # that modify array schema load behavior should be handled within the Config.
 }
 
 struct LoadArraySchemaResponse {
   schema @0 :ArraySchema;
   # The loaded ArraySchema
-
-  arraySchemasAll @1 :Map(Text, ArraySchema);
-  # map of all Array Schemas
 }
 
 struct QueryPlanRequest {

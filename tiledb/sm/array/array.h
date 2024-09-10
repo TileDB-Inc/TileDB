@@ -589,12 +589,10 @@ class Array {
    * loaded before this function returns.
    *
    * @param enumeration_names The names of the enumerations.
-   * @param schema The ArraySchema to store loaded enumerations in.
    * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
    */
   std::vector<shared_ptr<const Enumeration>> get_enumerations(
-      const std::vector<std::string>& enumeration_names,
-      shared_ptr<ArraySchema> schema);
+      const std::vector<std::string>& enumeration_names);
 
   /** Load all enumerations for the array. */
   void load_all_enumerations();

@@ -1150,7 +1150,7 @@ void ArraySchema::drop_enumeration(const std::string& enmr_name) {
     }
     if (attr_enmr_name.value() == enmr_name) {
       throw ArraySchemaException(
-          "Unable to drop enumeration '" + enmr_name + "' as it is used by" +
+          "Unable to drop enumeration '" + enmr_name + "' as it is used by " +
           " attribute '" + attr->name() + "'.");
     }
   }
