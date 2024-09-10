@@ -32,6 +32,7 @@
 
 #include "vfs.h"
 #include "path_win.h"
+#include "tiledb/common/log_duration_instrument.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
@@ -58,12 +59,14 @@ namespace tiledb::sm {
 
 VFS::VFS(
     stats::Stats* const parent_stats,
+    Logger* const logger,
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config& config)
     : VFSBase(parent_stats)
     , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
+    , logger_(logger)
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
     , vfs_params_(VFSParameters(config)) {
@@ -235,6 +238,7 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
 }
 
 Status VFS::touch(const URI& uri) const {
+  auto instrument = make_log_duration_instrument(uri, "touch");
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.touch(uri.to_path());
@@ -284,6 +288,7 @@ Status VFS::cancel_all_tasks() {
 }
 
 Status VFS::create_bucket(const URI& uri) const {
+  auto instrument = make_log_duration_instrument(uri, "create_bucket");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().create_bucket(uri);
@@ -336,6 +341,7 @@ Status VFS::remove_bucket(const URI& uri) const {
 }
 
 Status VFS::empty_bucket(const URI& uri) const {
+  auto instrument = make_log_duration_instrument(uri, "empty_bucket");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().empty_bucket(uri);
@@ -363,6 +369,7 @@ Status VFS::empty_bucket(const URI& uri) const {
 
 Status VFS::is_empty_bucket(
     const URI& uri, [[maybe_unused]] bool* is_empty) const {
+  auto instrument = make_log_duration_instrument(uri, "is_empty_bucket");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     *is_empty = s3().is_empty_bucket(uri);
@@ -389,6 +396,7 @@ Status VFS::is_empty_bucket(
 }
 
 Status VFS::remove_dir(const URI& uri) const {
+  auto instrument = make_log_duration_instrument(uri, "remove_dir");
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.remove_dir(uri.to_path());
@@ -451,6 +459,7 @@ void VFS::remove_dirs(
 }
 
 Status VFS::remove_file(const URI& uri) const {
+  auto instrument = make_log_duration_instrument(uri, "remove_file");
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.remove_file(uri.to_path());
@@ -536,6 +545,7 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
 }
 
 Status VFS::file_size(const URI& uri, uint64_t* size) const {
+  auto instrument = make_log_duration_instrument(uri, "file_size");
   stats_->add_counter("file_size_num", 1);
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -580,6 +590,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 }
 
 Status VFS::is_dir(const URI& uri, bool* is_dir) const {
+  auto instrument = make_log_duration_instrument(uri, "is_dir");
   if (uri.is_file()) {
 #ifdef _WIN32
     *is_dir = win_.is_dir(uri.to_path());
@@ -628,6 +639,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
 }
 
 Status VFS::is_file(const URI& uri, bool* is_file) const {
+  auto instrument = make_log_duration_instrument(uri, "is_file");
   stats_->add_counter("is_object_num", 1);
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -678,6 +690,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
 }
 
 Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
+  auto instrument = make_log_duration_instrument(uri, "is_bucket");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     *is_bucket = s3().is_bucket(uri);
@@ -720,6 +733,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 }
 
 std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
+  auto instrument = make_log_duration_instrument(parent, "ls");
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
@@ -782,6 +796,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 }
 
 Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
+  auto instrument = make_log_duration_instrument(old_uri, new_uri);
   // If new_uri exists, delete it or raise an error based on `force`
   bool is_file;
   RETURN_NOT_OK(this->is_file(new_uri, &is_file));
@@ -858,6 +873,7 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
+  auto instrument = make_log_duration_instrument(old_uri, new_uri);
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
@@ -930,6 +946,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
+  auto instrument = make_log_duration_instrument(old_uri, new_uri);
   // If new_uri exists, delete it or raise an error based on `force`
   bool is_file;
   RETURN_NOT_OK(this->is_file(new_uri, &is_file));
@@ -1003,6 +1020,7 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
+  auto instrument = make_log_duration_instrument(old_uri, new_uri);
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
@@ -1138,6 +1156,7 @@ Status VFS::read_impl(
     void* const buffer,
     const uint64_t nbytes,
     [[maybe_unused]] const bool use_read_ahead) {
+  auto instrument = make_log_duration_instrument(uri, "read");
   stats_->add_counter("read_ops_num", 1);
   log_read(uri, offset, nbytes);
 
@@ -1298,6 +1317,7 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
 }
 
 Status VFS::sync(const URI& uri) {
+  auto instrument = make_log_duration_instrument(uri, "sync");
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.sync(uri.to_path());
@@ -1389,6 +1409,7 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
 }
 
 Status VFS::close_file(const URI& uri) {
+  auto instrument = make_log_duration_instrument(uri, "close_file");
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.sync(uri.to_path());
@@ -1448,6 +1469,7 @@ Status VFS::write(
     const void* buffer,
     uint64_t buffer_size,
     [[maybe_unused]] bool remote_global_order_write) {
+  auto instrument = make_log_duration_instrument(uri, "write");
   stats_->add_counter("write_byte_num", buffer_size);
   stats_->add_counter("write_ops_num", 1);
 
@@ -1593,6 +1615,8 @@ Status VFS::set_multipart_upload_state(
 }
 
 Status VFS::flush_multipart_file_buffer(const URI& uri) {
+  auto instrument =
+      make_log_duration_instrument(uri, "flush_multipart_file_buffer");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     Buffer* buff = nullptr;
@@ -1652,6 +1676,32 @@ void VFS::log_read(const URI& uri, uint64_t offset, uint64_t nbytes) {
   }
 
   LOG_INFO("VFS Read: " + read_to_log);
+}
+
+optional<LogDurationInstrument> VFS::make_log_duration_instrument(
+    const URI& uri, const std::string_view operation_name) const {
+  if (!vfs_params_.log_operations_ || logger_ == nullptr) {
+    return nullopt;
+  }
+  // Construct LogDurationInstrument in-place to take advantage of RVO.
+  return std::make_optional<LogDurationInstrument>(
+      logger_, "{} on {}", operation_name, uri.to_string());
+}
+
+optional<LogDurationInstrument> VFS::make_log_duration_instrument(
+    const URI& source,
+    const URI& destination,
+    const std::string_view operation_name) const {
+  if (!vfs_params_.log_operations_ || logger_ == nullptr) {
+    return nullopt;
+  }
+  // Construct LogDurationInstrument in-place to take advantage of RVO.
+  return std::make_optional<LogDurationInstrument>(
+      logger_,
+      "{} from {} to {}",
+      operation_name,
+      source.to_string(),
+      destination.to_string());
 }
 
 }  // namespace tiledb::sm

@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include <filesystem>
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"
 
@@ -59,9 +60,10 @@ class VFSTest {
   explicit VFSTest(
       const std::vector<size_t>& test_tree, const std::string& prefix)
       : stats_("unit_ls_filtered")
+      , logger_("unit_ls_filtered")
       , io_(4)
       , compute_(4)
-      , vfs_(&stats_, &io_, &compute_, tiledb::sm::Config())
+      , vfs_(&stats_, &logger_, &io_, &compute_, tiledb::sm::Config())
       , test_tree_(test_tree)
       , prefix_(prefix)
       , temp_dir_(prefix_)
@@ -112,6 +114,7 @@ class VFSTest {
 
   /** Resources needed to construct VFS */
   tiledb::sm::stats::Stats stats_;
+  tiledb::common::Logger logger_;
   ThreadPool io_, compute_;
   tiledb::sm::VFS vfs_;
 
