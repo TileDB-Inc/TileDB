@@ -784,7 +784,7 @@ int64_t flags_for_buffer(BufferInfo binfo) {
 
 int64_t bytemap_to_bitmap(uint8_t* bytemap, int64_t num) {
   // helper function from column_buffer class in libtiledbsoma
-  // not that it transforms bytemap _in place_ by design
+  // note that it transforms bytemap _in place_ by design, as we now own the buffer
   // added null count return for convenience
   int64_t nulls = 0;
   int i_dst = 0;
