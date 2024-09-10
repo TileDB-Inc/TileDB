@@ -40,8 +40,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GZipException : public StatusException {
  public:
@@ -154,5 +153,4 @@ uint64_t GZip::overhead(uint64_t buffer_size) {
   return 6 + 5 * uint64_t(std::floor(buffer_size / 16834.0) + 1);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

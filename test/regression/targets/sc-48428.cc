@@ -11,7 +11,9 @@ static void create_array(Context& ctx, const std::string& array_uri);
 static void write_array(Context& ctx, const std::string& array_uri);
 static void read_array(Context& ctx, const std::string& array_uri);
 
-TEST_CASE("Empty write breaks reads", "[hilbert][bug][sc48428]") {
+TEST_CASE(
+    "SC-48428: Empty var tile compressed with GZip breaks reads",
+    "[hilbert][bug][sc48428]") {
   Context ctx;
   std::string array_uri = "test_empty_write";
 
@@ -35,7 +37,7 @@ void create_array(Context& ctx, const std::string& array_uri) {
   auto filter = Filter(ctx, TILEDB_FILTER_GZIP);
   auto flist = FilterList(ctx).add_filter(filter);
 
-  auto attr = Attribute::create(ctx, "a", TILEDB_STRING_UCS2)
+  auto attr = Attribute::create(ctx, "a", TILEDB_STRING_UTF16)
                   .set_cell_val_num(std::numeric_limits<uint32_t>::max())
                   .set_filter_list(flist);
 
