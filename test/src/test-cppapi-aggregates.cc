@@ -2616,7 +2616,7 @@ TEMPLATE_LIST_TEST_CASE(
   QueryChannel default_channel = QueryExperimental::get_default_channel(query);
   REQUIRE_THROWS_WITH(
       QueryExperimental::create_unary_aggregate<SumOperator>(query, "a"),
-      Catch::Matchers::ContainsSubstring("not a valid Datatype"));
+      Catch::Matchers::ContainsSubstring("not a supported Datatype"));
 
   // Clean up.
   array.close();
