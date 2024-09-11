@@ -40,8 +40,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GZipException : public StatusException {
  public:
@@ -88,8 +87,13 @@ void GZip::compress(
   (void)deflateEnd(&strm);
 
   // Return
-  if (ret == Z_STREAM_ERROR || strm.avail_in != 0)
-    throw GZipException("Cannot compress with GZIP");
+  if (ret != Z_STREAM_END || strm.avail_in != 0) {
+    if (ret == Z_OK) {
+      throw GZipException("Cannot compress with GZIP; output buffer too small");
+    }
+    throw GZipException(
+        "Cannot compress with GZIP; error code " + std::to_string(ret));
+  }
 
   // Set size of compressed data
   uint64_t compressed_size = output_buffer->free_space() - strm.avail_out;
@@ -143,8 +147,10 @@ void GZip::decompress(
 }
 
 uint64_t GZip::overhead(uint64_t buffer_size) {
-  return 6 + 5 * uint64_t((std::ceil(buffer_size / 16834.0)));
+  // The zlib encoding adds 6 bytes (we don't use compression dictionary)
+  // and the overhead of deflate was taken from
+  // https://stackoverflow.com/a/23578269.
+  return 6 + 5 * uint64_t(std::floor(buffer_size / 16834.0) + 1);
 }
 
-};  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
