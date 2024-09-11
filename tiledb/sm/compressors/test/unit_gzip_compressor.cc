@@ -71,6 +71,6 @@ TEST_CASE(
       out_buf_dec_storage.data(), out_buf_dec_storage.size()};
 
   GZip::decompress(&in_buf_dec, &out_buf_dec);
-  // Check that
+  // Check that the empty buffer is compressed and decompressed correctly.
   CHECK(out_buf_dec.size() - out_buf_dec.free_space() == in_buf.size());
 }
