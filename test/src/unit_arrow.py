@@ -92,6 +92,10 @@ class DataFactory32():
     utf_strings[np.random.randint(0, col_size, size=col_size//2)] = ''
     self.data['utf_string2'] = pa.array(utf_strings)
 
+    # another version with some cells set to NULL
+    utf_strings[np.random.randint(0, col_size, size=col_size//2)] = None
+    self.data['utf_string3'] = pa.array(utf_strings)
+
     self.data['datetime_ns'] = pa.array(rand_datetime64_array(col_size))
 
     ##########################################################################
