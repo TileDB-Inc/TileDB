@@ -1156,8 +1156,7 @@ void CppAggregatesFx<T>::validate_data_var(
 
 uint64_t get_stat(std::string name, std::string& stats) {
   // Parse num_tiles_read from the stats.
-  std::string to_find =
-      "\"Context.StorageManager.Query.Reader." + name + "\": ";
+  std::string to_find = "\"Context.Query.Reader." + name + "\": ";
   auto start_pos = stats.find(to_find);
 
   if (start_pos != std::string::npos) {
