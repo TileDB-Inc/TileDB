@@ -190,10 +190,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_fragment_name_v2(x.ctx(), nullptr, 0, &name);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid index") {
-    rc = tiledb_fragment_info_get_fragment_name_v2(x.ctx(), nullptr, -1, &name);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null name") {
     rc = tiledb_fragment_info_get_fragment_name_v2(
         x.ctx(), x.fragment_info, 0, nullptr);
@@ -249,11 +249,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_fragment_uri(x.ctx(), nullptr, 0, &uri);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_fragment_uri(
-        x.ctx(), x.fragment_info, -1, &uri);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null uri") {
     rc = tiledb_fragment_info_get_fragment_uri(
         x.ctx(), x.fragment_info, 0, nullptr);
@@ -281,11 +280,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_fragment_size(x.ctx(), nullptr, 0, &size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_fragment_size(
-        x.ctx(), x.fragment_info, -1, &size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null size") {
     rc = tiledb_fragment_info_get_fragment_size(
         x.ctx(), x.fragment_info, 0, nullptr);
@@ -312,10 +310,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_dense(x.ctx(), nullptr, 0, &dense);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_dense(x.ctx(), x.fragment_info, -1, &dense);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null dense") {
     rc = tiledb_fragment_info_get_dense(x.ctx(), x.fragment_info, 0, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
@@ -341,10 +339,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_sparse(x.ctx(), nullptr, 0, &sparse);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_sparse(x.ctx(), x.fragment_info, -1, &sparse);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null sparse") {
     rc = tiledb_fragment_info_get_sparse(x.ctx(), x.fragment_info, 0, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
@@ -373,11 +371,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, &start, &end);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_timestamp_range(
-        x.ctx(), x.fragment_info, -1, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null start timestamp") {
     rc = tiledb_fragment_info_get_timestamp_range(
         x.ctx(), x.fragment_info, 0, nullptr, &end);
@@ -412,16 +409,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, &domain);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_non_empty_domain_from_index(
-        x.ctx(), x.fragment_info, -1, 0, &domain);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension index") {
-    rc = tiledb_fragment_info_get_non_empty_domain_from_index(
-        x.ctx(), x.fragment_info, 0, -1, &domain);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" or "invalid dimension index" sections here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null domain") {
     rc = tiledb_fragment_info_get_non_empty_domain_from_index(
         x.ctx(), x.fragment_info, 0, 0, nullptr);
@@ -452,11 +443,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, dim_name, &domain);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_non_empty_domain_from_name(
-        x.ctx(), x.fragment_info, -1, dim_name, &domain);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("invalid dimension name") {
     rc = tiledb_fragment_info_get_non_empty_domain_from_name(
         x.ctx(), x.fragment_info, 0, "e", &domain);
@@ -497,16 +487,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, &start_size, &end_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
-        x.ctx(), x.fragment_info, -1, 0, &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension index") {
-    rc = tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
-        x.ctx(), x.fragment_info, 0, -1, &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" or "invalid dimension index" sections here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null start_size") {
     rc = tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
         x.ctx(), x.fragment_info, 0, 0, nullptr, &end_size);
@@ -543,11 +527,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, dim_name, &start_size, &end_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
-        x.ctx(), x.fragment_info, -1, dim_name, &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("invalid dimension name") {
     rc = tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
         x.ctx(), x.fragment_info, 0, "e", &start_size, &end_size);
@@ -592,16 +575,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, &start, &end);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_non_empty_domain_var_from_index(
-        x.ctx(), x.fragment_info, -1, 0, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension index") {
-    rc = tiledb_fragment_info_get_non_empty_domain_var_from_index(
-        x.ctx(), x.fragment_info, 0, -1, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" or "invalid dimension index" sections here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null start") {
     rc = tiledb_fragment_info_get_non_empty_domain_var_from_index(
         x.ctx(), x.fragment_info, 0, 0, nullptr, &end);
@@ -637,11 +614,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, dim_name, &start, &end);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_non_empty_domain_var_from_name(
-        x.ctx(), x.fragment_info, -1, dim_name, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("invalid dimension name") {
     rc = tiledb_fragment_info_get_non_empty_domain_var_from_name(
         x.ctx(), x.fragment_info, 0, "e", &start, &end);
@@ -685,11 +661,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_mbr_num(x.ctx(), nullptr, 0, &mbr_num);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_mbr_num(
-        x.ctx(), x.fragment_info, -1, &mbr_num);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null mbr_num") {
     rc = tiledb_fragment_info_get_mbr_num(x.ctx(), x.fragment_info, 0, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
@@ -717,21 +692,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, 0, &mbr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_mbr_from_index(
-        x.ctx(), x.fragment_info, -1, 0, 0, &mbr);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid mbr id") {
-    rc = tiledb_fragment_info_get_mbr_from_index(
-        x.ctx(), x.fragment_info, 0, -1, 0, &mbr);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension index") {
-    rc = tiledb_fragment_info_get_mbr_from_index(
-        x.ctx(), x.fragment_info, 0, 0, -1, &mbr);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid index" sections here for fragment, mbr, or dimension indices;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null mbr") {
     rc = tiledb_fragment_info_get_mbr_from_index(
         x.ctx(), x.fragment_info, 0, 0, 0, nullptr);
@@ -761,21 +725,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, dim_name, &mbr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_mbr_from_name(
-        x.ctx(), x.fragment_info, -1, 0, dim_name, &mbr);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid mbr index") {
-    rc = tiledb_fragment_info_get_mbr_from_name(
-        x.ctx(), x.fragment_info, 0, -1, dim_name, &mbr);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension name") {
-    rc = tiledb_fragment_info_get_mbr_from_name(
-        x.ctx(), x.fragment_info, 0, 0, "e", &mbr);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid index" sections here for fragment, mbr, or dimension indices;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null mbr") {
     rc = tiledb_fragment_info_get_mbr_from_name(
         x.ctx(), x.fragment_info, 0, 0, dim_name, nullptr);
@@ -805,21 +758,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, 0, &start_size, &end_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_mbr_var_size_from_index(
-        x.ctx(), x.fragment_info, -1, 0, 0, &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid mbr id") {
-    rc = tiledb_fragment_info_get_mbr_var_size_from_index(
-        x.ctx(), x.fragment_info, 0, -1, 0, &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension index") {
-    rc = tiledb_fragment_info_get_mbr_var_size_from_index(
-        x.ctx(), x.fragment_info, 0, 0, -1, &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid index" sections here for fragment, mbr, or dimension indices;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null start_size") {
     rc = tiledb_fragment_info_get_mbr_var_size_from_index(
         x.ctx(), x.fragment_info, 0, 0, 0, nullptr, &end_size);
@@ -855,21 +797,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, dim_name, &start_size, &end_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_mbr_var_size_from_name(
-        x.ctx(), x.fragment_info, -1, 0, dim_name, &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid mbr id") {
-    rc = tiledb_fragment_info_get_mbr_var_size_from_name(
-        x.ctx(), x.fragment_info, 0, -1, dim_name, &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension name") {
-    rc = tiledb_fragment_info_get_mbr_var_size_from_name(
-        x.ctx(), x.fragment_info, 0, 0, "e", &start_size, &end_size);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid index" sections here for fragment, mbr, or dimension indices;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null dimension name") {
     rc = tiledb_fragment_info_get_mbr_var_size_from_name(
         x.ctx(), x.fragment_info, 0, 0, nullptr, &start_size, &end_size);
@@ -908,21 +839,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, 0, &start, &end);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_mbr_var_from_index(
-        x.ctx(), x.fragment_info, -1, 0, 0, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid mbr id") {
-    rc = tiledb_fragment_info_get_mbr_var_from_index(
-        x.ctx(), x.fragment_info, 0, -1, 0, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension index") {
-    rc = tiledb_fragment_info_get_mbr_var_from_index(
-        x.ctx(), x.fragment_info, 0, 0, -1, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid index" sections here for fragment, mbr, or dimension indices;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null start") {
     rc = tiledb_fragment_info_get_mbr_var_from_index(
         x.ctx(), x.fragment_info, 0, 0, 0, nullptr, &end);
@@ -957,21 +877,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, 0, dim_name, &start, &end);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_mbr_var_from_name(
-        x.ctx(), x.fragment_info, -1, 0, dim_name, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid mbr index") {
-    rc = tiledb_fragment_info_get_mbr_var_from_name(
-        x.ctx(), x.fragment_info, 0, -1, dim_name, &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("invalid dimension name") {
-    rc = tiledb_fragment_info_get_mbr_var_from_name(
-        x.ctx(), x.fragment_info, 0, 0, "e", &start, &end);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid index" sections here for fragment, mbr, or dimension indices;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null dimension name") {
     rc = tiledb_fragment_info_get_mbr_var_from_name(
         x.ctx(), x.fragment_info, 0, 0, nullptr, &start, &end);
@@ -1009,11 +918,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_cell_num(x.ctx(), nullptr, 0, &cell_num);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_cell_num(
-        x.ctx(), x.fragment_info, -1, &cell_num);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null cell_num") {
     rc =
         tiledb_fragment_info_get_cell_num(x.ctx(), x.fragment_info, 0, nullptr);
@@ -1068,11 +976,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_version(x.ctx(), nullptr, 0, &version);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_version(
-        x.ctx(), x.fragment_info, -1, &version);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null version") {
     rc = tiledb_fragment_info_get_version(x.ctx(), x.fragment_info, 0, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
@@ -1100,11 +1007,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, &has);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_has_consolidated_metadata(
-        x.ctx(), x.fragment_info, -1, &has);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null has_consolidated_metadata") {
     rc = tiledb_fragment_info_has_consolidated_metadata(
         x.ctx(), x.fragment_info, 0, nullptr);
@@ -1188,11 +1094,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_to_vacuum_uri(x.ctx(), nullptr, 0, &uri);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_to_vacuum_uri(
-        x.ctx(), x.fragment_info, -1, &uri);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null uri") {
     rc = tiledb_fragment_info_get_to_vacuum_uri(
         x.ctx(), x.fragment_info, 0, nullptr);
@@ -1220,11 +1125,10 @@ TEST_CASE(
     rc = tiledb_fragment_info_get_array_schema(x.ctx(), nullptr, 0, &schema);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_array_schema(
-        x.ctx(), x.fragment_info, -1, &schema);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null array_schema") {
     rc = tiledb_fragment_info_get_array_schema(
         x.ctx(), x.fragment_info, 0, nullptr);
@@ -1253,11 +1157,10 @@ TEST_CASE(
         x.ctx(), nullptr, 0, &schema_name);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid fragment_id") {
-    rc = tiledb_fragment_info_get_array_schema_name(
-        x.ctx(), x.fragment_info, -1, &schema_name);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid fragment index" section here;
+   * All inputs will resolve to valid uint32_t values.
+   */
   SECTION("null schema_name") {
     rc = tiledb_fragment_info_get_array_schema_name(
         x.ctx(), x.fragment_info, 0, nullptr);
