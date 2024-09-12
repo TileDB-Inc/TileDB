@@ -28,9 +28,9 @@
  * @section DESCRIPTION
  *
  * When run, this program will create a 2D sparse array with one dimension a
- * string type, and the other an integer. This models closely what a dataframe
- * looks like. The program will write some data to it, and compute the min
- * and max values of the string dimension using aggregates.
+ * string type, and the other an integer. The program will write some data to
+ * it, and run a query to select coordinates and compute the min and max values
+ * of the string dimension using aggregates.
  */
 
 #include <stdio.h>
@@ -363,4 +363,3 @@ int main() {
   read_array();
   return 0;
 }
-
