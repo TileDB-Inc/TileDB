@@ -1668,12 +1668,6 @@ void ArraySchema::expand_current_domain(
         "The argument specified for current domain expansion is nullptr.");
   }
 
-  if (this->dense()) {
-    throw ArraySchemaException(
-        "Expanding the current domain on a TileDB dense array is not "
-        "supported.");
-  }
-
   // Check that the new current domain expands the existing one and not shrinks
   // it. Every current domain covers an empty current domain.
   if (!current_domain_->empty() &&
@@ -1699,11 +1693,6 @@ void ArraySchema::set_current_domain(shared_ptr<CurrentDomain> current_domain) {
         "The argument specified for setting the current domain on the "
         "schema is nullptr.");
   }
-  if (this->dense()) {
-    throw ArraySchemaException(
-        "Setting a current domain on a TileDB dense array is not supported.");
-  }
-
   current_domain_ = current_domain;
 }
 
