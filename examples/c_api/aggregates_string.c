@@ -105,7 +105,7 @@ void write_array() {
   uint64_t coords_rows_offsets_size_1 = sizeof(coords_rows_offsets_1);
   int coords_cols_1[] = {1, 2, 3, 4};
   uint64_t coords_cols_size_1 = sizeof(coords_cols_1);
-  int data_1[] = {10, 20, 30, 40};
+  int data_1[] = {3, 3, 5, 3};
   uint64_t data_size_1 = sizeof(data_1);
 
   // Create first query
@@ -142,7 +142,7 @@ void write_array() {
   uint64_t coords_rows_offsets_size_2 = sizeof(coords_rows_offsets_2);
   int coords_cols_2[] = {1, 2, 3, 4};
   uint64_t coords_cols_size_2 = sizeof(coords_cols_2);
-  int data_2[] = {50, 60, 70, 80};
+  int data_2[] = {6, 6, 3, 4};
   uint64_t data_size_2 = sizeof(data_2);
 
   // Reset buffers
@@ -186,8 +186,6 @@ void read_array() {
   tiledb_array_alloc(ctx, array_name, &array);
   tiledb_array_open(ctx, array, TILEDB_READ);
 
-  // Read entire array - no subarray
-
   // Calculate maximum buffer sizes
   uint64_t max_size = 64;  // variable-length result has unknown size
   uint64_t max_offsets_size = sizeof(uint64_t);
@@ -203,6 +201,14 @@ void read_array() {
   // Create query
   tiledb_query_t* query;
   tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+
+  // Query cells with a >= 4
+  tiledb_query_condition_t* qc;
+  tiledb_query_condition_alloc(ctx, &qc);
+  const int32_t a_lower_bound = 4;
+  tiledb_query_condition_init(
+      ctx, qc, "a", &a_lower_bound, sizeof(int32_t), TILEDB_GE);
+  tiledb_query_set_condition(ctx, query, qc);
 
   // Get the default channel from the query
   tiledb_query_channel_t* default_channel;
