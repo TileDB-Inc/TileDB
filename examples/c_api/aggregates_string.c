@@ -192,11 +192,22 @@ void read_array() {
   uint64_t min_size = 64;  // variable-length result has unknown size
   uint64_t min_offsets_size = sizeof(uint64_t);
 
-  // Result buffers (1 cell each of unknown size)
+  // Aggregate result buffers (1 cell each of unknown size)
   char* max = (char*)malloc(max_size);
   uint64_t max_offsets[1];
   char* min = (char*)malloc(min_size);
   uint64_t min_offsets[1];
+
+  // Attribute/dimension buffers
+  // (unknown number of cells, buffer sizes are estimates)
+  char rows_data[64];
+  uint64_t rows_data_size = sizeof(rows_data);
+  uint64_t rows_offsets[8];
+  uint64_t rows_offsets_size = sizeof(rows_offsets);
+  int32_t cols_data[8];
+  uint64_t cols_size = sizeof(cols_data);
+  int32_t a_data[8];
+  uint64_t a_size = sizeof(a_data);
 
   // Create query
   tiledb_query_t* query;
@@ -209,6 +220,18 @@ void read_array() {
   tiledb_query_condition_init(
       ctx, qc, "a", &a_lower_bound, sizeof(int32_t), TILEDB_GE);
   tiledb_query_set_condition(ctx, query, qc);
+
+  // Add attribute/dimension result buffers
+  TRY(ctx,
+      tiledb_query_set_data_buffer(
+          ctx, query, "rows", &rows_data[0], &rows_data_size));
+  TRY(ctx,
+      tiledb_query_set_offsets_buffer(
+          ctx, query, "rows", &rows_offsets[0], &rows_offsets_size));
+  TRY(ctx,
+      tiledb_query_set_data_buffer(
+          ctx, query, "cols", &cols_data[0], &cols_size));
+  TRY(ctx, tiledb_query_set_data_buffer(ctx, query, "a", &a_data[0], &a_size));
 
   // Get the default channel from the query
   tiledb_query_channel_t* default_channel;
@@ -263,6 +286,25 @@ void read_array() {
       "Max has data %.*s\n",
       (int)(max_size - max_offsets[0]),
       &max[max_offsets[0]]);
+
+  uint64_t result_num = (uint64_t)(a_size / sizeof(int32_t));
+  for (uint64_t r = 0; r < result_num; r++) {
+    // For strings we must compute the length based on the offsets
+    uint64_t row_start = rows_offsets[r];
+    uint64_t row_end =
+        r == result_num - 1 ? result_num : rows_offsets[r + 1] - 1;
+    const int row_value_size = row_end - row_start + 1;
+    const char* row_value = &rows_data[row_start];
+
+    const int32_t col_value = cols_data[r];
+    const int32_t a_value = a_data[r];
+    printf(
+        "Cell (%.*s, %i) has data %d\n",
+        row_value_size,
+        row_value,
+        col_value,
+        a_value);
+  }
 
   // Clean up
   free((void*)min);
