@@ -176,6 +176,32 @@ void write_array() {
   tiledb_ctx_free(&ctx);
 }
 
+void print_cells(
+    uint64_t result_num,
+    uint64_t* rows_offsets,
+    uint64_t rows_data_size,
+    char* rows_data,
+    int32_t* cols_data,
+    int32_t* a_data) {
+  for (uint64_t r = 0; r < result_num; r++) {
+    // For strings we must compute the length based on the offsets
+    uint64_t row_start = rows_offsets[r];
+    uint64_t row_end =
+        r == result_num - 1 ? rows_data_size : rows_offsets[r + 1] - 1;
+    const int row_value_size = row_end - row_start + 1;
+    const char* row_value = &rows_data[row_start];
+
+    const int32_t col_value = cols_data[r];
+    const int32_t a_value = a_data[r];
+    printf(
+        "Cell (%.*s, %i) has data %d\n",
+        row_value_size,
+        row_value,
+        col_value,
+        a_value);
+  }
+}
+
 void read_array() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
@@ -200,13 +226,14 @@ void read_array() {
 
   // Attribute/dimension buffers
   // (unknown number of cells, buffer sizes are estimates)
-  char rows_data[64];
+  const size_t NUM_CELLS = 2;
+  char rows_data[NUM_CELLS * 16];
   uint64_t rows_data_size = sizeof(rows_data);
-  uint64_t rows_offsets[8];
+  uint64_t rows_offsets[NUM_CELLS];
   uint64_t rows_offsets_size = sizeof(rows_offsets);
-  int32_t cols_data[8];
+  int32_t cols_data[NUM_CELLS];
   uint64_t cols_size = sizeof(cols_data);
-  int32_t a_data[8];
+  int32_t a_data[NUM_CELLS];
   uint64_t a_size = sizeof(a_data);
 
   // Create query
@@ -272,12 +299,34 @@ void read_array() {
           ctx, query, "Max(rows)", max_offsets, &max_offsets_size));
 
   // Submit query
-  tiledb_query_submit(ctx, query);
+  TRY(ctx, tiledb_query_submit(ctx, query));
+
+  tiledb_query_status_t status;
+  TRY(ctx, tiledb_query_get_status(ctx, query, &status));
+  while (status == TILEDB_INCOMPLETE) {
+    print_cells(
+        a_size / sizeof(int32_t),
+        rows_offsets,
+        rows_data_size,
+        rows_data,
+        cols_data,
+        a_data);
+
+    TRY(ctx, tiledb_query_submit(ctx, query));
+    TRY(ctx, tiledb_query_get_status(ctx, query, &status));
+  }
 
   // Close array
   tiledb_array_close(ctx, array);
 
-  // Print out the results.
+  // Print out the final results.
+  print_cells(
+      a_size / sizeof(int32_t),
+      rows_offsets,
+      rows_data_size,
+      rows_data,
+      cols_data,
+      a_data);
   printf(
       "Min has data %.*s\n",
       (int)(min_size - min_offsets[0]),
@@ -286,25 +335,6 @@ void read_array() {
       "Max has data %.*s\n",
       (int)(max_size - max_offsets[0]),
       &max[max_offsets[0]]);
-
-  uint64_t result_num = (uint64_t)(a_size / sizeof(int32_t));
-  for (uint64_t r = 0; r < result_num; r++) {
-    // For strings we must compute the length based on the offsets
-    uint64_t row_start = rows_offsets[r];
-    uint64_t row_end =
-        r == result_num - 1 ? result_num : rows_offsets[r + 1] - 1;
-    const int row_value_size = row_end - row_start + 1;
-    const char* row_value = &rows_data[row_start];
-
-    const int32_t col_value = cols_data[r];
-    const int32_t a_value = a_data[r];
-    printf(
-        "Cell (%.*s, %i) has data %d\n",
-        row_value_size,
-        row_value,
-        col_value,
-        a_value);
-  }
 
   // Clean up
   free((void*)min);
