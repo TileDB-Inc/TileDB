@@ -415,8 +415,7 @@ capi_return_t tiledb_serialize_group(
 
   // ALERT: Conditional Handle Construction
   auto buf = tiledb_buffer_handle_t::make_handle(
-      ctx->resources().serialization_memory_tracker()->get_resource(
-          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
+      ctx->resources().serialization_memory_tracker());
 
   // We're not using throw_if_not_ok here because we have to
   // clean up our allocated buffer if serialization fails.
@@ -461,8 +460,7 @@ capi_return_t tiledb_serialize_group_metadata(
 
   // ALERT: Conditional Handle Construction
   auto buf = tiledb_buffer_handle_t::make_handle(
-      ctx->resources().serialization_memory_tracker()->get_resource(
-          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
+      ctx->resources().serialization_memory_tracker());
 
   // Get metadata to serialize, this will load it if it does not exist
   auto metadata = group->group().metadata();

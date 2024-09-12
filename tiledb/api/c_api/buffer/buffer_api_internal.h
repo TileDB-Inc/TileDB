@@ -34,6 +34,7 @@
 #define TILEDB_CAPI_BUFFER_API_INTERNAL_H
 
 #include "../../c_api_support/handle/handle.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 
@@ -45,26 +46,36 @@ struct tiledb_buffer_handle_t
   static constexpr std::string_view object_type_name{"buffer"};
 
  private:
+  shared_ptr<tiledb::sm::MemoryTracker> memory_tracker_;
   tiledb::sm::SerializationBuffer buffer_;
   tiledb::sm::Datatype datatype_;
 
  public:
-  explicit tiledb_buffer_handle_t(decltype(buffer_)::allocator_type allocator)
-      : buffer_(allocator)
+  explicit tiledb_buffer_handle_t(
+      shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+      : memory_tracker_(std::move(memory_tracker))
+      , buffer_(memory_tracker_->get_resource(
+            tiledb::sm::MemoryType::SERIALIZATION_BUFFER))
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
 
   explicit tiledb_buffer_handle_t(
-      size_t size, decltype(buffer_)::allocator_type allocator)
-      : buffer_(size, allocator)
+      size_t size, shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+      : memory_tracker_(std::move(memory_tracker))
+      , buffer_(
+            size,
+            memory_tracker_->get_resource(
+                tiledb::sm::MemoryType::SERIALIZATION_BUFFER))
       , datatype_(tiledb::sm::Datatype::UINT8) {
   }
 
   explicit tiledb_buffer_handle_t(
       const void* data,
       uint64_t size,
-      decltype(buffer_)::allocator_type allocator)
-      : buffer_(allocator)
+      shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+      : memory_tracker_(std::move(memory_tracker))
+      , buffer_(memory_tracker_->get_resource(
+            tiledb::sm::MemoryType::SERIALIZATION_BUFFER))
       , datatype_(tiledb::sm::Datatype::UINT8) {
     buffer_.assign(
         tiledb::sm::SerializationBuffer::NonOwned,

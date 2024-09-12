@@ -188,17 +188,9 @@ tiledb::sm::ConsolidationPlan CppConsolidationPlanFx::call_handler(
     const Array& array,
     tiledb::sm::SerializationType stype) {
   auto req_buf = tiledb_buffer_handle_t::make_handle(
-      ctx_.ptr()
-          .get()
-          ->resources()
-          .serialization_memory_tracker()
-          ->get_resource(tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
+      ctx_.ptr().get()->resources().serialization_memory_tracker());
   auto resp_buf = tiledb_buffer_handle_t::make_handle(
-      ctx_.ptr()
-          .get()
-          ->resources()
-          .serialization_memory_tracker()
-          ->get_resource(tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
+      ctx_.ptr().get()->resources().serialization_memory_tracker());
 
   tiledb::sm::serialization::serialize_consolidation_plan_request(
       fragment_size, cfg_.ptr()->config(), stype, req_buf->buffer());
