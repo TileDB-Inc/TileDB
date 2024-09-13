@@ -174,6 +174,14 @@ void OndemandFragmentMetadata::load_tile_offsets(
   // Get tile offsets
   if (tile_offsets_num != 0) {
     auto size = tile_offsets_num * sizeof(uint64_t);
+    if (memory_tracker_->get_memory_available() < size) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
 
     // Get tile offsets
     tile_offsets_[idx].resize(tile_offsets_num);
@@ -215,6 +223,14 @@ void OndemandFragmentMetadata::load_tile_var_offsets(
   // Get variable tile offsets
   if (tile_var_offsets_num != 0) {
     auto size = tile_var_offsets_num * sizeof(uint64_t);
+    if (memory_tracker_->get_memory_available() < size) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
 
     // Get tile var offsets
     tile_var_offsets_[idx].resize(tile_var_offsets_num);
@@ -251,6 +267,14 @@ void OndemandFragmentMetadata::load_tile_var_sizes(
   // Get variable tile sizes
   if (tile_var_sizes_num != 0) {
     auto size = tile_var_sizes_num * sizeof(uint64_t);
+    if (memory_tracker_->get_memory_available() < size) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
 
     // Get tile var sizes
     tile_var_sizes_[idx].resize(tile_var_sizes_num);
@@ -295,6 +319,14 @@ void OndemandFragmentMetadata::load_tile_validity_offsets(
   // Get tile offsets
   if (tile_validity_offsets_num != 0) {
     auto size = tile_validity_offsets_num * sizeof(uint64_t);
+    if (memory_tracker_->get_memory_available() < size) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
 
     // Get tile validity offsets
     tile_validity_offsets_[idx].resize(tile_validity_offsets_num);

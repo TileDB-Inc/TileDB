@@ -73,6 +73,14 @@ void V1V2PreloadedFragmentMetadata::load_tile_offsets(
       continue;
 
     auto size = tile_offsets_num * sizeof(uint64_t);
+    if (memory_tracker_->get_memory_available() < size) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
 
     // Get tile offsets
     tile_offsets_[i].resize(tile_offsets_num);
@@ -110,6 +118,14 @@ void V1V2PreloadedFragmentMetadata::load_tile_var_offsets(
       continue;
 
     auto size = tile_var_offsets_num * sizeof(uint64_t);
+    if (memory_tracker_->get_memory_available() < size) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
 
     // Get variable tile offsets
     tile_var_offsets_[i].resize(tile_var_offsets_num);
@@ -144,6 +160,14 @@ void V1V2PreloadedFragmentMetadata::load_tile_var_sizes(
       continue;
 
     auto size = tile_var_sizes_num * sizeof(uint64_t);
+    if (memory_tracker_->get_memory_available() < size) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile offsets; Insufficient memory budget; Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
 
     // Get variable tile sizes
     tile_var_sizes_[i].resize(tile_var_sizes_num);
