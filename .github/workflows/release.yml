@@ -101,7 +101,7 @@ jobs:
       - name: Install aarch64 cross compilation prerequisites
         if: ${{ matrix.platform == 'linux-aarch64' }}
         run: |
-          apt-get install -y cmake gcc g++ ninja libtool autoconf pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu curl zip unzip tar
+          sudo apt-get install -y cmake gcc g++ ninja libtool autoconf pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu curl zip unzip tar
       - name: Install manylinux prerequisites
         if: matrix.manylinux
         run: |
