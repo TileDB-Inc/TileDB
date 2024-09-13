@@ -102,6 +102,7 @@ jobs:
         if: ${{ matrix.platform == 'linux-aarch64' }}
         run: |
           sudo apt-get install -y cmake gcc g++ ninja-build libtool autoconf pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu curl zip unzip tar
+          rm -rf ports/libmagic
       - name: Install manylinux prerequisites
         if: matrix.manylinux
         run: |
