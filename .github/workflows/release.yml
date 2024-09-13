@@ -104,9 +104,8 @@ jobs:
           sudo apt-get install -y cmake gcc g++ ninja-build libtool autoconf pkg-config gcc-13-aarch64-linux-gnu g++-13-aarch64-linux-gnu curl zip unzip tar
           sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc /usr/bin/aarch64-linux-gnu-gcc-13 130
           sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-g++ aarch64-linux-gnu-g++ /usr/bin/aarch64-linux-gnu-g++-13 130
-          sudo rm /usr/bin/ld
-          sudo ln -sf /usr/bin/aarch64-linux-gnu-ld /usr/bin/ld
           rm -rf ports/libmagic
+          rm -rf ports/aws-sdk-cpp
       - name: Install manylinux prerequisites
         if: matrix.manylinux
         run: |
