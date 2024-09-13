@@ -31,7 +31,7 @@ if (FALSE AND TILEDB_TESTS) # reserved for later
     find_package(Catch2 REQUIRED)
 
     add_executable(unit_governor EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_governor PUBLIC Catch2::Catch2WithMain)
+    target_link_libraries(unit_governor PUBLIC tdb_Catch2WithMain)
 
     # Sources for code under test
     target_sources(unit_dynamic_memory PUBLIC

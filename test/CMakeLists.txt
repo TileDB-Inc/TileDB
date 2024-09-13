@@ -26,8 +26,6 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch2 REQUIRED)
-
 # Include TileDB core header directories
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # Include the C API directory so that the C++ 'tiledb' file can directly
@@ -309,7 +307,7 @@ if (TILEDB_ARROW_TESTS)
     PUBLIC
       TILEDB_CORE_OBJECTS_ILIB
       TILEDB_CORE_OBJECTS
-      Catch2::Catch2WithMain
+      tdb_Catch2WithMain
       pybind11::embed
       tiledb_test_support_lib
       configuration_definitions

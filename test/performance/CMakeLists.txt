@@ -26,8 +26,6 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch2 REQUIRED)
-
 # These options not exposed in bootstrap script.
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
 
@@ -74,7 +72,7 @@ target_include_directories(
 target_link_libraries(tiledb_explore_msys_handle_leakage
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
-    Catch2::Catch2WithMain
+    tdb_Catch2WithMain
     tiledb_test_support_lib
 )
 

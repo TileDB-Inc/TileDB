@@ -25,8 +25,7 @@
 #
 
 add_executable(unit_capi_handle EXCLUDE_FROM_ALL)
-find_package(Catch2 REQUIRED)
-target_link_libraries(unit_capi_handle PUBLIC Catch2::Catch2WithMain)
+target_link_libraries(unit_capi_handle PUBLIC tdb_Catch2WithMain)
 
 # Sources for code under test
 target_link_libraries(unit_capi_handle PUBLIC handle)
