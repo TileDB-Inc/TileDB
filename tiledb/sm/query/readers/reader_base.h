@@ -269,6 +269,9 @@ class ReaderBase : public StrategyBase {
   /** If the user requested timestamps attribute in the query */
   bool user_requested_timestamps_;
 
+  /** Are we doing deletes consolidation (without purge option). */
+  bool deletes_consolidation_no_purge_;
+
   /**
    * If the special timestamps attribute should be loaded to memory for
    * this query
@@ -280,6 +283,12 @@ class ReaderBase : public StrategyBase {
    * deletes. This matches the fragments in 'fragment_metadata_'
    */
   std::vector<bool> timestamps_needed_for_deletes_and_updates_;
+
+  /** Are dimensions var sized. */
+  std::vector<bool> is_dim_var_size_;
+
+  /** Names of dim/attr loaded for query condition. */
+  std::vector<std::string> qc_loaded_attr_names_;
 
   /** Names of dim/attr loaded for query condition. */
   std::unordered_set<std::string> qc_loaded_attr_names_set_;
@@ -304,6 +313,9 @@ class ReaderBase : public StrategyBase {
    * Maps aggregate names to their buffers.
    * */
   std::unordered_map<std::string, QueryBuffer>& aggregate_buffers_;
+
+  /** Per fragment tile offsets memory usage. */
+  std::vector<uint64_t> per_frag_tile_offsets_usage_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -337,6 +349,13 @@ class ReaderBase : public StrategyBase {
 
     return true;
   }
+
+  /**
+   * Computes the required size for loading tile offsets, per fragments.
+   *
+   * @return Required memory for loading tile offsets, per fragments.
+   */
+  std::vector<uint64_t> tile_offset_sizes();
 
   /**
    * Returns if we need to process partial timestamp condition for this

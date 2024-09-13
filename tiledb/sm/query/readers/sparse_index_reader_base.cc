@@ -75,8 +75,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_(config_, reader_string, params.memory_budget())
     , include_coords_(include_coords)
     , memory_used_for_coords_total_(0)
-    , deletes_consolidation_no_purge_(
-          buffers_.count(constants::delete_timestamps) != 0)
     , partial_tile_offsets_loading_(false) {
   // Sanity checks
   if (!params.skip_checks_serialization() && buffers_.empty() &&
@@ -139,128 +137,6 @@ uint64_t SparseIndexReaderBase::available_memory() {
   return memory_budget_.total_budget() - memory_used_for_coords_total_ -
          tmp_read_state_.memory_used_tile_ranges() -
          array_memory_tracker_->get_memory_usage();
-}
-
-std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
-  auto timer_se = stats_->start_timer("tile_offset_sizes");
-
-  // For easy reference.
-  std::vector<uint64_t> ret(fragment_metadata_.size());
-  const auto dim_num = array_schema_.dim_num();
-
-  // Compute the size of tile offsets per fragments.
-  const auto relevant_fragments = subarray_.relevant_fragments();
-  throw_if_not_ok(parallel_for(
-      &resources_.compute_tp(), 0, relevant_fragments.size(), [&](uint64_t i) {
-        // For easy reference.
-        auto frag_idx = relevant_fragments[i];
-        auto& fragment = fragment_metadata_[frag_idx];
-        const auto& schema = fragment->array_schema();
-        const auto tile_num = fragment->tile_num();
-
-        // Compute the number of dimensions/attributes requiring offsets.
-        uint64_t num = 0;
-
-        // For fragments with version smaller than 5 we have zipped coords.
-        // Otherwise we load each dimensions independently.
-        if (fragment->version() < 5) {
-          num = 1;
-        } else {
-          for (unsigned d = 0; d < dim_num; ++d) {
-            // Fixed tile (offsets or fixed data).
-            num++;
-
-            // If var size, we load var offsets and var tile sizes.
-            if (is_dim_var_size_[d]) {
-              num += 2;
-            }
-          }
-        }
-
-        // Process everything loaded for query condition.
-        for (auto& name : qc_loaded_attr_names_) {
-          // Not a member of array schema, this field was added in array
-          // schema evolution, ignore for this fragment's tile offsets.
-          // Also skip dimensions.
-          if (!schema->is_field(name) || schema->is_dim(name)) {
-            continue;
-          }
-
-          // Fixed tile (offsets or fixed data).
-          num++;
-
-          // If var size, we load var offsets and var tile sizes.
-          const auto attr = schema->attribute(name);
-          num += 2 * attr->var_size();
-
-          // If nullable, we load nullable offsets.
-          num += attr->nullable();
-        }
-
-        // Process everything loaded for user requested data.
-        for (auto& it : buffers_) {
-          const auto& name = it.first;
-
-          // Skip dimensions and attributes loaded by query condition as they
-          // are processed above. Special attributes (timestamps, delete
-          // timestamps, etc.) are processed below.
-          if (array_schema_.is_dim(name) || !schema->is_field(name) ||
-              qc_loaded_attr_names_set_.count(name) != 0 ||
-              schema->is_special_attribute(name)) {
-            continue;
-          }
-
-          // Fixed tile (offsets or fixed data).
-          num++;
-
-          // If var size, we load var offsets and var tile sizes.
-          const auto attr = schema->attribute(name);
-          num += 2 * attr->var_size();
-
-          // If nullable, we load nullable offsets.
-          num += attr->nullable();
-        }
-
-        // Add timestamps if required.
-        if (!timestamps_not_present(constants::timestamps, frag_idx)) {
-          num++;
-        }
-
-        // Add delete metadata if required.
-        if (!delete_meta_not_present(constants::delete_timestamps, frag_idx)) {
-          num++;
-          num += deletes_consolidation_no_purge_;
-        }
-
-        // Finally set the size of the loaded data.
-
-        // The expected size of the tile offsets
-        unsigned offsets_size = num * tile_num * sizeof(uint64_t);
-
-        // Other than the offsets themselves, there is also memory used for the
-        // initialization of the vectors that hold them. This initialization
-        // takes place in LoadedFragmentMetadata::resize_offsets()
-
-        // Calculate the number of fields
-        unsigned num_fields = schema->attribute_num() + 1 +
-                              fragment->has_timestamps() +
-                              fragment->has_delete_meta() * 2;
-
-        // If version < 5 we use zipped coordinates, otherwise separate
-        num_fields += (fragment->version() >= 5) ? schema->dim_num() : 0;
-
-        // The additional memory required for the vectors to
-        // store the tile offsets. The number of fields is calculated above.
-        // Each vector requires 32 bytes. Each field requires 4 vectors. These
-        // are: tile_offsets_, tile_var_offsets_, tile_var_sizes_,
-        // tile_validity_offsets_ and are located in loaded_fragment_metadata.h
-        unsigned offsets_init_size = num_fields * 4 * 32;
-
-        ret[frag_idx] = offsets_size + offsets_init_size;
-        return Status::Ok();
-      }));
-
-  return ret;
 }
 
 bool SparseIndexReaderBase::has_post_deduplication_conditions(

@@ -613,20 +613,11 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Dimension names. */
   std::vector<std::string> dim_names_;
 
-  /** Are dimensions var sized. */
-  std::vector<bool> is_dim_var_size_;
-
   /** Memory used for coordinates tiles. */
   std::atomic<uint64_t> memory_used_for_coords_total_;
 
   /** Are we in elements mode. */
   bool elements_mode_;
-
-  /** Names of dim/attr loaded for query condition. */
-  std::vector<std::string> qc_loaded_attr_names_;
-
-  /** Are we doing deletes consolidation (without purge option). */
-  bool deletes_consolidation_no_purge_;
 
   /** Do we allow partial tile offset loading for this query? */
   bool partial_tile_offsets_loading_;
@@ -637,22 +628,12 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Attributes for which to load tile offsets. */
   std::vector<std::string> attr_tile_offsets_to_load_;
 
-  /** Per fragment tile offsets memory usage. */
-  std::vector<uint64_t> per_frag_tile_offsets_usage_;
-
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
 
   /** @return Available memory. */
   uint64_t available_memory();
-
-  /**
-   * Computes the required size for loading tile offsets, per fragments.
-   *
-   * @return Required memory for loading tile offsets, per fragments.
-   */
-  std::vector<uint64_t> tile_offset_sizes();
 
   /**
    * Returns if there is any condition to be applied post deduplication. This
