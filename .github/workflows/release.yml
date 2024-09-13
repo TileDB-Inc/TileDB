@@ -144,7 +144,6 @@ jobs:
   Test-Release-Artifacts:
     needs:
       - Package-Binary-Release
-      - Package-Binary-Release-Arm64-Linux
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
