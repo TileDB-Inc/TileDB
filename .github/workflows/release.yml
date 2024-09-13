@@ -57,7 +57,7 @@ jobs:
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux2014_x86_64
           - platform: linux-aarch64
-            os: ubuntu-22.04
+            os: ubuntu-24.04
             cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
             triplet: arm64-linux-release
           - platform: macos-x86_64
