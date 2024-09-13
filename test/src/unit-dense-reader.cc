@@ -888,6 +888,36 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CDenseFx,
+    "Dense reader: budget too small for tile offsets",
+    "[dense-reader][budget-too-small-tile-offsets]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  // Write a fragment.
+  int subarray[] = {1, NUM_CELLS};
+  std::vector<int> data(NUM_CELLS);
+  std::iota(data.begin(), data.end(), 1);
+  uint64_t data_size = data.size() * sizeof(int);
+  write_1d_fragment(subarray, data.data(), &data_size);
+
+  total_budget_ = "600";
+  tile_upper_memory_limit_ = "200";
+  update_config();
+
+  // Try to read.
+  int data_r[NUM_CELLS] = {0};
+  uint64_t data_r_size = sizeof(data_r);
+  read(
+      subarray,
+      data_r,
+      &data_r_size,
+      0,
+      "DenseReader: Cannot load tile offsets, increase memory budget");
+}
+
+TEST_CASE_METHOD(
+    CDenseFx,
     "Dense reader: tile budget exceeded, fixed attribute",
     "[dense-reader][tile-budget-exceeded][fixed]") {
   int qc_index = GENERATE(0, 1, 2);
@@ -939,7 +969,7 @@ TEST_CASE_METHOD(
   uint64_t data_size = data.size() * sizeof(int);
   write_1d_fragment(subarray, data.data(), &data_size);
 
-  total_budget_ = "420";
+  total_budget_ = "804";
   tile_upper_memory_limit_ = "50";
   update_config();
 
@@ -1022,7 +1052,7 @@ TEST_CASE_METHOD(
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
   // load one as the budget is split across two potential reads.
-  total_budget_ = "460";
+  total_budget_ = "840";
   tile_upper_memory_limit_ = "210";
   update_config();
 
