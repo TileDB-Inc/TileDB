@@ -153,13 +153,23 @@ TEST_CASE_METHOD(
     CurrentDomainFx,
     "C++ API: CurrentDomain - Add to ArraySchema",
     "[cppapi][ArraySchema][currentDomain]") {
+
+  tiledb_array_type_t type = TILEDB_SPARSE;
+  SECTION("Dense") {
+    type = TILEDB_DENSE;
+  }
+
+  SECTION("Sparse"){
+    // do nothing
+  }
+
   // Create domain.
   tiledb::Domain domain(ctx_);
   auto d = tiledb::Dimension::create<int32_t>(ctx_, "d", {{1, 999}}, 2);
   domain.add_dimension(d);
 
   // Create array schema.
-  tiledb::ArraySchema schema(ctx_, TILEDB_SPARSE);
+  tiledb::ArraySchema schema(ctx_, type);
   schema.set_domain(domain);
   schema.add_attribute(tiledb::Attribute::create<int>(ctx_, "a"));
 
@@ -191,6 +201,15 @@ TEST_CASE_METHOD(
     "[cppapi][ArraySchema][currentDomain]") {
   const std::string array_name = "test_current_domain_expansion";
 
+  tiledb_array_type_t type = TILEDB_SPARSE;
+  SECTION("Dense") {
+    type = TILEDB_DENSE;
+  }
+
+  SECTION("Sparse"){
+    // do nothing
+  }
+
   tiledb::VFS vfs(ctx_);
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
@@ -202,7 +221,7 @@ TEST_CASE_METHOD(
   domain.add_dimension(d);
 
   // Create array schema.
-  tiledb::ArraySchema schema(ctx_, TILEDB_SPARSE);
+  tiledb::ArraySchema schema(ctx_, type);
   schema.set_domain(domain);
   schema.add_attribute(tiledb::Attribute::create<int>(ctx_, "a"));
 
