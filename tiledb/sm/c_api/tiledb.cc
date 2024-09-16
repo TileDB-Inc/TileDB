@@ -1909,7 +1909,8 @@ int32_t tiledb_deserialize_query_and_array(
 
   // Create array object
   *array = tiledb_array_t::make_handle(
-      ctx->resources(), tiledb::sm::URI(array_uri, URI::must_be_valid));
+      ctx->resources(),
+      tiledb::sm::URI(array_uri, tiledb::sm::URI::must_be_valid));
 
   // First deserialize the array included in the query
   auto memory_tracker = ctx->resources().create_memory_tracker();
@@ -1957,8 +1958,8 @@ int32_t tiledb_deserialize_query_and_array(
         client_side == 1,
         nullptr,
         (*query)->query_,
-      &ctx->resources().compute_tp(),
-      ctx->resources().serialization_memory_tracker()));
+        &ctx->resources().compute_tp(),
+        ctx->resources().serialization_memory_tracker()));
   } catch (...) {
     delete *query;
     *query = nullptr;

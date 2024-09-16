@@ -33,6 +33,6 @@ commence(unit_test capi_array)
     capi_array_schema_stub
     capi_attribute_stub
     capi_domain_stub
-    tiledb_test_support_lib
   )
+  this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)
