@@ -74,8 +74,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , tmp_read_state_(array_->fragment_metadata().size())
     , memory_budget_(config_, reader_string, params.memory_budget())
     , include_coords_(include_coords)
-    , memory_used_for_coords_total_(0)
-    , partial_tile_offsets_loading_(false) {
+    , memory_used_for_coords_total_(0) {
   // Sanity checks
   if (!params.skip_checks_serialization() && buffers_.empty() &&
       aggregate_buffers_.empty()) {

@@ -248,6 +248,18 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::unordered_set<std::string>& condition_names);
 
   /**
+   * Load partial tile offsets according to a vector of booleans
+   *
+   * @param load_tile_offsets_for_frag Which fragments to load offsets for.
+   * @param names Names to process.
+   * @param var_names Var names to process.
+   */
+  void load_partial_tile_offsets(
+      const std::vector<std::string>& names,
+      const std::vector<std::string>& var_names,
+      const std::vector<bool>& load_tile_offsets_for_frag);
+
+  /**
    * Computes the result space tiles based on the current partition.
    *
    * @tparam T The domain datatype.
@@ -260,10 +272,14 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * @param frag_tile_domains The relevant fragments tile domains.
    * @param iteration_tile_data The iteration data.
    *
-   * @return wait_compute_task_before_read, result_space_tiles.
+   * @return wait_compute_task_before_read, load_tile_offsets_for_frag,
+   * result_space_tiles.
    */
   template <class DimType>
-  tuple<bool, std::map<const DimType*, ResultSpaceTile<DimType>>>
+  tuple<
+      bool,
+      std::vector<bool>,
+      std::map<const DimType*, ResultSpaceTile<DimType>>>
   compute_result_space_tiles(
       const uint64_t t_start,
       const std::vector<std::string>& names,

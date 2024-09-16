@@ -327,20 +327,32 @@ Status DenseReader::dense_read() {
       per_frag_tile_offsets_usage_.begin(),
       per_frag_tile_offsets_usage_.end(),
       static_cast<uint64_t>(0));
-  if (total_tile_offsets_sizes >
-      memory_budget_ - array_memory_tracker_->get_memory_usage()) {
-    throw DenseReaderException(
-        "Cannot load tile offsets, increase memory budget");
+  if (partial_tile_offsets_loading_) {
+    // Tile offsets are less than half of the budget. Disable partial tile
+    // offsets loading.
+    if (total_tile_offsets_sizes <
+        (memory_budget_ - array_memory_tracker_->get_memory_usage()) / 2) {
+      partial_tile_offsets_loading_ = false;
+    }
+  } else {
+    if (total_tile_offsets_sizes >
+        memory_budget_ - array_memory_tracker_->get_memory_usage()) {
+      throw DenseReaderException(
+          "Cannot load tile offsets, increase memory budget");
+    }
   }
 
   auto&& [names, var_names] = field_names_to_process(qc_loaded_attr_names_set_);
 
-  // Pre-load all attribute offsets into memory for attributes
-  // in query condition to be read.
-  load_tile_var_sizes(
-      read_state_.partitioner_.subarray().relevant_fragments(), var_names);
-  load_tile_offsets(
-      read_state_.partitioner_.subarray().relevant_fragments(), names);
+  if (!partial_tile_offsets_loading_) {
+    // Pre-load all attribute offsets into memory for attributes
+    // in query condition to be read.
+    load_tile_var_sizes(
+        read_state_.partitioner_.subarray().relevant_fragments(), var_names);
+    load_tile_offsets(
+        read_state_.partitioner_.subarray().relevant_fragments(), names);
+  }
+
   if (!aggregates_.empty()) {
     load_tile_metadata(
         read_state_.partitioner_.subarray().relevant_fragments(), names);
@@ -389,7 +401,7 @@ Status DenseReader::dense_read() {
 
     // Compute result space tiles. The result space tiles hold all the
     // relevant result tiles of the dense fragments.
-    auto&& [wait_compute_task_before_read_ret, result_space_tiles] =
+    auto&& [wait_compute_task_before_read_ret, load_tile_offsets_for_frag, result_space_tiles] =
         compute_result_space_tiles<DimType>(
             t_start,
             names,
@@ -400,6 +412,10 @@ Status DenseReader::dense_read() {
             frag_tile_domains);
     t_end = t_start + result_space_tiles.size();
     wait_compute_task_before_read |= wait_compute_task_before_read_ret;
+
+    if (partial_tile_offsets_loading_) {
+      load_partial_tile_offsets(names, var_names, load_tile_offsets_for_frag);
+    }
 
     // Create the iteration data.
     shared_ptr<IterationTileData<DimType>> iteration_tile_data =
@@ -749,8 +765,34 @@ DenseReader::field_names_to_process(
   return {names, var_names};
 }
 
+void DenseReader::load_partial_tile_offsets(
+    const std::vector<std::string>& names,
+    const std::vector<std::string>& var_names,
+    const std::vector<bool>& load_tile_offsets_for_frag) {
+  // Free tile offsets that are not needed whilst computing the vector of
+  // fragments to load.
+  std::vector<unsigned> frags_vec;
+  frags_vec.reserve(fragment_metadata_.size());
+  for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
+    if (load_tile_offsets_for_frag[f]) {
+      frags_vec.emplace_back(f);
+    } else {
+      fragment_metadata_[f]->loaded_metadata()->free_tile_offsets();
+    }
+  }
+
+  // Load the tile offsets for the fragments we care about. Note that offsets
+  // already loaded will be skipped.
+  RelevantFragments relevant_fragments(frags_vec);
+  load_tile_var_sizes(relevant_fragments, var_names);
+  load_tile_offsets(relevant_fragments, names);
+}
+
 template <class DimType>
-tuple<bool, std::map<const DimType*, ResultSpaceTile<DimType>>>
+tuple<
+    bool,
+    std::vector<bool>,
+    std::map<const DimType*, ResultSpaceTile<DimType>>>
 DenseReader::compute_result_space_tiles(
     const uint64_t t_start,
     const std::vector<std::string>& names,
@@ -799,6 +841,22 @@ DenseReader::compute_result_space_tiles(
       sizeof(ResultSpaceTile<DimType>) + (1 + dim_num) * 2 * 32 +
       dim_num * (2 * sizeof(DimType) + sizeof(uint64_t));
 
+  // The available memory depends on the partial tile offset loading flag. If we
+  // are doing partial tile offsets loading, we use memory_budget_ -
+  // get_memory_usage, which returns the memory used by the fragment metadata
+  // only. This dosen't factor in tile offsets as we'll consider that memory
+  // whilst loading tiles. If we don't do partial tile offsets loading, we use
+  // get_memory_available on the array memory tracker because that will return
+  // the memory available minus the memory used by the tile offsets.
+  const auto available_memory = array_memory_tracker_->get_memory_available();
+
+  // Keep track for which fragments did we include the tile offsets sizes in the
+  // estimation already.
+  std::vector<bool> tile_offsets_counted(fragment_metadata_.size(), false);
+
+  // Memory used by tile offsets.
+  uint64_t required_memory_tile_offsets = 0;
+
   // Create the vector of result tiles to operate on. We stop once we reach
   // the end or the memory budget. We either reach the tile upper memory limit,
   // which is only for unfiltered data, or the limit of the available budget,
@@ -818,7 +876,10 @@ DenseReader::compute_result_space_tiles(
     ResultSpaceTile<DimType> result_space_tile(query_memory_tracker_);
     result_space_tile.set_start_coords(array_tile_domain.start_coords(tc));
 
-    // Add fragment info to the result space tile
+    // Count the memory needed to load tile offsets for this tile.
+    uint64_t tile_offsets_memory = 0;
+
+    // Add fragment info to the result space tile.
     for (unsigned f = 0; f < fragment_num; ++f) {
       // Check if the fragment overlaps with the space tile
       if (!frag_tile_domains[f].in_tile_domain(tc)) {
@@ -847,6 +908,13 @@ DenseReader::compute_result_space_tiles(
       auto tile_idx = frag_tile_domains[f].tile_pos(tc);
       result_space_tile.set_result_tile(
           frag_idx, tile_idx, *fragment_metadata_[frag_idx].get());
+
+      // If we do partial tile offsets loading, count the tile offsets memory
+      // usage the first tile we need a tile from a fragment.
+      if (partial_tile_offsets_loading_ && !tile_offsets_counted[f]) {
+        tile_offsets_counted[f] = true;
+        tile_offsets_memory += per_frag_tile_offsets_usage_[f];
+      }
     }
 
     // Compute the required memory to load the query condition tiles for the
@@ -868,15 +936,16 @@ DenseReader::compute_result_space_tiles(
     // - We stop if the in memory tile size (unfiltered) is larger than the
     // upper tile memory limit.
     // - We also stop if the estimated memory usage (filtered + unfiltered +
-    // tile structs) is greater than our available memory budget for the
-    // iteration.
+    // tile structs + tile_offsets) is greater than our available memory budget
+    // for the iteration.
     if ((t_end != t_start) &&
         (((required_memory_query_condition_unfiltered +
            unfiltered_condition_memory) > tile_upper_memory_limit_ / 2) ||
          ((required_memory_query_condition_unfiltered +
            unfiltered_condition_memory +
            required_memory_query_condition_filtered +
-           filtered_condition_memory + t_num * est_tile_structs_size) >
+           filtered_condition_memory + t_num * est_tile_structs_size) +
+              tile_offsets_memory + required_memory_tile_offsets >
           available_memory_iteration))) {
       done = true;
       break;
@@ -914,14 +983,16 @@ DenseReader::compute_result_space_tiles(
       // - We stop if the in memory tile size (unfiltered) is larger than the
       // upper tile memory limit.
       // - We also stop if the estimated memory usage (filtered + unfiltered +
-      // tile structs) is greater than our available memory budget for the
-      // iteration.
+      // tile structs + tile offsets) is greater than our available memory
+      // budget for the iteration.
       if ((t_end != t_start) &&
           (((required_memory_unfiltered[r_idx] + tile_memory_unfiltered) >
             tile_upper_memory_limit_ / 2) ||
            ((required_memory_unfiltered[r_idx] + tile_memory_unfiltered +
              required_memory_filtered[r_idx] + tile_memory_filtered +
-             t_num * est_tile_structs_size) > available_memory_iteration))) {
+             t_num * est_tile_structs_size) +
+                tile_offsets_memory + required_memory_tile_offsets >
+            available_memory_iteration))) {
         done = true;
         break;
       } else {
@@ -934,6 +1005,8 @@ DenseReader::compute_result_space_tiles(
       break;
     }
 
+    required_memory_tile_offsets += tile_offsets_memory;
+
     // Insert the result space tile into the map.
     result_space_tiles.emplace(tc, std::move(result_space_tile));
     t_end++;
@@ -944,11 +1017,10 @@ DenseReader::compute_result_space_tiles(
   // in the iteration budget. In that case we just disable processing tiles as
   // others are read so that only one batch is processed at a time.
   if (t_end == t_start + 1) {
-    const auto available_memory = array_memory_tracker_->get_memory_available();
     for (uint64_t r_idx = 0; r_idx < required_memory_filtered.size(); r_idx++) {
-      uint64_t total_memory = required_memory_filtered[r_idx] +
-                              required_memory_unfiltered[r_idx] +
-                              est_tile_structs_size;
+      uint64_t total_memory =
+          required_memory_filtered[r_idx] + required_memory_unfiltered[r_idx] +
+          est_tile_structs_size + required_memory_tile_offsets;
 
       // Disable the multiple iterations if the tiles don't fit in the iteration
       // budget.
@@ -965,7 +1037,8 @@ DenseReader::compute_result_space_tiles(
 
     uint64_t total_memory_condition =
         required_memory_query_condition_filtered +
-        required_memory_query_condition_unfiltered + est_tile_structs_size;
+        required_memory_query_condition_unfiltered + est_tile_structs_size +
+        required_memory_tile_offsets;
 
     // Disable the multiple iterations if the tiles don't fit in the iteration
     // budget.
@@ -981,7 +1054,10 @@ DenseReader::compute_result_space_tiles(
     }
   }
 
-  return {wait_compute_task_before_read, std::move(result_space_tiles)};
+  return {
+      wait_compute_task_before_read,
+      std::move(tile_offsets_counted),
+      std::move(result_space_tiles)};
 }
 
 template <class DimType>

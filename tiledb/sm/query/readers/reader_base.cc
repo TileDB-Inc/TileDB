@@ -84,7 +84,9 @@ ReaderBase::ReaderBase(
     , max_batch_size_(config_.get<uint64_t>("vfs.max_batch_size").value())
     , min_batch_gap_(config_.get<uint64_t>("vfs.min_batch_gap").value())
     , min_batch_size_(config_.get<uint64_t>("vfs.min_batch_size").value())
-    , aggregate_buffers_(params.aggregate_buffers()) {
+    , aggregate_buffers_(params.aggregate_buffers())
+    , partial_tile_offsets_loading_(config_.get<bool>(
+          "sm.partial_tile_offsets_loading", Config::must_find)) {
   if (params.array() != nullptr)
     fragment_metadata_ = params.array()->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());

@@ -70,19 +70,6 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     , tile_offsets_max_frag_idx_(0) {
   // Initialize memory budget variables.
   refresh_config();
-
-  // Get the setting that allows to partially load tile offsets. This is
-  // done for this reader only for now.
-  bool found = false;
-  if (!config_
-           .get<bool>(
-               "sm.partial_tile_offsets_loading",
-               &partial_tile_offsets_loading_,
-               &found)
-           .ok()) {
-    throw SparseUnorderedWithDupsReaderException("Cannot get setting");
-  }
-  assert(found);
 }
 
 /* ****************************** */

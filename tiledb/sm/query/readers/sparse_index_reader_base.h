@@ -619,9 +619,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are we in elements mode. */
   bool elements_mode_;
 
-  /** Do we allow partial tile offset loading for this query? */
-  bool partial_tile_offsets_loading_;
-
   /** Var dimensions/attributes for which to load tile var sizes. */
   std::vector<std::string> var_size_to_load_;
 

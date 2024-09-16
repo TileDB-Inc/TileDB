@@ -317,6 +317,9 @@ class ReaderBase : public StrategyBase {
   /** Per fragment tile offsets memory usage. */
   std::vector<uint64_t> per_frag_tile_offsets_usage_;
 
+  /** Do we allow partial tile offset loading for this query? */
+  bool partial_tile_offsets_loading_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
