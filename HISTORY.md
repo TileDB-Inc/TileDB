@@ -2,7 +2,7 @@
 
 ## Improvements
 
-* Dense reader fails early when tile offsets are too large. [#5311](https://github.com/TileDB-Inc/TileDB/pull/5311)
+* Fail early on dense reads when tile offsets are too large. [#5311](https://github.com/TileDB-Inc/TileDB/pull/5311)
 
 # TileDB v2.26.0 Release Notes
 
