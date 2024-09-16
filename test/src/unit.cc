@@ -17,6 +17,16 @@ int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs);
 }  // namespace tiledb
 
 int main(const int argc, char** const argv) {
+#if defined(_MSC_VER)
+  // We disable the following events on abort in CI environments:
+  // _WRITE_ABORT_MSG: Display message box with Abort, Retry, Ignore
+  // _CALL_REPORTFAULT: Send an error report to Microsoft
+  // The second parameter specifies which flags to change, and the first
+  // the value of these flags.
+  if (std::getenv("CI") != nullptr) {
+    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+  }
+#endif
   Catch::Session session;
 
   // Define acceptable VFS values.

@@ -34,8 +34,10 @@
 #define TILEDB_CAPI_BUFFER_LIST_API_INTERNAL_H
 
 #include "../../c_api_support/handle/handle.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
+
 struct tiledb_buffer_list_handle_t
     : public tiledb::api::CAPIHandle<tiledb_buffer_list_handle_t> {
   /**
@@ -44,11 +46,14 @@ struct tiledb_buffer_list_handle_t
   static constexpr std::string_view object_type_name{"buffer list"};
 
  private:
+  shared_ptr<tiledb::sm::MemoryTracker> memory_tracker_;
   tiledb::sm::BufferList buffer_list_;
 
  public:
-  explicit tiledb_buffer_list_handle_t(auto&&... args)
-      : buffer_list_(std::forward<decltype(args)>(args)...) {
+  explicit tiledb_buffer_list_handle_t(
+      shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+      : memory_tracker_(std::move(memory_tracker))
+      , buffer_list_(memory_tracker_) {
   }
 
   [[nodiscard]] inline tiledb::sm::BufferList& buffer_list() {
@@ -57,6 +62,11 @@ struct tiledb_buffer_list_handle_t
 
   [[nodiscard]] inline const tiledb::sm::BufferList& buffer_list() const {
     return buffer_list_;
+  }
+
+  [[nodiscard]] inline const shared_ptr<tiledb::sm::MemoryTracker>
+  memory_tracker() const {
+    return memory_tracker_;
   }
 };
 

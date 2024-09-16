@@ -44,8 +44,7 @@ capi_return_t tiledb_buffer_alloc(
   ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(buffer);
   *buffer = tiledb_buffer_handle_t::make_handle(
-      ctx->resources().serialization_memory_tracker()->get_resource(
-          tiledb::sm::MemoryType::SERIALIZATION_BUFFER));
+      ctx->resources().serialization_memory_tracker());
   return TILEDB_OK;
 }
 
