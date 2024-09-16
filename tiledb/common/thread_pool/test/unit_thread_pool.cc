@@ -36,6 +36,7 @@
 #include <cstdio>
 #include <iostream>
 #include <random>
+#include <stdexcept>
 #include <vector>
 
 #include "tiledb/common/thread_pool/thread_pool.h"
@@ -445,7 +446,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
       results.push_back(pool.execute([&result]() {
         auto tmp = result++;
         if (tmp == 13) {
-          throw std::exception("Unripe banana");
+          throw std::runtime_error("Unripe banana");
         }
       }));
     }
@@ -480,7 +481,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
           throw std::string("Unripe banana");
         }
         if (tmp == 31) {
-          throw std::exception("Unbaked potato");
+          throw std::runtime_error("Unbaked potato");
         }
       }));
     }
@@ -501,7 +502,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
           throw std::string("Unripe banana");
         }
         if (tmp == 13) {
-          throw std::exception("Unbaked potato");
+          throw std::runtime_error("Unbaked potato");
         }
       }));
     }
@@ -519,10 +520,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
       results.push_back(pool.execute([i, &result]() {
         result++;
         if (i == 13) {
-          throw std::exception("Unripe banana");
+          throw std::runtime_error("Unripe banana");
         }
         if (i == 31) {
-          throw std::exception("Unbaked potato");
+          throw std::runtime_error("Unbaked potato");
         }
       }));
     }
@@ -540,10 +541,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
       results.push_back(pool.execute([i, &result]() {
         ++result;
         if (i == 31) {
-          throw(std::exception("Unripe banana"));
+          throw(std::runtime_error("Unripe banana"));
         }
         if (i == 13) {
-          throw std::exception("Unbaked potato");
+          throw std::runtime_error("Unbaked potato");
         }
       }));
     }
