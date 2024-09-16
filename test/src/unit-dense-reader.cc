@@ -909,7 +909,6 @@ TEST_CASE_METHOD(
   // Tile offsets for a fragment are 400 bytes.
   // Tile upper memory limit is more than enough to load 40 bytes tiles.
   total_budget_ = std::to_string(390 * num_frags + 200);
-  tile_upper_memory_limit_ = "200";
   update_config();
 
   // Try to read.
