@@ -98,6 +98,9 @@ DenseReader::DenseReader(
 
   // Check the validity buffer sizes.
   check_validity_buffer_sizes();
+
+  // No dense dimensions can be var sized.
+  is_dim_var_size_.resize(array_schema_.dim_num(), false);
 }
 
 /* ****************************** */
@@ -309,6 +312,25 @@ Status DenseReader::dense_read() {
   // Compute attribute names to load and copy.
   if (condition_.has_value()) {
     qc_loaded_attr_names_set_ = condition_->field_names();
+  }
+  qc_loaded_attr_names_.clear();
+  qc_loaded_attr_names_.reserve(qc_loaded_attr_names_set_.size());
+  for (auto& name : qc_loaded_attr_names_set_) {
+    qc_loaded_attr_names_.emplace_back(name);
+  }
+
+  // Load per fragment tile offsets memory usage.
+  per_frag_tile_offsets_usage_ = tile_offset_sizes();
+
+  // Compute total tile offsets sizes.
+  auto total_tile_offsets_sizes = std::accumulate(
+      per_frag_tile_offsets_usage_.begin(),
+      per_frag_tile_offsets_usage_.end(),
+      static_cast<uint64_t>(0));
+  if (total_tile_offsets_sizes >
+      memory_budget_ - array_memory_tracker_->get_memory_usage()) {
+    throw DenseReaderException(
+        "Cannot load tile offsets, increase memory budget");
   }
 
   auto&& [names, var_names] = field_names_to_process(qc_loaded_attr_names_set_);
