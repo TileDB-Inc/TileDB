@@ -33,7 +33,6 @@
 #ifndef TILEDB_TESTSUPPORT_CAPI_FRAGMENT_INFO_H
 #define TILEDB_TESTSUPPORT_CAPI_FRAGMENT_INFO_H
 
-#include "test/support/src/temporary_local_directory.h"
 #include "testsupport_capi_context.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/attribute/attribute_api_internal.h"
