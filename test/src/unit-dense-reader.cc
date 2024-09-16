@@ -894,14 +894,21 @@ TEST_CASE_METHOD(
   reset_config();
   create_default_array_1d();
 
-  // Write a fragment.
+  uint64_t num_frags = GENERATE(1, 2);
+
+  // Write some fragments.
   int subarray[] = {1, NUM_CELLS};
   std::vector<int> data(NUM_CELLS);
   std::iota(data.begin(), data.end(), 1);
   uint64_t data_size = data.size() * sizeof(int);
-  write_1d_fragment(subarray, data.data(), &data_size);
+  for (uint64_t f = 0; f < num_frags; f++) {
+    write_1d_fragment(subarray, data.data(), &data_size);
+  }
 
-  total_budget_ = "600";
+  // Footer for a fragment is 390 bytes.
+  // Tile offsets for a fragment are 400 bytes.
+  // Tile upper memory limit is more than enough to load 40 bytes tiles.
+  total_budget_ = std::to_string(390 * num_frags + 200);
   tile_upper_memory_limit_ = "200";
   update_config();
 
