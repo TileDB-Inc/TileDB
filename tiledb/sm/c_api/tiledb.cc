@@ -2065,6 +2065,16 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
   return TILEDB_OK;
 }
 
+int32_t tiledb_serialize_array_max_buffer_sizes(
+    tiledb_ctx_t*,
+    const tiledb_array_t*,
+    const void*,
+    tiledb_serialization_type_t,
+    tiledb_buffer_t**) {
+  throw CAPIException(
+      "tiledb_serialize_array_max_buffer_sizes is no longer supported.");
+}
+
 capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
@@ -4316,6 +4326,17 @@ CAPI_INTERFACE(
   return api_entry_context<
       tiledb::api::tiledb_deserialize_array_non_empty_domain_all_dimensions>(
       ctx, array, buffer, serialize_type, client_side);
+}
+
+CAPI_INTERFACE(
+    serialize_array_max_buffer_sizes,
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const void* subarray,
+    tiledb_serialization_type_t serialize_type,
+    tiledb_buffer_t** buffer) {
+  return api_entry<tiledb::api::tiledb_serialize_array_max_buffer_sizes>(
+      ctx, array, subarray, serialize_type, buffer);
 }
 
 CAPI_INTERFACE(
