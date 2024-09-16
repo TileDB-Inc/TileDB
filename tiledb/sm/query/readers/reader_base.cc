@@ -156,7 +156,7 @@ std::vector<uint64_t> ReaderBase::tile_offset_sizes() {
 
   // Compute the size of tile offsets per fragments.
   const auto relevant_fragments = subarray_.relevant_fragments();
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 0, relevant_fragments.size(), [&](uint64_t i) {
         // For easy reference.
         auto frag_idx = relevant_fragments[i];
@@ -269,8 +269,7 @@ std::vector<uint64_t> ReaderBase::tile_offset_sizes() {
         unsigned offsets_init_size = num_fields * 4 * 32;
 
         ret[frag_idx] = offsets_size + offsets_init_size;
-        return Status::Ok();
-      }));
+      });
 
   return ret;
 }
