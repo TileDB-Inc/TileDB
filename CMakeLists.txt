@@ -433,9 +433,9 @@ if(TILEDB_TESTS)
   # Add custom Catch2 entry point that suppresses message boxes on debug assertion
   # failures on Windows CI.
   find_package(Catch2 REQUIRED)
-  add_library(tdb_Catch2WithMain STATIC
+  add_library(tiledb_Catch2WithMain STATIC
     test/support/src/tdb_catch_main.cc)
-  target_link_libraries(tdb_Catch2WithMain PUBLIC Catch2::Catch2)
+  target_link_libraries(tiledb_Catch2WithMain PUBLIC Catch2::Catch2)
 endif()
 
 # -------------------------------------------------------

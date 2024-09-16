@@ -75,7 +75,7 @@ endif()
 
 target_link_libraries(tiledb_regression
   PUBLIC
-    tdb_Catch2WithMain
+    tiledb_Catch2WithMain
     local_install
     tiledb
 )

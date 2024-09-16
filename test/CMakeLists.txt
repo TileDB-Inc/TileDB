@@ -307,7 +307,7 @@ if (TILEDB_ARROW_TESTS)
     PUBLIC
       TILEDB_CORE_OBJECTS_ILIB
       TILEDB_CORE_OBJECTS
-      tdb_Catch2WithMain
+      tiledb_Catch2WithMain
       pybind11::embed
       tiledb_test_support_lib
       configuration_definitions

@@ -72,7 +72,7 @@ target_include_directories(
 target_link_libraries(tiledb_explore_msys_handle_leakage
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
-    tdb_Catch2WithMain
+    tiledb_Catch2WithMain
     tiledb_test_support_lib
 )
 
