@@ -153,13 +153,12 @@ TEST_CASE_METHOD(
     CurrentDomainFx,
     "C++ API: CurrentDomain - Add to ArraySchema",
     "[cppapi][ArraySchema][currentDomain]") {
-
   tiledb_array_type_t type = TILEDB_SPARSE;
   SECTION("Dense") {
     type = TILEDB_DENSE;
   }
 
-  SECTION("Sparse"){
+  SECTION("Sparse") {
     // do nothing
   }
 
@@ -206,7 +205,7 @@ TEST_CASE_METHOD(
     type = TILEDB_DENSE;
   }
 
-  SECTION("Sparse"){
+  SECTION("Sparse") {
     // do nothing
   }
 
