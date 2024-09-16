@@ -140,7 +140,7 @@ TEST_CASE("C API: tiledb_array_free argument validation", "[capi][array]") {
 TEST_CASE("C API: tiledb_array_create argument validation", "[capi][array]") {
   capi_return_t rc;
   ordinary_context ctx{};
-  TemporaryLocalDirectory temp_dir{TEST_URI};
+  tiledb::sm::TemporaryLocalDirectory temp_dir{TEST_URI};
   tiledb_dimension_t* d1;
   tiledb_dimension_t* d2;
   tiledb_domain_t* domain;

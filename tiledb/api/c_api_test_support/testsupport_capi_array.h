@@ -98,7 +98,7 @@ struct ordinary_array : public ordinary_array_without_schema {
   tiledb_domain_t* domain;
   tiledb_attribute_t* attr;
   tiledb_array_schema_t* schema;
-  TemporaryLocalDirectory temp_dir{"unit_capi_array"};
+  sm::TemporaryLocalDirectory temp_dir{"unit_capi_array"};
 
  public:
   ordinary_array(bool is_var = false) {
