@@ -30,8 +30,6 @@
  * Tests the `ThreadPool` class.
  */
 
-#include "unit_thread_pool.h"
-
 #include <stdint.h>
 #include <test/support/tdb_catch.h>
 #include <atomic>
