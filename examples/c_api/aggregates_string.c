@@ -213,16 +213,20 @@ void read_array() {
   tiledb_array_open(ctx, array, TILEDB_READ);
 
   // Calculate maximum buffer sizes
-  uint64_t max_size = 64;  // variable-length result has unknown size
+#define VAR_BUFFER_SIZE 64
+  uint64_t max_size =
+      VAR_BUFFER_SIZE;  // variable-length result has unknown size
   uint64_t max_offsets_size = sizeof(uint64_t);
-  uint64_t min_size = 64;  // variable-length result has unknown size
+  uint64_t min_size =
+      VAR_BUFFER_SIZE;  // variable-length result has unknown size
   uint64_t min_offsets_size = sizeof(uint64_t);
 
   // Aggregate result buffers (1 cell each of unknown size)
-  char* max = (char*)malloc(max_size);
+  char max[VAR_BUFFER_SIZE];
   uint64_t max_offsets[1];
-  char* min = (char*)malloc(min_size);
+  char min[VAR_BUFFER_SIZE];
   uint64_t min_offsets[1];
+#undef VAR_BUFFER_SIZE
 
   // Attribute/dimension buffers
   // (unknown number of cells, buffer sizes are estimates)
@@ -334,8 +338,6 @@ void read_array() {
       &max[max_offsets[0]]);
 
   // Clean up
-  free((void*)min);
-  free((void*)max);
   tiledb_aggregate_free(ctx, &min_rows);
   tiledb_aggregate_free(ctx, &max_rows);
   tiledb_query_channel_free(ctx, &default_channel);
