@@ -43,11 +43,7 @@
 // Name of array.
 const char* array_name = "aggregates_string_array";
 
-void create_array() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
-
+void create_array(tiledb_ctx_t* ctx) {
   // The array will be 2d array with dimensions "rows" and "cols"
   // "rows" is a string dimension type, so the domain and extent is null
   int dim_domain[] = {1, 4};
@@ -85,14 +81,9 @@ void create_array() {
   tiledb_dimension_free(&d2);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-  tiledb_ctx_free(&ctx);
 }
 
-void write_array() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
-
+void write_array(tiledb_ctx_t* ctx) {
   // Open array for writing
   tiledb_array_t* array;
   tiledb_array_alloc(ctx, array_name, &array);
@@ -173,7 +164,6 @@ void write_array() {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 }
 
 void print_cells(
@@ -202,11 +192,7 @@ void print_cells(
   }
 }
 
-void read_array() {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
-
+void read_array(tiledb_ctx_t* ctx) {
   // Open array for reading
   tiledb_array_t* array;
   tiledb_array_alloc(ctx, array_name, &array);
@@ -343,7 +329,6 @@ void read_array() {
   tiledb_query_channel_free(ctx, &default_channel);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 }
 
 int main() {
@@ -352,13 +337,13 @@ int main() {
   tiledb_ctx_alloc(NULL, &ctx);
   tiledb_object_t type;
   tiledb_object_type(ctx, array_name, &type);
-  tiledb_ctx_free(&ctx);
 
   if (type != TILEDB_ARRAY) {
-    create_array();
-    write_array();
+    create_array(ctx);
+    write_array(ctx);
   }
 
-  read_array();
+  read_array(ctx);
+  tiledb_ctx_free(&ctx);
   return 0;
 }
