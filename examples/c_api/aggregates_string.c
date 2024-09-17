@@ -226,7 +226,7 @@ void read_array() {
 
   // Attribute/dimension buffers
   // (unknown number of cells, buffer sizes are estimates)
-  const size_t NUM_CELLS = 2;
+#define NUM_CELLS 2
   char rows_data[NUM_CELLS * 16];
   uint64_t rows_data_size = sizeof(rows_data);
   uint64_t rows_offsets[NUM_CELLS];
@@ -235,6 +235,7 @@ void read_array() {
   uint64_t cols_size = sizeof(cols_data);
   int32_t a_data[NUM_CELLS];
   uint64_t a_size = sizeof(a_data);
+#undef NUM_CELLS
 
   // Create query
   tiledb_query_t* query;
@@ -265,23 +266,19 @@ void read_array() {
   tiledb_query_get_default_channel(ctx, query, &default_channel);
 
   // Apply min aggregate
-  const tiledb_channel_operator_t* operator_min;
   tiledb_channel_operation_t* min_rows;
-  TRY(ctx, tiledb_channel_operator_min_get(ctx, &operator_min));
   TRY(ctx,
       tiledb_create_unary_aggregate(
-          ctx, query, operator_min, "rows", &min_rows));
+          ctx, query, tiledb_channel_operator_min, "rows", &min_rows));
   TRY(ctx,
       tiledb_channel_apply_aggregate(
           ctx, default_channel, "Min(rows)", min_rows));
 
   // Apply max aggregate
-  const tiledb_channel_operator_t* operator_max;
   tiledb_channel_operation_t* max_rows;
-  TRY(ctx, tiledb_channel_operator_max_get(ctx, &operator_max));
   TRY(ctx,
       tiledb_create_unary_aggregate(
-          ctx, query, operator_max, "rows", &max_rows));
+          ctx, query, tiledb_channel_operator_max, "rows", &max_rows));
   TRY(ctx,
       tiledb_channel_apply_aggregate(
           ctx, default_channel, "Max(rows)", max_rows));

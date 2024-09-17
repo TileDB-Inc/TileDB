@@ -11,7 +11,7 @@
  * @param line the line number of the last API call
  * @param ctx the context pointer
  *
- * @return TILEDB_OK if no error was found, TILEDB_ERR if one was.
+ * @return 0 if no error was found, 1 if one was.
  */
 static int try_print_error(int line, tiledb_ctx_t* ctx) {
   // Retrieve the last error that occurred
@@ -19,7 +19,7 @@ static int try_print_error(int line, tiledb_ctx_t* ctx) {
   tiledb_ctx_get_last_error(ctx, &err);
 
   if (err == NULL) {
-    return TILEDB_OK;
+    return 0;
   }
 
   const char* msg;
@@ -29,7 +29,7 @@ static int try_print_error(int line, tiledb_ctx_t* ctx) {
   // Clean up
   tiledb_error_free(&err);
 
-  return TILEDB_ERR;
+  return 1;
 }
 
 /**
@@ -39,7 +39,7 @@ static int try_print_error(int line, tiledb_ctx_t* ctx) {
 #define IF_ERROR_EXIT(ctx)                               \
   do {                                                   \
     if (try_print_error(__LINE__, (ctx)) != TILEDB_OK) { \
-      exit(TILEDB_ERR);                                  \
+      abort();                                           \
     }                                                    \
   } while (0)
 
