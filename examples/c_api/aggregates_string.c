@@ -33,6 +33,7 @@
  * of the string dimension using aggregates.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <tiledb/tiledb.h>
@@ -291,8 +292,15 @@ void read_array(tiledb_ctx_t* ctx) {
   tiledb_query_status_t status;
   TRY(ctx, tiledb_query_get_status(ctx, query, &status));
   while (status == TILEDB_INCOMPLETE) {
+    const uint64_t num_results = a_size / sizeof(int32_t);
+
+    // NB: this is not generically a valid assertion
+    // (see reading_incomplete.c)
+    // but is true by construction in this example
+    assert(num_results);
+
     print_cells(
-        a_size / sizeof(int32_t),
+        num_results,
         rows_offsets,
         rows_data_size,
         rows_data,
