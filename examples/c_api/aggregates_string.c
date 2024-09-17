@@ -187,8 +187,8 @@ void print_cells(
     // For strings we must compute the length based on the offsets
     uint64_t row_start = rows_offsets[r];
     uint64_t row_end =
-        r == result_num - 1 ? rows_data_size : rows_offsets[r + 1] - 1;
-    const int row_value_size = row_end - row_start + 1;
+        r == result_num - 1 ? rows_data_size : rows_offsets[r + 1];
+    const int row_value_size = row_end - row_start;
     const char* row_value = &rows_data[row_start];
 
     const int32_t col_value = cols_data[r];
