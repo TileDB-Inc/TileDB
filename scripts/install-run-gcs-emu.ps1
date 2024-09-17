@@ -56,4 +56,7 @@ $env:CLOUD_STORAGE_EMULATOR_ENDPOINT = "http://localhost:9000"
 $testbenchCmd = "start `"Google Cloud Storage Testbench`" /D `"$testbenchPath`" py testbench_run.py localhost 9000 10"
 cmd /c $testbenchCmd
 
+# Wait for the testbench to be prepared. This was added to fix failures in the windows-2019-gcs job.
+Start-Sleep -Seconds 5
+
 Write-Host "Finished."
