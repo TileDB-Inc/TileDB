@@ -223,4 +223,3 @@ int main() {
   read_array();
   return 0;
 }
-
