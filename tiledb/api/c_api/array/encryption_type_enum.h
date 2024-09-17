@@ -1,4 +1,8 @@
 /*
+ * @file tiledb/api/c_api/array/encryption_type_enum.h
+ *
+ * @section LICENSE
+ *
  * The MIT License
  *
  * @copyright Copyright (c) 2024 TileDB, Inc.
