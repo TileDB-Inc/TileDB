@@ -406,7 +406,7 @@ class GCS {
     std::string next_part_path() {
       const uint64_t part_id = next_part_id_++;
       const std::string part_path =
-          object_path_ + "__tiledb_" + std::to_string(part_id);
+          object_path_ + ".part" + std::to_string(part_id) + ".tmp";
       part_paths_.emplace_back(part_path);
       return part_path;
     }
