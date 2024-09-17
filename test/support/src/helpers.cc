@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +41,7 @@
 #include <test/support/tdb_catch.h>
 #include "helpers.h"
 #include "serialization_wrappers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
@@ -823,8 +824,7 @@ void create_subarray(
     bool coalesce_ranges) {
   (void)layout;
   int32_t rc;
-  tiledb_array_t tdb_array;
-  tdb_array.array_ = array;
+  tiledb_array_t tdb_array = *tiledb_array_t::make_handle(array);
   rc = tiledb_subarray_alloc(ctx, &tdb_array, subarray);
   REQUIRE(rc == TILEDB_OK);
   if (rc == TILEDB_OK) {

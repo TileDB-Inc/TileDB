@@ -93,6 +93,14 @@ URI::URI(std::string_view path, const bool& get_abs) {
   }
 }
 
+URI::URI(const char* path, const MustBeValidMarker&)
+    : URI(path) {
+  if (uri_.empty()) {
+    throw std::invalid_argument(
+        "Failed to construct valid URI. Given path is invalid.");
+  }
+}
+
 URI::~URI() = default;
 
 /* ********************************* */

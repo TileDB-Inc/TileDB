@@ -286,12 +286,15 @@ endif()
 
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array/array_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array/array_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array/encryption_type_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_deprecated.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_schema_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/array_type_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema/layout_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"

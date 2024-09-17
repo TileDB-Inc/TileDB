@@ -38,6 +38,7 @@
 
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
+#include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_internal.h"
 #include "tiledb/api/c_api/attribute/attribute_api_internal.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
@@ -134,24 +135,6 @@ namespace tiledb::api {
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-
-int32_t tiledb_encryption_type_to_str(
-    tiledb_encryption_type_t encryption_type, const char** str) {
-  const auto& strval = tiledb::sm::encryption_type_str(
-      (tiledb::sm::EncryptionType)encryption_type);
-  *str = strval.c_str();
-  return strval.empty() ? TILEDB_ERR : TILEDB_OK;
-}
-
-int32_t tiledb_encryption_type_from_str(
-    const char* str, tiledb_encryption_type_t* encryption_type) {
-  auto [st, et] = tiledb::sm::encryption_type_enum(str);
-  if (!st.ok()) {
-    return TILEDB_ERR;
-  }
-  *encryption_type = (tiledb_encryption_type_t)et.value();
-  return TILEDB_OK;
-}
 
 int32_t tiledb_query_status_to_str(
     tiledb_query_status_t query_status, const char** str) {
@@ -371,12 +354,10 @@ int32_t tiledb_query_alloc(
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
     tiledb_query_t** query) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_array_is_valid(array);
 
   // Error if array is not open
-  if (!array->array_->is_open()) {
+  if (!array->is_open()) {
     auto st = Status_Error("Cannot create query; Input array is not open");
     *query = nullptr;
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -387,7 +368,7 @@ int32_t tiledb_query_alloc(
   // Error if the query type and array query type do not match
   tiledb::sm::QueryType array_query_type;
   try {
-    array_query_type = array->array_->get_query_type();
+    array_query_type = array->get_query_type();
   } catch (StatusException& e) {
     return TILEDB_ERR;
   }
@@ -422,7 +403,7 @@ int32_t tiledb_query_alloc(
       ctx->resources(),
       ctx->cancellation_source(),
       ctx->storage_manager(),
-      array->array_);
+      array->array());
   if ((*query)->query_ == nullptr) {
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
@@ -711,18 +692,8 @@ int32_t tiledb_query_get_array(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create array datatype
-  *array = new (std::nothrow) tiledb_array_t;
-  if (*array == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
   // Allocate an array object, taken from the query's array.
-  (*array)->array_ = query->query_->array_shared();
+  *array = tiledb_array_t::make_handle(query->query_->array_shared());
 
   return TILEDB_OK;
 }
@@ -925,19 +896,19 @@ capi_return_t tiledb_subarray_alloc(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_subarray_t** subarray) {
-  api::ensure_array_is_valid(array);
-  api::ensure_output_pointer_is_valid(subarray);
+  ensure_array_is_valid(array);
+  ensure_output_pointer_is_valid(subarray);
 
   // Error if array is not open
-  if (!array->array_->is_open()) {
-    throw api::CAPIStatusException("Cannot create subarray; array is not open");
+  if (!array->is_open()) {
+    throw CAPIException("Cannot create subarray; array is not open");
   }
 
   // Create a new subarray object
   *subarray = new tiledb_subarray_t;
   try {
     (*subarray)->subarray_ = new tiledb::sm::Subarray(
-        array->array_.get(),
+        array->array().get(),
         (tiledb::sm::stats::Stats*)nullptr,
         ctx->resources().logger(),
         true);
@@ -945,7 +916,7 @@ capi_return_t tiledb_subarray_alloc(
   } catch (...) {
     delete *subarray;
     *subarray = nullptr;
-    throw api::CAPIStatusException("Failed to create subarray");
+    throw CAPIException("Failed to create subarray");
   }
 
   return TILEDB_OK;
@@ -1354,360 +1325,7 @@ capi_return_t tiledb_query_condition_set_use_enumeration(
 /*              ARRAY             */
 /* ****************************** */
 
-int32_t tiledb_array_alloc(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array) {
-  // Create array struct
-  *array = new (std::nothrow) tiledb_array_t;
-  if (*array == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Check array URI
-  auto uri = tiledb::sm::URI(array_uri);
-  if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
-    delete *array;
-    *array = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Allocate an array object
-  try {
-    (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
-  } catch (std::bad_alloc&) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation error");
-    delete *array;
-    *array = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_set_open_timestamp_start(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  array->array_->set_timestamp_start(timestamp_start);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_set_open_timestamp_end(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  array->array_->set_timestamp_end(timestamp_end);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_open_timestamp_start(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *timestamp_start = array->array_->timestamp_start();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_open_timestamp_end(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *timestamp_end = array->array_->timestamp_end_opened_at();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) {
-  // Allocate an array object
-  auto array = make_shared<tiledb::sm::Array>(
-      HERE(), ctx->resources(), tiledb::sm::URI(uri));
-  // Open the array for exclusive modification
-  throw_if_not_ok(array->open(
-      tiledb::sm::QueryType::MODIFY_EXCLUSIVE,
-      tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      nullptr,
-      0));
-
-  array->delete_array(tiledb::sm::URI(uri));
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_delete_fragments_v2(
-    tiledb_ctx_t* ctx,
-    const char* uri_str,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end) {
-  auto uri = tiledb::sm::URI(uri_str);
-  if (uri.is_invalid()) {
-    throw CAPIException("Failed to delete fragments; Invalid input uri");
-  }
-
-  // Allocate an array object
-  auto array = make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
-
-  // Set array open timestamps
-  array->set_timestamp_start(timestamp_start);
-  array->set_timestamp_end(timestamp_end);
-
-  // Open the array for exclusive modification
-  throw_if_not_ok(array->open(
-      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
-
-  // Delete fragments
-  try {
-    array->delete_fragments(uri, timestamp_start, timestamp_end);
-  } catch (...) {
-    throw_if_not_ok(array->close());
-    throw CAPIException("Failed to delete fragments");
-  }
-
-  // Close and delete the array
-  throw_if_not_ok(array->close());
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_delete_fragments_list(
-    tiledb_ctx_t* ctx,
-    const char* uri_str,
-    const char* fragment_uris[],
-    const size_t num_fragments) {
-  auto uri = tiledb::sm::URI(uri_str);
-  if (uri.is_invalid()) {
-    throw CAPIException("Failed to delete_fragments_list; Invalid input uri");
-  }
-
-  if (num_fragments < 1) {
-    throw CAPIException(
-        "Failed to delete_fragments_list; Invalid input number of fragments");
-  }
-
-  for (size_t i = 0; i < num_fragments; i++) {
-    if (tiledb::sm::URI(fragment_uris[i]).is_invalid()) {
-      throw CAPIException(
-          "Failed to delete_fragments_list; Invalid input fragment uri");
-    }
-  }
-
-  // Convert the list of fragment uris to a vector
-  std::vector<tiledb::sm::URI> uris;
-  uris.reserve(num_fragments);
-  for (size_t i = 0; i < num_fragments; i++) {
-    uris.emplace_back(tiledb::sm::URI(fragment_uris[i]));
-  }
-
-  // Allocate an array object
-  auto array = make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
-
-  // Open the array for exclusive modification
-  throw_if_not_ok(array->open(
-      tiledb::sm::QueryType::MODIFY_EXCLUSIVE,
-      tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      nullptr,
-      0));
-
-  // Delete fragments list
-  try {
-    array->delete_fragments_list(uris);
-  } catch (...) {
-    throw_if_not_ok(array->close());
-    throw CAPIException("Failed to delete fragments_list");
-  }
-
-  // Close the array
-  throw_if_not_ok(array->close());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_open(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Open array
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(query_type),
-      tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      nullptr,
-      0));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_is_open(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, int32_t* is_open) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *is_open = (int32_t)array->array_->is_open();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Reopen array
-  throw_if_not_ok(array->array_->reopen());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_set_config(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t* config) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-  api::ensure_config_is_valid(config);
-  array->array_->set_config(config->config());
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_config(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_config_t** config) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-  api::ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(array->array_->config());
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Close array
-  throw_if_not_ok(array->array_->close());
-
-  return TILEDB_OK;
-}
-
-void tiledb_array_free(tiledb_array_t** array) {
-  if (array != nullptr && *array != nullptr) {
-    delete *array;
-    *array = nullptr;
-  }
-}
-
-int32_t tiledb_array_get_schema(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_array_schema_t** array_schema) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(array_schema);
-
-  // Get schema
-  auto&& [st, array_schema_get] = array->array_->get_array_schema();
-  if (!st.ok()) {
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  *array_schema = tiledb_array_schema_t::make_handle(array_schema_get.value());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_query_type(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t* query_type) {
-  // Sanity checks
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  // Get query_type
-  tiledb::sm::QueryType type;
-  try {
-    type = array->array_->get_query_type();
-  } catch (StatusException& e) {
-    return TILEDB_ERR;
-  }
-
-  *query_type = static_cast<tiledb_query_type_t>(type);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_create(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    const tiledb_array_schema_t* array_schema) {
-  ensure_array_schema_is_valid(array_schema);
-
-  // Check array name
-  tiledb::sm::URI uri(array_uri);
-  if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to create array; Invalid array URI");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  if (uri.is_tiledb()) {
-    auto& rest_client = ctx->context().rest_client();
-    throw_if_not_ok(rest_client.post_array_schema_to_rest(
-        uri, *(array_schema->array_schema())));
-  } else {
-    // Create key
-    tiledb::sm::EncryptionKey key;
-    throw_if_not_ok(
-        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
-    // Create the array
-    tiledb::sm::Array::create(
-        ctx->resources(), uri, array_schema->array_schema(), key);
-
-    // Create any dimension labels in the array.
-    for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
-         ilabel < array_schema->dim_label_num();
-         ++ilabel) {
-      // Get dimension label information and define URI and name.
-      const auto& dim_label_ref = array_schema->dimension_label(ilabel);
-      if (dim_label_ref.is_external())
-        continue;
-      if (!dim_label_ref.has_schema()) {
-        throw CAPIStatusException(
-            "Failed to create array. Dimension labels that are "
-            "not external must have a schema.");
-      }
-
-      // Create the dimension label array with the same key.
-      tiledb::sm::Array::create(
-          ctx->resources(),
-          dim_label_ref.uri(uri),
-          dim_label_ref.schema(),
-          key);
-    }
-  }
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_consolidate(
+capi_return_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   api::ensure_config_is_valid_if_present(config);
   tiledb::sm::Consolidator::array_consolidate(
@@ -1721,7 +1339,7 @@ int32_t tiledb_array_consolidate(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_consolidate_fragments(
+capi_return_t tiledb_array_consolidate_fragments(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const char** fragment_uris,
@@ -1747,360 +1365,13 @@ int32_t tiledb_array_consolidate_fragments(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_vacuum(
+capi_return_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   tiledb::sm::Consolidator::array_vacuum(
       ctx->resources(),
       array_uri,
       (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_non_empty_domain(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  bool is_empty_b;
-  array->array_->non_empty_domain(domain, &is_empty_b);
-  *is_empty = (int32_t)is_empty_b;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_non_empty_domain_from_index(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint32_t idx,
-    void* domain,
-    int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(is_empty);
-
-  bool is_empty_b;
-  array->array_->non_empty_domain_from_index(idx, domain, &is_empty_b);
-  *is_empty = (int32_t)is_empty_b;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_non_empty_domain_from_name(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    void* domain,
-    int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  auto field_name{to_string_view<"field name">(name)};
-  ensure_output_pointer_is_valid(is_empty);
-
-  bool is_empty_b;
-  array->array_->non_empty_domain_from_name(field_name, domain, &is_empty_b);
-  *is_empty = (int32_t)is_empty_b;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint32_t idx,
-    uint64_t* start_size,
-    uint64_t* end_size,
-    int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(start_size);
-  ensure_output_pointer_is_valid(end_size);
-  ensure_output_pointer_is_valid(is_empty);
-
-  bool is_empty_b = true;
-  array->array_->non_empty_domain_var_size_from_index(
-      idx, start_size, end_size, &is_empty_b);
-  *is_empty = (int32_t)is_empty_b;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    uint64_t* start_size,
-    uint64_t* end_size,
-    int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(start_size);
-  ensure_output_pointer_is_valid(end_size);
-  ensure_output_pointer_is_valid(is_empty);
-
-  bool is_empty_b = true;
-  array->array_->non_empty_domain_var_size_from_name(
-      name, start_size, end_size, &is_empty_b);
-  *is_empty = (int32_t)is_empty_b;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_non_empty_domain_var_from_index(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint32_t idx,
-    void* start,
-    void* end,
-    int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(start);
-  ensure_output_pointer_is_valid(end);
-  ensure_output_pointer_is_valid(is_empty);
-
-  bool is_empty_b = true;
-  array->array_->non_empty_domain_var_from_index(idx, start, end, &is_empty_b);
-  *is_empty = (int32_t)is_empty_b;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_non_empty_domain_var_from_name(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    void* start,
-    void* end,
-    int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(start);
-  ensure_output_pointer_is_valid(end);
-  ensure_output_pointer_is_valid(is_empty);
-
-  bool is_empty_b = true;
-  array->array_->non_empty_domain_var_from_name(name, start, end, &is_empty_b);
-  *is_empty = (int32_t)is_empty_b;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_uri(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri) {
-  // Sanity checks
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *array_uri = array->array_.get()->array_uri().c_str();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_encryption_type(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t* encryption_type) {
-  // Sanity checks
-  if (array_uri == nullptr || encryption_type == nullptr) {
-    return TILEDB_ERR;
-  }
-
-  // Get encryption type
-  tiledb::sm::EncryptionType enc;
-  sm::Array::encryption_type(
-      ctx->resources(), tiledb::sm::URI(array_uri), &enc);
-  *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_put_metadata(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* key,
-    tiledb_datatype_t value_type,
-    uint32_t value_num,
-    const void* value) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Put metadata
-  array->array_->put_metadata(
-      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_delete_metadata(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* key) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Put metadata
-  array->array_->delete_metadata(key);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_metadata(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* key,
-    tiledb_datatype_t* value_type,
-    uint32_t* value_num,
-    const void** value) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Get metadata
-  tiledb::sm::Datatype type;
-  array->array_->get_metadata(key, &type, value_num, value);
-
-  *value_type = static_cast<tiledb_datatype_t>(type);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_metadata_num(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* num) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Get metadata num
-  *num = array->array_->metadata_num();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_get_metadata_from_index(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t index,
-    const char** key,
-    uint32_t* key_len,
-    tiledb_datatype_t* value_type,
-    uint32_t* value_num,
-    const void** value) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Get metadata
-  tiledb::sm::Datatype type;
-  array->array_->get_metadata(index, key, key_len, &type, value_num, value);
-
-  *value_type = static_cast<tiledb_datatype_t>(type);
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_has_metadata_key(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* key,
-    tiledb_datatype_t* value_type,
-    int32_t* has_key) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Check whether metadata has_key
-  std::optional<tiledb::sm::Datatype> type = array->array_->metadata_type(key);
-
-  *has_key = type.has_value();
-  if (*has_key) {
-    *value_type = static_cast<tiledb_datatype_t>(type.value());
-  }
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_evolve(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_array_schema_evolution_t* array_schema_evolution) {
-  // Sanity Checks
-  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Check array name
-  tiledb::sm::URI uri(array_uri);
-  if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to create array; Invalid array URI");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Create key
-  tiledb::sm::EncryptionKey key;
-  throw_if_not_ok(
-      key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
-  // Evolve schema
-  tiledb::sm::Array::evolve_array_schema(
-      ctx->resources(),
-      uri,
-      array_schema_evolution->array_schema_evolution_,
-      key);
-
-  // Success
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_get_enumeration(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
-    const char* attr_name,
-    tiledb_enumeration_t** enumeration) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  if (attr_name == nullptr) {
-    throw api::CAPIStatusException("'attr_name' must not be null");
-  }
-
-  api::ensure_output_pointer_is_valid(enumeration);
-  auto ptr = array->array_->get_enumeration(attr_name);
-  *enumeration = tiledb_enumeration_handle_t::make_handle(ptr);
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_array_load_all_enumerations(
-    tiledb_ctx_t* ctx, const tiledb_array_t* array) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  array->array_->load_all_enumerations();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_array_upgrade_version(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  // Sanity Checks
-
-  // Check array name
-  tiledb::sm::URI uri(array_uri);
-  if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to find the array; Invalid array URI");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Upgrade version
-  tiledb::sm::Array::upgrade_version(
-      ctx->resources(),
-      uri,
-      (config == nullptr) ? ctx->config() : config->config());
 
   return TILEDB_OK;
 }
@@ -2339,9 +1610,7 @@ int32_t tiledb_serialize_array(
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_array_is_valid(array);
 
   auto buf = tiledb_buffer_handle_t::make_handle(
       ctx->resources().serialization_memory_tracker());
@@ -2349,7 +1618,7 @@ int32_t tiledb_serialize_array(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_serialize(
-              array->array_.get(),
+              array->array().get(),
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer(),
               client_side))) {
@@ -2369,55 +1638,28 @@ int32_t tiledb_deserialize_array(
     int32_t,
     const char* array_uri,
     tiledb_array_t** array) {
-  // Sanity check
-
-  api::ensure_buffer_is_valid(buffer);
-
-  // Create array struct
-  *array = new (std::nothrow) tiledb_array_t;
-  if (*array == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB array object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  ensure_buffer_is_valid(buffer);
+  ensure_output_pointer_is_valid(array);
 
   // Check array URI
   auto uri = tiledb::sm::URI(array_uri);
   if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
-    delete *array;
-    *array = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
+    throw CAPIException("Cannot deserialize array; Invalid URI");
   }
 
-  // Allocate an array object
-  try {
-    (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
-  } catch (std::bad_alloc&) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation "
-        "error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
+  // Create Array object and deserialize
+  *array = tiledb_array_t::make_handle(ctx->resources(), uri);
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
   try {
     tiledb::sm::serialization::array_deserialize(
-        (*array)->array_.get(),
+        (*array)->array().get(),
         (tiledb::sm::SerializationType)serialize_type,
         buffer->buffer(),
         ctx->resources(),
         memory_tracker);
   } catch (StatusException& e) {
-    delete *array;
-    *array = nullptr;
+    tiledb_array_t::break_handle(*array);
     return TILEDB_ERR;
   }
 
@@ -2483,10 +1725,7 @@ int32_t tiledb_serialize_array_open(
     tiledb_buffer_t** buffer) {
   // Currently no different behaviour is required if array open is serialized by
   // the client or the Cloud server, so the variable is unused
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  ensure_array_is_valid(array);
 
   auto buf = tiledb_buffer_handle_t::make_handle(
       ctx->resources().serialization_memory_tracker());
@@ -2494,7 +1733,7 @@ int32_t tiledb_serialize_array_open(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_open_serialize(
-              *(array->array_.get()),
+              *(array->array().get()),
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer()))) {
     tiledb_buffer_handle_t::break_handle(buf);
@@ -2514,51 +1753,24 @@ int32_t tiledb_deserialize_array_open(
     tiledb_array_t** array) {
   // Currently no different behaviour is required if array open is deserialized
   // by the client or the Cloud server
-  api::ensure_buffer_is_valid(buffer);
-
-  // Create array struct
-  *array = new (std::nothrow) tiledb_array_t;
-  if (*array == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB array object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  ensure_buffer_is_valid(buffer);
+  ensure_output_pointer_is_valid(array);
 
   // Check array URI
   auto uri = tiledb::sm::URI("deserialized_array");
   if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
-    delete *array;
-    *array = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
+    throw CAPIException("Cannot deserialize array open; Invalid URI");
   }
 
-  // Allocate an array object
-  try {
-    (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
-  } catch (std::bad_alloc&) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation "
-        "error");
-    delete *array;
-    *array = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
+  // Create Array object and deserialize
+  *array = tiledb_array_t::make_handle(ctx->resources(), uri);
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_open_deserialize(
-              (*array)->array_.get(),
+              (*array)->array().get(),
               (tiledb::sm::SerializationType)serialize_type,
               buffer->buffer()))) {
-    delete *array;
-    *array = nullptr;
+    tiledb_array_t::break_handle(*array);
     return TILEDB_ERR;
   }
 
@@ -2691,66 +1903,37 @@ int32_t tiledb_deserialize_query_and_array(
     const char* array_uri,
     tiledb_query_t** query,
     tiledb_array_t** array) {
-  // Sanity check
-  if (query == nullptr) {
-    return TILEDB_ERR;
-  }
+  ensure_buffer_is_valid(buffer);
+  ensure_output_pointer_is_valid(query);
+  ensure_output_pointer_is_valid(array);
 
-  api::ensure_buffer_is_valid(buffer);
-
-  // Create array struct
-  *array = new (std::nothrow) tiledb_array_t;
-  if (*array == nullptr) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation error");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Check array URI
-  auto uri = tiledb::sm::URI(array_uri);
-  if (uri.is_invalid()) {
-    auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
-    delete *array;
-    *array = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  // Allocate an array object
-  try {
-    (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
-  } catch (std::bad_alloc&) {
-    auto st = Status_Error(
-        "Failed to create TileDB array object; Memory allocation error");
-    delete array;
-    array = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  // Create array object
+  *array = tiledb_array_t::make_handle(
+      ctx->resources(),
+      tiledb::sm::URI(array_uri, tiledb::sm::URI::must_be_valid));
 
   // First deserialize the array included in the query
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_LOAD);
-  throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
-      buffer->buffer(),
-      (tiledb::sm::SerializationType)serialize_type,
-      *(*array)->array_,
-      ctx->resources(),
-      memory_tracker));
+  try {
+    throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
+        buffer->buffer(),
+        (tiledb::sm::SerializationType)serialize_type,
+        *(*array)->array(),
+        ctx->resources(),
+        memory_tracker));
+  } catch (...) {
+    tiledb_array_t::break_handle(*array);
+    throw;
+  }
 
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
   if (*query == nullptr) {
-    auto st = Status_Error(
-        "Failed to allocate TileDB query object; Memory allocation failed");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    tiledb_array_t::break_handle(*array);
+    throw CAPIException(
+        "Failed to deserialize query and array; "
+        "TileDB query object allocation failed.");
   }
 
   // Create query
@@ -2758,25 +1941,31 @@ int32_t tiledb_deserialize_query_and_array(
       ctx->resources(),
       ctx->cancellation_source(),
       ctx->storage_manager(),
-      (*array)->array_);
+      (*array)->array());
   if ((*query)->query_ == nullptr) {
-    auto st = Status_Error(
-        "Failed to allocate TileDB query object; Memory allocation failed");
     delete *query;
     *query = nullptr;
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
+    tiledb_array_t::break_handle(*array);
+    throw CAPIException(
+        "Failed to deserialize query and array; "
+        "TileDB query object allocation failed.");
   }
 
-  throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
-      buffer->buffer(),
-      (tiledb::sm::SerializationType)serialize_type,
-      client_side == 1,
-      nullptr,
-      (*query)->query_,
-      &ctx->resources().compute_tp(),
-      ctx->resources().serialization_memory_tracker()));
+  try {
+    throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
+        buffer->buffer(),
+        (tiledb::sm::SerializationType)serialize_type,
+        client_side == 1,
+        nullptr,
+        (*query)->query_,
+        &ctx->resources().compute_tp(),
+        ctx->resources().serialization_memory_tracker()));
+  } catch (...) {
+    delete *query;
+    *query = nullptr;
+    tiledb_array_t::break_handle(*array);
+    throw;
+  }
 
   return TILEDB_OK;
 }
@@ -2789,9 +1978,7 @@ int32_t tiledb_serialize_array_nonempty_domain(
     tiledb_serialization_type_t serialize_type,
     int32_t,
     tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_array_is_valid(array);
 
   auto buf = tiledb_buffer_handle_t::make_handle(
       ctx->resources().serialization_memory_tracker());
@@ -2799,7 +1986,7 @@ int32_t tiledb_serialize_array_nonempty_domain(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_serialize(
-              array->array_.get(),
+              array->array().get(),
               nonempty_domain,
               is_empty,
               (tiledb::sm::SerializationType)serialize_type,
@@ -2814,22 +2001,18 @@ int32_t tiledb_serialize_array_nonempty_domain(
 }
 
 int32_t tiledb_deserialize_array_nonempty_domain(
-    tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t,
     void* nonempty_domain,
     int32_t* is_empty) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  api::ensure_buffer_is_valid(buffer);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(buffer);
 
   bool is_empty_bool;
   throw_if_not_ok(tiledb::sm::serialization::nonempty_domain_deserialize(
-      array->array_.get(),
+      array->array().get(),
       buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       nonempty_domain,
@@ -2846,9 +2029,7 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
     tiledb_serialization_type_t serialize_type,
     int32_t,
     tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_array_is_valid(array);
 
   auto buf = tiledb_buffer_handle_t::make_handle(
       ctx->resources().serialization_memory_tracker());
@@ -2856,7 +2037,7 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::nonempty_domain_serialize(
-              array->array_.get(),
+              array->array().get(),
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer()))) {
     tiledb_buffer_handle_t::break_handle(buf);
@@ -2869,19 +2050,15 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
 }
 
 int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  api::ensure_buffer_is_valid(buffer);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(buffer);
 
   throw_if_not_ok(tiledb::sm::serialization::nonempty_domain_deserialize(
-      array->array_.get(),
+      array->array().get(),
       buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type));
 
@@ -2894,9 +2071,7 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
     const void* subarray,
     tiledb_serialization_type_t serialize_type,
     tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_array_is_valid(array);
 
   auto buf = tiledb_buffer_handle_t::make_handle(
       ctx->resources().serialization_memory_tracker());
@@ -2905,7 +2080,7 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::max_buffer_sizes_serialize(
-              array->array_.get(),
+              array->array().get(),
               subarray,
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer()))) {
@@ -2919,15 +2094,11 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
 }
 
 capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* request) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array paramter must be valid.");
-  }
-
-  api::ensure_buffer_is_valid(request);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(request);
 
   // Deserialize buffer
   auto [timestamp_start, timestamp_end] = tiledb::sm::serialization::
@@ -2936,38 +2107,33 @@ capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
 
   // Delete fragments
   try {
-    array->array_->delete_fragments(
-        array->array_->array_uri(), timestamp_start, timestamp_end);
+    array->delete_fragments(array->array_uri(), timestamp_start, timestamp_end);
   } catch (...) {
-    throw api::CAPIStatusException("Failed to delete fragments");
+    throw CAPIException("Failed to delete fragments");
   }
 
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_handle_array_delete_fragments_list_request(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* request) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array paramter must be valid.");
-  }
-
-  api::ensure_buffer_is_valid(request);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(request);
 
   // Deserialize buffer
   auto uris =
       tiledb::sm::serialization::deserialize_delete_fragments_list_request(
-          array->array_->array_uri(),
+          array->array_uri(),
           (tiledb::sm::SerializationType)serialize_type,
           request->buffer());
 
   // Delete fragments list
   try {
-    array->array_->delete_fragments_list(uris);
+    array->delete_fragments_list(uris);
   } catch (...) {
-    throw api::CAPIStatusException("Failed to delete fragments_list");
+    throw CAPIException("Failed to delete fragments_list");
   }
 
   return TILEDB_OK;
@@ -2978,9 +2144,7 @@ int32_t tiledb_serialize_array_metadata(
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_array_is_valid(array);
 
   auto buf = tiledb_buffer_handle_t::make_handle(
       ctx->resources().serialization_memory_tracker());
@@ -2988,7 +2152,7 @@ int32_t tiledb_serialize_array_metadata(
   // Get metadata to serialize, this will load it if it does not exist
   sm::Metadata* metadata = nullptr;
   try {
-    metadata = &array->array_->metadata();
+    metadata = &array->metadata();
   } catch (StatusException& e) {
     auto st = Status_Error(e.what());
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -3013,20 +2177,16 @@ int32_t tiledb_serialize_array_metadata(
 }
 
 int32_t tiledb_deserialize_array_metadata(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  api::ensure_buffer_is_valid(buffer);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(buffer);
 
   // Deserialize
   throw_if_not_ok(tiledb::sm::serialization::metadata_deserialize(
-      array->array_->unsafe_metadata(),
-      array->array_->config(),
+      array->unsafe_metadata(),
+      array->config(),
       (tiledb::sm::SerializationType)serialize_type,
       buffer->buffer()));
 
@@ -3276,15 +2436,10 @@ int32_t tiledb_deserialize_fragment_info(
 }
 
 capi_return_t tiledb_handle_load_array_schema_request(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
-  ensure_context_is_valid(ctx);
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw CAPIStatusException("Array paramter must be valid.");
-  }
   ensure_array_is_valid(array);
   ensure_buffer_is_valid(request);
   ensure_buffer_is_valid(response);
@@ -3295,11 +2450,11 @@ capi_return_t tiledb_handle_load_array_schema_request(
           request->buffer());
 
   if (load_schema_req.include_enumerations()) {
-    array->array_->load_all_enumerations();
+    array->load_all_enumerations();
   }
 
   tiledb::sm::serialization::serialize_load_array_schema_response(
-      *array->array_,
+      *array->array(),
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       response->buffer());
 
@@ -3307,25 +2462,20 @@ capi_return_t tiledb_handle_load_array_schema_request(
 }
 
 capi_return_t tiledb_handle_load_enumerations_request(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array paramter must be valid.");
-  }
-
-  api::ensure_buffer_is_valid(request);
-  api::ensure_buffer_is_valid(response);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(request);
+  ensure_buffer_is_valid(response);
 
   auto enumeration_names =
       tiledb::sm::serialization::deserialize_load_enumerations_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
           request->buffer());
-  auto enumerations = array->array_->get_enumerations(
-      enumeration_names,
-      array->array_->opened_array()->array_schema_latest_ptr());
+  auto enumerations = array->get_enumerations(
+      enumeration_names, array->opened_array()->array_schema_latest_ptr());
 
   tiledb::sm::serialization::serialize_load_enumerations_response(
       enumerations,
@@ -3341,18 +2491,15 @@ capi_return_t tiledb_handle_query_plan_request(
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array parameter must be valid.");
-  }
-
-  api::ensure_buffer_is_valid(request);
-  api::ensure_buffer_is_valid(response);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(request);
+  ensure_buffer_is_valid(response);
 
   tiledb::sm::Query query(
       ctx->resources(),
       ctx->cancellation_source(),
       ctx->storage_manager(),
-      array->array_);
+      array->array());
   tiledb::sm::serialization::deserialize_query_plan_request(
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       request->buffer(),
@@ -3369,20 +2516,16 @@ capi_return_t tiledb_handle_query_plan_request(
 }
 
 capi_return_t tiledb_handle_consolidation_plan_request(
-    tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array paramter must be valid.");
-  }
-
-  api::ensure_buffer_is_valid(request);
-  api::ensure_buffer_is_valid(response);
+  ensure_array_is_valid(array);
+  ensure_buffer_is_valid(request);
+  ensure_buffer_is_valid(response);
 
   // Error if array is not open
-  if (!array->array_->is_open()) {
+  if (!array->is_open()) {
     throw std::logic_error(
         "Cannot get consolidation plan. Input array is not open");
   }
@@ -3391,7 +2534,7 @@ capi_return_t tiledb_handle_consolidation_plan_request(
       tiledb::sm::serialization::deserialize_consolidation_plan_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
           request->buffer());
-  sm::ConsolidationPlan plan(array->array_, fragment_size);
+  sm::ConsolidationPlan plan(array->array(), fragment_size);
 
   tiledb::sm::serialization::serialize_consolidation_plan_response(
       plan,
@@ -3980,10 +3123,7 @@ int32_t tiledb_consolidation_plan_create_with_mbr(
     tiledb_array_t* array,
     uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) {
-  // Sanity check
-  if (sanity_check(ctx, array) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
+  ensure_array_is_valid(array);
 
   // Create consolidation plan struct
   *consolidation_plan = new (std::nothrow) tiledb_consolidation_plan_t;
@@ -4000,7 +3140,7 @@ int32_t tiledb_consolidation_plan_create_with_mbr(
   try {
     (*consolidation_plan)->consolidation_plan_ =
         make_shared<tiledb::sm::ConsolidationPlan>(
-            HERE(), array->array_, fragment_size);
+            HERE(), array->array(), fragment_size);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB consolidation plan object; Memory allocation "
@@ -4137,22 +3277,6 @@ constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-
-CAPI_INTERFACE(
-    encryption_type_to_str,
-    tiledb_encryption_type_t encryption_type,
-    const char** str) {
-  return api_entry_plain<tiledb::api::tiledb_encryption_type_to_str>(
-      encryption_type, str);
-}
-
-CAPI_INTERFACE(
-    encryption_type_from_str,
-    const char* str,
-    tiledb_encryption_type_t* encryption_type) {
-  return api_entry_plain<tiledb::api::tiledb_encryption_type_from_str>(
-      str, encryption_type);
-}
 
 CAPI_INTERFACE(
     query_status_to_str, tiledb_query_status_t query_status, const char** str) {
@@ -4892,144 +4016,8 @@ CAPI_INTERFACE(
 }
 
 /* ****************************** */
-/*              ARRAY             */
+/*       ARRAY CONSOLIDATION      */
 /* ****************************** */
-
-CAPI_INTERFACE(
-    array_alloc,
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_array_t** array) {
-  return api_entry<tiledb::api::tiledb_array_alloc>(ctx, array_uri, array);
-}
-
-CAPI_INTERFACE(
-    array_set_open_timestamp_start,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t timestamp_start) {
-  return api_entry<tiledb::api::tiledb_array_set_open_timestamp_start>(
-      ctx, array, timestamp_start);
-}
-
-CAPI_INTERFACE(
-    array_set_open_timestamp_end,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t timestamp_end) {
-  return api_entry<tiledb::api::tiledb_array_set_open_timestamp_end>(
-      ctx, array, timestamp_end);
-}
-
-CAPI_INTERFACE(
-    array_get_open_timestamp_start,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t* timestamp_start) {
-  return api_entry<tiledb::api::tiledb_array_get_open_timestamp_start>(
-      ctx, array, timestamp_start);
-}
-
-CAPI_INTERFACE(
-    array_get_open_timestamp_end,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t* timestamp_end) {
-  return api_entry<tiledb::api::tiledb_array_get_open_timestamp_end>(
-      ctx, array, timestamp_end);
-}
-
-CAPI_INTERFACE(array_delete, tiledb_ctx_t* ctx, const char* uri) {
-  return api_entry<tiledb::api::tiledb_array_delete>(ctx, uri);
-}
-
-CAPI_INTERFACE(
-    array_delete_fragments_v2,
-    tiledb_ctx_t* ctx,
-    const char* uri_str,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end) {
-  return api_entry<tiledb::api::tiledb_array_delete_fragments_v2>(
-      ctx, uri_str, timestamp_start, timestamp_end);
-}
-
-CAPI_INTERFACE(
-    array_delete_fragments_list,
-    tiledb_ctx_t* ctx,
-    const char* uri_str,
-    const char* fragment_uris[],
-    const size_t num_fragments) {
-  return api_entry<tiledb::api::tiledb_array_delete_fragments_list>(
-      ctx, uri_str, fragment_uris, num_fragments);
-}
-
-CAPI_INTERFACE(
-    array_open,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t query_type) {
-  return api_entry<tiledb::api::tiledb_array_open>(ctx, array, query_type);
-}
-
-CAPI_INTERFACE(
-    array_is_open, tiledb_ctx_t* ctx, tiledb_array_t* array, int32_t* is_open) {
-  return api_entry<tiledb::api::tiledb_array_is_open>(ctx, array, is_open);
-}
-
-CAPI_INTERFACE(array_reopen, tiledb_ctx_t* ctx, tiledb_array_t* array) {
-  return api_entry<tiledb::api::tiledb_array_reopen>(ctx, array);
-}
-
-CAPI_INTERFACE(
-    array_set_config,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_config_t* config) {
-  return api_entry<tiledb::api::tiledb_array_set_config>(ctx, array, config);
-}
-
-CAPI_INTERFACE(
-    array_get_config,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_config_t** config) {
-  return api_entry<tiledb::api::tiledb_array_get_config>(ctx, array, config);
-}
-
-CAPI_INTERFACE(array_close, tiledb_ctx_t* ctx, tiledb_array_t* array) {
-  return api_entry<tiledb::api::tiledb_array_close>(ctx, array);
-}
-
-CAPI_INTERFACE_VOID(array_free, tiledb_array_t** array) {
-  return api_entry_void<tiledb::api::tiledb_array_free>(array);
-}
-
-CAPI_INTERFACE(
-    array_get_schema,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_array_schema_t** array_schema) {
-  return api_entry<tiledb::api::tiledb_array_get_schema>(
-      ctx, array, array_schema);
-}
-
-CAPI_INTERFACE(
-    array_get_query_type,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    tiledb_query_type_t* query_type) {
-  return api_entry<tiledb::api::tiledb_array_get_query_type>(
-      ctx, array, query_type);
-}
-
-CAPI_INTERFACE(
-    array_create,
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    const tiledb_array_schema_t* array_schema) {
-  return api_entry<tiledb::api::tiledb_array_create>(
-      ctx, array_uri, array_schema);
-}
 
 CAPI_INTERFACE(
     array_consolidate,
@@ -5057,207 +4045,6 @@ CAPI_INTERFACE(
     const char* array_uri,
     tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_array_vacuum>(ctx, array_uri, config);
-}
-
-CAPI_INTERFACE(
-    array_get_non_empty_domain,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    void* domain,
-    int32_t* is_empty) {
-  return api_entry<tiledb::api::tiledb_array_get_non_empty_domain>(
-      ctx, array, domain, is_empty);
-}
-
-CAPI_INTERFACE(
-    array_get_non_empty_domain_from_index,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint32_t idx,
-    void* domain,
-    int32_t* is_empty) {
-  return api_entry<tiledb::api::tiledb_array_get_non_empty_domain_from_index>(
-      ctx, array, idx, domain, is_empty);
-}
-
-CAPI_INTERFACE(
-    array_get_non_empty_domain_from_name,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    void* domain,
-    int32_t* is_empty) {
-  return api_entry<tiledb::api::tiledb_array_get_non_empty_domain_from_name>(
-      ctx, array, name, domain, is_empty);
-}
-
-CAPI_INTERFACE(
-    array_get_non_empty_domain_var_size_from_index,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint32_t idx,
-    uint64_t* start_size,
-    uint64_t* end_size,
-    int32_t* is_empty) {
-  return api_entry<
-      tiledb::api::tiledb_array_get_non_empty_domain_var_size_from_index>(
-      ctx, array, idx, start_size, end_size, is_empty);
-}
-
-CAPI_INTERFACE(
-    array_get_non_empty_domain_var_size_from_name,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    uint64_t* start_size,
-    uint64_t* end_size,
-    int32_t* is_empty) {
-  return api_entry<
-      tiledb::api::tiledb_array_get_non_empty_domain_var_size_from_name>(
-      ctx, array, name, start_size, end_size, is_empty);
-}
-
-CAPI_INTERFACE(
-    array_get_non_empty_domain_var_from_index,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint32_t idx,
-    void* start,
-    void* end,
-    int32_t* is_empty) {
-  return api_entry<
-      tiledb::api::tiledb_array_get_non_empty_domain_var_from_index>(
-      ctx, array, idx, start, end, is_empty);
-}
-
-CAPI_INTERFACE(
-    array_get_non_empty_domain_var_from_name,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* name,
-    void* start,
-    void* end,
-    int32_t* is_empty) {
-  return api_entry<
-      tiledb::api::tiledb_array_get_non_empty_domain_var_from_name>(
-      ctx, array, name, start, end, is_empty);
-}
-
-CAPI_INTERFACE(
-    array_get_uri,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char** array_uri) {
-  return api_entry<tiledb::api::tiledb_array_get_uri>(ctx, array, array_uri);
-}
-
-CAPI_INTERFACE(
-    array_encryption_type,
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_encryption_type_t* encryption_type) {
-  return api_entry<tiledb::api::tiledb_array_encryption_type>(
-      ctx, array_uri, encryption_type);
-}
-
-CAPI_INTERFACE(
-    array_put_metadata,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* key,
-    tiledb_datatype_t value_type,
-    uint32_t value_num,
-    const void* value) {
-  return api_entry<tiledb::api::tiledb_array_put_metadata>(
-      ctx, array, key, value_type, value_num, value);
-}
-
-CAPI_INTERFACE(
-    array_delete_metadata,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* key) {
-  return api_entry<tiledb::api::tiledb_array_delete_metadata>(ctx, array, key);
-}
-
-CAPI_INTERFACE(
-    array_get_metadata,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* key,
-    tiledb_datatype_t* value_type,
-    uint32_t* value_num,
-    const void** value) {
-  return api_entry<tiledb::api::tiledb_array_get_metadata>(
-      ctx, array, key, value_type, value_num, value);
-}
-
-CAPI_INTERFACE(
-    array_get_metadata_num,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t* num) {
-  return api_entry<tiledb::api::tiledb_array_get_metadata_num>(ctx, array, num);
-}
-
-CAPI_INTERFACE(
-    array_get_metadata_from_index,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    uint64_t index,
-    const char** key,
-    uint32_t* key_len,
-    tiledb_datatype_t* value_type,
-    uint32_t* value_num,
-    const void** value) {
-  return api_entry<tiledb::api::tiledb_array_get_metadata_from_index>(
-      ctx, array, index, key, key_len, value_type, value_num, value);
-}
-
-CAPI_INTERFACE(
-    array_has_metadata_key,
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* key,
-    tiledb_datatype_t* value_type,
-    int32_t* has_key) {
-  return api_entry<tiledb::api::tiledb_array_has_metadata_key>(
-      ctx, array, key, value_type, has_key);
-}
-
-CAPI_INTERFACE(
-    array_evolve,
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_array_schema_evolution_t* array_schema_evolution) {
-  return api_entry<tiledb::api::tiledb_array_evolve>(
-      ctx, array_uri, array_schema_evolution);
-}
-
-CAPI_INTERFACE(
-    array_get_enumeration,
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
-    const char* attr_name,
-    tiledb_enumeration_t** enumeration) {
-  return api_entry<tiledb::api::tiledb_array_get_enumeration>(
-      ctx, array, attr_name, enumeration);
-}
-
-CAPI_INTERFACE(
-    array_load_all_enumerations,
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array) {
-  return api_entry<tiledb::api::tiledb_array_load_all_enumerations>(ctx, array);
-}
-
-CAPI_INTERFACE(
-    array_upgrade_version,
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_config_t* config) {
-  return api_entry<tiledb::api::tiledb_array_upgrade_version>(
-      ctx, array_uri, config);
 }
 
 /* ****************************** */
@@ -5524,7 +4311,8 @@ CAPI_INTERFACE(
     int32_t client_side,
     void* nonempty_domain,
     int32_t* is_empty) {
-  return api_entry<tiledb::api::tiledb_deserialize_array_nonempty_domain>(
+  return api_entry_context<
+      tiledb::api::tiledb_deserialize_array_nonempty_domain>(
       ctx,
       array,
       buffer,
@@ -5553,7 +4341,7 @@ CAPI_INTERFACE(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side) {
-  return api_entry<
+  return api_entry_context<
       tiledb::api::tiledb_deserialize_array_non_empty_domain_all_dimensions>(
       ctx, array, buffer, serialize_type, client_side);
 }
@@ -5575,7 +4363,7 @@ CAPI_INTERFACE(
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* request) {
-  return api_entry<
+  return api_entry_context<
       tiledb::api::tiledb_handle_array_delete_fragments_timestamps_request>(
       ctx, array, serialize_type, request);
 }
@@ -5586,7 +4374,7 @@ CAPI_INTERFACE(
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* request) {
-  return api_entry<
+  return api_entry_context<
       tiledb::api::tiledb_handle_array_delete_fragments_list_request>(
       ctx, array, serialize_type, request);
 }
@@ -5607,7 +4395,7 @@ CAPI_INTERFACE(
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer) {
-  return api_entry<tiledb::api::tiledb_deserialize_array_metadata>(
+  return api_entry_context<tiledb::api::tiledb_deserialize_array_metadata>(
       ctx, array, serialize_type, buffer);
 }
 
@@ -5707,7 +4495,8 @@ CAPI_INTERFACE(
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
-  return api_entry<tiledb::api::tiledb_handle_load_array_schema_request>(
+  return api_entry_context<
+      tiledb::api::tiledb_handle_load_array_schema_request>(
       ctx, array, serialization_type, request, response);
 }
 
@@ -5718,7 +4507,8 @@ CAPI_INTERFACE(
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
-  return api_entry<tiledb::api::tiledb_handle_load_enumerations_request>(
+  return api_entry_context<
+      tiledb::api::tiledb_handle_load_enumerations_request>(
       ctx, array, serialization_type, request, response);
 }
 
@@ -5740,7 +4530,8 @@ CAPI_INTERFACE(
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
-  return api_entry<tiledb::api::tiledb_handle_consolidation_plan_request>(
+  return api_entry_context<
+      tiledb::api::tiledb_handle_consolidation_plan_request>(
       ctx, array, serialization_type, request, response);
 }
 

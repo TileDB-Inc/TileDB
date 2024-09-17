@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
@@ -124,7 +125,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 7, 6, 15, 33, 43}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Prepare correct tile coordinates
@@ -247,7 +248,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 2, 6, 10}, {2, 6, 5, 10}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   auto tile_coords = subarray.tile_coords();
@@ -300,7 +301,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 10, 6, 10}, {2, 6, 5, 10}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   std::vector<uint64_t> tile_coords = {1, 0};
   std::vector<uint64_t> c_range_0_0 = {3, 4};
@@ -410,7 +411,7 @@ TEST_CASE_METHOD(
   }
   SubarrayRanges<uint64_t> ranges = {d1_ranges, d2_ranges};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray, false);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray, false);
 
   // We must compute range offsets before invoking
   // `get_expanded_coordinates`.
@@ -485,7 +486,7 @@ TEST_CASE_METHOD(
   }
   SubarrayRanges<uint64_t> ranges = {d1_ranges, d2_ranges};
   Layout subarray_layout = Layout::COL_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray, false);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray, false);
 
   // We must compute range offsets before invoking
   // `get_expanded_coordinates`.
@@ -560,7 +561,7 @@ TEST_CASE_METHOD(
   }
   SubarrayRanges<uint64_t> ranges = {d1_ranges, d2_ranges};
   Layout subarray_layout = Layout::UNORDERED;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray, false);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray, false);
 
   // We must compute range offsets before invoking
   // `get_expanded_coordinates`.
@@ -704,7 +705,7 @@ TEST_CASE_METHOD(
   }
   SubarrayRanges<uint64_t> ranges = {d1_ranges, d2_ranges, d3_ranges};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray, false);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray, false);
 
   // We must compute range offsets before invoking
   // `get_expanded_coordinates`.
@@ -803,7 +804,7 @@ TEST_CASE_METHOD(
   }
   SubarrayRanges<uint64_t> ranges = {d1_ranges, d2_ranges, d3_ranges};
   Layout subarray_layout = Layout::COL_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray, false);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray, false);
 
   // We must compute range offsets before invoking
   // `get_expanded_coordinates`.
@@ -902,7 +903,7 @@ TEST_CASE_METHOD(
   }
   SubarrayRanges<uint64_t> ranges = {d1_ranges, d2_ranges, d3_ranges};
   Layout subarray_layout = Layout::UNORDERED;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray, false);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray, false);
 
   // We must compute range offsets before invoking
   // `get_expanded_coordinates`.

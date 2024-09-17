@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #ifdef _WIN32
@@ -345,7 +345,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
     uint64_t budget,
     bool unsplittable) {
   Subarray subarray;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   ThreadPool tp(4);
   Config config;
@@ -375,7 +375,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
     uint64_t memory_budget_var,
     bool unsplittable) {
   Subarray subarray;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   ThreadPool tp(4);
   Config config;
@@ -403,7 +403,7 @@ void SubarrayPartitionerSparseFx::test_subarray_partitioner(
     uint64_t budget_var,
     bool unsplittable) {
   Subarray subarray;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   ThreadPool tp(4);
   Config config;
@@ -684,7 +684,7 @@ TEST_CASE_METHOD(
   std::vector<SubarrayRanges<uint64_t>> partitions_after = {
       {{3, 3}}, {{4, 4}}, {{5, 6}}, {{7, 10}}, {{11, 18}}};
 
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   ThreadPool tp(4);
   Config config;
@@ -2286,7 +2286,7 @@ TEST_CASE_METHOD(
 
   // Check unsplittable
   tiledb::sm::Subarray subarray(
-      array->array_.get(), layout, &g_helper_stats, g_helper_logger());
+      array->array().get(), layout, &g_helper_stats, g_helper_logger());
   CHECK_NOTHROW(subarray.add_range(0, Range("bb", "bb"), true));
   ThreadPool tp(4);
   Config config;
@@ -2322,7 +2322,7 @@ TEST_CASE_METHOD(
 
   // Check full
   tiledb::sm::Subarray subarray_full(
-      array->array_.get(), layout, &g_helper_stats, g_helper_logger());
+      array->array().get(), layout, &g_helper_stats, g_helper_logger());
   CHECK_NOTHROW(subarray_full.add_range(0, Range("a", "bb"), true));
   SubarrayPartitioner partitioner_full(
       &config,
@@ -2349,7 +2349,7 @@ TEST_CASE_METHOD(
 
   // Check split
   tiledb::sm::Subarray subarray_split(
-      array->array_.get(), layout, &g_helper_stats, g_helper_logger());
+      array->array().get(), layout, &g_helper_stats, g_helper_logger());
   CHECK_NOTHROW(subarray_split.add_range(0, Range("a", "bb"), true));
   SubarrayPartitioner partitioner_split(
       &config,
@@ -2386,7 +2386,7 @@ TEST_CASE_METHOD(
 
   // Check no split 2 MBRs
   tiledb::sm::Subarray subarray_no_split(
-      array->array_.get(), layout, &g_helper_stats, g_helper_logger());
+      array->array().get(), layout, &g_helper_stats, g_helper_logger());
   CHECK_NOTHROW(subarray_no_split.add_range(0, Range("bb", "cc"), true));
   SubarrayPartitioner partitioner_no_split(
       &config,
@@ -2415,7 +2415,7 @@ TEST_CASE_METHOD(
 
   // Check split 2 MBRs
   tiledb::sm::Subarray subarray_split_2(
-      array->array_.get(), layout, &g_helper_stats, g_helper_logger());
+      array->array().get(), layout, &g_helper_stats, g_helper_logger());
   CHECK_NOTHROW(subarray_split_2.add_range(0, Range("bb", "cc"), true));
   SubarrayPartitioner partitioner_split_2(
       &config,
@@ -2553,7 +2553,7 @@ TEST_CASE_METHOD(
   }
 
   tiledb::sm::Subarray subarray(
-      array->array_.get(), layout, &g_helper_stats, g_helper_logger());
+      array->array().get(), layout, &g_helper_stats, g_helper_logger());
   CHECK_NOTHROW(subarray.add_range(0, Range("cc", "ccd"), true));
   ThreadPool tp(4);
   Config config;

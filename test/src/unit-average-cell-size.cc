@@ -181,8 +181,16 @@ struct CPPAverageCellSizeFx {
       uint64_t d2_size,
       uint64_t a2_size,
       optional<uint64_t> a3_size = std::nullopt) {
-    Array array(ctx_, array_name, TILEDB_READ);
-    auto avg_cell_sizes = array.ptr()->array_->get_average_var_cell_sizes();
+    auto array{make_shared<sm::Array>(
+        HERE(), ctx_.ptr().get()->resources(), sm::URI(array_name))};
+    REQUIRE(array
+                ->open(
+                    sm::QueryType::READ,
+                    sm::EncryptionType::NO_ENCRYPTION,
+                    nullptr,
+                    0)
+                .ok());
+    auto avg_cell_sizes = array->get_average_var_cell_sizes();
 
     CHECK(avg_cell_sizes["d2"] == d2_size);
     CHECK(avg_cell_sizes["a2"] == a2_size);

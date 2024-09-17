@@ -40,7 +40,9 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/array/array_api_experimental.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_experimental.h"
+#include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_experimental.h"
 #include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
 #include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
@@ -97,13 +99,6 @@ tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) TILEDB_NOEXCEPT;
  */
 TILEDB_EXPORT capi_return_t tiledb_as_built_dump(tiledb_string_t** out)
     TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*      ARRAY SCHEMA EVOLUTION       */
-/* ********************************* */
-
-/** A TileDB array schema. */
-typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
 
 /**
  * Creates a TileDB schema evolution object.
@@ -340,74 +335,6 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_expand_current_domain(
     tiledb_current_domain_t* expanded_domain) TILEDB_NOEXCEPT;
 
 /* ********************************* */
-/*               ARRAY               */
-/* ********************************* */
-
-/**
- * Evolve array schema of an array.
- *
- * **Example:**
- *
- * @code{.c}
- * const char* array_uri="test_array";
- * tiledb_array_evolve(ctx, array_uri,array_schema_evolution);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The uri of the array.
- * @param array_schema_evolution The schema evolution.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_evolve(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_array_schema_evolution_t* array_schema_evolution) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves an attribute's enumeration given the attribute name (key).
- *
- * **Example:**
- *
- * The following retrieves the first attribute in the schema.
- *
- * @code{.c}
- * tiledb_attribute_t* attr;
- * tiledb_array_schema_get_enumeration(
- *     ctx, array_schema, "attr_0", &enumeration);
- * // Make sure to delete the retrieved attribute in the end.
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The TileDB array.
- * @param name The name (key) of the attribute from which to
- * retrieve the enumeration.
- * @param enumeration The enumeration object to retrieve.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT capi_return_t tiledb_array_get_enumeration(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
-    const char* name,
-    tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
-
-/**
- * Load all enumerations for the array.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_load_all_enumerations(ctx, array);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The TileDB array.
- * @param latest_only If non-zero, only load enumerations for the latest schema.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT capi_return_t tiledb_array_load_all_enumerations(
-    tiledb_ctx_t* ctx, const tiledb_array_t* array) TILEDB_NOEXCEPT;
-
-/* ********************************* */
 /*               QUERY               */
 /* ********************************* */
 
@@ -620,7 +547,7 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
     tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /* ********************************* */
-/*           CONSOLIDATION           */
+/*         ARRAY CONSOLIDATION       */
 /* ********************************* */
 
 /**
@@ -646,12 +573,12 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
  * @param[in] fragment_uris Fragment names of the fragments to consolidate. The
  *     names can be recovered using tiledb_fragment_info_get_fragment_name_v2.
  * @param[in] num_fragments Number of URIs to consolidate.
- * @param config Configuration parameters for the consolidation
+ * @param[in] config Configuration parameters for the consolidation
  *     (`nullptr` means default, which will use the config from \p ctx).
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
-TILEDB_EXPORT int32_t tiledb_array_consolidate_fragments(
+TILEDB_EXPORT capi_return_t tiledb_array_consolidate_fragments(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const char** fragment_uris,
@@ -659,7 +586,7 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate_fragments(
     tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /* ********************************* */
-/*                FILESTORE          */
+/*             FILESTORE             */
 /* ********************************* */
 
 /**

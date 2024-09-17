@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #ifdef _WIN32
@@ -251,7 +251,7 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
     uint64_t budget,
     bool unsplittable) {
   Subarray subarray;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   ThreadPool tp(4);
   Config config;
@@ -279,7 +279,7 @@ void SubarrayPartitionerDenseFx::test_subarray_partitioner(
     uint64_t budget_var,
     bool unsplittable) {
   Subarray subarray;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   ThreadPool tp(4);
   Config config;
@@ -560,7 +560,7 @@ TEST_CASE_METHOD(
   std::vector<SubarrayRanges<uint64_t>> partitions = {{{2, 2}}};
   std::vector<SubarrayRanges<uint64_t>> partitions_after = {{{3, 6}}};
 
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   ThreadPool tp(4);
   Config config;

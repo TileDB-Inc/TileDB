@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include "test/support/src/vfs_helpers.h"
 #include "test/support/tdb_catch.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -218,8 +219,8 @@ TEST_CASE_METHOD(
   }
 
   // Check the update value.
-  CHECK_THROWS(query->query_->update_values()[0].check(
-      array->array_->array_schema_latest()));
+  CHECK_THROWS(
+      query->query_->update_values()[0].check(array->array_schema_latest()));
 
   // Clean up.
   tiledb_query_free(&query);

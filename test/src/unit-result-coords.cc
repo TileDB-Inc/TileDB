@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,9 +30,9 @@
  * Tests for the ResultCoords classes.
  */
 
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/query/readers/result_coords.h"
@@ -109,8 +109,8 @@ CResultCoordsFx::CResultCoordsFx(uint64_t num_cells) {
   frag_md_ = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      array_->array_->array_schema_latest_ptr(),
-      generate_fragment_uri(array_->array_.get()),
+      array_->array_schema_latest_ptr(),
+      generate_fragment_uri(array_->array().get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);

@@ -2006,27 +2006,26 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
-  void* dom = nullptr;
+  uint32_t dom[4];
   int is_empty = false;
-  rc = tiledb_array_get_non_empty_domain_wrapper(ctx_, array, dom, &is_empty);
+  rc = tiledb_array_get_non_empty_domain_wrapper(ctx_, array, &dom, &is_empty);
   REQUIRE(rc == TILEDB_ERR);
   void* sub = nullptr;
 
   // Get non-empty domain per dimension
-  dom = nullptr;
   is_empty = false;
   rc = tiledb_array_get_non_empty_domain_from_index_wrapper(
-      ctx_, array, 0, dom, &is_empty);
+      ctx_, array, 0, &dom, &is_empty);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_get_non_empty_domain_from_index_wrapper(
-      ctx_, array, 1, dom, &is_empty);
+      ctx_, array, 1, &dom, &is_empty);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_array_get_non_empty_domain_from_name_wrapper(
-      ctx_, array, "d1", dom, &is_empty);
+      ctx_, array, "d1", &dom, &is_empty);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_get_non_empty_domain_from_name_wrapper(
-      ctx_, array, "d2", dom, &is_empty);
+      ctx_, array, "d2", &dom, &is_empty);
   REQUIRE(rc == TILEDB_OK);
 
   // Subarray checks

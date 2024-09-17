@@ -31,14 +31,6 @@
 // clang-format is disabled on the first enum so that we can manually indent it
 // properly.
 // clang-format off
-#ifdef TILEDB_ENCRYPTION_TYPE_ENUM
-    /** No encryption. */
-    TILEDB_ENCRYPTION_TYPE_ENUM(NO_ENCRYPTION) = 0,
-    /** AES-256-GCM encryption. */
-    TILEDB_ENCRYPTION_TYPE_ENUM(AES_256_GCM) = 1,
-#endif
-// clang-format on
-
 #ifdef TILEDB_QUERY_STATUS_ENUM
     /** Query failed */
     TILEDB_QUERY_STATUS_ENUM(FAILED) = 0,
@@ -53,6 +45,7 @@
     /** Query initialized (strategy created)  */
     TILEDB_QUERY_STATUS_ENUM(INITIALIZED) = 5,
 #endif
+// clang-format on
 
 #ifdef TILEDB_QUERY_STATUS_DETAILS_ENUM
     TILEDB_QUERY_STATUS_DETAILS_ENUM(REASON_NONE) = 0,

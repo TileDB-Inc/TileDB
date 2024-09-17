@@ -45,31 +45,6 @@
 /* ********************************* */
 
 namespace tiledb::api {
-
-/**
- * Returns after successfully validating an array.
- *
- * @param array Possibly-valid pointer to array
- */
-inline void ensure_array_is_valid(const tiledb_array_t* array) {
-  if (array == nullptr) {
-    throw CAPIStatusException("Invalid TileDB array object");
-  }
-}
-
-}  // namespace tiledb::api
-
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
-  if (array == nullptr || array->array_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB array object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-namespace tiledb::api {
 /**
  * Returns if a subarray handle (old style) is valid. Throws otherwise.
  */
@@ -80,19 +55,6 @@ inline void ensure_subarray_is_valid(const tiledb_subarray_t* p) {
   }
 }
 }  // namespace tiledb::api
-
-inline int32_t sanity_check(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_schema_evolution_t* schema_evolution) {
-  if (schema_evolution == nullptr ||
-      schema_evolution->array_schema_evolution_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
 
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
   if (query == nullptr || query->query_ == nullptr) {

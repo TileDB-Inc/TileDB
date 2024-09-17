@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 
@@ -157,7 +158,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   // Datatype mismatch
   CellSlabIter<int32_t> iter(&subarray);
@@ -167,7 +168,7 @@ TEST_CASE_METHOD(
   // Create subarray
   Subarray subarray_2;
   subarray_layout = Layout::GLOBAL_ORDER;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray_2);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray_2);
 
   // Invalid layout
   CellSlabIter<uint64_t> iter2(&subarray_2);
@@ -206,7 +207,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 15, 3, 5, 10, 20, 6, 36}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   CellSlabIter<uint64_t> iter(&subarray);
   CHECK(iter.end());
@@ -261,7 +262,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 8, 3, 5}, {5, 8, 3, 5}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
 
   CellSlabIter<uint64_t> iter(&subarray);
   CHECK(iter.end());
@@ -313,7 +314,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 15, 3, 5, 11, 14}};
   Layout subarray_layout = Layout::ROW_MAJOR;
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   uint64_t tile_coords_0[] = {0};
@@ -433,7 +434,7 @@ TEST_CASE_METHOD(
       {2, 4, 3, 9},
       {1, 2, 5, 8},
   };
-  create_subarray(array_->array_, ranges, subarray_layout, &subarray);
+  create_subarray(array_->array(), ranges, subarray_layout, &subarray);
   CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   check_iter<uint64_t>(subarray, c_cell_slabs);

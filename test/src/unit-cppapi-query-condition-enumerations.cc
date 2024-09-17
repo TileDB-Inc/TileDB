@@ -37,6 +37,7 @@
 
 #include "test/support/src/ast_helpers.h"
 #include "test/support/tdb_catch.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
@@ -540,7 +541,7 @@ TEST_CASE_METHOD(
   create_array(type, serialize, 1024);
 
   Array array(ctx_, uri_, TILEDB_READ);
-  auto core_array = array.ptr().get()->array_;
+  auto core_array = array.ptr().get();
   core_array->load_all_enumerations();
 
   auto qc =
@@ -563,7 +564,7 @@ TEST_CASE_METHOD(
   create_array(type, serialize, 1024);
 
   Array array(ctx_, uri_, TILEDB_READ);
-  auto core_array = array.ptr().get()->array_;
+  auto core_array = array.ptr().get();
   core_array->load_all_enumerations();
 
   auto qc =
@@ -1142,7 +1143,7 @@ void CPPQueryConditionEnumerationFx::create_enumeration(
 void CPPQueryConditionEnumerationFx::validate_query_condition(
     EnmrQCCreator creator) {
   Array array(ctx_, uri_, TILEDB_READ);
-  auto core_array = array.ptr().get()->array_;
+  auto core_array = array.ptr().get();
   core_array->load_all_enumerations();
 
   auto qc = creator(ctx_);

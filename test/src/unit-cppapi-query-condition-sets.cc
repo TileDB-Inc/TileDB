@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include "test/support/src/ast_helpers.h"
 #include "test/support/tdb_catch.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
@@ -738,9 +739,8 @@ void CPPQueryConditionFx::check_read(
     qc = serialize_deserialize_qc(qc);
   }
 
-  auto core_array = array.ptr().get()->array_;
   auto core_qc = qc.ptr().get()->query_condition_;
-  throw_if_not_ok(core_qc->check(core_array->array_schema_latest()));
+  throw_if_not_ok(core_qc->check(array.ptr().get()->array_schema_latest()));
 
   query.set_condition(qc)
       .set_data_buffer("dim", dim_read)

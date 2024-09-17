@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -354,7 +355,7 @@ TEST_CASE_METHOD(
   ase.array_evolve(uri_);
   array.reopen();
   ArrayExperimental::load_all_enumerations(ctx_, array);
-  auto all_schemas = array.ptr()->array_->array_schemas_all();
+  auto all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_2 = schema.ptr()->array_schema()->name();
 
@@ -381,7 +382,7 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(array.close());
   CHECK_NOTHROW(array.open(TILEDB_READ));
   ArrayExperimental::load_all_enumerations(ctx_, array);
-  all_schemas = array.ptr()->array_->array_schemas_all();
+  all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_3 = schema.ptr()->array_schema()->name();
 
@@ -418,7 +419,7 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(array.close());
   CHECK_NOTHROW(array.open(TILEDB_READ));
   ArrayExperimental::load_all_enumerations(ctx_, array);
-  all_schemas = array.ptr()->array_->array_schemas_all();
+  all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_4 = schema.ptr()->array_schema()->name();
 
