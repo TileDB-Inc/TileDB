@@ -1409,6 +1409,7 @@ Status S3::init_client() const {
         credentials_provider_ = make_shared<
             tiledb::sm::filesystem::s3::DefaultAWSCredentialsProviderChain>(
             HERE(), client_config_);
+        break;
       case 1:
       case 2:
         throw S3Exception(

@@ -40,6 +40,8 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
+#ifdef HAVE_S3
+
 #include "tiledb/sm/filesystem/s3/GeneralHTTPCredentialsProvider.h"
 #include "tiledb/common/common.h"
 
@@ -383,3 +385,5 @@ void GeneralHTTPCredentialsProvider::RefreshIfExpired() {
   Reload();
 }
 }  // namespace tiledb::sm::filesystem::s3
+
+#endif  // HAVE_S3
