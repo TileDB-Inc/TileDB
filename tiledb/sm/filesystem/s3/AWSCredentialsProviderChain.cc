@@ -48,6 +48,7 @@
 
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/auth/SSOCredentialsProvider.h>
+#include <aws/core/config/EC2InstanceProfileConfigLoader.h>
 #include <aws/core/platform/Environment.h>
 #include <aws/core/utils/StringUtils.h>
 #include <aws/core/utils/logging/LogMacros.h>
@@ -61,12 +62,21 @@ static const char AWS_EC2_METADATA_DISABLED[] = "AWS_EC2_METADATA_DISABLED";
 static const char DefaultCredentialsProviderChainTag[] =
     "DefaultAWSCredentialsProviderChain";
 
-DefaultAWSCredentialsProviderChain::DefaultAWSCredentialsProviderChain()
+DefaultAWSCredentialsProviderChain::DefaultAWSCredentialsProviderChain(
+    std::shared_ptr<const Aws::Client::ClientConfiguration> clientConfig)
     : AWSCredentialsProviderChain() {
   AddProvider(make_shared<EnvironmentAWSCredentialsProvider>(HERE()));
   AddProvider(make_shared<ProfileConfigFileAWSCredentialsProvider>(HERE()));
   AddProvider(make_shared<ProcessCredentialsProvider>(HERE()));
-  AddProvider(make_shared<STSAssumeRoleWebIdentityCredentialsProvider>(HERE()));
+  // The vendored credentials providers in tiledb::sm::filesystem::s3 will be
+  // picked over the built-in ones.
+  AddProvider(make_shared<STSAssumeRoleWebIdentityCredentialsProvider>(
+      HERE(),
+      clientConfig ? *clientConfig : Aws::Client::ClientConfiguration()));
+  // SSOCredentialsProvider is a complex provider and patching it to support
+  // ClientConfiguration would require vendoring several files. Since support is
+  // going to be added upstream soon with
+  // https://github.com/aws/aws-sdk-cpp/pull/2860, let's not update it for now.
   AddProvider(make_shared<SSOCredentialsProvider>(HERE()));
 
   // General HTTP Credentials (prev. known as ECS TaskRole credentials) only
@@ -101,8 +111,16 @@ DefaultAWSCredentialsProviderChain::DefaultAWSCredentialsProviderChain()
     const Aws::String tokenPath = Aws::Environment::GetEnv(
         GeneralHTTPCredentialsProvider::AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE);
 
-    auto genProvider = make_shared<GeneralHTTPCredentialsProvider>(
-        HERE(), relativeUri, absoluteUri, token, tokenPath);
+    auto genProvider =
+        clientConfig ? make_shared<GeneralHTTPCredentialsProvider>(
+                           HERE(),
+                           *clientConfig,
+                           relativeUri,
+                           absoluteUri,
+                           token,
+                           tokenPath) :
+                       make_shared<GeneralHTTPCredentialsProvider>(
+                           HERE(), relativeUri, absoluteUri, token, tokenPath);
     if (genProvider && genProvider->IsValid()) {
       AddProvider(std::move(genProvider));
       auto& uri = !relativeUri.empty() ? relativeUri : absoluteUri;
@@ -120,7 +138,14 @@ DefaultAWSCredentialsProviderChain::DefaultAWSCredentialsProviderChain()
     }
   } else if (
       Aws::Utils::StringUtils::ToLower(ec2MetadataDisabled.c_str()) != "true") {
-    AddProvider(make_shared<InstanceProfileCredentialsProvider>(HERE()));
+    auto ec2MetadataClient = clientConfig ?
+                                 make_shared<Aws::Internal::EC2MetadataClient>(
+                                     HERE(), *clientConfig) :
+                                 nullptr;
+    AddProvider(make_shared<InstanceProfileCredentialsProvider>(
+        HERE(),
+        make_shared<Aws::Config::EC2InstanceProfileConfigLoader>(
+            std::move(ec2MetadataClient))));
     AWS_LOGSTREAM_INFO(
         DefaultCredentialsProviderChainTag,
         "Added EC2 metadata service credentials provider to the provider "

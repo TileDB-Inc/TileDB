@@ -73,6 +73,7 @@
 #endif
 
 #include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/filesystem/s3/AWSCredentialsProviderChain.h"
 #include "tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 
@@ -1405,7 +1406,9 @@ Status S3::init_client() const {
             (s3_config_source == "config_files" ? 8 : 0) +
             (s3_config_source == "sts_profile_with_web_identity" ? 16 : 0)) {
       case 0:
-        break;
+        credentials_provider_ = make_shared<
+            tiledb::sm::filesystem::s3::DefaultAWSCredentialsProviderChain>(
+            HERE(), client_config_);
       case 1:
       case 2:
         throw S3Exception(
@@ -1507,13 +1510,9 @@ Status S3::init_client() const {
   static std::mutex static_client_init_mtx;
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
-    if (credentials_provider_ == nullptr) {
-      client_ =
-          make_shared<TileDBS3Client>(HERE(), s3_params_, *client_config_);
-    } else {
-      client_ = make_shared<TileDBS3Client>(
-          HERE(), s3_params_, credentials_provider_, *client_config_);
-    }
+    assert(credentials_provider_);
+    client_ = make_shared<TileDBS3Client>(
+        HERE(), s3_params_, credentials_provider_, *client_config_);
   }
 
   return Status::Ok();

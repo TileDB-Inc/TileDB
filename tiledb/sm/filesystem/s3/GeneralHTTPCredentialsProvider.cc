@@ -41,6 +41,7 @@
  */
 
 #include "tiledb/sm/filesystem/s3/GeneralHTTPCredentialsProvider.h"
+#include "tiledb/common/common.h"
 
 #include <aws/core/platform/Environment.h>
 #include <aws/core/utils/json/JsonSerializer.h>
@@ -208,6 +209,35 @@ bool GeneralHTTPCredentialsProvider::ShouldCreateGeneralHTTPProvider(
 
   // both relativeUri and absoluteUri are empty
   return false;
+}
+
+GeneralHTTPCredentialsProvider::GeneralHTTPCredentialsProvider(
+    const Aws::Client::ClientConfiguration& clientConfig,
+    const Aws::String& relativeUri,
+    const Aws::String& absoluteUri,
+    const Aws::String& authToken,
+    const Aws::String& authTokenFilePath,
+    long refreshRateMs,
+    ShouldCreateFunc shouldCreateFunc)
+    : m_authTokenFilePath(authTokenFilePath)
+    , m_loadFrequencyMs(refreshRateMs) {
+  if (shouldCreateFunc(relativeUri, absoluteUri, authToken)) {
+    AWS_LOGSTREAM_INFO(
+        GEN_HTTP_LOG_TAG,
+        "Creating GeneralHTTPCredentialsProvider with refresh rate "
+            << refreshRateMs);
+    if (!relativeUri.empty()) {
+      m_ecsCredentialsClient = make_shared<Aws::Internal::ECSCredentialsClient>(
+          HERE(),
+          clientConfig,
+          relativeUri.c_str(),
+          AWS_ECS_CONTAINER_HOST,
+          authToken.c_str());
+    } else if (!absoluteUri.empty()) {
+      m_ecsCredentialsClient = make_shared<Aws::Internal::ECSCredentialsClient>(
+          HERE(), clientConfig, "", absoluteUri.c_str(), authToken.c_str());
+    }
+  }
 }
 
 GeneralHTTPCredentialsProvider::GeneralHTTPCredentialsProvider(

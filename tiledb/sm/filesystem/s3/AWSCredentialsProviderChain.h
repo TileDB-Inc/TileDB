@@ -62,8 +62,12 @@ class DefaultAWSCredentialsProviderChain
    * ProfileConfigFileAWSCredentialsProvider, ProcessCredentialsProvider,
    * STSAssumeRoleWebIdentityCredentialsProvider and SSOCredentialsProvider in
    * that order.
+   *
+   * @param clientConfig Optional client configuration to use.
    */
-  DefaultAWSCredentialsProviderChain();
+  DefaultAWSCredentialsProviderChain(
+      std::shared_ptr<const Aws::Client::ClientConfiguration> clientConfig =
+          nullptr);
 
   DefaultAWSCredentialsProviderChain(
       const DefaultAWSCredentialsProviderChain& chain);

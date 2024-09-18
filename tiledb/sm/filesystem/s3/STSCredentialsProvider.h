@@ -59,7 +59,9 @@ namespace tiledb::sm::filesystem::s3 {
 class STSAssumeRoleWebIdentityCredentialsProvider
     : public Aws::Auth::AWSCredentialsProvider {
  public:
-  STSAssumeRoleWebIdentityCredentialsProvider();
+  STSAssumeRoleWebIdentityCredentialsProvider(
+      Aws::Client::ClientConfiguration clientConfig =
+          Aws::Client::ClientConfiguration());
 
   /**
    * Retrieves the credentials if found, otherwise returns empty credential set.
@@ -71,7 +73,6 @@ class STSAssumeRoleWebIdentityCredentialsProvider
 
  private:
   void RefreshIfExpired();
-  Aws::String CalculateQueryString() const;
 
   tdb_unique_ptr<Aws::Internal::STSCredentialsClient> m_client;
   Aws::Auth::AWSCredentials m_credentials;

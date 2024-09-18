@@ -68,6 +68,30 @@ class GeneralHTTPCredentialsProvider
   /**
    * Initializes the provider to retrieve credentials from a general http
    * provided endpoint every 5 minutes or before it expires.
+   * @param clientConfig The client configuration to use when performing
+   * requests.
+   * @param relativeUri A path appended to the metadata service endpoint. OR
+   * @param absoluteUri The full URI to resolve to get credentials.
+   * @param authTokenFilePath A path to a file with optional authorization token
+   * passed to the URI via the 'Authorization' HTTP header.
+   * @param authToken An optional authorization token passed to the URI via the
+   * 'Authorization' HTTP header.
+   * @param refreshRateMs The number of milliseconds after which the credentials
+   * will be fetched again.
+   * @param ShouldCreateFunc
+   */
+  GeneralHTTPCredentialsProvider(
+      const Aws::Client::ClientConfiguration& clientConfig,
+      const Aws::String& relativeUri,
+      const Aws::String& absoluteUri,
+      const Aws::String& authTokenFilePath = "",
+      const Aws::String& authToken = "",
+      long refreshRateMs = Aws::Auth::REFRESH_THRESHOLD,
+      ShouldCreateFunc shouldCreateFunc = ShouldCreateGeneralHTTPProvider);
+
+  /**
+   * Initializes the provider to retrieve credentials from a general http
+   * provided endpoint every 5 minutes or before it expires.
    * @param relativeUri A path appended to the metadata service endpoint. OR
    * @param absoluteUri The full URI to resolve to get credentials.
    * @param authTokenFilePath A path to a file with optional authorization token

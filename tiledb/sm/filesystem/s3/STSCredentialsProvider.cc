@@ -71,7 +71,8 @@ static const int STS_CREDENTIAL_PROVIDER_EXPIRATION_GRACE_PERIOD = 5 * 1000;
 
 namespace tiledb::sm::filesystem::s3 {
 STSAssumeRoleWebIdentityCredentialsProvider::
-    STSAssumeRoleWebIdentityCredentialsProvider()
+    STSAssumeRoleWebIdentityCredentialsProvider(
+        Aws::Client::ClientConfiguration config)
     : m_initialized(false) {
   // check environment variables
   Aws::String tmpRegion = Aws::Environment::GetEnv("AWS_DEFAULT_REGION");
@@ -143,21 +144,20 @@ STSAssumeRoleWebIdentityCredentialsProvider::
             << m_sessionName);
   }
 
-  Aws::Client::ClientConfiguration config;
   config.scheme = Aws::Http::Scheme::HTTPS;
   config.region = tmpRegion;
 
-  Aws::Vector<Aws::String> retryableErrors;
-  retryableErrors.push_back("IDPCommunicationError");
-  retryableErrors.push_back("InvalidIdentityToken");
+  if (!config.retryStrategy) {
+    Aws::Vector<Aws::String> retryableErrors;
+    retryableErrors.push_back("IDPCommunicationError");
+    retryableErrors.push_back("InvalidIdentityToken");
 
-  config.retryStrategy = make_shared<SpecifiedRetryableErrorsRetryStrategy>(
-      HERE(), retryableErrors, 3 /*maxRetries*/);
+    config.retryStrategy = make_shared<SpecifiedRetryableErrorsRetryStrategy>(
+        HERE(), retryableErrors, 3 /*maxRetries*/);
+  }
 
-  m_client = tdb_unique_ptr<Aws::Internal::STSCredentialsClient>(tdb_new(
-      Aws::Internal::STSCredentialsClient,
-      STS_ASSUME_ROLE_WEB_IDENTITY_LOG_TAG,
-      config));
+  m_client = tdb_unique_ptr<Aws::Internal::STSCredentialsClient>(
+      tdb_new(Aws::Internal::STSCredentialsClient, config));
   m_initialized = true;
   AWS_LOGSTREAM_INFO(
       STS_ASSUME_ROLE_WEB_IDENTITY_LOG_TAG,
