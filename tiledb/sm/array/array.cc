@@ -1680,7 +1680,7 @@ bool Array::use_refactored_query_submit() const {
   return refactored_query_submit;
 }
 
-std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
+std::unordered_map<std::string, uint64_t> Array::get_required_buffer_sizes()
     const {
   std::unordered_map<std::string, uint64_t> ret;
 
@@ -1688,29 +1688,24 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
   auto opened_array = opened_array_;
   auto& fragment_metadata = opened_array->fragment_metadata();
   auto& array_schema_latest = opened_array->array_schema_latest();
-
-  // Find the names of the var-sized dimensions or attributes.
-  std::vector<std::string> var_names;
+  // int64_t total = 0;
 
   // Start with dimensions.
+  std::vector<std::string> field_names;
   for (unsigned d = 0; d < array_schema_latest.dim_num(); d++) {
     auto dim = array_schema_latest.dimension_ptr(d);
-    if (dim->var_size()) {
-      var_names.emplace_back(dim->name());
-      ret.emplace(dim->name(), 0);
-    }
+    field_names.emplace_back(dim->name());
+    ret.emplace(dim->name(), 0);
   }
 
   // Now attributes.
   for (auto& attr : array_schema_latest.attributes()) {
-    if (attr->var_size()) {
-      var_names.emplace_back(attr->name());
-      ret.emplace(attr->name(), 0);
-    }
+    field_names.emplace_back(attr->name());
+    ret.emplace(attr->name(), 0);
   }
 
-  // Load all metadata for tile var sizes among fragments.
-  for (const auto& var_name : var_names) {
+  // Load all metadata for tiles among fragments.
+  for (const auto& field_name : field_names) {
     throw_if_not_ok(parallel_for(
         &resources_.compute_tp(),
         0,
@@ -1719,43 +1714,44 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
           // Gracefully skip loading tile sizes for attributes added in schema
           // evolution that do not exists in this fragment.
           const auto& schema = fragment_metadata[f]->array_schema();
-          if (!schema->is_field(var_name)) {
+          if (!schema->is_field(field_name)) {
             return Status::Ok();
           }
 
           fragment_metadata[f]->loaded_metadata()->load_tile_var_sizes(
-              *encryption_key(), var_name);
+              *encryption_key(), field_name);
           return Status::Ok();
         }));
   }
 
-  // Now compute for each var size names, the average cell size.
+  // Now compute the cell size.
   throw_if_not_ok(parallel_for(
-      &resources_.compute_tp(), 0, var_names.size(), [&](const uint64_t n) {
+      &resources_.compute_tp(), 0, field_names.size(), [&](const uint64_t n) {
         uint64_t total_size = 0;
         uint64_t cell_num = 0;
-        auto& var_name = var_names[n];
+        auto& field_name = field_names[n];
 
         // Sum the total tile size and cell num for each fragments.
         for (unsigned f = 0; f < fragment_metadata.size(); f++) {
           // Skip computation for fields that don't exist for a particular
           // fragment.
           const auto& schema = fragment_metadata[f]->array_schema();
-          if (!schema->is_field(var_name)) {
+          if (!schema->is_field(field_name)) {
             continue;
           }
 
           // Go through all tiles.
           for (uint64_t t = 0; t < fragment_metadata[f]->tile_num(); t++) {
-            total_size +=
-                fragment_metadata[f]->loaded_metadata()->tile_var_size(
-                    var_name, t);
+            // total_size +=
+            //     fragment_metadata[f]->loaded_metadata()->tile_var_size(
+            //         field_name, t);
             cell_num += fragment_metadata[f]->cell_num(t);
+            total_size+= cell_num * 8;
           }
         }
 
-        uint64_t average_cell_size = total_size / cell_num;
-        ret[var_name] = std::max<uint64_t>(average_cell_size, 1);
+        // uint64_t average_cell_size = total_size / cell_num;
+        ret[field_name] = std::max<uint64_t>(total_size, 1);
 
         return Status::Ok();
       }));

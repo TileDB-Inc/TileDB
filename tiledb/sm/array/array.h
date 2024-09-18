@@ -1022,10 +1022,9 @@ class Array {
   void ensure_array_is_valid_for_delete(const URI& uri);
 
   /**
-   * Returns a map of the computed average cell size for var size
-   * dimensions/attributes.
+   * Returns a map of the computed sizes for dimensions/attributes.
    */
-  std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes() const;
+  std::unordered_map<std::string, uint64_t> get_required_buffer_sizes() const;
 
   /** Load array directory for non-remote arrays */
   const ArrayDirectory& load_array_directory();

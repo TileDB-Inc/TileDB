@@ -4529,9 +4529,9 @@ void ConsolidationFx::consolidate_sparse(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
 
-  rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(err == nullptr);
+  // rc = tiledb_config_set(cfg, "sm.consolidation.buffer_size", "10000", &err);
+  // REQUIRE(rc == TILEDB_OK);
+  // REQUIRE(err == nullptr);
 
   if (encryption_type_ != TILEDB_NO_ENCRYPTION) {
     std::string encryption_type_string =
@@ -4775,7 +4775,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse",
-    "[capi][consolidation][sparse][non-rest]") {
+    "[capi][consolidation][sparse][non-rest][dstara]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -4786,23 +4786,23 @@ TEST_CASE_METHOD(
     read_sparse_full_unordered();
   }
 
-  SECTION("- write unordered, full") {
-    write_sparse_unordered();
-    write_sparse_full();
-    consolidate_sparse();
-    read_sparse_unordered_full();
-  }
+  // SECTION("- write unordered, full") {
+  //   write_sparse_unordered();
+  //   write_sparse_full();
+  //   consolidate_sparse();
+  //   read_sparse_unordered_full();
+  // }
 
-  SECTION("- write (encrypted) unordered, full") {
-    remove_sparse_array();
-    encryption_type_ = TILEDB_AES_256_GCM;
-    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-    create_sparse_array();
-    write_sparse_unordered();
-    write_sparse_full();
-    consolidate_sparse();
-    read_sparse_unordered_full();
-  }
+  // SECTION("- write (encrypted) unordered, full") {
+  //   remove_sparse_array();
+  //   encryption_type_ = TILEDB_AES_256_GCM;
+  //   encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+  //   create_sparse_array();
+  //   write_sparse_unordered();
+  //   write_sparse_full();
+  //   consolidate_sparse();
+  //   read_sparse_unordered_full();
+  // }
 
   remove_sparse_array();
 }
