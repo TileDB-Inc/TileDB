@@ -127,13 +127,16 @@ STSAssumeRoleWebIdentityCredentialsProvider::
             << m_roleArn);
   }
 
-  if (tmpRegion.empty()) {
-    tmpRegion = Aws::Region::US_EAST_1;
-  } else {
-    AWS_LOGSTREAM_DEBUG(
-        STS_ASSUME_ROLE_WEB_IDENTITY_LOG_TAG,
-        "Resolved region from profile_config or environment variable to be "
-            << tmpRegion);
+  if (config.region.empty()) {
+    if (tmpRegion.empty()) {
+      tmpRegion = Aws::Region::US_EAST_1;
+    } else {
+      AWS_LOGSTREAM_DEBUG(
+          STS_ASSUME_ROLE_WEB_IDENTITY_LOG_TAG,
+          "Resolved region from profile_config or environment variable to be "
+              << tmpRegion);
+    }
+    config.region = tmpRegion;
   }
 
   if (m_sessionName.empty()) {
@@ -147,7 +150,6 @@ STSAssumeRoleWebIdentityCredentialsProvider::
   }
 
   config.scheme = Aws::Http::Scheme::HTTPS;
-  config.region = tmpRegion;
 
   if (!config.retryStrategy) {
     Aws::Vector<Aws::String> retryableErrors;
