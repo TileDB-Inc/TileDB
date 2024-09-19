@@ -44,6 +44,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 
+#include <aws/core/client/SpecifiedRetryableErrorsRetryStrategy.h>
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/DefaultLogSystem.h>
 #include <aws/core/utils/logging/LogLevel.h>
@@ -1393,6 +1394,24 @@ Status S3::init_client() const {
   client_config.payloadSigningPolicy =
       Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never;
 
+  // Use a copy of the config with a different retry strategy for the
+  // credentials providers.
+  auto auth_config =
+      make_shared<Aws::STS::STSClientConfiguration>(HERE(), client_config);
+
+  auth_config->retryStrategy =
+      make_shared<Aws::Client::SpecifiedRetryableErrorsRetryStrategy>(
+          HERE(),
+          // Retry some errors that are retried by the providers' default retry
+          // strategies.
+          Aws::Vector<Aws::String>{
+              // STSAssumeRoleWebIdentityCredentialsProvider
+              "IDPCommunicationError",
+              "InvalidToken",
+              // SSOCredentialsProvider
+              "TooManyRequestsException"},
+          s3_params_.connect_max_tries_);
+
   // If the user says not to sign a request, use the
   // AnonymousAWSCredentialsProvider This is equivalent to --no-sign-request on
   // the aws cli
@@ -1408,7 +1427,7 @@ Status S3::init_client() const {
       case 0:
         credentials_provider_ = make_shared<
             tiledb::sm::filesystem::s3::DefaultAWSCredentialsProviderChain>(
-            HERE(), client_config_);
+            HERE(), auth_config);
         break;
       case 1:
       case 2:
@@ -1451,12 +1470,7 @@ Status S3::init_client() const {
                 session_name,
                 external_id,
                 load_frequency,
-                make_shared<Aws::STS::STSClient>(
-                    HERE(),
-                    // client_config is an S3ClientConfiguration&, but gets
-                    // casted to ClientConfiguration and copied to the STS
-                    // client configuration.
-                    Aws::STS::STSClientConfiguration(client_config)));
+                make_shared<Aws::STS::STSClient>(HERE(), *auth_config));
         break;
       }
       case 7: {
@@ -1478,16 +1492,13 @@ Status S3::init_client() const {
             HERE(),
             Aws::Auth::GetConfigProfileName(),
             std::chrono::minutes(60),
-            [config = this->client_config_](const auto& credentials) {
+            [config = auth_config](const auto& credentials) {
               return make_shared<Aws::STS::STSClient>(
                   HERE(),
                   credentials,
                   // Create default endpoint provider.
                   make_shared<Aws::STS::STSEndpointProvider>(HERE()),
-                  // *config is an S3ClientConfiguration&, but gets
-                  // casted to ClientConfiguration and copied to the STS
-                  // client configuration.
-                  Aws::STS::STSClientConfiguration(*config));
+                  *config);
             });
         break;
       }
@@ -1513,7 +1524,7 @@ Status S3::init_client() const {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
     assert(credentials_provider_);
     client_ = make_shared<TileDBS3Client>(
-        HERE(), s3_params_, credentials_provider_, *client_config_);
+        HERE(), s3_params_, credentials_provider_, client_config);
   }
 
   return Status::Ok();
