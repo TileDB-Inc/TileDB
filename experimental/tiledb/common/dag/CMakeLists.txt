@@ -64,7 +64,7 @@ macro (dag_add_header_only_unit_test TESTNAME)
     #
     # Required libraries
     #
-    target_link_libraries(unit_${TESTNAME} PUBLIC Catch2::Catch2WithMain)
+    target_link_libraries(unit_${TESTNAME} PUBLIC tiledb_Catch2WithMain)
     #
     # Define sources for test
     #
