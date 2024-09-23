@@ -1334,9 +1334,6 @@ class S3 : FilesystemBase {
    */
   mutable shared_ptr<TileDBS3Client> client_;
 
-  /** The AWS credetial provider. */
-  mutable shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider_;
-
   /**
    * Mutex protecting client initialization. This is mutable so that nominally
    * const functions can call init_client().
