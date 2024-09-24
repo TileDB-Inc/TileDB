@@ -54,6 +54,7 @@
 using namespace Aws::Auth;
 
 namespace tiledb::sm::filesystem::s3 {
+static const int AWS_CREDENTIAL_PROVIDER_EXPIRATION_GRACE_PERIOD = 5 * 1000;
 static const char GEN_HTTP_LOG_TAG[] = "GeneralHTTPCredentialsProvider";
 
 const char
