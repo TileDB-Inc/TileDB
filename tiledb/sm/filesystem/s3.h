@@ -55,7 +55,6 @@
 
 #undef GetObject
 #include <aws/core/Aws.h>
-#include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/core/client/RetryStrategy.h>
 #include <aws/core/http/HttpClient.h>
@@ -353,13 +352,6 @@ struct S3Parameters {
  */
 class TileDBS3Client : public Aws::S3::S3Client {
  public:
-  TileDBS3Client(
-      const S3Parameters& s3_params,
-      const Aws::S3::S3ClientConfiguration& client_config)
-      : Aws::S3::S3Client(client_config)
-      , params_(s3_params) {
-  }
-
   TileDBS3Client(
       const S3Parameters& s3_params,
       const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
