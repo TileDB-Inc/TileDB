@@ -110,19 +110,13 @@ DefaultAWSCredentialsProviderChain::DefaultAWSCredentialsProviderChain(
   if (!relativeUri.empty() || !absoluteUri.empty()) {
     const Aws::String token = Aws::Environment::GetEnv(
         GeneralHTTPCredentialsProvider::AWS_CONTAINER_AUTHORIZATION_TOKEN);
-    const Aws::String tokenPath = Aws::Environment::GetEnv(
-        GeneralHTTPCredentialsProvider::AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE);
 
     auto genProvider =
-        clientConfig ? make_shared<GeneralHTTPCredentialsProvider>(
-                           HERE(),
-                           *clientConfig,
-                           relativeUri,
-                           absoluteUri,
-                           token,
-                           tokenPath) :
-                       make_shared<GeneralHTTPCredentialsProvider>(
-                           HERE(), relativeUri, absoluteUri, token, tokenPath);
+        clientConfig ?
+            make_shared<GeneralHTTPCredentialsProvider>(
+                HERE(), *clientConfig, relativeUri, absoluteUri, token) :
+            make_shared<GeneralHTTPCredentialsProvider>(
+                HERE(), relativeUri, absoluteUri, token);
     if (genProvider && genProvider->IsValid()) {
       AddProvider(std::move(genProvider));
       auto& uri = !relativeUri.empty() ? relativeUri : absoluteUri;
@@ -130,8 +124,7 @@ DefaultAWSCredentialsProviderChain::DefaultAWSCredentialsProviderChain(
           DefaultCredentialsProviderChainTag,
           "Added General HTTP / ECS credentials provider with ur: ["
               << uri << "] to the provider chain with a"
-              << ((token.empty() && tokenPath.empty()) ? "n empty " :
-                                                         " non-empty ")
+              << (token.empty() ? "n empty " : " non-empty ")
               << "authorization token.");
     } else {
       AWS_LOGSTREAM_ERROR(

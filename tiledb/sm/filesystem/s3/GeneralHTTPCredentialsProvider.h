@@ -72,8 +72,6 @@ class GeneralHTTPCredentialsProvider
    * requests.
    * @param relativeUri A path appended to the metadata service endpoint. OR
    * @param absoluteUri The full URI to resolve to get credentials.
-   * @param authTokenFilePath A path to a file with optional authorization token
-   * passed to the URI via the 'Authorization' HTTP header.
    * @param authToken An optional authorization token passed to the URI via the
    * 'Authorization' HTTP header.
    * @param refreshRateMs The number of milliseconds after which the credentials
@@ -84,7 +82,6 @@ class GeneralHTTPCredentialsProvider
       const Aws::Client::ClientConfiguration& clientConfig,
       const Aws::String& relativeUri,
       const Aws::String& absoluteUri,
-      const Aws::String& authTokenFilePath = "",
       const Aws::String& authToken = "",
       long refreshRateMs = Aws::Auth::REFRESH_THRESHOLD,
       ShouldCreateFunc shouldCreateFunc = ShouldCreateGeneralHTTPProvider);
@@ -94,8 +91,6 @@ class GeneralHTTPCredentialsProvider
    * provided endpoint every 5 minutes or before it expires.
    * @param relativeUri A path appended to the metadata service endpoint. OR
    * @param absoluteUri The full URI to resolve to get credentials.
-   * @param authTokenFilePath A path to a file with optional authorization token
-   * passed to the URI via the 'Authorization' HTTP header.
    * @param authToken An optional authorization token passed to the URI via the
    * 'Authorization' HTTP header.
    * @param refreshRateMs The number of milliseconds after which the credentials
@@ -105,7 +100,6 @@ class GeneralHTTPCredentialsProvider
   GeneralHTTPCredentialsProvider(
       const Aws::String& relativeUri,
       const Aws::String& absoluteUri,
-      const Aws::String& authTokenFilePath = "",
       const Aws::String& authToken = "",
       long refreshRateMs = Aws::Auth::REFRESH_THRESHOLD,
       ShouldCreateFunc shouldCreateFunc = ShouldCreateGeneralHTTPProvider);
@@ -118,8 +112,6 @@ class GeneralHTTPCredentialsProvider
   bool IsValid() const {
     if (!m_ecsCredentialsClient)
       return false;
-    if (!m_authTokenFilePath.empty())
-      return !LoadTokenFromFile().empty();
     return true;
   }
 
@@ -135,8 +127,7 @@ class GeneralHTTPCredentialsProvider
   GeneralHTTPCredentialsProvider(
       const char* resourcePath,
       long refreshRateMs = Aws::Auth::REFRESH_THRESHOLD)
-      : GeneralHTTPCredentialsProvider(
-            resourcePath, "", "", "", refreshRateMs) {
+      : GeneralHTTPCredentialsProvider(resourcePath, "", "", refreshRateMs) {
   }
 
   /**
@@ -154,7 +145,7 @@ class GeneralHTTPCredentialsProvider
       const char* endpoint,
       const char* token,
       long refreshRateMs = Aws::Auth::REFRESH_THRESHOLD)
-      : GeneralHTTPCredentialsProvider("", endpoint, token, "", refreshRateMs) {
+      : GeneralHTTPCredentialsProvider("", endpoint, token, refreshRateMs) {
   }
 
   /**
@@ -172,7 +163,6 @@ class GeneralHTTPCredentialsProvider
    */
   Aws::Auth::AWSCredentials GetAWSCredentials() override;
 
-  static const char AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE[];
   static const char AWS_CONTAINER_CREDENTIALS_RELATIVE_URI[];
   static const char AWS_CONTAINER_CREDENTIALS_FULL_URI[];
   static const char AWS_CONTAINER_AUTHORIZATION_TOKEN[];
@@ -188,10 +178,7 @@ class GeneralHTTPCredentialsProvider
   bool ExpiresSoon() const;
   void RefreshIfExpired();
 
-  Aws::String LoadTokenFromFile() const;
-
   std::shared_ptr<Aws::Internal::ECSCredentialsClient> m_ecsCredentialsClient;
-  Aws::String m_authTokenFilePath;
 
   long m_loadFrequencyMs = Aws::Auth::REFRESH_THRESHOLD;
   Aws::Auth::AWSCredentials m_credentials;

@@ -57,9 +57,6 @@ namespace tiledb::sm::filesystem::s3 {
 static const char GEN_HTTP_LOG_TAG[] = "GeneralHTTPCredentialsProvider";
 
 const char
-    GeneralHTTPCredentialsProvider::AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE[] =
-        "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE";
-const char
     GeneralHTTPCredentialsProvider::AWS_CONTAINER_CREDENTIALS_RELATIVE_URI[] =
         "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI";
 const char
@@ -218,11 +215,9 @@ GeneralHTTPCredentialsProvider::GeneralHTTPCredentialsProvider(
     const Aws::String& relativeUri,
     const Aws::String& absoluteUri,
     const Aws::String& authToken,
-    const Aws::String& authTokenFilePath,
     long refreshRateMs,
     ShouldCreateFunc shouldCreateFunc)
-    : m_authTokenFilePath(authTokenFilePath)
-    , m_loadFrequencyMs(refreshRateMs) {
+    : m_loadFrequencyMs(refreshRateMs) {
   if (shouldCreateFunc(relativeUri, absoluteUri, authToken)) {
     AWS_LOGSTREAM_INFO(
         GEN_HTTP_LOG_TAG,
@@ -246,11 +241,9 @@ GeneralHTTPCredentialsProvider::GeneralHTTPCredentialsProvider(
     const Aws::String& relativeUri,
     const Aws::String& absoluteUri,
     const Aws::String& authToken,
-    const Aws::String& authTokenFilePath,
     long refreshRateMs,
     ShouldCreateFunc shouldCreateFunc)
-    : m_authTokenFilePath(authTokenFilePath)
-    , m_loadFrequencyMs(refreshRateMs) {
+    : m_loadFrequencyMs(refreshRateMs) {
   if (shouldCreateFunc(relativeUri, absoluteUri, authToken)) {
     AWS_LOGSTREAM_INFO(
         GEN_HTTP_LOG_TAG,
@@ -292,32 +285,6 @@ bool GeneralHTTPCredentialsProvider::ExpiresSoon() const {
       AWS_CREDENTIAL_PROVIDER_EXPIRATION_GRACE_PERIOD);
 }
 
-Aws::String GeneralHTTPCredentialsProvider::LoadTokenFromFile() const {
-  Aws::IFStream tokenFile(m_authTokenFilePath.c_str());
-  if (tokenFile.is_open() && tokenFile.good()) {
-    Aws::StringStream memoryStream;
-    std::copy(
-        std::istreambuf_iterator<char>(tokenFile),
-        std::istreambuf_iterator<char>(),
-        std::ostreambuf_iterator<char>(memoryStream));
-    Aws::String tokenFileStr = memoryStream.str();
-    if (tokenFileStr.find("\r\n") != Aws::String::npos) {
-      AWS_LOGSTREAM_ERROR(
-          GEN_HTTP_LOG_TAG,
-          "Unable to retrieve credentials: file in "
-          "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE contains invalid characters "
-          "(\\r\\n)");
-      return {};
-    }
-    return tokenFileStr;
-  } else {
-    AWS_LOGSTREAM_ERROR(
-        GEN_HTTP_LOG_TAG,
-        "Unable to retrieve credentials: failed to open Auth Token file .");
-    return {};
-  }
-}
-
 void GeneralHTTPCredentialsProvider::Reload() {
   AWS_LOGSTREAM_INFO(
       GEN_HTTP_LOG_TAG,
@@ -329,11 +296,6 @@ void GeneralHTTPCredentialsProvider::Reload() {
         "Unable to retrieve credentials: ECS Credentials client is not "
         "initialized.");
     return;
-  }
-
-  if (!m_authTokenFilePath.empty()) {
-    Aws::String token = LoadTokenFromFile();
-    m_ecsCredentialsClient->SetToken(std::move(token));
   }
 
   auto credentialsStr = m_ecsCredentialsClient->GetECSCredentials();
