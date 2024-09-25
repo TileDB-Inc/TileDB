@@ -229,6 +229,7 @@ void check_save_to_file() {
   ss << "rest.capnp_traversal_limit 2147483648\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.retry_errors true\n";
+  ss << "rest.curl.tcp_keepalive true\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.load_enumerations_on_array_open false\n";
@@ -612,6 +613,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.capnp_traversal_limit"] = "2147483648";
   all_param_values["rest.curl.buffer_size"] = "524288";
   all_param_values["rest.curl.retry_errors"] = "true";
+  all_param_values["rest.curl.tcp_keepalive"] = "true";
   all_param_values["rest.curl.verbose"] = "false";
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";

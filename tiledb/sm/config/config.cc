@@ -91,6 +91,7 @@ const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_BUFFER_SIZE = "524288";
 const std::string Config::REST_CAPNP_TRAVERSAL_LIMIT = "2147483648";
 const std::string Config::REST_CURL_VERBOSE = "false";
+const std::string REST_CURL_TCP_KEEPALIVE = "true";
 const std::string Config::REST_CURL_RETRY_ERRORS = "true";
 const std::string Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
@@ -257,6 +258,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("rest.curl.buffer_size", Config::REST_CURL_BUFFER_SIZE),
     std::make_pair(
         "rest.capnp_traversal_limit", Config::REST_CAPNP_TRAVERSAL_LIMIT),
+    std::make_pair("rest.curl.tcp_keepalive", REST_CURL_TCP_KEEPALIVE),
     std::make_pair("rest.curl.verbose", Config::REST_CURL_VERBOSE),
     std::make_pair("rest.curl.retry_errors", Config::REST_CURL_RETRY_ERRORS),
     std::make_pair(
@@ -802,6 +804,8 @@ Status Config::sanity_check(
   } else if (param == "sm.fragment_info.preload_mbrs") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "ssl.verify") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "rest.curl.tcp_keepalive") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
