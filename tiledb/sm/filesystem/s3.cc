@@ -1408,8 +1408,6 @@ Status S3::init_client() const {
               "TooManyRequestsException"},
           s3_params_.connect_max_tries_);
 
-  shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider;
-
   // If the user says not to sign a request, use the
   // AnonymousAWSCredentialsProvider This is equivalent to --no-sign-request on
   // the aws cli
@@ -1423,7 +1421,7 @@ Status S3::init_client() const {
             (s3_config_source == "config_files" ? 8 : 0) +
             (s3_config_source == "sts_profile_with_web_identity" ? 16 : 0)) {
       case 0:
-        credentials_provider = make_shared<
+        credentials_provider_ = make_shared<
             tiledb::sm::filesystem::s3::DefaultAWSCredentialsProviderChain>(
             HERE(), auth_config);
         break;
@@ -1520,11 +1518,11 @@ Status S3::init_client() const {
   static std::mutex static_client_init_mtx;
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
-    assert(credentials_provider);
+    assert(credentials_provider_);
     client_ = make_shared<TileDBS3Client>(
         HERE(),
         s3_params_,
-        credentials_provider,
+        credentials_provider_,
         client_config,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         s3_params_.use_virtual_addressing_);
