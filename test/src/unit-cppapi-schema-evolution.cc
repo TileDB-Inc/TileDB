@@ -808,7 +808,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: SchemaEvolution, drop fixed attribute and add back as var-sized",
-    "[!mayfail][cppapi][schema][evolution][add][drop]") {
+    "[cppapi][schema][evolution][add][drop]") {
   test::VFSTestSetup vfs_test_setup;
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{
