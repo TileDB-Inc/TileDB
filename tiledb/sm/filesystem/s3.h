@@ -55,7 +55,6 @@
 
 #undef GetObject
 #include <aws/core/Aws.h>
-#include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/core/client/RetryStrategy.h>
 #include <aws/core/http/HttpClient.h>
@@ -352,15 +351,6 @@ struct S3Parameters {
  */
 class TileDBS3Client : public Aws::S3::S3Client {
  public:
-  TileDBS3Client(
-      const S3Parameters& s3_params,
-      const Aws::Client::ClientConfiguration& client_config,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
-      bool use_virtual_addressing)
-      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
-      , params_(s3_params) {
-  }
-
   TileDBS3Client(
       const S3Parameters& s3_params,
       const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
