@@ -132,8 +132,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
   }
 }
 
-TEST_CASE_METHOD(
-    S3Fx, "Test S3 setting bucket/object canned acls", "[s3][config]") {
+TEST_CASE("Test S3 setting bucket/object canned acls", "[s3][config]") {
   Config config;
   REQUIRE(config.set("vfs.s3.bucket_canned_acl", "private_").ok());
   REQUIRE(config.set("vfs.s3.bucket_canned_acl", "public_read").ok());

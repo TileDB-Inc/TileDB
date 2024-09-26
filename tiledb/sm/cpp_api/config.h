@@ -158,7 +158,7 @@ struct ConfigProxy {
  * conf["vfs.s3.region"] = "us-east-1a";
  * conf["vfs.s3.use_virtual_addressing"] = "true";
  * Context ctx(conf);
- * // array/kv operations with ctx
+ * // array operations with ctx
  * @endcode
  * */
 class Config {
@@ -671,7 +671,10 @@ class Config {
    *    **Default**: "10737418240"
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
-   *    **Default**: us-east-1
+   *    If empty, the region will be determined by the AWS SDK using sources
+   *    such as environment variables, profile configuration, or instance
+   *    metadata. <br>
+   *    **Default**: ""
    * - `vfs.s3.aws_access_key_id` <br>
    *    Set the AWS_ACCESS_KEY_ID <br>
    *    **Default**: ""
