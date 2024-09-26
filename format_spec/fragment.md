@@ -259,7 +259,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Processed conditions offset | `uint64_t` | The offset to the generic tile storing the processed conditions. |
 | Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
 | Array schema name | `uint8_t[]` | The array schema name. |
-| Footer length | `uint64_t` | Sum of bytes of the above fields. Only present when there is at least one var-sized dimension. |
+| Footer length | `uint64_t` | Sum of bytes of the above fields. |
 
 ## Data File 
 
