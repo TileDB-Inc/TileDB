@@ -87,7 +87,7 @@ The dimension has internal format:
 | Dimension datatype | `uint8_t` | Datatype of the coordinate values |
 | Cell val num | `uint32_t` | Number of coordinate values per cell. For variable-length dimensions, this is `std::numeric_limits<uint32_t>::max()` |
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on coordinate value tiles |
-| Domain size | `uint64_t[]` | The domain size in bytes |
+| Domain size | `uint64_t` | The domain size in bytes |
 | Domain | `uint8_t[]` | Byte array of length equal to domain size above, storing the min, max values of the dimension. |
 | Null tile extent | `uint8_t` | `1` if the dimension has a null tile extent, else `0`. |
 | Tile extent | `uint8_t[]` | Byte array of length equal to the dimension datatype size, storing the space tile extent of this dimension. |
@@ -127,6 +127,6 @@ The dimension label has internal format:
 | Label datatype             | `uint8_t`  | The datatype of the label data |
 | Label cell_val_num         | `uint32_t` | The number of values per cell of the label data. For variable-length labels, this is `std::numeric_limits<uint32_t>::max()` |
 | Label domain size          | `uint64_t` | The size of the label domain |
-| Label domain start size    | `uint64_t` | The size of the first value of the domain for variable-lenght datatypes. For fixed-lenght labels, this is 0|
+| Label domain start size    | `uint64_t` | The size of the first value of the domain for variable-length datatypes. For fixed-length labels, this is 0|
 | Label domain data          | `uint8_t[]`| Byte array of length equal to domain size above, storing the min, max values of the dimension |
 | Is external                | `uint8_t`     | If the URI is not stored as part of this array |
