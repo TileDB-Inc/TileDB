@@ -1,3 +1,9 @@
+# TileDB v2.26.2 Release Notes
+
+## Defects removed
+
+* Fix HTTP requests for AWS default credentials provider chain not honoring config options. [#5318](https://github.com/TileDB-Inc/TileDB/pull/5318)
+
 # TileDB v2.26.1 Release Notes
 
 ## Improvements
