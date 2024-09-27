@@ -63,7 +63,7 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Enumeration name N | `uint8_t[]` | _New in version 20_ The name of enumeration N |
 | Enumeration filename length N | `uint32_t` | _New in version 20_ The number of characters in the enumeration N file |
 | Enumeration filename N | `uint8_t[]` | _New in version 20_ The name of the file in the `__enumerations` subdirectory that conatins enumeration N's data |
-| Current domain | [CurrentDomain](./current_domain.md) | _New in version 22_ The array's current domain |
+| Current domain | [Current Domain](#current-domain) | _New in version 22_ The array's current domain |
 
 ## Domain
 
@@ -130,3 +130,14 @@ The dimension label has internal format:
 | Label domain start size    | `uint64_t` | The size of the first value of the domain for variable-length datatypes. For fixed-length labels, this is 0|
 | Label domain data          | `uint8_t[]`| Byte array of length equal to domain size above, storing the min, max values of the dimension |
 | Is external                | `uint8_t`     | If the URI is not stored as part of this array |
+
+## Current Domain
+
+If a current domain is empty, only the version number and the empty flag are serialized to storage.
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Version number | `uint32_t` | Current domain version number |
+| Empty | `uint8_t` | Whether the current domain has a representation(e.g. NDRectangle) set or not |
+| Type | `uint8_t` | The type of current domain stored in this file |
+| NDRectangle | [MBR](./fragment.md#mbr) | A hyperrectangle defined using [1DRange](./fragment.md#mbr) items for each dimension |
