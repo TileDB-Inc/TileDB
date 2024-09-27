@@ -678,7 +678,7 @@ class Array {
   }
 
   /**
-   * Loads the array schema from an array.
+   * Loads the latest array schema from an array.
    *
    * **Example:**
    * @code{.cpp}

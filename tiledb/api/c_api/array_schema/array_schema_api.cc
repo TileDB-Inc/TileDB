@@ -44,6 +44,7 @@
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/sm/c_api/api_argument_validator.h"
 
 namespace tiledb::api {
 
@@ -186,6 +187,28 @@ capi_return_t tiledb_array_schema_add_enumeration(
   ensure_array_schema_is_valid(array_schema);
   ensure_enumeration_is_valid(enumeration);
   array_schema->add_enumeration(enumeration->copy());
+  return TILEDB_OK;
+}
+
+TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* enumeration_name,
+    tiledb_enumeration_t** enumeration) {
+  ensure_context_is_valid(ctx);
+  ensure_array_schema_is_valid(array_schema);
+  if (enumeration_name == nullptr) {
+    throw CAPIStatusException("enumeration_name must not be nullptr");
+  }
+  ensure_output_pointer_is_valid(enumeration);
+
+  auto enmr = array_schema->array_schema()->get_enumeration(enumeration_name);
+  if (enmr == nullptr) {
+    *enumeration = nullptr;
+    return TILEDB_OK;
+  }
+
+  *enumeration = tiledb_enumeration_handle_t::make_handle(enmr);
   return TILEDB_OK;
 }
 
@@ -547,6 +570,17 @@ CAPI_INTERFACE(
     tiledb_enumeration_t* enumeration) {
   return api_entry_context<tiledb::api::tiledb_array_schema_add_enumeration>(
       ctx, array_schema, enumeration);
+}
+
+CAPI_INTERFACE(
+    array_schema_get_enumeration,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* enumeration_name,
+    tiledb_enumeration_t** enumeration) {
+  return api_entry_with_context<
+      tiledb::api::tiledb_array_schema_get_enumeration>(
+      ctx, array_schema, enumeration_name, enumeration);
 }
 
 CAPI_INTERFACE(

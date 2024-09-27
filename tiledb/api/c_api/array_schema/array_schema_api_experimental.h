@@ -99,6 +99,29 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_add_enumeration(
     tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
 
 /**
+ * Gets an enumeration from an array schema.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enumeration;
+ * tiledb_array_schema_get_enumeration(ctx, array_schema, &enumeration);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param enumeration The enumeration to get with the attribute. Set to nullptr
+ *        if the enumeration exists, but has not been load. If the enumeration
+ *        is not known, TILEDB_ERR is returned.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* enumeration_name,
+    tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
+
+/**
  * Sets the current domain on the array schema.
  *
  * @pre The schema is sparse. current_domain is not yet supported on dense

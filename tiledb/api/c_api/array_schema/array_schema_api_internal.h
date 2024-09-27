@@ -94,6 +94,10 @@ struct tiledb_array_schema_handle_t
     return array_schema_->add_enumeration(enmr);
   }
 
+  shared_ptr<const Enumeration> get_enumeration(const std::string& name) const {
+    return array_schema_->get_enumeration(name);
+  }
+
   bool allows_dups() const {
     return array_schema_->allows_dups();
   }

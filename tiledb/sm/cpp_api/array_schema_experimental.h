@@ -203,6 +203,30 @@ class ArraySchemaExperimental {
     ctx.handle_error(tiledb_array_schema_add_enumeration(
         ctx.ptr().get(), array_schema.ptr().get(), enmr.ptr().get()));
   }
+
+  /**
+   * Get an enumeration from the array schema.
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Target array schema.
+   * @param enmr The enumeration to add.
+   */
+  static Enumeration get_enumeration(
+      const Context& ctx,
+      const ArraySchema& array_schema,
+      const std::string& enmr_name) {
+    tiledb_enumeration_handle_t* enmr;
+    ctx.handle_error(tiledb_array_schema_get_enumeration(
+        ctx.ptr().get(), array_schema.ptr().get(), enmr_name.c_str(), &enmr));
+    // The schema knows this enumeration, but it is not loaded.
+    if (enmr == nullptr) {
+      throw TileDBError(
+          "[TileDB::C++API] Error: Enumeration '" + enmr_name +
+          "' is not loaded.");
+    }
+
+    return Enumeration(ctx, enmr);
+  }
 };
 
 }  // namespace tiledb

@@ -127,6 +127,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-Reader.cc
   src/unit-request-handlers.cc
   src/unit-resource-pool.cc
+  src/unit-rest-array-schema-load.cc
   src/unit-rest-enumerations.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
@@ -146,6 +147,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/cpp-integration-filter-pipeline.cc
+    src/cpp-integration-rest-schema-evolution.cc
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
     src/test-cppapi-ndrectangle.cc

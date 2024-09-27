@@ -58,6 +58,8 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_operations.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/config/config.h"
@@ -378,8 +380,7 @@ int32_t tiledb_query_alloc(
     errmsg << "Cannot create query; "
            << "Array query type does not match declared query type: "
            << "(" << query_type_str(array_query_type) << " != "
-           << tiledb::sm::query_type_str(
-                  static_cast<tiledb::sm::QueryType>(query_type))
+           << query_type_str(static_cast<tiledb::sm::QueryType>(query_type))
            << ")";
     *query = nullptr;
     auto st = Status_Error(errmsg.str());

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema_operations.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
@@ -240,10 +241,9 @@ shared_ptr<ArraySchema> load_array_schema(
 
   if (uri.is_tiledb()) {
     auto& rest_client = ctx.rest_client();
-    auto&& [st, array_schema_response] =
-        rest_client.get_array_schema_from_rest(uri);
-    throw_if_not_ok(st);
-    return std::move(array_schema_response).value();
+    auto array_schema_response =
+        rest_client.post_array_schema_from_rest(config, uri, 0, UINT64_MAX);
+    return std::move(std::get<0>(array_schema_response));
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;

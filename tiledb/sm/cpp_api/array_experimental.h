@@ -68,6 +68,29 @@ class ArrayExperimental {
     ctx.handle_error(
         tiledb_array_load_all_enumerations(ctx.ptr().get(), array.ptr().get()));
   }
+
+  /**
+   * Loads the array schema with all enumerations from an array.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * auto schema = tiledb::ArrayExperimental::load_schema_with_enumerations(ctx,
+   * "s3://bucket-name/array-name");
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param uri The array URI.
+   * @return The loaded ArraySchema object.
+   */
+  static ArraySchema load_schema_with_enumerations(
+      const Context& ctx, const std::string& uri) {
+    tiledb_array_schema_t* schema;
+    Config config = ctx.config();
+    config["rest.load_enumerations_on_array_open"] = "true";
+    ctx.handle_error(tiledb_array_schema_load_with_config(
+        ctx.ptr().get(), config.ptr().get(), uri.c_str(), &schema));
+    return ArraySchema(ctx, schema);
+  }
 };
 
 }  // namespace tiledb
