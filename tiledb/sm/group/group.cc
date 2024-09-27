@@ -643,7 +643,8 @@ void Group::delete_member(const shared_ptr<GroupMember> group_member) {
 void Group::mark_member_for_addition(
     const URI& group_member_uri,
     const bool& relative,
-    std::optional<std::string>& name) {
+    std::optional<std::string>& name,
+    std::optional<ObjectType> type) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
@@ -666,7 +667,7 @@ void Group::mark_member_for_addition(
         "mode");
   }
   group_details_->mark_member_for_addition(
-      resources_, group_member_uri, relative, name);
+      resources_, group_member_uri, relative, name, type);
 }
 
 void Group::mark_member_for_removal(const std::string& name) {

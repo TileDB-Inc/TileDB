@@ -270,7 +270,30 @@ capi_return_t tiledb_group_add_member(
     name_optional = name;
   }
 
-  group->group().mark_member_for_addition(uri, relative, name_optional);
+  group->group().mark_member_for_addition(
+      uri, relative, name_optional, std::nullopt);
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_group_add_member_by_type(
+    tiledb_group_handle_t* group,
+    const char* group_uri,
+    const uint8_t relative,
+    const char* name,
+    tiledb_object_t type) {
+  ensure_group_is_valid(group);
+  ensure_group_uri_argument_is_valid(group_uri);
+
+  auto uri = tiledb::sm::URI(group_uri, !relative);
+
+  std::optional<std::string> name_optional = std::nullopt;
+  if (name != nullptr) {
+    name_optional = name;
+  }
+
+  group->group().mark_member_for_addition(
+      uri, relative, name_optional, static_cast<tiledb::sm::ObjectType>(type));
 
   return TILEDB_OK;
 }
@@ -657,6 +680,18 @@ CAPI_INTERFACE(
     const char* name) {
   return api_entry_context<tiledb::api::tiledb_group_add_member>(
       ctx, group, uri, relative, name);
+}
+
+CAPI_INTERFACE(
+    group_add_member_by_type,
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* uri,
+    const uint8_t relative,
+    const char* name,
+    tiledb_object_t type) {
+  return api_entry_context<tiledb::api::tiledb_group_add_member_by_type>(
+      ctx, group, uri, relative, name, type);
 }
 
 CAPI_INTERFACE(

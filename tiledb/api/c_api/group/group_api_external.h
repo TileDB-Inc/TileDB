@@ -374,6 +374,39 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
     const char* name) TILEDB_NOEXCEPT;
 
 /**
+ * Add a member with a known type to a group
+ * The caller should make sure the correct type is provided for the member being
+ * added as this API will not check it for correctness in favor of efficiency
+ * and results can be undefined otherwise.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_t* group;
+ * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
+ * tiledb_group_open(ctx, group, TILEDB_WRITE);
+ * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array",
+ * TILEDB_ARRAY); tiledb_group_add_member(ctx, group,
+ * "s3://tiledb_bucket/my_group_2", TILEDB_GROUP);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param group An group opened in WRITE mode.
+ * @param uri URI of member to add
+ * @param relative is the URI relative to the group
+ * @param name optional name group member can be given to be looked up by.
+ * Can be set to NULL.
+ *  @param type the type of the member getting added if known in advance.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_group_add_member_by_type(
+    tiledb_group_handle_t* group,
+    const char* group_uri,
+    const uint8_t relative,
+    const char* name,
+    tiledb_object_t type) TILEDB_NOEXCEPT;
+
+/**
  * Remove a member from a group
  *
  * * @code{.c}
