@@ -400,6 +400,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_group_add_member_by_type(
+    tiledb_ctx_t* ctx,
     tiledb_group_handle_t* group,
     const char* group_uri,
     const uint8_t relative,

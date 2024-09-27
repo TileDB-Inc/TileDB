@@ -592,18 +592,34 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc =
-      tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false, nullptr);
-  REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false, nullptr);
-  REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_group_add_member(ctx_, group2, array3_uri.c_str(), false, nullptr);
-  REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, nullptr);
-  REQUIRE(rc == TILEDB_OK);
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, array1_uri.c_str(), false, nullptr, TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, array2_uri.c_str(), false, nullptr, TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group2, array3_uri.c_str(), false, nullptr, TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, group2_uri.c_str(), false, nullptr, TILEDB_GROUP);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_group_add_member(
+        ctx_, group1, array1_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, array2_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group2, array3_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Close group from write mode
   rc = tiledb_group_close(ctx_, group1);
@@ -720,8 +736,16 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false, "one");
-  REQUIRE(rc == TILEDB_OK);
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, array1_uri.c_str(), false, "one", TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    rc =
+        tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false, "one");
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Close group from write mode
   rc = tiledb_group_close(ctx_, group1);
@@ -755,8 +779,15 @@ TEST_CASE_METHOD(
   rc = tiledb_group_remove_member(ctx_, group1, "one");
   REQUIRE(rc == TILEDB_OK);
   // Add one back with different URI
-  rc = tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false, "one");
-  REQUIRE(rc == TILEDB_OK);
+  if (add_by_type) {
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, array2_uri.c_str(), false, "one", TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    rc =
+        tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false, "one");
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Close group
   rc = tiledb_group_close(ctx_, group1);
@@ -827,15 +858,34 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false, "one");
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false, "two");
-  REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_group_add_member(ctx_, group2, array3_uri.c_str(), false, "three");
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, "four");
-  REQUIRE(rc == TILEDB_OK);
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, array1_uri.c_str(), false, "one", TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, array2_uri.c_str(), false, "two", TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group2, array3_uri.c_str(), false, "three", TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, group2_uri.c_str(), false, "four", TILEDB_GROUP);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    rc =
+        tiledb_group_add_member(ctx_, group1, array1_uri.c_str(), false, "one");
+    REQUIRE(rc == TILEDB_OK);
+    rc =
+        tiledb_group_add_member(ctx_, group1, array2_uri.c_str(), false, "two");
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group2, array3_uri.c_str(), false, "three");
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, "four");
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Close group from write mode
   rc = tiledb_group_close(ctx_, group1);
@@ -1186,18 +1236,34 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_group_add_member(
-      ctx_, group1, array1_relative_uri.c_str(), true, nullptr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(
-      ctx_, group1, array2_relative_uri.c_str(), true, nullptr);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_group_add_member(
-      ctx_, group2, array3_relative_uri.c_str(), true, nullptr);
-  REQUIRE(rc == TILEDB_OK);
-  rc =
-      tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, nullptr);
-  REQUIRE(rc == TILEDB_OK);
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, array1_relative_uri.c_str(), true, nullptr, TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, array2_relative_uri.c_str(), true, nullptr, TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group2, array3_relative_uri.c_str(), true, nullptr, TILEDB_ARRAY);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member_by_type(
+        ctx_, group1, group2_uri.c_str(), false, nullptr, TILEDB_GROUP);
+    REQUIRE(rc == TILEDB_OK);
+  } else {
+    rc = tiledb_group_add_member(
+        ctx_, group1, array1_relative_uri.c_str(), true, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, array2_relative_uri.c_str(), true, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group2, array3_relative_uri.c_str(), true, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Close group from write mode
   rc = tiledb_group_close(ctx_, group1);
