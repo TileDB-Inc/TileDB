@@ -198,6 +198,11 @@ The fragment min max sum null count is a [generic tile](./generic_tile.md) with 
 | Sum | `uint64_t` | Sum value for attribute/dimension N |
 | Null count | `uint64_t` | Null count value for attribute/dimension N |
 
+Tile and fragment mins, maxes, sums and null counts are colloquially referred to as "tile metadata".
+
+> [!NOTE]
+> Prior to version 21, tile metadata for nullable fixed-size strings on dense arrays might be incorrect and implementations must not rely on them.
+
 ### Tile Processed Conditions
 
 The processed conditions is a [generic tile](./generic_tile.md) and is the list of delete/update conditions that have already been applied for this fragment and don't need to be applied again, sorted by filename, with the following internal format:
@@ -270,4 +275,3 @@ The on-disk format of each data file is:
 | Tile 1 | [Tile](./tile.md#tile) | The data of tile 1 |
 | … | … | … |
 | Tile N | [Tile](./tile.md#tile) | The data of tile N |
-

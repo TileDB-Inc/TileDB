@@ -24,7 +24,7 @@ Introduced in TileDB 2.19
 Introduced in TileDB 2.17
 
 * Arrays can have [enumerations](./enumeration.md).
-* The bit-width reduction and positive delta filters are supported on data of date or time types.
+* The bit-width reduction and positive delta encoding filters are supported on data of date or time types.
 * The [filter pipeline options](./filter_pipeline.md#filter-options) for the double-delta filter contain the _Reinterpret datatype_ field.
 
 ## Version 19
@@ -32,7 +32,6 @@ Introduced in TileDB 2.17
 Introduced in TileDB 2.16
 
 * [Vacuum files](./vacuum_file.md) contain relative paths to the location of the array.
-* The [filter pipeline options](./filter_pipeline.md#filter-options) for the delta filter contain the _Reinterpret datatype_ field.
 
 ## Version 18
 

@@ -7,6 +7,7 @@ An array is a folder with the following structure:
 ```
 my_array                                # array folder
     |_ __schema                         # array schema folder
+          |_ __enumerations             # array enumerations folder
     |_ __fragments                      # array fragments folder
           |_ <timestamped_name>         # fragment folder
           |_ ...
@@ -33,6 +34,7 @@ my_array                                # array folder
 Inside the array folder, you can find the following:
 
 * [Array schema](./array_schema.md) folder `__schema`.
+* _New in version 20_ Inside of the schema folder, an enumerations folder `__enumerations`.
 * Inside of a fragments folder, any number of [fragment folders](./fragment.md) [`<timestamped_name>`](./timestamped_name.md).
 * Inside of a commit folder, an empty file [`<timestamped_name>`](./timestamped_name.md)`.wrt` associated with every fragment folder [`<timestamped_name>`](./timestamped_name.md), where [`<timestamped_name>`](./timestamped_name.md) is common for the folder and the WRT file. This is used to indicate that fragment [`<timestamped_name>`](./timestamped_name.md) has been *committed* (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.
 * Inside the same commit folder, any number of [delete commit files](./delete_commit_file.md) of the form [`<timestamped_name>`](./timestamped_name.md)`.del`.
@@ -41,4 +43,4 @@ Inside the array folder, you can find the following:
 * Inside the same commit folder, any number of [ignore files](./ignore_file.md) of the form [`<timestamped_name>`](./timestamped_name.md)`.ign`.
 * Inside of a fragment metadata folder, any number of [consolidated fragment metadata files](./consolidated_fragment_metadata_file.md) of the form [`<timestamped_name>`](./timestamped_name.md)`.meta`.
 * [Array metadata](./metadata.md) folder `__meta`.
-* Inside of a labels folder, additional TileDB arrays storing dimension label data.
+* _New in version 18_ Inside of a `__labels` folder, additional TileDB arrays storing dimension label data.

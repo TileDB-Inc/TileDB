@@ -103,6 +103,9 @@ The bit width reduction filter produces output data in the format:
 | … | … | … |
 | Window N | `uint8_t[]` | Window N data \(possibly-reduced width elements\) |
 
+> [!NOTE]
+> Prior to version 20, the bit width reduction filter had no effect on date and time types.
+
 ### Positive Delta Encoding Filter
 
 The positive-delta encoding filter does not filter input metadata. It produces output metadata in the format:
@@ -128,6 +131,9 @@ The positive-delta encoding filter produces output data in the format:
 | Window 1 | `T[]` | Window 1 delta-encoded data |
 | … | … | … |
 | Window N | `T[]` | Window N delta-encoded data |
+
+> [!NOTE]
+> Prior to version 20, the positive delta encoding filter had no effect on date and time types.
 
 ### Compression Filters
 

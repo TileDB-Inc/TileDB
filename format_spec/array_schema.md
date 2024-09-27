@@ -50,20 +50,20 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Attribute 1 | [Attribute](#attribute) | First attribute |
 | … | … | … |
 | Attribute N | [Attribute](#attribute) | Nth attribute |
-| Num labels | `uint32_t` | Number of dimension labels in the array |
-| Label 1 | [Dimension Label](#dimension_label) | First dimension label |
+| Num labels | `uint32_t` | _New in version 18_ Number of dimension labels in the array |
+| Label 1 | [Dimension Label](#dimension_label) | _New in version 18_ First dimension label |
 | … | … | … |
-| Label N | [Dimension Label](#dimension_label) | Nth dimension label |
+| Label N | [Dimension Label](#dimension_label) | _New in version 18_ Nth dimension label |
 | Num enumerations | `uint32_t` | Number of [enumerations](./enumeration.md) in the array |
-| Enumeration name length 1 | `uint32_t` | The number of characters in the enumeration 1 name |
-| Enumeration name 1 | `uint8_t[]` | The name of enumeration 1 |
-| Enumeration filename length 1 | `uint32_t` | The number of characters in the enumeration 1 file |
-| Enumeration filename 1 | `uint8_t[]` | The name of the file in the `__enumerations` subdirectory that conatins enumeration 1's data |
-| Enumeration name length N | `uint32_t` | The number of characters in the enumeration N name |
-| Enumeration name N | `uint8_t[]` | The name of enumeration N |
-| Enumeration filename length N | `uint32_t` | The number of characters in the enumeration N file |
-| Enumeration filename N | `uint8_t[]` | The name of the file in the `__enumerations` subdirectory that conatins enumeration N's data |
-| CurrentDomain | [CurrentDomain](./current_domain.md) | The array current domain |
+| Enumeration name length 1 | `uint32_t` | _New in version 20_ The number of characters in the enumeration 1 name |
+| Enumeration name 1 | `uint8_t[]` | _New in version 20_ The name of enumeration 1 |
+| Enumeration filename length 1 | `uint32_t` | _New in version 20_ The number of characters in the enumeration 1 file |
+| Enumeration filename 1 | `uint8_t[]` | _New in version 20_ The name of the file in the `__enumerations` subdirectory that conatins enumeration 1's data |
+| Enumeration name length N | `uint32_t` | _New in version 20_ The number of characters in the enumeration N name |
+| Enumeration name N | `uint8_t[]` | _New in version 20_ The name of enumeration N |
+| Enumeration filename length N | `uint32_t` | _New in version 20_ The number of characters in the enumeration N file |
+| Enumeration filename N | `uint8_t[]` | _New in version 20_ The name of the file in the `__enumerations` subdirectory that conatins enumeration N's data |
+| Current domain | [CurrentDomain](./current_domain.md) | _New in version 22_ The array's current domain |
 
 ## Domain
 
@@ -107,7 +107,7 @@ The attribute has internal format:
 | Fill value | `uint8_t[]` | The fill value |
 | Nullable | `bool` | Whether or not the attribute can be null |
 | Fill value validity | `uint8_t` | The validity fill value |
-| Order | `uint8_t` | Order of the data stored in the attribute. This may be unordered, increasing or decreasing |
+| Order | `uint8_t` | _New in version 17_ Order of the data stored in the attribute. This may be unordered, increasing or decreasing |
 
 ## Dimension Label
 
