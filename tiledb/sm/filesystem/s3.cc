@@ -241,7 +241,6 @@ S3::S3(
     : s3_params_(S3Parameters(config))
     , stats_(parent_stats->create_child("S3"))
     , state_(State::UNINITIALIZED)
-    , credentials_provider_(nullptr)
     , file_buffer_size_(
           s3_params_.multipart_part_size_ * s3_params_.max_parallel_ops_)
     , vfs_thread_pool_(thread_pool)
@@ -1320,6 +1319,10 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
+  if (client_ != nullptr) {
+    return Status::Ok();
+  }
+
   auto s3_config_source = s3_params_.config_source_;
   if (s3_config_source != "auto" && s3_config_source != "config_files" &&
       s3_config_source != "sts_profile_with_web_identity") {
@@ -1327,22 +1330,6 @@ Status S3::init_client() const {
         "Unknown 'vfs.s3.config_source' config value " + s3_config_source +
         "; supported values are 'auto', 'config_files' and "
         "'sts_profile_with_web_identity'");
-  }
-
-  if (client_ != nullptr) {
-    // Check credentials. If expired, refresh it
-    if (credentials_provider_) {
-      Aws::Auth::AWSCredentials credentials =
-          credentials_provider_->GetAWSCredentials();
-      if (credentials.IsExpired()) {
-        throw S3Exception("AWS credentials are expired.");
-      } else if (!s3_params_.no_sign_request_ && credentials.IsEmpty()) {
-        throw S3Exception(
-            "AWS credentials were not provided. For public S3 data, consider "
-            "setting the vfs.s3.no_sign_request config option.");
-      }
-    }
-    return Status::Ok();
   }
 
   // ClientConfiguration should be lazily init'ed here in init_client to avoid
@@ -1408,11 +1395,13 @@ Status S3::init_client() const {
               "TooManyRequestsException"},
           s3_params_.connect_max_tries_);
 
+  shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider;
+
   // If the user says not to sign a request, use the
   // AnonymousAWSCredentialsProvider This is equivalent to --no-sign-request on
   // the aws cli
   if (s3_params_.no_sign_request_) {
-    credentials_provider_ =
+    credentials_provider =
         make_shared<Aws::Auth::AnonymousAWSCredentialsProvider>(HERE());
   } else {  // Check other authentication methods
     switch ((!s3_params_.aws_access_key_id_.empty() ? 1 : 0) +
@@ -1421,7 +1410,7 @@ Status S3::init_client() const {
             (s3_config_source == "config_files" ? 8 : 0) +
             (s3_config_source == "sts_profile_with_web_identity" ? 16 : 0)) {
       case 0:
-        credentials_provider_ = make_shared<
+        credentials_provider = make_shared<
             tiledb::sm::filesystem::s3::DefaultAWSCredentialsProviderChain>(
             HERE(), auth_config);
         break;
@@ -1438,7 +1427,7 @@ Status S3::init_client() const {
             !s3_params_.aws_session_token_.empty() ?
                 s3_params_.aws_session_token_.c_str() :
                 "");
-        credentials_provider_ =
+        credentials_provider =
             make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
                 HERE(), access_key_id, secret_access_key, session_token);
         break;
@@ -1459,7 +1448,7 @@ Status S3::init_client() const {
             !s3_params_.aws_session_name_.empty() ?
                 s3_params_.aws_session_name_.c_str() :
                 "");
-        credentials_provider_ =
+        credentials_provider =
             make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
                 HERE(),
                 role_arn,
@@ -1477,13 +1466,13 @@ Status S3::init_client() const {
             "temporary authentication credentials are configured");
       }
       case 8: {
-        credentials_provider_ =
+        credentials_provider =
             make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
                 HERE());
         break;
       }
       case 16: {
-        credentials_provider_ = make_shared<
+        credentials_provider = make_shared<
             Aws::Auth::STSProfileWithWebIdentityCredentialsProvider>(
             HERE(),
             Aws::Auth::GetConfigProfileName(),
@@ -1518,11 +1507,11 @@ Status S3::init_client() const {
   static std::mutex static_client_init_mtx;
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
-    assert(credentials_provider_);
+    assert(credentials_provider);
     client_ = make_shared<TileDBS3Client>(
         HERE(),
         s3_params_,
-        credentials_provider_,
+        credentials_provider,
         client_config,
         Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
         s3_params_.use_virtual_addressing_);
