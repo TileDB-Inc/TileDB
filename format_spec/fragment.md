@@ -36,9 +36,9 @@ There can be any number of fragments in an array. The fragment folder contains:
 * A single [fragment metadata file](#fragment-metadata-file) named `__fragment_metadata.tdb`. 
 * Any number of [data files](#data-file). For each fixed-sized attribute `foo1` (or dimension `bar1`), there is a single data file `a0.tdb` (`d0.tdb`) containing the values along this attribute (dimension). For every var-sized attribute `foo2` (or dimensions `bar2`), there are two data files; `a1_var.tdb` (`d1_var.tdb`) containing the var-sized values of the attribute (dimension) and `a1.tdb` (`d1.tdb`) containing the starting offsets of each value in `a1_var.tdb` (`d1_var.rdb`). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, `foo3`, will have an additional file `a2_validity.tdb` that contains its validity vector.
 * The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.
-* The timestamp fixed attribute (`t.tdb`) is, for fragments consolidated with timestamps, the time at which a cell was added.
-* The delete timestamp fixed attribute (`dt.tdb`) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.
-* The delete condition [Delete commit file](./delete_commit_file.md) index fixed attribute (`dci.tdb`) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of [Tile Processed Conditions](#tile-processed-conditions)) that deleted the cell.
+* _New in version 14_ The timestamp fixed attribute (`t.tdb`) is, for fragments consolidated with timestamps, the time at which a cell was added.
+* _New in version 15_ The delete timestamp fixed attribute (`dt.tdb`) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.
+* _New in version 15_ The delete condition [Delete commit file](./delete_commit_file.md) index fixed attribute (`dci.tdb`) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of [Tile Processed Conditions](#tile-processed-conditions)) that deleted the cell.
 
 ## Fragment Metadata File 
 
@@ -59,20 +59,20 @@ The fragment metadata file has the following on-disk format:
 | Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ validity tile offsets for attribute/dimension 1 |
 | … | … | … |
 | Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ validity tile offsets for attribute/dimension N |
-| Tile mins for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized mins for attribute/dimension 1 |
+| Tile mins for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 11_ The serialized mins for attribute/dimension 1 |
 | … | … | … |
-| Variable mins for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized mins for attribute/dimension N |
-| Tile maxes for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized maxes for attribute/dimension 1 |
+| Variable mins for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 11_ The serialized mins for attribute/dimension N |
+| Tile maxes for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 11_ The serialized maxes for attribute/dimension 1 |
 | … | … | … |
-| Variable maxes for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized maxes for attribute/dimension N |
-| Tile sums for attribute/dimension 1 | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension 1 |
+| Variable maxes for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 11_ The serialized maxes for attribute/dimension N |
+| Tile sums for attribute/dimension 1 | [Tile Sums](#tile-sums) | _New in version 11_ The serialized sums for attribute/dimension 1 |
 | … | … | … |
-| Variable sums for attribute/dimension N | [Tile Sums](#tile-sums) | The serialized sums for attribute/dimension N |
-| Tile null counts for attribute/dimension 1 | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension 1 |
+| Variable sums for attribute/dimension N | [Tile Sums](#tile-sums) | _New in version 11_ The serialized sums for attribute/dimension N |
+| Tile null counts for attribute/dimension 1 | [Tile Null Count](#tile-null-count) | _New in version 11_ The serialized null counts for attribute/dimension 1 |
 | … | … | … |
-| Tile null counts for attribute/dimension N | [Tile Null Count](#tile-null-count) | The serialized null counts for attribute/dimension N |
-| Fragment min, max, sum, null count | [Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | The serialized fragment min max sum null count |
-| Processed conditions | [Tile Processed Conditions](#tile-processed-conditions) | The serialized processed conditions |
+| Tile null counts for attribute/dimension N | [Tile Null Count](#tile-null-count) | _New in version 11_ The serialized null counts for attribute/dimension N |
+| Fragment min, max, sum, null count | [Tile Fragment Min Max Sum Null Count](#tile-fragment-min-max-sum-null-count) | _New in version 11_ The serialized fragment min max sum null count |
+| Processed conditions | [Tile Processed Conditions](#tile-processed-conditions) | _New in version 16_ The serialized processed conditions |
 | Metadata footer | [Footer](#footer) | Basic metadata gathered in the footer |
 
 ### R-Tree
@@ -230,8 +230,8 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Non-empty domain | [MBR](#mbr) | An MBR denoting the non-empty domain |
 | Number of sparse tiles | `uint64_t` | Number of sparse tiles |
 | Last tile cell num | `uint64_t` | For sparse arrays, the number of cells in the last tile in the fragment |
-| Includes timestamps | `uint8_t` | Whether the fragment includes timestamps (1) or not (0) |
-| Includes delete metadata | `uint8_t` | Whether the fragment includes delete metadata (1) or not (0) |
+| Includes timestamps | `uint8_t` | _New in version 14_ Whether the fragment includes timestamps (1) or not (0) |
+| Includes delete metadata | `uint8_t` | _New in version 15_ Whether the fragment includes delete metadata (1) or not (0) |
 | File sizes | `uint64_t[]` | The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file. |
 | File var sizes | `uint64_t[]` | The size in bytes of each var-length attribute/dimension file in the fragment. |
 | File validity sizes | `uint64_t[]` | The size in bytes of each attribute/dimension validity vector file in the fragment. |
@@ -261,7 +261,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | … | … | … |
 | Tile null counts offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile null counts for attribute/dimension N |
 | Fragment min max sum null count offset | `uint64_t` | The offset to the generic tile storing the fragment min max sum null count data. |
-| Processed conditions offset | `uint64_t` | The offset to the generic tile storing the processed conditions. |
+| Processed conditions offset | `uint64_t` | _New in version 16_ The offset to the generic tile storing the processed conditions. |
 | Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
 | Array schema name | `uint8_t[]` | The array schema name. |
 | Footer length | `uint64_t` | Sum of bytes of the above fields. |

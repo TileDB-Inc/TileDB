@@ -29,4 +29,4 @@ All the above integers are stored in big-endian format.
 Because the dictionary filter works on variable-sized cells of data, it filters the cell data and offsets combined and its output gets stored in the variable-sized data file, after applying any subsequent filters. The fixed-sized data file does not contain any data.
 
 > [!NOTE]
-> Prior to version 17, when compressing UTF-8 strings with the dictionary filter the offsets buffers was separately filtered as well due to an oversight. Accessing the cell offsets only is generally not useful to implementations.
+> Prior to version 13 for ASCII strings and version 17 for UTF-8 strings, the offsets buffers was separately filtered as well due to an oversight. Accessing the cell offsets only is generally not useful to implementations.

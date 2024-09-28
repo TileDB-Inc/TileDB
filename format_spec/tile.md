@@ -35,6 +35,8 @@ The “chunk filtered data” bytes contain the final bytes of the chunk after b
 
 Internally, any filter in a filter pipeline produces two arrays of data as output: a metadata byte array and a filtered data byte array. Additionally, these output byte arrays can be arbitrarily separated into “parts” by any filter. Typically, when a next filter receives the output of the previous filter as its input, it will filter each “part” independently.
 
+_New in version 11_ Cells of arrays are not split across chunks within a tile.
+
 ### Byteshuffle Filter
 
 The byteshuffle filter does not filter input metadata, and the output data is guaranteed to be the same length as the input data.

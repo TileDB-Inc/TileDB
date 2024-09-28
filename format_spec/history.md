@@ -85,7 +85,7 @@ Introduced in TileDB 2.8
 
 Introduced in TileDB 2.7
 
-* Fragment metadata contain [metadata](./fragment.md#tile-mins-maxes) (min/max value, sum, null count) for each tile.
+* Fragment metadata contain [metadata](./fragment.md#tile-mins-maxes) (min/max value, sum, null count) for data in the whole fragment and each tile.
 * The TileDB implementation has been updated to never split cells when storing them in chunks.
 
 ## Version 10
