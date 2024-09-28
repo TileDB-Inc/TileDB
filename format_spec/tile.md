@@ -13,7 +13,7 @@ Internally tile data is divided into “chunks.” Every tile is at least one ch
 | … | … | … |
 | Chunk N | [Chunk](#chunk-format) | N-th chunk in the tile |
 
-## Chunk Format 
+## Chunk Format
 
 A chunk has the following on-disk format:
 
@@ -94,7 +94,7 @@ The type `WindowMD` has the format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Window value offset | `T` | Offset applied to values in the output window, where `T` is the original datatype of the tile values. |
-| Bit width of reduced type | `uint8_t` | Number of bits in the new datatype of the values in the output window |
+| Bit width of reduced type | `uint8_t` | Number of bits in the new datatype of the values in the output window. Can be 8, 16, 32 or 64. |
 | Window length | `uint32_t` | Number of bytes in output window data. |
 
 The bit width reduction filter produces output data in the format:
