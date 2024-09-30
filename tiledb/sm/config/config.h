@@ -110,6 +110,9 @@ class Config {
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
 
+  /** Whether to use TCP keepalive when connecting to REST. */
+  static const std::string REST_CURL_TCP_KEEPALIVE;
+
   /** If we should retry Curl errors in requests to REST. */
   static const std::string REST_CURL_RETRY_ERRORS;
 
@@ -437,6 +440,9 @@ class Config {
 
   /** The maximum size (in bytes) of the VFS read-ahead cache . */
   static const std::string VFS_READ_AHEAD_CACHE_SIZE;
+
+  /** Whether to log individual VFS operations. */
+  static const std::string VFS_LOG_OPERATIONS;
 
   /** The type of read logging to perform in the VFS. */
   static const std::string VFS_READ_LOGGING_MODE;

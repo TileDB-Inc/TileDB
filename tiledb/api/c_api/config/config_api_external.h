@@ -742,6 +742,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Set curl to run in verbose mode for REST requests <br>
  *    curl will print to stdout with this option
  *    **Default**: false
+ * -  `rest.curl.tcp_keepalive` <br>
+ *    Set curl to use TCP keepalive for REST requests <br>
+ *    **Default**: true
  * - `rest.load_metadata_on_array_open` <br>
  *    If true, array metadata will be loaded and sent to server together with
  *    the open array <br>

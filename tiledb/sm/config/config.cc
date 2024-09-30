@@ -91,6 +91,7 @@ const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_BUFFER_SIZE = "524288";
 const std::string Config::REST_CAPNP_TRAVERSAL_LIMIT = "2147483648";
 const std::string Config::REST_CURL_VERBOSE = "false";
+const std::string Config::REST_CURL_TCP_KEEPALIVE = "true";
 const std::string Config::REST_CURL_RETRY_ERRORS = "true";
 const std::string Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
@@ -175,7 +176,7 @@ const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
-const std::string VFS_LOG_OPERATIONS = "false";
+const std::string Config::VFS_LOG_OPERATIONS = "false";
 const std::string Config::VFS_READ_LOGGING_MODE = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
@@ -257,6 +258,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("rest.curl.buffer_size", Config::REST_CURL_BUFFER_SIZE),
     std::make_pair(
         "rest.capnp_traversal_limit", Config::REST_CAPNP_TRAVERSAL_LIMIT),
+    std::make_pair("rest.curl.tcp_keepalive", Config::REST_CURL_TCP_KEEPALIVE),
     std::make_pair("rest.curl.verbose", Config::REST_CURL_VERBOSE),
     std::make_pair("rest.curl.retry_errors", Config::REST_CURL_RETRY_ERRORS),
     std::make_pair(
@@ -405,7 +407,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("vfs.min_batch_gap", Config::VFS_MIN_BATCH_GAP),
     std::make_pair("vfs.min_batch_size", Config::VFS_MIN_BATCH_SIZE),
     std::make_pair("vfs.read_ahead_size", Config::VFS_READ_AHEAD_SIZE),
-    std::make_pair("vfs.log_operations", VFS_LOG_OPERATIONS),
+    std::make_pair("vfs.log_operations", Config::VFS_LOG_OPERATIONS),
     std::make_pair(
         "vfs.read_ahead_cache_size", Config::VFS_READ_AHEAD_CACHE_SIZE),
     std::make_pair(
@@ -802,6 +804,8 @@ Status Config::sanity_check(
   } else if (param == "sm.fragment_info.preload_mbrs") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "ssl.verify") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "rest.curl.tcp_keepalive") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
