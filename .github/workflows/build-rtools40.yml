@@ -43,6 +43,9 @@ jobs:
         uses: r-windows/install-rtools@master
       - name: Building TileDB with Rtools40
         run: |
+          export SystemDrive="$SYSTEMDRIVE"
+          export SystemRoot="$SYSTEMROOT"
+          export windir="$WINDIR"
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
           pacman -Sy
           makepkg-mingw --noconfirm --syncdeps
