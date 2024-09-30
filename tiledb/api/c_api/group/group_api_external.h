@@ -401,8 +401,8 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
  */
 TILEDB_EXPORT capi_return_t tiledb_group_add_member_by_type(
     tiledb_ctx_t* ctx,
-    tiledb_group_handle_t* group,
-    const char* group_uri,
+    tiledb_group_t* group,
+    const char* uri,
     const uint8_t relative,
     const char* name,
     tiledb_object_t type) TILEDB_NOEXCEPT;
