@@ -40,6 +40,11 @@ There can be any number of fragments in an array. The fragment folder contains:
 * _New in version 15_ The delete timestamp fixed attribute (`dt.tdb`) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.
 * _New in version 15_ The delete condition [Delete commit file](./delete_commit_file.md) index fixed attribute (`dci.tdb`) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of [Tile Processed Conditions](#tile-processed-conditions)) that deleted the cell.
 
+> [!NOTE]
+> Prior to version 9, data files were named after their corresponding attributes or dimensions.
+>
+> In version 8 only, certain characters of the data files' name were percent-encoded. These characters are `!#$%&'()*+,/:;=?@[]`, as specified in [RFC 3986](https://tools.ietf.org/html/rfc3986), as well as `"<>\|`, which are not allowed in Windows file names.
+
 ## Fragment Metadata File 
 
 The fragment metadata file has the following on-disk format:
@@ -56,9 +61,9 @@ The fragment metadata file has the following on-disk format:
 | Variable tile sizes for attribute/dimension 1 | [Tile Sizes](#tile-sizes) | The serialized _in-memory_ variable tile sizes for attribute/dimension 1 |
 | … | … | … |
 | Variable tile sizes for attribute/dimension N | [Tile Sizes](#tile-sizes) | The serialized _in-memory_ variable tile sizes for attribute/dimension N |
-| Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ validity tile offsets for attribute/dimension 1 |
+| Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | _New in version 7_ The serialized _on-disk_ validity tile offsets for attribute/dimension 1 |
 | … | … | … |
-| Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ validity tile offsets for attribute/dimension N |
+| Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | _New in version 7_ The serialized _on-disk_ validity tile offsets for attribute/dimension N |
 | Tile mins for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 11_ The serialized mins for attribute/dimension 1 |
 | … | … | … |
 | Variable mins for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | _New in version 11_ The serialized mins for attribute/dimension N |
@@ -223,8 +228,8 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Version number | `uint32_t` | Format version number of the fragment |
-| Array schema name size | `uint64_t` | Size of the array schema name |
-| Array schema name | `string` | Array schema name |
+| Array schema name size | `uint64_t` | _New in version 10_ Size of the array schema name |
+| Array schema name | `string` | _New in version 10_ Array schema name |
 | Dense | `uint8_t` | Whether the array is dense (1) or not (0) |
 | Null non-empty domain | `uint8_t` | Indicates whether the non-empty domain is null (1) or not (0) |
 | Non-empty domain | [MBR](#mbr) | An MBR denoting the non-empty domain |
@@ -245,9 +250,9 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile var sizes offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the variable tile sizes for attribute/dimension 1. |
 | … | … | … |
 | Tile var sizes offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the variable tile sizes for attribute/dimension N. |
-| Tile validity offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile validity offsets for attribute/dimension 1. |
+| Tile validity offset for attribute/dimension 1 | `uint64_t` | _New in version 7_ The offset to the generic tile storing the tile validity offsets for attribute/dimension 1. |
 | … | … | … |
-| Tile validity offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile validity offsets for attribute/dimension N |
+| Tile validity offset for attribute/dimension N | `uint64_t` | _New in version 7_ The offset to the generic tile storing the tile validity offsets for attribute/dimension N |
 | Tile mins offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile mins for attribute/dimension 1. |
 | … | … | … |
 | Tile mins offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile mins for attribute/dimension N |
@@ -265,6 +270,9 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
 | Array schema name | `uint8_t[]` | The array schema name. |
 | Footer length | `uint64_t` | Sum of bytes of the above fields. |
+
+> [!NOTE]
+> Prior to version 10, the _Footer length_ field was present only when the array had at least one variable-sized dimension. Implementations had to obtain the format version from the fragment folder's timestamped name.
 
 ## Data File 
 

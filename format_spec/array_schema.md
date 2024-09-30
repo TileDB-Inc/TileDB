@@ -2,34 +2,6 @@
 title: Array Schema
 ---
 
-## Current Array Schema Version
-
-The current array schema version(`>=10`) is a folder called `__schema` located here:
-
-```
-my_array                            # array folder
-   |  ...
-   |_ __schema                      # array schema folder
-         |_ <timestamped_name>      # array schema file
-         |_ ...
-```
-
-The array schema folder can contain:
-
-* Any number of [array schema files](#array-schema-file) with name [`<timestamped_name>`](./timestamped_name.md). 
-   * Note: the name does _not_ include the format version.
-
-## Previous Array Schema Version
-
-The previous array schema version(`<=9`) has a file named `__array_schema.tdb` and is located here:
-
-```
-my_array                   # array folder
-   |_ ....
-   |_ __array_schema.tdb   # array schema file
-   |_ ...
-```
-
 ## Array Schema File
 
 The array schema file consists of a single [generic tile](./generic_tile.md), with the following data:
@@ -44,7 +16,7 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Capacity | `uint64_t` | For sparse fragments, the data tile capacity |
 | Coords filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used as default for coordinate tiles |
 | Offsets filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used for cell var-len offset tiles |
-| Validity filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used for cell validity tiles |
+| Validity filters | [Filter Pipeline](./filter_pipeline.md) | _New in version 7_ The filter pipeline used for cell validity tiles |
 | Domain | [Domain](#domain) | The array domain |
 | Num attributes | `uint32_t` | Number of attributes in the array |
 | Attribute 1 | [Attribute](#attribute) | First attribute |
@@ -58,11 +30,11 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Enumeration name length 1 | `uint32_t` | _New in version 20_ The number of characters in the enumeration 1 name |
 | Enumeration name 1 | `uint8_t[]` | _New in version 20_ The name of enumeration 1 |
 | Enumeration filename length 1 | `uint32_t` | _New in version 20_ The number of characters in the enumeration 1 file |
-| Enumeration filename 1 | `uint8_t[]` | _New in version 20_ The name of the file in the `__enumerations` subdirectory that conatins enumeration 1's data |
+| Enumeration filename 1 | `uint8_t[]` | _New in version 20_ The name of the file in the `__enumerations` subdirectory that contains enumeration 1's data |
 | Enumeration name length N | `uint32_t` | _New in version 20_ The number of characters in the enumeration N name |
 | Enumeration name N | `uint8_t[]` | _New in version 20_ The name of enumeration N |
 | Enumeration filename length N | `uint32_t` | _New in version 20_ The number of characters in the enumeration N file |
-| Enumeration filename N | `uint8_t[]` | _New in version 20_ The name of the file in the `__enumerations` subdirectory that conatins enumeration N's data |
+| Enumeration filename N | `uint8_t[]` | _New in version 20_ The name of the file in the `__enumerations` subdirectory that contains enumeration N's data |
 | Current domain | [Current Domain](#current-domain) | _New in version 22_ The array's current domain |
 
 ## Domain
@@ -103,10 +75,10 @@ The attribute has internal format:
 | Attribute datatype | `uint8_t` | Datatype of the attribute values |
 | Cell val num | `uint32_t` | Number of attribute values per cell. For variable-length attributes, this is `std::numeric_limits<uint32_t>::max()` |
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on attribute value tiles |
-| Fill value size | `uint64_t` | The size in bytes of the fill value |
-| Fill value | `uint8_t[]` | The fill value |
-| Nullable | `bool` | Whether or not the attribute can be null |
-| Fill value validity | `uint8_t` | The validity fill value |
+| Fill value size | `uint64_t` | _New in version 6_ The size in bytes of the fill value |
+| Fill value | `uint8_t[]` | _New in version 6_ The fill value |
+| Nullable | `bool` | _New in version 7_ Whether or not the attribute can be null |
+| Fill value validity | `uint8_t` | _New in version 7_ The validity fill value |
 | Order | `uint8_t` | _New in version 17_ Order of the data stored in the attribute. This may be unordered, increasing or decreasing |
 
 ## Dimension Label
