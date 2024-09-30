@@ -79,7 +79,7 @@ void create_array() {
   // Finally, we add the attribute as per normal.
   schema.add_attribute(attr);
 
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 }
 
 void write_array() {

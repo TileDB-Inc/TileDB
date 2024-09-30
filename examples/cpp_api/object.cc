@@ -98,7 +98,7 @@ void create_array(const std::string& array_name, tiledb_array_type_t type) {
   ArraySchema schema(ctx, type);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 }
 
 void move_remove_obj() {

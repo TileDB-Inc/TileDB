@@ -76,7 +76,7 @@ void create_array(Context& ctx, const std::string& array_uri) {
   ArraySchemaExperimental::set_current_domain(ctx, schema, current_domain);
 
   // Create the (empty) array on disk
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 }
 
 void print_current_domain(Context& ctx) {

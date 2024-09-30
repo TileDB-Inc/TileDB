@@ -98,7 +98,7 @@ void create_array(Context& ctx) {
   schema.add_attribute(a).add_attribute(b).add_attribute(c).add_attribute(d);
 
   // Create the (empty) array.
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 }
 
 /**
