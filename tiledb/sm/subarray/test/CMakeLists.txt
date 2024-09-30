@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -42,4 +42,20 @@ commence(unit_test add_ranges_list)
     if (NOT MSVC)
       target_compile_options(unit_add_ranges_list PRIVATE -Wno-deprecated-declarations)
     endif()
+conclude(unit_test)
+
+commence(unit_test subarray)
+    this_target_sources(main.cc unit_subarray.cc unit_subarray_partitioner_dense.cc)
+    this_target_link_libraries(subarray tiledb_test_support_lib)
+conclude(unit_test)
+
+
+commence(unit_test subarray_partitioner)
+    this_target_sources(
+        main.cc 
+        unit_subarray_partitioner_dense.cc 
+        unit_subarray_partitioner_error.cc 
+        unit_subarray_partitioner_sparse.cc
+    )
+    this_target_link_libraries(subarray tiledb_test_support_lib)
 conclude(unit_test)

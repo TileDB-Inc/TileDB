@@ -1,5 +1,5 @@
 /**
- * @file unit-Subarray.cc
+ * @file tiledb/sm/subarray/test/unit_subarray.cc
  *
  * @section LICENSE
  *
@@ -27,23 +27,19 @@
  *
  * @section DESCRIPTION
  *
- * Tests the `Subarray` class.
+ * This file tests the Subarray class
  */
 
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
-#include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
-
-#include <test/support/tdb_catch.h>
-#include <iostream>
 
 using namespace tiledb::sm;
 using namespace tiledb::test;
@@ -88,9 +84,102 @@ SubarrayFx::SubarrayFx()
 
 SubarrayFx::~SubarrayFx() {
   tiledb_array_free(&array_);
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
+}
+
+/* ********************************* */
+/*              HELPERS              */
+/* ********************************* */
+
+void verify_expanded_coordinates_2D(
+    Subarray* const subarray,
+    const uint64_t range_idx_start,
+    const uint64_t range_idx_end,
+    const uint64_t expected_range_idx_start,
+    const uint64_t expected_range_idx_end,
+    const std::vector<uint64_t>& expected_start_coords,
+    const std::vector<uint64_t>& expected_end_coords) {
+  std::vector<uint64_t> start_coords;
+  std::vector<uint64_t> end_coords;
+  subarray->get_expanded_coordinates(
+      range_idx_start, range_idx_end, &start_coords, &end_coords);
+  REQUIRE(start_coords == expected_start_coords);
+  REQUIRE(end_coords == expected_end_coords);
+  REQUIRE(subarray->range_idx(start_coords) == expected_range_idx_start);
+  REQUIRE(subarray->range_idx(end_coords) == expected_range_idx_end);
+
+  // Build a map from each inclusive range index between
+  // `range_idx_start` and `range_idx_end` that maps to a bool.
+  std::unordered_map<uint64_t, bool> range_idx_found;
+  for (uint64_t i = range_idx_start; i <= range_idx_end; ++i) {
+    range_idx_found[i] = false;
+  }
+
+  // Iterate through every coordinate between the start and end
+  // coordinate. If the flattened index is in `range_idx_found`,
+  // set the value to `true`.
+  for (uint64_t x = start_coords[0]; x <= end_coords[0]; ++x) {
+    for (uint64_t y = start_coords[1]; y <= end_coords[1]; ++y) {
+      const uint64_t range_idx = subarray->range_idx({x, y});
+      if (range_idx_found.count(range_idx) == 1) {
+        range_idx_found[range_idx] = true;
+      }
+    }
+  }
+
+  // Verify all flattened ranges are contained within the 2D
+  // space between `start_coords` and `end_coords`.
+  for (uint64_t i = range_idx_start; i <= range_idx_end; ++i) {
+    REQUIRE(range_idx_found[i] == true);
+  }
+}
+
+void verify_expanded_coordinates_3D(
+    Subarray* const subarray,
+    const uint64_t range_idx_start,
+    const uint64_t range_idx_end,
+    const uint64_t expected_range_idx_start,
+    const uint64_t expected_range_idx_end,
+    const std::vector<uint64_t>& expected_start_coords,
+    const std::vector<uint64_t>& expected_end_coords) {
+  std::vector<uint64_t> start_coords;
+  std::vector<uint64_t> end_coords;
+  subarray->get_expanded_coordinates(
+      range_idx_start, range_idx_end, &start_coords, &end_coords);
+  REQUIRE(start_coords == expected_start_coords);
+  REQUIRE(end_coords == expected_end_coords);
+  REQUIRE(subarray->range_idx(start_coords) == expected_range_idx_start);
+  REQUIRE(subarray->range_idx(end_coords) == expected_range_idx_end);
+
+  // Build a map from each inclusive range index between
+  // `range_idx_start` and `range_idx_end` that maps to a bool.
+  std::unordered_map<uint64_t, bool> range_idx_found;
+  for (uint64_t i = range_idx_start; i <= range_idx_end; ++i) {
+    range_idx_found[i] = false;
+  }
+
+  // Iterate through every coordinate between the start and end
+  // coordinate. If the flattened index is in `range_idx_found`,
+  // set the value to `true`.
+  for (uint64_t x = start_coords[0]; x <= end_coords[0]; ++x) {
+    for (uint64_t y = start_coords[1]; y <= end_coords[1]; ++y) {
+      for (uint64_t z = start_coords[2]; z <= end_coords[2]; ++z) {
+        const uint64_t range_idx = subarray->range_idx({x, y, z});
+        if (range_idx_found.count(range_idx) == 1) {
+          range_idx_found[range_idx] = true;
+        }
+      }
+    }
+  }
+
+  // Verify all flattened ranges are contained within the 2D
+  // space between `start_coords` and `end_coords`.
+  for (uint64_t i = range_idx_start; i <= range_idx_end; ++i) {
+    REQUIRE(range_idx_found[i] == true);
+  }
 }
 
 /* ********************************* */
@@ -324,49 +413,6 @@ TEST_CASE_METHOD(
   close_array(ctx_, array_);
 }
 
-void verify_expanded_coordinates_2D(
-    Subarray* const subarray,
-    const uint64_t range_idx_start,
-    const uint64_t range_idx_end,
-    const uint64_t expected_range_idx_start,
-    const uint64_t expected_range_idx_end,
-    const std::vector<uint64_t>& expected_start_coords,
-    const std::vector<uint64_t>& expected_end_coords) {
-  std::vector<uint64_t> start_coords;
-  std::vector<uint64_t> end_coords;
-  subarray->get_expanded_coordinates(
-      range_idx_start, range_idx_end, &start_coords, &end_coords);
-  REQUIRE(start_coords == expected_start_coords);
-  REQUIRE(end_coords == expected_end_coords);
-  REQUIRE(subarray->range_idx(start_coords) == expected_range_idx_start);
-  REQUIRE(subarray->range_idx(end_coords) == expected_range_idx_end);
-
-  // Build a map from each inclusive range index between
-  // `range_idx_start` and `range_idx_end` that maps to a bool.
-  std::unordered_map<uint64_t, bool> range_idx_found;
-  for (uint64_t i = range_idx_start; i <= range_idx_end; ++i) {
-    range_idx_found[i] = false;
-  }
-
-  // Iterate through every coordinate between the start and end
-  // coordinate. If the flattened index is in `range_idx_found`,
-  // set the value to `true`.
-  for (uint64_t x = start_coords[0]; x <= end_coords[0]; ++x) {
-    for (uint64_t y = start_coords[1]; y <= end_coords[1]; ++y) {
-      const uint64_t range_idx = subarray->range_idx({x, y});
-      if (range_idx_found.count(range_idx) == 1) {
-        range_idx_found[range_idx] = true;
-      }
-    }
-  }
-
-  // Verify all flattened ranges are contained within the 2D
-  // space between `start_coords` and `end_coords`.
-  for (uint64_t i = range_idx_start; i <= range_idx_end; ++i) {
-    REQUIRE(range_idx_found[i] == true);
-  }
-}
-
 TEST_CASE_METHOD(
     SubarrayFx,
     "Subarray: Test get_expanded_coordinates, row-major, 2D",
@@ -590,51 +636,6 @@ TEST_CASE_METHOD(
   verify_expanded_coordinates_2D(&subarray, 5, 10, 4, 11, {1, 0}, {2, 3});
 
   close_array(ctx_, array_);
-}
-
-void verify_expanded_coordinates_3D(
-    Subarray* const subarray,
-    const uint64_t range_idx_start,
-    const uint64_t range_idx_end,
-    const uint64_t expected_range_idx_start,
-    const uint64_t expected_range_idx_end,
-    const std::vector<uint64_t>& expected_start_coords,
-    const std::vector<uint64_t>& expected_end_coords) {
-  std::vector<uint64_t> start_coords;
-  std::vector<uint64_t> end_coords;
-  subarray->get_expanded_coordinates(
-      range_idx_start, range_idx_end, &start_coords, &end_coords);
-  REQUIRE(start_coords == expected_start_coords);
-  REQUIRE(end_coords == expected_end_coords);
-  REQUIRE(subarray->range_idx(start_coords) == expected_range_idx_start);
-  REQUIRE(subarray->range_idx(end_coords) == expected_range_idx_end);
-
-  // Build a map from each inclusive range index between
-  // `range_idx_start` and `range_idx_end` that maps to a bool.
-  std::unordered_map<uint64_t, bool> range_idx_found;
-  for (uint64_t i = range_idx_start; i <= range_idx_end; ++i) {
-    range_idx_found[i] = false;
-  }
-
-  // Iterate through every coordinate between the start and end
-  // coordinate. If the flattened index is in `range_idx_found`,
-  // set the value to `true`.
-  for (uint64_t x = start_coords[0]; x <= end_coords[0]; ++x) {
-    for (uint64_t y = start_coords[1]; y <= end_coords[1]; ++y) {
-      for (uint64_t z = start_coords[2]; z <= end_coords[2]; ++z) {
-        const uint64_t range_idx = subarray->range_idx({x, y, z});
-        if (range_idx_found.count(range_idx) == 1) {
-          range_idx_found[range_idx] = true;
-        }
-      }
-    }
-  }
-
-  // Verify all flattened ranges are contained within the 2D
-  // space between `start_coords` and `end_coords`.
-  for (uint64_t i = range_idx_start; i <= range_idx_end; ++i) {
-    REQUIRE(range_idx_found[i] == true);
-  }
 }
 
 TEST_CASE_METHOD(

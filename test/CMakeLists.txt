@@ -134,10 +134,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
   src/unit-ssl-config.cc
-  src/unit-Subarray.cc
-  src/unit-SubarrayPartitioner-dense.cc
-  src/unit-SubarrayPartitioner-error.cc
-  src/unit-SubarrayPartitioner-sparse.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/test/unit_capi_ls_recursive.cc"
