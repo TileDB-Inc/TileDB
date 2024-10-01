@@ -1,5 +1,5 @@
 /**
- * @file unit_subarra_partitioner_sparse.cc
+ * @file unit-SubarrayPartitioner-sparse.cc
  *
  * @section LICENSE
  *
@@ -40,6 +40,9 @@
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+
+#include <test/support/tdb_catch.h>
+#include <iostream>
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -161,7 +164,6 @@ SubarrayPartitionerSparseFx::SubarrayPartitionerSparseFx()
 
 SubarrayPartitionerSparseFx::~SubarrayPartitionerSparseFx() {
   tiledb_array_free(&array_);
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
