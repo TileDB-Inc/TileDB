@@ -399,11 +399,6 @@ inline Status Status_SerializationError(const std::string& msg) {
 inline Status Status_ThreadPoolError(const std::string& msg) {
   return {"[TileDB::ThreadPool] Error", msg};
 }
-/** Return a Status_FragmentInfoError error class Status with a given message
- * **/
-inline Status Status_FragmentInfoError(const std::string& msg) {
-  return {"[TileDB::FragmentInfo] Error", msg};
-}
 /** Return a Status_DenseTilerError error class Status with a given message
  * **/
 inline Status Status_DenseTilerError(const std::string& msg) {

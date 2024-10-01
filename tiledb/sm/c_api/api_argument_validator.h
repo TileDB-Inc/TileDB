@@ -78,17 +78,6 @@ inline int32_t sanity_check(
 }
 
 inline int32_t sanity_check(
-    tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info) {
-  if (fragment_info == nullptr || fragment_info->fragment_info_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB fragment info object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_consolidation_plan_t* consolidation_plan) {
   if (consolidation_plan == nullptr ||
       consolidation_plan->consolidation_plan_ == nullptr) {

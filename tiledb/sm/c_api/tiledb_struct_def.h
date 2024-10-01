@@ -39,7 +39,6 @@
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
-#include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
@@ -59,10 +58,6 @@ struct tiledb_query_t {
 
 struct tiledb_query_condition_t {
   tiledb::sm::QueryCondition* query_condition_ = nullptr;
-};
-
-struct tiledb_fragment_info_t {
-  tiledb::sm::FragmentInfo* fragment_info_ = nullptr;
 };
 
 struct tiledb_consolidation_plan_t {
