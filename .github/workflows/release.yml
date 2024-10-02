@@ -214,7 +214,7 @@ jobs:
       issues: write
     runs-on: ubuntu-latest
     needs: Publish-Release
-    if: (failure() || cancelled()) && github.event_name != 'workflow_dispatch'
+    if: (failure() || cancelled()) && github.event_name == 'push'
     steps:
       # The open-issue action requires to clone the repository.
       - name: Checkout TileDB
