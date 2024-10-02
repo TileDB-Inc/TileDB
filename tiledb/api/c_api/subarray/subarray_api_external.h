@@ -1,12 +1,11 @@
 /**
- * @file   tiledb_struct_def.h
+ * @file tiledb/api/c_api/subarray/subarray_api_external.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,33 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file contains the TileDB C API struct object definitions.
+ * This file declares the Subarray C API for TileDB.
  */
 
-#ifndef TILEDB_C_API_STRUCT_DEF_H
-#define TILEDB_C_API_STRUCT_DEF_H
+#ifndef TILEDB_CAPI_SUBARRAY_EXTERNAL_H
+#define TILEDB_CAPI_SUBARRAY_EXTERNAL_H
 
-#include "tiledb/api/c_api_support/handle/handle.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/buffer/buffer_list.h"
-#include "tiledb/sm/consolidation_plan/consolidation_plan.h"
-#include "tiledb/sm/filesystem/vfs_file_handle.h"
-#include "tiledb/sm/group/group.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/query_condition.h"
-#include "tiledb/sm/query/update_value.h"
-#include "tiledb/sm/storage_manager/context.h"
+#include "../api_external_common.h"
+#include "../context/context_api_external.h"
 
-struct tiledb_query_t {
-  tiledb::sm::Query* query_ = nullptr;
-};
-
-struct tiledb_query_condition_t {
-  tiledb::sm::QueryCondition* query_condition_ = nullptr;
-};
-
-struct tiledb_consolidation_plan_t {
-  shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan_ = nullptr;
-};
-
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+/** C API carrier for a TileDB subarray object. */
+typedef struct tiledb_subarray_t tiledb_subarray_t;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // TILEDB_CAPI_SUBARRAY_EXTERNAL_H

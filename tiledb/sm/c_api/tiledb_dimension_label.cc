@@ -31,8 +31,8 @@
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api/dimension_label/dimension_label_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
+#include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
-#include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_dimension_label_experimental.h"
 
@@ -58,7 +58,7 @@ capi_return_t tiledb_array_schema_get_dimension_label_from_name(
     const char* label_name,
     tiledb_dimension_label_t** dim_label) {
   ensure_array_schema_is_valid(array_schema);
-  tiledb::api::ensure_output_pointer_is_valid(dim_label);
+  ensure_output_pointer_is_valid(dim_label);
   *dim_label = tiledb_dimension_label_t::make_handle(
       array_schema->array_uri(), array_schema->dimension_label(label_name));
   return TILEDB_OK;

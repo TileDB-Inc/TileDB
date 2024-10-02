@@ -1,12 +1,11 @@
 /**
- * @file   tiledb_struct_def.h
+ * @file tiledb/api/c_api/subarray/subarray_api_internal.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,33 +27,40 @@
  *
  * @section DESCRIPTION
  *
- * This file contains the TileDB C API struct object definitions.
+ * This file declares the internals of the subarray section of the C API.
  */
 
-#ifndef TILEDB_C_API_STRUCT_DEF_H
-#define TILEDB_C_API_STRUCT_DEF_H
+#ifndef TILEDB_CAPI_SUBARRAY_INTERNAL_H
+#define TILEDB_CAPI_SUBARRAY_INTERNAL_H
 
+#include "subarray_api_external.h"
+
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/buffer/buffer_list.h"
-#include "tiledb/sm/consolidation_plan/consolidation_plan.h"
-#include "tiledb/sm/filesystem/vfs_file_handle.h"
-#include "tiledb/sm/group/group.h"
-#include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/query_condition.h"
-#include "tiledb/sm/query/update_value.h"
-#include "tiledb/sm/storage_manager/context.h"
+#include "tiledb/common/common.h"
+#include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/subarray/subarray_partitioner.h"
 
-struct tiledb_query_t {
-  tiledb::sm::Query* query_ = nullptr;
+struct tiledb_subarray_t {
+  tiledb::sm::Subarray* subarray_ = nullptr;
+  bool is_allocated_ = false;
 };
 
-struct tiledb_query_condition_t {
-  tiledb::sm::QueryCondition* query_condition_ = nullptr;
-};
+namespace tiledb::api {
 
-struct tiledb_consolidation_plan_t {
-  shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan_ = nullptr;
-};
+/**
+ * Returns after successfully validating a subarray object.
+ *
+ * @param subarray Possibly-valid pointer to a subarray object.
+ */
+inline void ensure_subarray_is_valid(const tiledb_subarray_t* subarray) {
+  // ensure_handle_is_valid(subarray);
+  if (subarray == nullptr || subarray->subarray_ == nullptr ||
+      subarray->subarray_->array() == nullptr) {
+    throw CAPIException("Invalid TileDB subarray object");
+  }
+}
 
-#endif
+}  // namespace tiledb::api
+
+#endif  // TILEDB_CAPI_SUBARRAY_INTERNAL_H

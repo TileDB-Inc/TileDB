@@ -76,6 +76,7 @@
 #include "tiledb/api/c_api/object/object_api_external.h"
 #include "tiledb/api/c_api/query/query_api_external.h"
 #include "tiledb/api/c_api/string/string_api_external.h"
+#include "tiledb/api/c_api/subarray/subarray_api_external.h"
 #include "tiledb/api/c_api/vfs/vfs_api_external.h"
 
 #include <stdint.h>
@@ -213,9 +214,6 @@ TILEDB_EXPORT void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev)
 /* ********************************* */
 /*           TILEDB TYPES            */
 /* ********************************* */
-
-/** A subarray object. */
-typedef struct tiledb_subarray_t tiledb_subarray_t;
 
 /** A TileDB query condition object. */
 typedef struct tiledb_query_condition_t tiledb_query_condition_t;
