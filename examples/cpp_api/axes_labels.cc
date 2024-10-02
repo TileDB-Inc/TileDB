@@ -71,7 +71,7 @@ void create_data_array(tiledb::Context& ctx, const std::string& array_uri) {
   schema.set_allows_dups(false);
 
   // Create the (empty) array on disk.
-  tiledb::Array::create(array_uri, schema);
+  tiledb::Array::create(ctx, array_uri, schema);
 }
 
 void create_axes_array(tiledb::Context& ctx, const std::string& array_uri) {
@@ -96,7 +96,7 @@ void create_axes_array(tiledb::Context& ctx, const std::string& array_uri) {
   schema.set_allows_dups(true);
 
   // Create the (empty) array on disk.
-  tiledb::Array::create(array_uri, schema);
+  tiledb::Array::create(ctx, array_uri, schema);
 }
 
 void write_axes_array(tiledb::Context& ctx, const std::string& array_uri) {

@@ -56,7 +56,7 @@ void create_array(uint32_t row_tile_extent, uint32_t col_tile_extent) {
   schema.set_domain(dom);
   schema.add_attribute(Attribute::create<int32_t>(ctx, "a"));
 
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 }
 
 void write_array() {

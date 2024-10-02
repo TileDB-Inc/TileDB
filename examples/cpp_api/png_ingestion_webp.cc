@@ -236,7 +236,7 @@ void create_array(
   schema.add_attribute(rgba);
 
   // Create the empty array on disk.
-  Array::create(array_path, schema);
+  Array::create(ctx, array_path, schema);
 }
 
 /**

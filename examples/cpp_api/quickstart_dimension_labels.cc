@@ -121,7 +121,7 @@ void create_array(const Context& ctx, const char* array_uri) {
       ctx, schema, 0, "y", TILEDB_INCREASING_DATA, TILEDB_FLOAT64);
   ArraySchemaExperimental::add_dimension_label(
       ctx, schema, 1, "timestamp", TILEDB_INCREASING_DATA, TILEDB_DATETIME_SEC);
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 }
 
 /**
