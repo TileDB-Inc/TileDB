@@ -58,7 +58,7 @@ jobs:
             manylinux: quay.io/pypa/manylinux2014_x86_64
           - platform: linux-aarch64
             os: ubuntu-24.04
-            cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
+            cmake_args: -DCMAKE_SYSTEM_PROCESSOR=aarch64
             triplet: arm64-linux-release
           - platform: macos-x86_64
             os: macos-12
@@ -105,7 +105,6 @@ jobs:
           sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc /usr/bin/aarch64-linux-gnu-gcc-13 130
           sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-g++ aarch64-linux-gnu-g++ /usr/bin/aarch64-linux-gnu-g++-13 130
           rm -rf ports/libmagic
-          rm -rf ports/aws-sdk-cpp
       - name: Install manylinux prerequisites
         if: matrix.manylinux
         run: |
