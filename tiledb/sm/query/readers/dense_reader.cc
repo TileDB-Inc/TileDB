@@ -1215,7 +1215,12 @@ void DenseReader::fix_offsets_buffer(
     std::vector<void*>& var_data) {
   // For easy reference.
   const auto& fill_value = array_schema_.attribute(name)->fill_value();
-  const auto fill_value_size = (OffType)fill_value.size();
+  const auto fill_value_size =
+      (elements_mode_ ?
+           (OffType)fill_value.size() /
+               datatype_size(array_schema_.attribute(name)->type()) :
+           (OffType)fill_value.size());
+  ;
   auto offsets_buffer = (OffType*)buffers_[name].buffer_;
 
   // Switch offsets from sizes to real offsets.
