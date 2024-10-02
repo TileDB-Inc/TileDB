@@ -823,12 +823,14 @@ TEST_CASE(
 
   // Prepare the query
   const auto offsets_elements = GENERATE(true, false);
+  const auto reader = GENERATE("legacy", "refactored");
 
   const std::vector<uint64_t> expect_offsets_elements = {0, 1, 2};
   const std::vector<uint64_t> expect_offsets_bytes = {
       0, sizeof(int32_t), 2 * sizeof(int32_t)};
 
   Config cfg;
+  cfg.set("sm.query.dense.reader", reader);
   cfg.set("sm.var_offsets.extra_element", "true");
   if (offsets_elements) {
     cfg.set("sm.var_offsets.mode", "elements");
@@ -855,17 +857,23 @@ TEST_CASE(
     subarrayStartsAt1 = true;
   }
 
-  SECTION("Query condition false") {
-    // Slice only rows 1, 2
-    subarray.add_range<int32_t>(0, 1, 2);
+  // Legacy reader gets SEGV when applying query condition.
+  // This is not specific to this example - tweak the
+  // "query_condition_dense.cc" example to force the legacy
+  // reader and it also gets a SEGV.
+  if (reader == std::string("refactored")) {
+    SECTION("Query condition false") {
+      // Slice only rows 1, 2
+      subarray.add_range<int32_t>(0, 1, 2);
 
-    QueryCondition qc(ctx);
-    {
-      const int32_t one = 1;
-      qc.init("id", &one, sizeof(int32_t), TILEDB_NE);
+      QueryCondition qc(ctx);
+      {
+        const int32_t one = 1;
+        qc.init("id", &one, sizeof(int32_t), TILEDB_NE);
+      }
+
+      query.set_condition(qc);
     }
-
-    query.set_condition(qc);
   }
 
   query.set_subarray(subarray);
