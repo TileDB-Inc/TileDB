@@ -34,5 +34,5 @@ For ease of review when patching existing ports, you are recommended to make one
 |---------------|----------------------------------------------------------------------------------------------------------------------------|
 | `aws-c-io`    | Patching to fix MinGW build failures. (https://github.com/awslabs/aws-c-io/pull/664)                                       |
 | `aws-sdk-cpp` | Patching to fix MinGW build failures, and to avoid building test-only SDKs (https://github.com/aws/aws-sdk-cpp/pull/3061). |
-| `libmagic`    | Updating to the upstream port deferred due to failures.                                                                    |
+| `libmagic`    | Using a custom CMake-based port that is not accepted upstream.                                                             |
 | `libfaketime` | Port does not yet exist upstream                                                                                           |
