@@ -121,6 +121,9 @@ add_subdirectory(object)
 # `query`: no dependencies yet but will have some
 add_subdirectory(query)
 
+# `subarray`: depends on `context`
+add_subdirectory(subarray)
+
 # `string`: no dependencies
 add_subdirectory(string)
 

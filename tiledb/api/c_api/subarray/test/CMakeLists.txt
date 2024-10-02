@@ -1,5 +1,5 @@
 #
-# tiledb/api/c_api/subarray/CMakeLists.txt
+# tiledb/api/c_api/subarray/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,19 +24,10 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-include(object_library)
+include(unit_test)
 
-list(APPEND SOURCES
-  subarray_api.cc
-)
-gather_sources(${SOURCES})
-
-commence(object_library capi_subarray_stub)
-  this_target_sources(${SOURCES})
-  this_target_link_libraries(export)
-  this_target_object_libraries(subarray)
-  this_target_object_libraries(capi_context_stub)
-conclude(object_library)
-
-add_test_subdirectory()
+commence(unit_test capi_subarray)
+  this_target_sources(unit_capi_subarray.cc)
+  this_target_object_libraries(capi_subarray_stub)
+  this_target_link_libraries(tiledb_test_support_lib)
+conclude(unit_test)
