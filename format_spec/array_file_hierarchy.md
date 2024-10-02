@@ -57,3 +57,6 @@ Inside the array folder, you can find the following:
 
 > [!NOTE]
 > Prior to version 10, the array schema was stored in a single `__array_schema.tdb` file in the array folder. Implementations must support arrays that contain both `__array_schema.tdb` and schemas in the `__schema` folder at the same time. For the purpose of array schema evolution, the timestamp of `__array_schema.tdb` must be considered to be earlier than any schema in the `__schema` folder.
+
+> [!NOTE]
+> Prior to version 5, commit files were not written. Fragments of these versions are considered to be committed if their corresponding fragment metadata file exists.

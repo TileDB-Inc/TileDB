@@ -28,7 +28,8 @@ my_array                                    # array folder
          |      |_ ...  
          |      |_ dci.tdb                  # delete condition index attribute
          |      |_ ...  
-        |_ ...  
+         |      |_ __coords.tdb             # legacy coordinates
+         |_ ...  
 ```
 
 There can be any number of fragments in an array. The fragment folder contains:
@@ -86,7 +87,9 @@ The R-Tree is a [generic tile](./generic_tile.md) with the following internal fo
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
+| Dimension number | `uint32_t` | _Removed in version 5_ Number of dimensions. Can also be obtained from the array schema. |
 | Fanout | `uint32_t` | The tree fanout |
+| Datatype | `uint8_t` | _Removed in version 5_ The domain's datatype. Dimensions are no longer guaranteed to have the same datatype since version 5. |
 | Num levels | `uint32_t` | The number of levels in the tree |
 | Num MBRs at level 1 | `uint64_t` | The number of MBRs at level 1 |
 | MBR 1 at level 1 | [MBR](#mbr) | First MBR at level 1 |
@@ -274,7 +277,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 > [!NOTE]
 > Prior to version 10, the _Footer length_ field was present only when the array had at least one variable-sized dimension. Implementations had to obtain the format version from the fragment folder's timestamped name.
 
-## Data File 
+## Data File
 
 The on-disk format of each data file is:
 
@@ -283,3 +286,12 @@ The on-disk format of each data file is:
 | Tile 1 | [Tile](./tile.md#tile) | The data of tile 1 |
 | … | … | … |
 | Tile N | [Tile](./tile.md#tile) | The data of tile N |
+
+## Legacy coordinates file
+
+Prior to version 5, dimension data for sparse cells are combined in a single tile that is stored in the `__coords.tdb` file. The tile is filtered with the filters specified in the _Coords filters_ field of the [array schema](./array_schema.md).
+
+Coordinates of a multi-dimensional array are placed in either zipped or unzipped order. In zipped order, coordinates of a cell are placed next to each other and ordered by the cell index, while in unzipped order, all coordinates values of a dimension are placed next to each other and ordered by the dimension index.
+
+* Since version 2, coordinates are always stored unzipped.
+* In version 1, coordinates are stored unzipped if a [compression filter](./tile.md#compression-filters) exists in the filter list, otherwise they are stored zipped.

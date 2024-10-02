@@ -9,7 +9,7 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Array version | `uint32_t` | Format version number of the array schema |
-| Allows dups | `bool` | Whether or not the array allows duplicate cells |
+| Allows dups | `bool` | _New in version 5_ Whether or not the array allows duplicate cells |
 | Array type | `uint8_t` | Dense or sparse |
 | Tile order | `uint8_t` | Row or column major |
 | Cell order | `uint8_t` | Row or column major |
@@ -43,6 +43,7 @@ The domain has internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
+| Domain datatype | `uint8_t` | _Removed in version 5_ Datatype of all dimensions |
 | Num dimensions | `uint32_t` | Dimensionality/rank of the domain |
 | Dimension 1 | [Dimension](#dimension) | First dimension |
 | … | … | … |
@@ -56,13 +57,16 @@ The dimension has internal format:
 | :--- | :--- | :--- |
 | Dimension name length | `uint32_t` | Number of characters in dimension name |
 | Dimension name | `uint8_t[]` | Dimension name character array |
-| Dimension datatype | `uint8_t` | Datatype of the coordinate values |
-| Cell val num | `uint32_t` | Number of coordinate values per cell. For variable-length dimensions, this is `std::numeric_limits<uint32_t>::max()` |
-| Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on coordinate value tiles |
-| Domain size | `uint64_t` | The domain size in bytes |
+| Dimension datatype | `uint8_t` | _New in version 5_ Datatype of the coordinate values |
+| Cell val num | `uint32_t` | _New in version 5_ Number of coordinate values per cell. For variable-length dimensions, this is `std::numeric_limits<uint32_t>::max()` |
+| Filters | [Filter Pipeline](./filter_pipeline.md) | _New in version 5_ The filter pipeline used on coordinate value tiles |
+| Domain size | `uint64_t` | _New in version 5_ The domain size in bytes |
 | Domain | `uint8_t[]` | Byte array of length equal to domain size above, storing the min, max values of the dimension. |
 | Null tile extent | `uint8_t` | `1` if the dimension has a null tile extent, else `0`. |
 | Tile extent | `uint8_t[]` | Byte array of length equal to the dimension datatype size, storing the space tile extent of this dimension. |
+
+> [!NOTE]
+> Prior to version 5, the size of the _Domain_ field was always equal to twice the size of the dimension's data type (which is stored in the [domain](#domain) in these versions).
 
 ## Attribute
 
