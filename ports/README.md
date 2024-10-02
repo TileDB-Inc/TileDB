@@ -30,7 +30,7 @@ After copying the port, add an entry to the table below. You should also contrib
 
 | Port                       | Reason                                                                                                  |
 |----------------------------|---------------------------------------------------------------------------------------------------------|
-| `libmagic`                 | Updating to the upstream port deferred due to failures.                                                 |
+| `libmagic`                 | Using a custom CMake-based port that is not accepted upstream.                                          |
 | `pcre2`                    | To be removed alongside libmagic.                                                                       |
 | `azure-storage-common-cpp` | Patching to disable default features on libxml2 (https://github.com/Azure/azure-sdk-for-cpp/pull/5221). |
 | `libfaketime`              | Port does not yet exist upstream                                                                        |
