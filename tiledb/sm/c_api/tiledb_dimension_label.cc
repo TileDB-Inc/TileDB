@@ -124,7 +124,7 @@ capi_return_t tiledb_subarray_add_label_range(
     const void* stride) {
   ensure_subarray_is_valid(subarray);
   ensure_unsupported_stride_is_null(stride);
-  subarray->subarray_->add_label_range(label_name, start, end);
+  subarray->add_label_range(label_name, start, end);
   return TILEDB_OK;
 }
 
@@ -136,15 +136,15 @@ capi_return_t tiledb_subarray_add_label_range_var(
     const void* end,
     uint64_t end_size) {
   ensure_subarray_is_valid(subarray);
-  subarray->subarray_->add_label_range_var(
-      label_name, start, start_size, end, end_size);
+  subarray->add_label_range_var(label_name, start, start_size, end, end_size);
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_subarray_get_label_name(
     tiledb_subarray_t* subarray, uint32_t dim_idx, const char** label_name) {
   ensure_subarray_is_valid(subarray);
-  const auto& name = subarray->subarray_->get_label_name(dim_idx);
+  ensure_output_pointer_is_valid(label_name);
+  const auto& name = subarray->get_label_name(dim_idx);
   *label_name = name.c_str();
   return TILEDB_OK;
 }
@@ -162,7 +162,7 @@ capi_return_t tiledb_subarray_get_label_range(
   if (stride != nullptr) {
     *stride = nullptr;
   }
-  subarray->subarray_->get_label_range(dim_name, range_idx, start, end);
+  subarray->get_label_range(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
 
@@ -171,7 +171,8 @@ capi_return_t tiledb_subarray_get_label_range_num(
     const char* dim_name,
     uint64_t* range_num) {
   ensure_subarray_is_valid(subarray);
-  subarray->subarray_->get_label_range_num(dim_name, range_num);
+  ensure_output_pointer_is_valid(range_num);
+  subarray->get_label_range_num(dim_name, range_num);
   return TILEDB_OK;
 }
 
@@ -182,7 +183,9 @@ capi_return_t tiledb_subarray_get_label_range_var(
     void* start,
     void* end) {
   ensure_subarray_is_valid(subarray);
-  subarray->subarray_->get_label_range_var(dim_name, range_idx, start, end);
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
+  subarray->get_label_range_var(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
 
@@ -193,8 +196,9 @@ capi_return_t tiledb_subarray_get_label_range_var_size(
     uint64_t* start_size,
     uint64_t* end_size) {
   ensure_subarray_is_valid(subarray);
-  subarray->subarray_->get_label_range_var_size(
-      dim_name, range_idx, start_size, end_size);
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
+  subarray->get_label_range_var_size(dim_name, range_idx, start_size, end_size);
   return TILEDB_OK;
 }
 
@@ -203,7 +207,8 @@ capi_return_t tiledb_subarray_has_label_ranges(
     const uint32_t dim_idx,
     int32_t* has_label_ranges) {
   ensure_subarray_is_valid(subarray);
-  bool has_ranges = subarray->subarray_->has_label_ranges(dim_idx);
+  ensure_output_pointer_is_valid(has_label_ranges);
+  bool has_ranges = subarray->has_label_ranges(dim_idx);
   *has_label_ranges = has_ranges ? 1 : 0;
   return TILEDB_OK;
 }

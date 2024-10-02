@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -592,5 +592,5 @@ TEST_CASE(
   CHECK(query.ptr()->query_->subarray()->range_num() == 1);
   CHECK(
       query.ptr()->query_->subarray()->ranges_for_dim(0) ==
-      expected_subarray.ptr()->subarray_->ranges_for_dim(0));
+      expected_subarray.ptr()->ranges_for_dim(0));
 }

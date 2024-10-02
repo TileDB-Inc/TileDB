@@ -98,18 +98,6 @@
 #include <memory>
 #include <sstream>
 
-/**
- * Helper class to aid shimming access from _query... routines in this module to
- * _subarray... routines deprecating them.
- */
-
-struct tiledb_subarray_transient_local_t : public tiledb_subarray_t {
-  explicit tiledb_subarray_transient_local_t(const tiledb_query_t* query) {
-    this->subarray_ =
-        const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
-  }
-};
-
 /*
  * The Definition for a "C" function can't be in a header.
  */
@@ -468,7 +456,7 @@ int32_t tiledb_query_set_subarray_t(
     return TILEDB_ERR;
   }
   ensure_subarray_is_valid(subarray);
-  query->query_->set_subarray(*subarray->subarray_);
+  query->query_->set_subarray(*subarray->subarray());
   return TILEDB_OK;
 }
 
@@ -835,22 +823,11 @@ int32_t tiledb_query_get_subarray_t(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray) {
-  *subarray = nullptr;
-  // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
-
-  *subarray = new (std::nothrow) tiledb_subarray_t;
-  if (*subarray == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB subarray object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
   }
-
-  (*subarray)->subarray_ =
-      const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
-
+  ensure_output_pointer_is_valid(subarray);
+  *subarray = tiledb_subarray_t::make_handle(*(query->query_->subarray()));
   return TILEDB_OK;
 }
 
@@ -906,56 +883,40 @@ capi_return_t tiledb_subarray_alloc(
     throw CAPIException("Cannot create subarray; array is not open");
   }
 
-  // Create a new subarray object
-  *subarray = new tiledb_subarray_t;
-  try {
-    (*subarray)->subarray_ = new tiledb::sm::Subarray(
-        array->array().get(),
-        (tiledb::sm::stats::Stats*)nullptr,
-        ctx->resources().logger(),
-        true);
-    (*subarray)->is_allocated_ = true;
-  } catch (...) {
-    delete *subarray;
-    *subarray = nullptr;
-    throw CAPIException("Failed to create subarray");
-  }
-
+  // Create Subarray object
+  *subarray = tiledb_subarray_t::make_handle(
+      array->array().get(),
+      (tiledb::sm::stats::Stats*)nullptr,
+      ctx->resources().logger(),
+      true);
   return TILEDB_OK;
 }
 
 void tiledb_subarray_free(tiledb_subarray_t** subarray) {
   ensure_output_pointer_is_valid(subarray);
   ensure_subarray_is_valid(*subarray);
-  if ((*subarray)->is_allocated_) {
-    delete (*subarray)->subarray_;
-  } else {
-    (*subarray)->subarray_ = nullptr;
-  }
-  delete (*subarray);
-  *subarray = nullptr;
+  tiledb_subarray_t::break_handle(*subarray);
 }
 
 capi_return_t tiledb_subarray_set_config(
     tiledb_subarray_t* subarray, tiledb_config_t* config) {
   ensure_subarray_is_valid(subarray);
   ensure_config_is_valid(config);
-  subarray->subarray_->set_config(
-      tiledb::sm::QueryType::READ, config->config());
+  subarray->set_config(tiledb::sm::QueryType::READ, config->config());
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_subarray_set_coalesce_ranges(
     tiledb_subarray_t* subarray, int coalesce_ranges) {
   ensure_subarray_is_valid(subarray);
-  subarray->subarray_->set_coalesce_ranges(coalesce_ranges != 0);
+  subarray->set_coalesce_ranges(coalesce_ranges != 0);
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_subarray_set_subarray(
-    tiledb_subarray_t* subarray_obj, const void* subarray_vals) {
-  ensure_subarray_is_valid(subarray_obj);
-  subarray_obj->subarray_->set_subarray(subarray_vals);
+    tiledb_subarray_t* subarray, const void* subarray_vals) {
+  ensure_subarray_is_valid(subarray);
+  subarray->set_subarray(subarray_vals);
   return TILEDB_OK;
 }
 
@@ -967,7 +928,7 @@ capi_return_t tiledb_subarray_add_range(
     const void* stride) {
   ensure_subarray_is_valid(subarray);
   ensure_unsupported_stride_is_null(stride);
-  subarray->subarray_->add_range(dim_idx, start, end);
+  subarray->add_range(dim_idx, start, end);
   return TILEDB_OK;
 }
 
@@ -977,7 +938,7 @@ capi_return_t tiledb_subarray_add_point_ranges(
     const void* start,
     uint64_t count) {
   ensure_subarray_is_valid(subarray);
-  subarray->subarray_->add_point_ranges(dim_idx, start, count);
+  subarray->add_point_ranges(dim_idx, start, count);
   return TILEDB_OK;
 }
 
@@ -989,7 +950,7 @@ capi_return_t tiledb_subarray_add_range_by_name(
     const void* stride) {
   ensure_subarray_is_valid(subarray);
   ensure_unsupported_stride_is_null(stride);
-  subarray->subarray_->add_range_by_name(dim_name, start, end);
+  subarray->add_range_by_name(dim_name, start, end);
   return TILEDB_OK;
 }
 
@@ -1001,7 +962,7 @@ capi_return_t tiledb_subarray_add_range_var(
     const void* end,
     uint64_t end_size) {
   ensure_subarray_is_valid(subarray);
-  subarray->subarray_->add_range_var(dim_idx, start, start_size, end, end_size);
+  subarray->add_range_var(dim_idx, start, start_size, end, end_size);
   return TILEDB_OK;
 }
 
@@ -1013,8 +974,7 @@ capi_return_t tiledb_subarray_add_range_var_by_name(
     const void* end,
     uint64_t end_size) {
   ensure_subarray_is_valid(subarray);
-  subarray->subarray_->add_range_var_by_name(
-      dim_name, start, start_size, end, end_size);
+  subarray->add_range_var_by_name(dim_name, start, start_size, end, end_size);
   return TILEDB_OK;
 }
 
@@ -1022,7 +982,7 @@ capi_return_t tiledb_subarray_get_range_num(
     const tiledb_subarray_t* subarray, uint32_t dim_idx, uint64_t* range_num) {
   ensure_subarray_is_valid(subarray);
   ensure_output_pointer_is_valid(range_num);
-  subarray->subarray_->get_range_num(dim_idx, range_num);
+  subarray->get_range_num(dim_idx, range_num);
   return TILEDB_OK;
 }
 
@@ -1032,7 +992,7 @@ capi_return_t tiledb_subarray_get_range_num_from_name(
     uint64_t* range_num) {
   ensure_subarray_is_valid(subarray);
   ensure_output_pointer_is_valid(range_num);
-  subarray->subarray_->get_range_num_from_name(dim_name, range_num);
+  subarray->get_range_num_from_name(dim_name, range_num);
   return TILEDB_OK;
 }
 
@@ -1049,7 +1009,7 @@ capi_return_t tiledb_subarray_get_range(
   if (stride != nullptr) {
     *stride = nullptr;
   }
-  subarray->subarray_->get_range(dim_idx, range_idx, start, end);
+  subarray->get_range(dim_idx, range_idx, start, end);
   return TILEDB_OK;
 }
 
@@ -1062,8 +1022,7 @@ capi_return_t tiledb_subarray_get_range_var_size(
   ensure_subarray_is_valid(subarray);
   ensure_output_pointer_is_valid(start_size);
   ensure_output_pointer_is_valid(end_size);
-  subarray->subarray_->get_range_var_size(
-      dim_idx, range_idx, start_size, end_size);
+  subarray->get_range_var_size(dim_idx, range_idx, start_size, end_size);
   return TILEDB_OK;
 }
 
@@ -1080,7 +1039,7 @@ capi_return_t tiledb_subarray_get_range_from_name(
   if (stride != nullptr) {
     *stride = nullptr;
   }
-  subarray->subarray_->get_range_from_name(dim_name, range_idx, start, end);
+  subarray->get_range_from_name(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
 
@@ -1093,7 +1052,7 @@ capi_return_t tiledb_subarray_get_range_var_size_from_name(
   ensure_subarray_is_valid(subarray);
   ensure_output_pointer_is_valid(start_size);
   ensure_output_pointer_is_valid(end_size);
-  subarray->subarray_->get_range_var_size_from_name(
+  subarray->get_range_var_size_from_name(
       dim_name, range_idx, start_size, end_size);
   return TILEDB_OK;
 }
@@ -1107,7 +1066,7 @@ capi_return_t tiledb_subarray_get_range_var(
   ensure_subarray_is_valid(subarray);
   ensure_output_pointer_is_valid(start);
   ensure_output_pointer_is_valid(end);
-  subarray->subarray_->get_range_var(dim_idx, range_idx, start, end);
+  subarray->get_range_var(dim_idx, range_idx, start, end);
   return TILEDB_OK;
 }
 
@@ -1120,7 +1079,7 @@ capi_return_t tiledb_subarray_get_range_var_from_name(
   ensure_subarray_is_valid(subarray);
   ensure_output_pointer_is_valid(start);
   ensure_output_pointer_is_valid(end);
-  subarray->subarray_->get_range_var_from_name(dim_name, range_idx, start, end);
+  subarray->get_range_var_from_name(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
 

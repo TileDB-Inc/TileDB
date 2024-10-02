@@ -41,7 +41,7 @@ extern "C" {
 #endif
 
 /** C API carrier for a TileDB subarray object. */
-typedef struct tiledb_subarray_t tiledb_subarray_t;
+typedef struct tiledb_subarray_handle_t tiledb_subarray_t;
 
 #ifdef __cplusplus
 }
