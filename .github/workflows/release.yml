@@ -133,7 +133,7 @@ jobs:
       - name: Build TileDB
         env:
           TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
-        run: cmake --build build --config Release --target package
+        run: cmake --build build -j4 --config Release --target package
       - name: Upload release artifacts
         uses: actions/upload-artifact@v3
         with:
