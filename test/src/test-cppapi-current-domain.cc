@@ -153,14 +153,7 @@ TEST_CASE_METHOD(
     CurrentDomainFx,
     "C++ API: CurrentDomain - Add to ArraySchema",
     "[cppapi][ArraySchema][currentDomain]") {
-  tiledb_array_type_t type = TILEDB_SPARSE;
-  SECTION("Dense") {
-    type = TILEDB_DENSE;
-  }
-
-  SECTION("Sparse") {
-    // do nothing
-  }
+  tiledb_array_type_t type = GENERATE(TILEDB_DENSE, TILEDB_SPARSE);
 
   // Create domain.
   tiledb::Domain domain(ctx_);
@@ -200,14 +193,7 @@ TEST_CASE_METHOD(
     "[cppapi][ArraySchema][currentDomain]") {
   const std::string array_name = "test_current_domain_expansion";
 
-  tiledb_array_type_t type = TILEDB_SPARSE;
-  SECTION("Dense") {
-    type = TILEDB_DENSE;
-  }
-
-  SECTION("Sparse") {
-    // do nothing
-  }
+  tiledb_array_type_t type = GENERATE(TILEDB_DENSE, TILEDB_SPARSE);
 
   tiledb::VFS vfs(ctx_);
   if (vfs.is_dir(array_name)) {
