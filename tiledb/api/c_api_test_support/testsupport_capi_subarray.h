@@ -63,6 +63,33 @@ struct ordinary_subarray {
   }
 };
 
+/**
+ * Ordinary subarray with var-sized dimensions.
+ */
+struct ordinary_subarray_var {
+  ordinary_array array{true};  // Make the dimensions var-sized.
+  tiledb_subarray_handle_t* subarray{nullptr};
+
+  ordinary_subarray_var() {
+    array.open();
+    auto rc = tiledb_subarray_alloc(array.ctx(), array.array, &subarray);
+    if (rc != TILEDB_OK) {
+      throw std::runtime_error("error creating test subarray");
+    }
+    if (subarray == nullptr) {
+      throw std::logic_error(
+          "tiledb_subarray_alloc returned OK but without subarray");
+    }
+  }
+  ~ordinary_subarray_var() {
+    tiledb_subarray_free(&subarray);
+  }
+
+  [[nodiscard]] tiledb_ctx_handle_t* ctx() const {
+    return array.ctx();
+  }
+};
+
 }  // namespace tiledb::api::test_support
 
 #endif  // TILEDB_TESTSUPPORT_CAPI_SUBARRAY_H
