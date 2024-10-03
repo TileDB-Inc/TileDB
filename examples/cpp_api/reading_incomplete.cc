@@ -57,7 +57,7 @@ void create_array() {
   schema.add_attribute(Attribute::create<std::string>(ctx, "a2"));
 
   // Create the (empty) array on disk.
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 }
 
 void write_array() {

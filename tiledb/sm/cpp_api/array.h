@@ -663,6 +663,30 @@ class Array {
    *
    * **Example:**
    * @code{.cpp}
+   * tiledb::Array::create(ctx, "s3://bucket-name/array-name", schema);
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param uri URI where array will be created.
+   * @param schema The array schema.
+   */
+  static void create(
+      const Context& ctx, const std::string& uri, const ArraySchema& schema) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_array_schema_check(c_ctx, schema.ptr().get()));
+    ctx.handle_error(
+        tiledb_array_create(c_ctx, uri.c_str(), schema.ptr().get()));
+  }
+
+  /**
+   * Creates a new TileDB array given an input schema.
+   *
+   * To create the array, this function uses the context that was used to
+   * instantiate the schema. You are recommended to explicitly pass it with the
+   * overload that takes a context.
+   *
+   * **Example:**
+   * @code{.cpp}
    * tiledb::Array::create("s3://bucket-name/array-name", schema);
    * @endcode
    *
@@ -670,11 +694,7 @@ class Array {
    * @param schema The array schema.
    */
   static void create(const std::string& uri, const ArraySchema& schema) {
-    auto& ctx = schema.context();
-    tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    ctx.handle_error(tiledb_array_schema_check(c_ctx, schema.ptr().get()));
-    ctx.handle_error(
-        tiledb_array_create(c_ctx, uri.c_str(), schema.ptr().get()));
+    create(schema.context(), uri, schema);
   }
 
   /**

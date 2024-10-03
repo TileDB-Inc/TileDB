@@ -292,6 +292,11 @@ Status Curl::init(
     curl_easy_setopt(curl_.get(), CURLOPT_CAPATH, ssl_cfg.ca_path().c_str());
   }
 
+  bool tcp_keepalive =
+      config_->get<bool>("rest.curl.tcp_keepalive", Config::must_find);
+
+  curl_easy_setopt(curl_.get(), CURLOPT_TCP_KEEPALIVE, tcp_keepalive ? 1L : 0L);
+
   bool found;
   RETURN_NOT_OK(
       config_->get<uint64_t>("rest.retry_count", &retry_count_, &found));

@@ -158,7 +158,7 @@ struct ConfigProxy {
  * conf["vfs.s3.region"] = "us-east-1a";
  * conf["vfs.s3.use_virtual_addressing"] = "true";
  * Context ctx(conf);
- * // array/kv operations with ctx
+ * // array operations with ctx
  * @endcode
  * */
 class Config {
@@ -671,7 +671,10 @@ class Config {
    *    **Default**: "10737418240"
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
-   *    **Default**: us-east-1
+   *    If empty, the region will be determined by the AWS SDK using sources
+   *    such as environment variables, profile configuration, or instance
+   *    metadata. <br>
+   *    **Default**: ""
    * - `vfs.s3.aws_access_key_id` <br>
    *    Set the AWS_ACCESS_KEY_ID <br>
    *    **Default**: ""
@@ -913,6 +916,9 @@ class Config {
    *    Set curl to run in verbose mode for REST requests <br>
    *    curl will print to stdout with this option
    *    **Default**: false
+   * -  `rest.curl.tcp_keepalive` <br>
+   *    Set curl to use TCP keepalive for REST requests <br>
+   *    **Default**: true
    * - `rest.load_metadata_on_array_open` <br>
    *    If true, array metadata will be loaded and sent to server together with
    *    the open array <br>

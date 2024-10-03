@@ -229,6 +229,7 @@ void check_save_to_file() {
   ss << "rest.capnp_traversal_limit 2147483648\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.retry_errors true\n";
+  ss << "rest.curl.tcp_keepalive true\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.load_enumerations_on_array_open false\n";
@@ -337,7 +338,6 @@ void check_save_to_file() {
   ss << "vfs.s3.object_canned_acl NOT_SET\n";
   ss << "vfs.s3.proxy_port 0\n";
   ss << "vfs.s3.proxy_scheme http\n";
-  ss << "vfs.s3.region us-east-1\n";
   ss << "vfs.s3.request_timeout_ms 3000\n";
   ss << "vfs.s3.requester_pays false\n";
   ss << "vfs.s3.scheme https\n";
@@ -465,22 +465,22 @@ TEST_CASE("C API: Test config", "[capi][config]") {
   CHECK(!strcmp(value, "5368709120"));
 
   // Set valid, defaulting parameter
-  rc = tiledb_config_set(config, "vfs.s3.region", "pluto", &error);
+  rc = tiledb_config_set(config, "sm.consolidation.mode", "commits", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  rc = tiledb_config_get(config, "vfs.s3.region", &value, &error);
+  rc = tiledb_config_get(config, "sm.consolidation.mode", &value, &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  CHECK(!strcmp(value, "pluto"));
+  CHECK(!strcmp(value, "commits"));
 
   // Unset valid, defaulting parameter
-  rc = tiledb_config_unset(config, "vfs.s3.region", &error);
+  rc = tiledb_config_unset(config, "sm.consolidation.mode", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  rc = tiledb_config_get(config, "vfs.s3.region", &value, &error);
+  rc = tiledb_config_get(config, "sm.consolidation.mode", &value, &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  CHECK(!strcmp(value, "us-east-1"));
+  CHECK(!strcmp(value, "fragments"));
 
   // Set valid, non-defaulting parameter
   rc = tiledb_config_set(config, "foo", "123", &error);
@@ -612,6 +612,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.capnp_traversal_limit"] = "2147483648";
   all_param_values["rest.curl.buffer_size"] = "524288";
   all_param_values["rest.curl.retry_errors"] = "true";
+  all_param_values["rest.curl.tcp_keepalive"] = "true";
   all_param_values["rest.curl.verbose"] = "false";
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
@@ -723,7 +724,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.file.posix_file_permissions"] = "644";
   all_param_values["vfs.file.posix_directory_permissions"] = "755";
   all_param_values["vfs.s3.scheme"] = "https";
-  all_param_values["vfs.s3.region"] = "us-east-1";
+  all_param_values["vfs.s3.region"] = "";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
   all_param_values["vfs.s3.aws_secret_access_key"] = "";
   all_param_values["vfs.s3.aws_session_token"] = "";
@@ -798,7 +799,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["file.posix_file_permissions"] = "644";
   vfs_param_values["file.posix_directory_permissions"] = "755";
   vfs_param_values["s3.scheme"] = "https";
-  vfs_param_values["s3.region"] = "us-east-1";
+  vfs_param_values["s3.region"] = "";
   vfs_param_values["s3.aws_access_key_id"] = "";
   vfs_param_values["s3.aws_secret_access_key"] = "";
   vfs_param_values["s3.aws_session_token"] = "";
@@ -867,7 +868,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
 
   std::map<std::string, std::string> s3_param_values;
   s3_param_values["scheme"] = "https";
-  s3_param_values["region"] = "us-east-1";
+  s3_param_values["region"] = "";
   s3_param_values["aws_access_key_id"] = "";
   s3_param_values["aws_secret_access_key"] = "";
   s3_param_values["aws_session_token"] = "";
