@@ -7,6 +7,7 @@ unset(CONFIGURE_AC_CONTENT)
 project(file VERSION ${CMAKE_MATCH_1})
 
 option(FILE_TESTS "Enable file tests" OFF)
+set(FILE_COMMAND "file" CACHE PATH "Path to the file command to generate magic.mgc. Should be set for cross-compiling scenarios.")
 
 # Get library directory for multiarch linux distros
 include(GNUInstallDirs)
@@ -133,7 +134,7 @@ foreach(MAGIC_FRAGMENT ${MAGIC_FRAGMENTS})
 endforeach()
 
 add_custom_command(OUTPUT magic.mgc
-  COMMAND file -C -m magic
+  COMMAND ${FILE_COMMAND} -C -m magic
   COMMENT "Compiling magic file"
 )
 
