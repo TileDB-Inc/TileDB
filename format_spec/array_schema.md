@@ -111,6 +111,8 @@ The dimension label has internal format:
 
 If a current domain is empty, only the version number and the empty flag are serialized to storage.
 
+The current current domain format version is `1`.
+
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Version number | `uint32_t` | Current domain version number |
