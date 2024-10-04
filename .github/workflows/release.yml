@@ -60,7 +60,7 @@ jobs:
           #   manylinux: quay.io/pypa/manylinux2014_x86_64
           - platform: linux-aarch64
             os: ubuntu-24.04
-            cmake_args: -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch-64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch-64-linux-gnu-g++
+            cmake_args: -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
             triplet: arm64-linux-release
           # - platform: macos-x86_64
           #   os: macos-12
