@@ -153,7 +153,7 @@ Introduced in TileDB 1.6
     * The [footer](./fragment.md#footer) and [R-Tree](./fragment.md#r-tree) structures were added.
     * The _Bounding coords_ field was removed.
     * The _MBRs_ field was removed. MBRs are now stored in the R-Tree.
-    * Structures other than the footer like tile offsets, sizes and metadata are wrapped in their own generic tiles. This allows loading them lazily and in parallel.
+    * Tile offsets and sizes are wrapped in their own generic tiles. This allows loading them lazily and in parallel.
 
 ## Version 2
 

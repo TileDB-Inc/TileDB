@@ -27,5 +27,7 @@ There may be multiple such files in the array folder. Each consolidated fragment
 | … | … | … |
 | Fragment N footer | [Footer](./fragment.md#footer) | Serialized footer of fragment N |
 
+Fragment metadata with versions earlier than 3 don't have a footer and cannot be consolidated.
+
 > [!NOTE]
 > Prior to version 9, fragments in fragment metadata files were referenced by their absolute URIs.

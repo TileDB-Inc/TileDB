@@ -81,6 +81,9 @@ The fragment metadata file has the following on-disk format:
 | Processed conditions | [Tile Processed Conditions](#tile-processed-conditions) | _New in version 16_ The serialized processed conditions |
 | Metadata footer | [Footer](#footer) | Basic metadata gathered in the footer |
 
+> [!NOTE]
+> Prior to version 3, fragment metadata are stored with a [different structure](#legacy-fragment-metadata-file).
+
 ### R-Tree
 
 The R-Tree is a [generic tile](./generic_tile.md) with the following internal format:
@@ -295,3 +298,41 @@ Coordinates of a multi-dimensional array are placed in either zipped or unzipped
 
 * Since version 2, coordinates are always stored unzipped.
 * In version 1, coordinates are stored unzipped if a [compression filter](./tile.md#compression-filters) exists in the filter list, otherwise they are stored zipped.
+
+## Legacy Fragment metadata file
+
+Prior to version 3, fragment metadata is a [generic tile](./generic_tile.md) with the following internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Version number | `uint32_t` | Format version number of the fragment |
+| Non-empty domain size | `uint64_t` | Size of non-empty domain |
+| Non-empty domain | `uint8_t[]` | Byte array of coordinate pairs storing the non-empty domain |
+| Num MBRs | `uint64_t` | Number of MBRs in fragment |
+| MBR 1 | `uint8_t[]` | Byte array of coordinate pairs storing MBR 1 |
+| … | … | … |
+| MBR N | `uint8_t[]` | Byte array of coordinate pairs storing MBR N |
+| Num bounding coords | `uint64_t` | Number of bounding coordinates |
+| Bounding coords | `uint8_t[]` | Byte array of coordinate pairs storing the first/last coordinates in the fragment |
+| Tile offsets | [Legacy Tile Offsets](#legacy-tile-offsetssizes) | The offsets of each tile in the attribute files |
+| Tile var offsets | [Legacy Tile Offsets](#legacy-tile-offsetssizes) | The offsets of each variable tile in the attribute files |
+| Variable tile sizes | [Legacy Tile Sizes](#legacy-tile-offsetssizes) | The sizes of each variable tile in the attribute files |
+| Last tile cell num | For sparse arrays, the number of cells in the last time in the fragment. Ignored on dense arrays. |
+| File sizes | `uint64_t[]` | The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file. |
+| File var sizes | `uint64_t[]` | The size in bytes of each var-length attribute/dimension file in the fragment. |
+
+### Legacy tile offsets/sizes
+
+Legacy tile offsets and sizes is a simple blob (i.e., _not a generic tile_) with the following internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Num tile offsets/sizes, attribute 1 | `uint64_t` | Number of tile offsets/sizes for attribute 1 |
+| Tile offset/size 1, attribute 1 | `uint64_t` | Offset/Size 1 for attribute 1 |
+| … | … | … |
+| Tile offset/size N, attribute 1 | `uint64_t` | Offset/Size N for attribute 1 |
+| … | … | … |
+| Num tile offsets/sizes, attribute N | `uint64_t` | Number of tile offsets/sizes for attribute N |
+| Tile offset/size 1, attribute N | `uint64_t` | Offset/Size 1 for attribute N |
+| … | … | … |
+| Tile offset/size N, attribute N | `uint64_t` | Offset/Size N for attribute N |
