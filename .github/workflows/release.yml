@@ -1,16 +1,12 @@
 name: Release
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - dev
       - 'release-*'
     tags:
       - '*'
-  pull_request:
-    branches:
-      - dev
 
 jobs:
   Package-Source-Release:
