@@ -46,31 +46,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - platform: windows-x86_64
-          #   os: windows-2019
-          #   triplet: x64-windows-release
-          # - platform: linux-x86_64
-          #   os: ubuntu-20.04
-          #   manylinux: quay.io/pypa/manylinux2014_x86_64
-          #   triplet: x64-linux-release
-          # - platform: linux-x86_64-noavx2
-          #   os: ubuntu-20.04
-          #   cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
-          #   triplet: x64-linux-release
-          #   manylinux: quay.io/pypa/manylinux2014_x86_64
+          - platform: windows-x86_64
+            os: windows-2019
+            triplet: x64-windows-release
+          - platform: linux-x86_64
+            os: ubuntu-20.04
+            manylinux: quay.io/pypa/manylinux2014_x86_64
+            triplet: x64-linux-release
+          - platform: linux-x86_64-noavx2
+            os: ubuntu-20.04
+            cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
+            triplet: x64-linux-release
+            manylinux: quay.io/pypa/manylinux2014_x86_64
           - platform: linux-aarch64
             os: ubuntu-24.04
             cmake_args: -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
             triplet: arm64-linux-release
-          # - platform: macos-x86_64
-          #   os: macos-12
-          #   MACOSX_DEPLOYMENT_TARGET: 11
-          #   triplet: x64-osx-release
-          # - platform: macos-arm64
-          #   os: macos-12
-          #   cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
-          #   MACOSX_DEPLOYMENT_TARGET: 11
-          #   triplet: arm64-osx-release
+          - platform: macos-x86_64
+            os: macos-12
+            MACOSX_DEPLOYMENT_TARGET: 11
+            triplet: x64-osx-release
+          - platform: macos-arm64
+            os: macos-12
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
+            MACOSX_DEPLOYMENT_TARGET: 11
+            triplet: arm64-osx-release
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.manylinux || '' }}
     env:
