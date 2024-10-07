@@ -12,41 +12,52 @@ my_array                                    # array folder
    |_ __fragments                           # array fragments folder
          |_ <timestamped_name>              # fragment folder
          |      |_ __fragment_metadata.tdb  # fragment metadata
-         |      |_ a0.tdb                   # fixed-sized attribute 
-         |      |_ a1.tdb                   # var-sized attribute (offsets) 
+         |      |_ a0.tdb                   # fixed-sized attribute
+         |      |_ a1.tdb                   # var-sized attribute (offsets)
          |      |_ a1_var.tdb               # var-sized attribute (values)
          |      |_ a2.tdb                   # fixed-sized nullable attribute
          |      |_ a2_validity.tdb          # fixed-sized nullable attribute (validities)
-         |      |_ ...      
-         |      |_ d0.tdb                   # fixed-sized dimension 
-         |      |_ d1.tdb                   # var-sized dimension (offsets) 
+         |      |_ ...
+         |      |_ d0.tdb                   # fixed-sized dimension
+         |      |_ d1.tdb                   # var-sized dimension (offsets)
          |      |_ d1_var.tdb               # var-sized dimension (values)
-         |      |_ ...      
+         |      |_ ...
          |      |_ t.tdb                    # timestamp attribute
-         |      |_ ...  
+         |      |_ ...
          |      |_ dt.tdb                   # delete timestamp attribute
-         |      |_ ...  
+         |      |_ ...
          |      |_ dci.tdb                  # delete condition index attribute
-         |      |_ ...  
+         |      |_ ...
          |      |_ __coords.tdb             # legacy coordinates
-         |_ ...  
+         |_ ...
 ```
 
 There can be any number of fragments in an array. The fragment folder contains:
 
-* A single [fragment metadata file](#fragment-metadata-file) named `__fragment_metadata.tdb`. 
-* Any number of [data files](#data-file). For each fixed-sized attribute `foo1` (or dimension `bar1`), there is a single data file `a0.tdb` (`d0.tdb`) containing the values along this attribute (dimension). For every var-sized attribute `foo2` (or dimensions `bar2`), there are two data files; `a1_var.tdb` (`d1_var.tdb`) containing the var-sized values of the attribute (dimension) and `a1.tdb` (`d1.tdb`) containing the starting offsets of each value in `a1_var.tdb` (`d1_var.rdb`). Both fixed-sized and var-sized attributes can be nullable. A nullable attribute, `foo3`, will have an additional file `a2_validity.tdb` that contains its validity vector.
-* The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.
-* _New in version 14_ The timestamp fixed attribute (`t.tdb`) is, for fragments consolidated with timestamps, the time at which a cell was added.
-* _New in version 15_ The delete timestamp fixed attribute (`dt.tdb`) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.
-* _New in version 15_ The delete condition [Delete commit file](./delete_commit_file.md) index fixed attribute (`dci.tdb`) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of [Tile Processed Conditions](#tile-processed-conditions)) that deleted the cell.
+* A single [fragment metadata file](#fragment-metadata-file) named `__fragment_metadata.tdb`.
+* Any number of [data files](#data-file).
+  * For each fixed-sized attribute or dimension, there is a single data file `a0.tdb` (`d0.tdb`) containing the cell values of the attribute (dimension).
+  * For each var-sized attribute or dimension, there are two data files; `a1_var.tdb` (`d1_var.tdb`) containing the cell values of the attribute (dimension) and `a1.tdb` (`d1.tdb`) containing the starting 64-bit offsets of the values of each cell.
+  * For each nullable attribute, there is an additional file `a2_validity.tdb` that contains its validity vector (a sequence of bytes where zero indicates that a cell is null).
+  * The names of the data files are not dependent on the names of the attributes/dimensions. The file names are determined by the order of the attributes and dimensions in the array schema.
+  * _New in version 14_ The timestamp fixed attribute (`t.tdb`) is, for fragments consolidated with timestamps, the time at which a cell was added.
+  * _New in version 15_ The delete timestamp fixed attribute (`dt.tdb`) is, for fragments consolidated with delete conditions, the time at which a cell was deleted.
+  * _New in version 15_ The delete condition [Delete commit file](./delete_commit_file.md) index fixed attribute (`dci.tdb`) is, for fragments consolidated with delete conditions, the index of the delete condition (inside of [Tile Processed Conditions](#tile-processed-conditions)) that deleted the cell.
+
+Data files containing cell values are filtered with the filters specified in the _Filters_ field of the corresponding [attribute](./array_schema.md#attribute) or [dimension](./array_schema.md#dimension).
+
+Data files containing cell offsets are filtered with the filters specified in the _Offsets filters_ field of the [array schema](./array_schema.md#array-schema-file).
+
+Data files containing cell validity vectors are filtered with the filters specified in the _Validity filters_ field of the [array schema](./array_schema.md#array-schema-file).
+
+Timestamp, delete timestamp and delete condition index attributes are filtered with the filters specified in the _Coords filters_ field of the [array schema](./array_schema.md#array-schema-file).
 
 > [!NOTE]
 > Prior to version 9, data files were named after their corresponding attributes or dimensions.
 >
 > In version 8 only, certain characters of the data files' name were percent-encoded. These characters are `!#$%&'()*+,/:;=?@[]`, as specified in [RFC 3986](https://tools.ietf.org/html/rfc3986), as well as `"<>\|`, which are not allowed in Windows file names.
 
-## Fragment Metadata File 
+## Fragment Metadata File
 
 The fragment metadata file has the following on-disk format:
 
