@@ -383,19 +383,28 @@ class Group {
    *
    * @param uri of member to add
    * @param relative is the URI relative to the group location
+   * @param name optional name group member can be given to be looked up by
+   * @param type the type of the member getting added if known in advance
    */
   void add_member(
       const std::string& uri,
       const bool& relative,
-      std::optional<std::string> name = std::nullopt) {
+      std::optional<std::string> name = std::nullopt,
+      std::optional<tiledb_object_t> type = std::nullopt) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     const char* name_cstr = nullptr;
     if (name.has_value()) {
       name_cstr = name->c_str();
     }
-    ctx.handle_error(tiledb_group_add_member(
-        c_ctx, group_.get(), uri.c_str(), relative, name_cstr));
+
+    if (type.has_value()) {
+      ctx.handle_error(tiledb_group_add_member_by_type(
+          c_ctx, group_.get(), uri.c_str(), relative, name_cstr, type.value()));
+    } else {
+      ctx.handle_error(tiledb_group_add_member(
+          c_ctx, group_.get(), uri.c_str(), relative, name_cstr));
+    }
   }
 
   /**

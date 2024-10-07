@@ -396,7 +396,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
  * @param relative is the URI relative to the group
  * @param name optional name group member can be given to be looked up by.
  * Can be set to NULL.
- *  @param type the type of the member getting added if known in advance.
+ * @param type the type of the member getting added if known in advance.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_group_add_member_by_type(

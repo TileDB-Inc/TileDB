@@ -316,11 +316,18 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  group1.add_member(array1_uri, false, "array1");
-  group1.add_member(array2_uri, false, "array2");
-  group1.add_member(group2_uri, false, "group2");
-
-  group2.add_member(array3_uri, false, "array3");
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    group1.add_member(array1_uri, false, "array1", TILEDB_ARRAY);
+    group1.add_member(array2_uri, false, "array2", TILEDB_ARRAY);
+    group1.add_member(group2_uri, false, "group2", TILEDB_GROUP);
+    group2.add_member(array3_uri, false, "array3", TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_uri, false, "array1");
+    group1.add_member(array2_uri, false, "array2");
+    group1.add_member(group2_uri, false, "group2");
+    group2.add_member(array3_uri, false, "array3");
+  }
 
   // Close group from write mode
   group1.close();
@@ -425,11 +432,18 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  group1.add_member(array1_uri, false);
-  group1.add_member(array2_uri, false);
-  group1.add_member(group2_uri, false);
-
-  group2.add_member(array3_uri, false);
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    group1.add_member(array1_uri, false, std::nullopt, TILEDB_ARRAY);
+    group1.add_member(array2_uri, false, std::nullopt, TILEDB_ARRAY);
+    group1.add_member(group2_uri, false, std::nullopt, TILEDB_GROUP);
+    group2.add_member(array3_uri, false, std::nullopt, TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_uri, false);
+    group1.add_member(array2_uri, false);
+    group1.add_member(group2_uri, false);
+    group2.add_member(array3_uri, false);
+  }
 
   // Close group from write mode
   group1.close();
@@ -545,11 +559,18 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  group1.add_member(array1_relative_uri, true);
-  group1.add_member(array2_relative_uri, true);
-  group1.add_member(group2_uri, false);
-
-  group2.add_member(array3_relative_uri, true);
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    group1.add_member(array1_relative_uri, true, std::nullopt, TILEDB_ARRAY);
+    group1.add_member(array2_relative_uri, true, std::nullopt, TILEDB_ARRAY);
+    group1.add_member(group2_uri, false, std::nullopt, TILEDB_GROUP);
+    group2.add_member(array3_relative_uri, true, std::nullopt, TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_relative_uri, true);
+    group1.add_member(array2_relative_uri, true);
+    group1.add_member(group2_uri, false);
+    group2.add_member(array3_relative_uri, true);
+  }
 
   // Close group from write mode
   group1.close();
@@ -662,11 +683,18 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  group1.add_member(array1_relative_uri, true, "one");
-  group1.add_member(array2_relative_uri, true, "two");
-  group1.add_member(group2_uri, false, "three");
-
-  group2.add_member(array3_relative_uri, true, "four");
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    group1.add_member(array1_relative_uri, true, "one", TILEDB_ARRAY);
+    group1.add_member(array2_relative_uri, true, "two", TILEDB_ARRAY);
+    group1.add_member(group2_uri, false, "three", TILEDB_GROUP);
+    group2.add_member(array3_relative_uri, true, "four", TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_relative_uri, true, "one");
+    group1.add_member(array2_relative_uri, true, "two");
+    group1.add_member(group2_uri, false, "three");
+    group2.add_member(array3_relative_uri, true, "four");
+  }
 
   // Close group from write mode
   group1.close();
@@ -785,12 +813,23 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group1, 1);
   group1.open(TILEDB_WRITE);
 
-  group1.add_member(array1_relative_uri, true, "one");
-  group1.add_member(array2_relative_uri, true, "two");
-  group1.add_member(
-      array2_relative_uri,
-      true,
-      nameless_uri ? nullopt : std::make_optional<std::string>("three"));
+  bool add_by_type = GENERATE(true, false);
+  if (add_by_type) {
+    group1.add_member(array1_relative_uri, true, "one", TILEDB_ARRAY);
+    group1.add_member(array2_relative_uri, true, "two", TILEDB_ARRAY);
+    group1.add_member(
+        array2_relative_uri,
+        true,
+        nameless_uri ? nullopt : std::make_optional<std::string>("three"),
+        TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_relative_uri, true, "one");
+    group1.add_member(array2_relative_uri, true, "two");
+    group1.add_member(
+        array2_relative_uri,
+        true,
+        nameless_uri ? nullopt : std::make_optional<std::string>("three"));
+  }
 
   // Close group from write mode
   group1.close();
