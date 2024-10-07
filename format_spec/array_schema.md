@@ -26,7 +26,7 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Label 1 | [Dimension Label](#dimension_label) | _New in version 18_ First dimension label |
 | … | … | … |
 | Label N | [Dimension Label](#dimension_label) | _New in version 18_ Nth dimension label |
-| Num enumerations | `uint32_t` | Number of [enumerations](./enumeration.md) in the array |
+| Num enumerations | `uint32_t` | _New in version 20_ Number of [enumerations](./enumeration.md) in the array |
 | Enumeration name length 1 | `uint32_t` | _New in version 20_ The number of characters in the enumeration 1 name |
 | Enumeration name 1 | `uint8_t[]` | _New in version 20_ The name of enumeration 1 |
 | Enumeration filename length 1 | `uint32_t` | _New in version 20_ The number of characters in the enumeration 1 file |
