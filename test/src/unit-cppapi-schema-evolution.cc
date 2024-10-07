@@ -808,7 +808,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: SchemaEvolution, drop fixed attribute and add back as var-sized",
-    "[!mayfail][cppapi][schema][evolution][add][drop]") {
+    "[cppapi][schema][evolution][add][drop]") {
   test::VFSTestSetup vfs_test_setup;
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{
@@ -850,6 +850,8 @@ TEST_CASE(
   }
   query_w.submit_and_finalize();
   array_w.close();
+  uint64_t fragment_write_ts = tiledb_timestamp_now_ms() + 1;
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Evolve schema to drop attribute "a"
   ArraySchemaEvolution schema_evolution = ArraySchemaEvolution(ctx);
@@ -868,17 +870,35 @@ TEST_CASE(
 
   // Read the array
   std::string buffer;
-  std::vector<uint64_t> offsets = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::vector<uint64_t> offsets(10);
   Array array_r(ctx, array_uri, TILEDB_READ);
-  Subarray subarray(ctx, array_r);
-  subarray.add_range(0, 1, 10);
+  Subarray subarray_r(ctx, array_r);
+  subarray_r.add_range(0, 1, 10);
   Query query_r(ctx, array_r, TILEDB_READ);
   query_r.set_layout(layout)
-      .set_subarray(subarray)
+      .set_subarray(subarray_r)
       .set_data_buffer("a", buffer)
       .set_offsets_buffer("a", offsets);
   query_r.submit();
   array_r.close();
+
+  // Read the original array
+  std::vector<int> a_data(10);
+  array_r.open(TILEDB_READ, fragment_write_ts);
+  Subarray subarray_r2(ctx, array_r);
+  subarray_r2.add_range(0, 1, 10);
+  Query query_r2(ctx, array_r, TILEDB_READ);
+  query_r2.set_layout(layout)
+      .set_subarray(subarray_r2)
+      .set_data_buffer("a", a_data);
+  query_r2.submit();
+  array_r.close();
+  auto result_num = (int)query_r2.result_buffer_elements()["a"].second;
+  CHECK(result_num == 10);
+  a_data.resize(result_num);
+  CHECK_THAT(
+      a_data,
+      Catch::Matchers::Equals(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}));
 }
 
 TEST_CASE(
