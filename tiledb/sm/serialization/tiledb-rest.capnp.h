@@ -116,6 +116,13 @@ CAPNP_DECLARE_SCHEMA(ca2d4d0bfe4ae5d9);
 CAPNP_DECLARE_SCHEMA(e193f1f45a9f102e);
 CAPNP_DECLARE_SCHEMA(fafb9c94c6b54ec9);
 CAPNP_DECLARE_SCHEMA(ce64eabcdabb02b5);
+CAPNP_DECLARE_SCHEMA(f3bb391da5271019);
+enum class ObjectType_f3bb391da5271019 : uint16_t {
+  ARRAY,
+  GROUP,
+};
+CAPNP_DECLARE_ENUM(ObjectType, f3bb391da5271019);
+CAPNP_DECLARE_SCHEMA(87f0466598bb29be);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -1825,6 +1832,25 @@ struct NDRectangle {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(ce64eabcdabb02b5, 0, 1)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+typedef ::capnp::schemas::ObjectType_f3bb391da5271019 ObjectType;
+
+struct ObjectInfoResponse {
+  ObjectInfoResponse() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(87f0466598bb29be, 1, 0)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -16103,6 +16129,99 @@ class NDRectangle::Builder {
 class NDRectangle::Pipeline {
  public:
   typedef NDRectangle Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class ObjectInfoResponse::Reader {
+ public:
+  typedef ObjectInfoResponse Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::tiledb::sm::serialization::capnp::ObjectType getObjectType() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ObjectInfoResponse::Builder {
+ public:
+  typedef ObjectInfoResponse Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::tiledb::sm::serialization::capnp::ObjectType getObjectType();
+  inline void setObjectType(
+      ::tiledb::sm::serialization::capnp::ObjectType value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ObjectInfoResponse::Pipeline {
+ public:
+  typedef ObjectInfoResponse Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -34212,6 +34331,23 @@ NDRectangle::Builder::disownNdranges() {
                                           .getPointerField(
                                               ::capnp::bounded<0>() *
                                               ::capnp::POINTERS));
+}
+
+inline ::tiledb::sm::serialization::capnp::ObjectType
+ObjectInfoResponse::Reader::getObjectType() const {
+  return _reader.getDataField<::tiledb::sm::serialization::capnp::ObjectType>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::tiledb::sm::serialization::capnp::ObjectType
+ObjectInfoResponse::Builder::getObjectType() {
+  return _builder.getDataField<::tiledb::sm::serialization::capnp::ObjectType>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ObjectInfoResponse::Builder::setObjectType(
+    ::tiledb::sm::serialization::capnp::ObjectType value) {
+  _builder.setDataField<::tiledb::sm::serialization::capnp::ObjectType>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 }  // namespace capnp
