@@ -8,7 +8,7 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
-| Array version | `uint32_t` | Format version number of the array schema |
+| Array version | `uint32_t` | [Format version](./array_format_history.md) number of the array schema |
 | Allows dups | `bool` | _New in version 5_ Whether or not the array allows duplicate cells |
 | Array type | `uint8_t` | Dense or sparse |
 | Tile order | `uint8_t` | Row or column major |
@@ -111,7 +111,7 @@ The dimension label has internal format:
 
 If a current domain is empty, only the version number and the empty flag are serialized to storage.
 
-The current current domain format version is `1`.
+The current domain format is versioned separately from arrays. The current version is `1`.
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

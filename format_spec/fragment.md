@@ -305,7 +305,7 @@ Prior to version 3, fragment metadata is a [generic tile](./generic_tile.md) wit
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
-| Version number | `uint32_t` | Format version number of the fragment |
+| Version number | `uint32_t` | [Format version](./array_format_history.md) number of the fragment |
 | Non-empty domain size | `uint64_t` | Size of non-empty domain |
 | Non-empty domain | `uint8_t[]` | Byte array of coordinate pairs storing the non-empty domain |
 | Num MBRs | `uint64_t` | Number of MBRs in fragment |
