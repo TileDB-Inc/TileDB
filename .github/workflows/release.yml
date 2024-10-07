@@ -38,6 +38,7 @@ jobs:
             build/tiledb-*.tar.gz*
 
   Package-Binary-Release:
+    name: Package Binary Release - ${{ matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
