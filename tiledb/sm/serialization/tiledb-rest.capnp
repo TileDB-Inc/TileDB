@@ -1371,3 +1371,15 @@ struct NDRectangle {
   # SubarrayRanges is designed to hold multiple ranges per dimension,
   # For CurrentDomain's NDRectangle we only need one range per dimension.
 }
+
+enum ObjectType {
+	array @0;
+	group @1;
+}
+
+struct ObjectInfoResponse {
+  # Contains information about a TileDB object.
+
+  objectType @0 :ObjectType;
+  # The object's type (array or group).
+}
