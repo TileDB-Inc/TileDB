@@ -594,16 +594,16 @@ TEST_CASE_METHOD(
 
   bool add_by_type = GENERATE(true, false);
   if (add_by_type) {
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, array1_uri.c_str(), false, nullptr, TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, array2_uri.c_str(), false, nullptr, TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group2, array3_uri.c_str(), false, nullptr, TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, group2_uri.c_str(), false, nullptr, TILEDB_GROUP);
     REQUIRE(rc == TILEDB_OK);
   } else {
@@ -738,7 +738,7 @@ TEST_CASE_METHOD(
 
   bool add_by_type = GENERATE(true, false);
   if (add_by_type) {
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, array1_uri.c_str(), false, "one", TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
   } else {
@@ -780,7 +780,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   // Add one back with different URI
   if (add_by_type) {
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, array2_uri.c_str(), false, "one", TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
   } else {
@@ -860,16 +860,16 @@ TEST_CASE_METHOD(
 
   bool add_by_type = GENERATE(true, false);
   if (add_by_type) {
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, array1_uri.c_str(), false, "one", TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, array2_uri.c_str(), false, "two", TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group2, array3_uri.c_str(), false, "three", TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, group2_uri.c_str(), false, "four", TILEDB_GROUP);
     REQUIRE(rc == TILEDB_OK);
   } else {
@@ -1238,16 +1238,16 @@ TEST_CASE_METHOD(
 
   bool add_by_type = GENERATE(true, false);
   if (add_by_type) {
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, array1_relative_uri.c_str(), true, nullptr, TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, array2_relative_uri.c_str(), true, nullptr, TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group2, array3_relative_uri.c_str(), true, nullptr, TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_group_add_member_by_type(
+    rc = tiledb_group_add_member_with_type(
         ctx_, group1, group2_uri.c_str(), false, nullptr, TILEDB_GROUP);
     REQUIRE(rc == TILEDB_OK);
   } else {

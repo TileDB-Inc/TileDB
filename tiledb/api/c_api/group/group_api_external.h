@@ -375,9 +375,10 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
 
 /**
  * Add a member with a known type to a group
- * The caller should make sure the correct type is provided for the member being
- * added as this API will not check it for correctness in favor of efficiency
- * and results can be undefined otherwise.
+ * The caller should make sure that the member exists and the correct type is
+ * provided for the member being added as this API will not check it for
+ * existence or correctness in favor of efficiency and results can be undefined
+ * otherwise.
  *
  * **Example:**
  *
@@ -385,9 +386,12 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
  * tiledb_group_t* group;
  * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
  * tiledb_group_open(ctx, group, TILEDB_WRITE);
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array",
- * TILEDB_ARRAY); tiledb_group_add_member(ctx, group,
+ * tiledb_group_add_member_with_type(ctx, group, "s3://tiledb_bucket/my_array",
+ * TILEDB_ARRAY);
+ * tiledb_group_add_member_with_type(ctx, group,
  * "s3://tiledb_bucket/my_group_2", TILEDB_GROUP);
+ *
+ * tiledb_group_close(ctx, group);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -399,7 +403,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
  * @param type the type of the member getting added if known in advance.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_group_add_member_by_type(
+TILEDB_EXPORT capi_return_t tiledb_group_add_member_with_type(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,

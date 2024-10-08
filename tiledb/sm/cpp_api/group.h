@@ -399,7 +399,7 @@ class Group {
     }
 
     if (type.has_value()) {
-      ctx.handle_error(tiledb_group_add_member_by_type(
+      ctx.handle_error(tiledb_group_add_member_with_type(
           c_ctx, group_.get(), uri.c_str(), relative, name_cstr, type.value()));
     } else {
       ctx.handle_error(tiledb_group_add_member(

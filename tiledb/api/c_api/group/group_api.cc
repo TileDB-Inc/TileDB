@@ -66,6 +66,12 @@ inline void ensure_name_argument_is_valid(const char* name) {
   }
 }
 
+inline void ensure_object_type_argument_is_valid(const tiledb_object_t type) {
+  if (type != TILEDB_GROUP && type != TILEDB_ARRAY) {
+    throw CAPIStatusException("Invalid object `type`");
+  }
+}
+
 inline char* copy_string(const std::string& str) {
   auto ret = static_cast<char*>(std::malloc(str.size() + 1));
   if (ret == nullptr) {
@@ -276,7 +282,7 @@ capi_return_t tiledb_group_add_member(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_group_add_member_by_type(
+capi_return_t tiledb_group_add_member_with_type(
     tiledb_group_handle_t* group,
     const char* group_uri,
     const uint8_t relative,
@@ -284,6 +290,7 @@ capi_return_t tiledb_group_add_member_by_type(
     tiledb_object_t type) {
   ensure_group_is_valid(group);
   ensure_group_uri_argument_is_valid(group_uri);
+  ensure_object_type_argument_is_valid(type);
 
   auto uri = tiledb::sm::URI(group_uri, !relative);
 
@@ -683,14 +690,14 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    group_add_member_by_type,
+    group_add_member_with_type,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,
     const uint8_t relative,
     const char* name,
     tiledb_object_t type) {
-  return api_entry_context<tiledb::api::tiledb_group_add_member_by_type>(
+  return api_entry_context<tiledb::api::tiledb_group_add_member_with_type>(
       ctx, group, uri, relative, name, type);
 }
 
