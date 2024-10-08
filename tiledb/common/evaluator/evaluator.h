@@ -36,13 +36,14 @@
 
 #include <future>
 #include <list>
+#include "tiledb/common/logger.h"
 
 namespace tiledb::common {
 
 /**
  * Abstract class for caching policies.
- * This contains most of the logic of the caching mechanism
- * except budgeting which is policy specific.
+ * Contains most of the logic of the caching mechanism except budgeting,
+ * which is policy-specific.
  *
  * @tparam Key The type of key
  * @tparam Value The type of value
@@ -53,6 +54,11 @@ class CachePolicyBase {
   using key_type = Key;
   using value_type = Value;
   using return_type = std::shared_ptr<Value>;
+
+  /**
+   * Default constructor; no need for explicit virtual base initialization.
+   */
+  CachePolicyBase() = default;
 
   /**
    * Try to get an entry from the cache given a key or
@@ -106,8 +112,8 @@ class CachePolicyBase {
     {
       std::lock_guard<std::mutex> lock(mutex_);
 
-      // Enforce caching policy
-      enforce_policy(*value);
+      // Enforce caching policy to make room in cache for given value
+      make_room(*value);
 
       // Update the LRU list and the cache
       lru_.emplace_back(key);
@@ -171,10 +177,10 @@ class CachePolicyBase {
   };
 
   /**
-   * Enforces the cache policy by evicting entries if necessary.
+   * Make room in the cache for `v` by evicting entries if necessary.
    * This operation assumes the bookkeeping mutex is already locked.
    */
-  virtual void enforce_policy(const Value& v) = 0;
+  virtual void make_room(const Value& v) = 0;
 
   /**
    * Double linked list where the head is the least
@@ -218,7 +224,7 @@ class ImmediateEvaluation {
   using return_type = std::shared_ptr<Value>;
 
   /**
-   * Evaluates the function and constructs a shared_ptr with the prduced value.
+   * Evaluates the function and constructs a shared_ptr with the produced value.
    *
    * @tparam F The callback function type.
    * @param f The callback function to evaluate.
@@ -231,30 +237,29 @@ class ImmediateEvaluation {
 };
 
 /**
- * Policy that enforces a maximum number of entries in the cache.
- * Once the threshold is reached, the LRY entry is evicted making space
+ * Policy which enforces a maximum number of entries in the cache.
+ * Once the threshold is reached, the LRU entry is evicted, making space
  * for a new value to evaluate.
  *
  * This policy is useful for testing purposes.
+ *
+ * @invariant N != 0
  *
  * @tparam Key The type of key
  * @tparam Value The type of value
  */
 template <class Key, class Value, size_t N>
+  requires(N != 0)
 class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
  public:
   using return_type = std::shared_ptr<Value>;
 
   MaxEntriesCache()
       : num_entries_(0) {
-    if constexpr (N == 0) {
-      throw std::logic_error(
-          "The maximum number of entries must be greater than zero.");
-    }
   }
 
-  virtual void enforce_policy(const Value&) override {
-    if (num_entries_ == max_entries_) {
+  virtual void make_room(const Value&) override {
+    if (num_entries_ == N) {
       auto evicted_value = this->evict_lru();
       --num_entries_;
       return;
@@ -264,11 +269,10 @@ class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
 
  private:
   size_t num_entries_;
-  static const size_t max_entries_ = N;
 };
 
 /**
- * Policy that enforces a memory budget for the cache.
+ * Policy which enforces a memory budget for the cache.
  * This is considered to be the production policy which should
  * be used in all real use cases.
  *
@@ -284,16 +288,11 @@ class MaxEntriesCache : public virtual CachePolicyBase<Key, Value> {
  * @tparam Value The type of value
  */
 
-template <
-    class Key,
-    class Value,
-    class SizeFn,
-    std::enable_if_t<
-        std::is_nothrow_invocable_r_v<
-            size_t,
-            SizeFn,
-            std::remove_cv_t<std::remove_reference_t<Value>>>,
-        bool> = true>
+template <class Key, class Value, class SizeFn>
+  requires(std::is_nothrow_invocable_r_v<
+           size_t,
+           SizeFn,
+           std::remove_cv_t<std::remove_reference_t<Value>>>)
 class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
  public:
   using return_type = std::shared_ptr<Value>;
@@ -309,8 +308,9 @@ class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
           std::to_string(overhead_) + " bytes.");
     }
   }
+
   /**
-   * Enforces the cache policy by evicting entries if necessary.
+   * Makes room in the cache by evicting entries if necessary.
    * Mass eviction might happen if the memory budget is low and the new
    * value consumes a lot of memory. The algorithm for now is linear-time
    * which should work ok when the cached values are of similar size, but we
@@ -320,22 +320,22 @@ class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
    * This function takes the value produced by the callback
    * to account its memory usage against the budget.
    *
-   * @param v The value produced by the callback
+   * @param v The value produced by the callback to make room for in the cache.
    */
-  virtual void enforce_policy(const Value& v) override {
+  virtual void make_room(const Value& v) override {
     auto mem_usage = overhead_ + size_fn_(v);
     while (memory_consumed_ + mem_usage > memory_budget_) {
+      auto evicted_value = this->evict_lru();
+      memory_consumed_ -= (size_fn_(*evicted_value) + overhead_);
+
       if (CachePolicyBase<Key, Value>::entries_.empty()) {
-        throw std::logic_error(
+        logger_->warn(
             "The memory consumed by this value exceeds the budget of the "
             "cache.");
       }
-
-      auto evicted_value = this->evict_lru();
-      memory_consumed_ -= (size_fn_(*evicted_value) + overhead_);
     }
 
-    // acount for the new value added in the cache
+    // Account for the new value added in the cache
     memory_consumed_ += mem_usage;
   }
 
@@ -349,7 +349,11 @@ class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
   /** The maximum amount of bytes currently consumed by this cache */
   size_t memory_consumed_;
 
+  /** The minimum memory overhead of the cache. */
   static constexpr size_t overhead_ = sizeof(return_type);
+
+  /** A logger to use for logging warnings. */
+  shared_ptr<Logger> logger_;
 };
 
 /**
@@ -363,13 +367,11 @@ class MemoryBudgetedCache : public virtual CachePolicyBase<Key, Value> {
  * @tparam Policy The caching policy to use.
  * @tparam F The callback function type.
  */
-template <
-    class Policy,
-    class F,
-    typename = std::enable_if_t<std::is_invocable_r_v<
-        typename Policy::value_type,
-        F,
-        typename Policy::key_type>>>
+template <class Policy, class F>
+  requires(std::is_invocable_r_v<
+           typename Policy::value_type,
+           F,
+           typename Policy::key_type>)
 class Evaluator {
   using Key = typename Policy::key_type;
   using Value = typename Policy::value_type;

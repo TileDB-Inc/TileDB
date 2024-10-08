@@ -29,4 +29,3 @@
 include(common NO_POLICY_SCOPE)
 
 add_test_subdirectory()
-

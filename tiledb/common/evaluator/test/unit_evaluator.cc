@@ -76,7 +76,6 @@ class WhiteBoxPolicy : public virtual CachePolicyBase<Key, Value> {
           return;
         }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }
 };
@@ -93,11 +92,11 @@ class WhiteBoxMaxEntriesPolicy : public WhiteBoxPolicy<Key, Value>,
   }
   void evict_lru() {
     std::lock_guard<std::mutex> lock(base::mutex_);
-    enforce_policy(Value{});
+    make_room(Value{});
   }
 
-  virtual void enforce_policy(const Value& v) override {
-    base::enforce_policy(v);
+  virtual void make_room(const Value& v) override {
+    base::make_room(v);
   }
 };
 
@@ -118,11 +117,11 @@ class WhiteBoxMemoryBudgetPolicy
   }
   void evict_lru() {
     std::lock_guard<std::mutex> lock(base::mutex_);
-    enforce_policy(Value{});
+    make_room(Value{});
   }
 
-  virtual void enforce_policy(const Value& v) override {
-    base::enforce_policy(v);
+  virtual void make_room(const Value& v) override {
+    base::make_room(v);
   }
 };
 
@@ -433,15 +432,4 @@ TEST_CASE(
       decltype(f)>
       mem_budgeted_eval(f, sizefn, budget);
   REQUIRE_THROWS(mem_budgeted_eval("key"));
-}
-
-TEST_CASE(
-    "Test max entries policy invalid argument",
-    "[evaluator][invalid_maxentries]") {
-  auto f = [](const std::string& key) { return key; };
-
-  REQUIRE_THROWS(
-      static_cast<void>(WhiteBoxEvaluator<
-                        WhiteBoxMaxEntriesPolicy<std::string, std::string, 0>,
-                        decltype(f)>(f)));
 }
