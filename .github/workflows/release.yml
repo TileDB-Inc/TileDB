@@ -124,6 +124,20 @@ jobs:
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
+      - name: "Upload build directory"
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: dump-${{ matrix.platform }}
+          path: |
+            build/**
+      - name: "Upload core dumps"
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: dump-${{ matrix.platform }}
+          path: |
+            /var/crash/**
 
   Test-Release-Artifacts:
     needs: Package-Binary-Release
