@@ -203,14 +203,16 @@ void tiledb_subarray_serialize(
   tiledb_array_schema_t* array_schema = nullptr;
   tiledb_array_get_schema(ctx, array, &array_schema);
   REQUIRE(tiledb::sm::serialization::subarray_to_capnp(
-              *(array_schema->array_schema()), (*subarray)->subarray_, &builder)
+              *(array_schema->array_schema()),
+              (*subarray)->subarray().get(),
+              &builder)
               .ok());
   // Deserialize
   tiledb_subarray_t* deserialized_subarray;
   tiledb::test::require_tiledb_ok(
       ctx, tiledb_subarray_alloc(ctx, array, &deserialized_subarray));
   REQUIRE(tiledb::sm::serialization::subarray_from_capnp(
-              builder, deserialized_subarray->subarray_)
+              builder, deserialized_subarray->subarray().get())
               .ok());
   *subarray = deserialized_subarray;
 #endif

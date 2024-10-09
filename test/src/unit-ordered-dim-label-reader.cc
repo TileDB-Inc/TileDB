@@ -126,7 +126,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
     }
 
     Subarray subarray(ctx_, array);
-    subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+    subarray.ptr()->set_attribute_ranges("labels", input_ranges);
     if (serialize_) {
       auto subarray_ptr = subarray.ptr().get();
       tiledb_subarray_serialize(
@@ -173,7 +173,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
                                  &second_label, &first_label, sizeof(LabelT));
 
         Subarray subarray(ctx_, array);
-        subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+        subarray.ptr()->set_attribute_ranges("labels", input_ranges);
         if (serialize_) {
           auto subarray_ptr = subarray.ptr().get();
           tiledb_subarray_serialize(
@@ -256,7 +256,7 @@ TEST_CASE_METHOD(
   input_ranges.emplace_back(&val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->set_attribute_ranges("labels", input_ranges);
   if (serialize_) {
     auto subarray_ptr = subarray.ptr().get();
     tiledb_subarray_serialize(
@@ -295,7 +295,7 @@ TEST_CASE_METHOD(
   input_ranges.emplace_back(&val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->set_attribute_ranges("labels", input_ranges);
   if (serialize_) {
     auto subarray_ptr = subarray.ptr().get();
     tiledb_subarray_serialize(
@@ -335,7 +335,7 @@ TEST_CASE_METHOD(
   input_ranges.emplace_back(&val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->set_attribute_ranges("labels", input_ranges);
   if (serialize_) {
     auto subarray_ptr = subarray.ptr().get();
     tiledb_subarray_serialize(
@@ -376,7 +376,7 @@ TEST_CASE_METHOD(
 
   Subarray subarray(ctx_, array);
   subarray.add_range(0, 1, 1);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->set_attribute_ranges("labels", input_ranges);
   if (serialize_) {
     auto subarray_ptr = subarray.ptr().get();
     tiledb_subarray_serialize(
@@ -412,7 +412,7 @@ TEST_CASE_METHOD(
   input_ranges.emplace_back(&ranges[0], &ranges[1], sizeof(double));
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->set_attribute_ranges("labels", input_ranges);
   if (serialize_) {
     auto subarray_ptr = subarray.ptr().get();
     tiledb_subarray_serialize(
@@ -777,7 +777,7 @@ struct CPPOrderedDimLabelReaderVarFx {
     }
 
     Subarray subarray(ctx_, array);
-    subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+    subarray.ptr()->set_attribute_ranges("labels", input_ranges);
     if (serialize_) {
       auto subarray_ptr = subarray.ptr().get();
       tiledb_subarray_serialize(
@@ -831,7 +831,7 @@ struct CPPOrderedDimLabelReaderVarFx {
                 labels_data.data() + 4, 4, labels_data.data(), 4);
 
         Subarray subarray(ctx_, array);
-        subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+        subarray.ptr()->set_attribute_ranges("labels", input_ranges);
         if (serialize_) {
           auto subarray_ptr = subarray.ptr().get();
           tiledb_subarray_serialize(
@@ -1057,7 +1057,7 @@ TEST_CASE_METHOD(
   }
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->set_attribute_ranges("labels", input_ranges);
   if (serialize_) {
     auto subarray_ptr = subarray.ptr().get();
     tiledb_subarray_serialize(

@@ -33,7 +33,6 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 #ifdef _WIN32
@@ -963,10 +962,10 @@ TEST_CASE_METHOD(
       Range(&range_data[0], &range_data[1], sizeof(int64_t)),
       Range(&range_data[2], &range_data[3], sizeof(int64_t)),
       Range(&range_data[4], &range_data[5], sizeof(int64_t))};
-  subarray->subarray_->set_attribute_ranges("b", input_ranges);
+  subarray->set_attribute_ranges("b", input_ranges);
 
   // Get attribute ranges and verify results
-  const auto& output_ranges = subarray->subarray_->get_attribute_ranges("b");
+  const auto& output_ranges = subarray->get_attribute_ranges("b");
   for (uint32_t ii = 0; ii < 3; ++ii) {
     CHECK(input_ranges[ii] == output_ranges[ii]);
   }
