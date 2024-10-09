@@ -9,7 +9,7 @@ title: Format Specification
 * Data written by TileDB and referenced in this document is **little-endian**
   with the following exceptions:
 
-  - [Dictionary filter](filters/dictionary_encoding.md)
+  - [Dictionary encoding filter](filters/dictionary_encoding.md)
   - RLE filter
 
 ## Table of Contents

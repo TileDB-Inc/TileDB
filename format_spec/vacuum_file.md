@@ -5,20 +5,20 @@ title: Vacuum File
 A vacuum file has name `[`<timestamped_name>`](./timestamped_name.md)`.vac` and can be located either in the array commit folder:
 
 ```
-my_array                        # array folder
+my_array                           # array folder
    |_ ....
-   |_ __commits                 # array commit folder
-         |_ <timestamped_name>.vac   # vacuum file
+   |_ __commits                    # array commit folder
+         |_ <timestamped_name>.vac # vacuum file
 ```
 
 or in the array or group metadata folder:
 
 ```
-my_obj                         # array/group folder
+my_obj                            # array/group folder
    |  ...
-   | __meta                    # array metadata folder
+   | __meta                       # metadata folder
          | ...
-         | <timestamped_name>.vac  # vacuum file
+         | <timestamped_name>.vac # vacuum file
          | ...
 ```
 

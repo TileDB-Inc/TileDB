@@ -32,6 +32,7 @@ Introduced in TileDB 2.17
 Introduced in TileDB 2.16
 
 * [Vacuum files](./vacuum_file.md) contain relative paths to the location of the array.
+* The [filter pipeline options](./filter_pipeline.md#filter-options) for the delta filter contain the _Reinterpret datatype_ field.
 
 ## Version 18
 
@@ -44,7 +45,7 @@ Introduced in TileDB 2.15
 Introduced in TileDB 2.14
 
 * The _Order_ field was added to [attributes](./array_schema.md#attribute).
-* Cell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary filter exists in the filter pipeline. They are instead encoded as part of the data tile.
+* Cell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary encoding filter exists in the filter pipeline. They are instead encoded as part of the data tile.
 
 ## Version 16
 
@@ -71,7 +72,7 @@ Introduced in TileDB 2.10
 
 Introduced in TileDB 2.9
 
-* The [dictionary filter](./filters/dictionary_encoding.md) was added.
+* Cell offsets in dimensions or attributes of ASCII string type are not written in the offset tiles, if the dictionary encoding filter exists in the filter pipeline. They are instead encoded as part of the data tile.
 
 ## Version 12
 

@@ -81,7 +81,7 @@ For the `TILEDB_FILTER_DELTA` and `TILEDB_FILTER_DOUBLE_DELTA` compression filte
 | Reinterpret datatype | `uint8_t` | Type to reinterpret data prior to compression. |
 
 > [!NOTE]
-> Prior to version 20, the `Reinterpret datatype` field was not present for the double delta filter.
+> Prior to version 20, the _Reinterpret datatype_ field was not present for the double delta filter. Also prior to version 19, the same field was not present for the delta filter.
 
 ### Bit-width Reduction Options
 
