@@ -7,5 +7,3 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" # GNU is GNU GCC
   # without this compiler messages in `make` backend would be uncolored
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fdiagnostics-color=auto")
 endif()
-set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
-set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
