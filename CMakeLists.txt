@@ -108,6 +108,7 @@ endif()
 if (TILEDB_CCACHE)
   include(FindCcache)
   set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
+  set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
 endif()
 
 # Set -fvisibility=hidden (or equivalent) flags by default.
