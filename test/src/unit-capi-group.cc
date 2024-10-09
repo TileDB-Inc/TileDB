@@ -592,8 +592,8 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     rc = tiledb_group_add_member_with_type(
         ctx_, group1, array1_uri.c_str(), false, nullptr, TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
@@ -736,8 +736,8 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     rc = tiledb_group_add_member_with_type(
         ctx_, group1, array1_uri.c_str(), false, "one", TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
@@ -779,7 +779,7 @@ TEST_CASE_METHOD(
   rc = tiledb_group_remove_member(ctx_, group1, "one");
   REQUIRE(rc == TILEDB_OK);
   // Add one back with different URI
-  if (add_by_type) {
+  if (add_with_type) {
     rc = tiledb_group_add_member_with_type(
         ctx_, group1, array2_uri.c_str(), false, "one", TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
@@ -858,8 +858,8 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     rc = tiledb_group_add_member_with_type(
         ctx_, group1, array1_uri.c_str(), false, "one", TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);
@@ -1236,8 +1236,8 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     rc = tiledb_group_add_member_with_type(
         ctx_, group1, array1_relative_uri.c_str(), true, nullptr, TILEDB_ARRAY);
     REQUIRE(rc == TILEDB_OK);

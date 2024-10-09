@@ -166,6 +166,14 @@ class SupportedFs {
    * @return true if local, false if not
    */
   virtual bool is_local() = 0;
+
+  /**
+   * Get the name of the filesystem's file prefix. Applies only to local
+   * filesystems
+   *
+   * @return string prefix name
+   */
+  virtual std::string file_prefix() = 0;
 };
 
 /**
@@ -236,6 +244,16 @@ class SupportedFsS3 : public SupportedFs {
    */
   inline bool is_local() {
     return false;
+  }
+
+  /**
+   * Get the name of the filesystem's file prefix. Applies only to local
+   * filesystems
+   *
+   * @return string prefix name
+   */
+  inline std::string file_prefix() {
+    return "";
   }
 
  private:
@@ -324,6 +342,16 @@ class SupportedFsHDFS : public SupportedFs {
     return false;
   }
 
+  /**
+   * Get the name of the filesystem's file prefix. Applies only to local
+   * filesystems
+   *
+   * @return string prefix name
+   */
+  inline std::string file_prefix() {
+    return "";
+  }
+
  private:
   /* ********************************* */
   /*           ATTRIBUTES              */
@@ -402,6 +430,16 @@ class SupportedFsAzure : public SupportedFs {
    */
   inline bool is_local() {
     return false;
+  }
+
+  /**
+   * Get the name of the filesystem's file prefix. Applies only to local
+   * filesystems
+   *
+   * @return string prefix name
+   */
+  inline std::string file_prefix() {
+    return "";
   }
 
  private:
@@ -487,6 +525,16 @@ class SupportedFsGCS : public SupportedFs {
    */
   inline bool is_local() {
     return false;
+  }
+
+  /**
+   * Get the name of the filesystem's file prefix. Applies only to local
+   * filesystems
+   *
+   * @return string prefix name
+   */
+  inline std::string file_prefix() {
+    return "";
   }
 
  private:
@@ -675,6 +723,16 @@ class SupportedFsMem : public SupportedFs {
    */
   inline bool is_local() {
     return true;
+  }
+
+  /**
+   * Get the name of the filesystem's file prefix. Applies only to local
+   * filesystems
+   *
+   * @return string prefix name
+   */
+  inline std::string file_prefix() {
+    return "";
   }
 
  private:
@@ -932,6 +990,10 @@ struct VFSTestSetup {
                    ("tiledb://unit/" + temp_dir + array_name) :
                    (temp_dir + array_name);
     return uri;
+  }
+
+  std::string with_prefix(const std::string& array_name) {
+    return fs_vec[0]->file_prefix() + array_name;
   }
 
   Context ctx() {

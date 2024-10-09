@@ -298,13 +298,26 @@ TEST_CASE_METHOD(
 
   // Set expected
   std::vector<tiledb::Object> group1_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array1_uri, "array1"),
-      tiledb::Object(tiledb::Object::Type::Array, array2_uri, "array2"),
-      tiledb::Object(tiledb::Object::Type::Group, group2_uri, "group2"),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array1_uri),
+          "array1"),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array2_uri),
+          "array2"),
+      tiledb::Object(
+          tiledb::Object::Type::Group,
+          vfs_test_setup_.with_prefix(group2_uri),
+          "group2"),
   };
   std::vector<tiledb::Object> group2_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array3_uri, "array3"),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array3_uri),
+          "array3"),
   };
+  std::cerr << group1_expected[0].uri() << std::endl;
 
   tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
   group1.close();
@@ -316,8 +329,8 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     group1.add_member(array1_uri, false, "array1", TILEDB_ARRAY);
     group1.add_member(array2_uri, false, "array2", TILEDB_ARRAY);
     group1.add_member(group2_uri, false, "group2", TILEDB_GROUP);
@@ -414,12 +427,24 @@ TEST_CASE_METHOD(
 
   // Set expected
   std::vector<tiledb::Object> group1_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array1_uri, std::nullopt),
-      tiledb::Object(tiledb::Object::Type::Array, array2_uri, std::nullopt),
-      tiledb::Object(tiledb::Object::Type::Group, group2_uri, std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array1_uri),
+          std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array2_uri),
+          std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Group,
+          vfs_test_setup_.with_prefix(group2_uri),
+          std::nullopt),
   };
   std::vector<tiledb::Object> group2_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array3_uri, std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array3_uri),
+          std::nullopt),
   };
 
   tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
@@ -432,8 +457,8 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     group1.add_member(array1_uri, false, std::nullopt, TILEDB_ARRAY);
     group1.add_member(array2_uri, false, std::nullopt, TILEDB_ARRAY);
     group1.add_member(group2_uri, false, std::nullopt, TILEDB_GROUP);
@@ -541,12 +566,24 @@ TEST_CASE_METHOD(
 
   // Set expected
   std::vector<tiledb::Object> group1_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array1_uri, std::nullopt),
-      tiledb::Object(tiledb::Object::Type::Array, array2_uri, std::nullopt),
-      tiledb::Object(tiledb::Object::Type::Group, group2_uri, std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array1_uri),
+          std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array2_uri),
+          std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Group,
+          vfs_test_setup_.with_prefix(group2_uri),
+          std::nullopt),
   };
   std::vector<tiledb::Object> group2_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array3_uri, std::nullopt),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array3_uri),
+          std::nullopt),
   };
 
   tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
@@ -559,8 +596,8 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     group1.add_member(array1_relative_uri, true, std::nullopt, TILEDB_ARRAY);
     group1.add_member(array2_relative_uri, true, std::nullopt, TILEDB_ARRAY);
     group1.add_member(group2_uri, false, std::nullopt, TILEDB_GROUP);
@@ -665,12 +702,24 @@ TEST_CASE_METHOD(
 
   // Set expected
   std::vector<tiledb::Object> group1_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array1_uri, "one"),
-      tiledb::Object(tiledb::Object::Type::Array, array2_uri, "two"),
-      tiledb::Object(tiledb::Object::Type::Group, group2_uri, "three"),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array1_uri),
+          "one"),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array2_uri),
+          "two"),
+      tiledb::Object(
+          tiledb::Object::Type::Group,
+          vfs_test_setup_.with_prefix(group2_uri),
+          "three"),
   };
   std::vector<tiledb::Object> group2_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array3_uri, "four"),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array3_uri),
+          "four"),
   };
 
   tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
@@ -683,8 +732,8 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     group1.add_member(array1_relative_uri, true, "one", TILEDB_ARRAY);
     group1.add_member(array2_relative_uri, true, "two", TILEDB_ARRAY);
     group1.add_member(group2_uri, false, "three", TILEDB_GROUP);
@@ -801,11 +850,22 @@ TEST_CASE_METHOD(
 
   // Set expected
   std::vector<tiledb::Object> group1_expected = {
-      tiledb::Object(tiledb::Object::Type::Array, array1_uri, "one"),
-      tiledb::Object(tiledb::Object::Type::Array, array2_uri, "two"),
-      nameless_uri ?
-          tiledb::Object(tiledb::Object::Type::Array, array2_uri, nullopt) :
-          tiledb::Object(tiledb::Object::Type::Array, array2_uri, "three"),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array1_uri),
+          "one"),
+      tiledb::Object(
+          tiledb::Object::Type::Array,
+          vfs_test_setup_.with_prefix(array2_uri),
+          "two"),
+      nameless_uri ? tiledb::Object(
+                         tiledb::Object::Type::Array,
+                         vfs_test_setup_.with_prefix(array2_uri),
+                         nullopt) :
+                     tiledb::Object(
+                         tiledb::Object::Type::Array,
+                         vfs_test_setup_.with_prefix(array2_uri),
+                         "three"),
   };
 
   tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
@@ -813,8 +873,8 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group1, 1);
   group1.open(TILEDB_WRITE);
 
-  bool add_by_type = GENERATE(true, false);
-  if (add_by_type) {
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
     group1.add_member(array1_relative_uri, true, "one", TILEDB_ARRAY);
     group1.add_member(array2_relative_uri, true, "two", TILEDB_ARRAY);
     group1.add_member(
