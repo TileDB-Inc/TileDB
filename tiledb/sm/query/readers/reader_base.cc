@@ -130,6 +130,13 @@ bool ReaderBase::skip_field(
     return true;
   }
 
+  // If an attribute exists but has changed from fixed->var or var->fixed after
+  // schema evolution, ignore for this fragment's tile offsets
+  if ((array_schema_.var_size(name) && !schema->var_size(name)) ||
+      (!array_schema_.var_size(name) && schema->var_size(name))) {
+    return true;
+  }
+
   // If the fragment doesn't include timestamps
   if (timestamps_not_present(name, frag_idx)) {
     return true;
@@ -1135,7 +1142,14 @@ uint64_t ReaderBase::get_attribute_tile_size(
 
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
-  if (array_schema_.var_size(name)) {
+  /**
+   * Note: There is a distinct case in which a schema may evolve from
+   * fixed-sized to var-sized. In this scenario, the LoadedFragmentMetadata
+   * contains fixed tiles. The tile_var_size should be calculated iff
+   * both the current _and_ loaded attributes are var-sized.
+   */
+  if (array_schema_.var_size(name) &&
+      fragment_metadata_[f]->array_schema()->var_size(name)) {
     tile_size +=
         fragment_metadata_[f]->loaded_metadata()->tile_var_size(name, t);
   }
