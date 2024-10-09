@@ -105,6 +105,11 @@ else()
   set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
+if (TILEDB_CCACHE)
+  include(FindCcache)
+  set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
+endif()
+
 # Set -fvisibility=hidden (or equivalent) flags by default.
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
