@@ -940,3 +940,28 @@ add_custom_target(install-tiledb
   COMMAND ${CMAKE_COMMAND} --build . --target install --config $<CONFIG>
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 )
+
+# Create a static library that includes libtiledb and all of its dependencies
+message(STATUS "CHECKING FOR STATIC BUNDLE")
+if (NOT BUILD_SHARED_LIBS AND TILEDB_STATIC_BUNDLE)
+    # We check for the availability of armerge here rather than in the
+    # bundle-libs.py script.
+    find_program(ARMERGE armerge)
+    if (NOT ARMERGE)
+        message(FATAL_ERROR "Failed to find 'armerge' for building static bundle.")
+    endif()
+
+    add_custom_target(static_bundle
+        ALL
+        COMMENT "Bundle tiledb and all static library dependencies into a single archive."
+        COMMAND "${CMAKE_SOURCE_DIR}/scripts/bundle-libs.py"
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        DEPENDS tiledb
+        BYPRODUCTS libtiledb_bundled.a
+    )
+
+    install(
+        FILES ${PROJECT_BINARY_DIR}/libtiledb_bundled.a
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
+endif()
