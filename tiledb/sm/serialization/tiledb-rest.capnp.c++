@@ -10477,6 +10477,92 @@ const ::capnp::_::RawSchema s_ce64eabcdabb02b5 = {
   1, 1, i_ce64eabcdabb02b5, nullptr, nullptr, { &s_ce64eabcdabb02b5, nullptr, nullptr, 0, 0, nullptr }, false
 };
 #endif  // !CAPNP_LITE
+static const ::capnp::_::AlignedData<26> b_f3bb391da5271019 = {
+  {   0,   0,   0,   0,   5,   0,   6,   0,
+     25,  16,  39, 165,  29,  57, 187, 243,
+     18,   0,   0,   0,   2,   0,   0,   0,
+    127, 216, 135, 181,  36, 146, 125, 181,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     21,   0,   0,   0, 234,   0,   0,   0,
+     33,   0,   0,   0,   7,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     29,   0,   0,   0,  55,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+    116, 105, 108, 101, 100,  98,  45, 114,
+    101, 115, 116,  46,  99,  97, 112, 110,
+    112,  58,  79,  98, 106, 101,  99, 116,
+     84, 121, 112, 101,   0,   0,   0,   0,
+      0,   0,   0,   0,   1,   0,   1,   0,
+      8,   0,   0,   0,   1,   0,   2,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     17,   0,   0,   0,  50,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      1,   0,   0,   0,   0,   0,   0,   0,
+      9,   0,   0,   0,  50,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     97, 114, 114,  97, 121,   0,   0,   0,
+    103, 114, 111, 117, 112,   0,   0,   0, }
+};
+::capnp::word const* const bp_f3bb391da5271019 = b_f3bb391da5271019.words;
+#if !CAPNP_LITE
+static const uint16_t m_f3bb391da5271019[] = {0, 1};
+const ::capnp::_::RawSchema s_f3bb391da5271019 = {
+  0xf3bb391da5271019, b_f3bb391da5271019.words, 26, nullptr, m_f3bb391da5271019,
+  0, 2, nullptr, nullptr, nullptr, { &s_f3bb391da5271019, nullptr, nullptr, 0, 0, nullptr }, false
+};
+#endif  // !CAPNP_LITE
+CAPNP_DEFINE_ENUM(ObjectType_f3bb391da5271019, f3bb391da5271019);
+static const ::capnp::_::AlignedData<35> b_87f0466598bb29be = {
+  {   0,   0,   0,   0,   5,   0,   6,   0,
+    190,  41, 187, 152, 101,  70, 240, 135,
+     18,   0,   0,   0,   1,   0,   1,   0,
+    127, 216, 135, 181,  36, 146, 125, 181,
+      0,   0,   7,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     21,   0,   0,   0,  42,   1,   0,   0,
+     37,   0,   0,   0,   7,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     33,   0,   0,   0,  63,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+    116, 105, 108, 101, 100,  98,  45, 114,
+    101, 115, 116,  46,  99,  97, 112, 110,
+    112,  58,  79,  98, 106, 101,  99, 116,
+     73, 110, 102, 111,  82, 101, 115, 112,
+    111, 110, 115, 101,   0,   0,   0,   0,
+      0,   0,   0,   0,   1,   0,   1,   0,
+      4,   0,   0,   0,   3,   0,   4,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   1,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     13,   0,   0,   0,  90,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     12,   0,   0,   0,   3,   0,   1,   0,
+     24,   0,   0,   0,   2,   0,   1,   0,
+    111,  98, 106, 101,  99, 116,  84, 121,
+    112, 101,   0,   0,   0,   0,   0,   0,
+     15,   0,   0,   0,   0,   0,   0,   0,
+     25,  16,  39, 165,  29,  57, 187, 243,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+     15,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0, }
+};
+::capnp::word const* const bp_87f0466598bb29be = b_87f0466598bb29be.words;
+#if !CAPNP_LITE
+static const ::capnp::_::RawSchema* const d_87f0466598bb29be[] = {
+  &s_f3bb391da5271019,
+};
+static const uint16_t m_87f0466598bb29be[] = {0};
+static const uint16_t i_87f0466598bb29be[] = {0};
+const ::capnp::_::RawSchema s_87f0466598bb29be = {
+  0x87f0466598bb29be, b_87f0466598bb29be.words, 35, d_87f0466598bb29be, m_87f0466598bb29be,
+  1, 1, i_87f0466598bb29be, nullptr, nullptr, { &s_87f0466598bb29be, nullptr, nullptr, 0, 0, nullptr }, false
+};
+#endif  // !CAPNP_LITE
 }  // namespace schemas
 }  // namespace capnp
 
@@ -11624,6 +11710,18 @@ constexpr uint16_t NDRectangle::_capnpPrivate::pointerCount;
 #if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 constexpr ::capnp::Kind NDRectangle::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* NDRectangle::_capnpPrivate::schema;
+#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
+#endif  // !CAPNP_LITE
+
+// ObjectInfoResponse
+#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
+constexpr uint16_t ObjectInfoResponse::_capnpPrivate::dataWordSize;
+constexpr uint16_t ObjectInfoResponse::_capnpPrivate::pointerCount;
+#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
+#if !CAPNP_LITE
+#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
+constexpr ::capnp::Kind ObjectInfoResponse::_capnpPrivate::kind;
+constexpr ::capnp::_::RawSchema const* ObjectInfoResponse::_capnpPrivate::schema;
 #endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 #endif  // !CAPNP_LITE
 
