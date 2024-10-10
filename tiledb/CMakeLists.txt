@@ -940,3 +940,20 @@ add_custom_target(install-tiledb
   COMMAND ${CMAKE_COMMAND} --build . --target install --config $<CONFIG>
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 )
+
+# Add a bundle that includes all static library dependencies included into a
+# single bundle that is then installed.
+if (NOT BUILD_SHARED_LIBS)
+    add_custom_target(bundle_deps
+        COMMENT "Bundle tiledb and all static library dependencies into a single archive."
+        COMMAND "${CMAKE_SOURCE_DIR}/scripts/bundle-libs.py"
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        DEPENDS tiledb
+        BYPRODUCTS libtiledb_bundled.a
+    )
+
+    install(
+        FILES ${CMAKE_BINARY_DIR}/libtiledb_bundled.a
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
+endif()
