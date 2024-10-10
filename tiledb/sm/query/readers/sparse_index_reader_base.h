@@ -157,6 +157,14 @@ class MemoryBudget {
   }
 
   /**
+   * @return Portion of the total memory budget dedicated to loading coordinate
+   * tiles.
+   */
+  uint64_t coordinates_budget() {
+    return total_budget_ * ratio_coords_;
+  }
+
+  /**
    * @return Ratio of the budget dedicated to loading coordinate tiles into
    * memory.
    */

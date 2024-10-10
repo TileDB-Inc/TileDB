@@ -346,9 +346,8 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
   // Get the number of fragments to process and compute per fragment memory.
   uint64_t num_fragments_to_process =
       tmp_read_state_.num_fragments_to_process();
-  per_fragment_memory_ = memory_budget_.total_budget() *
-                         memory_budget_.ratio_coords() /
-                         num_fragments_to_process;
+  per_fragment_memory_ =
+      memory_budget_.coordinates_budget() / num_fragments_to_process;
 
   // Save which result tile list is empty.
   std::vector<uint64_t> rt_list_num_tiles(result_tiles.size());
@@ -390,8 +389,9 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
                       std::to_string(tiles_size) + ", per fragment memory " +
                       std::to_string(per_fragment_memory_) + ", total budget " +
                       std::to_string(memory_budget_.total_budget()) +
-                      ", num fragments to process " +
-                      std::to_string(num_fragments_to_process));
+                      ", processing fragment " + std::to_string(f) +
+                      " out of " + std::to_string(num_fragments_to_process) +
+                      " total fragments");
                 }
                 return Status::Ok();
               }

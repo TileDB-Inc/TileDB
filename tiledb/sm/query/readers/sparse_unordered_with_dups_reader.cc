@@ -367,7 +367,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   // memory limit as the upper memory limit, whichever is smaller.
   const uint64_t upper_memory_limit = std::min<uint64_t>(
       memory_budget_.tile_upper_memory_limit(),
-      memory_budget_.total_budget() * memory_budget_.ratio_coords());
+      memory_budget_.coordinates_budget());
 
   // Calculate memory consumption for this tile.
   auto tiles_size = get_coord_tiles_size(dim_num, f, t);
@@ -378,15 +378,20 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     // available memory, allow loading it so we can make progress.
     if (!result_tiles.empty() || tiles_size > available_memory()) {
       logger_->debug(
-          "Budget exceeded adding result tiles, fragment {0}, tile "
-          "{1}",
+          "Total memory budget of {0} exceeded adding result tiles, fragment "
+          "{1}, tile {2}/{3} with size {4}",
+          memory_budget_.total_budget(),
           f,
-          t);
+          t,
+          last_t,
+          tiles_size);
 
       // Make sure we can add at least one tile.
       if (result_tiles.empty()) {
         throw SparseUnorderedWithDupsReaderException(
-            "Cannot load a single tile, increase memory budget");
+            "Cannot load a single tile requiring " +
+            std::to_string(tiles_size) + " bytes, increase memory budget (" +
+            std::to_string(memory_budget_.total_budget()) + ")");
       }
 
       return true;

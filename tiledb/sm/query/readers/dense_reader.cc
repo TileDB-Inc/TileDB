@@ -330,7 +330,10 @@ Status DenseReader::dense_read() {
   if (total_tile_offsets_sizes >
       memory_budget_ - array_memory_tracker_->get_memory_usage()) {
     throw DenseReaderException(
-        "Cannot load tile offsets, increase memory budget");
+        "Cannot load tile offsets requiring " +
+        std::to_string(total_tile_offsets_sizes) +
+        " bytes, increase memory budget (" + std::to_string(memory_budget_) +
+        ")");
   }
 
   auto&& [names, var_names] = field_names_to_process(qc_loaded_attr_names_set_);
@@ -959,7 +962,11 @@ DenseReader::compute_result_space_tiles(
       // If a single tile doesn't fit in the available memory, we can't proceed.
       if (total_memory > available_memory) {
         throw DenseReaderException(
-            "Cannot process a single tile, increase memory budget");
+            "Cannot process a single tile requiring " +
+            std::to_string(total_memory) + " bytes with " +
+            std::to_string(available_memory) +
+            " available, increase memory budget (" +
+            std::to_string(memory_budget_) + ")");
       }
     }
 
