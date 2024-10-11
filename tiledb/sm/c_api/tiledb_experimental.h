@@ -50,6 +50,7 @@
 #include "tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
 #include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
+#include "tiledb/api/c_api/subarray/subarray_api_experimental.h"
 #include "tiledb/api/c_api/vfs/vfs_api_experimental.h"
 #include "tiledb_dimension_label_experimental.h"
 
@@ -362,18 +363,6 @@ TILEDB_EXPORT int32_t tiledb_query_add_update_value(
     const char* field_name,
     const void* update_value,
     uint64_t update_value_size) TILEDB_NOEXCEPT;
-
-/**
- * Adds point ranges to the given dimension index of the subarray
- * Effectively `add_range(x_i, x_i)` for `count` points in the
- * target array, but set in bulk to amortize expensive steps.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_add_point_ranges(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t count) TILEDB_NOEXCEPT;
 
 /**
  * Get the number of relevant fragments from the subarray. Should only be

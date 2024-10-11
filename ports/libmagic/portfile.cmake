@@ -31,19 +31,11 @@ file(COPY "${CMAKE_CURRENT_LIST_DIR}/unofficial-libmagic-config.cmake.in" DESTIN
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/magic.def" DESTINATION "${SOURCE_PATH}/src")
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/config.h" DESTINATION "${SOURCE_PATH}/src")
 
-if(VCPKG_CROSSCOMPILING)
-    set(FILE_COMMAND_OPT "-DFILE_COMMAND=${CURRENT_HOST_INSTALLED_DIR}/tools/libmagic/file${VCPKG_HOST_EXECUTABLE_SUFFIX}")
-elseif(VCPKG_TARGET_IS_WINDOWS AND VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
-    set(EXTRA_ARGS "ADD_BIN_TO_PATH")
-endif()
-
 vcpkg_cmake_configure(
     SOURCE_PATH ${SOURCE_PATH}
-    OPTIONS
-        ${FILE_COMMAND_OPT}
 )
 
-vcpkg_cmake_install(${EXTRA_ARGS})
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
 vcpkg_fixup_pkgconfig()
 vcpkg_copy_tools(TOOL_NAMES file AUTO_CLEAN)
@@ -54,6 +46,12 @@ vcpkg_cmake_config_fixup(
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/${PORT}/man5")
+
+if(VCPKG_CROSSCOMPILING)
+    vcpkg_add_to_path(PREPEND "${CURRENT_HOST_INSTALLED_DIR}/tools/libmagic/bin")
+elseif(VCPKG_TARGET_IS_WINDOWS AND VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
+    set(EXTRA_ARGS "ADD_BIN_TO_PATH")
+endif()
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL static)
     file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")

@@ -468,29 +468,29 @@ TEST_CASE(
   SECTION("- Upper bound OOB") {
     int range[] = {0, 100};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
+    CHECK_NOTHROW(subarray.ptr().get()->add_range_unsafe(0, r));
   }
 
   SECTION("- Lower bound OOB") {
     int range[] = {-1, 2};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
+    CHECK_NOTHROW(subarray.ptr().get()->add_range_unsafe(0, r));
   }
 
   SECTION("- Second range OOB") {
     int range[] = {1, 4};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
+    CHECK_NOTHROW(subarray.ptr().get()->add_range_unsafe(0, r));
     int range2[] = {10, 20};
     auto r2 = Range(&range2[0], &range2[1], sizeof(int));
-    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(1, r2));
+    CHECK_NOTHROW(subarray.ptr().get()->add_range_unsafe(1, r2));
   }
 
   SECTION("- Valid ranges") {
     int range[] = {0, 1};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
-    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(1, r));
+    CHECK_NOTHROW(subarray.ptr().get()->add_range_unsafe(0, r));
+    CHECK_NOTHROW(subarray.ptr().get()->add_range_unsafe(1, r));
     expected = TILEDB_OK;
   }
 
@@ -822,14 +822,14 @@ TEST_CASE(
     // since the other CHECKS(range_num == 1) succeed whether or not the
     //.set_subarray() was done (accidental discovery.)
     CHECK(!subarray_equiv<int>(
-        *default_subarray_from_query.ptr().get()->subarray_,
-        *subarray.ptr().get()->subarray_));
+        *default_subarray_from_query.ptr()->subarray().get(),
+        *subarray.ptr()->subarray().get()));
     query.set_subarray(subarray);
     tiledb::Subarray retrieved_query_subarray(query.ctx(), query.array());
     query.update_subarray_from_query(&retrieved_query_subarray);
     CHECK(subarray_equiv<int>(
-        *retrieved_query_subarray.ptr().get()->subarray_,
-        *subarray.ptr().get()->subarray_));
+        *retrieved_query_subarray.ptr()->subarray().get(),
+        *subarray.ptr()->subarray().get()));
     // Test range num
     auto range_num = retrieved_query_subarray.range_num(0);
     CHECK(range_num == 1);
@@ -1293,7 +1293,7 @@ TEST_CASE(
     tiledb_subarray_serialize(ctx.ptr().get(), array.ptr().get(), &ptr);
     subarray.replace_subarray_data(ptr);
   }
-  CHECK(coalesce == subarray.ptr()->subarray_->coalesce_ranges());
+  CHECK(coalesce == subarray.ptr()->coalesce_ranges());
 
   subarray.add_range(0, 1, 10);
   subarray.add_range(0, 11, 20);

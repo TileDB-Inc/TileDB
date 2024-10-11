@@ -6,10 +6,6 @@
   "homepage": "https://github.com/file/file",
   "dependencies": [
     {
-      "name": "libmagic",
-      "host": true
-    },
-    {
       "name": "vcpkg-cmake",
       "host": true
     },
