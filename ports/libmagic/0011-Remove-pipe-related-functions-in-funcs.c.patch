@@ -11,19 +11,21 @@ diff --git a/src/funcs.c b/src/funcs.c
 index b926625..b585486 100644
 --- a/src/funcs.c
 +++ b/src/funcs.c
-@@ -888,5 +888,6 @@
+@@ -809,6 +809,7 @@ file_print_guid(char *str, size_t len, const uint64_t *guid)
+ 	    g->data4[6], g->data4[7]);
  }
  
 +#ifndef _WIN32
- file_protected int
+ protected int
  file_pipe_closexec(int *fds)
  {
-@@ -914,5 +915,6 @@
- #endif
+@@ -827,6 +828,7 @@ protected int
+ file_clear_closexec(int fd) {
+ 	return fcntl(fd, F_SETFD, 0);
  }
 +#endif
  
- file_protected char *
+ protected char *
  file_strtrim(char *str)
 -- 
 2.29.2.windows.2

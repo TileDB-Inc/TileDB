@@ -11,15 +11,14 @@ diff --git a/src/file.h b/src/file.h
 index 0332506..4aa9f60 100644
 --- a/src/file.h
 +++ b/src/file.h
-@@ -88,7 +88,8 @@
+@@ -88,6 +88,7 @@
  /* Do this here and now, because struct stat gets re-defined on solaris */
  #include <sys/stat.h>
  #include <stdarg.h>
 +#include <dirent.h>
- #include <locale.h>
- #if defined(HAVE_XLOCALE_H)
- #include <xlocale.h>
- #endif
+ 
+ #define ENABLE_CONDITIONALS
+ 
 -- 
 2.29.2.windows.2
 
