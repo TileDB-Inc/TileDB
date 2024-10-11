@@ -147,10 +147,16 @@ struct tiledb_array_handle_t
     return array_->get_enumeration(enumeration_name);
   }
 
+  std::unordered_map<
+      std::string,
+      std::vector<shared_ptr<const tiledb::sm::Enumeration>>>
+  get_all_enumerations() {
+    return array_->get_all_enumerations();
+  }
+
   std::vector<shared_ptr<const tiledb::sm::Enumeration>> get_enumerations(
-      const std::vector<std::string>& enumeration_names,
-      shared_ptr<tiledb::sm::ArraySchema> schema) {
-    return array_->get_enumerations(enumeration_names, schema);
+      const std::vector<std::string>& enumeration_names) {
+    return array_->get_enumerations(enumeration_names);
   }
 
   void get_metadata(
@@ -179,8 +185,8 @@ struct tiledb_array_handle_t
     return array_->is_open();
   }
 
-  void load_all_enumerations() const {
-    array_->load_all_enumerations();
+  void load_all_enumerations(bool all_schemas = false) const {
+    array_->load_all_enumerations(all_schemas);
   }
 
   tiledb::sm::NDRange& loaded_non_empty_domain() {

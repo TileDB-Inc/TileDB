@@ -84,11 +84,13 @@ std::vector<std::string> deserialize_load_enumerations_request(
     SerializationType serialization_type, span<const char> request);
 
 void serialize_load_enumerations_response(
-    const std::vector<shared_ptr<const Enumeration>>& enumerations,
+    const std::unordered_map<
+        std::string,
+        std::vector<shared_ptr<const Enumeration>>>& enumerations,
     SerializationType serialization_type,
     SerializationBuffer& response);
 
-std::vector<shared_ptr<const Enumeration>>
+std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
     SerializationType serialization_type,
     span<const char> response,

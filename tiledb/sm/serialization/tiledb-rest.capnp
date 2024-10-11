@@ -379,6 +379,14 @@ struct Map(Key, Value) {
   }
 }
 
+struct MapEnumeration {
+  entries @0 :List(Entry);
+  struct Entry {
+    key @0 :Text;
+    value @1 :List(Enumeration);
+  }
+}
+
 struct MapUInt32 {
   entries @0 :List(Entry);
   struct Entry {
@@ -1259,6 +1267,9 @@ struct LoadEnumerationsRequest {
 struct LoadEnumerationsResponse {
   enumerations @0 :List(Enumeration);
   # The loaded enumerations
+
+  allEnumerations @1 :MapEnumeration;
+  # The loaded enumerations for all array schemas
 }
 
 struct LoadArraySchemaRequest {

@@ -326,7 +326,7 @@ TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: Array load_all_enumerations - Check nullptr",
     "[enumeration][array-load-all-enumerations][rest]") {
-  auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr);
+  auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr, 0);
   REQUIRE(rc != TILEDB_OK);
 }
 
@@ -334,7 +334,17 @@ TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP API: Load All Enumerations - All Schemas",
     "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
+  auto cfg = ctx_.config();
+  cfg["rest.use_refactored_array_open"] = "false";
+  cfg["rest.use_refactored_array_open_and_query_submit"] = "false";
+  vfs_test_setup_.update_config(cfg.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
   create_array();
+
+  // Loading the array with array open v1 will only initialize the latest schema
+  // For the first test this is fine, we only need to load enumerations for the
+  // latest schema. In subsequent tests we will need to call
+  // ArrayExperimental::load_all_enumerations.
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
   auto schema = array.load_schema(ctx_, uri_);
   REQUIRE(
@@ -354,7 +364,7 @@ TEST_CASE_METHOD(
   ase.add_attribute(attr4);
   ase.array_evolve(uri_);
   array.reopen();
-  ArrayExperimental::load_all_enumerations(ctx_, array);
+  ArrayExperimental::load_all_enumerations(ctx_, array, true);
   auto all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_2 = schema.ptr()->array_schema()->name();
@@ -381,7 +391,7 @@ TEST_CASE_METHOD(
   // Apply evolution to the array and reopen.
   CHECK_NOTHROW(array.close());
   CHECK_NOTHROW(array.open(TILEDB_READ));
-  ArrayExperimental::load_all_enumerations(ctx_, array);
+  ArrayExperimental::load_all_enumerations(ctx_, array, true);
   all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_3 = schema.ptr()->array_schema()->name();
@@ -418,7 +428,7 @@ TEST_CASE_METHOD(
   // Apply evolution to the array and reopen.
   CHECK_NOTHROW(array.close());
   CHECK_NOTHROW(array.open(TILEDB_READ));
-  ArrayExperimental::load_all_enumerations(ctx_, array);
+  ArrayExperimental::load_all_enumerations(ctx_, array, true);
   all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_4 = schema.ptr()->array_schema()->name();

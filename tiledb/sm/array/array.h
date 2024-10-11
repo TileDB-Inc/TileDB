@@ -582,6 +582,14 @@ class Array {
       const std::string& enumeration_name);
 
   /**
+   * Load enumerations on all schemas for the array's opened timestamp range.
+   *
+   * @return Map of schema names and a list of all loaded enumerations.
+   */
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+  get_all_enumerations();
+
+  /**
    * Get the enumerations with the given names.
    *
    * This function retrieves the enumerations with the given names. If the
@@ -589,15 +597,19 @@ class Array {
    * loaded before this function returns.
    *
    * @param enumeration_names The names of the enumerations.
-   * @param schema The ArraySchema to store loaded enumerations in.
    * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
    */
   std::vector<shared_ptr<const Enumeration>> get_enumerations(
-      const std::vector<std::string>& enumeration_names,
-      shared_ptr<ArraySchema> schema);
+      const std::vector<std::string>& enumeration_names);
 
-  /** Load all enumerations for the array. */
-  void load_all_enumerations();
+  /**
+   * Load all enumerations for the array.
+   *
+   * @param all_schemas If true, enumerations will be loaded on all schemas
+   *    within the current opened timestamps on the array. If false, only load
+   *    enumerations on the latest array schema.
+   */
+  void load_all_enumerations(bool all_schemas = false);
 
   /**
    * Returns `true` if the array is empty at the time it is opened.

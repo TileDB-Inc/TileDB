@@ -657,9 +657,10 @@ capi_return_t tiledb_array_get_enumeration(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_array_load_all_enumerations(const tiledb_array_t* array) {
+capi_return_t tiledb_array_load_all_enumerations(
+    const tiledb_array_t* array, uint8_t all_schemas) {
   ensure_array_is_valid(array);
-  array->load_all_enumerations();
+  array->load_all_enumerations(all_schemas > 0);
   return TILEDB_OK;
 }
 
@@ -1050,7 +1051,8 @@ CAPI_INTERFACE(
 CAPI_INTERFACE(
     array_load_all_enumerations,
     tiledb_ctx_t* ctx,
-    const tiledb_array_t* array) {
+    const tiledb_array_t* array,
+    uint8_t all_schemas) {
   return api_entry_context<tiledb::api::tiledb_array_load_all_enumerations>(
-      ctx, array);
+      ctx, array, all_schemas);
 }

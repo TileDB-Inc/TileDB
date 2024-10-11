@@ -818,12 +818,77 @@ shared_ptr<const Enumeration> Array::get_enumeration(
     return schema->get_enumeration(enumeration_name);
   }
 
-  return get_enumerations({enumeration_name}, schema)[0];
+  return get_enumerations({enumeration_name})[0];
+}
+
+std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+Array::get_all_enumerations() {
+  if (!is_open_) {
+    throw ArrayException("Unable to load enumerations; Array is not open.");
+  }
+
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+      ret;
+  if (remote_) {
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException(
+          "Error loading enumerations; Remote array with no REST client.");
+    }
+
+    // Pass an empty list of enumeration names. REST will use timestamps to
+    // load all enumerations on all schemas for the array within that range.
+    ret = rest_client->post_enumerations_from_rest(
+        array_uri_,
+        array_dir_timestamp_start_,
+        array_dir_timestamp_end_,
+        this,
+        {},
+        memory_tracker_);
+
+    // Store the enumerations from the REST response.
+    for (const auto& schema_enmrs : ret) {
+      auto schema = array_schemas_all().at(schema_enmrs.first);
+      for (const auto& enmr : schema_enmrs.second) {
+        schema->store_enumeration(enmr);
+      }
+    }
+  } else {
+    for (const auto& schema : array_schemas_all()) {
+      std::unordered_set<std::string> enmrs_to_load;
+      auto enumeration_names = schema.second->get_enumeration_names();
+      // Dedupe requested names and filter out anything already loaded.
+      for (auto& enmr_name : enumeration_names) {
+        if (schema.second->is_enumeration_loaded(enmr_name)) {
+          continue;
+        }
+        enmrs_to_load.insert(enmr_name);
+      }
+
+      // Create a vector of paths to be loaded.
+      std::vector<std::string> paths_to_load;
+      for (auto& enmr_name : enmrs_to_load) {
+        auto path = schema.second->get_enumeration_path_name(enmr_name);
+        paths_to_load.push_back(path);
+      }
+
+      // Load the enumerations from storage
+      auto loaded = array_directory().load_enumerations_from_paths(
+          paths_to_load, *encryption_key(), memory_tracker_);
+
+      // Store the loaded enumerations in the schema.
+      for (auto& enmr : loaded) {
+        schema.second->store_enumeration(enmr);
+      }
+      ret[schema.first] = loaded;
+    }
+  }
+
+  return ret;
 }
 
 std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
-    const std::vector<std::string>& enumeration_names,
-    shared_ptr<ArraySchema> schema) {
+    const std::vector<std::string>& enumeration_names) {
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
@@ -831,7 +896,7 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
   // Dedupe requested names and filter out anything already loaded.
   std::unordered_set<std::string> enmrs_to_load;
   for (auto& enmr_name : enumeration_names) {
-    if (schema->is_enumeration_loaded(enmr_name)) {
+    if (array_schema_latest().is_enumeration_loaded(enmr_name)) {
       continue;
     }
     enmrs_to_load.insert(enmr_name);
@@ -854,18 +919,21 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
         names_to_load.push_back(enmr_name);
       }
 
-      loaded = rest_client->post_enumerations_from_rest(
-          array_uri_,
-          schema->timestamp_range().first,
-          schema->timestamp_range().second,
-          this,
-          names_to_load,
-          memory_tracker_);
+      loaded = rest_client
+                   ->post_enumerations_from_rest(
+                       array_uri_,
+                       array_dir_timestamp_start_,
+                       array_dir_timestamp_end_,
+                       this,
+                       names_to_load,
+                       memory_tracker_)
+                   .begin()
+                   ->second;
     } else {
       // Create a vector of paths to be loaded.
       std::vector<std::string> paths_to_load;
       for (auto& enmr_name : enmrs_to_load) {
-        auto path = schema->get_enumeration_path_name(enmr_name);
+        auto path = array_schema_latest().get_enumeration_path_name(enmr_name);
         paths_to_load.push_back(path);
       }
 
@@ -876,25 +944,42 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 
     // Store the loaded enumerations in the schema
     for (auto& enmr : loaded) {
-      schema->store_enumeration(enmr);
+      opened_array_->array_schema_latest_ptr()->store_enumeration(enmr);
     }
   }
 
   // Return the requested list of enumerations
   std::vector<shared_ptr<const Enumeration>> ret(enumeration_names.size());
   for (size_t i = 0; i < enumeration_names.size(); i++) {
-    ret[i] = schema->get_enumeration(enumeration_names[i]);
+    ret[i] = array_schema_latest().get_enumeration(enumeration_names[i]);
   }
   return ret;
 }
 
-void Array::load_all_enumerations() {
+void Array::load_all_enumerations(bool all_schemas) {
   if (!is_open_) {
     throw ArrayException("Unable to load all enumerations; Array is not open.");
   }
   // Load all enumerations, discarding the returned list of loaded enumerations.
-  for (const auto& schema : array_schemas_all()) {
-    get_enumerations(schema.second->get_enumeration_names(), schema.second);
+  if (all_schemas) {
+    // TODO: The enumerations are all here in a single request, they just need
+    // to be stored in a schema. Since array open v1 does not initialize
+    // array_schemas_all, we need to either serialize the full schemas with
+    // LoadEnumerationsResponse, or reopen the array using array open v2 (only
+    // if the config is set to use v1).
+
+    // For now, reopen the array if it's found to be using array open v1.
+    // Once we update to use post_array_schema_from_rest we will always have
+    // array_schemas_all initialized and this could go away.
+    if (!use_refactored_array_open()) {
+      throw_if_not_ok(config_.set("rest.use_refactored_array_open", "true"));
+      throw_if_not_ok(reopen());
+      throw_if_not_ok(config_.set("rest.use_refactored_array_open", "false"));
+    }
+
+    get_all_enumerations();
+  } else {
+    get_enumerations(array_schema_latest().get_enumeration_names());
   }
 }
 
