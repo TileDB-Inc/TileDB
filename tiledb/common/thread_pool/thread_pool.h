@@ -35,19 +35,27 @@
 
 #include "producer_consumer_queue.h"
 
+#include <concepts>
 #include <functional>
 #include <future>
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/macros.h"
-#include "tiledb/common/status.h"
 
 namespace tiledb::common {
 
+/** Class for Task status exceptions. */
+class TaskException : public StatusException {
+ public:
+  explicit TaskException(const std::string& msg)
+      : StatusException("Task", msg) {
+  }
+};
+
 class ThreadPool {
  public:
-  using Task = std::future<Status>;
+  using Task = std::future<void>;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -92,26 +100,19 @@ class ThreadPool {
    */
 
   template <class Fn, class... Args>
-  auto async(Fn&& f, Args&&... args) {
+  Task async(Fn&& f, Args&&... args)
+    requires std::same_as<std::invoke_result_t<Fn, std::decay_t<Args>...>, void>
+  {
     if (concurrency_level_ == 0) {
       Task invalid_future;
       LOG_ERROR("Cannot execute task; thread pool uninitialized.");
       return invalid_future;
     }
 
-    using R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>;
-
-    auto task = make_shared<std::packaged_task<R()>>(
-        HERE(),
-        [f = std::forward<Fn>(f),
-         args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
-          return std::apply(std::move(f), std::move(args));
-        });
-
-    std::future<R> future = task->get_future();
-
+    auto task = make_shared<std::packaged_task<void()>>(
+        HERE(), std::bind(std::forward<Fn>(f), std::forward<Args>(args)...));
+    auto future = task->get_future();
     task_queue_.push(task);
-
     return future;
   }
 
@@ -123,7 +124,9 @@ class ThreadPool {
    * @return std::future referring to the shared state created by this call
    */
   template <class Fn, class... Args>
-  auto execute(Fn&& f, Args&&... args) {
+  Task execute(Fn&& f, Args&&... args)
+    requires std::same_as<std::invoke_result_t<Fn, std::decay_t<Args>...>, void>
+  {
     return async(std::forward<Fn>(f), std::forward<Args>(args)...);
   }
 
@@ -133,25 +136,11 @@ class ThreadPool {
    * waiting.
    *
    * @param tasks Task list to wait on.
-   * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
-   * error status is returned
-   */
-  Status wait_all(std::vector<Task>& tasks);
-
-  /**
-   * Wait on all the given tasks to complete, returning a vector of their return
-   * Status.  Exceptions caught while waiting are returned as Status_TaskError.
-   * Status are saved at the same index in the return vector as the
-   * corresponding task in the input vector.  The status vector may contain more
-   * than one error Status.
    *
-   * This function is safe to call recursively and may execute pending tasks
-   * with the calling thread while waiting.
-   *
-   * @param tasks Task list to wait on
-   * @return Vector of each task's Status.
+   * @throws This function will throw the first exception thrown by one of the
+   * tasks.
    */
-  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
+  void wait_all(std::vector<Task>& tasks);
 
   /**
    * Wait on a single tasks to complete. This function is safe to call
@@ -159,10 +148,10 @@ class ThreadPool {
    * waiting.
    *
    * @param task Task to wait on.
-   * @return Status::Ok if the task returned Status::Ok, otherwise the error
-   * status is returned
+   *
+   * @throws This function will throw the exception thrown by task.
    */
-  Status wait(Task& task);
+  void wait(Task& task);
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -177,8 +166,8 @@ class ThreadPool {
 
   /** Producer-consumer queue where functions to be executed are kept */
   ProducerConsumerQueue<
-      shared_ptr<std::packaged_task<Status()>>,
-      std::deque<shared_ptr<std::packaged_task<Status()>>>>
+      shared_ptr<std::packaged_task<void()>>,
+      std::deque<shared_ptr<std::packaged_task<void()>>>>
       task_queue_;
 
   /** The worker threads */

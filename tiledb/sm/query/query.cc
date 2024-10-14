@@ -833,11 +833,10 @@ Status Query::process() {
       enmr_names.emplace_back(enmr_name);
     }
 
-    throw_if_not_ok(parallel_for(
+    parallel_for(
         &resources_.compute_tp(), 0, enmr_names.size(), [&](const uint64_t i) {
           array_->get_enumeration(enmr_names[i]);
-          return Status::Ok();
-        }));
+        });
 
     condition_->rewrite_enumeration_conditions(array_schema());
   }

@@ -249,13 +249,11 @@ Status DenseReader::dense_read() {
   std::vector<uint64_t> tiles_cell_num(tile_coords.size());
   {
     auto timer_se = stats_->start_timer("compute_tiles_cell_num");
-    auto status = parallel_for(
+    parallel_for(
         &resources_.compute_tp(), 0, tile_coords.size(), [&](uint64_t t) {
           tiles_cell_num[t] =
               subarray.tile_cell_num((const DimType*)&tile_coords[t][0]);
-          return Status::Ok();
         });
-    RETURN_NOT_OK(status);
   }
 
   // Compute tile offsets for global order or range info for row/col major.
@@ -429,7 +427,7 @@ Status DenseReader::dense_read() {
     // prevent using too much memory when the budget is small and doesn't allow
     // to process more than one batch at a time.
     if (wait_compute_task_before_read && compute_task.valid()) {
-      throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+      resources_.compute_tp().wait(compute_task);
     }
 
     // Apply the query condition.
@@ -475,7 +473,7 @@ Status DenseReader::dense_read() {
         // is to prevent using too much memory when the budget is small and
         // doesn't allow to process more than one batch at a time.
         if (wait_compute_task_before_read && compute_task.valid()) {
-          throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+          resources_.compute_tp().wait(compute_task);
         }
 
         // Read and unfilter tiles.
@@ -486,7 +484,7 @@ Status DenseReader::dense_read() {
       }
 
       if (compute_task.valid()) {
-        throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+        resources_.compute_tp().wait(compute_task);
         if (read_state_.overflowed_) {
           return Status::Ok();
         }
@@ -504,7 +502,7 @@ Status DenseReader::dense_read() {
                                                       result_tiles]() mutable {
         if (!dense_dim) {
           // Unfilter tiles.
-          RETURN_NOT_OK(unfilter_tiles(name, validity_only, result_tiles));
+          throw_if_not_ok(unfilter_tiles(name, validity_only, result_tiles));
 
           // The filtered data is no longer required, release it.
           filtered_data.reset();
@@ -513,7 +511,7 @@ Status DenseReader::dense_read() {
           if (buffers_.count(name) != 0) {
             // Copy attribute data to users buffers.
             auto& var_buffer_size = var_buffer_sizes[name];
-            auto status = copy_attribute<DimType, OffType>(
+            throw_if_not_ok(copy_attribute<DimType, OffType>(
                 name,
                 tile_extents,
                 subarray,
@@ -524,13 +522,13 @@ Status DenseReader::dense_read() {
                 range_info,
                 iteration_tile_data,
                 qc_result,
-                num_range_threads);
-            RETURN_CANCEL_OR_ERROR(status);
+                num_range_threads));
+            throw_if_cancelled();
           }
         }
 
         if (aggregates_.count(name) != 0) {
-          auto status = process_aggregates<DimType, OffType>(
+          throw_if_not_ok(process_aggregates<DimType, OffType>(
               name,
               tile_extents,
               subarray,
@@ -539,15 +537,13 @@ Status DenseReader::dense_read() {
               range_info,
               iteration_tile_data,
               qc_result,
-              num_range_threads);
-          RETURN_CANCEL_OR_ERROR(status);
+              num_range_threads));
+          throw_if_cancelled();
         }
 
         if (!dense_dim) {
           clear_tiles(name, result_tiles);
         }
-
-        return Status::Ok();
       });
     }
 
@@ -575,7 +571,7 @@ Status DenseReader::dense_read() {
   }
 
   if (compute_task.valid()) {
-    throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+    resources_.compute_tp().wait(compute_task);
   }
 
   // For `qc_coords_mode` just fill in the coordinates and skip attribute
@@ -1068,7 +1064,7 @@ Status DenseReader::apply_query_condition(
             NameToLoad::from_string_vec(qc_names), result_tiles));
 
     if (compute_task.valid()) {
-      throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+      resources_.compute_tp().wait(compute_task);
     }
 
     compute_task = resources_.compute_tp().execute([&,
@@ -1086,7 +1082,7 @@ Status DenseReader::apply_query_condition(
 
       // Unfilter tiles.
       for (auto& name : qc_names) {
-        RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
+        throw_if_not_ok(unfilter_tiles(name, false, result_tiles));
       }
 
       // The filtered data is no longer required, release it.
@@ -1097,7 +1093,7 @@ Status DenseReader::apply_query_condition(
       }
 
       // Process all tiles in parallel.
-      auto status = parallel_for_2d(
+      parallel_for_2d(
           &resources_.compute_tp(),
           iteration_tile_data->t_start(),
           iteration_tile_data->t_end(),
@@ -1184,10 +1180,7 @@ Status DenseReader::apply_query_condition(
 
               ++iter;
             }
-
-            return Status::Ok();
           });
-      throw_if_not_ok(status);
 
       // For `qc_coords_mode` just fill in the coordinates and skip
       // attribute
@@ -1197,8 +1190,6 @@ Status DenseReader::apply_query_condition(
           clear_tiles(name, result_tiles);
         }
       }
-
-      return Status::Ok();
     });
   }
 
@@ -1281,7 +1272,7 @@ Status DenseReader::copy_attribute(
     // Process offsets.
     {
       auto timer_se = stats_->start_timer("copy_offset_tiles");
-      auto status = parallel_for_2d(
+      parallel_for_2d(
           &resources_.compute_tp(),
           iteration_tile_data->t_start(),
           iteration_tile_data->t_end(),
@@ -1306,9 +1297,7 @@ Status DenseReader::copy_attribute(
                 qc_result,
                 range_thread_idx,
                 num_range_threads));
-            return Status::Ok();
           });
-      RETURN_NOT_OK(status);
     }
 
     {
@@ -1342,7 +1331,7 @@ Status DenseReader::copy_attribute(
     {
       auto timer_se = stats_->start_timer("copy_var_tiles");
       // Process var data in parallel.
-      auto status = parallel_for_2d(
+      parallel_for_2d(
           &resources_.compute_tp(),
           iteration_tile_data->t_start(),
           iteration_tile_data->t_end(),
@@ -1367,10 +1356,7 @@ Status DenseReader::copy_attribute(
                 var_buffer_size,
                 range_thread_idx,
                 num_range_threads));
-
-            return Status::Ok();
           });
-      RETURN_NOT_OK(status);
     }
   } else {
     // Make sure the user fixed buffer is big enough.
@@ -1384,7 +1370,7 @@ Status DenseReader::copy_attribute(
     {
       auto timer_se = stats_->start_timer("copy_fixed_tiles");
       // Process values in parallel.
-      auto status = parallel_for_2d(
+      parallel_for_2d(
           &resources_.compute_tp(),
           iteration_tile_data->t_start(),
           iteration_tile_data->t_end(),
@@ -1407,10 +1393,7 @@ Status DenseReader::copy_attribute(
                 qc_result,
                 range_thread_idx,
                 num_range_threads));
-
-            return Status::Ok();
           });
-      RETURN_NOT_OK(status);
     }
 
     // Set the output size for the fixed buffer.
@@ -1483,7 +1466,7 @@ Status DenseReader::process_aggregates(
   const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
   // Process values in parallel.
-  auto status = parallel_for_2d(
+  parallel_for_2d(
       &resources_.compute_tp(),
       iteration_tile_data->t_start(),
       iteration_tile_data->t_end(),
@@ -1518,10 +1501,7 @@ Status DenseReader::process_aggregates(
               range_thread_idx,
               num_range_threads));
         }
-
-        return Status::Ok();
       });
-  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }

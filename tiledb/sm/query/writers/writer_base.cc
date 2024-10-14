@@ -325,7 +325,7 @@ Status WriterBase::calculate_hilbert_values(
 
   // Calculate Hilbert values in parallel
   assert(hilbert_values.size() >= coords_info_.coords_num_);
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 0, coords_info_.coords_num_, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
@@ -334,11 +334,7 @@ Status WriterBase::calculate_hilbert_values(
               *dim, domain_buffers[d], c, bits, max_bucket_val);
         }
         hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
-
-        return Status::Ok();
       });
-
-  RETURN_NOT_OK_ELSE(status, logger_->error(status.message()));
 
   return Status::Ok();
 }
@@ -416,7 +412,7 @@ Status WriterBase::check_coord_oob() const {
   }
 
   // Check if all coordinates fall in the domain in parallel
-  auto status = parallel_for_2d(
+  parallel_for_2d(
       &resources_.compute_tp(),
       0,
       coords_info_.coords_num_,
@@ -425,11 +421,9 @@ Status WriterBase::check_coord_oob() const {
       [&](uint64_t c, unsigned d) {
         auto dim{array_schema_.dimension_ptr(d)};
         if (datatype_is_string(dim->type()))
-          return Status::Ok();
-        return dim->oob(buffs[d] + c * coord_sizes[d]);
+          return;
+        throw_if_not_ok(dim->oob(buffs[d] + c * coord_sizes[d]));
       });
-
-  RETURN_NOT_OK(status);
 
   // Success
   return Status::Ok();
@@ -598,18 +592,14 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
     }
   }
 
-  auto status =
-      parallel_for(&resources_.io_tp(), 0, file_uris.size(), [&](uint64_t i) {
-        const auto& file_uri = file_uris[i];
-        if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
-          resources_.vfs().finalize_and_close_file(file_uri);
-        } else {
-          throw_if_not_ok(resources_.vfs().close_file(file_uri));
-        }
-        return Status::Ok();
-      });
-
-  throw_if_not_ok(status);
+  parallel_for(&resources_.io_tp(), 0, file_uris.size(), [&](uint64_t i) {
+    const auto& file_uri = file_uris[i];
+    if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
+      resources_.vfs().finalize_and_close_file(file_uri);
+    } else {
+      throw_if_not_ok(resources_.vfs().close_file(file_uri));
+    }
+  });
 
   return Status::Ok();
 }
@@ -636,25 +626,21 @@ std::vector<NDRange> WriterBase::compute_mbrs(
 
   // Compute MBRs
   std::vector<NDRange> mbrs(tile_num);
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, tile_num, [&](uint64_t i) {
-        mbrs[i].resize(dim_num);
-        std::vector<const void*> data(dim_num);
-        for (unsigned d = 0; d < dim_num; ++d) {
-          auto dim{array_schema_.dimension_ptr(d)};
-          const auto& dim_name = dim->name();
-          auto tiles_it = tiles.find(dim_name);
-          assert(tiles_it != tiles.end());
-          mbrs[i][d] = dim->var_size() ?
-                           dim->compute_mbr_var(
-                               tiles_it->second[i].offset_tile(),
-                               tiles_it->second[i].var_tile()) :
-                           dim->compute_mbr(tiles_it->second[i].fixed_tile());
-        }
-
-        return Status::Ok();
-      });
-  throw_if_not_ok(status);
+  parallel_for(&resources_.compute_tp(), 0, tile_num, [&](uint64_t i) {
+    mbrs[i].resize(dim_num);
+    std::vector<const void*> data(dim_num);
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto dim{array_schema_.dimension_ptr(d)};
+      const auto& dim_name = dim->name();
+      auto tiles_it = tiles.find(dim_name);
+      assert(tiles_it != tiles.end());
+      mbrs[i][d] = dim->var_size() ?
+                       dim->compute_mbr_var(
+                           tiles_it->second[i].offset_tile(),
+                           tiles_it->second[i].var_tile()) :
+                       dim->compute_mbr(tiles_it->second[i].fixed_tile());
+    }
+  });
 
   return mbrs;
 }
@@ -675,12 +661,10 @@ void WriterBase::set_coords_metadata(
     return;
   }
 
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(), start_tile_idx, end_tile_idx, [&](uint64_t i) {
         meta->set_mbr(i - start_tile_idx, mbrs[i]);
-        return Status::Ok();
       });
-  throw_if_not_ok(status);
 
   // Set last tile cell number
   auto dim_0{array_schema_.dimension_ptr(0)};
@@ -696,7 +680,7 @@ Status WriterBase::compute_tiles_metadata(
 
   // Parallelize over attributes?
   if (tiles.size() > tile_num) {
-    auto st = parallel_for(compute_tp, 0, tiles.size(), [&](uint64_t i) {
+    parallel_for(compute_tp, 0, tiles.size(), [&](uint64_t i) {
       auto tiles_it = tiles.begin();
       std::advance(tiles_it, i);
       const auto& attr = tiles_it->first;
@@ -712,10 +696,7 @@ Status WriterBase::compute_tiles_metadata(
         md_generator.process_full_tile(tile);
         md_generator.set_tile_metadata(tile);
       }
-
-      return Status::Ok();
     });
-    RETURN_NOT_OK(st);
   } else {  // Parallelize over tiles
     for (auto& tile_vec : tiles) {
       const auto& attr = tile_vec.first;
@@ -725,15 +706,12 @@ Status WriterBase::compute_tiles_metadata(
       const auto var_size = array_schema_.var_size(attr);
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
-      auto st = parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
+      parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
         TileMetadataGenerator md_generator(
             type, is_dim, var_size, cell_size, cell_val_num);
         md_generator.process_full_tile(attr_tiles[t]);
         md_generator.set_tile_metadata(attr_tiles[t]);
-
-        return Status::Ok();
       });
-      RETURN_NOT_OK(st);
     }
   }
 
@@ -797,16 +775,13 @@ Status WriterBase::create_fragment(
 Status WriterBase::filter_tiles(
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
-        auto tiles_it = tiles->begin();
-        std::advance(tiles_it, i);
-        throw_if_not_ok(filter_tiles(tiles_it->first, &tiles_it->second));
-        throw_if_cancelled();
-        return Status::Ok();
-      });
+  parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+    auto tiles_it = tiles->begin();
+    std::advance(tiles_it, i);
+    throw_if_not_ok(filter_tiles(tiles_it->first, &tiles_it->second));
+    throw_if_cancelled();
+  });
 
-  RETURN_NOT_OK(status);
   return Status::Ok();
 }
 
@@ -834,26 +809,19 @@ Status WriterBase::filter_tiles(
   }
 
   // For fixed size, process everything, for var size, everything minus offsets.
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, args.size(), [&](uint64_t i) {
-        const auto& [tile, offset_tile, contains_offsets, is_nullable] =
-            args[i];
-        throw_if_not_ok(filter_tile(
-            name, tile, offset_tile, contains_offsets, is_nullable));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
+  parallel_for(&resources_.compute_tp(), 0, args.size(), [&](uint64_t i) {
+    const auto& [tile, offset_tile, contains_offsets, is_nullable] = args[i];
+    throw_if_not_ok(
+        filter_tile(name, tile, offset_tile, contains_offsets, is_nullable));
+  });
 
   // Process offsets for var size.
   if (var_size) {
-    auto status = parallel_for(
-        &resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
-          auto& tile = (*tiles)[i];
-          throw_if_not_ok(
-              filter_tile(name, &tile.offset_tile(), nullptr, true, false));
-          return Status::Ok();
-        });
-    RETURN_NOT_OK(status);
+    parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+      auto& tile = (*tiles)[i];
+      throw_if_not_ok(
+          filter_tile(name, &tile.offset_tile(), nullptr, true, false));
+    });
   }
 
   return Status::Ok();
@@ -1044,8 +1012,9 @@ Status WriterBase::write_tiles(
     tasks.push_back(resources_.io_tp().execute([&, this]() {
       auto& attr = it.first;
       auto& tiles = it.second;
-      RETURN_CANCEL_OR_ERROR(write_tiles(
+      throw_if_not_ok(write_tiles(
           start_tile_idx, end_tile_idx, attr, frag_meta, 0, &tiles));
+      throw_if_cancelled();
 
       // Fix var size attributes metadata.
       const auto var_size = array_schema_.var_size(attr);
@@ -1060,14 +1029,11 @@ Status WriterBase::write_tiles(
               attr, idx - start_tile_idx, tiles[idx].max());
         }
       }
-      return Status::Ok();
     }));
   }
 
-  // Wait for writes and check all statuses
-  auto statuses = resources_.io_tp().wait_all_status(tasks);
-  for (auto& st : statuses)
-    RETURN_NOT_OK(st);
+  // Wait for writes
+  resources_.io_tp().wait_all(tasks);
 
   return Status::Ok();
 }

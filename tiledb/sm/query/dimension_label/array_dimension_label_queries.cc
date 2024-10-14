@@ -151,7 +151,7 @@ std::vector<DimensionLabelQuery*> ArrayDimensionLabelQueries::get_data_query(
 }
 
 void ArrayDimensionLabelQueries::process_data_queries() {
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       data_queries_.size(),
@@ -160,18 +160,17 @@ void ArrayDimensionLabelQueries::process_data_queries() {
         try {
           query->init();
           throw_if_not_ok(query->process());
-          return Status::Ok();
         } catch (const StatusException& err) {
           throw DimensionLabelQueryException(
               "Failed to process data query for label '" +
               query->dim_label_name() + "'. " + err.what());
         }
-      }));
+      });
 }
 
 void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
   // Process queries and update the subarray.
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       label_range_queries_by_dim_idx_.size(),
@@ -201,13 +200,12 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
             parent_query->add_index_ranges_from_label(
                 dim_idx, is_point_ranges, range_data, count);
           }
-          return Status::Ok();
         } catch (const StatusException& err) {
           throw DimensionLabelQueryException(
               "Failed to process and update index ranges for label '" +
               range_query->dim_label_name() + "'. " + err.what());
         }
-      }));
+      });
 
   // Mark the range query as completed.
   range_query_status_ = QueryStatus::COMPLETED;

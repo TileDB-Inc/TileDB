@@ -74,48 +74,38 @@ load_delete_and_update_conditions(
   auto conditions = std::vector<QueryCondition>(locations.size());
   auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());
 
-  auto status =
-      parallel_for(&resources.compute_tp(), 0, locations.size(), [&](size_t i) {
-        // Get condition marker.
-        auto& uri = locations[i].uri();
+  parallel_for(&resources.compute_tp(), 0, locations.size(), [&](size_t i) {
+    // Get condition marker.
+    auto& uri = locations[i].uri();
 
-        // Read the condition from storage.
-        auto tile = GenericTileIO::load(
-            resources,
-            uri,
-            locations[i].offset(),
-            *(opened_array.encryption_key()),
-            resources.ephemeral_memory_tracker());
+    // Read the condition from storage.
+    auto tile = GenericTileIO::load(
+        resources,
+        uri,
+        locations[i].offset(),
+        *(opened_array.encryption_key()),
+        resources.ephemeral_memory_tracker());
 
-        if (tiledb::sm::utils::parse::ends_with(
-                locations[i].condition_marker(),
-                tiledb::sm::constants::delete_file_suffix)) {
-          conditions[i] = tiledb::sm::deletes_and_updates::serialization::
-              deserialize_condition(
-                  i,
-                  locations[i].condition_marker(),
-                  tile->data(),
-                  tile->size());
-        } else if (tiledb::sm::utils::parse::ends_with(
-                       locations[i].condition_marker(),
-                       tiledb::sm::constants::update_file_suffix)) {
-          auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
-              deserialize_update_condition_and_values(
-                  i,
-                  locations[i].condition_marker(),
-                  tile->data(),
-                  tile->size());
-          conditions[i] = std::move(cond);
-          update_values[i] = std::move(uvs);
-        } else {
-          throw ArrayOperationsException("Unknown condition marker extension");
-        }
+    if (tiledb::sm::utils::parse::ends_with(
+            locations[i].condition_marker(),
+            tiledb::sm::constants::delete_file_suffix)) {
+      conditions[i] =
+          tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
+              i, locations[i].condition_marker(), tile->data(), tile->size());
+    } else if (tiledb::sm::utils::parse::ends_with(
+                   locations[i].condition_marker(),
+                   tiledb::sm::constants::update_file_suffix)) {
+      auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
+          deserialize_update_condition_and_values(
+              i, locations[i].condition_marker(), tile->data(), tile->size());
+      conditions[i] = std::move(cond);
+      update_values[i] = std::move(uvs);
+    } else {
+      throw ArrayOperationsException("Unknown condition marker extension");
+    }
 
-        throw_if_not_ok(
-            conditions[i].check(opened_array.array_schema_latest()));
-        return Status::Ok();
-      });
-  throw_if_not_ok(status);
+    throw_if_not_ok(conditions[i].check(opened_array.array_schema_latest()));
+  });
 
   return {conditions, update_values};
 }

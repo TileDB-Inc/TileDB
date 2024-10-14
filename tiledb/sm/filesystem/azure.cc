@@ -838,11 +838,9 @@ Status Azure::remove_blob(const URI& uri) const {
 Status Azure::remove_dir(const URI& uri) const {
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(uri, &paths, ""));
-  auto status = parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
+  parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
     throw_if_not_ok(remove_blob(URI(paths[i])));
-    return Status::Ok();
   });
-  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1054,10 +1052,7 @@ Status Azure::write_blocks(
   if (num_ops == 1) {
     const std::string block_id = state->next_block_id();
 
-    const Status st =
-        upload_block(container_name, blob_path, buffer, length, block_id);
-    state->update_st(st);
-    return st;
+    upload_block(container_name, blob_path, buffer, length, block_id);
   } else {
     std::vector<ThreadPool::Task> tasks;
     tasks.reserve(num_ops);
@@ -1070,21 +1065,17 @@ Status Azure::write_blocks(
       const uint64_t thread_buffer_len = end - begin + 1;
       const std::string block_id = state->next_block_id();
 
-      std::function<Status()> upload_block_fn = std::bind(
+      tasks.emplace_back(thread_pool_->execute(
           &Azure::upload_block,
           this,
           container_name,
           blob_path,
           thread_buffer,
           thread_buffer_len,
-          block_id);
-      ThreadPool::Task task = thread_pool_->execute(std::move(upload_block_fn));
-      tasks.emplace_back(std::move(task));
+          block_id));
     }
 
-    const Status st = thread_pool_->wait_all(tasks);
-    state->update_st(st);
-    return st;
+    thread_pool_->wait_all(tasks);
   }
 
   return Status::Ok();
@@ -1153,7 +1144,7 @@ LsObjects Azure::list_blobs_impl(
   }
 }
 
-Status Azure::upload_block(
+void Azure::upload_block(
     const std::string& container_name,
     const std::string& blob_path,
     const void* const buffer,
@@ -1162,16 +1153,9 @@ Status Azure::upload_block(
   const auto& c = client();
   ::Azure::Core::IO::MemoryBodyStream stream(
       static_cast<const uint8_t*>(buffer), static_cast<size_t>(length));
-  try {
-    c.GetBlobContainerClient(container_name)
-        .GetBlockBlobClient(blob_path)
-        .StageBlock(block_id, stream);
-  } catch (const ::Azure::Storage::StorageException& e) {
-    return LOG_STATUS(Status_AzureError(
-        "Upload block failed on: " + blob_path + "; " + e.Message));
-  }
-
-  return Status::Ok();
+  c.GetBlobContainerClient(container_name)
+      .GetBlockBlobClient(blob_path)
+      .StageBlock(block_id, stream);
 }
 
 Status Azure::parse_azure_uri(
