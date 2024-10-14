@@ -50,7 +50,7 @@ Data files containing cell offsets are filtered with the filters specified in th
 
 Data files containing cell validity vectors are filtered with the filters specified in the _Validity filters_ field of the [array schema](./array_schema.md#array-schema-file).
 
-Timestamp, delete timestamp and delete condition index attributes are filtered with the filters specified in the _Coords filters_ field of the [array schema](./array_schema.md#array-schema-file).
+Timestamp, delete timestamp, and delete condition index attributes are filtered with the filters specified in the _Coords filters_ field of the [array schema](./array_schema.md#array-schema-file).
 
 > [!NOTE]
 > Prior to version 9, data files were named after their corresponding attributes or dimensions.
@@ -308,7 +308,7 @@ Prior to version 5, dimension data for sparse cells are combined in a single til
 Coordinates of a multi-dimensional array are placed in either zipped or unzipped order. In zipped order, coordinates of a cell are placed next to each other and ordered by the cell index, while in unzipped order, all coordinates values of a dimension are placed next to each other and ordered by the dimension index.
 
 * Since version 2, coordinates are always stored unzipped.
-* In version 1, coordinates are stored unzipped if a [compression filter](./tile.md#compression-filters) exists in the filter list, otherwise they are stored zipped.
+* In version 1, coordinates are stored unzipped if a [compression filter](./tile.md#compression-filters) exists in the filter list. Otherwise, they are stored zipped.
 
 ## Legacy Fragment metadata file
 

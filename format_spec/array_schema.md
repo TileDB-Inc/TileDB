@@ -116,6 +116,6 @@ The current domain format is versioned separately from arrays. The current versi
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Version number | `uint32_t` | Current domain version number |
-| Empty | `uint8_t` | Whether the current domain has a representation(e.g. NDRectangle) set or not |
+| Empty | `uint8_t` | Whether the current domain has a representation (e.g. NDRectangle) set |
 | Type | `uint8_t` | The type of current domain stored in this file |
 | NDRectangle | [MBR](./fragment.md#mbr) | A hyperrectangle defined using [1DRange](./fragment.md#mbr) items for each dimension |
