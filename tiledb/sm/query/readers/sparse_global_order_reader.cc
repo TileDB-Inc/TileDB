@@ -252,7 +252,7 @@ void SparseGlobalOrderReader<BitmapType>::load_all_tile_offsets() {
           std::to_string(total_tile_offset_usage) +
           ") is larger than available memory (" +
           std::to_string(available_memory) +
-          "). Total budget for array data (" +
+          "), increase memory budget. Total budget for array data (" +
           std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
     }
 

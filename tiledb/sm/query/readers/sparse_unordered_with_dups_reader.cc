@@ -264,7 +264,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
             std::to_string(total_tile_offset_usage) +
             ") is larger than available memory (" +
             std::to_string(available_memory) +
-            "). Total budget for array data (" +
+            "), increase memory budget. Total budget for array data (" +
             std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
       }
 
@@ -378,9 +378,11 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     // available memory, allow loading it so we can make progress.
     if (!result_tiles.empty() || tiles_size > available_memory()) {
       logger_->debug(
-          "Total memory budget of {0} exceeded adding result tiles, fragment "
-          "{1}, tile {2}/{3} with size {4}",
+          "Total memory budget of {0} exceeded adding result tiles with upper "
+          "memory limit of {1}, fragment "
+          "{2}, tile {3}/{4} with size {5}",
           memory_budget_.total_budget(),
+          upper_memory_limit,
           f,
           t,
           last_t,
