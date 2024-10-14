@@ -102,11 +102,11 @@ jobs:
       - name: Install aarch64 cross compilation prerequisites
         if: ${{ matrix.platform == 'linux-aarch64' }}
         run: |
-          apt-get install -y cmake gcc g++ ninja-build libtool autoconf pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu curl zip unzip tar
+          yum install -y cmake devtoolset-7 ninja-build libtool autoconf gcc-aarch64-linux-gnu gcc-c++-aarch64-linux-gnu curl zip unzip tar
           # Use upstream libmagic port which supports cross-compilation.
           rm -rf ports/libmagic
       - name: Install manylinux prerequisites
-        if: matrix.manylinux
+        if: ${{ startsWith(matrix.platform, 'linux-x86_64') == true }}
         run: |
           set -e pipefail
           yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
