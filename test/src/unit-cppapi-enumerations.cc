@@ -389,9 +389,8 @@ TEST_CASE_METHOD(
   ase2.drop_attribute("attr1");
   CHECK_NOTHROW(ase2.array_evolve(uri_));
   // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(array.close());
-  CHECK_NOTHROW(array.open(TILEDB_READ));
-  ArrayExperimental::load_all_enumerations(ctx_, array, true);
+  CHECK_NOTHROW(array.reopen());
+  CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array, true));
   all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_3 = schema.ptr()->array_schema()->name();
@@ -426,9 +425,8 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(ase3.array_evolve(uri_));
 
   // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(array.close());
-  CHECK_NOTHROW(array.open(TILEDB_READ));
-  ArrayExperimental::load_all_enumerations(ctx_, array, true);
+  CHECK_NOTHROW(array.reopen());
+  CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array, true));
   all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_4 = schema.ptr()->array_schema()->name();
