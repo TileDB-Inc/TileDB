@@ -92,6 +92,7 @@ void serialize_load_enumerations_response(
 
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
+    const Array& array,
     SerializationType serialization_type,
     span<const char> response,
     shared_ptr<MemoryTracker> memory_tracker);

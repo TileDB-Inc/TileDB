@@ -919,16 +919,13 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
         names_to_load.push_back(enmr_name);
       }
 
-      loaded = rest_client
-                   ->post_enumerations_from_rest(
-                       array_uri_,
-                       array_dir_timestamp_start_,
-                       array_dir_timestamp_end_,
-                       this,
-                       names_to_load,
-                       memory_tracker_)
-                   .begin()
-                   ->second;
+      loaded = rest_client->post_enumerations_from_rest(
+          array_uri_,
+          array_dir_timestamp_start_,
+          array_dir_timestamp_end_,
+          this,
+          names_to_load,
+          memory_tracker_)[array_schema_latest().name()];
     } else {
       // Create a vector of paths to be loaded.
       std::vector<std::string> paths_to_load;
