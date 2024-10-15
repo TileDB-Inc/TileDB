@@ -334,17 +334,12 @@ TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP API: Load All Enumerations - All Schemas",
     "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
-  auto cfg = ctx_.config();
-  cfg["rest.use_refactored_array_open"] = "false";
-  cfg["rest.use_refactored_array_open_and_query_submit"] = "false";
-  vfs_test_setup_.update_config(cfg.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
   create_array();
 
   // Loading the array with array open v1 will only initialize the latest schema
   // For the first test this is fine, we only need to load enumerations for the
   // latest schema. In subsequent tests we will need to call
-  // ArrayExperimental::load_all_enumerations.
+  // ArrayExperimental::load_enumerations_all_schemas.
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
   auto schema = array.load_schema(ctx_, uri_);
   REQUIRE(

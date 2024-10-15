@@ -1266,10 +1266,12 @@ struct LoadEnumerationsRequest {
 
 struct LoadEnumerationsResponse {
   enumerations @0 :List(Enumeration);
-  # The loaded enumerations
+  # The loaded enumerations for the latest array schema
+  # This field is only used if enumerations are requested for the latest schema
 
   allEnumerations @1 :MapEnumeration;
   # The loaded enumerations for all array schemas
+  # This field is only used if enumerations are requested for all schemas
 }
 
 struct LoadArraySchemaRequest {

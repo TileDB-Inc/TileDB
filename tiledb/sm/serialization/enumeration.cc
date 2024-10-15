@@ -201,8 +201,8 @@ load_enumerations_response_from_capnp(
       loaded_enmrs.push_back(
           enumeration_from_capnp(enmr_reader, memory_tracker));
     }
-    // The name of the array schema will not be used if we only loaded
-    // enumerations on the latest array schema.
+    // The name of the latest array schema will not be serialized in the
+    // response if we are only loading enumerations from the latest schema.
     return {{array.array_schema_latest().name(), loaded_enmrs}};
   } else if (reader.hasAllEnumerations()) {
     auto all_enmrs_reader = reader.getAllEnumerations();

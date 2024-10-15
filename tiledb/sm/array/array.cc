@@ -959,11 +959,11 @@ void Array::load_all_enumerations(bool all_schemas) {
   }
   // Load all enumerations, discarding the returned list of loaded enumerations.
   if (all_schemas) {
-    // TODO: The enumerations are all here in a single request, they just need
-    // to be stored in a schema. Since array open v1 does not initialize
-    // array_schemas_all, we need to either serialize the full schemas with
-    // LoadEnumerationsResponse, or reopen the array using array open v2 (only
-    // if the config is set to use v1).
+    // Since array open v1 does not initialize array_schemas_all, we need to
+    // either serialize the full schemas with LoadEnumerationsResponse, or
+    // reopen the array using array open v2 (only if the config is set to use
+    // v1) so that we can store the enumerations from the response in the
+    // correct schemas using the schema names.
 
     // For now, reopen the array if it's found to be using array open v1.
     // Once we update to use post_array_schema_from_rest we will always have

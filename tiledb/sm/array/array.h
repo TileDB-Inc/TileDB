@@ -573,7 +573,7 @@ class Array {
    *
    * This function retrieves the enumeration for the given name. If the
    * corresponding enumeration has not been loaded from storage it is
-   * loaded before this function returns.
+   * loaded and stored in the latest schema before this function returns.
    *
    * @param enumeration_name The name of the enumeration.
    * @return shared_ptr<const Enumeration> or nullptr on failure.
@@ -583,6 +583,9 @@ class Array {
 
   /**
    * Load enumerations on all schemas for the array's opened timestamp range.
+   * This function will store all loaded enumerations into their corresponding
+   * schemas. The returned enumerations are provided as a convenience to the
+   * caller and can be discarded if loading the enumerations is sufficient.
    *
    * @return Map of schema names and a list of all loaded enumerations.
    */
