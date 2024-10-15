@@ -326,7 +326,7 @@ TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: Array load_all_enumerations - Check nullptr",
     "[enumeration][array-load-all-enumerations][rest]") {
-  auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr, 0);
+  auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr);
   REQUIRE(rc != TILEDB_OK);
 }
 
@@ -364,7 +364,7 @@ TEST_CASE_METHOD(
   ase.add_attribute(attr4);
   ase.array_evolve(uri_);
   array.reopen();
-  ArrayExperimental::load_all_enumerations(ctx_, array, true);
+  ArrayExperimental::load_enumerations_all_schemas(ctx_, array);
   auto all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_2 = schema.ptr()->array_schema()->name();
@@ -390,7 +390,7 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(ase2.array_evolve(uri_));
   // Apply evolution to the array and reopen.
   CHECK_NOTHROW(array.reopen());
-  CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array, true));
+  CHECK_NOTHROW(ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
   all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_3 = schema.ptr()->array_schema()->name();
@@ -426,7 +426,7 @@ TEST_CASE_METHOD(
 
   // Apply evolution to the array and reopen.
   CHECK_NOTHROW(array.reopen());
-  CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array, true));
+  CHECK_NOTHROW(ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
   all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_4 = schema.ptr()->array_schema()->name();

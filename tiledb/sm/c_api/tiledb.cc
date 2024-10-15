@@ -2202,7 +2202,7 @@ capi_return_t tiledb_handle_load_enumerations_request(
       std::vector<shared_ptr<const tiledb::sm::Enumeration>>>
       enumerations;
   if (enumeration_names.empty()) {
-    enumerations = array->get_all_enumerations();
+    enumerations = array->get_enumerations_all_schemas();
   } else {
     enumerations[array->array_schema_latest().name()] =
         array->get_enumerations(enumeration_names);

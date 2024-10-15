@@ -569,7 +569,7 @@ class Array {
       EncryptionType* encryption_type);
 
   /**
-   * Get the enumeration for the given name.
+   * Get the enumeration for the given name from the latest array schema.
    *
    * This function retrieves the enumeration for the given name. If the
    * corresponding enumeration has not been loaded from storage it is
@@ -587,10 +587,10 @@ class Array {
    * @return Map of schema names and a list of all loaded enumerations.
    */
   std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
-  get_all_enumerations();
+  get_enumerations_all_schemas();
 
   /**
-   * Get the enumerations with the given names.
+   * Get the enumerations with the given names from the latest array schema.
    *
    * This function retrieves the enumerations with the given names. If the
    * corresponding enumerations have not been loaded from storage they are

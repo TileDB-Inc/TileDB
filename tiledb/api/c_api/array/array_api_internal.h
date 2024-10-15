@@ -150,8 +150,8 @@ struct tiledb_array_handle_t
   std::unordered_map<
       std::string,
       std::vector<shared_ptr<const tiledb::sm::Enumeration>>>
-  get_all_enumerations() {
-    return array_->get_all_enumerations();
+  get_enumerations_all_schemas() {
+    return array_->get_enumerations_all_schemas();
   }
 
   std::vector<shared_ptr<const tiledb::sm::Enumeration>> get_enumerations(

@@ -822,7 +822,7 @@ shared_ptr<const Enumeration> Array::get_enumeration(
 }
 
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
-Array::get_all_enumerations() {
+Array::get_enumerations_all_schemas() {
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
@@ -977,7 +977,7 @@ void Array::load_all_enumerations(bool all_schemas) {
       throw_if_not_ok(config_.set("rest.use_refactored_array_open", "false"));
     }
 
-    get_all_enumerations();
+    get_enumerations_all_schemas();
   } else {
     get_enumerations(array_schema_latest().get_enumeration_names());
   }
