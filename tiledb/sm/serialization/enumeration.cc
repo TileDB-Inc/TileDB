@@ -40,6 +40,7 @@
 // clang-format on
 
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/enumeration.h"

@@ -1141,7 +1141,7 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(Array::evolve_array_schema(
       ctx_.resources(), uri_, ase.get(), array->get_encryption_key()));
   CHECK(array->reopen().ok());
-  CHECK_NOTHROW(array->load_all_enumerations());
+  CHECK_NOTHROW(array->load_all_enumerations(true));
   auto all_schemas = array->array_schemas_all();
   schema = array->array_schema_latest_ptr();
   std::string schema_name_2 = schema->name();
@@ -1162,7 +1162,7 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(Array::evolve_array_schema(
       ctx_.resources(), uri_, ase.get(), array->get_encryption_key()));
   CHECK(array->reopen().ok());
-  CHECK_NOTHROW(array->load_all_enumerations());
+  CHECK_NOTHROW(array->load_all_enumerations(true));
   all_schemas = array->array_schemas_all();
   schema = array->array_schema_latest_ptr();
   std::string schema_name_3 = schema->name();
