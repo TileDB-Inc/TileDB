@@ -142,7 +142,7 @@ jobs:
             build/tiledb-*.zip*
       - name: "Print log files (failed build only)"
         run: |
-          $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+          sh $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
 
   Test-Release-Artifacts:
