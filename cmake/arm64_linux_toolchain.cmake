@@ -9,11 +9,11 @@ set(TARGET_CC $ENV{TARGET_CC})
 set(TARGET_CXX $ENV{TARGET_CXX})
 
 if (NOT TARGET_CC)
-  set(TARGET_CC "aarch64-linux-gnu-gcc")
+  set(TARGET_CC "aarch64-unknown-linux-gnu-gcc")
 endif()
 
 if (NOT TARGET_CXX)
-  set(TARGET_CXX "aarch64-linux-gnu-g++")
+  set(TARGET_CXX "aarch64-unknown-linux-gnu-g++")
 endif()
 
 # Name of C compiler.
