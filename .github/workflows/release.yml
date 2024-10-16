@@ -60,7 +60,7 @@ jobs:
             os: ubuntu-24.04
             cmake_args: -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$PWD/cmake/arm64_linux_toolchain.cmake
             triplet: arm64-linux-release
-            manylinux: quay.io/pypa/manylinux2014_x86_64
+            manylinux: quay.io/pypa/manylinux_2_28_x86_64
           - platform: macos-x86_64
             os: macos-12
             MACOSX_DEPLOYMENT_TARGET: 11
