@@ -102,6 +102,7 @@ jobs:
       - name: Install aarch64 cross compilation prerequisites
         if: ${{ matrix.platform == 'linux-aarch64' }}
         run: |
+          apt-get update
           apt-get install -y cmake ninja-build libtool autoconf pkg-config curl zip unzip tar
           # Use upstream libmagic port which supports cross-compilation.
           rm -rf ports/libmagic
