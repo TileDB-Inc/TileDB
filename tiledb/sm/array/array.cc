@@ -805,19 +805,6 @@ void Array::encryption_type(
 
 shared_ptr<const Enumeration> Array::get_enumeration(
     const std::string& enumeration_name) {
-  if (!is_open_) {
-    throw ArrayException("Unable to load enumerations; Array is not open.");
-  }
-
-  auto schema = opened_array_->array_schema_latest_ptr();
-  if (!schema->has_enumeration(enumeration_name)) {
-    throw ArrayException(
-        "Unable to get enumeration; Enumeration '" + enumeration_name +
-        "' does not exist.");
-  } else if (schema->is_enumeration_loaded(enumeration_name)) {
-    return schema->get_enumeration(enumeration_name);
-  }
-
   return get_enumerations({enumeration_name})[0];
 }
 
