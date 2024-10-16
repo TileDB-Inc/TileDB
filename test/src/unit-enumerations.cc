@@ -1128,6 +1128,16 @@ TEST_CASE_METHOD(
   REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
   std::string schema_name_1 = schema->name();
 
+  // If not using array open v3 just test that the correct exception is thrown
+  if (!array->use_refactored_array_open()) {
+    CHECK_THROWS_WITH(
+        array->load_all_enumerations(true),
+        Catch::Matchers::ContainsSubstring(
+            "The array must be opened using "
+            "`rest.use_refactored_array_open=true`"));
+    return;
+  }
+
   // Evolve once to add an enumeration.
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   std::vector<std::string> var_values{"one", "two", "three"};

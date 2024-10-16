@@ -349,6 +349,16 @@ TEST_CASE_METHOD(
       false);
   std::string schema_name_1 = schema.ptr()->array_schema()->name();
 
+  // If not using array open v3 just test that the correct exception is thrown
+  if (!array.ptr()->array()->use_refactored_array_open()) {
+    CHECK_THROWS_WITH(
+        ArrayExperimental::load_enumerations_all_schemas(ctx_, array),
+        Catch::Matchers::ContainsSubstring(
+            "The array must be opened using "
+            "`rest.use_refactored_array_open=true`"));
+    return;
+  }
+
   // Evolve once to add an enumeration.
   ArraySchemaEvolution ase(ctx_);
   std::vector<std::string> var_values{"one", "two", "three"};
@@ -359,7 +369,7 @@ TEST_CASE_METHOD(
   ase.add_attribute(attr4);
   ase.array_evolve(uri_);
   array.reopen();
-  ArrayExperimental::load_enumerations_all_schemas(ctx_, array);
+  CHECK_NOTHROW(ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
   auto all_schemas = array.ptr()->array()->array_schemas_all();
   schema = array.load_schema(ctx_, uri_);
   std::string schema_name_2 = schema.ptr()->array_schema()->name();

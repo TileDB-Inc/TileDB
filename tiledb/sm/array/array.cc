@@ -946,19 +946,13 @@ void Array::load_all_enumerations(bool all_schemas) {
   }
   // Load all enumerations, discarding the returned list of loaded enumerations.
   if (all_schemas) {
-    // Since array open v1 does not initialize array_schemas_all, we need to
-    // either serialize the full schemas with LoadEnumerationsResponse, or
-    // reopen the array using array open v2 (only if the config is set to use
-    // v1) so that we can store the enumerations from the response in the
-    // correct schemas using the schema names.
-
-    // For now, reopen the array if it's found to be using array open v1.
-    // Once we update to use post_array_schema_from_rest we will always have
-    // array_schemas_all initialized and this could go away.
+    // Unless we are using array open V3, Array::array_schemas_all_ will not be
+    // initialized. We throw an exception since this is required to store the
+    // loaded enumerations.
     if (!use_refactored_array_open()) {
-      throw_if_not_ok(config_.set("rest.use_refactored_array_open", "true"));
-      throw_if_not_ok(reopen());
-      throw_if_not_ok(config_.set("rest.use_refactored_array_open", "false"));
+      throw ArrayException(
+          "Unable to load enumerations for all array schemas; The array must "
+          "be opened using `rest.use_refactored_array_open=true`");
     }
 
     get_enumerations_all_schemas();
