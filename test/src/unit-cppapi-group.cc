@@ -65,6 +65,10 @@ struct GroupCPPFx {
   GroupCPPFx();
   void create_array(const std::string& path) const;
   std::vector<tiledb::Object> read_group(const tiledb::Group& group) const;
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+  read_group_details(const tiledb::Group& group) const;
+  // compare type and name of objects, but not the URIs that do not match on
+  // remote arrays
   void set_group_timestamp(
       tiledb::Group* group, const uint64_t& timestamp) const;
 };
@@ -88,6 +92,17 @@ std::vector<tiledb::Object> GroupCPPFx::read_group(
   for (uint64_t i = 0; i < count; i++) {
     tiledb::Object obj = group.member(i);
     ret.emplace_back(obj);
+  }
+  return ret;
+}
+
+std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+GroupCPPFx::read_group_details(const tiledb::Group& group) const {
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>> ret;
+  uint64_t count = group.member_count();
+  for (uint64_t i = 0; i < count; i++) {
+    tiledb::Object obj = group.member(i);
+    ret.emplace_back(obj.type(), obj.name());
   }
   return ret;
 }
@@ -311,13 +326,19 @@ TEST_CASE_METHOD(
           vfs_test_setup_.with_prefix(group2_uri),
           "group2"),
   };
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+      group1_exp_det = {
+          {tiledb::Object::Type::Array, "array1"},
+          {tiledb::Object::Type::Array, "array2"},
+          {tiledb::Object::Type::Group, "group2"}};
   std::vector<tiledb::Object> group2_expected = {
       tiledb::Object(
           tiledb::Object::Type::Array,
           vfs_test_setup_.with_prefix(array3_uri),
           "array3"),
   };
-  std::cerr << group1_expected[0].uri() << std::endl;
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+      group2_exp_det = {{tiledb::Object::Type::Array, "array3"}};
 
   tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
   group1.close();
@@ -352,13 +373,23 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_READ);
 
-  std::vector<tiledb::Object> group1_received = read_group(group1);
-  REQUIRE_THAT(
-      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
-
-  std::vector<tiledb::Object> group2_received = read_group(group2);
-  REQUIRE_THAT(
-      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+  // group URIs returned on remote array open are actually trasformed by the
+  // REST server if the form `tiledb://UUID` so they don't match the initial
+  // `tiledb://{namespace}/fs://temp_dir/name` format, so let's only compare the
+  // other fields of the objects.
+  if (vfs_test_setup_.is_rest()) {
+    REQUIRE_THAT(
+        read_group_details(group1),
+        Catch::Matchers::UnorderedEquals(group1_exp_det));
+    REQUIRE_THAT(
+        read_group_details(group2),
+        Catch::Matchers::UnorderedEquals(group2_exp_det));
+  } else {
+    REQUIRE_THAT(
+        read_group(group1), Catch::Matchers::UnorderedEquals(group1_expected));
+    REQUIRE_THAT(
+        read_group(group2), Catch::Matchers::UnorderedEquals(group2_expected));
+  }
 
   // Close group
   group1.close();
@@ -373,10 +404,12 @@ TEST_CASE_METHOD(
   group1.remove_member("group2");
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
+  group1_exp_det.resize(group1_exp_det.size() - 1);
 
   group2.remove_member("array3");
   // There should be nothing left in group2
   group2_expected.clear();
+  group2_exp_det.clear();
 
   // Close group
   group1.close();
@@ -388,14 +421,18 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
-  group1_received = read_group(group1);
-  REQUIRE_THAT(
-      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+  if (vfs_test_setup_.is_rest()) {
+    REQUIRE_THAT(
+        read_group_details(group1),
+        Catch::Matchers::UnorderedEquals(group1_exp_det));
+  } else {
+    REQUIRE_THAT(
+        read_group(group1), Catch::Matchers::UnorderedEquals(group1_expected));
+    const auto& obj = group1.member(group1_expected[0].name().value());
+    REQUIRE(obj == group1_expected[0]);
+  }
 
-  const auto& obj = group1.member(group1_expected[0].name().value());
-  REQUIRE(obj == group1_expected[0]);
-
-  group2_received = read_group(group2);
+  auto group2_received = read_group(group2);
   REQUIRE_THAT(
       group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
 
@@ -410,7 +447,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, write/read", "[cppapi][group][read][rest]") {
+    GroupCPPFx,
+    "C++ API: Group, write/read",
+    "[cppapi][group][read][rest-fails][sc-57858]") {
   // Create and open group in write mode
   std::string array1_uri = vfs_test_setup_.array_uri("array1");
   std::string array2_uri = vfs_test_setup_.array_uri("array2");
@@ -440,12 +479,19 @@ TEST_CASE_METHOD(
           vfs_test_setup_.with_prefix(group2_uri),
           std::nullopt),
   };
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+      group1_exp_det = {
+          {tiledb::Object::Type::Array, std::nullopt},
+          {tiledb::Object::Type::Array, std::nullopt},
+          {tiledb::Object::Type::Group, std::nullopt}};
   std::vector<tiledb::Object> group2_expected = {
       tiledb::Object(
           tiledb::Object::Type::Array,
           vfs_test_setup_.with_prefix(array3_uri),
           std::nullopt),
   };
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+      group2_exp_det = {{tiledb::Object::Type::Array, std::nullopt}};
 
   tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
   group1.close();
@@ -478,13 +524,25 @@ TEST_CASE_METHOD(
   group1.open(TILEDB_READ);
   group2.open(TILEDB_READ);
 
-  std::vector<tiledb::Object> group1_received = read_group(group1);
-  REQUIRE_THAT(
-      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
-
-  std::vector<tiledb::Object> group2_received = read_group(group2);
-  REQUIRE_THAT(
-      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+  // group URIs returned on remote array open are actually trasformed by the
+  // REST server if the form `tiledb://UUID` so they don't match the initial
+  // `tiledb://{namespace}/fs://temp_dir/name` format, so let's only compare the
+  // other fields of the objects.
+  if (vfs_test_setup_.is_rest()) {
+    // Those checks fail for REST because of sc-57858: names are not empty as
+    // they are supposed to but are equal to the REST Uri of the asset
+    REQUIRE_THAT(
+        read_group_details(group1),
+        Catch::Matchers::UnorderedEquals(group1_exp_det));
+    REQUIRE_THAT(
+        read_group_details(group2),
+        Catch::Matchers::UnorderedEquals(group2_exp_det));
+  } else {
+    REQUIRE_THAT(
+        read_group(group1), Catch::Matchers::UnorderedEquals(group1_expected));
+    REQUIRE_THAT(
+        read_group(group2), Catch::Matchers::UnorderedEquals(group2_expected));
+  }
 
   // Close group
   group1.close();
@@ -499,10 +557,12 @@ TEST_CASE_METHOD(
   group1.remove_member(group2_uri);
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
+  group1_exp_det.resize(group1_exp_det.size() - 1);
 
   group2.remove_member(array3_uri);
   // There should be nothing left in group2
   group2_expected.clear();
+  group2_exp_det.clear();
 
   // Close group
   group1.close();
@@ -514,13 +574,19 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
-  group1_received = read_group(group1);
-  REQUIRE_THAT(
-      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
-
-  group2_received = read_group(group2);
-  REQUIRE_THAT(
-      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+  if (vfs_test_setup_.is_rest()) {
+    REQUIRE_THAT(
+        read_group_details(group1),
+        Catch::Matchers::UnorderedEquals(group1_exp_det));
+    REQUIRE_THAT(
+        read_group_details(group2),
+        Catch::Matchers::UnorderedEquals(group2_exp_det));
+  } else {
+    REQUIRE_THAT(
+        read_group(group1), Catch::Matchers::UnorderedEquals(group1_expected));
+    REQUIRE_THAT(
+        read_group(group2), Catch::Matchers::UnorderedEquals(group2_expected));
+  }
 
   // Check that out of bounds indexing throws
   REQUIRE_THROWS(group1.member(10));
