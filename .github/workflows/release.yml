@@ -62,6 +62,7 @@ jobs:
             triplet: arm64-linux-release
           - platform: macos-x86_64
             os: macos-latest
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
             MACOSX_DEPLOYMENT_TARGET: 11
             triplet: x64-osx-release
           - platform: macos-arm64
