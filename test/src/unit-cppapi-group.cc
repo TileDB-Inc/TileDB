@@ -297,10 +297,13 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, set name", "[cppapi][group][read][rest]") {
+    GroupCPPFx,
+    "C++ API: Group, set name",
+    "[cppapi][group][read][rest-fails][sc-57867]") {
   std::string array1_uri = vfs_test_setup_.array_uri("array1");
   std::string array2_uri = vfs_test_setup_.array_uri("array2");
   std::string array3_uri = vfs_test_setup_.array_uri("array3");
+  std::cerr << array1_uri << std::endl;
 
   create_array(array1_uri);
   create_array(array2_uri);
@@ -310,21 +313,22 @@ TEST_CASE_METHOD(
   std::string group2_uri = vfs_test_setup_.array_uri("group2");
   tiledb::Group::create(ctx_, group1_uri);
   tiledb::Group::create(ctx_, group2_uri);
+  std::cerr << group1_uri << std::endl;
 
   // Set expected
+  auto uri_format = [&](std::string uri) {
+    return vfs_test_setup_.is_rest() ? vfs_test_setup_.with_prefix(uri) : uri;
+  };
+  auto expected_uri = vfs_test_setup_.is_rest() ?
+                          vfs_test_setup_.with_prefix(array1_uri) :
+                          array1_uri;
   std::vector<tiledb::Object> group1_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array,
-          vfs_test_setup_.with_prefix(array1_uri),
-          "array1"),
+          tiledb::Object::Type::Array, uri_format(array1_uri), "array1"),
       tiledb::Object(
-          tiledb::Object::Type::Array,
-          vfs_test_setup_.with_prefix(array2_uri),
-          "array2"),
+          tiledb::Object::Type::Array, uri_format(array2_uri), "array2"),
       tiledb::Object(
-          tiledb::Object::Type::Group,
-          vfs_test_setup_.with_prefix(group2_uri),
-          "group2"),
+          tiledb::Object::Type::Group, uri_format(group2_uri), "group2"),
   };
   std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
       group1_exp_det = {
@@ -333,9 +337,7 @@ TEST_CASE_METHOD(
           {tiledb::Object::Type::Group, "group2"}};
   std::vector<tiledb::Object> group2_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array,
-          vfs_test_setup_.with_prefix(array3_uri),
-          "array3"),
+          tiledb::Object::Type::Array, uri_format(array3_uri), "array3"),
   };
   std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
       group2_exp_det = {{tiledb::Object::Type::Array, "array3"}};
@@ -465,19 +467,16 @@ TEST_CASE_METHOD(
   tiledb::Group::create(ctx_, group2_uri);
 
   // Set expected
+  auto uri_format = [&](std::string uri) {
+    return vfs_test_setup_.is_rest() ? vfs_test_setup_.with_prefix(uri) : uri;
+  };
   std::vector<tiledb::Object> group1_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array,
-          vfs_test_setup_.with_prefix(array1_uri),
-          std::nullopt),
+          tiledb::Object::Type::Array, uri_format(array1_uri), std::nullopt),
       tiledb::Object(
-          tiledb::Object::Type::Array,
-          vfs_test_setup_.with_prefix(array2_uri),
-          std::nullopt),
+          tiledb::Object::Type::Array, uri_format(array2_uri), std::nullopt),
       tiledb::Object(
-          tiledb::Object::Type::Group,
-          vfs_test_setup_.with_prefix(group2_uri),
-          std::nullopt),
+          tiledb::Object::Type::Group, uri_format(group2_uri), std::nullopt),
   };
   std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
       group1_exp_det = {
@@ -486,9 +485,7 @@ TEST_CASE_METHOD(
           {tiledb::Object::Type::Group, std::nullopt}};
   std::vector<tiledb::Object> group2_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array,
-          vfs_test_setup_.with_prefix(array3_uri),
-          std::nullopt),
+          tiledb::Object::Type::Array, uri_format(array3_uri), std::nullopt),
   };
   std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
       group2_exp_det = {{tiledb::Object::Type::Array, std::nullopt}};
