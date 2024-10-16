@@ -60,7 +60,7 @@ jobs:
             os: ubuntu-24.04
             cmake_args: -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$PWD/cmake/arm64_linux_toolchain.cmake
             triplet: arm64-linux-release
-            manylinux: "messense/manylinux_2_28-cross:x86_64"
+            manylinux: "messense/manylinux_2_28-cross:aarch64-amd64"
           - platform: macos-x86_64
             os: macos-12
             MACOSX_DEPLOYMENT_TARGET: 11
@@ -103,7 +103,7 @@ jobs:
         if: ${{ matrix.platform == 'linux-aarch64' }}
         run: |
           apt-get update
-          apt-get install -y cmake gcc g++ ninja-build libtool autoconf pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu curl zip unzip tar
+          apt-get install -y cmake ninja-build libtool autoconf pkg-config curl zip unzip tar
           # Use upstream libmagic port which supports cross-compilation.
           rm -rf ports/libmagic
       - name: Install manylinux prerequisites
