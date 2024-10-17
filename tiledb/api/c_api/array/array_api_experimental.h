@@ -90,7 +90,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_get_enumeration(
     tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
 
 /**
- * Load all enumerations for the array.
+ * Load all enumerations for the array's latest array schema.
  *
  * **Example:**
  *
@@ -100,11 +100,28 @@ TILEDB_EXPORT capi_return_t tiledb_array_get_enumeration(
  *
  * @param[in] ctx The TileDB context.
  * @param[in] array The TileDB array.
- * @param[in] latest_only If non-zero, only load enumerations for the latest
- * schema.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_array_load_all_enumerations(
+    tiledb_ctx_t* ctx, const tiledb_array_t* array) TILEDB_NOEXCEPT;
+
+/**
+ * Load all enumerations for all schemas in the array.
+ *
+ * This method requires the array to be opened with the config option
+ * `rest.use_refactored_array_open=true` (default).
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_load_enumerations_all_schemas(ctx, array);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array The TileDB array.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_load_enumerations_all_schemas(
     tiledb_ctx_t* ctx, const tiledb_array_t* array) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus

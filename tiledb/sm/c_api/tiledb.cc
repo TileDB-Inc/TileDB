@@ -2197,8 +2197,16 @@ capi_return_t tiledb_handle_load_enumerations_request(
       tiledb::sm::serialization::deserialize_load_enumerations_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
           request->buffer());
-  auto enumerations = array->get_enumerations(
-      enumeration_names, array->opened_array()->array_schema_latest_ptr());
+  std::unordered_map<
+      std::string,
+      std::vector<shared_ptr<const tiledb::sm::Enumeration>>>
+      enumerations;
+  if (enumeration_names.empty()) {
+    enumerations = array->get_enumerations_all_schemas();
+  } else {
+    enumerations[array->array_schema_latest().name()] =
+        array->get_enumerations(enumeration_names);
+  }
 
   tiledb::sm::serialization::serialize_load_enumerations_response(
       enumerations,

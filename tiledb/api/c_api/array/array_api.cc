@@ -663,6 +663,21 @@ capi_return_t tiledb_array_load_all_enumerations(const tiledb_array_t* array) {
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_array_load_enumerations_all_schemas(
+    const tiledb_array_t* array) {
+  ensure_array_is_valid(array);
+  // Array::array_schemas_all_ is only initialized using array open V3, so we
+  // won't have schemas to store the loaded enumerations unless array open V3 is
+  // used.
+  if (!array->array()->use_refactored_array_open()) {
+    throw CAPIException(
+        "Unable to load enumerations for all array schemas; The array must be "
+        "opened using `rest.use_refactored_array_open=true`");
+  }
+  array->load_all_enumerations(true);
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
@@ -1053,4 +1068,12 @@ CAPI_INTERFACE(
     const tiledb_array_t* array) {
   return api_entry_context<tiledb::api::tiledb_array_load_all_enumerations>(
       ctx, array);
+}
+
+CAPI_INTERFACE(
+    array_load_enumerations_all_schemas,
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array) {
+  return api_entry_context<
+      tiledb::api::tiledb_array_load_enumerations_all_schemas>(ctx, array);
 }
