@@ -109,7 +109,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_load_all_enumerations(
  * Load all enumerations for all schemas in the array.
  *
  * This method requires the array to be opened with the config option
- * `rest.use_refactored_array_open=true`.
+ * `rest.use_refactored_array_open=true` (default).
  *
  * **Example:**
  *
