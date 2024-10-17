@@ -140,14 +140,12 @@ Status array_consolidation_request_deserialize(
 
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::ArrayConsolidationRequest::Builder
             array_consolidation_request_builder =
                 message_builder.initRoot<capnp::ArrayConsolidationRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            array_consolidation_request_builder);
+        utils::decode_json_message(
+            serialized_buffer, array_consolidation_request_builder);
         capnp::ArrayConsolidationRequest::Reader
             array_consolidation_request_reader =
                 array_consolidation_request_builder.asReader();
@@ -285,11 +283,10 @@ uint64_t deserialize_consolidation_plan_request(
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::ConsolidationPlanRequest::Builder builder =
             message_builder.initRoot<capnp::ConsolidationPlanRequest>();
-        json.decode(kj::StringPtr(request.data()), builder);
+        utils::decode_json_message(request, builder);
         capnp::ConsolidationPlanRequest::Reader reader = builder.asReader();
         return consolidation_plan_request_from_capnp(reader);
       }
@@ -364,11 +361,10 @@ std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::ConsolidationPlanResponse::Builder builder =
             message_builder.initRoot<capnp::ConsolidationPlanResponse>();
-        json.decode(kj::StringPtr(response.data()), builder);
+        utils::decode_json_message(response, builder);
         capnp::ConsolidationPlanResponse::Reader reader = builder.asReader();
         return consolidation_plan_response_from_capnp(reader);
       }
