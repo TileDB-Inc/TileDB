@@ -830,11 +830,6 @@ struct AttributeBufferSize {
   # size (in bytes) of data buffer
 }
 
-struct MaxBufferSizes {
-  maxBufferSizes @0 :List(AttributeBufferSize);
-  # a list of max buffer sizes, one per attribute
-}
-
 struct ArrayMetadata {
   # object representing array metadata
 

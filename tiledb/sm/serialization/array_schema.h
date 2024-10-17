@@ -189,19 +189,6 @@ Status nonempty_domain_deserialize(
     span<const char> serialized_buffer,
     SerializationType serialize_type);
 
-Status max_buffer_sizes_serialize(
-    Array* array,
-    const void* subarray,
-    SerializationType serialize_type,
-    SerializationBuffer& serialized_buffer);
-
-Status max_buffer_sizes_deserialize(
-    const ArraySchema& schema,
-    span<const char> serialized_buffer,
-    SerializationType serialize_type,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes);
-
 void serialize_load_array_schema_request(
     const Config& config,
     const LoadArraySchemaRequest& req,
