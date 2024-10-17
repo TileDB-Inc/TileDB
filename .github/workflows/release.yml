@@ -58,9 +58,9 @@ jobs:
             manylinux: quay.io/pypa/manylinux2014_x86_64
           - platform: linux-aarch64
             os: ubuntu-24.04
-            cmake_args: -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$PWD/cmake/arm64_linux_toolchain.cmake
             triplet: arm64-linux-release
-            manylinux: "messense/manylinux_2_28-cross:aarch64-amd64"
+            manylinux: quay.io/pypa/manylinux2014_aarch64
+            runner_name: linux-arm64-ubuntu24
           - platform: macos-x86_64
             os: macos-12
             MACOSX_DEPLOYMENT_TARGET: 11
@@ -72,6 +72,7 @@ jobs:
             triplet: arm64-osx-release
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.manylinux || '' }}
+    runner-name: ${{ matrix.runner_name || '' }}
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
@@ -102,10 +103,9 @@ jobs:
       - name: Install aarch64 cross compilation prerequisites
         if: ${{ matrix.platform == 'linux-aarch64' }}
         run: |
-          apt-get update
-          apt-get install -y cmake ninja-build libtool autoconf pkg-config curl zip unzip tar
-          # Use upstream libmagic port which supports cross-compilation.
-          rm -rf ports/libmagic
+          set -e pipefail
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
+          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
       - name: Install manylinux prerequisites
         if: ${{ startsWith(matrix.platform, 'linux-x86_64') == true }}
         run: |
