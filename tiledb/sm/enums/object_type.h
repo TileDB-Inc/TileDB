@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This file defines the tiledb ObjectType enum that maps to the
- * tiledb_object_type_t C-api enum
+ * tiledb_object_t C-api enum
  */
 
 #ifndef TILEDB_OBJECT_TYPE_H
