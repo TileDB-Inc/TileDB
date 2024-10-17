@@ -57,10 +57,9 @@ jobs:
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux2014_x86_64
           - platform: linux-aarch64
-            os: ubuntu-24.04
+            os: linux-arm64-ubuntu24
             triplet: arm64-linux-release
             manylinux: quay.io/pypa/manylinux2014_aarch64
-            runner_name: linux-arm64-ubuntu24
           - platform: macos-x86_64
             os: macos-12
             MACOSX_DEPLOYMENT_TARGET: 11
@@ -72,7 +71,6 @@ jobs:
             triplet: arm64-osx-release
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.manylinux || '' }}
-    runner-name: ${{ matrix.runner_name || '' }}
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
