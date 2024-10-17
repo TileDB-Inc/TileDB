@@ -1796,36 +1796,6 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
-    "C API: REST Test dense array, get max buffer sizes",
-    "[capi][rest][dense]") {
-  array_uri_ = vfs_test_setup_.array_uri("max_buffer_sizes_array");
-  create_dense_array(array_uri_);
-
-  // Check max buffer sizes with empty array
-  tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
-  tiledb_array_free(&array);
-
-  // Write array
-  write_dense_array(array_uri_);
-
-  // Check max buffer sizes for whole domain
-  rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Clean up
-  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
-  tiledb_array_free(&array);
-}
-
-TEST_CASE_METHOD(
-    DenseArrayRESTFx,
     "C API: REST Test dense array, error without rest server configured",
     "[capi][rest][dense][rest-no-config]") {
   // test only applies to REST
