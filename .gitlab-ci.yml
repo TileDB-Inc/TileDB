@@ -18,5 +18,4 @@ trigger_pipeline:
     TILEDB_REF: ${CI_COMMIT_REF_NAME}
   trigger:
     project: tiledb-inc/tiledb-internal
-    branch: yt/enable_v2_testing_for_back_comp
     strategy: depend    
