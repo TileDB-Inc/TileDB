@@ -1,8 +1,8 @@
 ---
-title: Format version history
+title: Array format version history
 ---
 
-# Format Version History
+# Array Format Version History
 
 ## Version 22
 
@@ -24,7 +24,7 @@ Introduced in TileDB 2.19
 Introduced in TileDB 2.17
 
 * Arrays can have [enumerations](./enumeration.md).
-* The bit-width reduction and positive delta filters are supported on data of date or time types.
+* The bit-width reduction and positive delta encoding filters are supported on data of date or time types.
 * The [filter pipeline options](./filter_pipeline.md#filter-options) for the double-delta filter contain the _Reinterpret datatype_ field.
 
 ## Version 19
@@ -45,7 +45,7 @@ Introduced in TileDB 2.15
 Introduced in TileDB 2.14
 
 * The _Order_ field was added to [attributes](./array_schema.md#attribute).
-* Cell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary filter exists in the filter pipeline. They are instead encoded as part of the data tile.
+* Cell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary encoding filter exists in the filter pipeline. They are instead encoded as part of the data tile.
 
 ## Version 16
 
@@ -72,7 +72,7 @@ Introduced in TileDB 2.10
 
 Introduced in TileDB 2.9
 
-* The [dictionary filter](./filters/dictionary_encoding.md) was added.
+* Cell offsets in dimensions or attributes of ASCII string type are not written in the offset tiles, if the dictionary encoding filter exists in the filter pipeline. They are instead encoded as part of the data tile.
 
 ## Version 12
 
@@ -86,7 +86,7 @@ Introduced in TileDB 2.8
 
 Introduced in TileDB 2.7
 
-* Fragment metadata contain [metadata](./fragment.md#tile-mins-maxes) (min/max value, sum, null count) for each tile.
+* Fragment metadata contain [metadata](./fragment.md#tile-mins-maxes) (min/max value, sum, null count) for data in the whole fragment and each tile.
 * The TileDB implementation has been updated to never split cells when storing them in chunks.
 
 ## Version 10
@@ -154,7 +154,7 @@ Introduced in TileDB 1.6
     * The [footer](./fragment.md#footer) and [R-Tree](./fragment.md#r-tree) structures were added.
     * The _Bounding coords_ field was removed.
     * The _MBRs_ field was removed. MBRs are now stored in the R-Tree.
-    * Structures other than the footer like tile offsets, sizes and metadata are wrapped in their own generic tiles. This allows loading them lazily and in parallel.
+    * Tile offsets and sizes are wrapped in their own generic tiles. This allows loading them lazily and in parallel.
 
 ## Version 2
 

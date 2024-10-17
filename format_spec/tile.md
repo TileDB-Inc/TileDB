@@ -13,7 +13,7 @@ Internally tile data is divided into “chunks.” Every tile is at least one ch
 | … | … | … |
 | Chunk N | [Chunk](#chunk-format) | N-th chunk in the tile |
 
-## Chunk Format 
+## Chunk Format
 
 A chunk has the following on-disk format:
 
@@ -34,6 +34,8 @@ The “chunk metadata” before the actual "chunk filtered data" depend on the p
 The “chunk filtered data” bytes contain the final bytes of the chunk after being passed through the entire pipeline. When reading tiles from disk, the filter pipeline is run in the reverse order.
 
 Internally, any filter in a filter pipeline produces two arrays of data as output: a metadata byte array and a filtered data byte array. Additionally, these output byte arrays can be arbitrarily separated into “parts” by any filter. Typically, when a next filter receives the output of the previous filter as its input, it will filter each “part” independently.
+
+_New in version 11_ Cells of arrays are not split across chunks within a tile.
 
 ### Byteshuffle Filter
 
@@ -92,7 +94,7 @@ The type `WindowMD` has the format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Window value offset | `T` | Offset applied to values in the output window, where `T` is the original datatype of the tile values. |
-| Bit width of reduced type | `uint8_t` | Number of bits in the new datatype of the values in the output window |
+| Bit width of reduced type | `uint8_t` | Number of bits in the new datatype of the values in the output window. Can be 8, 16, 32 or 64. |
 | Window length | `uint32_t` | Number of bytes in output window data. |
 
 The bit width reduction filter produces output data in the format:
@@ -102,6 +104,9 @@ The bit width reduction filter produces output data in the format:
 | Window 1 | `uint8_t[]` | Window 1 data \(possibly-reduced width elements\) |
 | … | … | … |
 | Window N | `uint8_t[]` | Window N data \(possibly-reduced width elements\) |
+
+> [!NOTE]
+> Prior to version 20, the bit width reduction filter had no effect on date and time types.
 
 ### Positive Delta Encoding Filter
 
@@ -128,6 +133,9 @@ The positive-delta encoding filter produces output data in the format:
 | Window 1 | `T[]` | Window 1 delta-encoded data |
 | … | … | … |
 | Window N | `T[]` | Window N delta-encoded data |
+
+> [!NOTE]
+> Prior to version 20, the positive delta encoding filter had no effect on date and time types.
 
 ### Compression Filters
 
