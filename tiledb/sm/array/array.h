@@ -569,11 +569,11 @@ class Array {
       EncryptionType* encryption_type);
 
   /**
-   * Get the enumeration for the given name.
+   * Get the enumeration for the given name from the latest array schema.
    *
    * This function retrieves the enumeration for the given name. If the
    * corresponding enumeration has not been loaded from storage it is
-   * loaded before this function returns.
+   * loaded and stored in the latest schema before this function returns.
    *
    * @param enumeration_name The name of the enumeration.
    * @return shared_ptr<const Enumeration> or nullptr on failure.
@@ -582,22 +582,37 @@ class Array {
       const std::string& enumeration_name);
 
   /**
-   * Get the enumerations with the given names.
+   * Load enumerations on all schemas for the array's opened timestamp range.
+   * This function will store all loaded enumerations into their corresponding
+   * schemas. The returned enumerations are provided as a convenience to the
+   * caller and can be discarded if loading the enumerations is sufficient.
+   *
+   * @return Map of schema names and a list of all loaded enumerations.
+   */
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+  get_enumerations_all_schemas();
+
+  /**
+   * Get the enumerations with the given names from the latest array schema.
    *
    * This function retrieves the enumerations with the given names. If the
    * corresponding enumerations have not been loaded from storage they are
    * loaded before this function returns.
    *
    * @param enumeration_names The names of the enumerations.
-   * @param schema The ArraySchema to store loaded enumerations in.
    * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
    */
   std::vector<shared_ptr<const Enumeration>> get_enumerations(
-      const std::vector<std::string>& enumeration_names,
-      shared_ptr<ArraySchema> schema);
+      const std::vector<std::string>& enumeration_names);
 
-  /** Load all enumerations for the array. */
-  void load_all_enumerations();
+  /**
+   * Load all enumerations for the array.
+   *
+   * @param all_schemas If true, enumerations will be loaded on all schemas
+   *    within the current opened timestamps on the array. If false, only load
+   *    enumerations on the latest array schema.
+   */
+  void load_all_enumerations(bool all_schemas = false);
 
   /**
    * Returns `true` if the array is empty at the time it is opened.

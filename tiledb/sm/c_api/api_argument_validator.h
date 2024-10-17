@@ -44,18 +44,6 @@
 /*         AUXILIARY FUNCTIONS       */
 /* ********************************* */
 
-namespace tiledb::api {
-/**
- * Returns if a subarray handle (old style) is valid. Throws otherwise.
- */
-inline void ensure_subarray_is_valid(const tiledb_subarray_t* p) {
-  if (p == nullptr || p->subarray_ == nullptr ||
-      p->subarray_->array() == nullptr) {
-    throw CAPIException("Invalid TileDB subarray object");
-  }
-}
-}  // namespace tiledb::api
-
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
   if (query == nullptr || query->query_ == nullptr) {
     auto st = Status_Error("Invalid TileDB query object");
@@ -70,17 +58,6 @@ inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_query_condition_t* cond) {
   if (cond == nullptr || cond->query_condition_ == nullptr) {
     auto st = Status_Error("Invalid TileDB query condition object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(
-    tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info) {
-  if (fragment_info == nullptr || fragment_info->fragment_info_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB fragment info object");
     LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;

@@ -36,6 +36,7 @@
 #include "test/support/src/coords_workaround.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb.h"
+#include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/random/random_label.h"
 #include "tiledb/sm/array/array.h"
@@ -43,7 +44,6 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/subarray/subarray.h"
 #include "tiledb_serialization.h"
 
 #include <mutex>

@@ -566,7 +566,7 @@ Status RestClientRemote::post_array_metadata_to_rest(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-std::vector<shared_ptr<const Enumeration>>
+std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 RestClientRemote::post_enumerations_from_rest(
     const URI& uri,
     uint64_t timestamp_start,
@@ -581,13 +581,6 @@ RestClientRemote::post_enumerations_from_rest(
 
   if (!memory_tracker) {
     memory_tracker = memory_tracker_;
-  }
-
-  // This should never be called with an empty list of enumeration names, but
-  // there's no reason to not check an early return case here given that code
-  // changes.
-  if (enumeration_names.size() == 0) {
-    return {};
   }
 
   BufferList serialized{memory_tracker_};
@@ -624,7 +617,7 @@ RestClientRemote::post_enumerations_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_load_enumerations_response(
-      serialization_type_, returned_data, memory_tracker);
+      *array, serialization_type_, returned_data, memory_tracker);
 }
 
 void RestClientRemote::post_query_plan_from_rest(

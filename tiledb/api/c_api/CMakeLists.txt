@@ -94,6 +94,9 @@ add_subdirectory(filter)
 # `filter_list`: depends on `context`, `filter`
 add_subdirectory(filter_list)
 
+# `fragment_info`: depends on `context`
+add_subdirectory(fragment_info)
+
 # `dimension`: depends on `filter_list`, `datatype`
 add_subdirectory(dimension)
 
@@ -117,6 +120,9 @@ add_subdirectory(object)
 #
 # `query`: no dependencies yet but will have some
 add_subdirectory(query)
+
+# `subarray`: depends on `context`
+add_subdirectory(subarray)
 
 # `string`: no dependencies
 add_subdirectory(string)

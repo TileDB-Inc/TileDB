@@ -40,6 +40,7 @@
 // clang-format on
 
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/enumeration.h"
@@ -154,28 +155,69 @@ std::vector<std::string> load_enumerations_request_from_capnp(
 
 void load_enumerations_response_to_capnp(
     capnp::LoadEnumerationsResponse::Builder& builder,
-    const std::vector<shared_ptr<const Enumeration>>& enumerations) {
-  auto num_enmrs = enumerations.size();
-  if (num_enmrs > 0) {
-    auto enmr_builders = builder.initEnumerations(num_enmrs);
-    for (size_t i = 0; i < num_enmrs; i++) {
+    const std::unordered_map<
+        std::string,
+        std::vector<shared_ptr<const Enumeration>>>& enumerations) {
+  auto num_schemas = enumerations.size();
+  // If there is only one schema, it is always the latest so we don't need to
+  // serialize the extra data.
+  if (num_schemas == 1) {
+    auto num_enmr = enumerations.begin()->second.size();
+    auto enmr_builders = builder.initEnumerations(num_enmr);
+    for (size_t i = 0; i < num_enmr; i++) {
       auto enmr_builder = enmr_builders[i];
-      enumeration_to_capnp(enumerations[i], enmr_builder);
+      enumeration_to_capnp(enumerations.begin()->second[i], enmr_builder);
+    }
+  } else if (num_schemas > 1) {
+    // If there were enumerations loaded on multiple schemas, serialize the full
+    // map of schema_names and their enumerations.
+    auto enmr_map_builder = builder.initAllEnumerations();
+    auto map_entry_builder = enmr_map_builder.initEntries(num_schemas);
+    for (size_t i = 0; const auto& entry : enumerations) {
+      auto num_enmr = entry.second.size();
+      // Set the map key to the schema name
+      map_entry_builder[i].setKey(entry.first);
+
+      // Build the list of enumerations that map to this schema name.
+      auto enmr_builders = map_entry_builder[i++].initValue(num_enmr);
+      for (size_t j = 0; j < num_enmr; j++) {
+        auto enmr_builder = enmr_builders[j];
+        enumeration_to_capnp(entry.second[j], enmr_builder);
+      }
     }
   }
 }
 
-std::vector<shared_ptr<const Enumeration>>
+std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 load_enumerations_response_from_capnp(
     const capnp::LoadEnumerationsResponse::Reader& reader,
+    const Array& array,
     shared_ptr<MemoryTracker> memory_tracker) {
-  std::vector<shared_ptr<const Enumeration>> ret;
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+      ret;
   if (reader.hasEnumerations()) {
+    std::vector<shared_ptr<const Enumeration>> loaded_enmrs;
     auto enmr_readers = reader.getEnumerations();
     for (auto enmr_reader : enmr_readers) {
-      ret.push_back(enumeration_from_capnp(enmr_reader, memory_tracker));
+      loaded_enmrs.push_back(
+          enumeration_from_capnp(enmr_reader, memory_tracker));
+    }
+    // The name of the latest array schema will not be serialized in the
+    // response if we are only loading enumerations from the latest schema.
+    return {{array.array_schema_latest().name(), loaded_enmrs}};
+  } else if (reader.hasAllEnumerations()) {
+    auto all_enmrs_reader = reader.getAllEnumerations();
+    for (auto enmr_entry_reader : all_enmrs_reader.getEntries()) {
+      std::vector<shared_ptr<const Enumeration>> loaded_enmrs;
+      for (auto enmr_reader : enmr_entry_reader.getValue()) {
+        loaded_enmrs.push_back(
+            enumeration_from_capnp(enmr_reader, memory_tracker));
+      }
+
+      ret[enmr_entry_reader.getKey()] = loaded_enmrs;
     }
   }
+
   return ret;
 }
 
@@ -260,7 +302,9 @@ std::vector<std::string> deserialize_load_enumerations_request(
 }
 
 void serialize_load_enumerations_response(
-    const std::vector<shared_ptr<const Enumeration>>& enumerations,
+    const std::unordered_map<
+        std::string,
+        std::vector<shared_ptr<const Enumeration>>>& enumerations,
     SerializationType serialize_type,
     SerializationBuffer& response) {
   try {
@@ -299,8 +343,9 @@ void serialize_load_enumerations_response(
   }
 }
 
-std::vector<shared_ptr<const Enumeration>>
+std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
+    const Array& array,
     SerializationType serialize_type,
     span<const char> response,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -313,7 +358,8 @@ deserialize_load_enumerations_response(
             message_builder.initRoot<capnp::LoadEnumerationsResponse>();
         json.decode(kj::StringPtr(response.data(), response.size()), builder);
         capnp::LoadEnumerationsResponse::Reader reader = builder.asReader();
-        return load_enumerations_response_from_capnp(reader, memory_tracker);
+        return load_enumerations_response_from_capnp(
+            reader, array, memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(response.data());
@@ -322,7 +368,8 @@ deserialize_load_enumerations_response(
             response.size() / sizeof(::capnp::word)));
         capnp::LoadEnumerationsResponse::Reader reader =
             array_reader.getRoot<capnp::LoadEnumerationsResponse>();
-        return load_enumerations_response_from_capnp(reader, memory_tracker);
+        return load_enumerations_response_from_capnp(
+            reader, array, memory_tracker);
       }
       default: {
         throw EnumerationSerializationException(
@@ -357,15 +404,19 @@ std::vector<std::string> deserialize_load_enumerations_request(
 }
 
 void serialize_load_enumerations_response(
-    const std::vector<shared_ptr<const Enumeration>>&,
+    const std::
+        unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>&,
     SerializationType,
     SerializationBuffer&) {
   throw EnumerationSerializationDisabledException();
 }
 
-std::vector<shared_ptr<const Enumeration>>
+std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
-    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
+    const Array&,
+    SerializationType,
+    span<const char>,
+    shared_ptr<MemoryTracker>) {
   throw EnumerationSerializationDisabledException();
 }
 

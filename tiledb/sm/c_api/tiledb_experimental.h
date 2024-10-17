@@ -46,9 +46,11 @@
 #include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
 #include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
+#include "tiledb/api/c_api/fragment_info/fragment_info_api_experimental.h"
 #include "tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
 #include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
+#include "tiledb/api/c_api/subarray/subarray_api_experimental.h"
 #include "tiledb/api/c_api/vfs/vfs_api_experimental.h"
 #include "tiledb_dimension_label_experimental.h"
 
@@ -361,18 +363,6 @@ TILEDB_EXPORT int32_t tiledb_query_add_update_value(
     const char* field_name,
     const void* update_value,
     uint64_t update_value_size) TILEDB_NOEXCEPT;
-
-/**
- * Adds point ranges to the given dimension index of the subarray
- * Effectively `add_range(x_i, x_i)` for `count` points in the
- * target array, but set in bulk to amortize expensive steps.
- */
-TILEDB_EXPORT int32_t tiledb_subarray_add_point_ranges(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t count) TILEDB_NOEXCEPT;
 
 /**
  * Get the number of relevant fragments from the subarray. Should only be
@@ -742,42 +732,6 @@ TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
  */
 TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
     const char* str, tiledb_mime_type_t* mime_type) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the number of cells written to the fragments by the user.
- *
- * Contributions from each fragment to the total are as described in following.
- *
- * In the case of sparse fragments, this is the number of non-empty
- * cells in the fragment.
- *
- * In the case of dense fragments, TileDB may add fill
- * values to populate partially populated tiles. Those fill values
- * are counted in the returned number of cells. In other words,
- * the cell number is derived from the number of *integral* tiles
- * written in the file.
- *
- * note: The count returned is the cumulative total of cells
- * written to all fragments in the current fragment_info entity,
- * i.e. count may effectively include multiples for any cells that
- * may be overlapping across the various fragments.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t cell_num;
- * tiledb_fragment_info_get_total_cell_num(ctx, fragment_info, &cell_num);
- * @endcode
- *
- * @param[in]  ctx The TileDB context
- * @param[in]  fragment_info The fragment info object.
- * @param[out] count The number of cells to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
-    tiledb_ctx_t* ctx,
-    tiledb_fragment_info_t* fragment_info,
-    uint64_t* count) TILEDB_NOEXCEPT;
 
 /**
  * Creates a consolidation plan object.

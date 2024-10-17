@@ -32,7 +32,9 @@
  */
 
 #include <test/support/tdb_catch.h>
+
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
 
 #include <iostream>
@@ -767,4 +769,248 @@ TEST_CASE(
   }
 
   CHECK_NOTHROW(vfs.remove_dir(array_name));
+}
+
+TEST_CASE(
+    "C++ API: Test variable-size fill values in different offset modes for "
+    "dense reader",
+    "[cppapi][fill-values]") {
+  const char* uri = "dense-attribute-int32-var-size-fill-value";
+
+  Context ctx;
+
+  // create array if needed
+  if (Object::object(ctx, uri).type() != Object::Type::Array) {
+    Domain domain(ctx);
+    domain.add_dimension(Dimension::create<int>(ctx, "id", {{1, 4}}, 2));
+
+    ArraySchema schema(ctx, TILEDB_DENSE);
+    schema.set_domain(domain);
+
+    // Add a single attribute "a" of var-size INT32 type
+    int a_fill[1] = {100};
+    Attribute a = Attribute::create<int>(ctx, "a")
+                      .set_cell_val_num(sm::constants::var_num)
+                      .set_fill_value(&a_fill[0], sizeof(a_fill));
+    schema.add_attribute(a);
+
+    // Create the (empty) array on disk.
+    Array::create(uri, schema);
+
+    // Prepare some data for the array
+    std::vector<int32_t> a_data = {9};
+    std::vector<uint64_t> a_offsets = {0};
+
+    Array array(ctx, uri, TILEDB_WRITE);
+
+    Subarray subarray(ctx, array);
+    subarray.add_range<int32_t>(0, 1, 1);
+
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_subarray(subarray);
+    query.set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a", a_data)
+        .set_offsets_buffer("a", a_offsets);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+  }
+
+  Array array(ctx, uri, TILEDB_READ);
+
+  // Prepare the vector that will hold the result (of size 6 elements)
+  std::vector<int32_t> a_data(6);
+  std::vector<uint64_t> a_offsets(6);
+
+  // Prepare the query
+  const auto offsets_elements = GENERATE(true, false);
+  const auto reader = GENERATE("legacy", "refactored");
+
+  const std::vector<uint64_t> expect_offsets_elements = {0, 1, 2};
+  const std::vector<uint64_t> expect_offsets_bytes = {
+      0, sizeof(int32_t), 2 * sizeof(int32_t)};
+
+  Config cfg;
+  cfg.set("sm.query.dense.reader", reader);
+  cfg.set("sm.var_offsets.extra_element", "true");
+  if (offsets_elements) {
+    cfg.set("sm.var_offsets.mode", "elements");
+  }
+
+  Subarray subarray(ctx, array);
+  Query query(ctx, array, TILEDB_READ);
+  query.set_config(cfg)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_data)
+      .set_offsets_buffer("a", a_offsets);
+
+  bool subarrayStartsAt1 = false;
+
+  SECTION("Non-materialized tile") {
+    // Slice only rows 3, 4
+    subarray.add_range<int32_t>(0, 3, 4);
+  }
+
+  SECTION("Partially-materialized tile") {
+    // Slice only rows 1, 2
+    subarray.add_range<int32_t>(0, 1, 2);
+
+    subarrayStartsAt1 = true;
+  }
+
+  // Legacy reader gets SEGV when applying query condition.
+  // This is not specific to this example - tweak the
+  // "query_condition_dense.cc" example to force the legacy
+  // reader and it also gets a SEGV.
+  if (reader == std::string("refactored")) {
+    SECTION("Query condition false") {
+      // Slice only rows 1, 2
+      subarray.add_range<int32_t>(0, 1, 2);
+
+      QueryCondition qc(ctx);
+      {
+        const int32_t one = 1;
+        qc.init("id", &one, sizeof(int32_t), TILEDB_NE);
+      }
+
+      query.set_condition(qc);
+    }
+  }
+
+  query.set_subarray(subarray);
+
+  // Submit the query and close the array.
+  query.submit();
+  array.close();
+
+  CHECK(query.result_buffer_elements()["a"].first == 3);
+  if (offsets_elements) {
+    for (size_t i = 0; i < expect_offsets_elements.size(); i++) {
+      CHECK(a_offsets[i] == expect_offsets_elements[i]);
+    }
+    CHECK(
+        query.result_buffer_elements()["a"].second ==
+        expect_offsets_elements.back());
+  } else {
+    for (size_t i = 0; i < expect_offsets_bytes.size(); i++) {
+      CHECK(a_offsets[i] == expect_offsets_bytes[i]);
+    }
+
+    // "elements" is intentional here, `.second` is not adjusted for bytes
+    CHECK(
+        query.result_buffer_elements()["a"].second ==
+        expect_offsets_elements.back());
+  }
+  if (subarrayStartsAt1) {
+    CHECK(a_data[0] == 9);
+  } else {
+    CHECK(a_data[0] == 100);
+  }
+  CHECK(a_data[1] == 100);
+}
+
+TEST_CASE(
+    "C++ API: Test variable-size fill values in different offset modes for "
+    "sparse reader",
+    "[cppapi][fill-values]") {
+  const auto allow_duplicates = GENERATE(true, false);
+  const auto uri = std::string("sparse-") +
+                   std::string(allow_duplicates ? "allow-dups" : "no-dups") +
+                   std::string("-attribute-int32-var-size-fill-value");
+
+  Context ctx;
+
+  // create array if needed
+  if (Object::object(ctx, uri.c_str()).type() != Object::Type::Array) {
+    Domain domain(ctx);
+    domain.add_dimension(Dimension::create<int>(ctx, "id", {{1, 4}}, 2));
+
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_allows_dups(allow_duplicates);
+    schema.set_domain(domain);
+
+    // Add a single attribute "a" which will be unused
+    // (we must have at least one attribute)
+    schema.add_attribute(Attribute::create<int>(ctx, "b"));
+
+    // Create the (empty) array on disk.
+    Array::create(uri.c_str(), schema);
+
+    // Prepare some data for the array
+    std::vector<int32_t> id_data = {1, 2};
+    std::vector<int32_t> b_data = {10, 2};
+
+    Array array(ctx, uri.c_str(), TILEDB_WRITE);
+
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_data_buffer("id", id_data).set_data_buffer("b", b_data);
+
+    // Perform the write and close the array.
+    query.submit();
+    array.close();
+
+    // Now evolve the schema to include the INT32 var attribute.
+    // When we read existing coordinates the fill value will be used.
+    int a_fill[1] = {100};
+    Attribute a = Attribute::create<int>(ctx, "a")
+                      .set_cell_val_num(sm::constants::var_num)
+                      .set_fill_value(&a_fill[0], sizeof(a_fill));
+
+    ArraySchemaEvolution evolution(ctx);
+    evolution.add_attribute(a);
+    evolution.array_evolve(uri.c_str());
+  }
+
+  Array array(ctx, uri.c_str(), TILEDB_READ);
+
+  // Prepare the vector that will hold the result (of size 6 elements)
+  std::vector<int32_t> a_data(6);
+  std::vector<uint64_t> a_offsets(6);
+
+  // Prepare the query
+  const auto offsets_elements = GENERATE(false, true);
+  const auto layout =
+      GENERATE(TILEDB_ROW_MAJOR, TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  const std::vector<uint64_t> expect_offsets_elements = {0, 1, 2};
+  const std::vector<uint64_t> expect_offsets_bytes = {
+      0, sizeof(int32_t), 2 * sizeof(int32_t)};
+
+  Config cfg;
+  cfg.set("sm.var_offsets.extra_element", "true");
+  if (offsets_elements) {
+    cfg.set("sm.var_offsets.mode", "elements");
+  }
+
+  Query query(ctx, array, TILEDB_READ);
+  query.set_config(cfg)
+      .set_layout(layout)
+      .set_data_buffer("a", a_data)
+      .set_offsets_buffer("a", a_offsets);
+
+  // Submit the query and close the array.
+  query.submit();
+  array.close();
+
+  CHECK(query.result_buffer_elements()["a"].first == 3);
+  if (offsets_elements) {
+    for (size_t i = 0; i < expect_offsets_elements.size(); i++) {
+      CHECK(a_offsets[i] == expect_offsets_elements[i]);
+    }
+    CHECK(
+        query.result_buffer_elements()["a"].second ==
+        expect_offsets_elements.back());
+  } else {
+    for (size_t i = 0; i < expect_offsets_bytes.size(); i++) {
+      CHECK(a_offsets[i] == expect_offsets_bytes[i]);
+    }
+
+    // "elements" is intentional here, `.second` is not adjusted for bytes
+    CHECK(
+        query.result_buffer_elements()["a"].second ==
+        expect_offsets_elements.back());
+  }
+  CHECK(a_data[0] == 100);
+  CHECK(a_data[1] == 100);
 }

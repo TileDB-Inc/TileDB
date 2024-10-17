@@ -75,7 +75,7 @@ struct CPPArrayFx {
     schema.add_attributes(a1, a2, a3, a4, a5);
 
     // set the array_uri so that it's deleted on cleanup
-    Array::create(array_uri_, schema);
+    Array::create(ctx, array_uri_, schema);
   }
 
   test::VFSTestSetup vfs_test_setup_;
@@ -135,7 +135,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     schema.set_domain(domain);
     schema.add_attribute(a1);
 
-    Array::create(array_uri1, schema);
+    Array::create(ctx, array_uri1, schema);
     Array array(ctx1, array_uri1, TILEDB_READ);
 
     // Check that the config values are correct
@@ -473,7 +473,7 @@ TEST_CASE(
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<std::vector<int32_t>>(ctx, "a"));
   schema.add_attribute(Attribute::create<uint64_t>(ctx, "b"));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   {
     Array array(ctx, array_uri, TILEDB_WRITE);
@@ -548,7 +548,7 @@ TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets][rest]") {
   domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 1001));
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<std::vector<int32_t>>(ctx, "a"));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
   Array array(ctx, array_uri, TILEDB_WRITE);
 
   std::vector<int32_t> a, coord = {10, 20, 30};
@@ -594,7 +594,7 @@ TEST_CASE(
         ArraySchema schema(ctx, TILEDB_DENSE);
         schema.set_domain(domain).set_order({{tile_layout, cell_layout}});
         schema.add_attribute(Attribute::create<int>(ctx, "a"));
-        Array::create(array_name, schema);
+        Array::create(ctx, array_name, schema);
 
         // Write
         std::vector<int> data_w = {
@@ -650,7 +650,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name));
 
@@ -680,7 +680,7 @@ TEST_CASE(
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
 
-  tiledb::Array::create(array_name, schema);
+  tiledb::Array::create(ctx, array_name, schema);
   auto array_w = tiledb::Array(ctx, array_name, TILEDB_WRITE);
   std::vector<int> data = {0, 1};
 
@@ -736,7 +736,7 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption][non-rest]") {
 
   REQUIRE_THROWS_AS(
       Array::encryption_type(ctx, array_name), tiledb::TileDBError);
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
   ArraySchema schema_read(ctx, array_name);
@@ -827,7 +827,7 @@ TEST_CASE(
 
   REQUIRE_THROWS_AS(
       Array::encryption_type(ctx, array_name), tiledb::TileDBError);
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
   REQUIRE(Array::encryption_type(ctx, array_name) == TILEDB_AES_256_GCM);
 
   ArraySchema schema_read(ctx, array_name);
@@ -893,7 +893,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<int>(ctx, ""));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   Array array(ctx, array_uri, TILEDB_READ);
   auto reloaded_schema = array.schema();
@@ -914,7 +914,7 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write array
   Array array_w(ctx, array_uri, TILEDB_WRITE);
@@ -1023,7 +1023,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 
   // Write array
   Array array_w(ctx, array_name, TILEDB_WRITE);
@@ -1121,7 +1121,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   std::vector<int> data_w = {1};
@@ -1172,7 +1172,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create(ctx, "a", datatype));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   std::byte data_w{1};
@@ -1213,6 +1213,7 @@ TEST_CASE(
                   .set_filter_list(FilterList(ctx).add_filter(
                       Filter(ctx, TILEDB_FILTER_BZIP2)));
   Array::create(
+      ctx,
       array_uri,
       ArraySchema(ctx, TILEDB_SPARSE)
           .set_domain(Domain(ctx).add_dimension(
@@ -1271,7 +1272,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.add_attribute(a);
   schema.set_domain(dom);
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   Array array(ctx, array_uri, TILEDB_WRITE);
@@ -1333,7 +1334,7 @@ TEST_CASE(
   auto a = Attribute::create<int32_t>(ctx, "a");
   schema.add_attribute(a);
   schema.set_domain(dom);
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   Array array(ctx, array_uri, TILEDB_WRITE);
@@ -1465,7 +1466,7 @@ TEST_CASE(
   schema.set_tile_order(TILEDB_COL_MAJOR);
   schema.set_cell_order(TILEDB_COL_MAJOR);
   schema.set_domain(dom);
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   Array array(ctx, array_uri, TILEDB_WRITE);
@@ -1526,7 +1527,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   std::vector<int> data_w = {1};
@@ -1573,7 +1574,7 @@ TEST_CASE(
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
   schema.set_allows_dups(true);
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   std::vector<int> data_w = {1};
@@ -1619,7 +1620,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   std::vector<int> data_w = {
@@ -1667,7 +1668,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 
   // Write
   std::vector<int> data_w = {
@@ -1720,7 +1721,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 
   // Write
   std::vector<int> data_w = {1};
@@ -1771,7 +1772,7 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 
   // Try writing on a non-process-global Context
   Context ctx_non_global;
@@ -1844,7 +1845,7 @@ TEST_CASE(
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   Attribute attr = Attribute::create<int>(ctx, "a");
   schema.add_attribute(attr);
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
   REQUIRE(vfs.ls(array_name).size() == 1);
 
   // Ensure the array can be opened and write to it
@@ -2039,7 +2040,7 @@ TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {
   schema.set_domain(domain);
   schema.add_attribute(Attribute::create<int32_t>(ctx, "a"));
   schema.set_allows_dups(dups);
-  Array::create(array_name_1d, schema);
+  Array::create(ctx, array_name_1d, schema);
   Array array(ctx, array_name_1d, TILEDB_READ);
 
   std::vector<int32_t> d(1);

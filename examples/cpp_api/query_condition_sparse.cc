@@ -92,7 +92,7 @@ void create_array(Context& ctx) {
       .add_attribute(Attribute::create<float>(ctx, "d"));
 
   // Create the (empty) array.
-  Array::create(array_name, schema);
+  Array::create(ctx, array_name, schema);
 }
 
 /**

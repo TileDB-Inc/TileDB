@@ -55,7 +55,7 @@ void create_array(const Context& ctx) {
   schema.add_attribute(Attribute::create<int>(ctx, "a"));
 
   // Create the (empty) array on disk.
-  Array::create(array_uri, schema);
+  Array::create(ctx, array_uri, schema);
 }
 
 void write_array(const Context& ctx) {

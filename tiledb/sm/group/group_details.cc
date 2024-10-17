@@ -85,22 +85,29 @@ void GroupDetails::mark_member_for_addition(
     ContextResources& resources,
     const URI& group_member_uri,
     const bool& relative,
-    std::optional<std::string>& name) {
+    std::optional<std::string>& name,
+    std::optional<ObjectType> type) {
   std::lock_guard<std::mutex> lck(mtx_);
-  URI absolute_group_member_uri = group_member_uri;
-  if (relative) {
-    absolute_group_member_uri =
-        group_uri_.join_path(group_member_uri.to_string());
+  ObjectType obj_type;
+  if (type.has_value()) {
+    obj_type = type.value();
+  } else {
+    URI absolute_group_member_uri = group_member_uri;
+    if (relative) {
+      absolute_group_member_uri =
+          group_uri_.join_path(group_member_uri.to_string());
+    }
+    obj_type = object_type(resources, absolute_group_member_uri);
   }
-  ObjectType type = object_type(resources, absolute_group_member_uri);
-  if (type == ObjectType::INVALID) {
+
+  if (obj_type == ObjectType::INVALID) {
     throw GroupDetailsException(
-        "Cannot add group member " + absolute_group_member_uri.to_string() +
+        "Cannot add group member " + group_member_uri.to_string() +
         ", type is INVALID. The member likely does not exist.");
   }
 
   auto group_member = tdb::make_shared<GroupMemberV2>(
-      HERE(), group_member_uri, type, relative, name, false);
+      HERE(), group_member_uri, obj_type, relative, name, false);
 
   if (!member_keys_to_add_.insert(group_member->key()).second) {
     throw GroupDetailsException(

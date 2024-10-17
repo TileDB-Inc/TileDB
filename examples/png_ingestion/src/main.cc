@@ -189,7 +189,7 @@ void create_array(
       .add_attribute(Attribute::create<uint8_t>(ctx, "alpha"));
 
   // Create the (empty) array on disk.
-  Array::create(array_path, schema);
+  Array::create(ctx, array_path, schema);
 }
 
 /**

@@ -46,10 +46,11 @@
 
 #include <limits>
 
+using namespace tiledb;
+
 TEST_CASE(
     "C++ API: SchemaEvolution, add and drop attributes",
     "[cppapi][schema][evolution][add][drop][rest]") {
-  using namespace tiledb;
   test::VFSTestSetup vfs_test_setup;
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{vfs_test_setup.array_uri("test_schema_evolution_array")};
@@ -101,7 +102,6 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution, check error when dropping dimension",
     "[cppapi][schema][evolution][drop][rest]") {
-  using namespace tiledb;
   test::VFSTestSetup vfs_test_setup;
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{vfs_test_setup.array_uri("test_schema_evolution_array")};
@@ -135,7 +135,6 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution, add attributes and read",
     "[cppapi][schema][evolution][add][rest]") {
-  using namespace tiledb;
   test::VFSTestSetup vfs_test_setup;
   Context ctx{vfs_test_setup.ctx()};
 
@@ -669,7 +668,6 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution, add and drop attributes",
     "[cppapi][schema][evolution][add][query-condition][rest]") {
-  using namespace tiledb;
   test::VFSTestSetup vfs_test_setup;
   Context ctx{vfs_test_setup.ctx()};
   auto layout = GENERATE(
@@ -806,6 +804,101 @@ TEST_CASE(
     CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{4}));
     CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1}));
   }
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution, drop fixed attribute and add back as var-sized",
+    "[cppapi][schema][evolution][add][drop]") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{
+      vfs_test_setup.array_uri("test_schema_evolution_drop_fixed_add_var")};
+  tiledb_array_type_t array_type = TILEDB_DENSE;
+  bool allows_dups = false;
+  auto layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
+  SECTION("sparse") {
+    array_type = TILEDB_SPARSE;
+    allows_dups = GENERATE(true, false);
+  }
+
+  // Create array
+  Domain domain(ctx);
+  auto d = Dimension::create<int>(ctx, "d", {{1, 10}}, 1);
+  domain.add_dimension(d);
+  auto a = Attribute::create<int>(ctx, "a");
+  auto b = Attribute::create<int>(ctx, "b");
+  ArraySchema schema(ctx, array_type);
+  schema.set_domain(domain);
+  schema.set_allows_dups(allows_dups);
+  CHECK(allows_dups == schema.allows_dups());
+  schema.add_attribute(a);
+  schema.add_attribute(b);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_tile_order(TILEDB_COL_MAJOR);
+  Array::create(array_uri, schema);
+
+  // Write a fragment to the array
+  std::vector<int> data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  Array array_w(ctx, array_uri, TILEDB_WRITE);
+  Query query_w(ctx, array_w, TILEDB_WRITE);
+  query_w.set_layout(TILEDB_GLOBAL_ORDER)
+      .set_data_buffer("a", data)
+      .set_data_buffer("b", data);
+  if (array_type == TILEDB_SPARSE) {
+    query_w.set_data_buffer("d", data);
+  }
+  query_w.submit_and_finalize();
+  array_w.close();
+  uint64_t fragment_write_ts = tiledb_timestamp_now_ms() + 1;
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Evolve schema to drop attribute "a"
+  ArraySchemaEvolution schema_evolution = ArraySchemaEvolution(ctx);
+  uint64_t now = tiledb_timestamp_now_ms() + 1;
+  schema_evolution.set_timestamp_range(std::make_pair(now, now));
+  schema_evolution.drop_attribute("a");
+  schema_evolution.array_evolve(array_uri);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Evolve schema to add back attribute "a" as a string
+  auto a_new = Attribute::create<std::string>(ctx, "a");
+  now = tiledb_timestamp_now_ms() + 1;
+  schema_evolution.set_timestamp_range(std::make_pair(now, now));
+  schema_evolution.add_attribute(a_new);
+  schema_evolution.array_evolve(array_uri);
+
+  // Read the array
+  std::string buffer;
+  std::vector<uint64_t> offsets(10);
+  Array array_r(ctx, array_uri, TILEDB_READ);
+  Subarray subarray_r(ctx, array_r);
+  subarray_r.add_range(0, 1, 10);
+  Query query_r(ctx, array_r, TILEDB_READ);
+  query_r.set_layout(layout)
+      .set_subarray(subarray_r)
+      .set_data_buffer("a", buffer)
+      .set_offsets_buffer("a", offsets);
+  query_r.submit();
+  array_r.close();
+
+  // Read the original array
+  std::vector<int> a_data(10);
+  array_r.open(TILEDB_READ, fragment_write_ts);
+  Subarray subarray_r2(ctx, array_r);
+  subarray_r2.add_range(0, 1, 10);
+  Query query_r2(ctx, array_r, TILEDB_READ);
+  query_r2.set_layout(layout)
+      .set_subarray(subarray_r2)
+      .set_data_buffer("a", a_data);
+  query_r2.submit();
+  array_r.close();
+  auto result_num = (int)query_r2.result_buffer_elements()["a"].second;
+  CHECK(result_num == 10);
+  a_data.resize(result_num);
+  CHECK_THAT(
+      a_data,
+      Catch::Matchers::Equals(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}));
 }
 
 TEST_CASE(

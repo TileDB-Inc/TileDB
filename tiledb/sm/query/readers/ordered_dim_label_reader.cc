@@ -491,7 +491,7 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
 
   // Process ranges one by one.
   for (uint64_t r = 0; r < ranges_.size(); r++) {
-    // Add tiles for each fragments.
+    // Add tiles for each fragment.
     for (unsigned f = 0; f < fragment_metadata_.size(); f++) {
       // Add the tiles for the start/end range.
       for (uint8_t range_index = 0; range_index < 2; range_index++) {
@@ -524,7 +524,10 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
             } else {
               if (r == 0) {
                 throw OrderedDimLabelReaderException(
-                    "Can't process a single range, increase memory budget");
+                    "Can't process a single range requiring " +
+                    std::to_string(tile_size) +
+                    " bytes, increase memory budget(" +
+                    std::to_string(memory_budget_) + ")");
               }
               return r;
             }

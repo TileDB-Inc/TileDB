@@ -105,6 +105,12 @@ else()
   set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
+if (TILEDB_CCACHE)
+  include(FindCcache)
+  set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
+  set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
+endif()
+
 # Set -fvisibility=hidden (or equivalent) flags by default.
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
@@ -317,6 +323,8 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/fragment_info/fragment_info_api_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/fragment_info/fragment_info_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/ndrectangle/ndrectangle_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_enum.h"
@@ -327,6 +335,8 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/string/string_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/subarray/subarray_api_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/subarray/subarray_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_experimental.h"

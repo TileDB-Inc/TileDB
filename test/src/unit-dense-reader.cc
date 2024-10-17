@@ -125,6 +125,7 @@ struct CDenseFx {
       std::string expected_error = std::string());
   void reset_config();
   void update_config();
+  void check_last_error(std::string expected_error);
 
   CDenseFx();
   ~CDenseFx();
@@ -187,6 +188,16 @@ void CDenseFx::update_config() {
   REQUIRE(error == nullptr);
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
+}
+
+void CDenseFx::check_last_error(std::string expected_error) {
+  tiledb_error_t* err = NULL;
+  tiledb_ctx_get_last_error(ctx_, &err);
+  // Retrieve the error message by invoking `tiledb_error_message`.
+  const char* msg;
+  tiledb_error_message(err, &msg);
+  CHECK_THAT(
+      std::string(msg), Catch::Matchers::ContainsSubstring(expected_error));
 }
 
 void CDenseFx::create_default_array_1d() {
@@ -516,13 +527,7 @@ void CDenseFx::read(
     CHECK(rc == TILEDB_OK);
   } else {
     CHECK(rc == TILEDB_ERR);
-    tiledb_error_t* err = NULL;
-    tiledb_ctx_get_last_error(ctx_, &err);
-
-    // Retrieve the error message by invoking `tiledb_error_message`.
-    const char* msg;
-    tiledb_error_message(err, &msg);
-    CHECK(expected_error == std::string(msg));
+    check_last_error(expected_error);
   }
 
   // Check the internal loop count against expected value.
@@ -644,13 +649,7 @@ void CDenseFx::read_strings(
     CHECK(rc == TILEDB_OK);
   } else {
     CHECK(rc == TILEDB_ERR);
-    tiledb_error_t* err = NULL;
-    tiledb_ctx_get_last_error(ctx_, &err);
-
-    // Retrieve the error message by invoking `tiledb_error_message`.
-    const char* msg;
-    tiledb_error_message(err, &msg);
-    CHECK(expected_error == std::string(msg));
+    check_last_error(expected_error);
   }
 
   if (rc == TILEDB_OK) {
@@ -820,16 +819,7 @@ void CDenseFx::read_fixed_strings(
     CHECK(rc == TILEDB_OK);
   } else {
     CHECK(rc == TILEDB_ERR);
-
-    if (rc == TILEDB_ERR) {
-      tiledb_error_t* err = NULL;
-      tiledb_ctx_get_last_error(ctx_, &err);
-
-      // Retrieve the error message by invoking `tiledb_error_message`.
-      const char* msg;
-      tiledb_error_message(err, &msg);
-      CHECK(expected_error == std::string(msg));
-    }
+    check_last_error(expected_error);
   }
 
   if (rc == TILEDB_OK) {
@@ -919,7 +909,8 @@ TEST_CASE_METHOD(
       data_r,
       &data_r_size,
       0,
-      "DenseReader: Cannot load tile offsets, increase memory budget");
+      "DenseReader: Cannot load tile offsets");
+  check_last_error("increase memory budget");
 }
 
 TEST_CASE_METHOD(
@@ -979,16 +970,16 @@ TEST_CASE_METHOD(
   tile_upper_memory_limit_ = "50";
   update_config();
 
-  std::string error_expected =
-      use_qc ?
-          "DenseReader: Cannot process a single tile because of query "
-          "condition, increase memory budget" :
-          "DenseReader: Cannot process a single tile, increase memory budget";
+  std::string error_expected = use_qc ?
+                                   "DenseReader: Cannot process a single tile "
+                                   "because of query condition" :
+                                   "DenseReader: Cannot process a single tile";
 
   // Try to read.
   int data_r[20] = {0};
   uint64_t data_r_size = sizeof(data_r);
   read(subarray, data_r, &data_r_size, use_qc, error_expected);
+  check_last_error("increase memory budget");
 }
 
 TEST_CASE_METHOD(
@@ -1063,10 +1054,9 @@ TEST_CASE_METHOD(
   update_config();
 
   std::string error_expected =
-      use_qc ?
-          "DenseReader: Cannot process a single tile because of query "
-          "condition, increase memory budget" :
-          "DenseReader: Cannot process a single tile, increase memory budget";
+      use_qc ? "DenseReader: Cannot process a single tile because of query "
+               "condition" :
+               "DenseReader: Cannot process a single tile";
 
   // Try to read.
   char data_r[NUM_CELLS * 2] = {0};
@@ -1081,6 +1071,7 @@ TEST_CASE_METHOD(
       &offsets_r_size,
       use_qc,
       error_expected);
+  check_last_error("increase memory budget");
 }
 
 TEST_CASE_METHOD(
@@ -1243,7 +1234,8 @@ TEST_CASE_METHOD(
       true,
       true,
       "DenseReader: Cannot process a single tile because of query "
-      "condition, increase memory budget");
+      "condition");
+  check_last_error("increase memory budget");
 }
 
 TEST_CASE_METHOD(
@@ -1300,7 +1292,8 @@ TEST_CASE_METHOD(
       0,
       false,
       false,
-      "DenseReader: Cannot process a single tile, increase memory budget");
+      "DenseReader: Cannot process a single tile");
+  check_last_error("increase memory budget");
 
   // Now read with QC set for a1 only.
   read_fixed_strings(
@@ -1314,7 +1307,8 @@ TEST_CASE_METHOD(
       0,
       true,
       false,
-      "DenseReader: Cannot process a single tile, increase memory budget");
+      "DenseReader: Cannot process a single tile");
+  check_last_error("increase memory budget");
 
   // Now read with QC set for a2 only.
   read_fixed_strings(
@@ -1328,7 +1322,8 @@ TEST_CASE_METHOD(
       0,
       false,
       true,
-      "DenseReader: Cannot process a single tile, increase memory budget");
+      "DenseReader: Cannot process a single tile");
+  check_last_error("increase memory budget");
 
   // Now read with QC set for a1 and a2, should fail.
   read_fixed_strings(
@@ -1343,7 +1338,8 @@ TEST_CASE_METHOD(
       true,
       true,
       "DenseReader: Cannot process a single tile because of query "
-      "condition, increase memory budget");
+      "condition");
+  check_last_error("increase memory budget");
 }
 
 #define LARGE_NUM_CELLS 50

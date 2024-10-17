@@ -288,31 +288,6 @@ shared_ptr<ArraySchema> CurrentDomainFx<T>::get_array_schema_latest() {
 
 TEST_CASE_METHOD(
     CurrentDomainFx<int32_t>,
-    "Setting CurrentDomain not allowed on Dense",
-    "[current_domain][dense]") {
-  auto schema = create_schema(true);
-  auto current_domain = create_current_domain({}, schema, nullptr, true);
-
-  auto matcher = Catch::Matchers::ContainsSubstring(
-      "Setting a current domain on a TileDB dense array is not supported.");
-
-  REQUIRE_THROWS_WITH(schema->set_current_domain(current_domain), matcher);
-
-  Range r;
-  std::vector<int32_t> rdata = {1, 1000};
-  r = Range(rdata.data(), 2 * sizeof(int32_t));
-  current_domain = create_current_domain({r, r}, schema, nullptr, false);
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
-  ase->expand_current_domain(current_domain);
-
-  auto matcher2 = Catch::Matchers::ContainsSubstring(
-      "Expanding the current domain on a TileDB dense array is not supported.");
-
-  REQUIRE_THROWS_WITH(ase->evolve_schema(schema), matcher2);
-}
-
-TEST_CASE_METHOD(
-    CurrentDomainFx<int32_t>,
     "Create Empty CurrentDomain",
     "[current_domain][create][empty]") {
   auto schema = create_schema();

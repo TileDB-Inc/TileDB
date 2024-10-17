@@ -379,6 +379,14 @@ struct Map(Key, Value) {
   }
 }
 
+struct MapEnumeration {
+  entries @0 :List(Entry);
+  struct Entry {
+    key @0 :Text;
+    value @1 :List(Enumeration);
+  }
+}
+
 struct MapUInt32 {
   entries @0 :List(Entry);
   struct Entry {
@@ -1253,7 +1261,12 @@ struct LoadEnumerationsRequest {
 
 struct LoadEnumerationsResponse {
   enumerations @0 :List(Enumeration);
-  # The loaded enumerations
+  # The loaded enumerations for the latest array schema
+  # This field is only used if enumerations are requested for the latest schema
+
+  allEnumerations @1 :MapEnumeration;
+  # The loaded enumerations for all array schemas
+  # This field is only used if enumerations are requested for all schemas
 }
 
 struct LoadArraySchemaRequest {
@@ -1365,4 +1378,16 @@ struct NDRectangle {
   # List of 1D ranges, one per dimension
   # SubarrayRanges is designed to hold multiple ranges per dimension,
   # For CurrentDomain's NDRectangle we only need one range per dimension.
+}
+
+enum ObjectType {
+	array @0;
+	group @1;
+}
+
+struct ObjectInfoResponse {
+  # Contains information about a TileDB object.
+
+  objectType @0 :ObjectType;
+  # The object's type (array or group).
 }

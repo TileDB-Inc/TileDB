@@ -1,5 +1,5 @@
 /**
- * @file   STSProfileWithWebIdentityCredentialsProvider.g
+ * @file   STSProfileWithWebIdentityCredentialsProvider.h
  *
  * @section LICENSE
  *

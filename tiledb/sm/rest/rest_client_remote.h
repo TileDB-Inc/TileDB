@@ -282,7 +282,8 @@ class RestClientRemote : public RestClient {
    * @param array Array to fetch metadata for.
    * @param enumeration_names The names of the enumerations to get.
    */
-  std::vector<shared_ptr<const Enumeration>> post_enumerations_from_rest(
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+  post_enumerations_from_rest(
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
