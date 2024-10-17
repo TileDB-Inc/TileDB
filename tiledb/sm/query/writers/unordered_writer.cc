@@ -687,7 +687,19 @@ Status UnorderedWriter::unordered_write() {
   auto tile_num = it->second.size();
   if (is_coords_pass_) {
     // Set the number of tiles in the metadata
-    frag_meta_->set_num_tiles(tile_num);
+    frag_meta->set_num_tiles(
+        tile_num,
+        frag_meta->loaded_metadata()->tile_offsets(),
+        frag_meta->loaded_metadata()->tile_var_offsets(),
+        frag_meta->loaded_metadata()->tile_var_sizes(),
+        frag_meta->loaded_metadata()->tile_validity_offsets(),
+        frag_meta->loaded_metadata()->tile_min_buffer(),
+        frag_meta->loaded_metadata()->tile_max_buffer(),
+        frag_meta->loaded_metadata()->tile_sums(),
+        frag_meta->loaded_metadata()->tile_null_counts());
+    if (!frag_meta->dense()) {
+      frag_meta->loaded_metadata()->rtree().set_leaf_num(tile_num);
+    }
 
     stats_->add_counter("tile_num", tile_num);
     stats_->add_counter("cell_num", cell_pos_.size());
@@ -715,8 +727,9 @@ Status UnorderedWriter::unordered_write() {
   if (written_buffers_.size() >=
       array_schema_.dim_num() + array_schema_.attribute_num()) {
     // Compute fragment min/max/sum/null count and write the fragment metadata
-    frag_meta_->compute_fragment_min_max_sum_null_count();
-    frag_meta_->store(array_->get_encryption_key());
+    frag_meta_->loaded_metadata()->compute_fragment_min_max_sum_null_count();
+    frag_meta_->store(
+        frag_meta->loaded_metadata_shared(), array_->get_encryption_key());
 
     // Add written fragment info
     RETURN_NOT_OK(add_written_fragment_info(frag_uri_.value()));

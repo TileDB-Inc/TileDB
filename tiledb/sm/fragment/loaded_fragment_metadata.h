@@ -588,6 +588,94 @@ class LoadedFragmentMetadata {
     return processed_conditions_set_;
   }
 
+  /**
+   * Sets the input tile's MBR in the fragment metadata.
+   *
+   * @param tile The tile index whose MBR will be set.
+   * @param mbr The MBR to be set.
+   */
+  void set_mbr(uint64_t tile, const NDRange& mbr);
+
+  /** Returns the MBR of the input tile. */
+  const NDRange& LoadedFragmentMetadata::mbr(uint64_t tile_idx) const {
+    return rtree().leaf(tile_idx);
+  }
+
+  /** Returns all the MBRs of all tiles in the fragment. */
+  const tdb::pmr::vector<NDRange>& LoadedFragmentMetadata::mbrs() const {
+    return rtree().leaves();
+  }
+
+  /**
+   * Retrieves the tile min value for a given attribute or dimension and tile
+   * index.
+   *
+   * @param name The input attribute/dimension.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return Value.
+   */
+  template <typename T>
+  T get_tile_min_as(const std::string& name, uint64_t tile_idx) const;
+
+  /**
+   * Returns the tile metadata for a tile.
+   *
+   * @param name Name of the attribute to get the data for.
+   * @param tile_idx Tile index.
+   */
+  TileMetadata get_tile_metadata(
+      const std::string& name, const uint64_t tile_idx) const;
+
+  /**
+   * Retrieves the tile max value for a given attribute or dimension and tile
+   * index.
+   *
+   * @tparam Type to return the data as.
+   * @param name The input attribute/dimension.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return Value.
+   */
+  template <typename T>
+  T get_tile_max_as(const std::string& name, uint64_t tile_idx) const;
+
+  /**
+   * Set the processed conditions. The processed conditions is the list
+   * of delete/update conditions that have already been applied for this
+   * fragment and don't need to be applied again.
+   *
+   * @param processed_conditions The processed conditions.
+   */
+  void set_processed_conditions(std::vector<std::string>& processed_conditions);
+
+  /**
+   * Compute fragment min, max, sum, null count for all dimensions/attributes.
+   */
+  void compute_fragment_min_max_sum_null_count();
+
+  /**
+   * Compute the fragment min, max and sum values.
+   *
+   * @param name The attribute/dimension name.
+   */
+  template <class T>
+  void compute_fragment_min_max_sum(const std::string& name);
+
+  /**
+   * Compute the fragment sum value.
+   *
+   * @param idx The attribute/dimension index.
+   * @param nullable Is the attribute/dimension nullable.
+   */
+  template <class SumT>
+  void compute_fragment_sum(const uint64_t idx, const bool nullable);
+
+  /**
+   * Compute the fragment min and max values for var sized attributes.
+   *
+   * @param name The attribute/dimension name.
+   */
+  void min_max_var(const std::string& name);
+
  protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

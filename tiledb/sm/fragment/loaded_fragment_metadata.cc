@@ -538,8 +538,699 @@ void LoadedFragmentMetadata::free_rtree() {
   loaded_metadata_.rtree_ = false;
 }
 
+void LoadedFragmentMetadata::set_mbr(
+    uint64_t base, uint64_t tile, const NDRange& mbr) {
+  rtree_.set_leaf(tile + base, mbr);
+}
+
+template <typename T>
+T LoadedFragmentMetadata::get_tile_min_as(
+    const std::string& name, uint64_t tile_idx) const {
+  const auto var_size = parent_fragment_.array_schema_->var_size(name);
+  if (var_size) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile min metadata as wrong type");
+  }
+
+  auto it = parent_fragment_.idx_map_.find(name);
+  assert(it != parent_fragment_.idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_min_[idx]) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile min metadata that's not loaded");
+  }
+
+  const auto type = parent_fragment_.array_schema_->type(name);
+  const auto is_dim = parent_fragment_.array_schema_->is_dim(name);
+  const auto cell_val_num = parent_fragment_.array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_min_max_metadata(
+          type, is_dim, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile min metadata that's not present");
+  }
+
+  auto size = parent_fragment_.array_schema_->cell_size(name);
+  const void* min = &tile_min_buffer()[idx][tile_idx * size];
+  if constexpr (std::is_same_v<T, const void*>) {
+    return min;
+  } else {
+    return *static_cast<const T*>(min);
+  }
+}
+
+template <>
+std::string_view LoadedFragmentMetadata::get_tile_min_as<std::string_view>(
+    const std::string& name, uint64_t tile_idx) const {
+  const auto type = parent_fragment_.array_schema_->type(name);
+  const auto var_size = parent_fragment_.array_schema_->var_size(name);
+  if (!var_size && type != Datatype::STRING_ASCII && type != Datatype::CHAR) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile min metadata as wrong type");
+  }
+
+  auto it = parent_fragment_.idx_map_.find(name);
+  assert(it != parent_fragment_.idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_min_[idx]) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile min metadata that's not loaded");
+  }
+
+  const auto is_dim = parent_fragment_.array_schema_->is_dim(name);
+  const auto cell_val_num = parent_fragment_.array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_min_max_metadata(
+          type, is_dim, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile min metadata that's not present");
+  }
+
+  using sv_size_cast = std::string_view::size_type;
+  if (var_size) {
+    auto tile_num = this->tile_num();
+    auto offsets = (uint64_t*)tile_min_buffer_[idx].data();
+    auto min_offset = offsets[tile_idx];
+    auto size =
+        tile_idx == tile_num - 1 ?
+            static_cast<sv_size_cast>(
+                tile_min_var_buffer_()[idx].size() - min_offset) :
+            static_cast<sv_size_cast>(offsets[tile_idx + 1] - min_offset);
+    if (size == 0) {
+      return {};
+    }
+
+    const char* min = &tile_min_var_buffer_[idx][min_offset];
+    return {min, size};
+  } else {
+    auto size = static_cast<sv_size_cast>(
+        parent_fragment_.array_schema_->cell_size(name));
+    const void* min = &tile_min_buffer_[idx][tile_idx * size];
+    return {static_cast<const char*>(min), size};
+  }
+}
+
+TileMetadata LoadedFragmentMetadata::get_tile_metadata(
+    const std::string& name, const uint64_t tile_idx) const {
+  auto var_size = parent_fragment_.array_schema_->var_size(name);
+  auto is_dim = parent_fragment_.array_schema_->is_dim(name);
+  auto count = parent_fragment_.cell_num(tile_idx);
+
+  if (name == constants::count_of_rows) {
+    return {count, 0, nullptr, 0, nullptr, 0, nullptr};
+  }
+
+  uint64_t null_count = 0;
+  if (parent_fragment_.array_schema_->is_nullable(name)) {
+    null_count = get_tile_null_count(name, tile_idx);
+  }
+
+  unsigned dim_idx = 0;
+  const NDRange* mbr = nullptr;
+  if (is_dim) {
+    dim_idx =
+        parent_fragment_.array_schema_->domain().get_dimension_index(name);
+    mbr = &rtree().leaf(tile_idx);
+  }
+
+  if (var_size) {
+    std::string_view min =
+        is_dim ? mbr->at(dim_idx).start_str() :
+                 get_tile_min_as<std::string_view>(name, tile_idx);
+    std::string_view max =
+        is_dim ? mbr->at(dim_idx).end_str() :
+                 get_tile_max_as<std::string_view>(name, tile_idx);
+    return {
+        count,
+        null_count,
+        min.data(),
+        min.size(),
+        max.data(),
+        max.size(),
+        nullptr};
+  } else {
+    auto cell_size = parent_fragment_.array_schema_->cell_size(name);
+    const void* min = is_dim ? mbr->at(dim_idx).start_fixed() :
+                               get_tile_min_as<const void*>(name, tile_idx);
+    const void* max = is_dim ? mbr->at(dim_idx).end_fixed() :
+                               get_tile_max_as<const void*>(name, tile_idx);
+
+    const auto type = parent_fragment_.array_schema_->type(name);
+    const auto cell_val_num =
+        parent_fragment_.array_schema_->cell_val_num(name);
+    const void* sum = nullptr;
+    if (TileMetadataGenerator::has_sum_metadata(type, false, cell_val_num)) {
+      sum = get_tile_sum(name, tile_idx);
+    }
+
+    return {count, null_count, min, cell_size, max, cell_size, sum};
+  }
+}
+template <typename T>
+T LoadedFragmentMetadata::get_tile_max_as(
+    const std::string& name, uint64_t tile_idx) const {
+  const auto var_size = parent_fragment_.array_schema_->var_size(name);
+  if (var_size) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile max metadata as wrong type");
+  }
+
+  auto it = parent_fragment_.idx_map_.find(name);
+  assert(it != parent_fragment_.idx_map_.end());
+  auto idx = it->second;
+  if (loaded_metadata_.tile_max_[idx]) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile max metadata that's not loaded");
+  }
+
+  const auto type = parent_fragment_.array_schema_->type(name);
+  const auto is_dim = parent_fragment_.array_schema_->is_dim(name);
+  const auto cell_val_num = parent_fragment_.array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_min_max_metadata(
+          type, is_dim, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile max metadata that's not present");
+  }
+
+  auto size = parent_fragment_.array_schema_->cell_size(name);
+  const void* max = &tile_max_buffer_[idx][tile_idx * size];
+  if constexpr (std::is_same_v<T, const void*>) {
+    return max;
+  } else {
+    return *static_cast<const T*>(max);
+  }
+}
+
+template <>
+std::string_view LoadedFragmentMetadata::get_tile_max_as<std::string_view>(
+    const std::string& name, uint64_t tile_idx) const {
+  const auto type = parent_fragment_.array_schema_->type(name);
+  const auto var_size = parent_fragment_.array_schema_->var_size(name);
+  if (!var_size && type != Datatype::STRING_ASCII && type != Datatype::CHAR) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile max metadata as wrong type");
+  }
+
+  auto it = parent_fragment_.idx_map_.find(name);
+  assert(it != parent_fragment_.idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_max_[idx]) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile max metadata that's not loaded");
+  }
+
+  const auto is_dim = parent_fragment_.array_schema_->is_dim(name);
+  const auto cell_val_num = parent_fragment_.array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_min_max_metadata(
+          type, is_dim, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile max metadata that's not present");
+  }
+
+  using sv_size_cast = std::string_view::size_type;
+  if (var_size) {
+    auto tile_num = parent_fragment_.tile_num();
+    auto offsets = (uint64_t*)tile_max_buffer_[idx].data();
+    auto max_offset = offsets[tile_idx];
+    auto size =
+        tile_idx == tile_num - 1 ?
+            static_cast<sv_size_cast>(
+                tile_max_var_buffer_[idx].size() - max_offset) :
+            static_cast<sv_size_cast>(offsets[tile_idx + 1] - max_offset);
+    if (size == 0) {
+      return {};
+    }
+
+    const char* max = &tile_max_var_buffer_[idx][max_offset];
+    return {max, size};
+  } else {
+    auto size = static_cast<sv_size_cast>(
+        parent_fragment_.array_schema_->cell_size(name));
+    const void* max = &tile_max_buffer_[idx][tile_idx * size];
+    return {static_cast<const char*>(max), size};
+  }
+}
+
+void LoadedFragmentMetadata::set_processed_conditions(
+    std::vector<std::string>& processed_conditions) {
+  processed_conditions_ = processed_conditions;
+  processed_conditions_set_ = std::unordered_set<std::string>(
+      processed_conditions.begin(), processed_conditions.end());
+}
+
+template <class T>
+void LoadedMetadataFragmentMetadata::compute_fragment_min_max_sum(
+    const std::string& name) {
+  // For easy reference.
+  const auto& idx = parent_fragment_.idx_map_[name];
+  const auto nullable = parent_fragment_.array_schema_->is_nullable(name);
+  const auto is_dim = parent_fragment_.array_schema_->is_dim(name);
+  const auto type = parent_fragment_.array_schema_->type(name);
+  const auto cell_val_num = parent_fragment_.array_schema_->cell_val_num(name);
+
+  // No metadata for dense coords
+  if (!parent_fragment_.array_schema_->dense() || !is_dim) {
+    const auto has_min_max = TileMetadataGenerator::has_min_max_metadata(
+        type, is_dim, false, cell_val_num);
+    const auto has_sum =
+        TileMetadataGenerator::has_sum_metadata(type, false, cell_val_num);
+
+    if (has_min_max) {
+      // Initialize defaults.
+      T min = metadata_generator_type_data<T>::min;
+      T max = metadata_generator_type_data<T>::max;
+
+      // Get data and tile num.
+      auto min_values =
+          static_cast<T*>(static_cast<void*>(tile_min_buffer()[idx].data()));
+      auto max_values =
+          static_cast<T*>(static_cast<void*>(tile_max_buffer()[idx].data()));
+      auto& null_count_values = tile_null_counts()[idx];
+      auto tile_num = this->tile_num();
+
+      // Process tile by tile.
+      for (uint64_t t = 0; t < tile_num; t++) {
+        const bool is_null = nullable && null_count_values[t] == cell_num(t);
+        if (!is_null) {
+          min = min < min_values[t] ? min : min_values[t];
+          max = max > max_values[t] ? max : max_values[t];
+        }
+      }
+
+      // Copy min max values.
+      fragment_mins()[idx].resize(sizeof(T));
+      fragment_maxs()[idx].resize(sizeof(T));
+      memcpy(fragment_mins()[idx].data(), &min, sizeof(T));
+      memcpy(fragment_maxs()[idx].data(), &max, sizeof(T));
+    }
+
+    if (has_sum) {
+      compute_fragment_sum<typename metadata_generator_type_data<T>::sum_type>(
+          idx, nullable);
+    }
+  }
+}
+
+template <>
+void LoadedMetadataFragmentMetadata::compute_fragment_min_max_sum<char>(
+    const std::string& name) {
+  // For easy reference.
+  const auto idx = parent_fragment_.idx_map_[name];
+  const auto nullable = parent_fragment_.array_schema_->is_nullable(name);
+  const auto is_dim = parent_fragment_.array_schema_->is_dim(name);
+  const auto type = parent_fragment_.array_schema_->type(name);
+  const auto cell_val_num = parent_fragment_.array_schema_->cell_val_num(name);
+
+  // Return if there's no min/max.
+  const auto has_min_max = TileMetadataGenerator::has_min_max_metadata(
+      type, is_dim, false, cell_val_num);
+  if (!has_min_max)
+    return;
+
+  // Initialize to null.
+  void* min = nullptr;
+  void* max = nullptr;
+
+  // Get data and tile num.
+  auto min_values = tile_min_buffer()[idx].data();
+  auto max_values = tile_max_buffer()[idx].data();
+  auto& null_count_values = tile_null_counts()[idx];
+  auto tile_num = parent_fragment_.tile_num();
+
+  // Process tile by tile.
+  for (uint64_t t = 0; t < tile_num; t++) {
+    if (!nullable || null_count_values[t] != cell_num(t)) {
+      min = (min == nullptr ||
+             strncmp((const char*)min, (const char*)min_values, cell_val_num) >
+                 0) ?
+                min_values :
+                min;
+      min_values += cell_val_num;
+      max = (max == nullptr ||
+             strncmp((const char*)max, (const char*)max_values, cell_val_num) <
+                 0) ?
+                max_values :
+                max;
+      max_values += cell_val_num;
+    }
+  }
+
+  // Copy values.
+  if (min != nullptr) {
+    fragment_mins()[idx].resize(cell_val_num);
+    memcpy(fragment_mins()[idx].data(), min, cell_val_num);
+  }
+
+  if (max != nullptr) {
+    fragment_maxs()[idx].resize(cell_val_num);
+    memcpy(fragment_maxs()[idx].data(), max, cell_val_num);
+  }
+}
+
+template <>
+void LoadedMetadataFragmentMetadata::compute_fragment_sum<int64_t>(
+    const uint64_t idx, const bool nullable) {
+  // Zero sum.
+  int64_t sum_data = 0;
+
+  // Get data and tile num.
+  auto values =
+      static_cast<int64_t*>(static_cast<void*>(tile_sums()[idx].data()));
+  auto& null_count_values = tile_null_counts()[idx];
+  auto tile_num = parent_fragment_.tile_num();
+
+  // Process tile by tile, swallowing overflow exception.
+  for (uint64_t t = 0; t < tile_num; t++) {
+    if (!nullable || null_count_values[t] != cell_num(t)) {
+      if (sum_data > 0 && values[t] > 0 &&
+          (sum_data > std::numeric_limits<int64_t>::max() - values[t])) {
+        sum_data = std::numeric_limits<int64_t>::max();
+        break;
+      }
+
+      if (sum_data < 0 && values[t] < 0 &&
+          (sum_data < std::numeric_limits<int64_t>::min() - values[t])) {
+        sum_data = std::numeric_limits<int64_t>::min();
+        break;
+      }
+
+      sum_data += values[t];
+    }
+  }
+
+  // Copy value.
+  memcpy(&fragment_sums()[idx], &sum_data, sizeof(int64_t));
+}
+
+template <>
+void LoadedMetadataFragmentMetadata::compute_fragment_sum<uint64_t>(
+    const uint64_t idx, const bool nullable) {
+  // Zero sum.
+  uint64_t sum_data = 0;
+
+  // Get data and tile num.
+  auto values =
+      static_cast<uint64_t*>(static_cast<void*>(tile_sums()[idx].data()));
+  auto& null_count_values = tile_null_counts()[idx];
+  auto tile_num = parent_fragment_.tile_num();
+
+  // Process tile by tile, swallowing overflow exception.
+  for (uint64_t t = 0; t < tile_num; t++) {
+    if (!nullable || null_count_values[t] != cell_num(t)) {
+      if (sum_data > std::numeric_limits<uint64_t>::max() - values[t]) {
+        sum_data = std::numeric_limits<uint64_t>::max();
+        break;
+      }
+
+      sum_data += values[t];
+    }
+  }
+
+  // Copy value.
+  memcpy(&fragment_sums()[idx], &sum_data, sizeof(uint64_t));
+}
+
+template <>
+void LoadedMetadataFragmentMetadata::compute_fragment_sum<double>(
+    const uint64_t idx, const bool nullable) {
+  // Zero sum.
+  double sum_data = 0;
+
+  // Get data and tile num.
+  auto values =
+      static_cast<double*>(static_cast<void*>(tile_sums()[idx].data()));
+  auto& null_count_values = tile_null_counts()[idx];
+  auto tile_num = parent_fragment_.tile_num();
+
+  // Process tile by tile, swallowing overflow exception.
+  for (uint64_t t = 0; t < tile_num; t++) {
+    if (!nullable || null_count_values[t] != cell_num(t)) {
+      if ((sum_data < 0.0) == (values[t] < 0.0) &&
+          std::abs(sum_data) >
+              std::numeric_limits<double>::max() - std::abs(values[t])) {
+        sum_data = sum_data < 0.0 ? std::numeric_limits<double>::lowest() :
+                                    std::numeric_limits<double>::max();
+        break;
+      }
+
+      sum_data += values[t];
+    }
+  }
+
+  // Copy value.
+  memcpy(&fragment_sums()[idx], &sum_data, sizeof(double));
+}
+
+template <>
+void LoadedMetadataFragmentMetadata::compute_fragment_min_max_sum<char>(
+    const std::string& name);
+
+void LoadedMetadataFragmentMetadata::compute_fragment_min_max_sum_null_count() {
+  std::vector<std::string> names;
+  names.reserve(idx_map_.size());
+  for (auto& it : parent_fragment_.idx_map_) {
+    names.emplace_back(it.first);
+  }
+
+  // Process all attributes in parallel.
+  throw_if_not_ok(parallel_for(
+      &resources_->compute_tp(),
+      0,
+      parent_fragment_.idx_map_.size(),
+      [&](uint64_t n) {
+        // For easy reference.
+        const auto& name = names[n];
+        const auto& idx = parent_fragment_.idx_map_[name];
+        const auto var_size = parent_fragment_.array_schema_->var_size(name);
+        const auto type = parent_fragment_.array_schema_->type(name);
+
+        // Compute null count.
+        fragment_null_counts()[idx] = std::accumulate(
+            tile_null_counts()[idx].begin(), tile_null_counts()[idx].end(), 0);
+
+        if (var_size) {
+          min_max_var(name);
+        } else {
+          // Switch depending on datatype.
+          switch (type) {
+            case Datatype::INT8:
+              compute_fragment_min_max_sum<int8_t>(name);
+              break;
+            case Datatype::INT16:
+              compute_fragment_min_max_sum<int16_t>(name);
+              break;
+            case Datatype::INT32:
+              compute_fragment_min_max_sum<int32_t>(name);
+              break;
+            case Datatype::INT64:
+              compute_fragment_min_max_sum<int64_t>(name);
+              break;
+            case Datatype::BOOL:
+            case Datatype::UINT8:
+              compute_fragment_min_max_sum<uint8_t>(name);
+              break;
+            case Datatype::UINT16:
+              compute_fragment_min_max_sum<uint16_t>(name);
+              break;
+            case Datatype::UINT32:
+              compute_fragment_min_max_sum<uint32_t>(name);
+              break;
+            case Datatype::UINT64:
+              compute_fragment_min_max_sum<uint64_t>(name);
+              break;
+            case Datatype::FLOAT32:
+              compute_fragment_min_max_sum<float>(name);
+              break;
+            case Datatype::FLOAT64:
+              compute_fragment_min_max_sum<double>(name);
+              break;
+            case Datatype::DATETIME_YEAR:
+            case Datatype::DATETIME_MONTH:
+            case Datatype::DATETIME_WEEK:
+            case Datatype::DATETIME_DAY:
+            case Datatype::DATETIME_HR:
+            case Datatype::DATETIME_MIN:
+            case Datatype::DATETIME_SEC:
+            case Datatype::DATETIME_MS:
+            case Datatype::DATETIME_US:
+            case Datatype::DATETIME_NS:
+            case Datatype::DATETIME_PS:
+            case Datatype::DATETIME_FS:
+            case Datatype::DATETIME_AS:
+            case Datatype::TIME_HR:
+            case Datatype::TIME_MIN:
+            case Datatype::TIME_SEC:
+            case Datatype::TIME_MS:
+            case Datatype::TIME_US:
+            case Datatype::TIME_NS:
+            case Datatype::TIME_PS:
+            case Datatype::TIME_FS:
+            case Datatype::TIME_AS:
+              compute_fragment_min_max_sum<int64_t>(name);
+              break;
+            case Datatype::STRING_ASCII:
+            case Datatype::CHAR:
+              compute_fragment_min_max_sum<char>(name);
+              break;
+            case Datatype::BLOB:
+            case Datatype::GEOM_WKB:
+            case Datatype::GEOM_WKT:
+              compute_fragment_min_max_sum<std::byte>(name);
+              break;
+            default:
+              break;
+          }
+        }
+
+        return Status::Ok();
+      }));
+}
+
+void LoadedFragmentMetadata::min_max_var(const std::string& name) {
+  // For easy reference.
+  const auto nullable = parent_fragment_.array_schema_->is_nullable(name);
+  const auto is_dim = parent_fragment_.array_schema_->is_dim(name);
+  const auto type = parent_fragment_.array_schema_->type(name);
+  const auto cell_val_num = parent_fragment_.array_schema_->cell_val_num(name);
+  const auto idx = parent_fragment_.idx_map_[name];
+
+  // Return if there's no min/max.
+  const auto has_min_max = TileMetadataGenerator::has_min_max_metadata(
+      type, is_dim, true, cell_val_num);
+  if (!has_min_max)
+    return;
+
+  // Initialize to null.
+  void* min = nullptr;
+  void* max = nullptr;
+  uint64_t min_size = 0;
+  uint64_t max_size = 0;
+
+  // Get data and tile num.
+  auto min_offsets =
+      static_cast<uint64_t*>(static_cast<void*>(tile_min_buffer()[idx].data()));
+  auto max_offsets =
+      static_cast<uint64_t*>(static_cast<void*>(tile_max_buffer()[idx].data()));
+  auto min_values = tile_min_var_buffer()[idx].data();
+  auto max_values = tile_max_var_buffer()[idx].data();
+  auto& null_count_values = tile_null_counts()[idx];
+  auto tile_num = this->tile_num();
+
+  // Process tile by tile.
+  for (uint64_t t = 0; t < tile_num; t++) {
+    if (!nullable || null_count_values[t] != cell_num(t)) {
+      auto min_value = min_values + min_offsets[t];
+      auto min_value_size =
+          t == tile_num - 1 ?
+              tile_min_var_buffer()[idx].size() - min_offsets[t] :
+              min_offsets[t + 1] - min_offsets[t];
+      auto max_value = max_values + max_offsets[t];
+      auto max_value_size =
+          t == tile_num - 1 ?
+              tile_max_var_buffer()[idx].size() - max_offsets[t] :
+              max_offsets[t + 1] - max_offsets[t];
+      if (min == nullptr && max == nullptr) {
+        min = min_value;
+        min_size = min_value_size;
+        max = max_value;
+        max_size = max_value_size;
+      } else {
+        // Process min.
+        size_t min_cmp_size = std::min<size_t>(min_size, min_value_size);
+        int cmp =
+            strncmp(static_cast<const char*>(min), min_value, min_cmp_size);
+        if (cmp != 0) {
+          if (cmp > 0) {
+            min = min_value;
+            min_size = min_value_size;
+          }
+        } else {
+          if (min_value_size < min_size) {
+            min = min_value;
+            min_size = min_value_size;
+          }
+        }
+
+        // Process max.
+        size_t max_cmp_size = std::min<size_t>(max_size, max_value_size);
+        cmp = strncmp(static_cast<const char*>(max), max_value, max_cmp_size);
+        if (cmp != 0) {
+          if (cmp < 0) {
+            max = max_value;
+            max_size = max_value_size;
+          }
+        } else {
+          if (max_value_size > max_size) {
+            max = max_value;
+            max_size = max_value_size;
+          }
+        }
+      }
+    }
+  }
+
+  // Copy values.
+  if (min != nullptr) {
+    fragment_mins()[idx].resize(min_size);
+    memcpy(fragment_mins()[idx].data(), min, min_size);
+  }
+
+  if (max != nullptr) {
+    fragment_maxs()[idx].resize(max_size);
+    memcpy(fragment_maxs()[idx].data(), max, max_size);
+  }
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */
+
+// Explicit template instantiations
+template int8_t LoadedFragmentMetadata::get_tile_min_as<int8_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template uint8_t LoadedFragmentMetadata::get_tile_min_as<uint8_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template int16_t LoadedFragmentMetadata::get_tile_min_as<int16_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template uint16_t LoadedFragmentMetadata::get_tile_min_as<uint16_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template int32_t LoadedFragmentMetadata::get_tile_min_as<int32_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template uint32_t LoadedFragmentMetadata::get_tile_min_as<uint32_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template int64_t LoadedFragmentMetadata::get_tile_min_as<int64_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template char LoadedFragmentMetadata::get_tile_min_as<char>(
+    const std::string& name, uint64_t tile_idx) const;
+template uint64_t LoadedFragmentMetadata::get_tile_min_as<uint64_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template float LoadedFragmentMetadata::get_tile_min_as<float>(
+    const std::string& name, uint64_t tile_idx) const;
+template double LoadedFragmentMetadata::get_tile_min_as<double>(
+    const std::string& name, uint64_t tile_idx) const;
+template std::byte LoadedFragmentMetadata::get_tile_min_as<std::byte>(
+    const std::string& name, uint64_t tile_idx) const;
+template int8_t LoadedFragmentMetadata::get_tile_max_as<int8_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template uint8_t LoadedFragmentMetadata::get_tile_max_as<uint8_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template int16_t LoadedFragmentMetadata::get_tile_max_as<int16_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template uint16_t LoadedFragmentMetadata::get_tile_max_as<uint16_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template int32_t LoadedFragmentMetadata::get_tile_max_as<int32_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template uint32_t LoadedFragmentMetadata::get_tile_max_as<uint32_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template int64_t LoadedFragmentMetadata::get_tile_max_as<int64_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template uint64_t LoadedFragmentMetadata::get_tile_max_as<uint64_t>(
+    const std::string& name, uint64_t tile_idx) const;
+template float LoadedFragmentMetadata::get_tile_max_as<float>(
+    const std::string& name, uint64_t tile_idx) const;
+template double LoadedFragmentMetadata::get_tile_max_as<double>(
+    const std::string& name, uint64_t tile_idx) const;
+template std::byte LoadedFragmentMetadata::get_tile_max_as<std::byte>(
+    const std::string& name, uint64_t tile_idx) const;
+template char LoadedFragmentMetadata::get_tile_max_as<char>(
+    const std::string& name, uint64_t tile_idx) const;
 
 }  // namespace tiledb::sm

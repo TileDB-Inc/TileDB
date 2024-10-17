@@ -190,7 +190,19 @@ Status OrderedWriter::ordered_write() {
   auto tile_num = dense_tiler.tile_num();
 
   // Set number of tiles in the fragment metadata
-  frag_meta->set_num_tiles(tile_num);
+  frag_meta->set_num_tiles(
+      tile_num,
+      frag_meta->loaded_metadata()->tile_offsets(),
+      frag_meta->loaded_metadata()->tile_var_offsets(),
+      frag_meta->loaded_metadata()->tile_var_sizes(),
+      frag_meta->loaded_metadata()->tile_validity_offsets(),
+      frag_meta->loaded_metadata()->tile_min_buffer(),
+      frag_meta->loaded_metadata()->tile_max_buffer(),
+      frag_meta->loaded_metadata()->tile_sums(),
+      frag_meta->loaded_metadata()->tile_null_counts());
+  if (!frag_meta->dense()) {
+    frag_meta->loaded_metadata()->rtree().set_leaf_num(tile_num);
+  }
 
   // Prepare, filter and write tiles for all attributes
   auto attr_num = buffers_.size();
@@ -232,12 +244,27 @@ Status OrderedWriter::ordered_write() {
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
         auto& attr_tile_batches = tiles.at(attr);
-        frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
+        frag_meta->convert_tile_min_max_var_sizes_to_offsets(
+            attr,
+            frag_meta->loaded_metadata()->tile_min_var_buffer(),
+            frag_meta->loaded_metadata()->tile_min_buffer(),
+            frag_meta->loaded_metadata()->tile_max_var_buffer(),
+            frag_meta->loaded_metadata()->tile_max_buffer());
         for (auto& batch : attr_tile_batches) {
           uint64_t idx = 0;
           for (auto& tile : batch) {
-            frag_meta->set_tile_min_var(attr, idx, tile.min());
-            frag_meta->set_tile_max_var(attr, idx, tile.max());
+            frag_meta->set_tile_min_var(
+                attr,
+                idx,
+                tile.min(),
+                frag_meta->loaded_metadata()->tile_min_buffer(),
+                frag_meta->loaded_metadata()->tile_min_var_buffer());
+            frag_meta->set_tile_max_var(
+                attr,
+                idx,
+                tile.max(),
+                frag_meta->loaded_metadata()->tile_max_buffer(),
+                frag_meta->loaded_metadata()->tile_max_var_buffer());
             idx++;
           }
         }
@@ -251,15 +278,30 @@ Status OrderedWriter::ordered_write() {
       const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
-        frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
+        frag_meta->convert_tile_min_max_var_sizes_to_offsets(
+            attr,
+            frag_meta->loaded_metadata()->tile_min_var_buffer(),
+            frag_meta->loaded_metadata()->tile_min_buffer(),
+            frag_meta->loaded_metadata()->tile_max_var_buffer(),
+            frag_meta->loaded_metadata()->tile_max_buffer());
         RETURN_NOT_OK(parallel_for(
             compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
               const auto& attr = buff.first;
               auto& batch = tiles.at(attr)[b];
               auto idx = b * thread_num;
               for (auto& tile : batch) {
-                frag_meta->set_tile_min_var(attr, idx, tile.min());
-                frag_meta->set_tile_max_var(attr, idx, tile.max());
+                frag_meta->set_tile_min_var(
+                    attr,
+                    idx,
+                    tile.min(),
+                    frag_meta->loaded_metadata()->tile_min_buffer(),
+                    frag_meta->loaded_metadata()->tile_min_var_buffer());
+                frag_meta->set_tile_max_var(
+                    attr,
+                    idx,
+                    tile.max(),
+                    frag_meta->loaded_metadata()->tile_max_buffer(),
+                    frag_meta->loaded_metadata()->tile_max_var_buffer());
                 idx++;
               }
               return Status::Ok();
@@ -269,8 +311,8 @@ Status OrderedWriter::ordered_write() {
   }
 
   // Compute fragment min/max/sum/null count and write the fragment metadata
-  frag_meta->compute_fragment_min_max_sum_null_count();
-  frag_meta->store(array_->get_encryption_key());
+  frag_meta->loaded_metadata()->compute_fragment_min_max_sum_null_count();
+  frag_meta->storefrag_meta->loaded_metadata_shared(), array_->get_encryption_key());
 
   // Add written fragment info
   RETURN_NOT_OK(add_written_fragment_info(frag_uri_.value()));

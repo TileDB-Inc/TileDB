@@ -1506,7 +1506,8 @@ Status DenseReader::process_aggregates(
             auto& rt = result_space_tile.single_result_tile();
             auto tile_idx = rt.tile_idx();
             auto& frag_md = fragment_metadata_[rt.frag_idx()];
-            auto md = frag_md->get_tile_metadata(name, tile_idx);
+            auto md =
+                frag_md->loaded_metadata()->get_tile_metadata(name, tile_idx);
             auto& aggregates = aggregates_[name];
             for (auto& aggregate : aggregates) {
               aggregate->aggregate_tile_with_frag_md(md);

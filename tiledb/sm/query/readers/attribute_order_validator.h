@@ -297,12 +297,14 @@ class AttributeOrderValidator {
           // Increasing data: The first value on f is the minimum on f. Check
           // that it is greater than the last (maximum) value in the proceeding
           // tile on f2.
-          auto value = fragment_metadata[f]->get_tile_min_as<AttributeType>(
-              attribute_name_, 0);
+          auto value = fragment_metadata[f]
+                           ->loaded_metadata()
+                           ->get_tile_min_as<AttributeType>(attribute_name_, 0);
 
-          auto value_previous =
-              fragment_metadata[f2]->get_tile_max_as<AttributeType>(
-                  attribute_name_, f2_tile_idx);
+          auto value_previous = fragment_metadata[f2]
+                                    ->loaded_metadata()
+                                    ->get_tile_max_as<AttributeType>(
+                                        attribute_name_, f2_tile_idx);
 
           if (value_previous >= value) {
             throw AttributeOrderValidatorStatusException(
@@ -312,12 +314,14 @@ class AttributeOrderValidator {
           // Decreasing data: The first value on f is the maximum of f. Check
           // that is is less than the last (minimum) value in the proceeding
           // tile on f2.
-          auto value = fragment_metadata[f]->get_tile_max_as<AttributeType>(
-              attribute_name_, 0);
+          auto value = fragment_metadata[f]
+                           ->loaded_metadata()
+                           ->get_tile_max_as<AttributeType>(attribute_name_, 0);
 
-          auto value_previous =
-              fragment_metadata[f2]->get_tile_min_as<AttributeType>(
-                  attribute_name_, f2_tile_idx);
+          auto value_previous = fragment_metadata[f2]
+                                    ->loaded_metadata()
+                                    ->get_tile_min_as<AttributeType>(
+                                        attribute_name_, f2_tile_idx);
 
           if (value_previous <= value) {
             throw AttributeOrderValidatorStatusException(
@@ -359,11 +363,14 @@ class AttributeOrderValidator {
           // Increasing data: The last value on f is the maximum on f. Check
           // that is less than the first (minimum) value on the following
           // tile in f2.
-          auto value = fragment_metadata[f]->get_tile_max_as<AttributeType>(
-              attribute_name_, max_tile_idx);
-          auto value_next =
-              fragment_metadata[f2]->get_tile_min_as<AttributeType>(
-                  attribute_name_, f2_tile_idx);
+          auto value = fragment_metadata[f]
+                           ->loaded_metadata()
+                           ->get_tile_max_as<AttributeType>(
+                               attribute_name_, max_tile_idx);
+          auto value_next = fragment_metadata[f2]
+                                ->loaded_metadata()
+                                ->get_tile_min_as<AttributeType>(
+                                    attribute_name_, f2_tile_idx);
           if (value_next <= value) {
             throw AttributeOrderValidatorStatusException(
                 "Attribute out of order");
@@ -373,11 +380,14 @@ class AttributeOrderValidator {
           // Decreasinging data: The last value on f is the minimum on f. Check
           // that is greater than the first (maximum) value on the following
           // tile in f2.
-          auto value = fragment_metadata[f]->get_tile_min_as<AttributeType>(
-              attribute_name_, max_tile_idx);
-          auto value_next =
-              fragment_metadata[f2]->get_tile_max_as<AttributeType>(
-                  attribute_name_, f2_tile_idx);
+          auto value = fragment_metadata[f]
+                           ->loaded_metadata()
+                           ->get_tile_min_as<AttributeType>(
+                               attribute_name_, max_tile_idx);
+          auto value_next = fragment_metadata[f2]
+                                ->loaded_metadata()
+                                ->get_tile_max_as<AttributeType>(
+                                    attribute_name_, f2_tile_idx);
           if (value_next >= value) {
             throw AttributeOrderValidatorStatusException(
                 "Attribute out of order");
@@ -422,8 +432,9 @@ class AttributeOrderValidator {
 
     if (!val_data.min_validated_) {
       // Get the min of the current fragment.
-      auto value = fragment_metadata[f]->get_tile_min_as<AttributeType>(
-          attribute_name_, 0);
+      auto value = fragment_metadata[f]
+                       ->loaded_metadata()
+                       ->get_tile_min_as<AttributeType>(attribute_name_, 0);
 
       // Get the previous value from the loaded tile.
       auto rt = min_tile_to_compare_against(f);
@@ -454,8 +465,10 @@ class AttributeOrderValidator {
     if (!val_data.max_validated_) {
       // Get the min of the current fragment.
       auto max_tile_idx = fragment_metadata[f]->tile_num() - 1;
-      auto value = fragment_metadata[f]->get_tile_max_as<AttributeType>(
-          attribute_name_, max_tile_idx);
+      auto value =
+          fragment_metadata[f]
+              ->loaded_metadata()
+              ->get_tile_max_as<AttributeType>(attribute_name_, max_tile_idx);
 
       // Get the previous value from the loaded tile.
       auto rt = max_tile_to_compare_against(f);

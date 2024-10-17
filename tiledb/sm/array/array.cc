@@ -993,6 +993,7 @@ Status Array::get_max_buffer_size(
 Status Array::get_max_buffer_size(
     const char* name,
     const void* subarray,
+
     uint64_t* buffer_off_size,
     uint64_t* buffer_val_size) {
   // Check if array is open
