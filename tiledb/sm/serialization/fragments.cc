@@ -122,14 +122,11 @@ std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
             message_builder
                 .initRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            builder);
+        utils::decode_json_message(serialized_buffer, builder);
         auto reader = builder.asReader();
         // Deserialize
         return fragments_timestamps_from_capnp(reader);
@@ -245,13 +242,10 @@ std::vector<URI> deserialize_delete_fragments_list_request(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
             message_builder.initRoot<capnp::ArrayDeleteFragmentsListRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            builder);
+        utils::decode_json_message(serialized_buffer, builder);
         auto reader = builder.asReader();
         // Deserialize
         return fragments_list_from_capnp(array_uri, reader);

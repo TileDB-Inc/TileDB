@@ -154,13 +154,10 @@ Status config_deserialize(
 
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Config::Builder config_builder =
             message_builder.initRoot<capnp::Config>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            config_builder);
+        utils::decode_json_message(serialized_buffer, config_builder);
         capnp::Config::Reader config_reader = config_builder.asReader();
         RETURN_NOT_OK(config_from_capnp(config_reader, &decoded_config));
         break;

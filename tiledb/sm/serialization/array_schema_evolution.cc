@@ -298,13 +298,11 @@ Status array_schema_evolution_deserialize(
 
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::ArraySchemaEvolution::Builder array_schema_evolution_builder =
             message_builder.initRoot<capnp::ArraySchemaEvolution>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            array_schema_evolution_builder);
+        utils::decode_json_message(
+            serialized_buffer, array_schema_evolution_builder);
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             array_schema_evolution_builder.asReader();
         decoded_array_schema_evolution = array_schema_evolution_from_capnp(

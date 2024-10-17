@@ -267,11 +267,10 @@ std::vector<std::string> deserialize_load_enumerations_request(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::LoadEnumerationsRequest::Builder builder =
             message_builder.initRoot<capnp::LoadEnumerationsRequest>();
-        json.decode(kj::StringPtr(request.data()), builder);
+        utils::decode_json_message(request, builder);
         capnp::LoadEnumerationsRequest::Reader reader = builder.asReader();
         return load_enumerations_request_from_capnp(reader);
       }
@@ -352,11 +351,10 @@ deserialize_load_enumerations_response(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::LoadEnumerationsResponse::Builder builder =
             message_builder.initRoot<capnp::LoadEnumerationsResponse>();
-        json.decode(kj::StringPtr(response.data(), response.size()), builder);
+        utils::decode_json_message(response, builder);
         capnp::LoadEnumerationsResponse::Reader reader = builder.asReader();
         return load_enumerations_response_from_capnp(
             reader, array, memory_tracker);

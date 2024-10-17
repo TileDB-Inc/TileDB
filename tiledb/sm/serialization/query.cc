@@ -2301,11 +2301,10 @@ Status array_from_query_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Query::Builder query_builder =
             message_builder.initRoot<capnp::Query>();
-        json.decode(kj::StringPtr(serialized_buffer.data()), query_builder);
+        utils::decode_json_message(serialized_buffer, query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         array_from_capnp(
@@ -2523,13 +2522,10 @@ Status do_query_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Query::Builder query_builder =
             message_builder.initRoot<capnp::Query>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            query_builder);
+        utils::decode_json_message(serialized_buffer, query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
             query_reader,
@@ -2776,13 +2772,11 @@ Status query_est_result_size_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::EstimatedResultSize::Builder estimated_result_size_builder =
             message_builder.initRoot<capnp::EstimatedResultSize>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            estimated_result_size_builder);
+        utils::decode_json_message(
+            serialized_buffer, estimated_result_size_builder);
         capnp::EstimatedResultSize::Reader estimated_result_size_reader =
             estimated_result_size_builder.asReader();
         RETURN_NOT_OK(query_est_result_size_reader_from_capnp(
