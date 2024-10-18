@@ -6,12 +6,9 @@ unset(CONFIGURE_AC_CONTENT)
 
 project(file VERSION ${CMAKE_MATCH_1})
 
-option(FILE_TESTS "Enable file tests" OFF)
-
 # Get library directory for multiarch linux distros
 include(GNUInstallDirs)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 set(targets)
 find_package(PCRE2 CONFIG REQUIRED COMPONENTS 8BIT)
 if(WIN32 AND NOT MINGW)
