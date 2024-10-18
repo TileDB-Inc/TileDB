@@ -377,7 +377,7 @@ Status group_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::Group>();
         kj::String capnp_json = json.encode(groupBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -474,7 +474,7 @@ Status group_details_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::Group::GroupDetails>();
         kj::String capnp_json = json.encode(groupDetailsBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -575,7 +575,7 @@ Status group_update_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupUpdate>();
         kj::String capnp_json = json.encode(groupUpdateBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -675,7 +675,7 @@ Status group_create_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupCreate>();
         kj::String capnp_json = json.encode(group_create_builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -719,7 +719,7 @@ Status group_metadata_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupCreate>();
         kj::String capnp_json = json.encode(group_metadata_builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {

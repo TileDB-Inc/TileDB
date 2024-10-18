@@ -174,7 +174,7 @@ void serialize_query_plan_request(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        request.assign_null_terminated(capnp_json);
+        request.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -259,7 +259,7 @@ void serialize_query_plan_response(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        response.assign_null_terminated(capnp_json);
+        response.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {

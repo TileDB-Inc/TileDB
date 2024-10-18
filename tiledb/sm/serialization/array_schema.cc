@@ -1201,7 +1201,7 @@ Status array_schema_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(arraySchemaBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1298,7 +1298,7 @@ Status nonempty_domain_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1423,7 +1423,7 @@ Status nonempty_domain_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1543,7 +1543,7 @@ Status nonempty_domain_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1643,7 +1643,7 @@ void serialize_load_array_schema_request(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        data.assign_null_terminated(capnp_json);
+        data.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1752,7 +1752,7 @@ void serialize_load_array_schema_response(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        data.assign_null_terminated(capnp_json);
+        data.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
