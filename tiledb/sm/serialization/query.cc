@@ -2377,7 +2377,7 @@ Status query_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(query_builder);
-        serialized_buffer.emplace_buffer().assign_null_terminated(capnp_json);
+        serialized_buffer.emplace_buffer().assign(capnp_json);
         // TODO: At this point the buffer data should also be serialized.
         break;
       }
@@ -2740,7 +2740,7 @@ Status query_est_result_size_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(est_result_size_builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
