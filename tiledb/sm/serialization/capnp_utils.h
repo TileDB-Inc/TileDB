@@ -35,6 +35,8 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include <capnp/compat/json.h>
+
 #include "tiledb-rest.capnp.h"
 
 #include "tiledb/common/heap_memory.h"
@@ -708,7 +710,7 @@ void decode_json_message(
     buffer = buffer.first(buffer.size() - 1);
   }
 
-  json.decode(kj::StringPtr(buffer.data(), buffer.size()), message_builder);
+  json.decode(kj::ArrayPtr(buffer.data(), buffer.size()), message_builder);
 }
 
 }  // namespace utils
