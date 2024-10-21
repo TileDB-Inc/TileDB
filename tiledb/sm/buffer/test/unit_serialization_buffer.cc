@@ -85,20 +85,6 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "SerializationBuffer: Test owned null-terminated buffer",
-    "[serialization_buffer][owned][null_terminated]") {
-  SerializationBuffer buff{
-      tiledb::test::get_test_memory_tracker()->get_resource(
-          MemoryType::SERIALIZATION_BUFFER)};
-  std::string_view data = "abcd";
-  buff.assign_null_terminated(data);
-  span<const char> buff_span = buff;
-  CHECK(buff.size() == data.size() + 1);
-  CHECK(memcmp(buff_span.data(), data.data(), data.size()) == 0);
-  CHECK(static_cast<span<const char>>(buff)[buff.size() - 1] == '\0');
-}
-
-TEST_CASE(
     "SerializationBuffer: Test memory tracking",
     "[serialization_buffer][memory_tracking]") {
   tiledb::sm::MemoryTrackerManager memory_tracker_manager;

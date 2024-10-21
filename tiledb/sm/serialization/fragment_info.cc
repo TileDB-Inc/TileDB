@@ -101,7 +101,7 @@ Status fragment_info_request_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(fragment_info_req_builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -143,9 +143,8 @@ Status fragment_info_request_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::FragmentInfoRequest::Builder fragment_info_req_builder =
             message_builder.initRoot<capnp::FragmentInfoRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            fragment_info_req_builder);
+        utils::decode_json_message(
+            serialized_buffer, fragment_info_req_builder, json);
         capnp::FragmentInfoRequest::Reader fragment_info_req_reader =
             fragment_info_req_builder.asReader();
         RETURN_NOT_OK(fragment_info_request_from_capnp(
@@ -402,7 +401,7 @@ Status fragment_info_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -443,12 +442,9 @@ Status fragment_info_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder = message_builder.initRoot<capnp::FragmentInfo>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            builder);
+        utils::decode_json_message(serialized_buffer, builder);
         auto reader = builder.asReader();
 
         // Deserialize

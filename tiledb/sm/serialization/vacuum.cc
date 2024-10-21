@@ -85,7 +85,7 @@ Status array_vacuum_request_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(ArrayVacuumRequestBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -121,13 +121,11 @@ Status array_vacuum_request_deserialize(
 
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::ArrayVacuumRequest::Builder array_vacuum_request_builder =
             message_builder.initRoot<capnp::ArrayVacuumRequest>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            array_vacuum_request_builder);
+        utils::decode_json_message(
+            serialized_buffer, array_vacuum_request_builder);
         capnp::ArrayVacuumRequest::Reader array_vacuum_request_reader =
             array_vacuum_request_builder.asReader();
         RETURN_NOT_OK(array_vacuum_request_from_capnp(
