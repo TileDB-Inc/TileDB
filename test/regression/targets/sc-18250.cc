@@ -5,7 +5,7 @@
 
 #include <test/support/tdb_catch.h>
 
-static const char* schema_str = R"rstr(
+static constexpr std::string_view schema_str = R"rstr(
 {"arrayType":"dense","attributes":[{
 		"cellValNum":1,"compressor":"NO_COMPRESSION",
 		"compressorLevel":-1,"name":"a1","type":"INT32"}],
@@ -33,11 +33,10 @@ TEST_CASE(
   status = tiledb_buffer_alloc(ctx, &buf);
   REQUIRE(status == TILEDB_OK);
 
-  status =
-      tiledb_buffer_set_data(ctx, buf, (void*)schema_str, sizeof(schema_str));
+  status = tiledb_buffer_set_data(
+      ctx, buf, (void*)schema_str.data(), schema_str.size());
   REQUIRE(status == TILEDB_OK);
 
-  status = tiledb_deserialize_array_schema(
-      ctx, buf, tiledb_serialization_type_t(0), 0, &schema);
+  status = tiledb_deserialize_array_schema(ctx, buf, TILEDB_JSON, 0, &schema);
   REQUIRE(status == TILEDB_OK);
 }
