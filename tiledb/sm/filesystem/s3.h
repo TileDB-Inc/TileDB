@@ -116,7 +116,7 @@ std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
   }
 
   auto err = outcome.GetError();
-  Aws::StringStream ss;
+  std::stringstream ss;
 
   ss << "[Error Type: " << static_cast<int>(err.GetErrorType()) << "]"
      << " [HTTP Response Code: " << static_cast<int>(err.GetResponseCode())
@@ -162,7 +162,7 @@ std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
  */
 struct S3Parameters {
   /** Stores parsed custom headers from config. */
-  using Headers = std::unordered_map<std::string, std::string>;
+  using Headers = std::unordered_map<Aws::String, Aws::String>;
 
   S3Parameters() = delete;
 
@@ -481,6 +481,11 @@ class S3Scanner : public LsScanner<F, D> {
     }
   }
 
+  /** Delimiter used for ListObjects request. */
+  const char* delimiter() const {
+    return this->is_recursive_ ? "" : "/";
+  }
+
   /**
    * Fetch the next batch of results from S3. This also handles setting the
    * continuation token for the next request, if the results were truncated.
@@ -517,7 +522,7 @@ class S3Scanner : public LsScanner<F, D> {
       throw S3Exception(
           std::string("Error while listing with prefix '") +
           this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
-          delimiter_ + "'" + outcome_error_message(list_objects_outcome_));
+          delimiter() + "'" + outcome_error_message(list_objects_outcome_));
     }
     // Update pointers to the newly fetched results.
     begin_ = list_objects_outcome_.GetResult().GetContents().begin();
@@ -535,8 +540,6 @@ class S3Scanner : public LsScanner<F, D> {
 
   /** Pointer to the S3 client initialized by VFS. */
   shared_ptr<TileDBS3Client> client_;
-  /** Delimiter used for ListObjects request. */
-  std::string delimiter_;
   /** Iterators for the current objects fetched from S3. */
   typename Iterator::pointer begin_, end_;
 
@@ -915,7 +918,8 @@ class S3 : FilesystemBase {
 
     LsObjects objects;
     for (auto object : s3_scanner) {
-      objects.emplace_back(prefix + "/" + object.GetKey(), object.GetSize());
+      objects.emplace_back(
+          prefix + "/" + std::string(object.GetKey()), object.GetSize());
     }
     return objects;
   }
@@ -1027,7 +1031,14 @@ class S3 : FilesystemBase {
    * Returns the input `path` after removing a potential `/` character
    * from the front if it exists.
    */
-  static std::string remove_front_slash(const std::string& path);
+  template <class Allocator>
+  static auto remove_front_slash(
+      const std::basic_string<char, std::char_traits<char>, Allocator>& path)
+      -> std::remove_cvref_t<decltype(path)> {
+    if (path.front() == '/')
+      return path.substr(1, path.length());
+    return path;
+  }
 
   /**
    * Returns the input `path` after removing a potential `/` character
@@ -1460,13 +1471,6 @@ class S3 : FilesystemBase {
   Status initiate_multipart_request(
       Aws::Http::URI aws_uri, MultiPartUploadState* state);
 
-  /**
-   * Return the given authority and path strings joined with a '/'
-   * character.
-   */
-  std::string join_authority_and_path(
-      const std::string& authority, const std::string& path) const;
-
   /** Waits for the input object to be propagated. */
   Status wait_for_object_to_propagate(
       const Aws::String& bucketName, const Aws::String& objectKey) const;
@@ -1637,8 +1641,7 @@ S3Scanner<F, D>::S3Scanner(
     bool recursive,
     int max_keys)
     : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
-    , client_(client)
-    , delimiter_(this->is_recursive_ ? "" : "/") {
+    , client_(client) {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -1647,10 +1650,9 @@ S3Scanner<F, D>::S3Scanner(
   }
 
   list_objects_request_.SetBucket(aws_uri.GetAuthority());
-  const std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
-  list_objects_request_.SetPrefix(aws_uri_str.c_str());
+  list_objects_request_.SetPrefix(S3::remove_front_slash(aws_uri.GetPath()));
   // Empty delimiter returns recursive results from S3.
-  list_objects_request_.SetDelimiter(delimiter_.c_str());
+  list_objects_request_.SetDelimiter(delimiter());
   // The default max_keys for ListObjects is 1000.
   list_objects_request_.SetMaxKeys(max_keys);
 
