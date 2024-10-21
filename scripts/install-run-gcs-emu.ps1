@@ -23,7 +23,7 @@ Param(
 
 $ErrorActionPreference = "Stop"
 
-$version = "v0.45.0"
+$version = "v0.49.0"
 $testbenchPath = "$env:TEMP\storage-testbench-$version"
 $venvPath = "$env:TEMP\storage-testbench-venv"
 
