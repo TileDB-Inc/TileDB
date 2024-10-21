@@ -69,12 +69,6 @@ set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 # List of API headers (to be installed)
 set(TILEDB_PUBLIC_HEADERS ${TILEDB_C_API_FILENAME_HEADERS})
 
-if (TILEDB_SERIALIZATION)
-  list(APPEND TILEDB_PUBLIC_HEADERS
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_serialization.h
-  )
-endif()
-
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_PUBLIC_HEADERS
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb
