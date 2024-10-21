@@ -72,7 +72,8 @@ class SingleFragmentInfo {
       uint64_t fragment_size,
       const NDRange& non_empty_domain,
       const NDRange& expanded_non_empty_domain,
-      shared_ptr<FragmentMetadata> meta)
+      shared_ptr<FragmentMetadata> meta,
+      shared_ptr<LoadedFragmentMetadata> loaded_metadata)
       : uri_(uri)
       , name_(meta->fragment_uri().remove_trailing_slash().last_path_part())
       , version_(meta->format_version())
@@ -84,7 +85,8 @@ class SingleFragmentInfo {
       , non_empty_domain_(non_empty_domain)
       , expanded_non_empty_domain_(expanded_non_empty_domain)
       , array_schema_name_(meta->array_schema_name())
-      , meta_(meta) {
+      , meta_(meta)
+      , loaded_fragment_metadata_(loaded_metadata) {
   }
 
   /** Copy constructor. */
@@ -213,9 +215,14 @@ class SingleFragmentInfo {
     return meta_;
   }
 
-  /** Accessor to the metadata pointer. */
+  /** Accessor to the nonempty domain. */
   NDRange& non_empty_domain() {
     return non_empty_domain_;
+  }
+
+  /** Accessor to the loaded metadata pointer. */
+  shared_ptr<LoadedFragmentMetadata> loaded_fragment_metadata() const {
+    return loaded_fragment_metadata_;
   }
 
  private:
@@ -264,6 +271,9 @@ class SingleFragmentInfo {
   /** The fragment metadata. **/
   shared_ptr<FragmentMetadata> meta_;
 
+  /** The loaded fragment metadata. **/
+  shared_ptr<LoadedFragmentMetadata> loaded_fragment_metadata_;
+
   /**
    * Returns a deep copy of this FragmentInfo.
    * @return New FragmentInfo
@@ -282,6 +292,7 @@ class SingleFragmentInfo {
     clone.expanded_non_empty_domain_ = expanded_non_empty_domain_;
     clone.array_schema_name_ = array_schema_name_;
     clone.meta_ = meta_;
+    clone.loaded_fragment_metadata_ = loaded_fragment_metadata_;
     return clone;
   }
 
@@ -299,6 +310,7 @@ class SingleFragmentInfo {
     std::swap(expanded_non_empty_domain_, info.expanded_non_empty_domain_);
     std::swap(array_schema_name_, info.array_schema_name_);
     std::swap(meta_, info.meta_);
+    std::swap(loaded_fragment_metadata_, info.loaded_fragment_metadata_);
   }
 };
 
