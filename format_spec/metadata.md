@@ -19,7 +19,7 @@ my_array                            # array folder
 The metadata folder can contain any number of [timestamped](./timestamped_name.md):
 * [metadata files](#array-metadata-file)
 * [vacuum files](./vacuum_file.md)
-* Note: the timestamped names do _not_ include the format version.
+* **Note**: the timestamped names do _not_ include the format version.
 
 ## Metadata File
 
