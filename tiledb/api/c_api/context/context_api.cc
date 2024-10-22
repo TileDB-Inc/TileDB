@@ -31,6 +31,7 @@
  */
 
 #include "../config/config_api_internal.h"
+#include "context_api_experimental.h"
 #include "context_api_external.h"
 #include "context_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
@@ -144,22 +145,11 @@ CAPI_INTERFACE(
       config, ctx);
 }
 
-/*
- * We have a special case with tiledb_ctx_alloc_with_error. It's declared in
- * tiledb_experimental.h. Rather than all the apparatus needed to split up that
- * header (as tiledb.h is), we declare its linkage separately at the point of
- * definition.
- *
- * Not including the experimental header means that we're not using the compiler
- * to check the definition against the declaration. This won't scale
- * particularly well, but it doesn't need to for the time being.
- */
-extern "C" {
-
-capi_return_t tiledb_ctx_alloc_with_error(
+CAPI_INTERFACE(
+    ctx_alloc_with_error,
     tiledb_config_handle_t* config,
     tiledb_ctx_handle_t** ctx,
-    tiledb_error_handle_t** error) noexcept {
+    tiledb_error_handle_t** error) {
   /*
    * Wrapped with the `api_entry_error` variation. Note that the same function
    * is wrapped with `api_entry_plain` above.
@@ -167,8 +157,6 @@ capi_return_t tiledb_ctx_alloc_with_error(
   return tiledb::api::api_entry_error<tiledb::api::tiledb_ctx_alloc>(
       error, config, ctx);
 }
-
-}  // extern "C"
 
 /*
  * API Audit: void return
