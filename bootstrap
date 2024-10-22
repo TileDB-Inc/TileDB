@@ -39,6 +39,7 @@ Configuration:
                                     ['"${default_dependency}"']
     --linkage                       specify the linkage of tiledb. Defaults to shared.
                                     [static|shared]
+    --enable-static-bundle          when building with static linkage, create a libtiledb_bundled.a
     --remove-deprecations           build TileDB without any deprecated APIs
     --disable-werror                disables use of -Werror during build
     --disable-cpp-api               disables building of the TileDB C++ API
@@ -109,6 +110,7 @@ tiledb_arrow_tests="OFF"
 tiledb_experimental_features="OFF"
 tiledb_build_webp="ON"
 tiledb_tests_aws_s3_config="OFF"
+tiledb_static_bundle="OFF"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
@@ -119,6 +121,7 @@ while test $# != 0; do
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --linkage=*) linkage=`arg "$1"`;;
+    --enable-static-bundle) tiledb_static_bundle="ON";;
     --force-build-all-deps) echo "Argument '--force-build-all-deps' has no effect and will be removed in a future version. Vcpkg builds all dependencies by default, please consult the guide in doc/dev/BUILD.md or vcpkg's documentation to see how to provide your own dependencies.";;
     --remove-deprecations) tiledb_remove_deprecations="ON";;
     --disable-werror) tiledb_werror="OFF";;
@@ -247,6 +250,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_SANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
     -DTILEDB_TESTS_AWS_S3_CONFIG=${tiledb_tests_aws_s3_config} \
+    -DTILEDB_STATIC_BUNDLE=${tiledb_static_bundle} \
     ${tiledb_disable_avx2} \
     ${vcpkg_base_triplet} \
     "${source_dir}" || die "failed to configure the project"
