@@ -117,13 +117,38 @@ CAPNP_DECLARE_SCHEMA(ca2d4d0bfe4ae5d9);
 CAPNP_DECLARE_SCHEMA(e193f1f45a9f102e);
 CAPNP_DECLARE_SCHEMA(fafb9c94c6b54ec9);
 CAPNP_DECLARE_SCHEMA(ce64eabcdabb02b5);
-CAPNP_DECLARE_SCHEMA(f3bb391da5271019);
-enum class ObjectType_f3bb391da5271019 : uint16_t {
+CAPNP_DECLARE_SCHEMA(afc24b121f5b6f8c);
+enum class AssetBackingType_afc24b121f5b6f8c : uint16_t {
   ARRAY,
   GROUP,
 };
-CAPNP_DECLARE_ENUM(ObjectType, f3bb391da5271019);
-CAPNP_DECLARE_SCHEMA(87f0466598bb29be);
+CAPNP_DECLARE_ENUM(AssetBackingType, afc24b121f5b6f8c);
+CAPNP_DECLARE_SCHEMA(85bfa7d0f146c034);
+enum class AssetOwnershipLevel_85bfa7d0f146c034 : uint16_t {
+  OWNED,
+  SHARED,
+};
+CAPNP_DECLARE_ENUM(AssetOwnershipLevel, 85bfa7d0f146c034);
+CAPNP_DECLARE_SCHEMA(9ddbd11155b000bb);
+enum class AssetType_9ddbd11155b000bb : uint16_t {
+  ARRAY,
+  NOTEBOOK,
+  DASHBOARD,
+  USER_DEFINED_FUNCTION,
+  ML_MODEL,
+  FILE,
+  REGISTERED_TASK_GRAPH,
+  GROUP,
+  VCF,
+  SOMA,
+  POINTCLOUD,
+  BIOIMG,
+  GEOMETRY,
+  RASTER,
+  VECTOR_SEARCH,
+};
+CAPNP_DECLARE_ENUM(AssetType, 9ddbd11155b000bb);
+CAPNP_DECLARE_SCHEMA(fcc2ff4ab86cb063);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -1859,17 +1884,22 @@ struct NDRectangle {
   };
 };
 
-typedef ::capnp::schemas::ObjectType_f3bb391da5271019 ObjectType;
+typedef ::capnp::schemas::AssetBackingType_afc24b121f5b6f8c AssetBackingType;
 
-struct ObjectInfoResponse {
-  ObjectInfoResponse() = delete;
+typedef ::capnp::schemas::AssetOwnershipLevel_85bfa7d0f146c034
+    AssetOwnershipLevel;
+
+typedef ::capnp::schemas::AssetType_9ddbd11155b000bb AssetType;
+
+struct AssetInfo {
+  AssetInfo() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(87f0466598bb29be, 1, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(fcc2ff4ab86cb063, 1, 7)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -16307,9 +16337,9 @@ class NDRectangle::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-class ObjectInfoResponse::Reader {
+class AssetInfo::Reader {
  public:
-  typedef ObjectInfoResponse Reads;
+  typedef AssetInfo Reads;
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base)
@@ -16326,7 +16356,32 @@ class ObjectInfoResponse::Reader {
   }
 #endif  // !CAPNP_LITE
 
-  inline ::tiledb::sm::serialization::capnp::ObjectType getObjectType() const;
+  inline bool hasUuid() const;
+  inline ::capnp::Text::Reader getUuid() const;
+
+  inline bool hasAssetType() const;
+  inline ::capnp::Text::Reader getAssetType() const;
+
+  inline ::tiledb::sm::serialization::capnp::AssetType getAssetBackingType()
+      const;
+
+  inline ::tiledb::sm::serialization::capnp::AssetOwnershipLevel
+  getAssetOwnershipLevel() const;
+
+  inline bool hasNamespaceName() const;
+  inline ::capnp::Text::Reader getNamespaceName() const;
+
+  inline bool hasNamespaceUuid() const;
+  inline ::capnp::Text::Reader getNamespaceUuid() const;
+
+  inline bool hasName() const;
+  inline ::capnp::Text::Reader getName() const;
+
+  inline bool hasMimeType() const;
+  inline ::capnp::Text::Reader getMimeType() const;
+
+  inline bool hasCreatedAt() const;
+  inline ::capnp::Text::Reader getCreatedAt() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -16340,9 +16395,9 @@ class ObjectInfoResponse::Reader {
   friend class ::capnp::Orphanage;
 };
 
-class ObjectInfoResponse::Builder {
+class AssetInfo::Builder {
  public:
-  typedef ObjectInfoResponse Builds;
+  typedef AssetInfo Builds;
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -16367,9 +16422,63 @@ class ObjectInfoResponse::Builder {
   }
 #endif  // !CAPNP_LITE
 
-  inline ::tiledb::sm::serialization::capnp::ObjectType getObjectType();
-  inline void setObjectType(
-      ::tiledb::sm::serialization::capnp::ObjectType value);
+  inline bool hasUuid();
+  inline ::capnp::Text::Builder getUuid();
+  inline void setUuid(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initUuid(unsigned int size);
+  inline void adoptUuid(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownUuid();
+
+  inline bool hasAssetType();
+  inline ::capnp::Text::Builder getAssetType();
+  inline void setAssetType(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initAssetType(unsigned int size);
+  inline void adoptAssetType(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownAssetType();
+
+  inline ::tiledb::sm::serialization::capnp::AssetType getAssetBackingType();
+  inline void setAssetBackingType(
+      ::tiledb::sm::serialization::capnp::AssetType value);
+
+  inline ::tiledb::sm::serialization::capnp::AssetOwnershipLevel
+  getAssetOwnershipLevel();
+  inline void setAssetOwnershipLevel(
+      ::tiledb::sm::serialization::capnp::AssetOwnershipLevel value);
+
+  inline bool hasNamespaceName();
+  inline ::capnp::Text::Builder getNamespaceName();
+  inline void setNamespaceName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initNamespaceName(unsigned int size);
+  inline void adoptNamespaceName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownNamespaceName();
+
+  inline bool hasNamespaceUuid();
+  inline ::capnp::Text::Builder getNamespaceUuid();
+  inline void setNamespaceUuid(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initNamespaceUuid(unsigned int size);
+  inline void adoptNamespaceUuid(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownNamespaceUuid();
+
+  inline bool hasName();
+  inline ::capnp::Text::Builder getName();
+  inline void setName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initName(unsigned int size);
+  inline void adoptName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownName();
+
+  inline bool hasMimeType();
+  inline ::capnp::Text::Builder getMimeType();
+  inline void setMimeType(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initMimeType(unsigned int size);
+  inline void adoptMimeType(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownMimeType();
+
+  inline bool hasCreatedAt();
+  inline ::capnp::Text::Builder getCreatedAt();
+  inline void setCreatedAt(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initCreatedAt(unsigned int size);
+  inline void adoptCreatedAt(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownCreatedAt();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -16381,9 +16490,9 @@ class ObjectInfoResponse::Builder {
 };
 
 #if !CAPNP_LITE
-class ObjectInfoResponse::Pipeline {
+class AssetInfo::Pipeline {
  public:
-  typedef ObjectInfoResponse Pipelines;
+  typedef AssetInfo Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -34665,21 +34774,307 @@ NDRectangle::Builder::disownNdranges() {
                                               ::capnp::POINTERS));
 }
 
-inline ::tiledb::sm::serialization::capnp::ObjectType
-ObjectInfoResponse::Reader::getObjectType() const {
-  return _reader.getDataField<::tiledb::sm::serialization::capnp::ObjectType>(
+inline bool AssetInfo::Reader::hasUuid() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool AssetInfo::Builder::hasUuid() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader AssetInfo::Reader::getUuid() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::getUuid() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void AssetInfo::Builder::setUuid(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::initUuid(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void AssetInfo::Builder::adoptUuid(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> AssetInfo::Builder::disownUuid() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool AssetInfo::Reader::hasAssetType() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool AssetInfo::Builder::hasAssetType() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader AssetInfo::Reader::getAssetType() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::getAssetType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void AssetInfo::Builder::setAssetType(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::initAssetType(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      size);
+}
+inline void AssetInfo::Builder::adoptAssetType(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> AssetInfo::Builder::disownAssetType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline ::tiledb::sm::serialization::capnp::AssetType
+AssetInfo::Reader::getAssetBackingType() const {
+  return _reader.getDataField<::tiledb::sm::serialization::capnp::AssetType>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::tiledb::sm::serialization::capnp::ObjectType
-ObjectInfoResponse::Builder::getObjectType() {
-  return _builder.getDataField<::tiledb::sm::serialization::capnp::ObjectType>(
+inline ::tiledb::sm::serialization::capnp::AssetType
+AssetInfo::Builder::getAssetBackingType() {
+  return _builder.getDataField<::tiledb::sm::serialization::capnp::AssetType>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void ObjectInfoResponse::Builder::setObjectType(
-    ::tiledb::sm::serialization::capnp::ObjectType value) {
-  _builder.setDataField<::tiledb::sm::serialization::capnp::ObjectType>(
+inline void AssetInfo::Builder::setAssetBackingType(
+    ::tiledb::sm::serialization::capnp::AssetType value) {
+  _builder.setDataField<::tiledb::sm::serialization::capnp::AssetType>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::tiledb::sm::serialization::capnp::AssetOwnershipLevel
+AssetInfo::Reader::getAssetOwnershipLevel() const {
+  return _reader
+      .getDataField<::tiledb::sm::serialization::capnp::AssetOwnershipLevel>(
+          ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::tiledb::sm::serialization::capnp::AssetOwnershipLevel
+AssetInfo::Builder::getAssetOwnershipLevel() {
+  return _builder
+      .getDataField<::tiledb::sm::serialization::capnp::AssetOwnershipLevel>(
+          ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void AssetInfo::Builder::setAssetOwnershipLevel(
+    ::tiledb::sm::serialization::capnp::AssetOwnershipLevel value) {
+  _builder
+      .setDataField<::tiledb::sm::serialization::capnp::AssetOwnershipLevel>(
+          ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool AssetInfo::Reader::hasNamespaceName() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool AssetInfo::Builder::hasNamespaceName() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader AssetInfo::Reader::getNamespaceName() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::getNamespaceName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void AssetInfo::Builder::setNamespaceName(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::initNamespaceName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      size);
+}
+inline void AssetInfo::Builder::adoptNamespaceName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+AssetInfo::Builder::disownNamespaceName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool AssetInfo::Reader::hasNamespaceUuid() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool AssetInfo::Builder::hasNamespaceUuid() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader AssetInfo::Reader::getNamespaceUuid() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::getNamespaceUuid() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void AssetInfo::Builder::setNamespaceUuid(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::initNamespaceUuid(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      size);
+}
+inline void AssetInfo::Builder::adoptNamespaceUuid(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+AssetInfo::Builder::disownNamespaceUuid() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
+inline bool AssetInfo::Reader::hasName() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool AssetInfo::Builder::hasName() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader AssetInfo::Reader::getName() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::getName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline void AssetInfo::Builder::setName(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::initName(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      size);
+}
+inline void AssetInfo::Builder::adoptName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> AssetInfo::Builder::disownName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+
+inline bool AssetInfo::Reader::hasMimeType() const {
+  return !_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool AssetInfo::Builder::hasMimeType() {
+  return !_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader AssetInfo::Reader::getMimeType() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::getMimeType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline void AssetInfo::Builder::setMimeType(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::initMimeType(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      size);
+}
+inline void AssetInfo::Builder::adoptMimeType(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> AssetInfo::Builder::disownMimeType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+
+inline bool AssetInfo::Reader::hasCreatedAt() const {
+  return !_reader.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool AssetInfo::Builder::hasCreatedAt() {
+  return !_builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader AssetInfo::Reader::getCreatedAt() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::getCreatedAt() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
+}
+inline void AssetInfo::Builder::setCreatedAt(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder AssetInfo::Builder::initCreatedAt(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+      size);
+}
+inline void AssetInfo::Builder::adoptCreatedAt(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> AssetInfo::Builder::disownCreatedAt() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<6>() * ::capnp::POINTERS));
 }
 
 }  // namespace capnp

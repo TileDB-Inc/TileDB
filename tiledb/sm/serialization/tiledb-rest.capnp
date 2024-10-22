@@ -1380,14 +1380,61 @@ struct NDRectangle {
   # For CurrentDomain's NDRectangle we only need one range per dimension.
 }
 
-enum ObjectType {
+enum AssetBackingType {
 	array @0;
 	group @1;
 }
 
-struct ObjectInfoResponse {
-  # Contains information about a TileDB object.
+enum AssetOwnershipLevel {
+  owned @0;
+  shared @1;
+}
 
-  objectType @0 :ObjectType;
-  # The object's type (array or group).
+enum AssetType {
+  array @0;
+  notebook @1;
+  dashboard @2;
+  userDefinedFunction @3 $Json.name("user_defined_function");
+  mlModel @4 $Json.name("ml_model");
+  file @5;
+  registeredTaskGraph @6 $Json.name("registered_task_graph");
+  group @7;
+  vcf @8;
+  soma @9;
+  pointcloud @10;
+  bioimg @11;
+  geometry @12;
+  raster @13;
+  vectorSearch @14 $Json.name("vector_search");
+}
+
+struct AssetInfo {
+  # Contains information about a TileDB asset
+
+  uuid @0 :Text;
+  # The asset's unique identifier
+
+  assetType @1 :Text $Json.name("asset_type");
+  # The asset's type
+
+  assetBackingType @2 :AssetType $Json.name("asset_backing_type");
+  # The asset's underlying type (array or group).
+
+  assetOwnershipLevel @3 :AssetOwnershipLevel $Json.name("asset_ownership_level");
+  # The asset's ownership level.
+
+  namespaceName @4 :Text $Json.name("namespace_name");
+  # The name of the asset's namespace.
+
+  namespaceUuid @5 :Text $Json.name("namespace_uuid");
+  # The unique identifier of the asset's namespace.
+
+  name @6 :Text;
+  # The asset's name.
+
+  mimeType @7 :Text $Json.name("mime_type");
+  # The asset's MIME type.
+
+  createdAt @8 :Text $Json.name("created_at");
+  # The asset's date of creation.
 }
