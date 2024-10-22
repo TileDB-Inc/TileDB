@@ -61,6 +61,17 @@ capi_return_t tiledb_ctx_alloc(
   return TILEDB_OK;
 }
 
+/**
+ * Transparent forwarder to tiledb_ctx_alloc.
+ *
+ * Must be a separate function with its own name due to requirements of the
+ * CAPI_INTERFACE macro.
+ */
+capi_return_t tiledb_ctx_alloc_with_error(
+    tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx) {
+  return tiledb::api::tiledb_ctx_alloc(config, ctx);
+}
+
 void tiledb_ctx_free(tiledb_ctx_t** ctx) {
   ensure_output_pointer_is_valid(ctx);
   ensure_context_is_valid(*ctx);
@@ -150,11 +161,7 @@ CAPI_INTERFACE(
     tiledb_config_handle_t* config,
     tiledb_ctx_handle_t** ctx,
     tiledb_error_handle_t** error) {
-  /*
-   * Wrapped with the `api_entry_error` variation. Note that the same function
-   * is wrapped with `api_entry_plain` above.
-   */
-  return tiledb::api::api_entry_error<tiledb::api::tiledb_ctx_alloc>(
+  return tiledb::api::api_entry_error<tiledb::api::tiledb_ctx_alloc_with_error>(
       error, config, ctx);
 }
 
