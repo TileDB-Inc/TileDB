@@ -31,7 +31,7 @@ die() {
 }
 
 install_gcs(){
-    git clone --branch v0.45.0 --depth 1 https://github.com/googleapis/storage-testbench.git /tmp/storage-testbench
+    git clone --branch v0.49.0 --depth 1 https://github.com/googleapis/storage-testbench.git /tmp/storage-testbench
     # Create a virtual environment and keep it active
     python3 -m venv /tmp/storage-testbench-venv
     source /tmp/storage-testbench-venv/bin/activate
