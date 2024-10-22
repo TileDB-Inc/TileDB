@@ -31,22 +31,30 @@
  */
 
 #include <stdio.h>
-#include <tiledb/tiledb.h>
+#include <tiledb/tiledb_experimental.h>
 
-void print_error(tiledb_ctx_t* ctx);
+void print_last_error(tiledb_ctx_t* ctx);
+void print_error(tiledb_error_t* err);
 
 int main() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
+  tiledb_error_t* err;
+  int rc = tiledb_ctx_alloc_with_error(NULL, &ctx, &err);
+  if (rc == TILEDB_OK)
+    printf("Context created successfully!\n");
+  else if (rc == TILEDB_ERR) {
+    print_error(err);
+    return 1;
+  }
 
   // Create a group. The code below creates a group `my_group` and prints a
   // message because (normally) it will succeed.
-  int rc = tiledb_group_create(ctx, "my_group");
+  tiledb_group_create(ctx, "my_group");
   if (rc == TILEDB_OK)
     printf("Group created successfully!\n");
   else if (rc == TILEDB_ERR)
-    print_error(ctx);
+    print_last_error(ctx);
 
   // Create the same group again. f we attempt to create the same group
   // `my_group` as shown below, TileDB will return an error and the example
@@ -55,7 +63,7 @@ int main() {
   if (rc == TILEDB_OK)
     printf("Group created successfully!\n");
   else if (rc == TILEDB_ERR)
-    print_error(ctx);
+    print_last_error(ctx);
 
   // Clean up
   tiledb_ctx_free(&ctx);
@@ -63,16 +71,20 @@ int main() {
   return 0;
 }
 
-void print_error(tiledb_ctx_t* ctx) {
+void print_last_error(tiledb_ctx_t* ctx) {
   // Retrieve the last error that occurred
   tiledb_error_t* err = NULL;
   tiledb_ctx_get_last_error(ctx, &err);
 
+  print_error(err);
+
+  // Clean up
+  tiledb_error_free(&err);
+}
+
+void print_error(tiledb_error_t* err) {
   // Retrieve the error message by invoking `tiledb_error_message`.
   const char* msg;
   tiledb_error_message(err, &msg);
   printf("%s\n", msg);
-
-  // Clean up
-  tiledb_error_free(&err);
 }
