@@ -537,8 +537,6 @@ void fragment_meta_sizes_offsets_to_capnp(
       }
     }
   }
-
-  rtree_to_capnp(frag_meta.loaded_metadata()->rtree(), frag_meta_builder);
 }
 
 void rtree_to_capnp(
@@ -709,6 +707,10 @@ Status fragment_metadata_to_capnp(
       ned_builder,
       frag_meta.non_empty_domain(),
       frag_meta.array_schema()->dim_num()));
+
+  if (frag_meta.loaded_metadata()) {
+    rtree_to_capnp(frag_meta.loaded_metadata()->rtree(), frag_meta_builder);
+  }
 
   auto gt_offsets_builder = frag_meta_builder->initGtOffsets();
   generic_tile_offsets_to_capnp(
