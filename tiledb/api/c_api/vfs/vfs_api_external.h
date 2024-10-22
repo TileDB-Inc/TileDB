@@ -640,7 +640,9 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_fh_is_closed(
     tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int32_t* is_closed) TILEDB_NOEXCEPT;
 
 /**
- * Touches a file, i.e., creates a new empty file.
+ * Touches a file, i.e., creates a new empty file if it does not already exist.
+ *
+ * The access timestamps of the file are not guaranteed to change.
  *
  * **Example:**
  *
