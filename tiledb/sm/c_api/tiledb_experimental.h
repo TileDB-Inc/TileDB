@@ -44,6 +44,7 @@
 #include "tiledb/api/c_api/array_schema/array_schema_api_experimental.h"
 #include "tiledb/api/c_api/array_schema_evolution/array_schema_evolution_api_experimental.h"
 #include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
+#include "tiledb/api/c_api/context/context_api_experimental.h"
 #include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
 #include "tiledb/api/c_api/fragment_info/fragment_info_api_experimental.h"
@@ -498,43 +499,6 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
 /* ********************************* */
 /*              CONTEXT              */
 /* ********************************* */
-
-/**
- * Creates a TileDB context, which contains the TileDB storage manager
- * that manages everything in the TileDB library. This is a provisional API
- * which returns an error object when the context creation fails. This API will
- * be replaced with a more proper "v2" of context alloc in the near future. The
- * main goal is to use to this to capture potential failures to inform the v2
- * alloc design.
- *
- * **Examples:**
- *
- * Without config (i.e., use default configuration):
- *
- * @code{.c}
- * tiledb_ctx_t* ctx;
- * tiledb_error_t* error;
- * tiledb_ctx_alloc_with_error(NULL, &ctx, &error);
- * @endcode
- *
- * With some config:
- *
- * @code{.c}
- * tiledb_ctx_t* ctx;
- * tiledb_error_t* error;
- * tiledb_ctx_alloc_with_error(config, &ctx, &error);
- * @endcode
- *
- * @param[in] config The configuration parameters (`NULL` means default).
- * @param[out] ctx The TileDB context to be created.
- * @param[out] error Error object returned upon error (`NULL` if there is
- *     no error).
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
-    tiledb_config_t* config,
-    tiledb_ctx_t** ctx,
-    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*         ARRAY CONSOLIDATION       */

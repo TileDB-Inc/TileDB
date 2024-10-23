@@ -110,6 +110,12 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
+      - name: Install Python
+        if: ${{ !inputs.manylinux }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Prevent vpckg from building debug variants
         run: python ./scripts/ci/patch_vcpkg_triplets.py
 
