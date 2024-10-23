@@ -1408,6 +1408,17 @@ enum AssetType {
   vectorSearch @14 $Json.name("vector_search");
 }
 
+struct MetadataStringifiedEntry {
+  key @0 :Text;
+  # The metadata key.
+
+  value @1 :Text;
+  # The metadata value.
+
+  type @2 :Text;
+  # The metadata type.
+}
+
 struct AssetInfo {
   # Contains information about a TileDB asset
 
@@ -1437,4 +1448,7 @@ struct AssetInfo {
 
   createdAt @8 :Text $Json.name("created_at");
   # The asset's date of creation.
+
+  metadata @9 :List(MetadataStringifiedEntry);
+  # The asset's metadata.
 }
