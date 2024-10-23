@@ -90,6 +90,11 @@ struct tiledb_array_schema_handle_t
         dim_id, name, label_order, label_type, check_name);
   }
 
+  shared_ptr<const tiledb::sm::Enumeration> get_enumeration(
+      const char* name) const {
+    return array_schema_->get_enumeration(name);
+  }
+
   void add_enumeration(shared_ptr<const tiledb::sm::Enumeration> enmr) {
     return array_schema_->add_enumeration(enmr);
   }

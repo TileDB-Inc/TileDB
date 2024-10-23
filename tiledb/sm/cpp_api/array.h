@@ -699,6 +699,8 @@ class Array {
 
   /**
    * Loads the array schema from an array.
+   * Options to load additional features are read from the optionally-provided
+   * `config`. See `tiledb_array_schema_load_with_config`.
    *
    * **Example:**
    * @code{.cpp}
@@ -708,12 +710,16 @@ class Array {
    *
    * @param ctx The TileDB context.
    * @param uri The array URI.
+   * @param config The optional request for additional features.
    * @return The loaded ArraySchema object.
    */
-  static ArraySchema load_schema(const Context& ctx, const std::string& uri) {
+  static ArraySchema load_schema(
+      const Context& ctx,
+      const std::string& uri,
+      const Config& config = Config()) {
     tiledb_array_schema_t* schema;
-    ctx.handle_error(
-        tiledb_array_schema_load(ctx.ptr().get(), uri.c_str(), &schema));
+    ctx.handle_error(tiledb_array_schema_load_with_config(
+        ctx.ptr().get(), config.ptr().get(), uri.c_str(), &schema));
     return ArraySchema(ctx, schema);
   }
 

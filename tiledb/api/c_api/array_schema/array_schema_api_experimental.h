@@ -68,6 +68,36 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
     uint64_t* hi) TILEDB_NOEXCEPT;
 
 /**
+ * Retrieves an already-loaded enumeration given its name.
+ *
+ * If the enumeration has already been loaded,
+ * such as via `tiledb_array_get_enumeration`,
+ * then this returns a pointer to the enumeration.
+ * Otherwise this returns `TILEDB_OK` and sets `enumeration` to NULL.
+ *
+ * **Example:**
+ *
+ * The following retrieves the enumeration named "states" in the schema.
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enmr;
+ * tiledb_array_schema_get_enumeration(ctx, array_schema, "states", &enmr);
+ * tiledb_attribute_free(&enmr);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_schema The array schema.
+ * @param[in] name The name of the enumeration to retrieve.
+ * @param[out] enmr The enumeration object to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_get_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* name,
+    tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
+
+/**
  * Adds an enumeration to an array schema.
  *
  * **Example:**

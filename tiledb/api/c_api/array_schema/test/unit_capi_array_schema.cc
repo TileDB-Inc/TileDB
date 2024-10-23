@@ -362,6 +362,68 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "C API: tiledb_array_schema_get_enumeration argument validation",
+    "[capi][array_schema]") {
+  capi_return_t rc;
+  ordinary_array_schema x{};
+  tiledb_enumeration_t* enumeration;
+  SECTION("null context") {
+    rc = tiledb_array_schema_get_enumeration(
+        nullptr, x.schema, "primes", &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
+  }
+  SECTION("null schema") {
+    rc = tiledb_array_schema_get_enumeration(
+        x.ctx(), nullptr, "primes", &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null name") {
+    rc = tiledb_array_schema_get_enumeration(
+        x.ctx(), x.schema, nullptr, &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null enumeration") {
+    rc = tiledb_array_schema_get_enumeration(
+        x.ctx(), x.schema, "primes", nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("success") {
+    int32_t values[5] = {2, 3, 5, 7, 11};
+    rc = tiledb_enumeration_alloc(
+        x.ctx(),
+        "primes",
+        TILEDB_UINT32,
+        1,
+        0,
+        values,
+        sizeof(uint32_t) * 5,
+        nullptr,
+        0,
+        &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    tiledb_array_schema_add_enumeration(x.ctx(), x.schema, enumeration);
+    REQUIRE_NOTHROW(tiledb_enumeration_free(&enumeration));
+    CHECK(enumeration == nullptr);
+
+    rc = tiledb_array_schema_get_enumeration(
+        x.ctx(), x.schema, "primes", &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(enumeration != nullptr);
+
+    tiledb_string_t* tiledb_name(nullptr);
+    rc = tiledb_enumeration_get_name(x.ctx(), enumeration, &tiledb_name);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(tiledb_name != nullptr);
+
+    const char* name;
+    size_t length;
+    rc = tiledb_string_view(tiledb_name, &name, &length);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(std::string(name, length) == "primes");
+  }
+}
+
+TEST_CASE(
     "C API: tiledb_array_schema_set_coords_filter_list argument validation",
     "[capi][array_schema]") {
   capi_return_t rc;

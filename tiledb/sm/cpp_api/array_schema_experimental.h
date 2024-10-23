@@ -190,6 +190,31 @@ class ArraySchemaExperimental {
   }
 
   /**
+   * Retrieve an enumeration from the array schema, if has already been loaded
+   * (such as via `ArrayExperimental::get_enumeration`).
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Array schema.
+   * @param enumeration_name The name of the enumeration to retrieve.
+   */
+  static std::optional<Enumeration> get_enumeration(
+      const Context& ctx,
+      const ArraySchema& array_schema,
+      const char* enumeration_name) {
+    tiledb_enumeration_t* enumeration;
+    ctx.handle_error(tiledb_array_schema_get_enumeration(
+        ctx.ptr().get(),
+        array_schema.ptr().get(),
+        enumeration_name,
+        &enumeration));
+    if (enumeration) {
+      return Enumeration(ctx, enumeration);
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  /**
    * Add an enumeration to the array schema.
    *
    * @param ctx TileDB context.
