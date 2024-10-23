@@ -43,6 +43,7 @@
 #include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -833,14 +834,34 @@ Array::get_enumerations_all_schemas() {
         {},
         memory_tracker_);
 
-    // Store the enumerations from the REST response.
+    // Store the enumerations from the REST response into array_schemas_all.
+    auto latest_schema = opened_array_->array_schema_latest_ptr();
     for (const auto& schema_enmrs : ret) {
+      if (!array_schemas_all().contains(schema_enmrs.first)) {
+        throw ArrayException(
+            "Array opened using timestamp range (" +
+            std::to_string(array_dir_timestamp_start_) + ", " +
+            std::to_string(array_dir_timestamp_end_) +
+            ") has no loaded schema '" + schema_enmrs.first +
+            "'; If the array was recently evolved be sure to reopen it after "
+            "applying the evolution.");
+      }
+
       auto schema = array_schemas_all().at(schema_enmrs.first);
       for (const auto& enmr : schema_enmrs.second) {
-        schema->store_enumeration(enmr);
+        if (!schema->is_enumeration_loaded(enmr->name())) {
+          schema->store_enumeration(enmr);
+        }
+        // Also store enumerations into the latest schema when we encounter it.
+        if (schema_enmrs.first == latest_schema->name()) {
+          if (!latest_schema->is_enumeration_loaded(enmr->name())) {
+            latest_schema->store_enumeration(enmr);
+          }
+        }
       }
     }
   } else {
+    auto latest_schema = opened_array_->array_schema_latest_ptr();
     for (const auto& schema : array_schemas_all()) {
       std::unordered_set<std::string> enmrs_to_load;
       auto enumeration_names = schema.second->get_enumeration_names();
@@ -865,7 +886,15 @@ Array::get_enumerations_all_schemas() {
 
       // Store the loaded enumerations in the schema.
       for (auto& enmr : loaded) {
-        schema.second->store_enumeration(enmr);
+        if (!schema.second->is_enumeration_loaded(enmr->name())) {
+          schema.second->store_enumeration(enmr);
+        }
+        // Also store enumerations into latest schema.
+        if (schema.first == latest_schema->name()) {
+          if (!latest_schema->is_enumeration_loaded(enmr->name())) {
+            latest_schema->store_enumeration(enmr);
+          }
+        }
       }
       ret[schema.first] = loaded;
     }
