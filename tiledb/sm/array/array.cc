@@ -842,7 +842,7 @@ Array::get_enumerations_all_schemas() {
             "Array opened using timestamp range (" +
             std::to_string(array_dir_timestamp_start_) + ", " +
             std::to_string(array_dir_timestamp_end_) +
-            ") has no loaded schema '" + schema_enmrs.first +
+            ") has no loaded schema named '" + schema_enmrs.first +
             "'; If the array was recently evolved be sure to reopen it after "
             "applying the evolution.");
       }
