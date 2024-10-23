@@ -640,10 +640,11 @@ TEST_CASE_METHOD(
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
 
+  // Open the array with no explicit timestamps set.
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
+
   // REST CI will test with both array open v1 and v2.
   bool array_open_v2 = array.ptr()->array()->use_refactored_array_open();
-
   REQUIRE(
       array.schema().ptr()->array_schema()->has_enumeration("an_enumeration") ==
       true);
@@ -656,24 +657,10 @@ TEST_CASE_METHOD(
     REQUIRE(
         array.schema().ptr()->array_schema()->is_enumeration_loaded(
             "an_enumeration") == true);
-  } else {
-    REQUIRE(
-        array.schema().ptr()->array_schema()->is_enumeration_loaded(
-            "an_enumeration") == false);
-
-    // Load original enumerations initialized during array creation.
-    if (array_open_v2) {
-      // There is only one schema, but the test is for this method so use it if
-      // we can.
-      ArrayExperimental::load_enumerations_all_schemas(ctx_, array);
-    } else {
-      ArrayExperimental::load_all_enumerations(ctx_, array);
-    }
-
-    REQUIRE(
-        array.schema().ptr()->array_schema()->is_enumeration_loaded(
-            "an_enumeration") == true);
   }
+  // If `rest.load_enumerations_on_array_open=false` do not load enmrs
+  // explicitly. Leave enumerations unloaded initially, evolve the array without
+  // reopening, and then attempt to load all enumerations.
 
   // Evolve once to add an enumeration.
   ArraySchemaEvolution ase(ctx_);
@@ -687,23 +674,45 @@ TEST_CASE_METHOD(
   // evolution to test exceptions.
   ase.array_evolve(uri_);
 
+  // Store the original array schema name so we can validate all_schemas later.
+  std::string schema_name_1 = array.schema().ptr()->array_schema()->name();
   if (array_open_v2) {
-    auto start = std::to_string(array.open_timestamp_start());
-    auto end = std::to_string(array.open_timestamp_end());
-    CHECK_THROWS_WITH(
-        ArrayExperimental::load_enumerations_all_schemas(ctx_, array),
-        Catch::Matchers::ContainsSubstring(
-            "Array opened using timestamp range (" + start + ", " + end +
-            ") has no loaded schema named"));
-    std::string schema_name_1 = array.schema().ptr()->array_schema()->name();
+    // If we have loaded all initial enumerations on array open we will not hit
+    // the exception.
+    if (load_enmrs) {
+      // If we load enmrs before reopen, we will not load the evolved schema
+      // that contains the enumeration added during evolution.
+      CHECK_NOTHROW(
+          ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
+      auto all_schemas = array.ptr()->array_schemas_all();
+      CHECK(
+          all_schemas[schema_name_1]->has_enumeration("an_enumeration") ==
+          true);
+      CHECK(
+          all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+          true);
+      // We did not reopen so we should not have loaded the evolved schema.
+      CHECK(all_schemas.size() == 1);
+    } else {
+      // If we have not loaded all enumerations at this point we will hit an
+      // exception. REST has reopened the array server-side and as a result
+      // loaded the evolved schema. Since we did not reopen locally after
+      // evolving, this schema doesn't exist client-side.
+      auto start = std::to_string(array.open_timestamp_start());
+      auto end = std::to_string(array.open_timestamp_end());
+      CHECK_THROWS_WITH(
+          ArrayExperimental::load_enumerations_all_schemas(ctx_, array),
+          Catch::Matchers::ContainsSubstring(
+              "Array opened using timestamp range (" + start + ", " + end +
+              ") has no loaded schema named"));
+    }
 
     // Reopen and load the evolved enumerations.
     array.reopen();
     std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
     CHECK_NOTHROW(
         ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
-
-    // Validate all array schemas contain the expected enumerations.
+    // Validate all array schemas now contain the expected enumerations.
     auto all_schemas = array.ptr()->array_schemas_all();
     CHECK(
         all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);

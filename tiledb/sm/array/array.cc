@@ -814,6 +814,19 @@ Array::get_enumerations_all_schemas() {
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
 
+  // Check if all enumerations are already loaded.
+  bool all_enmrs_loaded = true;
+  for (const auto& schema : array_schemas_all()) {
+    if (schema.second->get_enumeration_names().size() !=
+        schema.second->get_loaded_enumeration_names().size()) {
+      all_enmrs_loaded = false;
+      break;
+    }
+  }
+  if (all_enmrs_loaded) {
+    return {};
+  }
+
   std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
       ret;
   if (remote_) {
