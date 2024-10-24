@@ -317,7 +317,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumerations From Disk - ArraySchema::get_enumeration",
-    "[enumeration][array-schema-get-enumeration]") {
+    "[enumeration][array-schema-get-enumeration][rest]") {
   create_array();
 
   SECTION("default schema load does not populate enumeration") {
