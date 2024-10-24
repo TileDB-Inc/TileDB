@@ -33,6 +33,7 @@
 #include <fstream>
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/array_schema_helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
@@ -43,18 +44,6 @@
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 
 using namespace tiledb;
-
-static bool is_equivalent_enumeration(
-    const Enumeration& left, const Enumeration& right) {
-  return left.name() == right.name() && left.type() == right.type() &&
-         left.cell_val_num() == right.cell_val_num() &&
-         left.ordered() == right.ordered() &&
-         std::equal(
-             left.ptr()->data().begin(),
-             left.ptr()->data().end(),
-             right.ptr()->data().begin(),
-             right.ptr()->data().end());
-}
 
 struct CPPEnumerationFx {
   CPPEnumerationFx();
@@ -346,7 +335,7 @@ TEST_CASE_METHOD(
     auto schema = array.schema();
     auto from_schema = ArraySchemaExperimental::get_enumeration(
         ctx_, schema, "an_enumeration");
-    CHECK(is_equivalent_enumeration(from_array, *from_schema));
+    CHECK(test::is_equivalent_enumeration(from_array, *from_schema));
   }
 
   SECTION("array get_enumeration loads into user schema handle") {
@@ -367,7 +356,7 @@ TEST_CASE_METHOD(
         ctx_, schema, "an_enumeration");
     REQUIRE(from_schema.has_value());
 
-    CHECK(is_equivalent_enumeration(from_array, *from_schema));
+    CHECK(test::is_equivalent_enumeration(from_array, *from_schema));
   }
 
   SECTION("schema load with rest config does populate enumeration") {
