@@ -1090,6 +1090,17 @@ std::vector<std::string> ArraySchema::get_loaded_enumeration_names() const {
   return enmr_names;
 }
 
+std::vector<shared_ptr<const Enumeration>>
+ArraySchema::get_loaded_enumerations() const {
+  std::vector<shared_ptr<const Enumeration>> enmrs;
+  for (auto& entry : enumeration_map_) {
+    if (entry.second != nullptr) {
+      enmrs.emplace_back(entry.second);
+    }
+  }
+  return enmrs;
+}
+
 bool ArraySchema::is_enumeration_loaded(
     const std::string& enumeration_name) const {
   auto iter = enumeration_map_.find(enumeration_name);

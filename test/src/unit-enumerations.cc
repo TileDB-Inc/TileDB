@@ -2558,7 +2558,7 @@ TEST_CASE_METHOD(
   REQUIRE(a1->serialize_enumerations() == (do_load == "true"));
   REQUIRE(
       a1->array_schema_latest_ptr()->get_loaded_enumeration_names().size() ==
-      0);
+      (do_load == "true" ? 2 : 0));
 
   auto a2 = make_shared<Array>(HERE(), ctx.resources(), uri_);
 
