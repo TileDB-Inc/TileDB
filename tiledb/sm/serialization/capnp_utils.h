@@ -35,6 +35,8 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include <capnp/compat/json.h>
+
 #include "tiledb-rest.capnp.h"
 
 #include "tiledb/common/heap_memory.h"
@@ -690,6 +692,25 @@ Status deserialize_coords(
   }
 
   return Status::Ok();
+}
+
+/**
+ * Converts a JSON payload to a CAPNP message.
+ *
+ * @param buffer A span containing the message.
+ * @param message Generic CAPNP message builder.
+ * @param json Optional JsonCodec to customize the process.
+ */
+void decode_json_message(
+    span<const char> buffer,
+    auto& message_builder,
+    const ::capnp::JsonCodec& json = {}) {
+  // Trim null terminator if exists.
+  if (!buffer.empty() && buffer.back() == '\0') {
+    buffer = buffer.first(buffer.size() - 1);
+  }
+
+  json.decode(kj::ArrayPtr(buffer.data(), buffer.size()), message_builder);
 }
 
 }  // namespace utils

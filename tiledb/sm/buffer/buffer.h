@@ -557,22 +557,6 @@ class SerializationBuffer {
   }
 
   /**
-   * Assigns a new owned buffer to the object, and appends a null terminator.
-   */
-  template <class Iter>
-  inline void assign_null_terminated(const Iter& iter) {
-    // Clear vector and deallocate its buffer.
-    buffer_owner_.clear();
-    buffer_owner_.shrink_to_fit();
-    // Reserve enough space for the data and the null terminator.
-    buffer_owner_.reserve(
-        std::distance(std::cbegin(iter), std::cend(iter)) + 1);
-    buffer_owner_.assign(std::cbegin(iter), std::cend(iter));
-    buffer_owner_.push_back('\0');
-    buffer_ = buffer_owner_;
-  }
-
-  /**
    * Gets the number of bytes in the buffer.
    */
   inline size_t size() const {
