@@ -693,7 +693,7 @@ TEST_CASE_METHOD(
           true);
       // We did not reopen so we should not have loaded the evolved schema.
       CHECK(all_schemas.size() == 1);
-    } else {
+    } else if (vfs_test_setup_.is_rest()) {
       // If we have not loaded all enumerations at this point we will hit an
       // exception. REST has reopened the array server-side and as a result
       // loaded the evolved schema. Since we did not reopen locally after
@@ -705,13 +705,35 @@ TEST_CASE_METHOD(
           Catch::Matchers::ContainsSubstring(
               "Array opened using timestamp range (" + start + ", " + end +
               ") has no loaded schema named"));
+    } else if (vfs_test_setup_.is_local()) {
+      // Since there is no separation between opened arrays on client and server
+      // for the local case there will be no exception. We will load only the
+      // enumerations from the initial array schema before evolution.
+      CHECK_NOTHROW(
+          ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
+      auto all_schemas = array.ptr()->array_schemas_all();
+      CHECK(
+          all_schemas[schema_name_1]->has_enumeration("an_enumeration") ==
+          true);
+      CHECK(
+          all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+          true);
+      CHECK(all_schemas.size() == 1);
+      CHECK(
+          array.schema().ptr()->array_schema()->has_enumeration(
+              "an_enumeration") == true);
+      CHECK(
+          array.schema().ptr()->array_schema()->is_enumeration_loaded(
+              "an_enumeration") == true);
     }
 
     // Reopen and load the evolved enumerations.
     array.reopen();
     std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
-    CHECK_NOTHROW(
-        ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
+    if (!load_enmrs) {
+      CHECK_NOTHROW(
+          ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
+    }
     // Validate all array schemas now contain the expected enumerations.
     auto all_schemas = array.ptr()->array_schemas_all();
     CHECK(
@@ -748,7 +770,9 @@ TEST_CASE_METHOD(
 
     // Reopen to apply the schema evolution and reload enumerations.
     array.reopen();
-    CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
+    if (!load_enmrs) {
+      CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
+    }
   }
 
   // Check all original and evolved enumerations are in the latest schema.
