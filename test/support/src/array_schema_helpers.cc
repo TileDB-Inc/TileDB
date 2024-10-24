@@ -52,4 +52,3 @@ bool is_equivalent_enumeration(
 }
 
 }  // namespace tiledb::test
-
