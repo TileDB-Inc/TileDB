@@ -190,8 +190,8 @@ class ArraySchemaExperimental {
   }
 
   /**
-   * Retrieve an enumeration from the array schema, if has already been loaded
-   * (such as via `ArrayExperimental::get_enumeration`).
+   * Retrieve an enumeration from the array schema, if it has already been
+   * loaded (such as via `ArrayExperimental::get_enumeration`).
    *
    * @param ctx TileDB context.
    * @param array_schema Array schema.
