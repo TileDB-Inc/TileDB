@@ -831,6 +831,8 @@ Array::get_enumerations_all_schemas() {
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+      ret;
 
   // Check if all enumerations are already loaded.
   bool all_enmrs_loaded = true;
@@ -840,19 +842,18 @@ Array::get_enumerations_all_schemas() {
       all_enmrs_loaded = false;
       break;
     }
-  }
-  if (all_enmrs_loaded) {
-    return {};
+    ret[schema.first] = schema.second->get_loaded_enumerations();
   }
 
-  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
-      ret;
-  if (remote_) {
-    auto rest_client = resources_.rest_client();
-    if (rest_client == nullptr) {
-      throw ArrayException(
-          "Error loading enumerations; Remote array with no REST client.");
-    }
+  if (!all_enmrs_loaded) {
+    ret.clear();
+
+    if (remote_) {
+      auto rest_client = resources_.rest_client();
+      if (rest_client == nullptr) {
+        throw ArrayException(
+            "Error loading enumerations; Remote array with no REST client.");
+      }
 
     // Pass an empty list of enumeration names. REST will use timestamps to
     // load all enumerations on all schemas for the array within that range.
@@ -865,69 +866,71 @@ Array::get_enumerations_all_schemas() {
         {},
         memory_tracker_);
 
-    // Store the enumerations from the REST response into array_schemas_all.
-    auto latest_schema = opened_array_->array_schema_latest_ptr();
-    for (const auto& schema_enmrs : ret) {
-      if (!array_schemas_all().contains(schema_enmrs.first)) {
-        throw ArrayException(
-            "Array opened using timestamp range (" +
-            std::to_string(array_dir_timestamp_start_) + ", " +
-            std::to_string(array_dir_timestamp_end_) +
-            ") has no loaded schema named '" + schema_enmrs.first +
-            "'; If the array was recently evolved be sure to reopen it after "
-            "applying the evolution.");
-      }
-
-      auto schema = array_schemas_all().at(schema_enmrs.first);
-      for (const auto& enmr : schema_enmrs.second) {
-        if (!schema->is_enumeration_loaded(enmr->name())) {
-          schema->store_enumeration(enmr);
+      // Store the enumerations from the REST response into array_schemas_all.
+      auto latest_schema = opened_array_->array_schema_latest_ptr();
+      for (const auto& schema_enmrs : ret) {
+        if (!array_schemas_all().contains(schema_enmrs.first)) {
+          throw ArrayException(
+              "Array opened using timestamp range (" +
+              std::to_string(array_dir_timestamp_start_) + ", " +
+              std::to_string(array_dir_timestamp_end_) +
+              ") has no loaded schema named '" + schema_enmrs.first +
+              "'; If the array was recently evolved be sure to reopen it after "
+              "applying the evolution.");
         }
-        // Also store enumerations into the latest schema when we encounter it.
-        if (schema_enmrs.first == latest_schema->name()) {
-          if (!latest_schema->is_enumeration_loaded(enmr->name())) {
-            latest_schema->store_enumeration(enmr);
+
+        auto schema = array_schemas_all().at(schema_enmrs.first);
+        for (const auto& enmr : schema_enmrs.second) {
+          if (!schema->is_enumeration_loaded(enmr->name())) {
+            schema->store_enumeration(enmr);
+          }
+          // Also store enumerations into the latest schema when we encounter
+          // it.
+          if (schema_enmrs.first == latest_schema->name()) {
+            if (!latest_schema->is_enumeration_loaded(enmr->name())) {
+              latest_schema->store_enumeration(enmr);
+            }
           }
         }
       }
-    }
-  } else {
-    auto latest_schema = opened_array_->array_schema_latest_ptr();
-    for (const auto& schema : array_schemas_all()) {
-      std::unordered_set<std::string> enmrs_to_load;
-      auto enumeration_names = schema.second->get_enumeration_names();
-      // Dedupe requested names and filter out anything already loaded.
-      for (auto& enmr_name : enumeration_names) {
-        if (schema.second->is_enumeration_loaded(enmr_name)) {
-          continue;
+    } else {
+      auto latest_schema = opened_array_->array_schema_latest_ptr();
+      for (const auto& schema : array_schemas_all()) {
+        std::unordered_set<std::string> enmrs_to_load;
+        auto enumeration_names = schema.second->get_enumeration_names();
+        // Dedupe requested names and filter out anything already loaded.
+        for (auto& enmr_name : enumeration_names) {
+          if (schema.second->is_enumeration_loaded(enmr_name)) {
+            continue;
+          }
+          enmrs_to_load.insert(enmr_name);
         }
-        enmrs_to_load.insert(enmr_name);
-      }
 
-      // Create a vector of paths to be loaded.
-      std::vector<std::string> paths_to_load;
-      for (auto& enmr_name : enmrs_to_load) {
-        auto path = schema.second->get_enumeration_path_name(enmr_name);
-        paths_to_load.push_back(path);
-      }
-
-      // Load the enumerations from storage
-      auto loaded = array_directory().load_enumerations_from_paths(
-          paths_to_load, *encryption_key(), memory_tracker_);
-
-      // Store the loaded enumerations in the schema.
-      for (auto& enmr : loaded) {
-        if (!schema.second->is_enumeration_loaded(enmr->name())) {
-          schema.second->store_enumeration(enmr);
+        // Create a vector of paths to be loaded.
+        std::vector<std::string> paths_to_load;
+        for (auto& enmr_name : enmrs_to_load) {
+          auto path = schema.second->get_enumeration_path_name(enmr_name);
+          paths_to_load.push_back(path);
         }
-        // Also store enumerations into latest schema.
-        if (schema.first == latest_schema->name()) {
-          if (!latest_schema->is_enumeration_loaded(enmr->name())) {
-            latest_schema->store_enumeration(enmr);
+
+        // Load the enumerations from storage
+        auto loaded = array_directory().load_enumerations_from_paths(
+            paths_to_load, *encryption_key(), memory_tracker_);
+
+        // Store the loaded enumerations in the schema.
+        for (auto& enmr : loaded) {
+          if (!schema.second->is_enumeration_loaded(enmr->name())) {
+            schema.second->store_enumeration(enmr);
+          }
+          // Also store enumerations into latest schema.
+          if (schema.first == latest_schema->name()) {
+            if (!latest_schema->is_enumeration_loaded(enmr->name())) {
+              latest_schema->store_enumeration(enmr);
+            }
           }
         }
+        ret[schema.first] = loaded;
       }
-      ret[schema.first] = loaded;
     }
   }
 
