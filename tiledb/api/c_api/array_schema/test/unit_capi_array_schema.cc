@@ -401,7 +401,8 @@ TEST_CASE(
         0,
         &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    tiledb_array_schema_add_enumeration(x.ctx(), x.schema, enumeration);
+    rc = tiledb_array_schema_add_enumeration(x.ctx(), x.schema, enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE_NOTHROW(tiledb_enumeration_free(&enumeration));
     CHECK(enumeration == nullptr);
 
