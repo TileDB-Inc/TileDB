@@ -99,17 +99,11 @@ jobs:
           ref=${{ github.head_ref || github.ref_name }}
           echo "release_version=${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
         shell: bash
-      - name: Install aarch64 cross compilation prerequisites
-        if: ${{ matrix.platform == 'linux-aarch64' }}
-        run: |
-          set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
-          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
       - name: Install manylinux prerequisites
-        if: ${{ startsWith(matrix.platform, 'linux-x86_64') == true }}
+        if: ${{ startsWith(matrix.platform, 'linux') == true }}
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd ninja-build
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
       - name: Configure TileDB
         run: |
