@@ -322,7 +322,7 @@ TEST_CASE_METHOD(
 
   SECTION("default schema load does not populate enumeration") {
     auto schema = Array::load_schema(ctx_, uri_);
-    auto enmr = ArraySchemaExperimental::get_enumeration(
+    auto enmr = ArraySchemaExperimental::get_enumeration_if_loaded(
         ctx_, schema, "an_enumeration");
     CHECK(!enmr.has_value());
   }
@@ -333,7 +333,7 @@ TEST_CASE_METHOD(
         ArrayExperimental::get_enumeration(ctx_, array, "an_enumeration");
 
     auto schema = array.schema();
-    auto from_schema = ArraySchemaExperimental::get_enumeration(
+    auto from_schema = ArraySchemaExperimental::get_enumeration_if_loaded(
         ctx_, schema, "an_enumeration");
     CHECK(test::is_equivalent_enumeration(from_array, *from_schema));
   }
@@ -343,7 +343,7 @@ TEST_CASE_METHOD(
     auto schema = array.schema();
 
     // the enumeration is not populated yet
-    REQUIRE(!ArraySchemaExperimental::get_enumeration(
+    REQUIRE(!ArraySchemaExperimental::get_enumeration_if_loaded(
                  ctx_, schema, "an_enumeration")
                  .has_value());
 
@@ -352,7 +352,7 @@ TEST_CASE_METHOD(
         ArrayExperimental::get_enumeration(ctx_, array, "an_enumeration");
 
     // and once it is loaded, it is set on the schema
-    auto from_schema = ArraySchemaExperimental::get_enumeration(
+    auto from_schema = ArraySchemaExperimental::get_enumeration_if_loaded(
         ctx_, schema, "an_enumeration");
     REQUIRE(from_schema.has_value());
 
@@ -364,7 +364,7 @@ TEST_CASE_METHOD(
     config["rest.load_enumerations_on_array_open"] = "true";
 
     auto schema = Array::load_schema(ctx_, uri_, config);
-    auto enmr = ArraySchemaExperimental::get_enumeration(
+    auto enmr = ArraySchemaExperimental::get_enumeration_if_loaded(
         ctx_, schema, "an_enumeration");
     REQUIRE(enmr.has_value());
     REQUIRE(enmr->ptr() != nullptr);

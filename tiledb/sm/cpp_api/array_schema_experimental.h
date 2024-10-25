@@ -197,12 +197,12 @@ class ArraySchemaExperimental {
    * @param array_schema Array schema.
    * @param enumeration_name The name of the enumeration to retrieve.
    */
-  static std::optional<Enumeration> get_enumeration(
+  static std::optional<Enumeration> get_enumeration_if_loaded(
       const Context& ctx,
       const ArraySchema& array_schema,
       const char* enumeration_name) {
     tiledb_enumeration_t* enumeration;
-    ctx.handle_error(tiledb_array_schema_get_enumeration(
+    ctx.handle_error(tiledb_array_schema_get_enumeration_if_loaded(
         ctx.ptr().get(),
         array_schema.ptr().get(),
         enumeration_name,

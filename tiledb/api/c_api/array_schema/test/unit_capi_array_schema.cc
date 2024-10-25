@@ -368,22 +368,22 @@ TEST_CASE(
   ordinary_array_schema x{};
   tiledb_enumeration_t* enumeration;
   SECTION("null context") {
-    rc = tiledb_array_schema_get_enumeration(
+    rc = tiledb_array_schema_get_enumeration_if_loaded(
         nullptr, x.schema, "primes", &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_enumeration(
+    rc = tiledb_array_schema_get_enumeration_if_loaded(
         x.ctx(), nullptr, "primes", &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null name") {
-    rc = tiledb_array_schema_get_enumeration(
+    rc = tiledb_array_schema_get_enumeration_if_loaded(
         x.ctx(), x.schema, nullptr, &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null enumeration") {
-    rc = tiledb_array_schema_get_enumeration(
+    rc = tiledb_array_schema_get_enumeration_if_loaded(
         x.ctx(), x.schema, "primes", nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
@@ -406,7 +406,7 @@ TEST_CASE(
     REQUIRE_NOTHROW(tiledb_enumeration_free(&enumeration));
     CHECK(enumeration == nullptr);
 
-    rc = tiledb_array_schema_get_enumeration(
+    rc = tiledb_array_schema_get_enumeration_if_loaded(
         x.ctx(), x.schema, "primes", &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE(enumeration != nullptr);

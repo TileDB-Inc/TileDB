@@ -68,7 +68,8 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
     uint64_t* hi) TILEDB_NOEXCEPT;
 
 /**
- * Retrieves an already-loaded enumeration given its name.
+ * Retrieves an already-loaded enumeration given its name,
+ * if it has already been loaded into memory.
  *
  * If the enumeration has already been loaded,
  * such as via `tiledb_array_get_enumeration`,
@@ -81,7 +82,8 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
  *
  * @code{.c}
  * tiledb_enumeration_t* enmr;
- * tiledb_array_schema_get_enumeration(ctx, array_schema, "states", &enmr);
+ * tiledb_array_schema_get_enumeration_if_loaded(ctx,
+ *         array_schema, "states", &enmr);
  * tiledb_attribute_free(&enmr);
  * @endcode
  *
@@ -91,7 +93,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
  * @param[out] enmr The enumeration object to retrieve.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_array_schema_get_enumeration(
+TILEDB_EXPORT capi_return_t tiledb_array_schema_get_enumeration_if_loaded(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* name,

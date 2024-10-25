@@ -181,7 +181,7 @@ capi_return_t tiledb_array_schema_timestamp_range(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_array_schema_get_enumeration(
+capi_return_t tiledb_array_schema_get_enumeration_if_loaded(
     tiledb_array_schema_t* array_schema,
     const char* enumeration_name,
     tiledb_enumeration_t** enumeration) {
@@ -561,12 +561,13 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    array_schema_get_enumeration,
+    array_schema_get_enumeration_if_loaded,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* enumeration_name,
     tiledb_enumeration_t** enumeration) {
-  return api_entry_context<tiledb::api::tiledb_array_schema_get_enumeration>(
+  return api_entry_context<
+      tiledb::api::tiledb_array_schema_get_enumeration_if_loaded>(
       ctx, array_schema, enumeration_name, enumeration);
 }
 
