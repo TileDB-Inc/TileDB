@@ -61,6 +61,8 @@ jobs:
             os: linux-arm64-ubuntu24
             triplet: arm64-linux-release
             manylinux: quay.io/pypa/manylinux2014_aarch64
+            env:
+              VCPKG_FORCE_SYSTEM_BINARIES: ON
           - platform: macos-x86_64
             os: macos-12
             MACOSX_DEPLOYMENT_TARGET: 11
@@ -107,6 +109,7 @@ jobs:
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
           python3.9 -m pip install ninja
       - name: Configure TileDB
+        env: {{ matrix.env }}
         run: |
           export PATH=$PATH:/opt/_internal/cpython-3.9.20/bin
           cmake -S . -B build \
