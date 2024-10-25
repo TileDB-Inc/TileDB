@@ -103,10 +103,12 @@ jobs:
         if: ${{ startsWith(matrix.platform, 'linux') == true }}
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd ninja-build
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
+          python3.9 -m pip install ninja
       - name: Configure TileDB
         run: |
+          export PATH=$PATH:/opt/_internal/cpython-3.9.20/bin
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=ON \
