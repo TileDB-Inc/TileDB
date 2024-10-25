@@ -363,7 +363,7 @@ TEST_CASE_METHOD(
     Config config;
     config["rest.load_enumerations_on_array_open"] = "true";
 
-    auto schema = Array::load_schema(ctx_, uri_, config);
+    auto schema = Array::load_schema_with_config(ctx_, config, uri_);
     auto enmr = ArraySchemaExperimental::get_enumeration_if_loaded(
         ctx_, schema, "an_enumeration");
     REQUIRE(enmr.has_value());
