@@ -294,19 +294,19 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">URI 1 length</td>
+<td style="text-align: left;">Fragment 1 length</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">Number of bytes in the string of URI 1</td>
+<td style="text-align: left;">Number of bytes in the string of fragment 1</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">URI 1</td>
+<td style="text-align: left;">Fragment 1</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">URI 1</td>
+<td style="text-align: left;">Timestamped name of fragment 1</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">URI 1 offset</td>
+<td style="text-align: left;">Fragment 1 offset</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">The offset in the file where the URI 1 footer begins</td>
+<td style="text-align: left;">The offset in the file where the fragment 1 footer begins</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">…</td>
@@ -314,24 +314,24 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">…</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">URI N length</td>
+<td style="text-align: left;">Fragment N length</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">Number of bytes in the string of URI N</td>
+<td style="text-align: left;">Number of bytes in the string of fragment N</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">URI N</td>
+<td style="text-align: left;">Fragment N</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">URI N</td>
+<td style="text-align: left;">Timestamped name of fragment N</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">URI N offset</td>
+<td style="text-align: left;">Fragment N offset</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">The offset in the file where the URI N footer begins</td>
+<td style="text-align: left;">The offset in the file where the fragment N footer begins</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">URI 1 footer</td>
+<td style="text-align: left;">Fragment 1 footer</td>
 <td style="text-align: left;"><a href="../format_spec/fragment.html#footer">Footer</a></td>
-<td style="text-align: left;">Serialized footer of URI (fragment) 1</td>
+<td style="text-align: left;">Serialized footer of fragment 1</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">…</td>
@@ -339,12 +339,16 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">…</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">URI N footer</td>
+<td style="text-align: left;">Fragment N footer</td>
 <td style="text-align: left;"><a href="../format_spec/fragment.html#footer">Footer</a></td>
-<td style="text-align: left;">Serialized footer of URI (fragment) N</td>
+<td style="text-align: left;">Serialized footer of fragment N</td>
 </tr>
 </tbody>
 </table>
+<p>Fragment metadata with versions earlier than 3 don’t have a footer and cannot be consolidated.</p>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 9, fragments in fragment metadata files were referenced by their absolute URIs.</p>
+</blockquote>
 
 
 

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Format version history</title>
+<title>Array format version history</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -117,7 +117,7 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#format-version-history" id="toc-format-version-history" class="nav-link active" data-scroll-target="#format-version-history">Format Version History</a>
+  <li><a href="#array-format-version-history" id="toc-array-format-version-history" class="nav-link active" data-scroll-target="#array-format-version-history">Array Format Version History</a>
   <ul class="collapse">
   <li><a href="#version-22" id="toc-version-22" class="nav-link" data-scroll-target="#version-22">Version 22</a></li>
   <li><a href="#version-21" id="toc-version-21" class="nav-link" data-scroll-target="#version-21">Version 21</a></li>
@@ -150,7 +150,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Format version history</h1>
+<h1 class="title">Array format version history</h1>
 </div>
 
 
@@ -167,8 +167,8 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="format-version-history" class="level1">
-<h1>Format Version History</h1>
+<section id="array-format-version-history" class="level1">
+<h1>Array Format Version History</h1>
 <section id="version-22" class="level2">
 <h2 class="anchored" data-anchor-id="version-22">Version 22</h2>
 <p>Introduced in TileDB 2.25</p>
@@ -191,7 +191,7 @@ ul.task-list li input[type="checkbox"] {
 <p>Introduced in TileDB 2.17</p>
 <ul>
 <li>Arrays can have <a href="../format_spec/enumeration.html">enumerations</a>.</li>
-<li>The bit-width reduction and positive delta filters are supported on data of date or time types.</li>
+<li>The bit-width reduction and positive delta encoding filters are supported on data of date or time types.</li>
 <li>The <a href="../format_spec/filter_pipeline.html#filter-options">filter pipeline options</a> for the double-delta filter contain the <em>Reinterpret datatype</em> field.</li>
 </ul>
 </section>
@@ -215,7 +215,7 @@ ul.task-list li input[type="checkbox"] {
 <p>Introduced in TileDB 2.14</p>
 <ul>
 <li>The <em>Order</em> field was added to <a href="../format_spec/array_schema.html#attribute">attributes</a>.</li>
-<li>Cell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary filter exists in the filter pipeline. They are instead encoded as part of the data tile.</li>
+<li>Cell offsets in dimensions or attributes of UTF-8 string type are not written in the offset tiles, if the RLE or dictionary encoding filter exists in the filter pipeline. They are instead encoded as part of the data tile.</li>
 </ul>
 </section>
 <section id="version-16" class="level2">
@@ -248,7 +248,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="version-13">Version 13</h2>
 <p>Introduced in TileDB 2.9</p>
 <ul>
-<li>The <a href="../format_spec/filters/dictionary_encoding.html">dictionary filter</a> was added.</li>
+<li>Cell offsets in dimensions or attributes of ASCII string type are not written in the offset tiles, if the dictionary encoding filter exists in the filter pipeline. They are instead encoded as part of the data tile.</li>
 </ul>
 </section>
 <section id="version-12" class="level2">
@@ -264,7 +264,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="version-11">Version 11</h2>
 <p>Introduced in TileDB 2.7</p>
 <ul>
-<li>Fragment metadata contain <a href="../format_spec/fragment.html#tile-mins-maxes">metadata</a> (min/max value, sum, null count) for each tile.</li>
+<li>Fragment metadata contain <a href="../format_spec/fragment.html#tile-mins-maxes">metadata</a> (min/max value, sum, null count) for data in the whole fragment and each tile.</li>
 <li>The TileDB implementation has been updated to never split cells when storing them in chunks.</li>
 </ul>
 </section>
@@ -347,7 +347,7 @@ ul.task-list li input[type="checkbox"] {
 <li>The <a href="../format_spec/fragment.html#footer">footer</a> and <a href="../format_spec/fragment.html#r-tree">R-Tree</a> structures were added.</li>
 <li>The <em>Bounding coords</em> field was removed.</li>
 <li>The <em>MBRs</em> field was removed. MBRs are now stored in the R-Tree.</li>
-<li>Structures other than the footer like tile offsets, sizes and metadata are wrapped in their own generic tiles. This allows loading them lazily and in parallel.</li>
+<li>Tile offsets and sizes are wrapped in their own generic tiles. This allows loading them lazily and in parallel.</li>
 </ul></li>
 </ul>
 </section>

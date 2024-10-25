@@ -377,6 +377,7 @@ ul.task-list li input[type="checkbox"] {
 <p>The “chunk metadata” before the actual “chunk filtered data” depend on the particular sequence of filters in the pipeline. In the simple case, each filter will simply concatenate its metadata to the chunk metadata region. Because some filters in the pipeline may wish to filter the metadata of previous filters (e.g.&nbsp;compression, where it is beneficial to compress previous filters’ metadata in addition to the actual chunk data), the ordering of filters also impacts the metadata that is eventually written to disk.</p>
 <p>The “chunk filtered data” bytes contain the final bytes of the chunk after being passed through the entire pipeline. When reading tiles from disk, the filter pipeline is run in the reverse order.</p>
 <p>Internally, any filter in a filter pipeline produces two arrays of data as output: a metadata byte array and a filtered data byte array. Additionally, these output byte arrays can be arbitrarily separated into “parts” by any filter. Typically, when a next filter receives the output of the previous filter as its input, it will filter each “part” independently.</p>
+<p><em>New in version 11</em> Cells of arrays are not split across chunks within a tile.</p>
 <section id="byteshuffle-filter" class="level3">
 <h3 class="anchored" data-anchor-id="byteshuffle-filter">Byteshuffle Filter</h3>
 <p>The byteshuffle filter does not filter input metadata, and the output data is guaranteed to be the same length as the input data.</p>
@@ -564,7 +565,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td style="text-align: left;">Bit width of reduced type</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">Number of bits in the new datatype of the values in the output window</td>
+<td style="text-align: left;">Number of bits in the new datatype of the values in the output window. Can be 8, 16, 32 or 64.</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Window length</td>
@@ -605,6 +606,9 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 20, the bit width reduction filter had no effect on date and time types.</p>
+</blockquote>
 </section>
 <section id="positive-delta-encoding-filter" class="level3">
 <h3 class="anchored" data-anchor-id="positive-delta-encoding-filter">Positive Delta Encoding Filter</h3>
@@ -694,6 +698,9 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 20, the positive delta encoding filter had no effect on date and time types.</p>
+</blockquote>
 </section>
 <section id="compression-filters" class="level3">
 <h3 class="anchored" data-anchor-id="compression-filters">Compression Filters</h3>

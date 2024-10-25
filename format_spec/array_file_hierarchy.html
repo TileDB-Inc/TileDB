@@ -280,6 +280,9 @@ ul.task-list li input[type="checkbox"] {
 <p>An array is a folder with the following structure:</p>
 <pre><code>my_array                                # array folder
     |_ __schema                         # array schema folder
+          |_ &lt;timestamp_name&gt;           # array schema files
+          |_ ...
+          |_ __enumerations             # array enumerations folder
     |_ __fragments                      # array fragments folder
           |_ &lt;timestamped_name&gt;         # fragment folder
           |_ ...
@@ -295,25 +298,45 @@ ul.task-list li input[type="checkbox"] {
           |_ &lt;timestamped_name&gt;.con     # consolidated commits file
           |_ ...
           |_ &lt;timestamped_name&gt;.ign     # ignore file for consolidated commits file
-    |_ __fragment_meta                  
-          |_ &lt;timestamped_name&gt;.meta    # consol. fragment meta file
-          |_ ...                  
+    |_ __fragment_meta                  # consolidated fragment metadata folder
+          |_ &lt;timestamped_name&gt;.meta    # consolidated fragment meta file
+          |_ ...
     |_ __meta                           # array metadata folder
     |_ __labels                         # dimension label folder
-</code></pre>
+    |_ &lt;timestamped_name&gt;               # legacy fragment folder
+          |_ ...
+    |_ &lt;timestamped_name&gt;.ok            # legacy fragment write file
+    |_ &lt;timestamped_name&gt;.meta          # legacy consolidated fragment meta file
+    |_ __array_schema.tdb               # legacy array schema file</code></pre>
 <p>Inside the array folder, you can find the following:</p>
 <ul>
-<li><a href="../format_spec/array_schema.html">Array schema</a> folder <code>__schema</code>.</li>
-<li>Inside of a fragments folder, any number of <a href="../format_spec/fragment.html">fragment folders</a> <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>.</li>
-<li>Inside of a commit folder, an empty file <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.wrt</code> associated with every fragment folder <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>, where <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a> is common for the folder and the WRT file. This is used to indicate that fragment <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a> has been <em>committed</em> (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.</li>
-<li>Inside the same commit folder, any number of <a href="../format_spec/delete_commit_file.html">delete commit files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.del</code>.</li>
-<li>Inside the same commit folder, any number of <a href="../format_spec/update_commit_file.html">update commit files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.upd</code>.</li>
-<li>Inside the same commit folder, any number of <a href="../format_spec/consolidated_commits_file.html">consolidated commits files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.con</code>.</li>
-<li>Inside the same commit folder, any number of <a href="../format_spec/ignore_file.html">ignore files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.ign</code>.</li>
-<li>Inside of a fragment metadata folder, any number of <a href="../format_spec/consolidated_fragment_metadata_file.html">consolidated fragment metadata files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.meta</code>.</li>
-<li><a href="../format_spec/metadata.html">Array metadata</a> folder <code>__meta</code>.</li>
-<li>Inside of a labels folder, additional TileDB arrays storing dimension label data.</li>
+<li>Inside of a <code>__schema</code> folder, any number of <a href="../format_spec/array_schema.html">array schema files</a> <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>.
+<ul>
+<li><strong>Note</strong>: the name does <em>not</em> include the format version.</li>
+<li><em>New in version 20</em> Inside of the schema folder, an enumerations folder <code>__enumerations</code>.</li>
+</ul></li>
+<li>Inside of a <code>__meta</code> folder, any number of <a href="../format_spec/metadata.html">array metadata files</a> <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>.</li>
+<li>Inside of a <code>__fragments</code> folder, any number of <a href="../format_spec/fragment.html">fragment folders</a> <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>.</li>
+<li><em>New in version 18</em> Inside of a <code>__labels</code> folder, additional TileDB arrays storing dimension label data.</li>
+<li><em>New in version 12</em> Inside of a <code>__commits</code> folder:
+<ul>
+<li>Any number of empty files <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.wrt</code>, each associated with fragment folder <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>, indicating that the fragment has been <em>committed</em> (i.e., its write process finished successfully). If the WRT file does not exist, the corresponding fragment must be ignored when reading the array.</li>
+<li>Any number of <a href="../format_spec/consolidated_commits_file.html">consolidated commits files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.con</code>.</li>
+<li>Any number of <a href="../format_spec/ignore_file.html">ignore files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.ign</code>.</li>
+<li><em>New in version 16</em> Any number of <a href="../format_spec/delete_commit_file.html">delete commit files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.del</code>.</li>
+<li><em>New in version 16</em> Any number of <a href="../format_spec/update_commit_file.html">update commit files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.upd</code>.</li>
+</ul></li>
+<li><em>New in version 12</em> Inside of a <code>__fragment_meta</code> folder, any number of <a href="../format_spec/consolidated_fragment_metadata_file.html">consolidated fragment metadata files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.meta</code>.</li>
 </ul>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 12, fragments, commit files, and consolidated fragment metadata were stored directly in the array folder and the extension of commit files was <code>.ok</code> instead of <code>.wrt</code>. Implementations must support arrays that contain data in both the old and the new hierarchy at the same time.</p>
+</blockquote>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 10, the array schema was stored in a single <code>__array_schema.tdb</code> file in the array folder. Implementations must support arrays that contain both <code>__array_schema.tdb</code> and schemas in the <code>__schema</code> folder at the same time. For the purpose of array schema evolution, the timestamp of <code>__array_schema.tdb</code> must be considered to be earlier than any schema in the <code>__schema</code> folder.</p>
+</blockquote>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 5, commit files were not written. Fragments of these versions are considered to be committed if their corresponding fragment metadata file exists.</p>
+</blockquote>
 
 
 

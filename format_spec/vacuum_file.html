@@ -278,19 +278,19 @@ ul.task-list li input[type="checkbox"] {
 
 
 <p>A vacuum file has name <code>[</code><timestamped_name><code>](./timestamped_name.md)</code>.vac` and can be located either in the array commit folder:</timestamped_name></p>
-<pre><code>my_array                        # array folder
+<pre><code>my_array                           # array folder
    |_ ....
-   |_ __commits                 # array commit folder
-         |_ &lt;timestamped_name&gt;.vac   # vacuum file</code></pre>
-<p>or in the array metadata folder:</p>
-<pre><code>my_array                        # array folder
-   |  ...            
-   | __meta                    # array metadata folder
+   |_ __commits                    # array commit folder
+         |_ &lt;timestamped_name&gt;.vac # vacuum file</code></pre>
+<p>or in the array or group metadata folder:</p>
+<pre><code>my_obj                            # array/group folder
+   |  ...
+   | __meta                       # metadata folder
          | ...
-         | &lt;timestamped_name&gt;.vac  # vacuum file
+         | &lt;timestamped_name&gt;.vac # vacuum file
          | ...</code></pre>
-<p>When located in the commits folder, it will include the URI of fragments (in the <code>__fragments</code> folder) that can be vacuumed. When located in the array metadata folder, it will include the URI or array metadata files that can be vacuumed.</p>
-<p>The vacuum file is a simple text file where each line contains a URI string:</p>
+<p>When located in the commits folder, it will include the name of fragments (in the <code>__fragments</code> folder) that can be vacuumed. When located in the metadata folder, it will include the URI or metadata files that can be vacuumed.</p>
+<p>The vacuum file is a simple text file where each line contains a string:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -306,9 +306,9 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">URI 1 followed by a new line character</td>
+<td style="text-align: left;">Item 1 followed by a new line character</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">URI 1 to be vacuumed</td>
+<td style="text-align: left;">Item 1 to be vacuumed</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">…</td>
@@ -316,12 +316,15 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">…</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">URI N followed by a new line character</td>
+<td style="text-align: left;">Item N followed by a new line character</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">URI N to be vacuumed</td>
+<td style="text-align: left;">Item N to be vacuumed</td>
 </tr>
 </tbody>
 </table>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 19, vacuum files contained absolute URIs.</p>
+</blockquote>
 
 
 

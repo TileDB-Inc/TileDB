@@ -257,13 +257,12 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#current-array-schema-version" id="toc-current-array-schema-version" class="nav-link active" data-scroll-target="#current-array-schema-version">Current Array Schema Version</a></li>
-  <li><a href="#previous-array-schema-version" id="toc-previous-array-schema-version" class="nav-link" data-scroll-target="#previous-array-schema-version">Previous Array Schema Version</a></li>
-  <li><a href="#array-schema-file" id="toc-array-schema-file" class="nav-link" data-scroll-target="#array-schema-file">Array Schema File</a></li>
+  <li><a href="#array-schema-file" id="toc-array-schema-file" class="nav-link active" data-scroll-target="#array-schema-file">Array Schema File</a></li>
   <li><a href="#domain" id="toc-domain" class="nav-link" data-scroll-target="#domain">Domain</a></li>
   <li><a href="#dimension" id="toc-dimension" class="nav-link" data-scroll-target="#dimension">Dimension</a></li>
   <li><a href="#attribute" id="toc-attribute" class="nav-link" data-scroll-target="#attribute">Attribute</a></li>
   <li><a href="#dimension-label" id="toc-dimension-label" class="nav-link" data-scroll-target="#dimension-label">Dimension Label</a></li>
+  <li><a href="#current-domain" id="toc-current-domain" class="nav-link" data-scroll-target="#current-domain">Current Domain</a></li>
   </ul>
 </nav>
     </div>
@@ -289,30 +288,6 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="current-array-schema-version" class="level2">
-<h2 class="anchored" data-anchor-id="current-array-schema-version">Current Array Schema Version</h2>
-<p>The current array schema version(<code>&gt;=10</code>) is a folder called <code>__schema</code> located here:</p>
-<pre><code>my_array                            # array folder
-   |  ...
-   |_ __schema                      # array schema folder
-         |_ &lt;timestamped_name&gt;      # array schema file
-         |_ ...</code></pre>
-<p>The array schema folder can contain:</p>
-<ul>
-<li>Any number of <a href="#array-schema-file">array schema files</a> with name <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>.
-<ul>
-<li>Note: the name does <em>not</em> include the format version.</li>
-</ul></li>
-</ul>
-</section>
-<section id="previous-array-schema-version" class="level2">
-<h2 class="anchored" data-anchor-id="previous-array-schema-version">Previous Array Schema Version</h2>
-<p>The previous array schema version(<code>&lt;=9</code>) has a file named <code>__array_schema.tdb</code> and is located here:</p>
-<pre><code>my_array                   # array folder
-   |_ ....
-   |_ __array_schema.tdb   # array schema file
-   |_ ...</code></pre>
-</section>
 <section id="array-schema-file" class="level2">
 <h2 class="anchored" data-anchor-id="array-schema-file">Array Schema File</h2>
 <p>The array schema file consists of a single <a href="../format_spec/generic_tile.html">generic tile</a>, with the following data:</p>
@@ -328,12 +303,12 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Array version</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Format version number of the array schema</td>
+<td style="text-align: left;"><a href="../format_spec/array_format_history.html">Format version</a> number of the array schema</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Allows dups</td>
 <td style="text-align: left;"><code>bool</code></td>
-<td style="text-align: left;">Whether or not the array allows duplicate cells</td>
+<td style="text-align: left;"><em>New in version 5</em> Whether or not the array allows duplicate cells</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Array type</td>
@@ -368,7 +343,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Validity filters</td>
 <td style="text-align: left;"><a href="../format_spec/filter_pipeline.html">Filter Pipeline</a></td>
-<td style="text-align: left;">The filter pipeline used for cell validity tiles</td>
+<td style="text-align: left;"><em>New in version 7</em> The filter pipeline used for cell validity tiles</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Domain</td>
@@ -398,12 +373,12 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Num labels</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of dimension labels in the array</td>
+<td style="text-align: left;"><em>New in version 18</em> Number of dimension labels in the array</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Label 1</td>
 <td style="text-align: left;"><a href="#dimension_label">Dimension Label</a></td>
-<td style="text-align: left;">First dimension label</td>
+<td style="text-align: left;"><em>New in version 18</em> First dimension label</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">…</td>
@@ -413,57 +388,57 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td style="text-align: left;">Label N</td>
 <td style="text-align: left;"><a href="#dimension_label">Dimension Label</a></td>
-<td style="text-align: left;">Nth dimension label</td>
+<td style="text-align: left;"><em>New in version 18</em> Nth dimension label</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Num enumerations</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of <a href="../format_spec/enumeration.html">enumerations</a> in the array</td>
+<td style="text-align: left;"><em>New in version 20</em> Number of <a href="../format_spec/enumeration.html">enumerations</a> in the array</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Enumeration name length 1</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">The number of characters in the enumeration 1 name</td>
+<td style="text-align: left;"><em>New in version 20</em> The number of characters in the enumeration 1 name</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Enumeration name 1</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">The name of enumeration 1</td>
+<td style="text-align: left;"><em>New in version 20</em> The name of enumeration 1</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Enumeration filename length 1</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">The number of characters in the enumeration 1 file</td>
+<td style="text-align: left;"><em>New in version 20</em> The number of characters in the enumeration 1 file</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Enumeration filename 1</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">The name of the file in the <code>__enumerations</code> subdirectory that conatins enumeration 1’s data</td>
+<td style="text-align: left;"><em>New in version 20</em> The name of the file in the <code>__enumerations</code> subdirectory that contains enumeration 1’s data</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Enumeration name length N</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">The number of characters in the enumeration N name</td>
+<td style="text-align: left;"><em>New in version 20</em> The number of characters in the enumeration N name</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Enumeration name N</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">The name of enumeration N</td>
+<td style="text-align: left;"><em>New in version 20</em> The name of enumeration N</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Enumeration filename length N</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">The number of characters in the enumeration N file</td>
+<td style="text-align: left;"><em>New in version 20</em> The number of characters in the enumeration N file</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Enumeration filename N</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">The name of the file in the <code>__enumerations</code> subdirectory that conatins enumeration N’s data</td>
+<td style="text-align: left;"><em>New in version 20</em> The name of the file in the <code>__enumerations</code> subdirectory that contains enumeration N’s data</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">CurrentDomain</td>
-<td style="text-align: left;"><a href="../format_spec/current_domain.html">CurrentDomain</a></td>
-<td style="text-align: left;">The array current domain</td>
+<td style="text-align: left;">Current domain</td>
+<td style="text-align: left;"><a href="#current-domain">Current Domain</a></td>
+<td style="text-align: left;"><em>New in version 22</em> The array’s current domain</td>
 </tr>
 </tbody>
 </table>
@@ -481,21 +456,26 @@ ul.task-list li input[type="checkbox"] {
 </thead>
 <tbody>
 <tr class="odd">
+<td style="text-align: left;">Domain datatype</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;"><em>Removed in version 5</em> Datatype of all dimensions</td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">Num dimensions</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
 <td style="text-align: left;">Dimensionality/rank of the domain</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Dimension 1</td>
 <td style="text-align: left;"><a href="#dimension">Dimension</a></td>
 <td style="text-align: left;">First dimension</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 <td style="text-align: left;">…</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td style="text-align: left;">Dimension N</td>
 <td style="text-align: left;"><a href="#dimension">Dimension</a></td>
 <td style="text-align: left;">Nth dimension</td>
@@ -528,22 +508,22 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Dimension datatype</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">Datatype of the coordinate values</td>
+<td style="text-align: left;"><em>New in version 5</em> Datatype of the coordinate values</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Cell val num</td>
 <td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Number of coordinate values per cell. For variable-length dimensions, this is <code>std::numeric_limits&lt;uint32_t&gt;::max()</code></td>
+<td style="text-align: left;"><em>New in version 5</em> Number of coordinate values per cell. For variable-length dimensions, this is <code>std::numeric_limits&lt;uint32_t&gt;::max()</code></td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Filters</td>
 <td style="text-align: left;"><a href="../format_spec/filter_pipeline.html">Filter Pipeline</a></td>
-<td style="text-align: left;">The filter pipeline used on coordinate value tiles</td>
+<td style="text-align: left;"><em>New in version 5</em> The filter pipeline used on coordinate value tiles</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Domain size</td>
-<td style="text-align: left;"><code>uint64_t[]</code></td>
-<td style="text-align: left;">The domain size in bytes</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;"><em>New in version 5</em> The domain size in bytes</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Domain</td>
@@ -562,6 +542,9 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 5, the size of the <em>Domain</em> field was always equal to twice the size of the dimension’s data type (which is stored in the <a href="#domain">domain</a> in these versions).</p>
+</blockquote>
 </section>
 <section id="attribute" class="level2">
 <h2 class="anchored" data-anchor-id="attribute">Attribute</h2>
@@ -603,27 +586,27 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td style="text-align: left;">Fill value size</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">The size in bytes of the fill value</td>
+<td style="text-align: left;"><em>New in version 6</em> The size in bytes of the fill value</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Fill value</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">The fill value</td>
+<td style="text-align: left;"><em>New in version 6</em> The fill value</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Nullable</td>
 <td style="text-align: left;"><code>bool</code></td>
-<td style="text-align: left;">Whether or not the attribute can be null</td>
+<td style="text-align: left;"><em>New in version 7</em> Whether or not the attribute can be null</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Fill value validity</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">The validity fill value</td>
+<td style="text-align: left;"><em>New in version 7</em> The validity fill value</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Order</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">Order of the data stored in the attribute. This may be unordered, increasing or decreasing</td>
+<td style="text-align: left;"><em>New in version 17</em> Order of the data stored in the attribute. This may be unordered, increasing or decreasing</td>
 </tr>
 </tbody>
 </table>
@@ -708,7 +691,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Label domain start size</td>
 <td style="text-align: left;"><code>uint64_t</code></td>
-<td style="text-align: left;">The size of the first value of the domain for variable-lenght datatypes. For fixed-lenght labels, this is 0</td>
+<td style="text-align: left;">The size of the first value of the domain for variable-length datatypes. For fixed-length labels, this is 0</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Label domain data</td>
@@ -719,6 +702,42 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">Is external</td>
 <td style="text-align: left;"><code>uint8_t</code></td>
 <td style="text-align: left;">If the URI is not stored as part of this array</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="current-domain" class="level2">
+<h2 class="anchored" data-anchor-id="current-domain">Current Domain</h2>
+<p>If a current domain is empty, only the version number and the empty flag are serialized to storage.</p>
+<p>The current domain format is versioned separately from arrays. The current version is <code>1</code>.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Version number</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Current domain version number</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Empty</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Whether the current domain has a representation (e.g.&nbsp;NDRectangle) set</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Type</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">The type of current domain stored in this file</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">NDRectangle</td>
+<td style="text-align: left;"><a href="../format_spec/fragment.html#mbr">MBR</a></td>
+<td style="text-align: left;">A hyperrectangle defined using <a href="../format_spec/fragment.html#mbr">1DRange</a> items for each dimension</td>
 </tr>
 </tbody>
 </table>

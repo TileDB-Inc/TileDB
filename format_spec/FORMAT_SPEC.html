@@ -285,10 +285,13 @@ ul.task-list li input[type="checkbox"] {
 
 <p><strong>Notes:</strong></p>
 <ul>
-<li><p>The current TileDB format version number is <strong>22</strong> (<code>uint32_t</code>).</p></li>
+<li><p>The current TileDB array format version number is <strong>22</strong> (<code>uint32_t</code>).</p>
+<ul>
+<li>Other structures might be versioned separately.</li>
+</ul></li>
 <li><p>Data written by TileDB and referenced in this document is <strong>little-endian</strong> with the following exceptions:</p>
 <ul>
-<li><a href="../format_spec/filters/dictionary_encoding.html">Dictionary filter</a></li>
+<li><a href="../format_spec/filters/dictionary_encoding.html">Dictionary encoding filter</a></li>
 <li>RLE filter</li>
 </ul></li>
 </ul>
@@ -297,7 +300,7 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li><strong>Array</strong>
 <ul>
-<li><a href="../format_spec/history.html">Format Version History</a></li>
+<li><a href="../format_spec/array_format_history.html">Format Version History</a></li>
 <li><a href="../format_spec/array_file_hierarchy.html">File hierarchy</a></li>
 <li><a href="../format_spec/array_schema.html">Array Schema</a></li>
 <li><a href="../format_spec/fragment.html">Fragment</a></li>

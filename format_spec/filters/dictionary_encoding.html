@@ -149,6 +149,7 @@ ul.task-list li input[type="checkbox"] {
 # apply dictionary encoding -&gt;
 dictionary = ["HG543232", "HG54", "A"]
 output_data = [0, 0, 0, 1, 1, 2, 0, 1]</code></pre>
+<p>The dictionary encoding filter is supported only for variable-sized strings and must be the first filter in the filter pipeline.</p>
 <section id="filter-enum-value" class="level1">
 <h1>Filter Enum Value</h1>
 <p>The filter enum value for the Dictionary Encoding filter is <code>14</code> (<code>TILEDB_FILTER_DICTIONARY</code> enum).</p>
@@ -161,6 +162,10 @@ output_data = [0, 0, 0, 1, 1, 2, 0, 1]</code></pre>
 <li>Output metadata are in the form: <code>[output_datasize|dict_string_datasize|dictionary]</code> where <code>dictionary</code> is in the form: <code>[num_of_strings|size_str1|str1|...|size_strN|strN]</code>. <code>output_datasize</code> refers to the chosen datasize of the integers in output while <code>dict_string_datasize</code> refers to the minimum integer size that can hold the maximum length string in input and is also chosen between <code>uint8_t</code>, <code>uint16_t</code>, <code>uint32_t</code> or <code>uint64_t</code>.</li>
 </ul>
 <p>All the above integers are stored in big-endian format.</p>
+<p>Because the dictionary encoding filter works on variable-sized cells of data, it filters the cell data and offsets combined and its output gets stored in the variable-sized data file, after applying any subsequent filters. The fixed-sized data file does not contain any data.</p>
+<blockquote class="blockquote">
+<p>[!NOTE] Prior to version 13 for ASCII strings and version 17 for UTF-8 strings, the offsets buffers was separately filtered as well due to an oversight. Accessing the cell offsets only is generally not useful to implementations.</p>
+</blockquote>
 
 
 </section>

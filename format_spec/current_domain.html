@@ -112,14 +112,8 @@ ul.task-list li input[type="checkbox"] {
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">On this page</h2>
-   
-  <ul>
-  <li><a href="#main-structure" id="toc-main-structure" class="nav-link active" data-scroll-target="#main-structure">Main Structure</a></li>
-  </ul>
-</nav>
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+        
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -143,43 +137,11 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="main-structure" class="level2">
-<h2 class="anchored" data-anchor-id="main-structure">Main Structure</h2>
-<p>The array current domain is stored within the <a href="../format_spec/array_schema.html#array-schema-file">Array Schema</a> file. If a current domain is empty, only the version number and the empty flag are serialized to storage.</p>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th style="text-align: left;"><strong>Field</strong></th>
-<th style="text-align: left;"><strong>Type</strong></th>
-<th style="text-align: left;"><strong>Description</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">Version number</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">Current domain version number</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Empty</td>
-<td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">Whether the current domain has a representation(e.g.&nbsp;NDRectangle) set or not</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Type</td>
-<td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">The type of current domain stored in this file</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">NDRectangle</td>
-<td style="text-align: left;"><a href="../format_spec/fragment.html#mbr">MBR</a></td>
-<td style="text-align: left;">A hyperrectangle defined using <a href="../format_spec/fragment.html#mbr">1DRange</a> items for each dimension</td>
-</tr>
-</tbody>
-</table>
+<blockquote class="blockquote">
+<p>[!NOTE] The specification for the array current domain was moved to the <a href="../format_spec/array_schema.html#current-domain">array schema specification document</a>.</p>
+</blockquote>
 
 
-</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
