@@ -108,7 +108,7 @@ jobs:
           python3.9 -m pip install ninja
       - name: Configure TileDB
         env: 
-          VCPKG_FORCE_SYSTEM_BINARIES: {{ startsWith(matrix.platform, 'linux-aarch64') && 'YES' || 'NO' }}
+          VCPKG_FORCE_SYSTEM_BINARIES: ${{ startsWith(matrix.platform, 'linux-aarch64') && 'YES' || 'NO' }}
         run: |
           export PATH=$PATH:/opt/_internal/cpython-3.9.20/bin
           cmake -S . -B build \
