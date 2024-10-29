@@ -690,7 +690,6 @@ std::list<FilteredData> ReaderBase::read_tiles(
   }
 
   uint64_t num_tiles_read{0};
-  std::vector<ThreadPool::Task> read_tasks;
 
   // Run all attributes independently.
   for (auto n : names) {
@@ -714,7 +713,6 @@ std::list<FilteredData> ReaderBase::read_tiles(
         var_sized,
         nullable,
         val_only,
-        read_tasks,
         memory_tracker_);
 
     // Go through each tiles and create the attribute tiles.
@@ -742,12 +740,13 @@ std::list<FilteredData> ReaderBase::read_tiles(
       // 'TileData' objects should be returned by this function and passed into
       // 'unfilter_tiles' so that the filter pipeline can stop using the
       // 'ResultTile' object to get access to the filtered data.
+      std::tuple<void*, shared_ptr<ThreadPool::Task>> n = {nullptr, nullptr};
       ResultTile::TileData tile_data{
           val_only ?
-              nullptr :
+              n :
               filtered_data.back().fixed_filtered_data(fragment.get(), tile),
           val_only ?
-              nullptr :
+              n :
               filtered_data.back().var_filtered_data(fragment.get(), tile),
           filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
 
@@ -771,12 +770,6 @@ std::list<FilteredData> ReaderBase::read_tiles(
   }
 
   stats_->add_counter("num_tiles_read", num_tiles_read);
-
-  // Wait for the read tasks to finish.
-  auto statuses{resources_.io_tp().wait_all_status(read_tasks)};
-  for (const auto& st : statuses) {
-    throw_if_not_ok(st);
-  }
 
   return filtered_data;
 }
