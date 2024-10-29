@@ -213,12 +213,15 @@ class ResultTile {
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
     TileData(
-        void* fixed_filtered_data,
-        void* var_filtered_data,
-        void* validity_filtered_data)
-        : fixed_filtered_data_(fixed_filtered_data)
-        , var_filtered_data_(var_filtered_data)
-        , validity_filtered_data_(validity_filtered_data) {
+        std::tuple<void*, shared_ptr<ThreadPool::Task>> fixed_filtered_data,
+        std::tuple<void*, shared_ptr<ThreadPool::Task>> var_filtered_data,
+        std::tuple<void*, shared_ptr<ThreadPool::Task>> validity_filtered_data)
+        : fixed_filtered_data_(std::get<0>(fixed_filtered_data))
+        , var_filtered_data_(std::get<0>(var_filtered_data))
+        , validity_filtered_data_(std::get<0>(validity_filtered_data))
+        , fixed_filtered_data_task_(std::get<1>(fixed_filtered_data))
+        , var_filtered_data_task_(std::get<1>(var_filtered_data))
+        , validity_filtered_data_task_(std::get<1>(validity_filtered_data)) {
     }
 
     /* ********************************* */
@@ -240,6 +243,21 @@ class ResultTile {
       return validity_filtered_data_;
     }
 
+    /** @return The fixed filtered data I/O task. */
+    inline shared_ptr<ThreadPool::Task> fixed_filtered_data_task() const {
+      return fixed_filtered_data_task_;
+    }
+
+    /** @return The var filtered data I/O task. */
+    inline shared_ptr<ThreadPool::Task> var_filtered_data_task() const {
+      return var_filtered_data_task_;
+    }
+
+    /** @return The validity filtered data I/O task. */
+    inline shared_ptr<ThreadPool::Task> validity_filtered_data_task() const {
+      return validity_filtered_data_task_;
+    }
+
    private:
     /* ********************************* */
     /*        PRIVATE ATTRIBUTES         */
@@ -253,6 +271,15 @@ class ResultTile {
 
     /** Stores the validity filtered data pointer. */
     void* validity_filtered_data_;
+
+    /** Stores the fixed filtered data I/O task. */
+    shared_ptr<ThreadPool::Task> fixed_filtered_data_task_;
+
+    /** Stores the var filtered data I/O task. */
+    shared_ptr<ThreadPool::Task> var_filtered_data_task_;
+
+    /** Stores the validity filtered data I/O task. */
+    shared_ptr<ThreadPool::Task> validity_filtered_data_task_;
   };
 
   /**
@@ -286,7 +313,8 @@ class ResultTile {
               tile_sizes.tile_size(),
               tile_data.fixed_filtered_data(),
               tile_sizes.tile_persisted_size(),
-              memory_tracker_) {
+              memory_tracker_,
+              tile_data.fixed_filtered_data_task()) {
       if (tile_sizes.has_var_tile()) {
         auto type = array_schema.type(name);
         var_tile_.emplace(
@@ -297,7 +325,8 @@ class ResultTile {
             tile_sizes.tile_var_size(),
             tile_data.var_filtered_data(),
             tile_sizes.tile_var_persisted_size(),
-            memory_tracker_);
+            memory_tracker_,
+            tile_data.var_filtered_data_task());
       }
 
       if (tile_sizes.has_validity_tile()) {
@@ -309,7 +338,8 @@ class ResultTile {
             tile_sizes.tile_validity_size(),
             tile_data.validity_filtered_data(),
             tile_sizes.tile_validity_persisted_size(),
-            memory_tracker_);
+            memory_tracker_,
+            tile_data.validity_filtered_data_task());
       }
     }
 
