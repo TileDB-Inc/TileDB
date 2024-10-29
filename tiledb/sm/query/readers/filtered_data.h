@@ -121,6 +121,14 @@ class FilteredDataBlock {
            offset + size <= offset_ + size_;
   }
 
+  void set_io_task(std::shared_ptr<ThreadPool::Task> task) {
+    io_task_ = std::move(task);
+  }
+
+  shared_ptr<ThreadPool::Task> io_task() {
+    return io_task_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -139,6 +147,9 @@ class FilteredDataBlock {
 
   /** Data for the data block. */
   tdb::pmr::unique_ptr<std::byte> filtered_data_;
+
+  /** IO Task to block on for data access. */
+  shared_ptr<ThreadPool::Task> io_task_;
 };
 
 /**
@@ -187,7 +198,6 @@ class FilteredData {
       const bool var_sized,
       const bool nullable,
       const bool validity_only,
-      std::vector<ThreadPool::Task>& read_tasks,
       shared_ptr<MemoryTracker> memory_tracker)
       : resources_(resources)
       , memory_tracker_(memory_tracker)
@@ -200,8 +210,7 @@ class FilteredData {
       , name_(name)
       , fragment_metadata_(fragment_metadata)
       , var_sized_(var_sized)
-      , nullable_(nullable)
-      , read_tasks_(read_tasks) {
+      , nullable_(nullable) {
     if (result_tiles.size() == 0) {
       return;
     }
@@ -325,12 +334,14 @@ class FilteredData {
    * @param rt Result tile.
    * @return Fixed filtered data pointer.
    */
-  inline void* fixed_filtered_data(
+  inline std::tuple<void*, shared_ptr<ThreadPool::Task>> fixed_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     auto offset{
         fragment->loaded_metadata()->file_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::FIXED, fragment, rt, offset);
-    return current_data_block(TileType::FIXED)->data_at(offset);
+    return {
+        current_data_block(TileType::FIXED)->data_at(offset),
+        current_data_block(TileType::FIXED)->io_task()};
   }
 
   /**
@@ -340,16 +351,18 @@ class FilteredData {
    * @param rt Result tile.
    * @return Var filtered data pointer.
    */
-  inline void* var_filtered_data(
+  inline std::tuple<void*, std::shared_ptr<ThreadPool::Task>> var_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!var_sized_) {
-      return nullptr;
+      return {nullptr, nullptr};
     }
 
     auto offset{
         fragment->loaded_metadata()->file_var_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::VAR, fragment, rt, offset);
-    return current_data_block(TileType::VAR)->data_at(offset);
+    return {
+        current_data_block(TileType::VAR)->data_at(offset),
+        current_data_block(TileType::VAR)->io_task()};
   }
 
   /**
@@ -359,16 +372,19 @@ class FilteredData {
    * @param rt Result tile.
    * @return Nullable filtered data pointer.
    */
-  inline void* nullable_filtered_data(
+  inline std::tuple<void*, std::shared_ptr<ThreadPool::Task>>
+  nullable_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!nullable_) {
-      return nullptr;
+      return {nullptr, nullptr};
     }
 
     auto offset{fragment->loaded_metadata()->file_validity_offset(
         name_, rt->tile_idx())};
     ensure_data_block_current(TileType::NULLABLE, fragment, rt, offset);
-    return current_data_block(TileType::NULLABLE)->data_at(offset);
+    return {
+        current_data_block(TileType::NULLABLE)->data_at(offset),
+        current_data_block(TileType::NULLABLE)->io_task()};
   }
 
  private:
@@ -398,7 +414,11 @@ class FilteredData {
       throw_if_not_ok(resources_.vfs().read(uri, offset, data, size, false));
       return Status::Ok();
     });
-    read_tasks_.push_back(std::move(task));
+    // Store as a shared_ptr so we can move lifetimes around
+    // This should be changes once we use taskgraphs for modeling the data flow
+    shared_ptr<ThreadPool::Task> task_ptr =
+        make_shared<ThreadPool::Task>(std::move(task));
+    block.set_io_task(task_ptr);
   }
 
   /** @return Data blocks corresponding to the tile type. */
@@ -634,9 +654,6 @@ class FilteredData {
 
   /** Is the attribute nullable? */
   const bool nullable_;
-
-  /** Read tasks. */
-  std::vector<ThreadPool::Task>& read_tasks_;
 };
 
 }  // namespace tiledb::sm
