@@ -571,14 +571,10 @@ RestClientRemote::post_enumerations_from_rest(
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
-    Array* array,
+    const Config& config,
+    const ArraySchema& array_schema,
     const std::vector<std::string>& enumeration_names,
     shared_ptr<MemoryTracker> memory_tracker) {
-  if (array == nullptr) {
-    throw RestClientException(
-        "Error getting enumerations from REST; array is null.");
-  }
-
   if (!memory_tracker) {
     memory_tracker = memory_tracker_;
   }
@@ -586,7 +582,7 @@ RestClientRemote::post_enumerations_from_rest(
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
   serialization::serialize_load_enumerations_request(
-      array->config(), enumeration_names, serialization_type_, buff);
+      config, enumeration_names, serialization_type_, buff);
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -617,7 +613,7 @@ RestClientRemote::post_enumerations_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_load_enumerations_response(
-      *array, serialization_type_, returned_data, memory_tracker);
+      array_schema, serialization_type_, returned_data, memory_tracker);
 }
 
 void RestClientRemote::post_query_plan_from_rest(

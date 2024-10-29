@@ -827,7 +827,8 @@ Array::get_enumerations_all_schemas() {
         array_uri_,
         array_dir_timestamp_start_,
         array_dir_timestamp_end_,
-        this,
+        config_,
+        array_schema_latest(),
         {},
         memory_tracker_);
 
@@ -908,7 +909,8 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
           array_uri_,
           array_dir_timestamp_start_,
           array_dir_timestamp_end_,
-          this,
+          config_,
+          array_schema_latest(),
           names_to_load,
           memory_tracker_)[array_schema_latest().name()];
     } else {

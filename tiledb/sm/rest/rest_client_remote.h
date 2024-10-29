@@ -279,7 +279,8 @@ class RestClientRemote : public RestClient {
    * @param uri Array URI.
    * @param timestamp_start Inclusive starting timestamp at which to open array.
    * @param timestamp_end Inclusive ending timestamp at which to open array.
-   * @param array Array to fetch metadata for.
+   * @param config Config options
+   * @param array_schema Array schema to fetch metadata for.
    * @param enumeration_names The names of the enumerations to get.
    */
   std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
@@ -287,7 +288,8 @@ class RestClientRemote : public RestClient {
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
-      Array* array,
+      const Config& config,
+      const ArraySchema& array_schema,
       const std::vector<std::string>& enumeration_names,
       shared_ptr<MemoryTracker>) override;
 

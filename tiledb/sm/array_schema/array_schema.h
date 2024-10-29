@@ -577,8 +577,11 @@ class ArraySchema {
   /** Returns the timestamp range. */
   std::pair<uint64_t, uint64_t> timestamp_range() const;
 
-  /** Returns the the first timestamp. */
+  /** Returns the first timestamp. */
   uint64_t timestamp_start() const;
+
+  /** Returns the end timestamp */
+  uint64_t timestamp_end() const;
 
   /** Returns the array schema uri. */
   const URI& uri() const;
