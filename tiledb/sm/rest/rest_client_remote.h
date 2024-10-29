@@ -243,22 +243,6 @@ class RestClientRemote : public RestClient {
       Array* array, uint64_t timestamp_start, uint64_t timestamp_end) override;
 
   /**
-   * Get array's max buffer sizes from rest server.
-   *
-   * @param uri URI of array
-   * @param schema Array schema of array
-   * @param subarray Subrray to get max buffer sizes for
-   * @param buffer_sizes Will be populated with max buffer sizes
-   * @return Status
-   */
-  Status get_array_max_buffer_sizes(
-      const URI& uri,
-      const ArraySchema& schema,
-      const void* subarray,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          buffer_sizes) override;
-
-  /**
    * Gets the array's metadata from the REST server (and updates the in-memory
    * Metadata of the array to match the returned values).
    *
@@ -298,7 +282,8 @@ class RestClientRemote : public RestClient {
    * @param array Array to fetch metadata for.
    * @param enumeration_names The names of the enumerations to get.
    */
-  std::vector<shared_ptr<const Enumeration>> post_enumerations_from_rest(
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+  post_enumerations_from_rest(
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,

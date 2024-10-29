@@ -14,6 +14,10 @@
       "host": true
     },
     {
+      "name": "libmagic",
+      "host": true
+    },
+    {
       "name": "dirent",
       "platform": "windows"
     },

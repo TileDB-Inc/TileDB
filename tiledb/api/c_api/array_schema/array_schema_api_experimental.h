@@ -101,9 +101,6 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_add_enumeration(
 /**
  * Sets the current domain on the array schema.
  *
- * @pre The schema is sparse. current_domain is not yet supported on dense
- * arrays.
- *
  * **Example:**
  *
  * @code{.c}

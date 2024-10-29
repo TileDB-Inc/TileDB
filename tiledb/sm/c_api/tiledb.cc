@@ -1806,31 +1806,13 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
 }
 
 int32_t tiledb_serialize_array_max_buffer_sizes(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
-    const void* subarray,
-    tiledb_serialization_type_t serialize_type,
-    tiledb_buffer_t** buffer) {
-  ensure_array_is_valid(array);
-
-  auto buf = tiledb_buffer_handle_t::make_handle(
-      ctx->resources().serialization_memory_tracker());
-
-  // Serialize
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::max_buffer_sizes_serialize(
-              array->array().get(),
-              subarray,
-              (tiledb::sm::SerializationType)serialize_type,
-              buf->buffer()))) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    return TILEDB_ERR;
-  }
-
-  *buffer = buf;
-
-  return TILEDB_OK;
+    tiledb_ctx_t*,
+    const tiledb_array_t*,
+    const void*,
+    tiledb_serialization_type_t,
+    tiledb_buffer_t**) {
+  throw CAPIException(
+      "tiledb_serialize_array_max_buffer_sizes is no longer supported.");
 }
 
 capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
@@ -2197,8 +2179,16 @@ capi_return_t tiledb_handle_load_enumerations_request(
       tiledb::sm::serialization::deserialize_load_enumerations_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
           request->buffer());
-  auto enumerations = array->get_enumerations(
-      enumeration_names, array->opened_array()->array_schema_latest_ptr());
+  std::unordered_map<
+      std::string,
+      std::vector<shared_ptr<const tiledb::sm::Enumeration>>>
+      enumerations;
+  if (enumeration_names.empty()) {
+    enumerations = array->get_enumerations_all_schemas();
+  } else {
+    enumerations[array->array_schema_latest().name()] =
+        array->get_enumerations(enumeration_names);
+  }
 
   tiledb::sm::serialization::serialize_load_enumerations_response(
       enumerations,

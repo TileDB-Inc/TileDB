@@ -57,44 +57,25 @@ struct GroupCPPFx {
   const std::string ARRAY = "array/";
 
   // TileDB context
-  tiledb::Context ctx_;
+  tiledb::test::VFSTestSetup vfs_test_setup_;
   tiledb_ctx_t* ctx_c_;
-  tiledb_vfs_t* vfs_;
-
-  // Vector of supported filesystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
-
-  /**
-   * If true, array schema is serialized before submission, to test the
-   * serialization paths.
-   */
-  bool serialize_ = false;
+  tiledb::Context ctx_;
 
   // Functions
   GroupCPPFx();
-  ~GroupCPPFx();
   void create_array(const std::string& path) const;
-  void create_temp_dir(const std::string& path) const;
-  void remove_temp_dir(const std::string& path) const;
   std::vector<tiledb::Object> read_group(const tiledb::Group& group) const;
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+  read_group_details(const tiledb::Group& group) const;
+  // compare type and name of objects, but not the URIs that do not match on
+  // remote arrays
   void set_group_timestamp(
       tiledb::Group* group, const uint64_t& timestamp) const;
 };
 
 GroupCPPFx::GroupCPPFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
-  // Initialize vfs test
-  ctx_c_ = nullptr;
-  vfs_ = nullptr;
-  REQUIRE(vfs_test_init(fs_vec_, &ctx_c_, &vfs_).ok());
-  ctx_ = tiledb::Context(ctx_c_, false);
-}
-
-GroupCPPFx::~GroupCPPFx() {
-  // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_c_, vfs_).ok());
-  tiledb_vfs_free(&vfs_);
-  tiledb_ctx_free(&ctx_c_);
+    : ctx_c_(vfs_test_setup_.ctx_c)
+    , ctx_(vfs_test_setup_.ctx()) {
 }
 
 void GroupCPPFx::set_group_timestamp(
@@ -115,16 +96,15 @@ std::vector<tiledb::Object> GroupCPPFx::read_group(
   return ret;
 }
 
-void GroupCPPFx::create_temp_dir(const std::string& path) const {
-  remove_temp_dir(path);
-  REQUIRE(tiledb_vfs_create_dir(ctx_c_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-void GroupCPPFx::remove_temp_dir(const std::string& path) const {
-  int is_dir = 0;
-  REQUIRE(tiledb_vfs_is_dir(ctx_c_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
-    REQUIRE(tiledb_vfs_remove_dir(ctx_c_, vfs_, path.c_str()) == TILEDB_OK);
+std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+GroupCPPFx::read_group_details(const tiledb::Group& group) const {
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>> ret;
+  uint64_t count = group.member_count();
+  for (uint64_t i = 0; i < count; i++) {
+    tiledb::Object obj = group.member(i);
+    ret.emplace_back(obj.type(), obj.name());
+  }
+  return ret;
 }
 
 void GroupCPPFx::create_array(const std::string& path) const {
@@ -155,9 +135,7 @@ void GroupCPPFx::create_array(const std::string& path) const {
   REQUIRE(tiledb_array_schema_check(ctx_c_, array_schema) == TILEDB_OK);
 
   // Create array
-  REQUIRE(
-      tiledb_array_create_serialization_wrapper(
-          ctx_c_, path, array_schema, serialize_) == TILEDB_OK);
+  REQUIRE(tiledb_array_create(ctx_c_, path.c_str(), array_schema) == TILEDB_OK);
 
   // Free objects
   tiledb_attribute_free(&a1);
@@ -169,12 +147,8 @@ void GroupCPPFx::create_array(const std::string& path) const {
 TEST_CASE_METHOD(
     GroupCPPFx,
     "C++ API: Test creating group with config",
-    "[cppapi][group][config]") {
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-
-  std::string group1_uri = temp_dir + "group1";
+    "[cppapi][group][config][rest]") {
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
   tiledb::Group::create(ctx_, group1_uri);
 
   const std::string& test_key = "foo";
@@ -190,12 +164,11 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Test group metadata", "[cppapi][group][metadata]") {
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
+    GroupCPPFx,
+    "C++ API: Test group metadata",
+    "[cppapi][group][metadata][rest]") {
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
 
-  std::string group1_uri = temp_dir + "group1";
   tiledb::Group::create(ctx_, group1_uri);
   tiledb::Group group(ctx_, group1_uri, TILEDB_WRITE);
   group.close();
@@ -220,27 +193,25 @@ TEST_CASE_METHOD(
   // Write a correct item
   group.put_metadata("key", TILEDB_INT32, 1, &v);
 
-  // Consolidate and vacuum metadata with default config
-  group.consolidate_metadata(ctx_, group1_uri);
-  group.vacuum_metadata(ctx_, group1_uri);
+  // For some reason we don't yet allow group metadata consolidation so
+  // disabling for the time being from REST testing
+  if (!vfs_test_setup_.is_rest()) {
+    // Consolidate and vacuum metadata with default config
+    group.consolidate_metadata(ctx_, group1_uri);
+    group.vacuum_metadata(ctx_, group1_uri);
+  }
 
   // Close group
   group.close();
-
-  // Clean up
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     GroupCPPFx,
     "C++ API: Group Metadata, write/read",
-    "[cppapi][group][metadata][read]") {
+    "[cppapi][group][metadata][read][rest]") {
   // Create and open group in write mode
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
 
-  std::string group1_uri = temp_dir + "group1";
   tiledb::Group::create(ctx_, group1_uri);
   // Open group in write mode
   tiledb::Group group(ctx_, std::string(group1_uri), TILEDB_WRITE);
@@ -323,58 +294,75 @@ TEST_CASE_METHOD(
 
   // Close group
   group.close();
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, set name", "[cppapi][group][read]") {
-  // Create and open group in write mode
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
+    GroupCPPFx,
+    "C++ API: Group, set name",
+    "[cppapi][group][read][rest-fails][sc-57867]") {
+  std::string array1_uri = vfs_test_setup_.array_uri("array1");
+  std::string array2_uri = vfs_test_setup_.array_uri("array2");
+  std::string array3_uri = vfs_test_setup_.array_uri("array3");
 
-  const tiledb::sm::URI array1_uri(temp_dir + "array1");
-  const tiledb::sm::URI array2_uri(temp_dir + "array2");
-  const tiledb::sm::URI array3_uri(temp_dir + "array3");
-  create_array(array1_uri.to_string());
-  create_array(array2_uri.to_string());
-  create_array(array3_uri.to_string());
+  create_array(array1_uri);
+  create_array(array2_uri);
+  create_array(array3_uri);
 
-  tiledb::sm::URI group1_uri(temp_dir + "group1");
-  tiledb::Group::create(ctx_, group1_uri.to_string());
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
+  std::string group2_uri = vfs_test_setup_.array_uri("group2");
+  tiledb::Group::create(ctx_, group1_uri);
+  tiledb::Group::create(ctx_, group2_uri);
 
-  tiledb::sm::URI group2_uri(temp_dir + "group2");
-  tiledb::Group::create(ctx_, group2_uri.to_string());
-
-  // Set expected
   std::vector<tiledb::Object> group1_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array1_uri.to_string(), "array1"),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array1_uri).to_string(),
+          "array1"),
       tiledb::Object(
-          tiledb::Object::Type::Array, array2_uri.to_string(), "array2"),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array2_uri).to_string(),
+          "array2"),
       tiledb::Object(
-          tiledb::Object::Type::Group, group2_uri.to_string(), "group2"),
+          tiledb::Object::Type::Group,
+          tiledb::sm::URI(group2_uri).to_string(),
+          "group2"),
   };
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+      group1_exp_det = {
+          {tiledb::Object::Type::Array, "array1"},
+          {tiledb::Object::Type::Array, "array2"},
+          {tiledb::Object::Type::Group, "group2"}};
   std::vector<tiledb::Object> group2_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array3_uri.to_string(), "array3"),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array3_uri).to_string(),
+          "array3"),
   };
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+      group2_exp_det = {{tiledb::Object::Type::Array, "array3"}};
 
-  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
   group1.close();
   set_group_timestamp(&group1, 1);
   group1.open(TILEDB_WRITE);
 
-  tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group2(ctx_, group2_uri, TILEDB_WRITE);
   group2.close();
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  group1.add_member(array1_uri.to_string(), false, "array1");
-  group1.add_member(array2_uri.to_string(), false, "array2");
-  group1.add_member(group2_uri.to_string(), false, "group2");
-
-  group2.add_member(array3_uri.to_string(), false, "array3");
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
+    group1.add_member(array1_uri, false, "array1", TILEDB_ARRAY);
+    group1.add_member(array2_uri, false, "array2", TILEDB_ARRAY);
+    group1.add_member(group2_uri, false, "group2", TILEDB_GROUP);
+    group2.add_member(array3_uri, false, "array3", TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_uri, false, "array1");
+    group1.add_member(array2_uri, false, "array2");
+    group1.add_member(group2_uri, false, "group2");
+    group2.add_member(array3_uri, false, "array3");
+  }
 
   // Close group from write mode
   group1.close();
@@ -386,13 +374,23 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_READ);
 
-  std::vector<tiledb::Object> group1_received = read_group(group1);
-  REQUIRE_THAT(
-      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
-
-  std::vector<tiledb::Object> group2_received = read_group(group2);
-  REQUIRE_THAT(
-      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+  // group URIs returned on remote array open are actually trasformed by the
+  // REST server if the form `tiledb://UUID` so they don't match the initial
+  // `tiledb://{namespace}/fs://temp_dir/name` format, so let's only compare the
+  // other fields of the objects.
+  if (vfs_test_setup_.is_rest()) {
+    REQUIRE_THAT(
+        read_group_details(group1),
+        Catch::Matchers::UnorderedEquals(group1_exp_det));
+    REQUIRE_THAT(
+        read_group_details(group2),
+        Catch::Matchers::UnorderedEquals(group2_exp_det));
+  } else {
+    REQUIRE_THAT(
+        read_group(group1), Catch::Matchers::UnorderedEquals(group1_expected));
+    REQUIRE_THAT(
+        read_group(group2), Catch::Matchers::UnorderedEquals(group2_expected));
+  }
 
   // Close group
   group1.close();
@@ -407,10 +405,12 @@ TEST_CASE_METHOD(
   group1.remove_member("group2");
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
+  group1_exp_det.resize(group1_exp_det.size() - 1);
 
   group2.remove_member("array3");
   // There should be nothing left in group2
   group2_expected.clear();
+  group2_exp_det.clear();
 
   // Close group
   group1.close();
@@ -422,14 +422,18 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
-  group1_received = read_group(group1);
-  REQUIRE_THAT(
-      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+  if (vfs_test_setup_.is_rest()) {
+    REQUIRE_THAT(
+        read_group_details(group1),
+        Catch::Matchers::UnorderedEquals(group1_exp_det));
+  } else {
+    REQUIRE_THAT(
+        read_group(group1), Catch::Matchers::UnorderedEquals(group1_expected));
+    const auto& obj = group1.member(group1_expected[0].name().value());
+    REQUIRE(obj == group1_expected[0]);
+  }
 
-  const auto& obj = group1.member(group1_expected[0].name().value());
-  REQUIRE(obj == group1_expected[0]);
-
-  group2_received = read_group(group2);
+  auto group2_received = read_group(group2);
   REQUIRE_THAT(
       group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
 
@@ -441,58 +445,76 @@ TEST_CASE_METHOD(
   // Close group
   group1.close();
   group2.close();
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
-    GroupCPPFx, "C++ API: Group, write/read", "[cppapi][group][read]") {
+    GroupCPPFx,
+    "C++ API: Group, write/read",
+    "[cppapi][group][read][rest-fails][sc-57858]") {
   // Create and open group in write mode
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
+  std::string array1_uri = vfs_test_setup_.array_uri("array1");
+  std::string array2_uri = vfs_test_setup_.array_uri("array2");
+  std::string array3_uri = vfs_test_setup_.array_uri("array3");
 
-  const tiledb::sm::URI array1_uri(temp_dir + "array1");
-  const tiledb::sm::URI array2_uri(temp_dir + "array2");
-  const tiledb::sm::URI array3_uri(temp_dir + "array3");
-  create_array(array1_uri.to_string());
-  create_array(array2_uri.to_string());
-  create_array(array3_uri.to_string());
+  create_array(array1_uri);
+  create_array(array2_uri);
+  create_array(array3_uri);
 
-  tiledb::sm::URI group1_uri(temp_dir + "group1");
-  tiledb::Group::create(ctx_, group1_uri.to_string());
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
+  std::string group2_uri = vfs_test_setup_.array_uri("group2");
+  tiledb::Group::create(ctx_, group1_uri);
+  tiledb::Group::create(ctx_, group2_uri);
 
-  tiledb::sm::URI group2_uri(temp_dir + "group2");
-  tiledb::Group::create(ctx_, group2_uri.to_string());
-
-  // Set expected
   std::vector<tiledb::Object> group1_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array1_uri.to_string(), std::nullopt),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array1_uri).to_string(),
+          std::nullopt),
       tiledb::Object(
-          tiledb::Object::Type::Array, array2_uri.to_string(), std::nullopt),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array2_uri).to_string(),
+          std::nullopt),
       tiledb::Object(
-          tiledb::Object::Type::Group, group2_uri.to_string(), std::nullopt),
+          tiledb::Object::Type::Group,
+          tiledb::sm::URI(group2_uri).to_string(),
+          std::nullopt),
   };
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+      group1_exp_det = {
+          {tiledb::Object::Type::Array, std::nullopt},
+          {tiledb::Object::Type::Array, std::nullopt},
+          {tiledb::Object::Type::Group, std::nullopt}};
   std::vector<tiledb::Object> group2_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array3_uri.to_string(), std::nullopt),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array3_uri).to_string(),
+          std::nullopt),
   };
+  std::vector<std::tuple<tiledb::Object::Type, std::optional<std::string>>>
+      group2_exp_det = {{tiledb::Object::Type::Array, std::nullopt}};
 
-  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
   group1.close();
   set_group_timestamp(&group1, 1);
   group1.open(TILEDB_WRITE);
 
-  tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group2(ctx_, group2_uri, TILEDB_WRITE);
   group2.close();
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  group1.add_member(array1_uri.to_string(), false);
-  group1.add_member(array2_uri.to_string(), false);
-  group1.add_member(group2_uri.to_string(), false);
-
-  group2.add_member(array3_uri.to_string(), false);
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
+    group1.add_member(array1_uri, false, std::nullopt, TILEDB_ARRAY);
+    group1.add_member(array2_uri, false, std::nullopt, TILEDB_ARRAY);
+    group1.add_member(group2_uri, false, std::nullopt, TILEDB_GROUP);
+    group2.add_member(array3_uri, false, std::nullopt, TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_uri, false);
+    group1.add_member(array2_uri, false);
+    group1.add_member(group2_uri, false);
+    group2.add_member(array3_uri, false);
+  }
 
   // Close group from write mode
   group1.close();
@@ -502,13 +524,25 @@ TEST_CASE_METHOD(
   group1.open(TILEDB_READ);
   group2.open(TILEDB_READ);
 
-  std::vector<tiledb::Object> group1_received = read_group(group1);
-  REQUIRE_THAT(
-      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
-
-  std::vector<tiledb::Object> group2_received = read_group(group2);
-  REQUIRE_THAT(
-      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+  // group URIs returned on remote array open are actually trasformed by the
+  // REST server if the form `tiledb://UUID` so they don't match the initial
+  // `tiledb://{namespace}/fs://temp_dir/name` format, so let's only compare the
+  // other fields of the objects.
+  if (vfs_test_setup_.is_rest()) {
+    // Those checks fail for REST because of sc-57858: names are not empty as
+    // they are supposed to but are equal to the REST Uri of the asset
+    REQUIRE_THAT(
+        read_group_details(group1),
+        Catch::Matchers::UnorderedEquals(group1_exp_det));
+    REQUIRE_THAT(
+        read_group_details(group2),
+        Catch::Matchers::UnorderedEquals(group2_exp_det));
+  } else {
+    REQUIRE_THAT(
+        read_group(group1), Catch::Matchers::UnorderedEquals(group1_expected));
+    REQUIRE_THAT(
+        read_group(group2), Catch::Matchers::UnorderedEquals(group2_expected));
+  }
 
   // Close group
   group1.close();
@@ -520,13 +554,15 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
-  group1.remove_member(group2_uri.to_string());
+  group1.remove_member(group2_uri);
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
+  group1_exp_det.resize(group1_exp_det.size() - 1);
 
-  group2.remove_member(array3_uri.to_string());
+  group2.remove_member(array3_uri);
   // There should be nothing left in group2
   group2_expected.clear();
+  group2_exp_det.clear();
 
   // Close group
   group1.close();
@@ -538,13 +574,19 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
-  group1_received = read_group(group1);
-  REQUIRE_THAT(
-      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
-
-  group2_received = read_group(group2);
-  REQUIRE_THAT(
-      group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
+  if (vfs_test_setup_.is_rest()) {
+    REQUIRE_THAT(
+        read_group_details(group1),
+        Catch::Matchers::UnorderedEquals(group1_exp_det));
+    REQUIRE_THAT(
+        read_group_details(group2),
+        Catch::Matchers::UnorderedEquals(group2_exp_det));
+  } else {
+    REQUIRE_THAT(
+        read_group(group1), Catch::Matchers::UnorderedEquals(group1_expected));
+    REQUIRE_THAT(
+        read_group(group2), Catch::Matchers::UnorderedEquals(group2_expected));
+  }
 
   // Check that out of bounds indexing throws
   REQUIRE_THROWS(group1.member(10));
@@ -554,72 +596,84 @@ TEST_CASE_METHOD(
   // Close group
   group1.close();
   group2.close();
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     GroupCPPFx,
     "C++ API: Group, write/read, relative",
-    "[cppapi][group][read]") {
+    "[cppapi][group][read][non-rest]") {
   // Create and open group in write mode
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-
-  tiledb::sm::URI group1_uri(temp_dir + "group1");
-  tiledb::Group::create(ctx_, group1_uri.to_string());
-
-  tiledb::sm::URI group2_uri(temp_dir + "group2");
-  tiledb::Group::create(ctx_, group2_uri.to_string());
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
+  std::string group2_uri = vfs_test_setup_.array_uri("group2");
+  tiledb::Group::create(ctx_, group1_uri);
+  tiledb::Group::create(ctx_, group2_uri);
 
   REQUIRE(
       tiledb_vfs_create_dir(
-          ctx_.ptr().get(), vfs_, (temp_dir + "group1/arrays").c_str()) ==
-      TILEDB_OK);
+          ctx_.ptr().get(),
+          vfs_test_setup_.vfs_c,
+          (group1_uri + "/arrays").c_str()) == TILEDB_OK);
   REQUIRE(
       tiledb_vfs_create_dir(
-          ctx_.ptr().get(), vfs_, (temp_dir + "group2/arrays").c_str()) ==
-      TILEDB_OK);
+          ctx_.ptr().get(),
+          vfs_test_setup_.vfs_c,
+          (group2_uri + "/arrays").c_str()) == TILEDB_OK);
 
   const std::string array1_relative_uri("arrays/array1");
-  const tiledb::sm::URI array1_uri(temp_dir + "group1/arrays/array1");
+  std::string array1_uri = vfs_test_setup_.array_uri("group1/arrays/array1");
   const std::string array2_relative_uri("arrays/array2");
-  const tiledb::sm::URI array2_uri(temp_dir + "group1/arrays/array2");
+  std::string array2_uri = vfs_test_setup_.array_uri("group1/arrays/array2");
   const std::string array3_relative_uri("arrays/array3");
-  const tiledb::sm::URI array3_uri(temp_dir + "group2/arrays/array3");
-  create_array(array1_uri.to_string());
-  create_array(array2_uri.to_string());
-  create_array(array3_uri.to_string());
+  std::string array3_uri = vfs_test_setup_.array_uri("group2/arrays/array3");
+
+  create_array(array1_uri);
+  create_array(array2_uri);
+  create_array(array3_uri);
 
   // Set expected
   std::vector<tiledb::Object> group1_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array1_uri.to_string(), std::nullopt),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array1_uri).to_string(),
+          std::nullopt),
       tiledb::Object(
-          tiledb::Object::Type::Array, array2_uri.to_string(), std::nullopt),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array2_uri).to_string(),
+          std::nullopt),
       tiledb::Object(
-          tiledb::Object::Type::Group, group2_uri.to_string(), std::nullopt),
+          tiledb::Object::Type::Group,
+          tiledb::sm::URI(group2_uri).to_string(),
+          std::nullopt),
   };
   std::vector<tiledb::Object> group2_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array3_uri.to_string(), std::nullopt),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array3_uri).to_string(),
+          std::nullopt),
   };
 
-  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
   group1.close();
   set_group_timestamp(&group1, 1);
   group1.open(TILEDB_WRITE);
 
-  tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group2(ctx_, group2_uri, TILEDB_WRITE);
   group2.close();
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  group1.add_member(array1_relative_uri, true);
-  group1.add_member(array2_relative_uri, true);
-  group1.add_member(group2_uri.to_string(), false);
-
-  group2.add_member(array3_relative_uri, true);
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
+    group1.add_member(array1_relative_uri, true, std::nullopt, TILEDB_ARRAY);
+    group1.add_member(array2_relative_uri, true, std::nullopt, TILEDB_ARRAY);
+    group1.add_member(group2_uri, false, std::nullopt, TILEDB_GROUP);
+    group2.add_member(array3_relative_uri, true, std::nullopt, TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_relative_uri, true);
+    group1.add_member(array2_relative_uri, true);
+    group1.add_member(group2_uri, false);
+    group2.add_member(array3_relative_uri, true);
+  }
 
   // Close group from write mode
   group1.close();
@@ -647,7 +701,7 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
-  group1.remove_member(group2_uri.to_string());
+  group1.remove_member(group2_uri);
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
@@ -676,74 +730,86 @@ TEST_CASE_METHOD(
   // Close group
   group1.close();
   group2.close();
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     GroupCPPFx,
     "C++ API: Group, write/read, relative named",
-    "[cppapi][group][read]") {
+    "[cppapi][group][read][non-rest]") {
   bool remove_by_name = GENERATE(true, false);
 
   // Create and open group in write mode
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-
-  tiledb::sm::URI group1_uri(temp_dir + "group1");
-  tiledb::Group::create(ctx_, group1_uri.to_string());
-
-  tiledb::sm::URI group2_uri(temp_dir + "group2");
-  tiledb::Group::create(ctx_, group2_uri.to_string());
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
+  std::string group2_uri = vfs_test_setup_.array_uri("group2");
+  tiledb::Group::create(ctx_, group1_uri);
+  tiledb::Group::create(ctx_, group2_uri);
 
   REQUIRE(
       tiledb_vfs_create_dir(
-          ctx_.ptr().get(), vfs_, (temp_dir + "group1/arrays").c_str()) ==
-      TILEDB_OK);
+          ctx_.ptr().get(),
+          vfs_test_setup_.vfs_c,
+          (group1_uri + "/arrays").c_str()) == TILEDB_OK);
   REQUIRE(
       tiledb_vfs_create_dir(
-          ctx_.ptr().get(), vfs_, (temp_dir + "group2/arrays").c_str()) ==
-      TILEDB_OK);
+          ctx_.ptr().get(),
+          vfs_test_setup_.vfs_c,
+          (group2_uri + "/arrays").c_str()) == TILEDB_OK);
 
   const std::string array1_relative_uri("arrays/array1");
-  const tiledb::sm::URI array1_uri(temp_dir + "group1/arrays/array1");
+  std::string array1_uri = vfs_test_setup_.array_uri("group1/arrays/array1");
   const std::string array2_relative_uri("arrays/array2");
-  const tiledb::sm::URI array2_uri(temp_dir + "group1/arrays/array2");
+  std::string array2_uri = vfs_test_setup_.array_uri("group1/arrays/array2");
   const std::string array3_relative_uri("arrays/array3");
-  const tiledb::sm::URI array3_uri(temp_dir + "group2/arrays/array3");
-  create_array(array1_uri.to_string());
-  create_array(array2_uri.to_string());
-  create_array(array3_uri.to_string());
+  std::string array3_uri = vfs_test_setup_.array_uri("group2/arrays/array3");
+
+  create_array(array1_uri);
+  create_array(array2_uri);
+  create_array(array3_uri);
 
   // Set expected
   std::vector<tiledb::Object> group1_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array1_uri.to_string(), "one"),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array1_uri).to_string(),
+          "one"),
       tiledb::Object(
-          tiledb::Object::Type::Array, array2_uri.to_string(), "two"),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array2_uri).to_string(),
+          "two"),
       tiledb::Object(
-          tiledb::Object::Type::Group, group2_uri.to_string(), "three"),
+          tiledb::Object::Type::Group,
+          tiledb::sm::URI(group2_uri).to_string(),
+          "three"),
   };
   std::vector<tiledb::Object> group2_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array3_uri.to_string(), "four"),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array3_uri).to_string(),
+          "four"),
   };
 
-  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
   group1.close();
   set_group_timestamp(&group1, 1);
   group1.open(TILEDB_WRITE);
 
-  tiledb::Group group2(ctx_, group2_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group2(ctx_, group2_uri, TILEDB_WRITE);
   group2.close();
   set_group_timestamp(&group2, 1);
   group2.open(TILEDB_WRITE);
 
-  group1.add_member(array1_relative_uri, true, "one");
-  group1.add_member(array2_relative_uri, true, "two");
-  group1.add_member(group2_uri.to_string(), false, "three");
-
-  group2.add_member(array3_relative_uri, true, "four");
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
+    group1.add_member(array1_relative_uri, true, "one", TILEDB_ARRAY);
+    group1.add_member(array2_relative_uri, true, "two", TILEDB_ARRAY);
+    group1.add_member(group2_uri, false, "three", TILEDB_GROUP);
+    group2.add_member(array3_relative_uri, true, "four", TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_relative_uri, true, "one");
+    group1.add_member(array2_relative_uri, true, "two");
+    group1.add_member(group2_uri, false, "three");
+    group2.add_member(array3_relative_uri, true, "four");
+  }
 
   // Close group from write mode
   group1.close();
@@ -786,7 +852,7 @@ TEST_CASE_METHOD(
   if (remove_by_name) {
     group1.remove_member("three");
   } else {
-    group1.remove_member(group2_uri.to_string());
+    group1.remove_member(group2_uri);
   }
 
   // Group is the latest element
@@ -822,59 +888,74 @@ TEST_CASE_METHOD(
   // Close group
   group1.close();
   group2.close();
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     GroupCPPFx,
     "C++ API: Group, delete by URI, duplicates",
-    "[cppapi][group][delete]") {
+    "[cppapi][group][delete][non-rest]") {
   bool nameless_uri = GENERATE(true, false);
 
   // Create and open group in write mode
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-
-  tiledb::sm::URI group1_uri(temp_dir + "group1");
-  tiledb::Group::create(ctx_, group1_uri.to_string());
+  std::string group1_uri = vfs_test_setup_.array_uri("group1");
+  tiledb::Group::create(ctx_, group1_uri);
 
   REQUIRE(
       tiledb_vfs_create_dir(
-          ctx_.ptr().get(), vfs_, (temp_dir + "group1/arrays").c_str()) ==
-      TILEDB_OK);
+          ctx_.ptr().get(),
+          vfs_test_setup_.vfs_c,
+          (group1_uri + "/arrays").c_str()) == TILEDB_OK);
 
   const std::string array1_relative_uri("arrays/array1");
-  const tiledb::sm::URI array1_uri(temp_dir + "group1/arrays/array1");
+  std::string array1_uri = vfs_test_setup_.array_uri("group1/arrays/array1");
   const std::string array2_relative_uri("arrays/array2");
-  const tiledb::sm::URI array2_uri(temp_dir + "group1/arrays/array2");
-  create_array(array1_uri.to_string());
-  create_array(array2_uri.to_string());
+  std::string array2_uri = vfs_test_setup_.array_uri("group1/arrays/array2");
+
+  create_array(array1_uri);
+  create_array(array2_uri);
 
   // Set expected
   std::vector<tiledb::Object> group1_expected = {
       tiledb::Object(
-          tiledb::Object::Type::Array, array1_uri.to_string(), "one"),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array1_uri).to_string(),
+          "one"),
       tiledb::Object(
-          tiledb::Object::Type::Array, array2_uri.to_string(), "two"),
-      nameless_uri ?
-          tiledb::Object(
-              tiledb::Object::Type::Array, array2_uri.to_string(), nullopt) :
-          tiledb::Object(
-              tiledb::Object::Type::Array, array2_uri.to_string(), "three"),
+          tiledb::Object::Type::Array,
+          tiledb::sm::URI(array2_uri).to_string(),
+          "two"),
+      nameless_uri ? tiledb::Object(
+                         tiledb::Object::Type::Array,
+                         tiledb::sm::URI(array2_uri).to_string(),
+                         nullopt) :
+                     tiledb::Object(
+                         tiledb::Object::Type::Array,
+                         tiledb::sm::URI(array2_uri).to_string(),
+                         "three"),
   };
 
-  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  tiledb::Group group1(ctx_, group1_uri, TILEDB_WRITE);
   group1.close();
   set_group_timestamp(&group1, 1);
   group1.open(TILEDB_WRITE);
 
-  group1.add_member(array1_relative_uri, true, "one");
-  group1.add_member(array2_relative_uri, true, "two");
-  group1.add_member(
-      array2_relative_uri,
-      true,
-      nameless_uri ? nullopt : std::make_optional<std::string>("three"));
+  bool add_with_type = GENERATE(true, false);
+  if (add_with_type) {
+    group1.add_member(array1_relative_uri, true, "one", TILEDB_ARRAY);
+    group1.add_member(array2_relative_uri, true, "two", TILEDB_ARRAY);
+    group1.add_member(
+        array2_relative_uri,
+        true,
+        nameless_uri ? nullopt : std::make_optional<std::string>("three"),
+        TILEDB_ARRAY);
+  } else {
+    group1.add_member(array1_relative_uri, true, "one");
+    group1.add_member(array2_relative_uri, true, "two");
+    group1.add_member(
+        array2_relative_uri,
+        true,
+        nameless_uri ? nullopt : std::make_optional<std::string>("three"));
+  }
 
   // Close group from write mode
   group1.close();
@@ -930,7 +1011,6 @@ TEST_CASE_METHOD(
 
   // Close group
   group1.close();
-  remove_temp_dir(temp_dir);
 }
 
 /** Test Exception For Assertability */

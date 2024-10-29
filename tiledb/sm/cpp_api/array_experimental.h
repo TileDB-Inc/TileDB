@@ -59,7 +59,7 @@ class ArrayExperimental {
   }
 
   /**
-   * Load all enumerations for the array
+   * Load all enumerations for the array's latest array schema.
    *
    * @param ctx The context to use.
    * @param array The array to load enumerations for.
@@ -67,6 +67,18 @@ class ArrayExperimental {
   static void load_all_enumerations(const Context& ctx, const Array& array) {
     ctx.handle_error(
         tiledb_array_load_all_enumerations(ctx.ptr().get(), array.ptr().get()));
+  }
+
+  /**
+   * Load all enumerations for all schemas in the array.
+   *
+   * @param ctx The context to use.
+   * @param array The array to load enumerations for.
+   */
+  static void load_enumerations_all_schemas(
+      const Context& ctx, const Array& array) {
+    ctx.handle_error(tiledb_array_load_enumerations_all_schemas(
+        ctx.ptr().get(), array.ptr().get()));
   }
 };
 

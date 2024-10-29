@@ -494,47 +494,6 @@ Status RestClientRemote::get_array_non_empty_domain(
       array, returned_data, serialization_type_);
 }
 
-Status RestClientRemote::get_array_max_buffer_sizes(
-    const URI& uri,
-    const ArraySchema& schema,
-    const void* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) {
-  // Convert subarray to string for query parameter
-  std::string subarray_str;
-  RETURN_NOT_OK(subarray_to_str(schema, subarray, &subarray_str));
-  std::string subarray_query_param =
-      subarray_str.empty() ? "" : ("?subarray=" + subarray_str);
-
-  // Init curl and form the URL
-  Curl curlc(logger_);
-  std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
-  const std::string cache_key = array_ns + ":" + array_uri;
-  RETURN_NOT_OK(
-      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) +
-                          "/max_buffer_sizes" + subarray_query_param;
-
-  // Get the data
-  Buffer returned_data;
-  RETURN_NOT_OK(curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key));
-
-  if (returned_data.data() == nullptr || returned_data.size() == 0)
-    return LOG_STATUS(
-        Status_RestError("Error getting array max buffer sizes "
-                         "from REST; server returned no data."));
-
-  // Ensure data has a null delimiter for cap'n proto if using JSON
-  RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
-
-  // Deserialize data returned
-  return serialization::max_buffer_sizes_deserialize(
-      schema, returned_data, serialization_type_, buffer_sizes);
-}
-
 Status RestClientRemote::get_array_metadata_from_rest(
     const URI& uri,
     uint64_t timestamp_start,
@@ -607,7 +566,7 @@ Status RestClientRemote::post_array_metadata_to_rest(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-std::vector<shared_ptr<const Enumeration>>
+std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 RestClientRemote::post_enumerations_from_rest(
     const URI& uri,
     uint64_t timestamp_start,
@@ -622,13 +581,6 @@ RestClientRemote::post_enumerations_from_rest(
 
   if (!memory_tracker) {
     memory_tracker = memory_tracker_;
-  }
-
-  // This should never be called with an empty list of enumeration names, but
-  // there's no reason to not check an early return case here given that code
-  // changes.
-  if (enumeration_names.size() == 0) {
-    return {};
   }
 
   BufferList serialized{memory_tracker_};
@@ -665,7 +617,7 @@ RestClientRemote::post_enumerations_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_load_enumerations_response(
-      serialization_type_, returned_data, memory_tracker);
+      *array, serialization_type_, returned_data, memory_tracker);
 }
 
 void RestClientRemote::post_query_plan_from_rest(

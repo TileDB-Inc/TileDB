@@ -600,8 +600,6 @@ Status Array::close() {
     return Status::Ok();
   }
 
-  clear_last_max_buffer_sizes();
-
   try {
     set_array_closed();
 
@@ -805,25 +803,77 @@ void Array::encryption_type(
 
 shared_ptr<const Enumeration> Array::get_enumeration(
     const std::string& enumeration_name) {
+  return get_enumerations({enumeration_name})[0];
+}
+
+std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+Array::get_enumerations_all_schemas() {
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
 
-  auto schema = opened_array_->array_schema_latest_ptr();
-  if (!schema->has_enumeration(enumeration_name)) {
-    throw ArrayException(
-        "Unable to get enumeration; Enumeration '" + enumeration_name +
-        "' does not exist.");
-  } else if (schema->is_enumeration_loaded(enumeration_name)) {
-    return schema->get_enumeration(enumeration_name);
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+      ret;
+  if (remote_) {
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException(
+          "Error loading enumerations; Remote array with no REST client.");
+    }
+
+    // Pass an empty list of enumeration names. REST will use timestamps to
+    // load all enumerations on all schemas for the array within that range.
+    ret = rest_client->post_enumerations_from_rest(
+        array_uri_,
+        array_dir_timestamp_start_,
+        array_dir_timestamp_end_,
+        this,
+        {},
+        memory_tracker_);
+
+    // Store the enumerations from the REST response.
+    for (const auto& schema_enmrs : ret) {
+      auto schema = array_schemas_all().at(schema_enmrs.first);
+      for (const auto& enmr : schema_enmrs.second) {
+        schema->store_enumeration(enmr);
+      }
+    }
+  } else {
+    for (const auto& schema : array_schemas_all()) {
+      std::unordered_set<std::string> enmrs_to_load;
+      auto enumeration_names = schema.second->get_enumeration_names();
+      // Dedupe requested names and filter out anything already loaded.
+      for (auto& enmr_name : enumeration_names) {
+        if (schema.second->is_enumeration_loaded(enmr_name)) {
+          continue;
+        }
+        enmrs_to_load.insert(enmr_name);
+      }
+
+      // Create a vector of paths to be loaded.
+      std::vector<std::string> paths_to_load;
+      for (auto& enmr_name : enmrs_to_load) {
+        auto path = schema.second->get_enumeration_path_name(enmr_name);
+        paths_to_load.push_back(path);
+      }
+
+      // Load the enumerations from storage
+      auto loaded = array_directory().load_enumerations_from_paths(
+          paths_to_load, *encryption_key(), memory_tracker_);
+
+      // Store the loaded enumerations in the schema.
+      for (auto& enmr : loaded) {
+        schema.second->store_enumeration(enmr);
+      }
+      ret[schema.first] = loaded;
+    }
   }
 
-  return get_enumerations({enumeration_name}, schema)[0];
+  return ret;
 }
 
 std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
-    const std::vector<std::string>& enumeration_names,
-    shared_ptr<ArraySchema> schema) {
+    const std::vector<std::string>& enumeration_names) {
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
@@ -831,7 +881,7 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
   // Dedupe requested names and filter out anything already loaded.
   std::unordered_set<std::string> enmrs_to_load;
   for (auto& enmr_name : enumeration_names) {
-    if (schema->is_enumeration_loaded(enmr_name)) {
+    if (array_schema_latest().is_enumeration_loaded(enmr_name)) {
       continue;
     }
     enmrs_to_load.insert(enmr_name);
@@ -856,16 +906,16 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 
       loaded = rest_client->post_enumerations_from_rest(
           array_uri_,
-          schema->timestamp_range().first,
-          schema->timestamp_range().second,
+          array_dir_timestamp_start_,
+          array_dir_timestamp_end_,
           this,
           names_to_load,
-          memory_tracker_);
+          memory_tracker_)[array_schema_latest().name()];
     } else {
       // Create a vector of paths to be loaded.
       std::vector<std::string> paths_to_load;
       for (auto& enmr_name : enmrs_to_load) {
-        auto path = schema->get_enumeration_path_name(enmr_name);
+        auto path = array_schema_latest().get_enumeration_path_name(enmr_name);
         paths_to_load.push_back(path);
       }
 
@@ -876,25 +926,36 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 
     // Store the loaded enumerations in the schema
     for (auto& enmr : loaded) {
-      schema->store_enumeration(enmr);
+      opened_array_->array_schema_latest_ptr()->store_enumeration(enmr);
     }
   }
 
   // Return the requested list of enumerations
   std::vector<shared_ptr<const Enumeration>> ret(enumeration_names.size());
   for (size_t i = 0; i < enumeration_names.size(); i++) {
-    ret[i] = schema->get_enumeration(enumeration_names[i]);
+    ret[i] = array_schema_latest().get_enumeration(enumeration_names[i]);
   }
   return ret;
 }
 
-void Array::load_all_enumerations() {
+void Array::load_all_enumerations(bool all_schemas) {
   if (!is_open_) {
     throw ArrayException("Unable to load all enumerations; Array is not open.");
   }
   // Load all enumerations, discarding the returned list of loaded enumerations.
-  for (const auto& schema : array_schemas_all()) {
-    get_enumerations(schema.second->get_enumeration_names(), schema.second);
+  if (all_schemas) {
+    // Unless we are using array open V3, Array::array_schemas_all_ will not be
+    // initialized. We throw an exception since this is required to store the
+    // loaded enumerations.
+    if (!use_refactored_array_open()) {
+      throw ArrayException(
+          "Unable to load enumerations for all array schemas; The array must "
+          "be opened using `rest.use_refactored_array_open=true`");
+    }
+
+    get_enumerations_all_schemas();
+  } else {
+    get_enumerations(array_schema_latest().get_enumeration_names());
   }
 }
 
@@ -925,131 +986,6 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
 
 QueryType Array::get_query_type() const {
   return query_type_;
-}
-
-Status Array::get_max_buffer_size(
-    const char* name, const void* subarray, uint64_t* buffer_size) {
-  // Check if array is open
-  if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get max buffer size; Array is not open"));
-  }
-
-  // Error if the array was not opened in read mode
-  if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get max buffer size; "
-                          "Array was not opened in read mode"));
-  }
-
-  // Check if name is null
-  if (name == nullptr) {
-    return LOG_STATUS(Status_ArrayError(
-        "Cannot get max buffer size; Attribute/Dimension name is null"));
-  }
-
-  // Not applicable to heterogeneous domains
-  if (!array_schema_latest().domain().all_dims_same_type()) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get max buffer size; Function not "
-                          "applicable to heterogeneous domains"));
-  }
-
-  // Not applicable to variable-sized dimensions
-  if (!array_schema_latest().domain().all_dims_fixed()) {
-    return LOG_STATUS(Status_ArrayError(
-        "Cannot get max buffer size; Function not "
-        "applicable to domains with variable-sized dimensions"));
-  }
-
-  // Check if name is attribute or dimension
-  bool is_dim = array_schema_latest().is_dim(name);
-  bool is_attr = array_schema_latest().is_attr(name);
-
-  // Check if attribute/dimension exists
-  if (name != constants::coords && !is_dim && !is_attr) {
-    return LOG_STATUS(Status_ArrayError(
-        std::string("Cannot get max buffer size; Attribute/Dimension '") +
-        name + "' does not exist"));
-  }
-
-  // Check if attribute/dimension is fixed sized
-  if (array_schema_latest().var_size(name)) {
-    return LOG_STATUS(Status_ArrayError(
-        std::string("Cannot get max buffer size; Attribute/Dimension '") +
-        name + "' is var-sized"));
-  }
-
-  RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
-
-  // Retrieve buffer size
-  auto it = last_max_buffer_sizes_.find(name);
-  assert(it != last_max_buffer_sizes_.end());
-  *buffer_size = it->second.first;
-
-  return Status::Ok();
-}
-
-Status Array::get_max_buffer_size(
-    const char* name,
-    const void* subarray,
-    uint64_t* buffer_off_size,
-    uint64_t* buffer_val_size) {
-  // Check if array is open
-  if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get max buffer size; Array is not open"));
-  }
-
-  // Error if the array was not opened in read mode
-  if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get max buffer size; "
-                          "Array was not opened in read mode"));
-  }
-
-  // Check if name is null
-  if (name == nullptr) {
-    return LOG_STATUS(Status_ArrayError(
-        "Cannot get max buffer size; Attribute/Dimension name is null"));
-  }
-
-  // Not applicable to heterogeneous domains
-  if (!array_schema_latest().domain().all_dims_same_type()) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get max buffer size; Function not "
-                          "applicable to heterogeneous domains"));
-  }
-
-  // Not applicable to variable-sized dimensions
-  if (!array_schema_latest().domain().all_dims_fixed()) {
-    return LOG_STATUS(Status_ArrayError(
-        "Cannot get max buffer size; Function not "
-        "applicable to domains with variable-sized dimensions"));
-  }
-
-  RETURN_NOT_OK(compute_max_buffer_sizes(subarray));
-
-  // Check if attribute/dimension exists
-  auto it = last_max_buffer_sizes_.find(name);
-  if (it == last_max_buffer_sizes_.end()) {
-    return LOG_STATUS(Status_ArrayError(
-        std::string("Cannot get max buffer size; Attribute/Dimension '") +
-        name + "' does not exist"));
-  }
-
-  // Check if attribute/dimension is var-sized
-  if (!array_schema_latest().var_size(name)) {
-    return LOG_STATUS(Status_ArrayError(
-        std::string("Cannot get max buffer size; Attribute/Dimension '") +
-        name + "' is fixed-sized"));
-  }
-
-  // Retrieve buffer sizes
-  *buffer_off_size = it->second.first;
-  *buffer_val_size = it->second.second;
-
-  return Status::Ok();
 }
 
 Status Array::reopen() {
@@ -1091,9 +1027,6 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
     array_dir_timestamp_end_ = timestamp_end;
   }
   array_dir_timestamp_start_ = timestamp_start;
-
-  // Reset the last max buffer sizes.
-  clear_last_max_buffer_sizes();
 
   // Reopen metadata.
   auto key = opened_array_->encryption_key();
@@ -1837,143 +1770,6 @@ Array::open_for_writes() {
   }
 
   return {array_schema_latest, array_schemas_all};
-}
-
-void Array::clear_last_max_buffer_sizes() {
-  last_max_buffer_sizes_.clear();
-  last_max_buffer_sizes_subarray_.clear();
-  last_max_buffer_sizes_subarray_.shrink_to_fit();
-}
-
-Status Array::compute_max_buffer_sizes(const void* subarray) {
-  // Applicable only to domains where all dimensions have the same type
-  if (!array_schema_latest().domain().all_dims_same_type()) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot compute max buffer sizes; Inapplicable when "
-                          "dimension domains have different types"));
-  }
-
-  // Allocate space for max buffer sizes subarray
-  auto dim_num = array_schema_latest().dim_num();
-  auto coord_size{
-      array_schema_latest().domain().dimension_ptr(0)->coord_size()};
-  auto subarray_size = 2 * dim_num * coord_size;
-  last_max_buffer_sizes_subarray_.resize(subarray_size);
-
-  // Compute max buffer sizes
-  if (last_max_buffer_sizes_.empty() ||
-      std::memcmp(
-          &last_max_buffer_sizes_subarray_[0], subarray, subarray_size) != 0) {
-    last_max_buffer_sizes_.clear();
-
-    // Get all attributes and coordinates
-    auto& attributes = array_schema_latest().attributes();
-    last_max_buffer_sizes_.clear();
-    for (const auto& attr : attributes)
-      last_max_buffer_sizes_[attr->name()] =
-          std::pair<uint64_t, uint64_t>(0, 0);
-    last_max_buffer_sizes_[constants::coords] =
-        std::pair<uint64_t, uint64_t>(0, 0);
-    for (unsigned d = 0; d < dim_num; ++d)
-      last_max_buffer_sizes_
-          [array_schema_latest().domain().dimension_ptr(d)->name()] =
-              std::pair<uint64_t, uint64_t>(0, 0);
-
-    RETURN_NOT_OK(compute_max_buffer_sizes(subarray, &last_max_buffer_sizes_));
-  }
-
-  // Update subarray
-  std::memcpy(&last_max_buffer_sizes_subarray_[0], subarray, subarray_size);
-
-  return Status::Ok();
-}
-
-Status Array::compute_max_buffer_sizes(
-    const void* subarray,
-    std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-        buffer_sizes) const {
-  if (remote_) {
-    auto rest_client = resources_.rest_client();
-    if (rest_client == nullptr) {
-      return LOG_STATUS(Status_ArrayError(
-          "Cannot get max buffer sizes; remote array with no REST client."));
-    }
-
-    return rest_client->get_array_max_buffer_sizes(
-        array_uri_, array_schema_latest(), subarray, buffer_sizes);
-  }
-
-  // Keep the current opened array alive for the duration of this call.
-  auto opened_array = opened_array_;
-  auto& fragment_metadata = opened_array->fragment_metadata();
-  auto& array_schema_latest = opened_array->array_schema_latest();
-
-  // Return if there are no metadata
-  if (fragment_metadata.empty()) {
-    return Status::Ok();
-  }
-
-  // First we calculate a rough upper bound. Especially for dense
-  // arrays, this will not be accurate, as it accounts only for the
-  // non-empty regions of the subarray.
-  for (auto& meta : fragment_metadata) {
-    meta->add_max_buffer_sizes(*encryption_key(), subarray, buffer_sizes);
-  }
-
-  // Prepare an NDRange for the subarray
-  auto dim_num = array_schema_latest.dim_num();
-  NDRange sub(dim_num);
-  auto sub_ptr = (const unsigned char*)subarray;
-  uint64_t offset = 0;
-  for (unsigned d = 0; d < dim_num; ++d) {
-    auto r_size{2 * array_schema_latest.dimension_ptr(d)->coord_size()};
-    sub[d] = Range(&sub_ptr[offset], r_size);
-    offset += r_size;
-  }
-
-  // Rectify bound for dense arrays
-  if (array_schema_latest.dense()) {
-    auto cell_num = array_schema_latest.domain().cell_num(sub);
-    // `cell_num` becomes 0 when `subarray` is huge, leading to a
-    // `uint64_t` overflow.
-    if (cell_num != 0) {
-      for (auto& it : *buffer_sizes) {
-        if (array_schema_latest.var_size(it.first)) {
-          it.second.first = cell_num * constants::cell_var_offset_size;
-          it.second.second +=
-              cell_num * datatype_size(array_schema_latest.type(it.first));
-        } else {
-          it.second.first = cell_num * array_schema_latest.cell_size(it.first);
-        }
-      }
-    }
-  }
-
-  // Rectify bound for sparse arrays with integer domain, without duplicates
-  if (!array_schema_latest.dense() && !array_schema_latest.allows_dups() &&
-      array_schema_latest.domain().all_dims_int()) {
-    auto cell_num = array_schema_latest.domain().cell_num(sub);
-    // `cell_num` becomes 0 when `subarray` is huge, leading to a
-    // `uint64_t` overflow.
-    if (cell_num != 0) {
-      for (auto& it : *buffer_sizes) {
-        if (!array_schema_latest.var_size(it.first)) {
-          // Check for overflow
-          uint64_t new_size =
-              cell_num * array_schema_latest.cell_size(it.first);
-          if (new_size / array_schema_latest.cell_size((it.first)) !=
-              cell_num) {
-            continue;
-          }
-
-          // Potentially rectify size
-          it.second.first = std::min(it.second.first, new_size);
-        }
-      }
-    }
-  }
-
-  return Status::Ok();
 }
 
 void Array::do_load_metadata() {

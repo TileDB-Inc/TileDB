@@ -569,11 +569,11 @@ class Array {
       EncryptionType* encryption_type);
 
   /**
-   * Get the enumeration for the given name.
+   * Get the enumeration for the given name from the latest array schema.
    *
    * This function retrieves the enumeration for the given name. If the
    * corresponding enumeration has not been loaded from storage it is
-   * loaded before this function returns.
+   * loaded and stored in the latest schema before this function returns.
    *
    * @param enumeration_name The name of the enumeration.
    * @return shared_ptr<const Enumeration> or nullptr on failure.
@@ -582,22 +582,37 @@ class Array {
       const std::string& enumeration_name);
 
   /**
-   * Get the enumerations with the given names.
+   * Load enumerations on all schemas for the array's opened timestamp range.
+   * This function will store all loaded enumerations into their corresponding
+   * schemas. The returned enumerations are provided as a convenience to the
+   * caller and can be discarded if loading the enumerations is sufficient.
+   *
+   * @return Map of schema names and a list of all loaded enumerations.
+   */
+  std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
+  get_enumerations_all_schemas();
+
+  /**
+   * Get the enumerations with the given names from the latest array schema.
    *
    * This function retrieves the enumerations with the given names. If the
    * corresponding enumerations have not been loaded from storage they are
    * loaded before this function returns.
    *
    * @param enumeration_names The names of the enumerations.
-   * @param schema The ArraySchema to store loaded enumerations in.
    * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
    */
   std::vector<shared_ptr<const Enumeration>> get_enumerations(
-      const std::vector<std::string>& enumeration_names,
-      shared_ptr<ArraySchema> schema);
+      const std::vector<std::string>& enumeration_names);
 
-  /** Load all enumerations for the array. */
-  void load_all_enumerations();
+  /**
+   * Load all enumerations for the array.
+   *
+   * @param all_schemas If true, enumerations will be loaded on all schemas
+   *    within the current opened timestamps on the array. If false, only load
+   *    enumerations on the latest array schema.
+   */
+  void load_all_enumerations(bool all_schemas = false);
 
   /**
    * Returns `true` if the array is empty at the time it is opened.
@@ -616,23 +631,6 @@ class Array {
 
   /** Retrieves the query type. Throws if the array is not open. */
   QueryType get_query_type() const;
-
-  /**
-   * Returns the max buffer size given a fixed-sized attribute/dimension and
-   * a subarray. Errors if the array is not open.
-   */
-  Status get_max_buffer_size(
-      const char* name, const void* subarray, uint64_t* buffer_size);
-
-  /**
-   * Returns the max buffer size given a var-sized attribute/dimension and
-   * a subarray. Errors if the array is not open.
-   */
-  Status get_max_buffer_size(
-      const char* name,
-      const void* subarray,
-      uint64_t* buffer_off_size,
-      uint64_t* buffer_val_size);
 
   /**
    * Returns a reference to the private encryption key.
@@ -1117,16 +1115,6 @@ class Array {
   /** The array config. */
   Config config_;
 
-  /** Stores the max buffer sizes requested last time by the user .*/
-  std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-      last_max_buffer_sizes_;
-
-  /**
-   * This is the last subarray used by the user to retrieve the
-   * max buffer sizes.
-   */
-  std::vector<uint8_t> last_max_buffer_sizes_subarray_;
-
   /** True if the array is remote (has `tiledb://` URI scheme). */
   bool remote_;
 
@@ -1198,34 +1186,6 @@ class Array {
       shared_ptr<ArraySchema>,
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_writes();
-
-  /** Clears the cached max buffer sizes and subarray. */
-  void clear_last_max_buffer_sizes();
-
-  /**
-   * Computes the maximum buffer sizes for all attributes given a subarray,
-   * which are cached locally in the instance.
-   */
-  Status compute_max_buffer_sizes(const void* subarray);
-
-  /**
-   * Computes an upper bound on the buffer sizes required for a read
-   * query, for a given subarray and set of attributes. Note that
-   * the attributes are already set in `max_buffer_sizes`
-   *
-   * @param subarray The subarray to focus on. Note that it must have the same
-   *     underlying type as the array domain.
-   * @param max_buffer_sizes The buffer sizes to be retrieved. This is a map
-   * from the attribute (or coordinates) name to a pair of sizes (in bytes). For
-   * fixed-sized attributes, the second size is ignored. For var-sized
-   *     attributes, the first is the offsets size and the second is the
-   *     values size.
-   * @return Status
-   */
-  Status compute_max_buffer_sizes(
-      const void* subarray,
-      std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
-          max_buffer_sizes_) const;
 
   /**
    * Load non-remote array metadata.
