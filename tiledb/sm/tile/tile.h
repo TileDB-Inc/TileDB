@@ -61,6 +61,7 @@ class TileBase {
    * @param cell_size The cell size.
    * @param size The size of the tile.
    * @param resource The memory resource to use.
+   * @param data_io_task The I/O task to wait on for data to be valid.
    */
   TileBase(
       const format_version_t format_version,
@@ -191,6 +192,8 @@ class Tile : public TileBase {
    * @param size The size of the tile.
    * @param filtered_data Pointer to the external filtered data.
    * @param filtered_size The filtered size to allocate.
+   * @param memory_tracker The memory resource to use.
+   * @param filtered_data_io_task The I/O task to wait on for data to be valid.
    */
   Tile(
       const format_version_t format_version,
@@ -200,7 +203,8 @@ class Tile : public TileBase {
       const uint64_t size,
       void* filtered_data,
       uint64_t filtered_size,
-      shared_ptr<MemoryTracker> memory_tracker);
+      shared_ptr<MemoryTracker> memory_tracker,
+      shared_ptr<ThreadPool::Task> filtered_data_io_task);
 
   /**
    * Constructor.
@@ -214,6 +218,7 @@ class Tile : public TileBase {
    * @param filtered_data Pointer to the external filtered data.
    * @param filtered_size The filtered size to allocate.
    * @param resource The memory resource to use.
+   * @param filtered_data_io_task The I/O task to wait on for data to be valid.
    */
   Tile(
       const format_version_t format_version,
@@ -223,7 +228,8 @@ class Tile : public TileBase {
       const uint64_t size,
       void* filtered_data,
       uint64_t filtered_size,
-      tdb::pmr::memory_resource* resource);
+      tdb::pmr::memory_resource* resource,
+      shared_ptr<ThreadPool::Task> filtered_data_io_task);
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
@@ -253,12 +259,20 @@ class Tile : public TileBase {
 
   /** Returns the buffer that contains the filtered, on-disk format. */
   inline char* filtered_data() {
+    if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
+      filtered_data_io_task_->wait();
+      throw_if_not_ok(filtered_data_io_task_->get());
+    }
     return static_cast<char*>(filtered_data_);
   }
 
   /** Returns the data casted as a type. */
   template <class T>
   inline T* filtered_data_as() {
+    if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
+      filtered_data_io_task_->wait();
+      throw_if_not_ok(filtered_data_io_task_->get());
+    }
     return static_cast<T*>(filtered_data_);
   }
 
@@ -353,6 +367,9 @@ class Tile : public TileBase {
 
   /** The size of the filtered data. */
   uint64_t filtered_size_;
+
+  /** I/O task to check and block on if filtered data is ready. */
+  shared_ptr<ThreadPool::Task> filtered_data_io_task_;
 };
 
 /**
@@ -396,7 +413,8 @@ class WriterTile : public TileBase {
    * @param type The data type.
    * @param cell_size The cell size.
    * @param size The size of the tile.
-   * @param meory_tracker The memory tracker to use.
+   * @param memory_tracker The memory tracker to use.
+   * @param data_io_task The I/O task to wait on for data to be valid.
    */
   WriterTile(
       const format_version_t format_version,
@@ -413,6 +431,7 @@ class WriterTile : public TileBase {
    * @param cell_size The cell size.
    * @param size The size of the tile.
    * @param resource The memory resource to use.
+   * @param data_io_task The I/O task to wait on for data to be valid.
    */
   WriterTile(
       const format_version_t format_version,

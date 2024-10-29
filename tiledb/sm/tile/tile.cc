@@ -31,6 +31,8 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+
+#include <utility>
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/memory_tracker.h"
@@ -69,7 +71,8 @@ shared_ptr<Tile> Tile::from_generic(
       tile_size,
       nullptr,
       0,
-      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
+      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
+      nullptr);
 }
 
 shared_ptr<WriterTile> WriterTile::from_generic(
@@ -132,7 +135,8 @@ Tile::Tile(
     const uint64_t size,
     void* filtered_data,
     uint64_t filtered_size,
-    shared_ptr<MemoryTracker> memory_tracker)
+    shared_ptr<MemoryTracker> memory_tracker,
+    shared_ptr<ThreadPool::Task> data_io_task)
     : Tile(
           format_version,
           type,
@@ -141,7 +145,8 @@ Tile::Tile(
           size,
           filtered_data,
           filtered_size,
-          memory_tracker->get_resource(MemoryType::TILE_DATA)) {
+          memory_tracker->get_resource(MemoryType::TILE_DATA),
+          std::move(data_io_task)) {
 }
 
 Tile::Tile(
@@ -152,11 +157,13 @@ Tile::Tile(
     const uint64_t size,
     void* filtered_data,
     uint64_t filtered_size,
-    tdb::pmr::memory_resource* resource)
+    tdb::pmr::memory_resource* resource,
+    shared_ptr<ThreadPool::Task> filtered_data_io_task)
     : TileBase(format_version, type, cell_size, size, resource)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
-    , filtered_size_(filtered_size) {
+    , filtered_size_(filtered_size)
+    , filtered_data_io_task_(std::move(filtered_data_io_task)) {
 }
 
 WriterTile::WriterTile(
@@ -279,6 +286,11 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
 uint64_t Tile::load_chunk_data(
     ChunkData& unfiltered_tile, uint64_t expected_original_size) {
   assert(filtered());
+
+  if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
+    filtered_data_io_task_->wait();
+    throw_if_not_ok(filtered_data_io_task_->get());
+  }
 
   Deserializer deserializer(filtered_data(), filtered_size());
 
