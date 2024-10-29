@@ -190,28 +190,49 @@ class ArraySchemaExperimental {
   }
 
   /**
-   * Retrieve an enumeration from the array schema, if it has already been
-   * loaded (such as via `ArrayExperimental::get_enumeration`).
+   * Retrieve an enumeration from the array schema using the enumeration name.
    *
    * @param ctx TileDB context.
    * @param array_schema Array schema.
    * @param enumeration_name The name of the enumeration to retrieve.
+   *
+   * @return the loaded enumeration.
    */
-  static std::optional<Enumeration> get_enumeration_if_loaded(
+  static Enumeration get_enumeration_from_name(
       const Context& ctx,
       const ArraySchema& array_schema,
-      const char* enumeration_name) {
+      const std::string& enumeration_name) {
     tiledb_enumeration_t* enumeration;
-    ctx.handle_error(tiledb_array_schema_get_enumeration_if_loaded(
+    ctx.handle_error(tiledb_array_schema_get_enumeration_from_name(
         ctx.ptr().get(),
         array_schema.ptr().get(),
-        enumeration_name,
+        enumeration_name.c_str(),
         &enumeration));
-    if (enumeration) {
-      return Enumeration(ctx, enumeration);
-    } else {
-      return std::nullopt;
-    }
+    return Enumeration(ctx, enumeration);
+  }
+
+  /**
+   * Retrieve an enumeration from the array schema from the attribute
+   * with the given name.
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Array schema.
+   * @param attribute_name The name of the attribute whose enumeration to
+   * retrieve.
+   *
+   * @return the loaded enumeration.
+   */
+  static Enumeration get_enumeration_from_attribute_name(
+      const Context& ctx,
+      const ArraySchema& array_schema,
+      const std::string& attribute_name) {
+    tiledb_enumeration_t* enumeration;
+    ctx.handle_error(tiledb_array_schema_get_enumeration_from_attribute_name(
+        ctx.ptr().get(),
+        array_schema.ptr().get(),
+        attribute_name.c_str(),
+        &enumeration));
+    return Enumeration(ctx, enumeration);
   }
 
   /**

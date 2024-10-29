@@ -36,6 +36,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -43,10 +44,12 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
@@ -54,6 +57,7 @@
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/type/apply_with_type.h"
 
@@ -1126,6 +1130,34 @@ const std::string& ArraySchema::get_enumeration_path_name(
   }
 
   return iter->second;
+}
+
+void ArraySchema::load_enumeration(Context& ctx, const std::string& enmr_name) {
+  if (is_enumeration_loaded(enmr_name)) {
+    return;
+  }
+
+  auto& path = get_enumeration_path_name(enmr_name);
+
+  // Create key
+  tiledb::sm::EncryptionKey key;
+  throw_if_not_ok(
+      key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
+
+  // Load URIs from the array directory
+  optional<tiledb::sm::ArrayDirectory> array_dir;
+  array_dir.emplace(
+      ctx.resources(),
+      array_uri(),
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+
+  auto tracker = ctx.resources().ephemeral_memory_tracker();
+  auto enumeration = array_dir->load_enumeration(path, key, tracker);
+
+  enumeration_map_[enumeration->name()] = enumeration;
+  enumeration_path_map_[enumeration->name()] = enumeration->path_name();
 }
 
 void ArraySchema::drop_enumeration(const std::string& enmr_name) {

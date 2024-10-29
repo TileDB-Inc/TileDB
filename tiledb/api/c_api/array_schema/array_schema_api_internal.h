@@ -35,6 +35,7 @@
 
 #include "array_schema_api_external.h"
 
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -88,6 +89,10 @@ struct tiledb_array_schema_handle_t
       bool check_name = true) {
     array_schema_->add_dimension_label(
         dim_id, name, label_order, label_type, check_name);
+  }
+
+  void load_enumeration(tiledb_ctx_t* ctx, const char* name) {
+    return array_schema_->load_enumeration(ctx->context(), name);
   }
 
   shared_ptr<const tiledb::sm::Enumeration> get_enumeration(

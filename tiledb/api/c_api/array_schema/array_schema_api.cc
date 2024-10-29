@@ -34,6 +34,7 @@
 #include "array_schema_api_experimental.h"
 #include "array_schema_api_internal.h"
 
+#include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
 #include "tiledb/api/c_api/attribute/attribute_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
@@ -181,7 +182,8 @@ capi_return_t tiledb_array_schema_timestamp_range(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_array_schema_get_enumeration_if_loaded(
+capi_return_t tiledb_array_schema_get_enumeration_from_name(
+    tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* enumeration_name,
     tiledb_enumeration_t** enumeration) {
@@ -192,13 +194,40 @@ capi_return_t tiledb_array_schema_get_enumeration_if_loaded(
     throw CAPIException("'enumeration_name' must not be null");
   }
 
+  array_schema->load_enumeration(ctx, enumeration_name);
+
   auto ptr = array_schema->get_enumeration(enumeration_name);
-  if (ptr) {
-    *enumeration = tiledb_enumeration_handle_t::make_handle(ptr);
-  } else {
-    *enumeration = nullptr;
-  }
+  *enumeration = tiledb_enumeration_handle_t::make_handle(ptr);
+
   return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_schema_get_enumeration_from_attribute_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* attribute_name,
+    tiledb_enumeration_t** enumeration) {
+  ensure_array_schema_is_valid(array_schema);
+  ensure_output_pointer_is_valid(enumeration);
+
+  tiledb_attribute_t* attribute;
+  capi_return_t getattr = tiledb_array_schema_get_attribute_from_name(
+      ctx, array_schema, attribute_name, &attribute);
+  if (tiledb_status(getattr) != TILEDB_OK) {
+    return getattr;
+  }
+
+  tiledb_string_t* enumeration_name_inner;
+  capi_return_t getenmr = tiledb_attribute_get_enumeration_name(
+      ctx, attribute, &enumeration_name_inner);
+  if (tiledb_status(getenmr) != TILEDB_OK) {
+    return getenmr;
+  }
+
+  std::string enumeration_name(enumeration_name_inner->view());
+  return api_entry_with_context<
+      tiledb::api::tiledb_array_schema_get_enumeration_from_name>(
+      ctx, array_schema, enumeration_name.c_str(), enumeration);
 }
 
 capi_return_t tiledb_array_schema_add_enumeration(
@@ -561,14 +590,25 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    array_schema_get_enumeration_if_loaded,
+    array_schema_get_enumeration_from_name,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* enumeration_name,
     tiledb_enumeration_t** enumeration) {
-  return api_entry_context<
-      tiledb::api::tiledb_array_schema_get_enumeration_if_loaded>(
+  return api_entry_with_context<
+      tiledb::api::tiledb_array_schema_get_enumeration_from_name>(
       ctx, array_schema, enumeration_name, enumeration);
+}
+
+CAPI_INTERFACE(
+    array_schema_get_enumeration_from_attribute_name,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* attribute_name,
+    tiledb_enumeration_t** enumeration) {
+  return api_entry_with_context<
+      tiledb::api::tiledb_array_schema_get_enumeration_from_attribute_name>(
+      ctx, array_schema, attribute_name, enumeration);
 }
 
 CAPI_INTERFACE(

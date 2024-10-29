@@ -316,65 +316,97 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
-    "CPP: Enumerations From Disk - ArraySchema::get_enumeration",
-    "[enumeration][array-schema-get-enumeration][rest]") {
+    "CPP: Enumerations From Disk - ArraySchema::get_enumeration_from_name",
+    "[enumeration][array-schema-get-enumeration-from-name][rest]") {
   create_array();
 
-  SECTION("default schema load does not populate enumeration") {
+  const std::string enmr_name = "an_enumeration";
+
+  std::optional<Enumeration> expect_enumeration;
+  {
+    auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
+    expect_enumeration =
+        ArrayExperimental::get_enumeration(ctx_, array, enmr_name);
+  }
+
+  SECTION("default schema load retrieves enumeration on request only") {
     auto schema = Array::load_schema(ctx_, uri_);
-    auto enmr = ArraySchemaExperimental::get_enumeration_if_loaded(
-        ctx_, schema, "an_enumeration");
-    CHECK(!enmr.has_value());
+
+    CHECK(!schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
+
+    auto actual_enumeration =
+        ArraySchemaExperimental::get_enumeration_from_name(
+            ctx_, schema, enmr_name);
+    CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
+    CHECK(test::is_equivalent_enumeration(
+        *expect_enumeration, actual_enumeration));
   }
 
-  SECTION("array get_enumeration loads enumeration and schema shares") {
-    auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
-    auto from_array =
-        ArrayExperimental::get_enumeration(ctx_, array, "an_enumeration");
-
-    auto schema = array.schema();
-    auto from_schema = ArraySchemaExperimental::get_enumeration_if_loaded(
-        ctx_, schema, "an_enumeration");
-    CHECK(test::is_equivalent_enumeration(from_array, *from_schema));
-  }
-
-  SECTION("array get_enumeration loads into user schema handle") {
-    auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
-    auto schema = array.schema();
-
-    // the enumeration is not populated yet
-    REQUIRE(!ArraySchemaExperimental::get_enumeration_if_loaded(
-                 ctx_, schema, "an_enumeration")
-                 .has_value());
-
-    // array method actually loads it
-    auto from_array =
-        ArrayExperimental::get_enumeration(ctx_, array, "an_enumeration");
-
-    // and once it is loaded, it is set on the schema
-    auto from_schema = ArraySchemaExperimental::get_enumeration_if_loaded(
-        ctx_, schema, "an_enumeration");
-    REQUIRE(from_schema.has_value());
-
-    CHECK(test::is_equivalent_enumeration(from_array, *from_schema));
-  }
-
-  SECTION("schema load with rest config does populate enumeration") {
+  SECTION("schema load with rest config retrieves enumeration eagerly") {
     Config config;
     config["rest.load_enumerations_on_array_open"] = "true";
 
     auto schema = Array::load_schema_with_config(ctx_, config, uri_);
-    auto enmr = ArraySchemaExperimental::get_enumeration_if_loaded(
-        ctx_, schema, "an_enumeration");
-    REQUIRE(enmr.has_value());
-    REQUIRE(enmr->ptr() != nullptr);
-    REQUIRE(enmr->name() == "an_enumeration");
-    REQUIRE(enmr->type() == TILEDB_STRING_ASCII);
-    REQUIRE(enmr->cell_val_num() == TILEDB_VAR_NUM);
-    REQUIRE(enmr->ordered() == false);
+    CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
+
+    // requesting it should do no I/O (we did it already),
+    // unclear how to check that
+    auto actual_enumeration =
+        ArraySchemaExperimental::get_enumeration_from_name(
+            ctx_, schema, enmr_name);
+    CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
+    CHECK(test::is_equivalent_enumeration(
+        *expect_enumeration, actual_enumeration));
   }
 }
 
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumerations From Disk - "
+    "ArraySchema::get_enumeration_from_attribute_name",
+    "[enumeration][array-schema-get-enumeration-from-attribute-name][rest]") {
+  create_array();
+
+  const std::string enmr_name = "an_enumeration";
+  const std::string attr_name = "attr1";
+
+  std::optional<Enumeration> expect_enumeration;
+  {
+    auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
+    expect_enumeration =
+        ArrayExperimental::get_enumeration(ctx_, array, enmr_name);
+  }
+
+  SECTION("default schema load retrieves enumeration on request only") {
+    auto schema = Array::load_schema(ctx_, uri_);
+
+    CHECK(!schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
+
+    auto actual_enumeration =
+        ArraySchemaExperimental::get_enumeration_from_attribute_name(
+            ctx_, schema, attr_name);
+    CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
+    CHECK(test::is_equivalent_enumeration(
+        *expect_enumeration, actual_enumeration));
+  }
+
+  SECTION("schema load with rest config retrieves enumeration eagerly") {
+    Config config;
+    config["rest.load_enumerations_on_array_open"] = "true";
+
+    auto schema = Array::load_schema_with_config(ctx_, config, uri_);
+    CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
+
+    // requesting it should do no I/O (we did it already),
+    // unclear how to check that
+    auto actual_enumeration =
+        ArraySchemaExperimental::get_enumeration_from_attribute_name(
+            ctx_, schema, attr_name);
+    CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
+    CHECK(test::is_equivalent_enumeration(
+        *expect_enumeration, actual_enumeration));
+  }
+}
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Array::load_all_enumerations",

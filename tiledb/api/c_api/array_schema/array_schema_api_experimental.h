@@ -68,13 +68,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
     uint64_t* hi) TILEDB_NOEXCEPT;
 
 /**
- * Retrieves an already-loaded enumeration given its name,
- * if it has already been loaded into memory.
- *
- * If the enumeration has already been loaded,
- * such as via `tiledb_array_get_enumeration`,
- * then this returns a pointer to the enumeration.
- * Otherwise this returns `TILEDB_OK` and sets `enumeration` to NULL.
+ * Retrieves an enumeration from an array schema using the enumeration name,
  *
  * **Example:**
  *
@@ -82,7 +76,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
  *
  * @code{.c}
  * tiledb_enumeration_t* enmr;
- * tiledb_array_schema_get_enumeration_if_loaded(ctx,
+ * tiledb_array_schema_get_enumeration_from_name(ctx,
  *         array_schema, "states", &enmr);
  * tiledb_attribute_free(&enmr);
  * @endcode
@@ -93,10 +87,39 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
  * @param[out] enmr The enumeration object to retrieve.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_array_schema_get_enumeration_if_loaded(
+TILEDB_EXPORT capi_return_t tiledb_array_schema_get_enumeration_from_name(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    const char* name,
+    const char* enumeration_name,
+    tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves an enumeration from an array schema from the attribute with the
+ * given name.
+ *
+ * **Example:**
+ *
+ * The following retrieves the enumeration for the attribute named "states" in
+ * the schema.
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enmr;
+ * tiledb_array_schema_get_enumeration_from_attribute_name(ctx,
+ *         array_schema, "states", &enmr);
+ * tiledb_attribute_free(&enmr);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_schema The array schema.
+ * @param[in] name The name of the attribute whose to retrieve.
+ * @param[out] enmr The enumeration object to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t
+tiledb_array_schema_get_enumeration_from_attribute_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* attribute_name,
     tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
 
 /**

@@ -32,6 +32,7 @@
 #include <test/support/tdb_catch.h>
 #include "../../../c_api_test_support/testsupport_capi_array_schema.h"
 #include "../../../c_api_test_support/testsupport_capi_context.h"
+#include "../../attribute/attribute_api_external_experimental.h"
 #include "../array_schema_api_experimental.h"
 #include "../array_schema_api_external.h"
 #include "../array_schema_api_internal.h"
@@ -362,28 +363,28 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C API: tiledb_array_schema_get_enumeration argument validation",
+    "C API: tiledb_array_schema_get_enumeration_from_name argument validation",
     "[capi][array_schema]") {
   capi_return_t rc;
   ordinary_array_schema x{};
   tiledb_enumeration_t* enumeration;
   SECTION("null context") {
-    rc = tiledb_array_schema_get_enumeration_if_loaded(
+    rc = tiledb_array_schema_get_enumeration_from_name(
         nullptr, x.schema, "primes", &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null schema") {
-    rc = tiledb_array_schema_get_enumeration_if_loaded(
+    rc = tiledb_array_schema_get_enumeration_from_name(
         x.ctx(), nullptr, "primes", &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null name") {
-    rc = tiledb_array_schema_get_enumeration_if_loaded(
+    rc = tiledb_array_schema_get_enumeration_from_name(
         x.ctx(), x.schema, nullptr, &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null enumeration") {
-    rc = tiledb_array_schema_get_enumeration_if_loaded(
+    rc = tiledb_array_schema_get_enumeration_from_name(
         x.ctx(), x.schema, "primes", nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
@@ -406,8 +407,87 @@ TEST_CASE(
     REQUIRE_NOTHROW(tiledb_enumeration_free(&enumeration));
     CHECK(enumeration == nullptr);
 
-    rc = tiledb_array_schema_get_enumeration_if_loaded(
+    rc = tiledb_array_schema_get_enumeration_from_name(
         x.ctx(), x.schema, "primes", &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(enumeration != nullptr);
+
+    tiledb_string_t* tiledb_name(nullptr);
+    rc = tiledb_enumeration_get_name(x.ctx(), enumeration, &tiledb_name);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(tiledb_name != nullptr);
+
+    const char* name;
+    size_t length;
+    rc = tiledb_string_view(tiledb_name, &name, &length);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(std::string(name, length) == "primes");
+  }
+}
+
+TEST_CASE(
+    "C API: tiledb_array_schema_get_enumeration_from_attribute_name argument "
+    "validation",
+    "[capi][array_schema]") {
+  capi_return_t rc;
+  ordinary_array_schema_with_attr x{};
+  tiledb_enumeration_t* enumeration;
+  SECTION("null context") {
+    rc = tiledb_array_schema_get_enumeration_from_attribute_name(
+        nullptr, x.schema, "a", &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
+  }
+  SECTION("null schema") {
+    rc = tiledb_array_schema_get_enumeration_from_attribute_name(
+        x.ctx(), nullptr, "a", &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null name") {
+    rc = tiledb_array_schema_get_enumeration_from_attribute_name(
+        x.ctx(), x.schema, nullptr, &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null enumeration") {
+    rc = tiledb_array_schema_get_enumeration_from_attribute_name(
+        x.ctx(), x.schema, "a", nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("invalid attribute") {
+    rc = tiledb_array_schema_get_enumeration_from_attribute_name(
+        x.ctx(), x.schema, "foobar", nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("success") {
+    // create and add enumeration to schema
+    int32_t values[5] = {2, 3, 5, 7, 11};
+    rc = tiledb_enumeration_alloc(
+        x.ctx(),
+        "primes",
+        TILEDB_UINT32,
+        1,
+        0,
+        values,
+        sizeof(uint32_t) * 5,
+        nullptr,
+        0,
+        &enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    rc = tiledb_array_schema_add_enumeration(x.ctx(), x.schema, enumeration);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE_NOTHROW(tiledb_enumeration_free(&enumeration));
+    CHECK(enumeration == nullptr);
+
+    // add enumeration to the attribute
+    tiledb_attribute_t* attribute;
+    rc = tiledb_array_schema_get_attribute_from_name(
+        x.ctx(), x.schema, "a", &attribute);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    rc = tiledb_attribute_set_enumeration_name(x.ctx(), attribute, "primes");
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+    // then retrieve the enumeration using attribute name
+    rc = tiledb_array_schema_get_enumeration_from_attribute_name(
+        x.ctx(), x.schema, "a", &enumeration);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE(enumeration != nullptr);
 
