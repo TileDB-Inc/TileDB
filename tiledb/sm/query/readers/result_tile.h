@@ -225,9 +225,11 @@ class ResultTile {
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
     TileData(
-        std::tuple<void*, shared_ptr<ThreadPool::Task>> fixed_filtered_data,
-        std::tuple<void*, shared_ptr<ThreadPool::Task>> var_filtered_data,
-        std::tuple<void*, shared_ptr<ThreadPool::Task>> validity_filtered_data)
+        std::tuple<void*, shared_ptr<ThreadPool::SharedTask>>
+            fixed_filtered_data,
+        std::tuple<void*, shared_ptr<ThreadPool::SharedTask>> var_filtered_data,
+        std::tuple<void*, shared_ptr<ThreadPool::SharedTask>>
+            validity_filtered_data)
         : fixed_filtered_data_(std::get<0>(fixed_filtered_data))
         , var_filtered_data_(std::get<0>(var_filtered_data))
         , validity_filtered_data_(std::get<0>(validity_filtered_data))
@@ -256,17 +258,18 @@ class ResultTile {
     }
 
     /** @return The fixed filtered data I/O task. */
-    inline shared_ptr<ThreadPool::Task> fixed_filtered_data_task() const {
+    inline shared_ptr<ThreadPool::SharedTask> fixed_filtered_data_task() const {
       return fixed_filtered_data_task_;
     }
 
     /** @return The var filtered data I/O task. */
-    inline shared_ptr<ThreadPool::Task> var_filtered_data_task() const {
+    inline shared_ptr<ThreadPool::SharedTask> var_filtered_data_task() const {
       return var_filtered_data_task_;
     }
 
     /** @return The validity filtered data I/O task. */
-    inline shared_ptr<ThreadPool::Task> validity_filtered_data_task() const {
+    inline shared_ptr<ThreadPool::SharedTask> validity_filtered_data_task()
+        const {
       return validity_filtered_data_task_;
     }
 
@@ -285,13 +288,13 @@ class ResultTile {
     void* validity_filtered_data_;
 
     /** Stores the fixed filtered data I/O task. */
-    shared_ptr<ThreadPool::Task> fixed_filtered_data_task_;
+    shared_ptr<ThreadPool::SharedTask> fixed_filtered_data_task_;
 
     /** Stores the var filtered data I/O task. */
-    shared_ptr<ThreadPool::Task> var_filtered_data_task_;
+    shared_ptr<ThreadPool::SharedTask> var_filtered_data_task_;
 
     /** Stores the validity filtered data I/O task. */
-    shared_ptr<ThreadPool::Task> validity_filtered_data_task_;
+    shared_ptr<ThreadPool::SharedTask> validity_filtered_data_task_;
   };
 
   /**
