@@ -107,11 +107,10 @@ jobs:
           yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
           python3.9 -m pip install ninja
+          echo "/opt/_internal/cpython-3.9.20/bin" >> $GITHUB_PATH
+          echo "VCPKG_FORCE_SYSTEM_BINARIES=YES" >> $GITHUB_ENV
       - name: Configure TileDB
-        env: 
-          VCPKG_FORCE_SYSTEM_BINARIES: ${{ startsWith(matrix.platform, 'linux-aarch64') && 'YES' || 'NO' }}
         run: |
-          export PATH=$PATH:/opt/_internal/cpython-3.9.20/bin
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=ON \
