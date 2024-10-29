@@ -57,8 +57,6 @@
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/type/apply_with_type.h"
 
@@ -1131,56 +1129,6 @@ const std::string& ArraySchema::get_enumeration_path_name(
   }
 
   return iter->second;
-}
-
-void ArraySchema::load_enumeration(Context& ctx, const std::string& enmr_name) {
-  if (is_enumeration_loaded(enmr_name)) {
-    return;
-  } else if (array_uri().is_tiledb()) {
-    auto rest_client = ctx.resources().rest_client();
-    if (rest_client == nullptr) {
-      throw ArraySchemaException(
-          "Error loading enumerations; Remote array schema with no REST "
-          "client.");
-    }
-
-    auto ret = rest_client->post_enumerations_from_rest(
-        array_uri(),
-        timestamp_start(),
-        timestamp_end(),
-        ctx.resources().config(),
-        *this,
-        {enmr_name},
-        memory_tracker_);
-
-    // response is a map {schema: [enumerations]}
-    // we should be the only schema, and expect only one enumeration
-    for (auto enumeration : ret[name()]) {
-      enumeration_map_[enumeration->name()] = enumeration;
-      enumeration_path_map_[enumeration->name()] = enumeration->path_name();
-    }
-  } else {
-    auto& path = get_enumeration_path_name(enmr_name);
-
-    // Create key
-    tiledb::sm::EncryptionKey key;
-    throw_if_not_ok(
-        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
-
-    // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir(
-        ctx.resources(),
-        array_uri(),
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-
-    auto tracker = ctx.resources().ephemeral_memory_tracker();
-    auto enumeration = array_dir.load_enumeration(path, key, tracker);
-
-    enumeration_map_[enumeration->name()] = enumeration;
-    enumeration_path_map_[enumeration->name()] = enumeration->path_name();
-  }
 }
 
 void ArraySchema::drop_enumeration(const std::string& enmr_name) {

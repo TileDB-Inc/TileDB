@@ -38,6 +38,7 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
+#include "tiledb/sm/array/array_operations.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
@@ -91,8 +92,9 @@ struct tiledb_array_schema_handle_t
         dim_id, name, label_order, label_type, check_name);
   }
 
-  void load_enumeration(tiledb_ctx_t* ctx, const char* name) {
-    return array_schema_->load_enumeration(ctx->context(), name);
+  void load_enumeration(tiledb_ctx_t* ctx, const char* enumeration_name) {
+    load_enumeration_into_schema(
+        ctx->context(), enumeration_name, *array_schema_);
   }
 
   shared_ptr<const tiledb::sm::Enumeration> get_enumeration(
