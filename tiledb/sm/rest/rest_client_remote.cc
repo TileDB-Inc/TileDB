@@ -220,10 +220,13 @@ RestClientRemote::get_array_schema_from_rest(const URI& uri) {
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK_TUPLE(
       ensure_json_null_delimited_string(&returned_data), nullopt);
-  return {
-      Status::Ok(),
-      serialization::array_schema_deserialize(
-          serialization_type_, returned_data, memory_tracker_)};
+
+  auto array_schema = serialization::array_schema_deserialize(
+      serialization_type_, returned_data, memory_tracker_);
+
+  array_schema->set_array_uri(uri);
+
+  return {Status::Ok(), array_schema};
 }
 
 std::tuple<

@@ -1155,7 +1155,7 @@ void ArraySchema::load_enumeration(Context& ctx, const std::string& enmr_name) {
 
     // response is a map {schema: [enumerations]}
     // we should be the only schema, and expect only one enumeration
-    for (auto enumeration : ret.begin()->second) {
+    for (auto enumeration : ret[name()]) {
       enumeration_map_[enumeration->name()] = enumeration;
       enumeration_path_map_[enumeration->name()] = enumeration->path_name();
     }
