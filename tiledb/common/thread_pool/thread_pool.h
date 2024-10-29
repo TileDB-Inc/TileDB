@@ -48,6 +48,7 @@ namespace tiledb::common {
 class ThreadPool {
  public:
   using Task = std::future<Status>;
+  using SharedTask = std::shared_future<Status>;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
