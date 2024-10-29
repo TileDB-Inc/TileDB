@@ -99,8 +99,9 @@ class TileBase {
     return size() / sizeof(T);
   }
 
-  /** Returns the internal buffer. */
-  inline void* data() const {
+  virtual /** Returns the internal buffer. */
+      inline void*
+      data() const {
     return data_.get();
   }
 
@@ -204,7 +205,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       shared_ptr<MemoryTracker> memory_tracker,
-      shared_ptr<ThreadPool::Task> filtered_data_io_task);
+      shared_ptr<ThreadPool::SharedTask> filtered_data_io_task);
 
   /**
    * Constructor.
@@ -229,7 +230,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       tdb::pmr::memory_resource* resource,
-      shared_ptr<ThreadPool::Task> filtered_data_io_task);
+      shared_ptr<ThreadPool::SharedTask> filtered_data_io_task);
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
@@ -262,6 +263,7 @@ class Tile : public TileBase {
     if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
       filtered_data_io_task_->wait();
       throw_if_not_ok(filtered_data_io_task_->get());
+      filtered_data_io_task_ = nullptr;
     }
     return static_cast<char*>(filtered_data_);
   }
@@ -272,8 +274,32 @@ class Tile : public TileBase {
     if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
       filtered_data_io_task_->wait();
       throw_if_not_ok(filtered_data_io_task_->get());
+      filtered_data_io_task_ = nullptr;
     }
     return static_cast<T*>(filtered_data_);
+  }
+
+  /** Converts the data pointer to a specific type. */
+  template <class T>
+  inline T* data_as() const {
+    if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
+      filtered_data_io_task_->wait();
+      throw_if_not_ok(filtered_data_io_task_->get());
+      filtered_data_io_task_ = nullptr;
+    }
+
+    return static_cast<T*>(data());
+  }
+
+  /** Returns the internal buffer. */
+  inline void* data() const override {
+    if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
+      filtered_data_io_task_->wait();
+      throw_if_not_ok(filtered_data_io_task_->get());
+      filtered_data_io_task_ = nullptr;
+    }
+
+    return data_.get();
   }
 
   /** Clears the filtered buffer. */
@@ -369,7 +395,7 @@ class Tile : public TileBase {
   uint64_t filtered_size_;
 
   /** I/O task to check and block on if filtered data is ready. */
-  shared_ptr<ThreadPool::Task> filtered_data_io_task_;
+  mutable shared_ptr<ThreadPool::SharedTask> filtered_data_io_task_;
 };
 
 /**

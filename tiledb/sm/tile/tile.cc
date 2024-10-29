@@ -136,7 +136,7 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     shared_ptr<MemoryTracker> memory_tracker,
-    shared_ptr<ThreadPool::Task> data_io_task)
+    shared_ptr<ThreadPool::SharedTask> data_io_task)
     : Tile(
           format_version,
           type,
@@ -158,7 +158,7 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     tdb::pmr::memory_resource* resource,
-    shared_ptr<ThreadPool::Task> filtered_data_io_task)
+    shared_ptr<ThreadPool::SharedTask> filtered_data_io_task)
     : TileBase(format_version, type, cell_size, size, resource)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
@@ -290,6 +290,7 @@ uint64_t Tile::load_chunk_data(
   if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
     filtered_data_io_task_->wait();
     throw_if_not_ok(filtered_data_io_task_->get());
+    filtered_data_io_task_ = nullptr;
   }
 
   Deserializer deserializer(filtered_data(), filtered_size());
