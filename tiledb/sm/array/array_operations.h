@@ -60,17 +60,6 @@ tuple<std::vector<QueryCondition>, std::vector<std::vector<UpdateValue>>>
 load_delete_and_update_conditions(
     ContextResources& resources, const OpenedArray& opened_array);
 
-/**
- * Loads an enumeration into a schema.
- * Used to implement `tiledb_array_schema_get_enumeration*` APIs.
- *
- * @param ctx
- * @param enmr_name the requested enumeration
- * @param schema the target schema
- */
-void load_enumeration_into_schema(
-    Context& ctx, const std::string& enmr_name, ArraySchema& array_schema);
-
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_OPERATIONS_H

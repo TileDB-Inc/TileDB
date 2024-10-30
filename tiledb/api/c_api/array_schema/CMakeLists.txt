@@ -37,6 +37,7 @@ commence(object_library capi_array_schema_stub)
   this_target_link_libraries(export)
   this_target_object_libraries(array_schema)
   this_target_object_libraries(array)
+  this_target_object_libraries(capi_attribute_stub)
   this_target_object_libraries(capi_context_stub)
 conclude(object_library)
 

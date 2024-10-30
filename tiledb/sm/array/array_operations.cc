@@ -52,7 +52,6 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
 namespace tiledb::sm {
@@ -120,58 +119,6 @@ load_delete_and_update_conditions(
   throw_if_not_ok(status);
 
   return {conditions, update_values};
-}
-
-void load_enumeration_into_schema(
-    Context& ctx, const std::string& enmr_name, ArraySchema& array_schema) {
-  if (array_schema.is_enumeration_loaded(enmr_name)) {
-    return;
-  }
-
-  auto tracker = ctx.resources().ephemeral_memory_tracker();
-
-  if (array_schema.array_uri().is_tiledb()) {
-    auto rest_client = ctx.resources().rest_client();
-    if (rest_client == nullptr) {
-      throw ArrayOperationsException(
-          "Error loading enumerations; Remote array schema with no REST "
-          "client.");
-    }
-
-    auto ret = rest_client->post_enumerations_from_rest(
-        array_schema.array_uri(),
-        array_schema.timestamp_start(),
-        array_schema.timestamp_end(),
-        ctx.resources().config(),
-        array_schema,
-        {enmr_name},
-        tracker);
-
-    // response is a map {schema: [enumerations]}
-    // we should be the only schema, and expect only one enumeration
-    for (auto enumeration : ret[array_schema.name()]) {
-      array_schema.store_enumeration(enumeration);
-    }
-  } else {
-    auto& path = array_schema.get_enumeration_path_name(enmr_name);
-
-    // Create key
-    tiledb::sm::EncryptionKey key;
-    throw_if_not_ok(
-        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
-
-    // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir(
-        ctx.resources(),
-        array_schema.array_uri(),
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-
-    auto enumeration = array_dir.load_enumeration(path, key, tracker);
-
-    array_schema.store_enumeration(enumeration);
-  }
 }
 
 }  // namespace tiledb::sm

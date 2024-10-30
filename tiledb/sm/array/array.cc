@@ -56,6 +56,7 @@
 #include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <cassert>
@@ -2070,6 +2071,61 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
         "Cannot open array for reads; Array format version (" +
         std::to_string(version) + ") is newer than library format version (" +
         std::to_string(constants::format_version) + ")");
+  }
+}
+
+// NB: this is used to implement `tiledb_array_schema_get_enumeration_*`
+// but is defined here instead of array_schema to avoid a circular dependency
+// (array_directory depends on array_schema).
+void load_enumeration_into_schema(
+    Context& ctx, const std::string& enmr_name, ArraySchema& array_schema) {
+  if (array_schema.is_enumeration_loaded(enmr_name)) {
+    return;
+  }
+
+  auto tracker = ctx.resources().ephemeral_memory_tracker();
+
+  if (array_schema.array_uri().is_tiledb()) {
+    auto rest_client = ctx.resources().rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException(
+          "Error loading enumerations; Remote array schema with no REST "
+          "client.");
+    }
+
+    auto ret = rest_client->post_enumerations_from_rest(
+        array_schema.array_uri(),
+        array_schema.timestamp_start(),
+        array_schema.timestamp_end(),
+        ctx.resources().config(),
+        array_schema,
+        {enmr_name},
+        tracker);
+
+    // response is a map {schema: [enumerations]}
+    // we should be the only schema, and expect only one enumeration
+    for (auto enumeration : ret[array_schema.name()]) {
+      array_schema.store_enumeration(enumeration);
+    }
+  } else {
+    auto& path = array_schema.get_enumeration_path_name(enmr_name);
+
+    // Create key
+    tiledb::sm::EncryptionKey key;
+    throw_if_not_ok(
+        key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
+
+    // Load URIs from the array directory
+    tiledb::sm::ArrayDirectory array_dir(
+        ctx.resources(),
+        array_schema.array_uri(),
+        0,
+        UINT64_MAX,
+        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+
+    auto enumeration = array_dir.load_enumeration(path, key, tracker);
+
+    array_schema.store_enumeration(enumeration);
   }
 }
 
