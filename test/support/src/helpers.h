@@ -861,7 +861,7 @@ class CommitsDirectory : public FileCount {
              tiledb::sm::constants::delete_file_suffix,
              tiledb::sm::constants::update_file_suffix,
              tiledb::sm::constants::con_commits_file_suffix,
-             tiledb::sm::constants::ignore_file_suffix}) {};
+             tiledb::sm::constants::ignore_file_suffix}){};
   ~CommitsDirectory() = default;
 };
 

@@ -154,16 +154,27 @@ TEST_CASE_METHOD(
     "Array - Load All Enumerations - All Schemas",
     "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
   uri_ = vfs_test_setup_.array_uri("load_enmrs_all_schemas");
+  auto config = vfs_test_setup_.ctx().config();
+  bool load_enmrs = GENERATE(true, false);
+  config["rest.load_enumerations_on_array_open"] =
+      load_enmrs ? "true" : "false";
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+
   create_array(uri_);
   Array opened_array(ctx_, uri_, TILEDB_READ);
   auto array = opened_array.ptr()->array();
   auto schema = array->array_schema_latest_ptr();
-  REQUIRE(schema->is_enumeration_loaded("my_enum") == false);
-  REQUIRE(schema->is_enumeration_loaded("fruit") == false);
+  REQUIRE(schema->is_enumeration_loaded("my_enum") == load_enmrs);
+  REQUIRE(schema->is_enumeration_loaded("fruit") == load_enmrs);
 
+  // If enumerations were loaded on array open this will not submit an
+  // additional request.
   auto actual_enmrs = array->get_enumerations_all_schemas();
-  REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
-  REQUIRE(schema->is_enumeration_loaded("fruit") == true);
+  if (!load_enmrs) {
+    REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
+    REQUIRE(schema->is_enumeration_loaded("fruit") == true);
+  }
 
   // Fetch enumerations created in the initial array schema for validation.
   auto enmr1 = array->get_enumeration("my_enum");
@@ -207,8 +218,17 @@ TEST_CASE_METHOD(
   CHECK(array->reopen().ok());
   schema = array->array_schema_latest_ptr();
   std::string schema_name_2 = schema->name();
+  REQUIRE(schema->is_enumeration_loaded("my_enum") == load_enmrs);
+  REQUIRE(schema->is_enumeration_loaded("fruit") == load_enmrs);
+  REQUIRE(schema->is_enumeration_loaded("ase_var_enmr") == load_enmrs);
+
   expected_enmrs[schema_name_2] = {enmr1, enmr2, var_enmr.ptr()->enumeration()};
   actual_enmrs = array->get_enumerations_all_schemas();
+  if (!load_enmrs) {
+    REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
+    REQUIRE(schema->is_enumeration_loaded("fruit") == true);
+    REQUIRE(schema->is_enumeration_loaded("ase_var_enmr") == true);
+  }
   validate_enmrs();
 
   // Evolve a second time to drop an enumeration.
@@ -222,14 +242,28 @@ TEST_CASE_METHOD(
   CHECK(array->reopen().ok());
   schema = array->array_schema_latest_ptr();
   std::string schema_name_3 = schema->name();
+  REQUIRE_THROWS_WITH(
+      schema->is_enumeration_loaded("my_enum"),
+      Catch::Matchers::ContainsSubstring("unknown enumeration"));
+  REQUIRE(schema->is_enumeration_loaded("fruit") == load_enmrs);
+  REQUIRE(schema->is_enumeration_loaded("ase_var_enmr") == load_enmrs);
+
   expected_enmrs[schema_name_3] = {enmr2, var_enmr.ptr()->enumeration()};
   actual_enmrs = array->get_enumerations_all_schemas();
+  if (!load_enmrs) {
+    REQUIRE_THROWS_WITH(
+        schema->is_enumeration_loaded("my_enum"),
+        Catch::Matchers::ContainsSubstring("unknown enumeration"));
+    REQUIRE(schema->is_enumeration_loaded("fruit") == true);
+    REQUIRE(schema->is_enumeration_loaded("ase_var_enmr") == true);
+  }
+
   validate_enmrs();
 }
 
 RESTEnumerationFx::RESTEnumerationFx()
     : memory_tracker_(tiledb::test::create_test_memory_tracker())
-    , ctx_(vfs_test_setup_.ctx()) {};
+    , ctx_(vfs_test_setup_.ctx()){};
 
 void RESTEnumerationFx::create_array(const std::string& array_name) {
   // Create a simple array for testing. This ends up with just five elements in
