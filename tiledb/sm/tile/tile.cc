@@ -72,7 +72,7 @@ shared_ptr<Tile> Tile::from_generic(
       nullptr,
       0,
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
-      nullptr);
+      ThreadPool::SharedTask());
 }
 
 shared_ptr<WriterTile> WriterTile::from_generic(
@@ -136,7 +136,7 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     shared_ptr<MemoryTracker> memory_tracker,
-    shared_ptr<ThreadPool::SharedTask> data_io_task)
+    ThreadPool::SharedTask data_io_task)
     : Tile(
           format_version,
           type,
@@ -158,7 +158,7 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     tdb::pmr::memory_resource* resource,
-    shared_ptr<ThreadPool::SharedTask> filtered_data_io_task)
+    ThreadPool::SharedTask filtered_data_io_task)
     : TileBase(format_version, type, cell_size, size, resource)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
@@ -197,11 +197,9 @@ WriterTile::WriterTile(
 
 void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
-  if (unfilter_data_compute_task_ != nullptr &&
-      unfilter_data_compute_task_->valid()) {
-    unfilter_data_compute_task_->wait();
-    throw_if_not_ok(unfilter_data_compute_task_->get());
-    unfilter_data_compute_task_ = nullptr;
+  if (unfilter_data_compute_task_.valid()) {
+    unfilter_data_compute_task_.wait();
+    throw_if_not_ok(unfilter_data_compute_task_.get());
   }
 
   if (nbytes > size_ - offset) {
@@ -222,11 +220,9 @@ void TileBase::write(const void* data, uint64_t offset, uint64_t nbytes) {
 void Tile::zip_coordinates() {
   assert(zipped_coords_dim_num_ > 0);
 
-  if (unfilter_data_compute_task_ != nullptr &&
-      unfilter_data_compute_task_->valid()) {
-    unfilter_data_compute_task_->wait();
-    throw_if_not_ok(unfilter_data_compute_task_->get());
-    unfilter_data_compute_task_ = nullptr;
+  if (unfilter_data_compute_task_.valid()) {
+    unfilter_data_compute_task_.wait();
+    throw_if_not_ok(unfilter_data_compute_task_.get());
   }
 
   // For easy reference
@@ -273,8 +269,8 @@ void WriterTile::clear_data() {
 }
 
 void Tile::set_unfilter_data_compute_task(
-    shared_ptr<ThreadPool::SharedTask> unfilter_data_compute_task) {
-  unfilter_data_compute_task_ = unfilter_data_compute_task;
+    ThreadPool::SharedTask unfilter_data_compute_task) {
+  unfilter_data_compute_task_ = std::move(unfilter_data_compute_task);
 }
 
 void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
@@ -306,10 +302,9 @@ uint64_t Tile::load_chunk_data(
     ChunkData& unfiltered_tile, uint64_t expected_original_size) {
   assert(filtered());
 
-  if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
-    filtered_data_io_task_->wait();
-    throw_if_not_ok(filtered_data_io_task_->get());
-    filtered_data_io_task_ = nullptr;
+  if (filtered_data_io_task_.valid()) {
+    filtered_data_io_task_.wait();
+    throw_if_not_ok(filtered_data_io_task_.get());
   }
 
   Deserializer deserializer(filtered_data(), filtered_size());
