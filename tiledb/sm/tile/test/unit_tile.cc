@@ -58,7 +58,7 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
       nullptr,
       0,
       tracker,
-      nullptr);
+      ThreadPool::SharedTask());
   CHECK(tile.size() == tile_size);
 
   // Create a buffer to write to the test Tile.

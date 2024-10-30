@@ -90,11 +90,9 @@ class TileBase {
   /** Converts the data pointer to a specific type. */
   template <class T>
   inline T* data_as() const {
-    if (unfilter_data_compute_task_ != nullptr &&
-        unfilter_data_compute_task_->valid()) {
-      unfilter_data_compute_task_->wait();
-      throw_if_not_ok(unfilter_data_compute_task_->get());
-      unfilter_data_compute_task_ = nullptr;
+    if (unfilter_data_compute_task_.valid()) {
+      unfilter_data_compute_task_.wait();
+      throw_if_not_ok(unfilter_data_compute_task_.get());
     }
 
     return static_cast<T*>(data());
@@ -108,11 +106,9 @@ class TileBase {
 
   /** Returns the internal buffer. */
   inline void* data() const {
-    if (unfilter_data_compute_task_ != nullptr &&
-        unfilter_data_compute_task_->valid()) {
-      unfilter_data_compute_task_->wait();
-      throw_if_not_ok(unfilter_data_compute_task_->get());
-      unfilter_data_compute_task_ = nullptr;
+    if (unfilter_data_compute_task_.valid()) {
+      unfilter_data_compute_task_.wait();
+      throw_if_not_ok(unfilter_data_compute_task_.get());
     }
 
     return data_.get();
@@ -177,7 +173,7 @@ class TileBase {
   Datatype type_;
 
   /** Compute task to check and block on if unfiltered data is ready. */
-  mutable shared_ptr<ThreadPool::SharedTask> unfilter_data_compute_task_;
+  mutable ThreadPool::SharedTask unfilter_data_compute_task_;
 };
 
 /**
@@ -221,7 +217,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       shared_ptr<MemoryTracker> memory_tracker,
-      shared_ptr<ThreadPool::SharedTask> filtered_data_io_task);
+      ThreadPool::SharedTask filtered_data_io_task);
 
   /**
    * Constructor.
@@ -246,7 +242,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       tdb::pmr::memory_resource* resource,
-      shared_ptr<ThreadPool::SharedTask> filtered_data_io_task);
+      ThreadPool::SharedTask filtered_data_io_task);
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
@@ -276,10 +272,9 @@ class Tile : public TileBase {
 
   /** Returns the buffer that contains the filtered, on-disk format. */
   inline char* filtered_data() {
-    if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
-      filtered_data_io_task_->wait();
-      throw_if_not_ok(filtered_data_io_task_->get());
-      filtered_data_io_task_ = nullptr;
+    if (filtered_data_io_task_.valid()) {
+      filtered_data_io_task_.wait();
+      throw_if_not_ok(filtered_data_io_task_.get());
     }
     return static_cast<char*>(filtered_data_);
   }
@@ -287,10 +282,9 @@ class Tile : public TileBase {
   /** Returns the data casted as a type. */
   template <class T>
   inline T* filtered_data_as() {
-    if (filtered_data_io_task_ != nullptr && filtered_data_io_task_->valid()) {
-      filtered_data_io_task_->wait();
-      throw_if_not_ok(filtered_data_io_task_->get());
-      filtered_data_io_task_ = nullptr;
+    if (filtered_data_io_task_.valid()) {
+      filtered_data_io_task_.wait();
+      throw_if_not_ok(filtered_data_io_task_.get());
     }
     return static_cast<T*>(filtered_data_);
   }
@@ -299,7 +293,6 @@ class Tile : public TileBase {
   void clear_filtered_buffer() {
     filtered_data_ = nullptr;
     filtered_size_ = 0;
-    filtered_data_io_task_ = nullptr;
   }
 
   /**
@@ -338,7 +331,7 @@ class Tile : public TileBase {
    * @param unfilter_data_compute_task task for unfiltering
    */
   void set_unfilter_data_compute_task(
-      shared_ptr<ThreadPool::SharedTask> unfilter_data_compute_task);
+      ThreadPool::SharedTask unfilter_data_compute_task);
 
  private:
   /* ********************************* */
@@ -397,7 +390,7 @@ class Tile : public TileBase {
   uint64_t filtered_size_;
 
   /** I/O task to check and block on if filtered data is ready. */
-  mutable shared_ptr<ThreadPool::SharedTask> filtered_data_io_task_;
+  mutable ThreadPool::SharedTask filtered_data_io_task_;
 };
 
 /**

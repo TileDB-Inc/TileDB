@@ -747,8 +747,8 @@ std::list<FilteredData> ReaderBase::read_tiles(
       // 'TileData' objects should be returned by this function and passed into
       // 'unfilter_tiles' so that the filter pipeline can stop using the
       // 'ResultTile' object to get access to the filtered data.
-      std::tuple<void*, shared_ptr<ThreadPool::SharedTask>> n = {
-          nullptr, nullptr};
+      std::tuple<void*, ThreadPool::SharedTask> n = {
+          nullptr, ThreadPool::SharedTask()};
       ResultTile::TileData tile_data{
           val_only ?
               n :
@@ -936,8 +936,7 @@ Status ReaderBase::unfilter_tiles(
   std::vector<uint64_t> unfiltered_tile_validity_size(num_tiles);
 
   for (size_t i = 0; i < num_tiles; i++) {
-    auto task = resources_.compute_tp().execute([&, this]() {
-      auto range_thread_idx = i % num_threads;
+    ThreadPool::SharedTask task = resources_.compute_tp().execute([&, this]() {
       auto&& [st, tile_size, tile_var_size, tile_validity_size] =
           load_tile_chunk_data(
               name,
@@ -956,18 +955,25 @@ Status ReaderBase::unfilter_tiles(
       if (tile_size.value() == 0)
         return Status::Ok();
 
-      throw_if_not_ok(unfilter_tile(
-          name,
-          validity_only,
-          result_tiles[i],
-          var_size,
-          nullable,
-          range_thread_idx,
-          num_range_threads,
-          tiles_chunk_data[i],
-          tiles_chunk_var_data[i],
-          tiles_chunk_validity_data[i]));
-      return Status::Ok();
+      for (uint64_t range_thread_idx = 0; range_thread_idx < num_threads;
+           range_thread_idx++) {
+        throw_if_not_ok(unfilter_tile(
+            name,
+            validity_only,
+            result_tiles[i],
+            var_size,
+            nullable,
+            range_thread_idx,
+            num_range_threads,
+            tiles_chunk_data[i],
+            tiles_chunk_var_data[i],
+            tiles_chunk_validity_data[i]));
+      }
+
+      // Perform required post-processing of unfiltered tiles
+      throw_if_not_ok(post_process_unfiltered_tile(
+          name, validity_only, result_tiles[i], var_size, nullable));
+      return Status ::Ok();
     });
     if (skip_field(result_tiles[i]->frag_idx(), name)) {
       task.wait();
@@ -975,23 +981,16 @@ Status ReaderBase::unfilter_tiles(
     }
     // Store as a shared_ptr so we can move lifetimes around
     // This should be changes once we use taskgraphs for modeling the data flow
-    shared_ptr<ThreadPool::SharedTask> task_ptr =
-        make_shared<ThreadPool::SharedTask>(std::move(task));
-
     auto tile_tuple = result_tiles[i]->tile_tuple(name);
-    tile_tuple->fixed_tile().set_unfilter_data_compute_task(task_ptr);
+    tile_tuple->fixed_tile().set_unfilter_data_compute_task(task);
 
     if (var_size) {
-      tile_tuple->var_tile().set_unfilter_data_compute_task(task_ptr);
+      tile_tuple->var_tile().set_unfilter_data_compute_task(task);
     }
 
     if (nullable) {
-      tile_tuple->validity_tile().set_unfilter_data_compute_task(task_ptr);
+      tile_tuple->validity_tile().set_unfilter_data_compute_task(task);
     }
-
-    // Perform required post-processing of unfiltered tiles
-    throw_if_not_ok(post_process_unfiltered_tile(
-        name, validity_only, result_tiles[i], var_size, nullable));
   }
 
   return Status::Ok();
