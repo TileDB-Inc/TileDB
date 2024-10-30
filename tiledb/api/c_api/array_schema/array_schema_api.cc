@@ -414,6 +414,10 @@ capi_return_t tiledb_array_schema_get_attribute_from_name(
   ensure_array_schema_is_valid(array_schema);
   ensure_output_pointer_is_valid(attr);
 
+  if (name == nullptr) {
+    throw CAPIException("'attribute_name' must not be null");
+  }
+
   uint32_t attribute_num = array_schema->attribute_num();
   if (attribute_num == 0) {
     *attr = nullptr;

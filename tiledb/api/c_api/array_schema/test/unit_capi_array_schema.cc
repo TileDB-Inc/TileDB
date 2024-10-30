@@ -902,6 +902,11 @@ TEST_CASE(
         x.ctx(), nullptr, "a", &attr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
+  SECTION("null name") {
+    rc = tiledb_array_schema_get_attribute_from_name(
+        x.ctx(), x.schema, nullptr, &attr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
   SECTION("invalid name") {
     rc = tiledb_array_schema_get_attribute_from_name(
         x.ctx(), x.schema, "b", &attr);
