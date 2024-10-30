@@ -51,7 +51,6 @@ namespace tiledb::sm {
 class Attribute;
 class Buffer;
 class ConstBuffer;
-class Context;
 class Dimension;
 class DimensionLabel;
 class Domain;
@@ -454,14 +453,6 @@ class ArraySchema {
    */
   shared_ptr<const Enumeration> get_enumeration(
       const std::string& enmr_name) const;
-
-  /**
-   * Load an enumeration by name for subsequent retrieval.
-   * Throws if the enumeration is unknown.
-   *
-   * @param enmr_name The name of the Enumeration.
-   */
-  void load_enumeration(Context& context, const std::string& enmr_name);
 
   /**
    * Get an Enumeration's object name. Throws if the enumeration is unknown.

@@ -52,6 +52,7 @@ namespace tiledb::sm {
 
 class ArraySchema;
 class ArraySchemaEvolution;
+class Context;
 class FragmentMetadata;
 class MemoryTracker;
 enum class QueryType : uint8_t;
