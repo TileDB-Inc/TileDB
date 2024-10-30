@@ -978,6 +978,7 @@ bool shared_ptr_equiv(shared_ptr<T> a, shared_ptr<T> b) {
   }
   return a && b && *a == *b;
 }
+
 }  // namespace tiledb::test
 
 #endif

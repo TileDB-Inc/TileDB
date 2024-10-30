@@ -65,6 +65,13 @@ struct tiledb_enumeration_handle_t
   }
 
   /**
+   * Accessor for the underlying tiledb::sm::Enumeration.
+   */
+  shared_ptr<const tiledb::sm::Enumeration> enumeration() const {
+    return enumeration_;
+  }
+
+  /**
    * Copy the underlying enumeration object.
    */
   [[nodiscard]] shared_ptr<const tiledb::sm::Enumeration> copy() {

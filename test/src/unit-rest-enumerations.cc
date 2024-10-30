@@ -49,6 +49,7 @@ struct RESTEnumerationFx {
   void create_array(const std::string& array_name);
 
   tiledb::test::VFSTestSetup vfs_test_setup_;
+  shared_ptr<sm::MemoryTracker> memory_tracker_;
   std::string uri_;
   Context ctx_;
 };
@@ -151,24 +152,23 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Array - Load All Enumerations - All Schemas",
-    "[enumeration][array][load-all-enumerations][all-schemas]") {
+    "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
   uri_ = vfs_test_setup_.array_uri("load_enmrs_all_schemas");
   create_array(uri_);
   Array opened_array(ctx_, uri_, TILEDB_READ);
   auto array = opened_array.ptr()->array();
   auto schema = array->array_schema_latest_ptr();
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
+  REQUIRE(schema->is_enumeration_loaded("my_enum") == false);
+  REQUIRE(schema->is_enumeration_loaded("fruit") == false);
 
   auto actual_enmrs = array->get_enumerations_all_schemas();
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == true);
+  REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
+  REQUIRE(schema->is_enumeration_loaded("fruit") == true);
 
   // Fetch enumerations created in the initial array schema for validation.
-  auto enmr1 = array->get_enumeration("test_enmr");
-  auto enmr2 = array->get_enumeration("flintstones");
-  std::unordered_map<
-      std::string,
-      std::vector<shared_ptr<const tiledb::sm::Enumeration>>>
-      expected_enmrs{{schema->name(), {enmr1, enmr2}}};
+  auto enmr1 = array->get_enumeration("my_enum");
+  auto enmr2 = array->get_enumeration("fruit");
+  decltype(actual_enmrs) expected_enmrs{{schema->name(), {enmr1, enmr2}}};
   auto validate_enmrs = [&]() {
     for (const auto& [schema_name, enmrs] : expected_enmrs) {
       REQUIRE(actual_enmrs.contains(schema_name));
@@ -192,42 +192,44 @@ TEST_CASE_METHOD(
   }
 
   // Evolve once to add an enumeration.
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
+  sm::URI uri(uri_);
+  auto ase = make_shared<sm::ArraySchemaEvolution>(HERE(), memory_tracker_);
   std::vector<std::string> var_values{"one", "two", "three"};
-  auto var_enmr = create_enumeration(
-      var_values, false, Datatype::STRING_ASCII, "ase_var_enmr");
-  ase->add_enumeration(var_enmr);
-  auto attr4 = make_shared<Attribute>(HERE(), "attr4", Datatype::UINT16);
+  auto var_enmr = Enumeration::create(ctx_, "ase_var_enmr", var_values);
+  ase->add_enumeration(var_enmr.ptr()->enumeration());
+  auto attr4 =
+      make_shared<sm::Attribute>(HERE(), "attr4", sm::Datatype::UINT16);
   attr4->set_enumeration_name("ase_var_enmr");
   CHECK_NOTHROW(ase->evolve_schema(schema));
   // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(tiledb::sm::Array::evolve_array_schema(
-      ctx_.ptr()->resources(), uri_, ase.get(), array->get_encryption_key()));
+  CHECK_NOTHROW(sm::Array::evolve_array_schema(
+      ctx_.ptr()->resources(), uri, ase.get(), array->get_encryption_key()));
   CHECK(array->reopen().ok());
   schema = array->array_schema_latest_ptr();
   std::string schema_name_2 = schema->name();
-  expected_enmrs[schema_name_2] = {enmr1, enmr2, var_enmr};
+  expected_enmrs[schema_name_2] = {enmr1, enmr2, var_enmr.ptr()->enumeration()};
   actual_enmrs = array->get_enumerations_all_schemas();
   validate_enmrs();
 
   // Evolve a second time to drop an enumeration.
-  ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
-  ase->drop_enumeration("test_enmr");
+  ase = make_shared<sm::ArraySchemaEvolution>(HERE(), memory_tracker_);
+  ase->drop_enumeration("my_enum");
   ase->drop_attribute("attr1");
   CHECK_NOTHROW(ase->evolve_schema(schema));
   // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(tiledb::sm::Array::evolve_array_schema(
-      ctx_.ptr()->resources(), uri_, ase.get(), array->get_encryption_key()));
+  CHECK_NOTHROW(sm::Array::evolve_array_schema(
+      ctx_.ptr()->resources(), uri, ase.get(), array->get_encryption_key()));
   CHECK(array->reopen().ok());
   schema = array->array_schema_latest_ptr();
   std::string schema_name_3 = schema->name();
-  expected_enmrs[schema_name_3] = {enmr2, var_enmr};
+  expected_enmrs[schema_name_3] = {enmr2, var_enmr.ptr()->enumeration()};
   actual_enmrs = array->get_enumerations_all_schemas();
   validate_enmrs();
 }
 
 RESTEnumerationFx::RESTEnumerationFx()
-    : ctx_(vfs_test_setup_.ctx()) {};
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , ctx_(vfs_test_setup_.ctx()) {};
 
 void RESTEnumerationFx::create_array(const std::string& array_name) {
   // Create a simple array for testing. This ends up with just five elements in
