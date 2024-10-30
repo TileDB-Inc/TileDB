@@ -320,8 +320,6 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-get-enumeration-from-name][rest]") {
   create_array();
 
-  const std::string enmr_name = "an_enumeration";
-
   std::optional<Enumeration> expect_enumeration;
   {
     auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
@@ -367,7 +365,6 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-get-enumeration-from-attribute-name][rest]") {
   create_array();
 
-  const std::string enmr_name = "an_enumeration";
   const std::string attr_name = "attr1";
 
   std::optional<Enumeration> expect_enumeration;
