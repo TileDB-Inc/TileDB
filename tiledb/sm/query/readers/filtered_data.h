@@ -121,7 +121,7 @@ class FilteredDataBlock {
            offset + size <= offset_ + size_;
   }
 
-  void set_io_task(std::shared_ptr<ThreadPool::SharedTask> task) {
+  void set_io_task(shared_ptr<ThreadPool::SharedTask> task) {
     io_task_ = std::move(task);
   }
 
@@ -351,7 +351,7 @@ class FilteredData {
    * @param rt Result tile.
    * @return Var filtered data pointer.
    */
-  inline std::tuple<void*, std::shared_ptr<ThreadPool::SharedTask>>
+  inline std::tuple<void*, shared_ptr<ThreadPool::SharedTask>>
   var_filtered_data(const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!var_sized_) {
       return {nullptr, nullptr};
@@ -372,7 +372,7 @@ class FilteredData {
    * @param rt Result tile.
    * @return Nullable filtered data pointer.
    */
-  inline std::tuple<void*, std::shared_ptr<ThreadPool::SharedTask>>
+  inline std::tuple<void*, shared_ptr<ThreadPool::SharedTask>>
   nullable_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!nullable_) {
