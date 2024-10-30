@@ -121,7 +121,7 @@ shared_ptr<Tile> GenericTileIO::read_generic(
       filtered_data.data(),
       header.persisted_size,
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
-      nullptr);
+      std::nullopt);
 
   // Read the tile.
   throw_if_not_ok(resources_.vfs().read(

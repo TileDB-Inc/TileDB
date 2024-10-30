@@ -184,7 +184,9 @@ void set_result_tile_dim(
       std::nullopt,
       std::nullopt);
   ResultTile::TileData tile_data{
-      {nullptr, nullptr}, {nullptr, nullptr}, {nullptr, nullptr}};
+      {nullptr, std::nullopt},
+      {nullptr, std::nullopt},
+      {nullptr, std::nullopt}};
   result_tile.init_coord_tile(
       constants::format_version,
       array_schema,
