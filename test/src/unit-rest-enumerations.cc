@@ -275,8 +275,10 @@ TEST_CASE_METHOD(
   REQUIRE(schema->is_enumeration_loaded("fruit") == false);
   // Fetch one enumeration, intentionally leaving the other unloaded.
   auto enmr1 = array->get_enumeration("my_enum");
+  REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
   // Load all enumerations.
   auto actual_enmrs = array->get_enumerations_all_schemas();
+  REQUIRE(schema->is_enumeration_loaded("fruit") == true);
   auto enmr2 = array->get_enumeration("fruit");
 
   decltype(actual_enmrs) expected_enmrs{{schema->name(), {enmr1, enmr2}}};
@@ -342,11 +344,12 @@ TEST_CASE_METHOD(
     array->get_enumeration("fruit");
     REQUIRE(schema->is_enumeration_loaded("fruit") == true);
     // Load the remaining `my_enum` and `ase_var_enmr` enumerations.
-    actual_enmrs = array->get_enumerations_all_schemas();
-    expected_enmrs[schema_name_2] = {
-        enmr1, enmr2, var_enmr.ptr()->enumeration()};
-    validate_enmrs();
   }
+
+  actual_enmrs = array->get_enumerations_all_schemas();
+  expected_enmrs[schema_name_2] = {
+      enmr1, enmr2, var_enmr.ptr()->enumeration()};
+  validate_enmrs();
 
   SECTION("Drop all enumerations and validate earlier schemas") {
     ase = make_shared<sm::ArraySchemaEvolution>(HERE(), memory_tracker_);
