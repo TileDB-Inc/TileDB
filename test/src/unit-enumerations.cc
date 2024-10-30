@@ -138,10 +138,6 @@ struct EnumerationFx {
   template <typename T>
   bool vec_cmp(std::vector<T> v1, std::vector<T> v2);
 
-  bool shared_ptr_cmp(
-      shared_ptr<const tiledb::sm::Enumeration> a,
-      shared_ptr<const tiledb::sm::Enumeration> b);
-
   void rm_array();
 
   shared_ptr<MemoryTracker> memory_tracker_;
@@ -1120,80 +1116,6 @@ TEST_CASE_METHOD(
   REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
   CHECK_NOTHROW(array->load_all_enumerations());
   REQUIRE(schema->is_enumeration_loaded("test_enmr") == true);
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
-    "Array - Load All Enumerations - All Schemas",
-    "[enumeration][array][load-all-enumerations][all-schemas]") {
-  create_array();
-  auto array = get_array(QueryType::READ);
-  auto schema = array->array_schema_latest_ptr();
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
-  auto actual_enmrs = array->get_enumerations_all_schemas();
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == true);
-
-  // Fetch enumerations created in the initial array schema for validation.
-  auto enmr1 = array->get_enumeration("test_enmr");
-  auto enmr2 = array->get_enumeration("flintstones");
-  std::unordered_map<
-      std::string,
-      std::vector<shared_ptr<const tiledb::sm::Enumeration>>>
-      expected_enmrs{{schema->name(), {enmr1, enmr2}}};
-  auto validate_enmrs = [&]() {
-    for (const auto& [schema_name, enmrs] : expected_enmrs) {
-      REQUIRE(actual_enmrs.contains(schema_name));
-      REQUIRE(enmrs.size() == actual_enmrs[schema_name].size());
-      for (size_t i = 0; i < enmrs.size(); i++) {
-        CHECK(shared_ptr_cmp(enmrs[i], actual_enmrs[schema_name][i]));
-      }
-    }
-  };
-  validate_enmrs();
-
-  // If not using array open v3 just test that the correct exception is thrown
-  if (!array->use_refactored_array_open()) {
-    CHECK_THROWS_WITH(
-        array->load_all_enumerations(true),
-        Catch::Matchers::ContainsSubstring(
-            "The array must be opened using "
-            "`rest.use_refactored_array_open=true`"));
-    return;
-  }
-
-  // Evolve once to add an enumeration.
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
-  std::vector<std::string> var_values{"one", "two", "three"};
-  auto var_enmr = create_enumeration(
-      var_values, false, Datatype::STRING_ASCII, "ase_var_enmr");
-  ase->add_enumeration(var_enmr);
-  auto attr4 = make_shared<Attribute>(HERE(), "attr4", Datatype::UINT16);
-  attr4->set_enumeration_name("ase_var_enmr");
-  CHECK_NOTHROW(ase->evolve_schema(schema));
-  // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(Array::evolve_array_schema(
-      ctx_.resources(), uri_, ase.get(), array->get_encryption_key()));
-  CHECK(array->reopen().ok());
-  schema = array->array_schema_latest_ptr();
-  std::string schema_name_2 = schema->name();
-  expected_enmrs[schema_name_2] = {enmr1, enmr2, var_enmr};
-  actual_enmrs = array->get_enumerations_all_schemas();
-  validate_enmrs();
-
-  // Evolve a second time to drop an enumeration.
-  ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
-  ase->drop_enumeration("test_enmr");
-  ase->drop_attribute("attr1");
-  CHECK_NOTHROW(ase->evolve_schema(schema));
-  // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(Array::evolve_array_schema(
-      ctx_.resources(), uri_, ase.get(), array->get_encryption_key()));
-  CHECK(array->reopen().ok());
-  schema = array->array_schema_latest_ptr();
-  std::string schema_name_3 = schema->name();
-  expected_enmrs[schema_name_3] = {enmr2, var_enmr};
-  actual_enmrs = array->get_enumerations_all_schemas();
-  validate_enmrs();
 }
 
 TEST_CASE_METHOD(
@@ -3100,15 +3022,6 @@ bool EnumerationFx::vec_cmp(std::vector<T> v1, std::vector<T> v2) {
   }
 
   return true;
-}
-
-bool EnumerationFx::shared_ptr_cmp(
-    shared_ptr<const tiledb::sm::Enumeration> a,
-    shared_ptr<const tiledb::sm::Enumeration> b) {
-  if (a == b) {
-    return true;
-  }
-  return a && b && *a == *b;
 }
 
 void EnumerationFx::rm_array() {

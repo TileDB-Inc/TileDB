@@ -861,7 +861,7 @@ class CommitsDirectory : public FileCount {
              tiledb::sm::constants::delete_file_suffix,
              tiledb::sm::constants::update_file_suffix,
              tiledb::sm::constants::con_commits_file_suffix,
-             tiledb::sm::constants::ignore_file_suffix}){};
+             tiledb::sm::constants::ignore_file_suffix}) {};
   ~CommitsDirectory() = default;
 };
 
@@ -966,6 +966,18 @@ void read_sparse_v11(
  */
 void schema_equiv(
     const sm::ArraySchema& schema1, const sm::ArraySchema& schema2);
+
+/**
+ * Helper function to check equivalence of two shared pointers.
+ * This requires implementing equality operator for the type T.
+ */
+template <typename T>
+bool shared_ptr_equiv(shared_ptr<T> a, shared_ptr<T> b) {
+  if (a == b) {
+    return true;
+  }
+  return a && b && *a == *b;
+}
 }  // namespace tiledb::test
 
 #endif
