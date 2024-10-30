@@ -69,6 +69,19 @@ class Enumeration {
   DISABLE_COPY_ASSIGN(Enumeration);
   DISABLE_MOVE_ASSIGN(Enumeration);
 
+  /** Equality operator */
+  bool operator==(const Enumeration& rhs) const {
+    return ordered_ == rhs.ordered_ && cell_val_num_ == rhs.cell_val_num_ &&
+           data_ == rhs.data_ && offsets_ == rhs.offsets_ &&
+           type_ == rhs.type_ && name_ == rhs.name_ &&
+           path_name_ == rhs.path_name_ && value_map_ == rhs.value_map_;
+  }
+
+  /** Inequality operator */
+  bool operator!=(const Enumeration& rhs) const {
+    return !(*this == rhs);
+  }
+
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
