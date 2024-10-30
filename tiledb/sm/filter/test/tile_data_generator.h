@@ -100,7 +100,7 @@ class TileDataGenerator {
         filtered_buffer.data(),
         filtered_buffer.size(),
         memory_tracker,
-        nullptr);
+        ThreadPool::SharedTask());
   }
 
   /** Returns the size of the original unfiltered data. */

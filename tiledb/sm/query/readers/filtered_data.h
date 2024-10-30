@@ -121,11 +121,11 @@ class FilteredDataBlock {
            offset + size <= offset_ + size_;
   }
 
-  void set_io_task(shared_ptr<ThreadPool::SharedTask> task) {
+  void set_io_task(ThreadPool::SharedTask task) {
     io_task_ = std::move(task);
   }
 
-  shared_ptr<ThreadPool::SharedTask> io_task() {
+  ThreadPool::SharedTask io_task() {
     return io_task_;
   }
 
@@ -149,7 +149,7 @@ class FilteredDataBlock {
   tdb::pmr::unique_ptr<std::byte> filtered_data_;
 
   /** IO Task to block on for data access. */
-  shared_ptr<ThreadPool::SharedTask> io_task_;
+  ThreadPool::SharedTask io_task_;
 };
 
 /**
@@ -334,8 +334,8 @@ class FilteredData {
    * @param rt Result tile.
    * @return Fixed filtered data pointer.
    */
-  inline std::tuple<void*, shared_ptr<ThreadPool::SharedTask>>
-  fixed_filtered_data(const FragmentMetadata* fragment, const ResultTile* rt) {
+  inline std::tuple<void*, ThreadPool::SharedTask> fixed_filtered_data(
+      const FragmentMetadata* fragment, const ResultTile* rt) {
     auto offset{
         fragment->loaded_metadata()->file_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::FIXED, fragment, rt, offset);
@@ -351,10 +351,10 @@ class FilteredData {
    * @param rt Result tile.
    * @return Var filtered data pointer.
    */
-  inline std::tuple<void*, shared_ptr<ThreadPool::SharedTask>>
-  var_filtered_data(const FragmentMetadata* fragment, const ResultTile* rt) {
+  inline std::tuple<void*, ThreadPool::SharedTask> var_filtered_data(
+      const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!var_sized_) {
-      return {nullptr, nullptr};
+      return {nullptr, ThreadPool::SharedTask()};
     }
 
     auto offset{
@@ -372,11 +372,10 @@ class FilteredData {
    * @param rt Result tile.
    * @return Nullable filtered data pointer.
    */
-  inline std::tuple<void*, shared_ptr<ThreadPool::SharedTask>>
-  nullable_filtered_data(
+  inline std::tuple<void*, ThreadPool::SharedTask> nullable_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!nullable_) {
-      return {nullptr, nullptr};
+      return {nullptr, ThreadPool::SharedTask()};
     }
 
     auto offset{fragment->loaded_metadata()->file_validity_offset(
@@ -410,15 +409,14 @@ class FilteredData {
     auto data{block.data()};
     auto size{block.size()};
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
-    auto task = resources_.io_tp().execute([this, offset, data, size, uri]() {
-      throw_if_not_ok(resources_.vfs().read(uri, offset, data, size, false));
-      return Status::Ok();
-    });
-    // Store as a shared_ptr so we can move lifetimes around
+    std::shared_future<Status> task =
+        resources_.io_tp().execute([this, offset, data, size, uri]() {
+          throw_if_not_ok(
+              resources_.vfs().read(uri, offset, data, size, false));
+          return Status::Ok();
+        });
     // This should be changes once we use taskgraphs for modeling the data flow
-    shared_ptr<ThreadPool::SharedTask> task_ptr =
-        make_shared<ThreadPool::SharedTask>(std::move(task));
-    block.set_io_task(task_ptr);
+    block.set_io_task(task);
   }
 
   /** @return Data blocks corresponding to the tile type. */
