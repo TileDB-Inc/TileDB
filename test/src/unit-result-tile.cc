@@ -214,7 +214,9 @@ TEST_CASE_METHOD(
         std::nullopt,
         std::nullopt);
     ResultTile::TileData tile_data{
-        {nullptr, nullptr}, {nullptr, nullptr}, {nullptr, nullptr}};
+        {nullptr, ThreadPool::SharedTask()},
+        {nullptr, ThreadPool::SharedTask()},
+        {nullptr, ThreadPool::SharedTask()}};
     rt.init_coord_tile(
         constants::format_version,
         array_schema,
@@ -232,7 +234,9 @@ TEST_CASE_METHOD(
       std::nullopt,
       std::nullopt);
   ResultTile::TileData tile_data{
-      {nullptr, nullptr}, {nullptr, nullptr}, {nullptr, nullptr}};
+      {nullptr, ThreadPool::SharedTask()},
+      {nullptr, ThreadPool::SharedTask()},
+      {nullptr, ThreadPool::SharedTask()}};
   rt.init_coord_tile(
       constants::format_version,
       array_schema,
@@ -329,7 +333,9 @@ TEST_CASE_METHOD(
         std::nullopt,
         std::nullopt);
     ResultTile::TileData tile_data{
-        {nullptr, nullptr}, {nullptr, nullptr}, {nullptr, nullptr}};
+        {nullptr, ThreadPool::SharedTask()},
+        {nullptr, ThreadPool::SharedTask()},
+        {nullptr, ThreadPool::SharedTask()}};
     rt.init_coord_tile(
         constants::format_version,
         array_schema,
@@ -347,7 +353,9 @@ TEST_CASE_METHOD(
       std::nullopt,
       std::nullopt);
   ResultTile::TileData tile_data{
-      {nullptr, nullptr}, {nullptr, nullptr}, {nullptr, nullptr}};
+      {nullptr, ThreadPool::SharedTask()},
+      {nullptr, ThreadPool::SharedTask()},
+      {nullptr, ThreadPool::SharedTask()}};
   rt.init_coord_tile(
       constants::format_version,
       array_schema,
