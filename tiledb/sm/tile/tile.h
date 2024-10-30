@@ -70,6 +70,8 @@ class TileBase {
       const uint64_t size,
       tdb::pmr::memory_resource* resource);
 
+  virtual ~TileBase() = default;
+
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
 
@@ -99,9 +101,8 @@ class TileBase {
     return size() / sizeof(T);
   }
 
-  virtual /** Returns the internal buffer. */
-      inline void*
-      data() const {
+  /** Returns the internal buffer. */
+  virtual inline void* data() const {
     return data_.get();
   }
 
