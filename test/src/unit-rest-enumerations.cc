@@ -151,7 +151,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     RESTEnumerationFx,
-    "Array - Load All Enumerations - All Schemas",
+    "Load Enumerations - All Schemas",
     "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
   uri_ = vfs_test_setup_.array_uri("load_enmrs_all_schemas");
   auto config = vfs_test_setup_.ctx().config();
@@ -259,6 +259,112 @@ TEST_CASE_METHOD(
   }
 
   validate_enmrs();
+}
+
+TEST_CASE_METHOD(
+    RESTEnumerationFx,
+    "Load Enumerations - All Schemas partial load",
+    "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
+  uri_ = vfs_test_setup_.array_uri("load_enmrs_all_schemas");
+
+  create_array(uri_);
+  Array opened_array(ctx_, uri_, TILEDB_READ);
+  auto array = opened_array.ptr()->array();
+  auto schema = array->array_schema_latest_ptr();
+  REQUIRE(schema->is_enumeration_loaded("my_enum") == false);
+  REQUIRE(schema->is_enumeration_loaded("fruit") == false);
+  // Fetch one enumeration, intentionally leaving the other unloaded.
+  auto enmr1 = array->get_enumeration("my_enum");
+  // Load all enumerations.
+  auto actual_enmrs = array->get_enumerations_all_schemas();
+  auto enmr2 = array->get_enumeration("fruit");
+
+  decltype(actual_enmrs) expected_enmrs{{schema->name(), {enmr1, enmr2}}};
+  auto validate_enmrs = [&]() {
+    for (const auto& [schema_name, enmrs] : expected_enmrs) {
+      REQUIRE(actual_enmrs.contains(schema_name));
+      REQUIRE(enmrs.size() == actual_enmrs[schema_name].size());
+      for (size_t i = 0; i < enmrs.size(); i++) {
+        CHECK(tiledb::test::shared_ptr_equiv(
+            enmrs[i], actual_enmrs[schema_name][i]));
+      }
+    }
+  };
+  validate_enmrs();
+
+  // If not using array open v3 just test that the correct exception is thrown
+  if (!array->use_refactored_array_open()) {
+    CHECK_THROWS_WITH(
+        array->load_all_enumerations(true),
+        Catch::Matchers::ContainsSubstring(
+            "The array must be opened using "
+            "`rest.use_refactored_array_open=true`"));
+    return;
+  }
+
+  // Evolve once to add an enumeration.
+  sm::URI uri(uri_);
+  auto ase = make_shared<sm::ArraySchemaEvolution>(HERE(), memory_tracker_);
+  std::vector<std::string> var_values{"one", "two", "three"};
+  auto var_enmr = Enumeration::create(ctx_, "ase_var_enmr", var_values);
+  ase->add_enumeration(var_enmr.ptr()->enumeration());
+  auto attr4 =
+      make_shared<sm::Attribute>(HERE(), "attr4", sm::Datatype::UINT16);
+  attr4->set_enumeration_name("ase_var_enmr");
+  CHECK_NOTHROW(ase->evolve_schema(schema));
+  // Apply evolution to the array and reopen.
+  CHECK_NOTHROW(sm::Array::evolve_array_schema(
+      ctx_.ptr()->resources(), uri, ase.get(), array->get_encryption_key()));
+  CHECK(array->reopen().ok());
+  schema = array->array_schema_latest_ptr();
+  std::string schema_name_2 = schema->name();
+  REQUIRE(schema->is_enumeration_loaded("my_enum") == false);
+  REQUIRE(schema->is_enumeration_loaded("fruit") == false);
+  REQUIRE(schema->is_enumeration_loaded("ase_var_enmr") == false);
+
+  SECTION("Partial load a single evolved enumeration") {
+    // Load all enumerations except the enumeration we added with evolution
+    // above.
+    array->get_enumeration("my_enum");
+    REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
+    array->get_enumeration("fruit");
+    REQUIRE(schema->is_enumeration_loaded("fruit") == true);
+    // Load the remaining `ase_var_enmr` enumeration.
+    actual_enmrs = array->get_enumerations_all_schemas();
+    expected_enmrs[schema_name_2] = {
+        enmr1, enmr2, var_enmr.ptr()->enumeration()};
+    validate_enmrs();
+  }
+
+  SECTION("Partial load multiple enumerations") {
+    // Load all enumerations except the enumeration we added with evolution
+    // above.
+    array->get_enumeration("fruit");
+    REQUIRE(schema->is_enumeration_loaded("fruit") == true);
+    // Load the remaining `my_enum` and `ase_var_enmr` enumerations.
+    actual_enmrs = array->get_enumerations_all_schemas();
+    expected_enmrs[schema_name_2] = {
+        enmr1, enmr2, var_enmr.ptr()->enumeration()};
+    validate_enmrs();
+  }
+
+  SECTION("Drop all enumerations and validate earlier schemas") {
+    ase = make_shared<sm::ArraySchemaEvolution>(HERE(), memory_tracker_);
+    ase->drop_enumeration("my_enum");
+    ase->drop_attribute("attr1");
+    ase->drop_enumeration("fruit");
+    ase->drop_attribute("attr3");
+    ase->drop_enumeration("ase_var_enmr");
+    CHECK_NOTHROW(ase->evolve_schema(schema));
+    CHECK_NOTHROW(sm::Array::evolve_array_schema(
+        ctx_.ptr()->resources(), uri, ase.get(), array->get_encryption_key()));
+    CHECK(array->reopen().ok());
+    schema = array->array_schema_latest_ptr();
+    std::string schema_name_3 = schema->name();
+    actual_enmrs = array->get_enumerations_all_schemas();
+    expected_enmrs[schema_name_3] = {};
+    validate_enmrs();
+  }
 }
 
 RESTEnumerationFx::RESTEnumerationFx()

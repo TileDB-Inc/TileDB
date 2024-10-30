@@ -929,7 +929,7 @@ Array::get_enumerations_all_schemas() {
             }
           }
         }
-        ret[schema.first] = loaded;
+        ret[schema.first] = schema.second->get_loaded_enumerations();
       }
     }
   }
