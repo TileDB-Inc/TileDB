@@ -51,7 +51,6 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
-#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
 namespace tiledb::sm {

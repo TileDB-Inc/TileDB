@@ -42,8 +42,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class ArraySchema;
-class Context;
 class ContextResources;
 class OpenedArray;
 class QueryCondition;
