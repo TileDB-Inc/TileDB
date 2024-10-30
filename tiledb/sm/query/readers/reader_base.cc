@@ -935,56 +935,62 @@ Status ReaderBase::unfilter_tiles(
   std::vector<uint64_t> unfiltered_tile_var_size(num_tiles);
   std::vector<uint64_t> unfiltered_tile_validity_size(num_tiles);
 
-  // Pre-compute chunk offsets.
-  auto status = parallel_for(
-      &resources_.compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
-        auto&& [st, tile_size, tile_var_size, tile_validity_size] =
-            load_tile_chunk_data(
-                name,
-                validity_only,
-                result_tiles[i],
-                var_size,
-                nullable,
-                tiles_chunk_data[i],
-                tiles_chunk_var_data[i],
-                tiles_chunk_validity_data[i]);
-        throw_if_not_ok(st);
-        unfiltered_tile_size[i] = tile_size.value();
-        unfiltered_tile_var_size[i] = tile_var_size.value();
-        unfiltered_tile_validity_size[i] = tile_validity_size.value();
-        return Status::Ok();
-      });
-  RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
-
-  if (tiles_chunk_data.empty())
-    return Status::Ok();
-
-  // Unfilter all tiles/chunks in parallel using the precomputed offsets.
-  status = parallel_for_2d(
-      &resources_.compute_tp(),
-      0,
-      num_tiles,
-      0,
-      num_range_threads,
-      [&](uint64_t i, uint64_t range_thread_idx) {
-        throw_if_not_ok(unfilter_tile(
-            name,
-            validity_only,
-            result_tiles[i],
-            var_size,
-            nullable,
-            range_thread_idx,
-            num_range_threads,
-            tiles_chunk_data[i],
-            tiles_chunk_var_data[i],
-            tiles_chunk_validity_data[i]));
-        return Status::Ok();
-      });
-  RETURN_CANCEL_OR_ERROR(status);
-
-  // Perform required post-processing of unfiltered tiles
   for (size_t i = 0; i < num_tiles; i++) {
-    RETURN_NOT_OK(post_process_unfiltered_tile(
+    auto task = resources_.compute_tp().execute([&, this]() {
+      auto range_thread_idx = i % num_threads;
+      auto&& [st, tile_size, tile_var_size, tile_validity_size] =
+          load_tile_chunk_data(
+              name,
+              validity_only,
+              result_tiles[i],
+              var_size,
+              nullable,
+              tiles_chunk_data[i],
+              tiles_chunk_var_data[i],
+              tiles_chunk_validity_data[i]);
+      throw_if_not_ok(st);
+      unfiltered_tile_size[i] = tile_size.value();
+      unfiltered_tile_var_size[i] = tile_var_size.value();
+      unfiltered_tile_validity_size[i] = tile_validity_size.value();
+
+      if (tile_size.value() == 0)
+        return Status::Ok();
+
+      throw_if_not_ok(unfilter_tile(
+          name,
+          validity_only,
+          result_tiles[i],
+          var_size,
+          nullable,
+          range_thread_idx,
+          num_range_threads,
+          tiles_chunk_data[i],
+          tiles_chunk_var_data[i],
+          tiles_chunk_validity_data[i]));
+      return Status::Ok();
+    });
+    if (skip_field(result_tiles[i]->frag_idx(), name)) {
+      task.wait();
+      continue;
+    }
+    // Store as a shared_ptr so we can move lifetimes around
+    // This should be changes once we use taskgraphs for modeling the data flow
+    shared_ptr<ThreadPool::SharedTask> task_ptr =
+        make_shared<ThreadPool::SharedTask>(std::move(task));
+
+    auto tile_tuple = result_tiles[i]->tile_tuple(name);
+    tile_tuple->fixed_tile().set_unfilter_data_compute_task(task_ptr);
+
+    if (var_size) {
+      tile_tuple->var_tile().set_unfilter_data_compute_task(task_ptr);
+    }
+
+    if (nullable) {
+      tile_tuple->validity_tile().set_unfilter_data_compute_task(task_ptr);
+    }
+
+    // Perform required post-processing of unfiltered tiles
+    throw_if_not_ok(post_process_unfiltered_tile(
         name, validity_only, result_tiles[i], var_size, nullable));
   }
 

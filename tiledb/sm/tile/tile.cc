@@ -197,6 +197,13 @@ WriterTile::WriterTile(
 
 void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
+  if (unfilter_data_compute_task_ != nullptr &&
+      unfilter_data_compute_task_->valid()) {
+    unfilter_data_compute_task_->wait();
+    throw_if_not_ok(unfilter_data_compute_task_->get());
+    unfilter_data_compute_task_ = nullptr;
+  }
+
   if (nbytes > size_ - offset) {
     throw TileException("Read tile overflow; may not read beyond buffer size");
   }
@@ -214,6 +221,13 @@ void TileBase::write(const void* data, uint64_t offset, uint64_t nbytes) {
 
 void Tile::zip_coordinates() {
   assert(zipped_coords_dim_num_ > 0);
+
+  if (unfilter_data_compute_task_ != nullptr &&
+      unfilter_data_compute_task_->valid()) {
+    unfilter_data_compute_task_->wait();
+    throw_if_not_ok(unfilter_data_compute_task_->get());
+    unfilter_data_compute_task_ = nullptr;
+  }
 
   // For easy reference
   const uint64_t tile_size = size_;
@@ -256,6 +270,11 @@ uint64_t Tile::load_offsets_chunk_data(ChunkData& chunk_data) {
 void WriterTile::clear_data() {
   data_ = nullptr;
   size_ = 0;
+}
+
+void Tile::set_unfilter_data_compute_task(
+    shared_ptr<ThreadPool::SharedTask> unfilter_data_compute_task) {
+  unfilter_data_compute_task_ = unfilter_data_compute_task;
 }
 
 void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
