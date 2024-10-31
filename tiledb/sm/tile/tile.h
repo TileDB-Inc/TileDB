@@ -90,6 +90,8 @@ class TileBase {
   /** Converts the data pointer to a specific type. */
   template <class T>
   inline T* data_as() const {
+    std::scoped_lock<std::recursive_mutex> lock{
+        unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
       unfilter_data_compute_task_.wait();
       throw_if_not_ok(unfilter_data_compute_task_.get());
@@ -106,6 +108,8 @@ class TileBase {
 
   /** Returns the internal buffer. */
   inline void* data() const {
+    std::scoped_lock<std::recursive_mutex> lock{
+        unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
       unfilter_data_compute_task_.wait();
       throw_if_not_ok(unfilter_data_compute_task_.get());
@@ -174,6 +178,14 @@ class TileBase {
 
   /** Compute task to check and block on if unfiltered data is ready. */
   mutable ThreadPool::SharedTask unfilter_data_compute_task_;
+
+  /**
+   * Lock for checking task, since this tile can be used by multiple threads.
+   * The ThreadPool::SharedTask lets multiple threads copy the task, but it
+   * doesn't let multiple threads access a single task itself. Due to this we
+   * need a mutext since the tile will be accessed by multiple threads.
+   */
+  mutable std::recursive_mutex unfilter_data_compute_task_mtx_;
 };
 
 /**
@@ -272,6 +284,7 @@ class Tile : public TileBase {
 
   /** Returns the buffer that contains the filtered, on-disk format. */
   inline char* filtered_data() {
+    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
     if (filtered_data_io_task_.valid()) {
       filtered_data_io_task_.wait();
       throw_if_not_ok(filtered_data_io_task_.get());
@@ -282,6 +295,7 @@ class Tile : public TileBase {
   /** Returns the data casted as a type. */
   template <class T>
   inline T* filtered_data_as() {
+    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
     if (filtered_data_io_task_.valid()) {
       filtered_data_io_task_.wait();
       throw_if_not_ok(filtered_data_io_task_.get());
@@ -391,6 +405,14 @@ class Tile : public TileBase {
 
   /** I/O task to check and block on if filtered data is ready. */
   mutable ThreadPool::SharedTask filtered_data_io_task_;
+
+  /**
+   * Lock for checking task, since this tile can be used by multiple threads.
+   * The ThreadPool::SharedTask lets multiple threads copy the task, but it
+   * doesn't let multiple threads access a single task itself. Due to this we
+   * need a mutex since the tile will be accessed by multiple threads.
+   */
+  mutable std::recursive_mutex filtered_data_io_task_mtx_;
 };
 
 /**
