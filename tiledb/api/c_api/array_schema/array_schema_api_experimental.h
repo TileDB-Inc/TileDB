@@ -106,7 +106,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_enumeration_from_name(
  * tiledb_enumeration_t* enmr;
  * tiledb_array_schema_get_enumeration_from_attribute_name(ctx,
  *         array_schema, "states", &enmr);
- * tiledb_attribute_free(&enmr);
+ * tiledb_enumeration_free(&enmr);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
