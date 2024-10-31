@@ -210,7 +210,8 @@ class FilteredData {
       , name_(name)
       , fragment_metadata_(fragment_metadata)
       , var_sized_(var_sized)
-      , nullable_(nullable) {
+      , nullable_(nullable)
+      , stats_(reader.stats()->create_child("FilteredData")) {
     if (result_tiles.size() == 0) {
       return;
     }
@@ -411,6 +412,7 @@ class FilteredData {
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
     std::shared_future<Status> task =
         resources_.io_tp().execute([this, offset, data, size, uri]() {
+          auto timer_se = stats_->start_timer("read");
           return resources_.vfs().read(uri, offset, data, size, false);
         });
     // This should be changes once we use taskgraphs for modeling the data flow
@@ -650,6 +652,9 @@ class FilteredData {
 
   /** Is the attribute nullable? */
   const bool nullable_;
+
+  /** Stats to track loading. */
+  stats::Stats* stats_;
 };
 
 }  // namespace tiledb::sm
