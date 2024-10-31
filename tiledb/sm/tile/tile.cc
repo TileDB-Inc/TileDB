@@ -206,6 +206,7 @@ void TileBase::read(
   if (unfilter_data_compute_task_.valid()) {
     unfilter_data_compute_task_.wait();
     throw_if_not_ok(unfilter_data_compute_task_.get());
+    unfilter_data_compute_task_ = ThreadPool::SharedTask();
   }
 
   if (nbytes > size_ - offset) {
@@ -230,6 +231,7 @@ void Tile::zip_coordinates() {
   if (unfilter_data_compute_task_.valid()) {
     unfilter_data_compute_task_.wait();
     throw_if_not_ok(unfilter_data_compute_task_.get());
+    unfilter_data_compute_task_ = ThreadPool::SharedTask();
   }
 
   // For easy reference
@@ -313,6 +315,7 @@ uint64_t Tile::load_chunk_data(
   if (filtered_data_io_task_.valid()) {
     filtered_data_io_task_.wait();
     throw_if_not_ok(filtered_data_io_task_.get());
+    filtered_data_io_task_ = ThreadPool::SharedTask();
   }
 
   Deserializer deserializer(filtered_data(), filtered_size());
