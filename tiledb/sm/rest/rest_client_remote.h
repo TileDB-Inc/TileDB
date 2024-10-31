@@ -280,7 +280,7 @@ class RestClientRemote : public RestClient {
    * @param timestamp_start Inclusive starting timestamp at which to open array.
    * @param timestamp_end Inclusive ending timestamp at which to open array.
    * @param config Config options
-   * @param array_schema Array schema to fetch metadata for.
+   * @param array_schema Array schema to fetch enumerations for.
    * @param enumeration_names The names of the enumerations to get.
    */
   std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
