@@ -897,8 +897,9 @@ Status ReaderBase::unfilter_tiles(
     const std::string& name,
     const bool validity_only,
     const std::vector<ResultTile*>& result_tiles) {
-  const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
-                                                         "unfilter_coord_tiles";
+  const auto stat_type = (array_schema_.is_attr(name)) ?
+                             "unfilter_attr_tiles_builder" :
+                             "unfilter_coord_tiles_builder";
 
   const auto timer_se = stats_->start_timer(stat_type);
   auto var_size = array_schema_.var_size(name);
@@ -937,6 +938,12 @@ Status ReaderBase::unfilter_tiles(
                                          num_range_threads,
                                          result_tile,
                                          this]() {
+          const auto stat_type =
+              (array_schema_.is_attr(name)) ?
+                  "unfilter_attr_tiles_builder.unfilter_attr_tiles" :
+                  "unfilter_coord_tiles_builder.unfilter_coord_tiles";
+
+          const auto timer_se = stats_->start_timer(stat_type);
           // Chunks for unfiltering
           ChunkData tiles_chunk_data;
           ChunkData tiles_chunk_var_data;
