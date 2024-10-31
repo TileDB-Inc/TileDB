@@ -72,7 +72,8 @@ shared_ptr<Tile> Tile::from_generic(
       nullptr,
       0,
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
-      ThreadPool::SharedTask());
+      ThreadPool::SharedTask(),
+      nullptr);
 }
 
 shared_ptr<WriterTile> WriterTile::from_generic(
@@ -136,7 +137,8 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     shared_ptr<MemoryTracker> memory_tracker,
-    ThreadPool::SharedTask data_io_task)
+    ThreadPool::SharedTask data_io_task,
+    shared_ptr<FilteredData> filtered_data_block)
     : Tile(
           format_version,
           type,
@@ -146,7 +148,8 @@ Tile::Tile(
           filtered_data,
           filtered_size,
           memory_tracker->get_resource(MemoryType::TILE_DATA),
-          std::move(data_io_task)) {
+          std::move(data_io_task),
+          std::move(filtered_data_block)) {
 }
 
 Tile::Tile(
@@ -158,12 +161,14 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     tdb::pmr::memory_resource* resource,
-    ThreadPool::SharedTask filtered_data_io_task)
+    ThreadPool::SharedTask filtered_data_io_task,
+    shared_ptr<FilteredData> filtered_data_block)
     : TileBase(format_version, type, cell_size, size, resource)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
     , filtered_size_(filtered_size)
-    , filtered_data_io_task_(std::move(filtered_data_io_task)) {
+    , filtered_data_io_task_(std::move(filtered_data_io_task))
+    , filtered_data_block_(std::move(filtered_data_block)) {
 }
 
 WriterTile::WriterTile(
