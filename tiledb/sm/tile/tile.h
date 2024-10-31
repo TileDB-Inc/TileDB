@@ -96,6 +96,7 @@ class TileBase {
     if (unfilter_data_compute_task_.valid()) {
       unfilter_data_compute_task_.wait();
       throw_if_not_ok(unfilter_data_compute_task_.get());
+      unfilter_data_compute_task_ = ThreadPool::SharedTask();
     }
 
     return static_cast<T*>(data());
@@ -114,6 +115,7 @@ class TileBase {
     if (unfilter_data_compute_task_.valid()) {
       unfilter_data_compute_task_.wait();
       throw_if_not_ok(unfilter_data_compute_task_.get());
+      unfilter_data_compute_task_ = ThreadPool::SharedTask();
     }
 
     return data_.get();
@@ -295,6 +297,7 @@ class Tile : public TileBase {
     if (filtered_data_io_task_.valid()) {
       filtered_data_io_task_.wait();
       throw_if_not_ok(filtered_data_io_task_.get());
+      filtered_data_io_task_ = ThreadPool::SharedTask();
     }
     return static_cast<char*>(filtered_data_);
   }
@@ -306,6 +309,7 @@ class Tile : public TileBase {
     if (filtered_data_io_task_.valid()) {
       filtered_data_io_task_.wait();
       throw_if_not_ok(filtered_data_io_task_.get());
+      filtered_data_io_task_ = ThreadPool::SharedTask();
     }
     return static_cast<T*>(filtered_data_);
   }
@@ -314,6 +318,7 @@ class Tile : public TileBase {
   void clear_filtered_buffer() {
     filtered_data_ = nullptr;
     filtered_size_ = 0;
+    filtered_data_block_ = nullptr;
   }
 
   /**
