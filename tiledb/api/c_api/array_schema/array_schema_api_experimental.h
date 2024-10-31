@@ -111,7 +111,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_get_enumeration_from_name(
  *
  * @param[in] ctx The TileDB context.
  * @param[in] array_schema The array schema.
- * @param[in] name The name of the attribute whose to retrieve.
+ * @param[in] name The name of the attribute whose enumeration to retrieve.
  * @param[out] enmr The enumeration object to retrieve.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
