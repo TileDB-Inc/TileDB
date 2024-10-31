@@ -40,7 +40,6 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -457,7 +456,6 @@ Status DenseReader::dense_read() {
     // clear the memory. Also, a name in names might not be in the user buffers
     // so we might skip the copy but still clear the memory.
     for (auto& name : names) {
-      shared_ptr<std::list<FilteredData>> filtered_data;
       std::vector<ResultTile*> result_tiles;
       bool validity_only = null_count_aggregate_only(name);
       bool dense_dim = name == constants::coords || array_schema_.is_dim(name);
@@ -481,8 +479,7 @@ Status DenseReader::dense_read() {
         // Read and unfilter tiles.
         std::vector<ReaderBase::NameToLoad> to_load;
         to_load.emplace_back(name, validity_only);
-        filtered_data = make_shared<std::list<FilteredData>>(
-            read_attribute_tiles(to_load, result_tiles));
+        read_attribute_tiles(to_load, result_tiles);
       }
 
       if (compute_task.valid()) {
@@ -494,7 +491,6 @@ Status DenseReader::dense_read() {
 
       compute_task = resources_.compute_tp().execute([&,
                                                       iteration_tile_data,
-                                                      filtered_data,
                                                       dense_dim,
                                                       name,
                                                       validity_only,
@@ -505,9 +501,6 @@ Status DenseReader::dense_read() {
         if (!dense_dim) {
           // Unfilter tiles.
           RETURN_NOT_OK(unfilter_tiles(name, validity_only, result_tiles));
-
-          // The filtered data is no longer required, release it.
-          filtered_data.reset();
 
           // Only copy names that are present in the user buffers.
           if (buffers_.count(name) != 0) {
@@ -1063,16 +1056,13 @@ Status DenseReader::apply_query_condition(
         tiles_cell_num);
 
     // Read and unfilter query condition attributes.
-    shared_ptr<std::list<FilteredData>> filtered_data =
-        make_shared<std::list<FilteredData>>(read_attribute_tiles(
-            NameToLoad::from_string_vec(qc_names), result_tiles));
+    read_attribute_tiles(NameToLoad::from_string_vec(qc_names), result_tiles);
 
     if (compute_task.valid()) {
       throw_if_not_ok(resources_.compute_tp().wait(compute_task));
     }
 
     compute_task = resources_.compute_tp().execute([&,
-                                                    filtered_data,
                                                     iteration_tile_data,
                                                     qc_names,
                                                     num_range_threads,
@@ -1088,9 +1078,6 @@ Status DenseReader::apply_query_condition(
       for (auto& name : qc_names) {
         RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
       }
-
-      // The filtered data is no longer required, release it.
-      filtered_data.reset();
 
       if (stride == UINT64_MAX) {
         stride = 1;

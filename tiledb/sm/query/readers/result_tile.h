@@ -64,6 +64,7 @@ class Domain;
 class FragmentMetadata;
 class QueryCondition;
 class Subarray;
+class FilteredData;
 
 /**
  * Utilitary function to sort result tiles by fragment first then tile index.
@@ -215,13 +216,15 @@ class ResultTile {
     TileData(
         std::tuple<void*, ThreadPool::SharedTask> fixed_filtered_data,
         std::tuple<void*, ThreadPool::SharedTask> var_filtered_data,
-        std::tuple<void*, ThreadPool::SharedTask> validity_filtered_data)
+        std::tuple<void*, ThreadPool::SharedTask> validity_filtered_data,
+        shared_ptr<FilteredData> filtered_data)
         : fixed_filtered_data_(std::get<0>(fixed_filtered_data))
         , var_filtered_data_(std::get<0>(var_filtered_data))
         , validity_filtered_data_(std::get<0>(validity_filtered_data))
         , fixed_filtered_data_task_(std::get<1>(fixed_filtered_data))
         , var_filtered_data_task_(std::get<1>(var_filtered_data))
-        , validity_filtered_data_task_(std::get<1>(validity_filtered_data)) {
+        , validity_filtered_data_task_(std::get<1>(validity_filtered_data))
+        , filtered_data_(std::move(filtered_data)) {
     }
 
     /* ********************************* */
@@ -258,6 +261,16 @@ class ResultTile {
       return validity_filtered_data_task_;
     }
 
+    /** @return shared_ptr to FilteredData block used by this Tile. */
+    inline shared_ptr<FilteredData> filtered_data() const {
+      return filtered_data_;
+    }
+
+    /** Clear the held filtered data. */
+    inline void clear_filtered_data() {
+      filtered_data_ = nullptr;
+    }
+
    private:
     /* ********************************* */
     /*        PRIVATE ATTRIBUTES         */
@@ -280,6 +293,9 @@ class ResultTile {
 
     /** Stores the validity filtered data I/O task. */
     ThreadPool::SharedTask validity_filtered_data_task_;
+
+    /** Pointer to hold the filtered data block as long as needed. */
+    shared_ptr<FilteredData> filtered_data_;
   };
 
   /**
@@ -314,7 +330,8 @@ class ResultTile {
               tile_data.fixed_filtered_data(),
               tile_sizes.tile_persisted_size(),
               memory_tracker_,
-              tile_data.fixed_filtered_data_task()) {
+              tile_data.fixed_filtered_data_task(),
+              tile_data.filtered_data()) {
       if (tile_sizes.has_var_tile()) {
         auto type = array_schema.type(name);
         var_tile_.emplace(
@@ -326,7 +343,8 @@ class ResultTile {
             tile_data.var_filtered_data(),
             tile_sizes.tile_var_persisted_size(),
             memory_tracker_,
-            tile_data.var_filtered_data_task());
+            tile_data.var_filtered_data_task(),
+            tile_data.filtered_data());
       }
 
       if (tile_sizes.has_validity_tile()) {
@@ -339,7 +357,8 @@ class ResultTile {
             tile_data.validity_filtered_data(),
             tile_sizes.tile_validity_persisted_size(),
             memory_tracker_,
-            tile_data.validity_filtered_data_task());
+            tile_data.validity_filtered_data_task(),
+            tile_data.filtered_data());
       }
     }
 

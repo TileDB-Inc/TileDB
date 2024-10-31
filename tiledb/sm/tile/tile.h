@@ -46,6 +46,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class FilteredData;
 class MemoryTracker;
 
 /**
@@ -219,6 +220,8 @@ class Tile : public TileBase {
    * @param filtered_size The filtered size to allocate.
    * @param memory_tracker The memory resource to use.
    * @param filtered_data_io_task The I/O task to wait on for data to be valid.
+   * @param filtered_data_block The FilteredData block class which backs the
+   * memory for this filtered tile.
    */
   Tile(
       const format_version_t format_version,
@@ -229,7 +232,8 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       shared_ptr<MemoryTracker> memory_tracker,
-      ThreadPool::SharedTask filtered_data_io_task);
+      ThreadPool::SharedTask filtered_data_io_task,
+      shared_ptr<FilteredData> filtered_data_block);
 
   /**
    * Constructor.
@@ -244,6 +248,8 @@ class Tile : public TileBase {
    * @param filtered_size The filtered size to allocate.
    * @param resource The memory resource to use.
    * @param filtered_data_io_task The I/O task to wait on for data to be valid.
+   * @param filtered_data_block The FilteredData block class which backs the
+   * memory for this filtered tile.
    */
   Tile(
       const format_version_t format_version,
@@ -254,7 +260,8 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       tdb::pmr::memory_resource* resource,
-      ThreadPool::SharedTask filtered_data_io_task);
+      ThreadPool::SharedTask filtered_data_io_task,
+      shared_ptr<FilteredData> filtered_data_block);
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
@@ -413,6 +420,12 @@ class Tile : public TileBase {
    * need a mutex since the tile will be accessed by multiple threads.
    */
   mutable std::recursive_mutex filtered_data_io_task_mtx_;
+
+  /**
+   * shared_ptr to the FilteredData class that backs this tile. We keep a shared
+   * pointer to maintain the lifetime.
+   */
+  shared_ptr<FilteredData> filtered_data_block_;
 };
 
 /**

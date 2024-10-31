@@ -642,7 +642,7 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
   // eventually get rid of it altogether so that we can clarify the data flow.
   // At the end of this function call, all memory inside of 'filtered_data' has
   // been used and the tiles are unfiltered so the data can be deleted.
-  auto filtered_data{read_attribute_tiles(names, result_tiles)};
+  read_attribute_tiles(names, result_tiles);
   for (auto& name : names) {
     RETURN_NOT_OK(
         unfilter_tiles(name.name(), name.validity_only(), result_tiles));
@@ -656,7 +656,7 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
     const std::vector<ResultTile*>& result_tiles) {
   // See the comment in 'read_and_unfilter_attribute_tiles' to get more
   // information about the lifetime of this object.
-  auto filtered_data{read_coordinate_tiles(names, result_tiles)};
+  read_coordinate_tiles(names, result_tiles);
   for (auto& name : names) {
     RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
   }
@@ -664,29 +664,29 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
   return Status::Ok();
 }
 
-std::list<FilteredData> ReaderBase::read_attribute_tiles(
+void ReaderBase::read_attribute_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
-std::list<FilteredData> ReaderBase::read_coordinate_tiles(
+void ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
   return read_tiles(NameToLoad::from_string_vec(names), result_tiles);
 }
 
-std::list<FilteredData> ReaderBase::read_tiles(
+void ReaderBase::read_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
-  std::list<FilteredData> filtered_data;
+  //  std::list<FilteredData> filtered_data;
 
   // Shortcut for empty tile vec.
   if (result_tiles.empty() || names.empty()) {
-    return filtered_data;
+    return;
   }
 
   uint64_t num_tiles_read{0};
@@ -701,7 +701,8 @@ std::list<FilteredData> ReaderBase::read_tiles(
     // read and memory allocations.
     const bool var_sized{array_schema_.var_size(name)};
     const bool nullable{array_schema_.is_nullable(name)};
-    filtered_data.emplace_back(
+    shared_ptr<FilteredData> filtered_data = make_shared<FilteredData>(
+        HERE(),
         resources_,
         *this,
         min_batch_size_,
@@ -743,13 +744,11 @@ std::list<FilteredData> ReaderBase::read_tiles(
       std::tuple<void*, ThreadPool::SharedTask> n = {
           nullptr, ThreadPool::SharedTask()};
       ResultTile::TileData tile_data{
-          val_only ?
-              n :
-              filtered_data.back().fixed_filtered_data(fragment.get(), tile),
-          val_only ?
-              n :
-              filtered_data.back().var_filtered_data(fragment.get(), tile),
-          filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
+          val_only ? n :
+                     filtered_data->fixed_filtered_data(fragment.get(), tile),
+          val_only ? n : filtered_data->var_filtered_data(fragment.get(), tile),
+          filtered_data->nullable_filtered_data(fragment.get(), tile),
+          filtered_data};
 
       // Initialize the tile(s)
       const format_version_t format_version{fragment->format_version()};
@@ -772,7 +771,7 @@ std::list<FilteredData> ReaderBase::read_tiles(
 
   stats_->add_counter("num_tiles_read", num_tiles_read);
 
-  return filtered_data;
+  return;
 }
 
 tuple<Status, optional<uint64_t>, optional<uint64_t>, optional<uint64_t>>
