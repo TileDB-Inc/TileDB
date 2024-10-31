@@ -102,6 +102,14 @@ class TileBase {
     return static_cast<T*>(data());
   }
 
+  /** Converts the data pointer to a specific type with no check on compute
+   * task. This is used for getting thte data from inside the compute thread
+   * itself for unfiltering. */
+  template <class T>
+  inline T* data_as_unsafe() const {
+    return static_cast<T*>(data_unsafe());
+  }
+
   /** Gets the size, considering the data as a specific type. */
   template <class T>
   inline size_t size_as() const {
@@ -118,6 +126,12 @@ class TileBase {
       unfilter_data_compute_task_ = ThreadPool::SharedTask();
     }
 
+    return data_.get();
+  }
+
+  /** Returns the internal buffer. This is used for getting thte data from
+   * inside the compute thread itself for unfiltering. */
+  inline void* data_unsafe() const {
     return data_.get();
   }
 
