@@ -411,9 +411,7 @@ class FilteredData {
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
     std::shared_future<Status> task =
         resources_.io_tp().execute([this, offset, data, size, uri]() {
-          throw_if_not_ok(
-              resources_.vfs().read(uri, offset, data, size, false));
-          return Status::Ok();
+          return resources_.vfs().read(uri, offset, data, size, false);
         });
     // This should be changes once we use taskgraphs for modeling the data flow
     block.set_io_task(task);
