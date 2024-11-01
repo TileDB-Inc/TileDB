@@ -846,7 +846,7 @@ Status ReaderBase::zip_tile_coordinates(
         array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
-      tile->zip_coordinates();
+      tile->zip_coordinates_unsafe();
     }
   }
   return Status::Ok();
@@ -881,7 +881,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     auto& t_var = tile_tuple->var_tile();
     t_var.clear_filtered_buffer();
     throw_if_not_ok(zip_tile_coordinates(name, &t_var));
-    t.add_extra_offset(t_var);
+    t.add_extra_offset_unsafe(t_var);
   }
 
   if (nullable) {
