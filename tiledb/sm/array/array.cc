@@ -872,11 +872,15 @@ Array::get_enumerations_all_schemas() {
     } else {
       auto latest_schema = opened_array_->array_schema_latest_ptr();
       for (const auto& schema : array_schemas_all()) {
+        auto enmrs = ret[schema.first];
+        enmrs.reserve(schema.second->get_enumeration_names().size());
+
         std::unordered_set<std::string> enmrs_to_load;
         auto enumeration_names = schema.second->get_enumeration_names();
         // Dedupe requested names and filter out anything already loaded.
         for (auto& enmr_name : enumeration_names) {
           if (schema.second->is_enumeration_loaded(enmr_name)) {
+            enmrs.push_back(schema.second->get_enumeration(enmr_name));
             continue;
           }
           enmrs_to_load.insert(enmr_name);
@@ -890,8 +894,11 @@ Array::get_enumerations_all_schemas() {
         }
 
         // Load the enumerations from storage
-        ret[schema.first] = array_directory().load_enumerations_from_paths(
+        auto loaded = array_directory().load_enumerations_from_paths(
             paths_to_load, *encryption_key(), memory_tracker_);
+
+        enmrs.insert(enmrs.begin(), loaded.begin(), loaded.end());
+        ret[schema.first] = enmrs;
       }
     }
   }
