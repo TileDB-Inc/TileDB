@@ -31,24 +31,21 @@
  */
 
 #include "test/support/src/array_schema_helpers.h"
-#include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
-#include "tiledb/sm/array_schema/enumeration.h"
-#include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
 
 namespace tiledb::test {
 
 bool is_equivalent_enumeration(
-    const Enumeration& left, const Enumeration& right) {
+    const sm::Enumeration& left, const sm::Enumeration& right) {
   return left.name() == right.name() && left.type() == right.type() &&
          left.cell_val_num() == right.cell_val_num() &&
          left.ordered() == right.ordered() &&
          std::equal(
-             left.ptr()->data().begin(),
-             left.ptr()->data().end(),
-             right.ptr()->data().begin(),
-             right.ptr()->data().end());
+             left.data().begin(),
+             left.data().end(),
+             right.data().begin(),
+             right.data().end());
 }
 
 }  // namespace tiledb::test

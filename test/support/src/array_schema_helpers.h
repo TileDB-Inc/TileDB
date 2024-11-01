@@ -33,8 +33,7 @@
 #ifndef TILEDB_TEST_ARRAY_SCHEMA_HELPERS_H
 #define TILEDB_TEST_ARRAY_SCHEMA_HELPERS_H
 
-#include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/cpp_api/tiledb_experimental"
+#include "tiledb/sm/array_schema/enumeration.h"
 
 namespace tiledb::test {
 
@@ -43,7 +42,7 @@ namespace tiledb::test {
  *         i.e. have the same name, datatype, variants, etc
  */
 bool is_equivalent_enumeration(
-    const tiledb::Enumeration& left, const tiledb::Enumeration& right);
+    const sm::Enumeration& left, const sm::Enumeration& right);
 
 }  // namespace tiledb::test
 

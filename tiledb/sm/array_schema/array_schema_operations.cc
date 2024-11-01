@@ -259,7 +259,7 @@ shared_ptr<ArraySchema> load_array_schema(
           array_schema->timestamp_end(),
           config,
           *array_schema,
-          {},
+          array_schema->get_enumeration_names(),
           tracker);
 
       for (auto& enmr : ret[array_schema->name()]) {

@@ -338,7 +338,8 @@ TEST_CASE_METHOD(
             ctx_, schema, enmr_name);
     CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
     CHECK(test::is_equivalent_enumeration(
-        *expect_enumeration, actual_enumeration));
+        *expect_enumeration->ptr()->enumeration(),
+        *actual_enumeration.ptr()->enumeration()));
   }
 
   SECTION("schema load with rest config retrieves enumeration eagerly") {
@@ -355,7 +356,8 @@ TEST_CASE_METHOD(
             ctx_, schema, enmr_name);
     CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
     CHECK(test::is_equivalent_enumeration(
-        *expect_enumeration, actual_enumeration));
+        *expect_enumeration->ptr()->enumeration(),
+        *actual_enumeration.ptr()->enumeration()));
   }
 }
 
@@ -385,7 +387,8 @@ TEST_CASE_METHOD(
             ctx_, schema, attr_name);
     CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
     CHECK(test::is_equivalent_enumeration(
-        *expect_enumeration, actual_enumeration));
+        *expect_enumeration->ptr()->enumeration(),
+        *actual_enumeration.ptr()->enumeration()));
   }
 
   SECTION("schema load with rest config retrieves enumeration eagerly") {
@@ -402,7 +405,8 @@ TEST_CASE_METHOD(
             ctx_, schema, attr_name);
     CHECK(schema.ptr()->array_schema()->is_enumeration_loaded(enmr_name));
     CHECK(test::is_equivalent_enumeration(
-        *expect_enumeration, actual_enumeration));
+        *expect_enumeration->ptr()->enumeration(),
+        *actual_enumeration.ptr()->enumeration()));
   }
 }
 TEST_CASE_METHOD(

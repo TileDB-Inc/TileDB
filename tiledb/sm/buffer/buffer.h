@@ -227,19 +227,6 @@ class Buffer : public BufferBase {
   /** Move-assign operator. */
   Buffer& operator=(Buffer&& buff);
 
-  /** Equality operator */
-  bool operator==(const Buffer& rhs) const {
-    return size_ == rhs.size_ && owns_data_ == rhs.owns_data_ &&
-           preallocated_ == rhs.preallocated_ &&
-           alloced_size_ == rhs.alloced_size_ && offset_ == rhs.offset_ &&
-           memcmp(data_, rhs.data_, size_) == 0;
-  }
-
-  /** Inequality operator */
-  bool operator!=(const Buffer& rhs) const {
-    return !(*this == rhs);
-  }
-
   /** Destructor. */
   ~Buffer();
 

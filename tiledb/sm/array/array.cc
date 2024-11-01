@@ -830,6 +830,10 @@ std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 Array::get_enumerations_all_schemas() {
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
+  } else if (!use_refactored_array_open()) {
+    throw ArrayException(
+        "Unable to load enumerations for all array schemas; The array must "
+        "be opened using `rest.use_refactored_array_open=true`");
   }
   std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
       ret;
@@ -855,16 +859,16 @@ Array::get_enumerations_all_schemas() {
             "Error loading enumerations; Remote array with no REST client.");
       }
 
-    // Pass an empty list of enumeration names. REST will use timestamps to
-    // load all enumerations on all schemas for the array within that range.
-    ret = rest_client->post_enumerations_from_rest(
-        array_uri_,
-        array_dir_timestamp_start_,
-        array_dir_timestamp_end_,
-        config_,
-        array_schema_latest(),
-        {},
-        memory_tracker_);
+      // Pass an empty list of enumeration names. REST will use timestamps to
+      // load all enumerations on all schemas for the array within that range.
+      ret = rest_client->post_enumerations_from_rest(
+          array_uri_,
+          array_dir_timestamp_start_,
+          array_dir_timestamp_end_,
+          config_,
+          array_schema_latest(),
+          {},
+          memory_tracker_);
 
       // Store the enumerations from the REST response into array_schemas_all.
       auto latest_schema = opened_array_->array_schema_latest_ptr();

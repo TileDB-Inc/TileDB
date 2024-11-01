@@ -30,6 +30,7 @@
  * Tests end to end enumerations.
  */
 
+#include "test/support/src/array_schema_helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
@@ -168,6 +169,15 @@ TEST_CASE_METHOD(
   REQUIRE(schema->is_enumeration_loaded("my_enum") == load_enmrs);
   REQUIRE(schema->is_enumeration_loaded("fruit") == load_enmrs);
 
+  // If not using array open v3 just test that the correct exception is thrown
+  if (!array->use_refactored_array_open()) {
+    CHECK_THROWS_WITH(
+        array->load_all_enumerations(true),
+        Catch::Matchers::ContainsSubstring(
+            "The array must be opened using "
+            "`rest.use_refactored_array_open=true`"));
+    return;
+  }
   // If enumerations were loaded on array open this will not submit an
   // additional request.
   auto actual_enmrs = array->get_enumerations_all_schemas();
@@ -184,23 +194,15 @@ TEST_CASE_METHOD(
     for (const auto& [schema_name, enmrs] : expected_enmrs) {
       REQUIRE(actual_enmrs.contains(schema_name));
       REQUIRE(enmrs.size() == actual_enmrs[schema_name].size());
-      for (size_t i = 0; i < enmrs.size(); i++) {
-        CHECK(tiledb::test::shared_ptr_equiv(
-            enmrs[i], actual_enmrs[schema_name][i]));
-      }
+      CHECK_THAT(
+          enmrs,
+          Catch::Matchers::UnorderedRangeEquals(
+              actual_enmrs[schema_name], [](const auto& a, const auto& b) {
+                return tiledb::test::is_equivalent_enumeration(*a, *b);
+              }));
     }
   };
   validate_enmrs();
-
-  // If not using array open v3 just test that the correct exception is thrown
-  if (!array->use_refactored_array_open()) {
-    CHECK_THROWS_WITH(
-        array->load_all_enumerations(true),
-        Catch::Matchers::ContainsSubstring(
-            "The array must be opened using "
-            "`rest.use_refactored_array_open=true`"));
-    return;
-  }
 
   // Evolve once to add an enumeration.
   sm::URI uri(uri_);
@@ -276,23 +278,6 @@ TEST_CASE_METHOD(
   // Fetch one enumeration, intentionally leaving the other unloaded.
   auto enmr1 = array->get_enumeration("my_enum");
   REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
-  // Load all enumerations.
-  auto actual_enmrs = array->get_enumerations_all_schemas();
-  REQUIRE(schema->is_enumeration_loaded("fruit") == true);
-  auto enmr2 = array->get_enumeration("fruit");
-
-  decltype(actual_enmrs) expected_enmrs{{schema->name(), {enmr1, enmr2}}};
-  auto validate_enmrs = [&]() {
-    for (const auto& [schema_name, enmrs] : expected_enmrs) {
-      REQUIRE(actual_enmrs.contains(schema_name));
-      REQUIRE(enmrs.size() == actual_enmrs[schema_name].size());
-      for (size_t i = 0; i < enmrs.size(); i++) {
-        CHECK(tiledb::test::shared_ptr_equiv(
-            enmrs[i], actual_enmrs[schema_name][i]));
-      }
-    }
-  };
-  validate_enmrs();
 
   // If not using array open v3 just test that the correct exception is thrown
   if (!array->use_refactored_array_open()) {
@@ -303,6 +288,26 @@ TEST_CASE_METHOD(
             "`rest.use_refactored_array_open=true`"));
     return;
   }
+
+  // Load all enumerations.
+  auto actual_enmrs = array->get_enumerations_all_schemas();
+  REQUIRE(schema->is_enumeration_loaded("fruit") == true);
+  auto enmr2 = array->get_enumeration("fruit");
+
+  decltype(actual_enmrs) expected_enmrs{{schema->name(), {enmr1, enmr2}}};
+  auto validate_enmrs = [&]() {
+    for (const auto& [schema_name, enmrs] : expected_enmrs) {
+      REQUIRE(actual_enmrs.contains(schema_name));
+      REQUIRE(enmrs.size() == actual_enmrs[schema_name].size());
+      CHECK_THAT(
+          enmrs,
+          Catch::Matchers::UnorderedRangeEquals(
+              actual_enmrs[schema_name], [](const auto& a, const auto& b) {
+                return tiledb::test::is_equivalent_enumeration(*a, *b);
+              }));
+    }
+  };
+  validate_enmrs();
 
   // Evolve once to add an enumeration.
   sm::URI uri(uri_);
@@ -347,8 +352,7 @@ TEST_CASE_METHOD(
   }
 
   actual_enmrs = array->get_enumerations_all_schemas();
-  expected_enmrs[schema_name_2] = {
-      enmr1, enmr2, var_enmr.ptr()->enumeration()};
+  expected_enmrs[schema_name_2] = {enmr1, enmr2, var_enmr.ptr()->enumeration()};
   validate_enmrs();
 
   SECTION("Drop all enumerations and validate earlier schemas") {
