@@ -1529,6 +1529,10 @@ uint64_t ArraySchema::timestamp_start() const {
   return timestamp_range_.first;
 }
 
+uint64_t ArraySchema::timestamp_end() const {
+  return timestamp_range_.second;
+}
+
 const URI& ArraySchema::uri() const {
   return uri_;
 }
