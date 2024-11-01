@@ -224,15 +224,8 @@ void TileBase::write(const void* data, uint64_t offset, uint64_t nbytes) {
   size_ = std::max(offset + nbytes, size_);
 }
 
-void Tile::zip_coordinates() {
-  std::scoped_lock<std::recursive_mutex> lock{unfilter_data_compute_task_mtx_};
+void Tile::zip_coordinates_unsafe() {
   assert(zipped_coords_dim_num_ > 0);
-
-  if (unfilter_data_compute_task_.valid()) {
-    unfilter_data_compute_task_.wait();
-    throw_if_not_ok(unfilter_data_compute_task_.get());
-    unfilter_data_compute_task_ = ThreadPool::SharedTask();
-  }
 
   // For easy reference
   const uint64_t tile_size = size_;

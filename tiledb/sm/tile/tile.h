@@ -166,8 +166,8 @@ class TileBase {
    *
    * @param var_tile Var tile.
    */
-  void add_extra_offset(TileBase& var_tile) {
-    data_as<uint64_t>()[size_ / cell_size_ - 1] = var_tile.size();
+  void add_extra_offset_unsafe(TileBase& var_tile) {
+    data_as_unsafe<uint64_t>()[size_ / cell_size_ - 1] = var_tile.size();
   }
 
  protected:
@@ -345,8 +345,12 @@ class Tile : public TileBase {
   /**
    * Zips the coordinate values such that a cell's coordinates across
    * all dimensions appear contiguously in the buffer.
+   *
+   * This is marked unsafe because we don't check for unfiltering to be
+   * completed since this function is used by the unfiltering task itself as
+   * part of post processing.
    */
-  void zip_coordinates();
+  void zip_coordinates_unsafe();
 
   /**
    * Reads the chunk data of a tile buffer and populates a chunk data structure.
