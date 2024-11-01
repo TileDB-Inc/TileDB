@@ -869,34 +869,6 @@ Array::get_enumerations_all_schemas() {
           array_schema_latest(),
           {},
           memory_tracker_);
-
-      // Store the enumerations from the REST response into array_schemas_all.
-      auto latest_schema = opened_array_->array_schema_latest_ptr();
-      for (const auto& schema_enmrs : ret) {
-        if (!array_schemas_all().contains(schema_enmrs.first)) {
-          throw ArrayException(
-              "Array opened using timestamp range (" +
-              std::to_string(array_dir_timestamp_start_) + ", " +
-              std::to_string(array_dir_timestamp_end_) +
-              ") has no loaded schema named '" + schema_enmrs.first +
-              "'; If the array was recently evolved be sure to reopen it after "
-              "applying the evolution.");
-        }
-
-        auto schema = array_schemas_all().at(schema_enmrs.first);
-        for (const auto& enmr : schema_enmrs.second) {
-          if (!schema->is_enumeration_loaded(enmr->name())) {
-            schema->store_enumeration(enmr);
-          }
-          // Also store enumerations into the latest schema when we encounter
-          // it.
-          if (schema_enmrs.first == latest_schema->name()) {
-            if (!latest_schema->is_enumeration_loaded(enmr->name())) {
-              latest_schema->store_enumeration(enmr);
-            }
-          }
-        }
-      }
     } else {
       auto latest_schema = opened_array_->array_schema_latest_ptr();
       for (const auto& schema : array_schemas_all()) {
@@ -918,22 +890,38 @@ Array::get_enumerations_all_schemas() {
         }
 
         // Load the enumerations from storage
-        auto loaded = array_directory().load_enumerations_from_paths(
+        ret[schema.first] = array_directory().load_enumerations_from_paths(
             paths_to_load, *encryption_key(), memory_tracker_);
+      }
+    }
+  }
 
-        // Store the loaded enumerations in the schema.
-        for (auto& enmr : loaded) {
-          if (!schema.second->is_enumeration_loaded(enmr->name())) {
-            schema.second->store_enumeration(enmr);
-          }
-          // Also store enumerations into latest schema.
-          if (schema.first == latest_schema->name()) {
-            if (!latest_schema->is_enumeration_loaded(enmr->name())) {
-              latest_schema->store_enumeration(enmr);
-            }
-          }
+  // Store the loaded enumerations into the schemas.
+  auto latest_schema = opened_array_->array_schema_latest_ptr();
+  for (const auto& schema_enmrs : ret) {
+    // This case will only be hit for remote arrays if the client evolves the
+    // schema and does not reopen the array before loading all enumerations.
+    if (!array_schemas_all().contains(schema_enmrs.first)) {
+      throw ArrayException(
+          "Array opened using timestamp range (" +
+          std::to_string(array_dir_timestamp_start_) + ", " +
+          std::to_string(array_dir_timestamp_end_) +
+          ") has no loaded schema named '" + schema_enmrs.first +
+          "'; If the array was recently evolved be sure to reopen it after "
+          "applying the evolution.");
+    }
+
+    auto schema = array_schemas_all().at(schema_enmrs.first);
+    for (const auto& enmr : schema_enmrs.second) {
+      if (!schema->is_enumeration_loaded(enmr->name())) {
+        schema->store_enumeration(enmr);
+      }
+      // Also store enumerations into the latest schema when we encounter
+      // it.
+      if (schema_enmrs.first == latest_schema->name()) {
+        if (!latest_schema->is_enumeration_loaded(enmr->name())) {
+          latest_schema->store_enumeration(enmr);
         }
-        ret[schema.first] = schema.second->get_loaded_enumerations();
       }
     }
   }
