@@ -1120,91 +1120,19 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "Array - Load All Enumerations - All Schemas",
-    "[enumeration][array][load-all-enumerations][all-schemas]") {
-  create_array();
-  auto array = get_array(QueryType::READ);
-  auto schema = array->array_schema_latest_ptr();
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
-  std::string schema_name_1 = schema->name();
-
-  // If not using array open v3 just test that the correct exception is thrown
-  if (!array->use_refactored_array_open()) {
-    CHECK_THROWS_WITH(
-        array->load_all_enumerations(true),
-        Catch::Matchers::ContainsSubstring(
-            "The array must be opened using "
-            "`rest.use_refactored_array_open=true`"));
-    return;
-  }
-
-  // Evolve once to add an enumeration.
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
-  std::vector<std::string> var_values{"one", "two", "three"};
-  auto var_enmr = create_enumeration(
-      var_values, false, Datatype::STRING_ASCII, "ase_var_enmr");
-  ase->add_enumeration(var_enmr);
-  auto attr4 = make_shared<Attribute>(HERE(), "attr4", Datatype::UINT16);
-  attr4->set_enumeration_name("ase_var_enmr");
-  CHECK_NOTHROW(ase->evolve_schema(schema));
-  // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(Array::evolve_array_schema(
-      ctx_.resources(), uri_, ase.get(), array->get_encryption_key()));
-  CHECK(array->reopen().ok());
-  CHECK_NOTHROW(array->load_all_enumerations(true));
-  auto all_schemas = array->array_schemas_all();
-  schema = array->array_schema_latest_ptr();
-  std::string schema_name_2 = schema->name();
-
-  // Check all schemas.
-  CHECK(all_schemas[schema_name_1]->is_enumeration_loaded("test_enmr") == true);
-  CHECK(all_schemas[schema_name_2]->is_enumeration_loaded("test_enmr") == true);
-  CHECK(
-      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
-
-  // Evolve a second time to drop an enumeration.
-  ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
-  ase->drop_enumeration("test_enmr");
-  ase->drop_attribute("attr1");
-  CHECK_NOTHROW(ase->evolve_schema(schema));
-  // Apply evolution to the array and reopen.
-  CHECK_NOTHROW(Array::evolve_array_schema(
-      ctx_.resources(), uri_, ase.get(), array->get_encryption_key()));
-  CHECK(array->reopen().ok());
-  CHECK_NOTHROW(array->load_all_enumerations(true));
-  all_schemas = array->array_schemas_all();
-  schema = array->array_schema_latest_ptr();
-  std::string schema_name_3 = schema->name();
-
-  // Check all schemas.
-  CHECK(all_schemas[schema_name_1]->is_enumeration_loaded("test_enmr") == true);
-  CHECK(all_schemas[schema_name_2]->is_enumeration_loaded("test_enmr") == true);
-  CHECK(
-      all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
-  CHECK_THROWS_WITH(
-      all_schemas[schema_name_3]->is_enumeration_loaded("test_enmr"),
-      Catch::Matchers::ContainsSubstring("No enumeration named"));
-  CHECK(
-      all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
-      true);
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
     "Array - Load All Enumerations - Repeated",
     "[enumeration][array][load-all-enumerations][repeated]") {
   create_array();
+  bool all_schemas = GENERATE(true, false);
   auto array = get_array(QueryType::READ);
   auto schema = array->array_schema_latest_ptr();
 
   REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
 
-  CHECK_NOTHROW(array->load_all_enumerations());
+  CHECK_NOTHROW(array->load_all_enumerations(all_schemas));
   REQUIRE(schema->is_enumeration_loaded("test_enmr") == true);
 
-  CHECK_NOTHROW(array->load_all_enumerations());
+  CHECK_NOTHROW(array->load_all_enumerations(all_schemas));
   REQUIRE(schema->is_enumeration_loaded("test_enmr") == true);
 }
 
@@ -1212,9 +1140,10 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "Array - Load All Enumerations Error - Not Open",
     "[enumeration][array][error][not-open]") {
+  bool all_schemas = GENERATE(true, false);
   auto array = make_shared<Array>(HERE(), ctx_.resources(), uri_);
   auto matcher = Catch::Matchers::ContainsSubstring("Array is not open");
-  REQUIRE_THROWS(array->load_all_enumerations());
+  REQUIRE_THROWS(array->load_all_enumerations(all_schemas));
 }
 
 /* ********************************* */
@@ -1704,8 +1633,9 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Simple No Enumeration",
     "[enumeration][array-schema-evolution][simple]") {
   create_array();
+  bool all_schemas = GENERATE(true, false);
   auto array = get_array(QueryType::READ);
-  array->load_all_enumerations();
+  array->load_all_enumerations(all_schemas);
 
   auto orig_schema = array->array_schema_latest_ptr();
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
@@ -2558,7 +2488,7 @@ TEST_CASE_METHOD(
   REQUIRE(a1->serialize_enumerations() == (do_load == "true"));
   REQUIRE(
       a1->array_schema_latest_ptr()->get_loaded_enumeration_names().size() ==
-      0);
+      (do_load == "true" ? 2 : 0));
 
   auto a2 = make_shared<Array>(HERE(), ctx.resources(), uri_);
 

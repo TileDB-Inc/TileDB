@@ -43,6 +43,7 @@
 #include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -501,6 +502,13 @@ Status Array::open(
             rest_client->get_array_schema_from_rest(array_uri_);
         throw_if_not_ok(st);
         set_array_schema_latest(array_schema_latest.value());
+        if (config_.get<bool>(
+                "rest.load_enumerations_on_array_open", Config::must_find)) {
+          // The route for array open v1 does not currently support loading
+          // enumerations. Once #5359 is merged and deployed to REST this will
+          // not be the case.
+          load_all_enumerations(false);
+        }
       } else {
         rest_client->post_array_from_rest(array_uri_, resources_, this);
       }
@@ -586,6 +594,17 @@ Status Array::open(
   } catch (std::exception& e) {
     set_array_closed();
     return LOG_STATUS(Status_ArrayError(e.what()));
+  }
+
+  // Handle any array open config options for local arrays.
+  if (!remote_) {
+    // For fetching remote enumerations REST calls
+    // tiledb_handle_load_enumerations_request which loads enumerations. For
+    // local arrays we don't call this method.
+    if (config_.get<bool>(
+            "rest.load_enumerations_on_array_open", Config::must_find)) {
+      load_all_enumerations(use_refactored_array_open());
+    }
   }
 
   is_opening_or_closing_ = false;
@@ -811,63 +830,106 @@ std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 Array::get_enumerations_all_schemas() {
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
+  } else if (!use_refactored_array_open()) {
+    throw ArrayException(
+        "Unable to load enumerations for all array schemas; The array must "
+        "be opened using `rest.use_refactored_array_open=true`");
   }
-
   std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
       ret;
-  if (remote_) {
-    auto rest_client = resources_.rest_client();
-    if (rest_client == nullptr) {
+
+  // Check if all enumerations are already loaded.
+  bool all_enmrs_loaded = true;
+  for (const auto& schema : array_schemas_all()) {
+    if (schema.second->get_enumeration_names().size() !=
+        schema.second->get_loaded_enumeration_names().size()) {
+      all_enmrs_loaded = false;
+      break;
+    }
+    ret[schema.first] = schema.second->get_loaded_enumerations();
+  }
+
+  if (!all_enmrs_loaded) {
+    ret.clear();
+
+    if (remote_) {
+      auto rest_client = resources_.rest_client();
+      if (rest_client == nullptr) {
+        throw ArrayException(
+            "Error loading enumerations; Remote array with no REST client.");
+      }
+
+      // Pass an empty list of enumeration names. REST will use timestamps to
+      // load all enumerations on all schemas for the array within that range.
+      ret = rest_client->post_enumerations_from_rest(
+          array_uri_,
+          array_dir_timestamp_start_,
+          array_dir_timestamp_end_,
+          config_,
+          array_schema_latest(),
+          {},
+          memory_tracker_);
+    } else {
+      auto latest_schema = opened_array_->array_schema_latest_ptr();
+      for (const auto& schema : array_schemas_all()) {
+        auto enmrs = ret[schema.first];
+        enmrs.reserve(schema.second->get_enumeration_names().size());
+
+        std::unordered_set<std::string> enmrs_to_load;
+        auto enumeration_names = schema.second->get_enumeration_names();
+        // Dedupe requested names and filter out anything already loaded.
+        for (auto& enmr_name : enumeration_names) {
+          if (schema.second->is_enumeration_loaded(enmr_name)) {
+            enmrs.push_back(schema.second->get_enumeration(enmr_name));
+            continue;
+          }
+          enmrs_to_load.insert(enmr_name);
+        }
+
+        // Create a vector of paths to be loaded.
+        std::vector<std::string> paths_to_load;
+        for (auto& enmr_name : enmrs_to_load) {
+          auto path = schema.second->get_enumeration_path_name(enmr_name);
+          paths_to_load.push_back(path);
+        }
+
+        // Load the enumerations from storage
+        auto loaded = array_directory().load_enumerations_from_paths(
+            paths_to_load, *encryption_key(), memory_tracker_);
+
+        enmrs.insert(enmrs.begin(), loaded.begin(), loaded.end());
+        ret[schema.first] = enmrs;
+      }
+    }
+  }
+
+  // Store the loaded enumerations into the schemas.
+  auto latest_schema = opened_array_->array_schema_latest_ptr();
+  for (const auto& schema_enmrs : ret) {
+    // This case will only be hit for remote arrays if the client evolves the
+    // schema and does not reopen the array before loading all enumerations.
+    if (!array_schemas_all().contains(schema_enmrs.first)) {
       throw ArrayException(
-          "Error loading enumerations; Remote array with no REST client.");
+          "Array opened using timestamp range (" +
+          std::to_string(array_dir_timestamp_start_) + ", " +
+          std::to_string(array_dir_timestamp_end_) +
+          ") has no loaded schema named '" + schema_enmrs.first +
+          "'; If the array was recently evolved be sure to reopen it after "
+          "applying the evolution.");
     }
 
-    // Pass an empty list of enumeration names. REST will use timestamps to
-    // load all enumerations on all schemas for the array within that range.
-    ret = rest_client->post_enumerations_from_rest(
-        array_uri_,
-        array_dir_timestamp_start_,
-        array_dir_timestamp_end_,
-        config_,
-        array_schema_latest(),
-        {},
-        memory_tracker_);
-
-    // Store the enumerations from the REST response.
-    for (const auto& schema_enmrs : ret) {
-      auto schema = array_schemas_all().at(schema_enmrs.first);
-      for (const auto& enmr : schema_enmrs.second) {
+    auto schema = array_schemas_all().at(schema_enmrs.first);
+    for (const auto& enmr : schema_enmrs.second) {
+      if (!schema->is_enumeration_loaded(enmr->name())) {
         schema->store_enumeration(enmr);
       }
-    }
-  } else {
-    for (const auto& schema : array_schemas_all()) {
-      std::unordered_set<std::string> enmrs_to_load;
-      auto enumeration_names = schema.second->get_enumeration_names();
-      // Dedupe requested names and filter out anything already loaded.
-      for (auto& enmr_name : enumeration_names) {
-        if (schema.second->is_enumeration_loaded(enmr_name)) {
-          continue;
+      // Also store enumerations into the latest schema when we encounter
+      // it.
+      if (schema_enmrs.first == latest_schema->name()) {
+        if (!latest_schema->is_enumeration_loaded(enmr->name())) {
+          latest_schema->store_enumeration(enmr);
         }
-        enmrs_to_load.insert(enmr_name);
       }
-
-      // Create a vector of paths to be loaded.
-      std::vector<std::string> paths_to_load;
-      for (auto& enmr_name : enmrs_to_load) {
-        auto path = schema.second->get_enumeration_path_name(enmr_name);
-        paths_to_load.push_back(path);
-      }
-
-      // Load the enumerations from storage
-      auto loaded = array_directory().load_enumerations_from_paths(
-          paths_to_load, *encryption_key(), memory_tracker_);
-
-      // Store the loaded enumerations in the schema.
-      for (auto& enmr : loaded) {
-        schema.second->store_enumeration(enmr);
-      }
-      ret[schema.first] = loaded;
     }
   }
 
@@ -1084,6 +1146,11 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   set_array_schema_latest(array_schema_latest);
   set_array_schemas_all(std::move(array_schemas_all));
   set_fragment_metadata(std::move(fragment_metadata));
+
+  if (config_.get<bool>(
+          "rest.load_enumerations_on_array_open", Config::must_find)) {
+    load_all_enumerations(use_refactored_array_open());
+  }
 
   return Status::Ok();
 }

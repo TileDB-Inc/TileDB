@@ -431,6 +431,13 @@ class ArraySchema {
   std::vector<std::string> get_enumeration_names() const;
 
   /**
+   * Get a vector of loaded Enumerations.
+   *
+   * @return A vector of loaded Enumerations.
+   */
+  std::vector<shared_ptr<const Enumeration>> get_loaded_enumerations() const;
+
+  /**
    * Get a vector of loaded Enumeration names.
    *
    * @return A vector of loaded enumeration names.
