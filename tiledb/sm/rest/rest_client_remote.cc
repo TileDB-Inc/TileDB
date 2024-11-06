@@ -274,7 +274,7 @@ RestClientRemote::post_array_schema_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_load_array_schema_response(
-      uri, serialization_type_, returned_data, memory_tracker_);
+      uri, config, serialization_type_, returned_data, memory_tracker_);
 }
 
 Status RestClientRemote::post_array_schema_to_rest(
@@ -616,7 +616,7 @@ RestClientRemote::post_enumerations_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_load_enumerations_response(
-      array_schema, serialization_type_, returned_data, memory_tracker);
+      array_schema, config, serialization_type_, returned_data, memory_tracker);
 }
 
 void RestClientRemote::post_query_plan_from_rest(

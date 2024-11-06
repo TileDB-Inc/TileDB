@@ -346,6 +346,7 @@ void serialize_load_enumerations_response(
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
     const ArraySchema& array_schema,
+    const Config& config,
     SerializationType serialize_type,
     span<const char> response,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -362,10 +363,19 @@ deserialize_load_enumerations_response(
             reader, array_schema, memory_tracker);
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            config.get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes = reinterpret_cast<const kj::byte*>(response.data());
-        ::capnp::FlatArrayMessageReader array_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            response.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader array_reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                response.size() / sizeof(::capnp::word)),
+            readerOptions);
         capnp::LoadEnumerationsResponse::Reader reader =
             array_reader.getRoot<capnp::LoadEnumerationsResponse>();
         return load_enumerations_response_from_capnp(
@@ -414,6 +424,7 @@ void serialize_load_enumerations_response(
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
     const Array&,
+    const Config&,
     SerializationType,
     span<const char>,
     shared_ptr<MemoryTracker>) {

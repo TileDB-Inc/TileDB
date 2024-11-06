@@ -2940,7 +2940,7 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 
   ArraySchemaEvolution* ret;
   throw_if_not_ok(serialization::array_schema_evolution_deserialize(
-      &ret, stype, buf, memory_tracker_));
+      &ret, cfg_, stype, buf, memory_tracker_));
 
   return shared_ptr<ArraySchemaEvolution>(ret);
 }
