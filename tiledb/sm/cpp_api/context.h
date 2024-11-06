@@ -236,7 +236,7 @@ class Context {
 
     // Copy `c_str` into `str`.
     std::string str(c_str);
-    ::free(c_str);
+    tiledb_stats_free_str(&c_str);
 
     return str;
   }
