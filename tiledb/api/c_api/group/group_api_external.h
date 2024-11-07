@@ -621,7 +621,9 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_query_type(
     tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
 
 /**
- * Dump a string representation of a group
+ * Dump a string representation of a group.
+ *
+ * Deprecated, use tiledb_group_dump_str instead.
  *
  * @param ctx The TileDB context.
  * @param group The group.
@@ -630,10 +632,25 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_query_type(
  * @param recursive should we recurse into sub-groups
  * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_group_dump_str(
+TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_dump_str(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     char** dump_ascii,
+    const uint8_t recursive) TILEDB_NOEXCEPT;
+
+/**
+ * Dump a string representation of a group.
+ *
+ * @param ctx The TileDB context.
+ * @param group The group.
+ * @param dump_ascii The output string handle.
+ * @param recursive should we recurse into sub-groups
+ * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_group_dump_str_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_string_t** dump_ascii,
     const uint8_t recursive) TILEDB_NOEXCEPT;
 
 /**
