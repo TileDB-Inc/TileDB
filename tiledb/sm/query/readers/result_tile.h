@@ -239,6 +239,21 @@ class ResultTile {
         , filtered_data_(std::move(filtered_data)) {
     }
 
+    ~TileData() {
+      // TODO: destructor should not throw, catch any exceptions
+      if (fixed_filtered_data_task_.valid()) {
+        fixed_filtered_data_task_.get();
+      }
+
+      if (var_filtered_data_task_.valid()) {
+        var_filtered_data_task_.get();
+      }
+
+      if (validity_filtered_data_task_.valid()) {
+        validity_filtered_data_task_.get();
+      }
+    }
+
     /* ********************************* */
     /*                API                */
     /* ********************************* */

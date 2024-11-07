@@ -74,6 +74,15 @@ class TileBase {
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
 
+  ~TileBase() {
+    // TODO: destructor should not throw, catch any exceptions
+    std::scoped_lock<std::recursive_mutex> lock{
+        unfilter_data_compute_task_mtx_};
+    if (unfilter_data_compute_task_.valid()) {
+      unfilter_data_compute_task_.get();
+    }
+  }
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -282,6 +291,15 @@ class Tile : public TileBase {
   DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
 
+  ~Tile() {
+    // TODO: destructor should not throw, catch any exceptions
+    std::scoped_lock<std::recursive_mutex> lock{
+        unfilter_data_compute_task_mtx_};
+    if (unfilter_data_compute_task_.valid()) {
+      unfilter_data_compute_task_.get();
+    }
+  }
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -332,7 +350,6 @@ class Tile : public TileBase {
   void clear_filtered_buffer() {
     filtered_data_ = nullptr;
     filtered_size_ = 0;
-    filtered_data_block_ = nullptr;
   }
 
   /**
