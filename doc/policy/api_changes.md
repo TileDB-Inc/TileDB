@@ -79,6 +79,10 @@ Function removal shall be announced one release cycle before removal, following 
 - `tiledb_group_get_member_by_index`
 - `tiledb_group_get_member_by_name`
 
+### 2.27.0..2.28.0
+
+- `tiledb_group_dump_str`
+
 ## Deprecation History Generation
 
 <details>
