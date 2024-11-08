@@ -340,6 +340,11 @@ class FragmentMetadata {
     return gt_offsets_;
   }
 
+  /** Returns the memory tracker. */
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
+
   /**
    * Initializes the fragment metadata structures.
    *
@@ -825,6 +830,10 @@ class FragmentMetadata {
 
   inline const LoadedFragmentMetadata* loaded_metadata() const {
     return loaded_metadata_ptr_;
+  }
+
+  inline shared_ptr<LoadedFragmentMetadata> loaded_metadata_shared() {
+    return loaded_metadata_;
   }
 
  private:

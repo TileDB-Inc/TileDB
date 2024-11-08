@@ -477,9 +477,10 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
     return Status::Ok();
   }
 
-  auto meta = single_fragment_info_vec_[fid].meta();
-  meta->loaded_metadata()->load_rtree(enc_key_);
-  *mbr_num = meta->mbrs().size();
+  auto loaded_fragment_metadata =
+      single_fragment_info_vec_[fid].loaded_fragment_metadata();
+  loaded_fragment_metadata->load_rtree(enc_key_);
+  *mbr_num = loaded_fragment_metadata->rtree().leaves().size();
 
   return Status::Ok();
 }
@@ -499,9 +500,10 @@ Status FragmentInfo::get_mbr(
     throw FragmentInfoException("Cannot get MBR; Fragment is not sparse");
   }
 
-  auto meta = single_fragment_info_vec_[fid].meta();
-  meta->loaded_metadata()->load_rtree(enc_key_);
-  const auto& mbrs = meta->mbrs();
+  auto loaded_fragment_metadata =
+      single_fragment_info_vec_[fid].loaded_fragment_metadata();
+  loaded_fragment_metadata->load_rtree(enc_key_);
+  const auto& mbrs = loaded_fragment_metadata->rtree().leaves();
 
   if (mid >= mbrs.size()) {
     throw FragmentInfoException("Cannot get MBR; Invalid MBR index");
@@ -581,9 +583,10 @@ Status FragmentInfo::get_mbr_var_size(
     throw FragmentInfoException("Cannot get MBR; Fragment is not sparse");
   }
 
-  auto meta = single_fragment_info_vec_[fid].meta();
-  meta->loaded_metadata()->load_rtree(enc_key_);
-  const auto& mbrs = meta->mbrs();
+  auto loaded_fragment_metadata =
+      single_fragment_info_vec_[fid].loaded_fragment_metadata();
+  loaded_fragment_metadata->load_rtree(enc_key_);
+  const auto& mbrs = loaded_fragment_metadata->rtree().leaves();
 
   if (mid >= mbrs.size()) {
     throw FragmentInfoException("Cannot get MBR; Invalid mbr index");
@@ -664,9 +667,10 @@ Status FragmentInfo::get_mbr_var(
     throw FragmentInfoException("Cannot get MBR var; Fragment is not sparse");
   }
 
-  auto meta = single_fragment_info_vec_[fid].meta();
-  meta->loaded_metadata()->load_rtree(enc_key_);
-  const auto& mbrs = meta->mbrs();
+  auto loaded_fragment_metadata =
+      single_fragment_info_vec_[fid].loaded_fragment_metadata();
+  loaded_fragment_metadata->load_rtree(enc_key_);
+  const auto& mbrs = loaded_fragment_metadata->rtree().leaves();
 
   if (mid >= mbrs.size()) {
     throw FragmentInfoException("Cannot get MBR var; Invalid mbr index");
@@ -888,7 +892,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
         }
 
         if (preload_rtrees & !meta->dense()) {
-          meta->loaded_metadata()->load_rtree(enc_key_);
+          meta->loaded_metadata_shared()->load_rtree(enc_key_);
         }
 
         return Status::Ok();
@@ -916,14 +920,21 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
         array_schema->domain().expand_to_tiles(&expanded_non_empty_domain);
 
       // Push new fragment info
-      single_fragment_info_vec_.emplace_back(SingleFragmentInfo(
+      single_fragment_info_vec_.emplace_back(
           uri,
           sparse,
           meta->timestamp_range(),
           sizes[fid],
           non_empty_domain,
           expanded_non_empty_domain,
-          meta));
+          meta,
+          // This workaround is unfortunately absolutely necessary. With this
+          // workaround we can ship this change in FragmentInfo independently
+          // and when we break the circular dependency between FragmentMetadata
+          // and LoadedFragmentMetadata, we can remove this workaround,
+          // construct LoadedFragmentMetadata objects independenly for which
+          // SingleFragmentInfo objects can have exclusive ownership.
+          meta->loaded_metadata_shared());
     }
   }
 
@@ -1165,7 +1176,14 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
       size,
       non_empty_domain,
       expanded_non_empty_domain,
-      meta);
+      meta,
+      // This workaround is unfortunately absolutely necessary. With this
+      // workaround we can ship this change in FragmentInfo independently
+      // and when we break the circular dependency between FragmentMetadata
+      // and LoadedFragmentMetadata, we can remove this workaround,
+      // construct LoadedFragmentMetadata objects independenly for which
+      // SingleFragmentInfo objects can have exclusive ownership.
+      meta->loaded_metadata_shared());
 
   return {Status::Ok(), ret};
 }
