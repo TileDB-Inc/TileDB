@@ -238,12 +238,35 @@ shared_ptr<ArraySchema> load_array_schema(
     throw std::runtime_error("Failed to load array schema; Invalid array URI");
   }
 
+  // Load enumerations if config option is set.
+  const bool incl_enums = config.get<bool>(
+      "rest.load_enumerations_on_array_open", Config::must_find);
+
   if (uri.is_tiledb()) {
     auto& rest_client = ctx.rest_client();
     auto&& [st, array_schema_response] =
         rest_client.get_array_schema_from_rest(uri);
     throw_if_not_ok(st);
-    return std::move(array_schema_response).value();
+    auto array_schema = std::move(array_schema_response).value();
+
+    if (incl_enums) {
+      auto tracker = ctx.resources().ephemeral_memory_tracker();
+      // Pass an empty list of enumeration names. REST will use timestamps to
+      // load all enumerations on all schemas for the array within that range.
+      auto ret = rest_client.post_enumerations_from_rest(
+          uri,
+          array_schema->timestamp_start(),
+          array_schema->timestamp_end(),
+          config,
+          *array_schema,
+          array_schema->get_enumeration_names(),
+          tracker);
+
+      for (auto& enmr : ret[array_schema->name()]) {
+        array_schema->store_enumeration(enmr);
+      }
+    }
+    return array_schema;
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;
@@ -264,9 +287,6 @@ shared_ptr<ArraySchema> load_array_schema(
     auto&& array_schema_latest =
         array_dir->load_array_schema_latest(key, tracker);
 
-    // Load enumerations if config option is set.
-    bool incl_enums = config.get<bool>(
-        "rest.load_enumerations_on_array_open", Config::must_find);
     if (incl_enums) {
       std::vector<std::string> enmr_paths_to_load;
       auto enmr_names = array_schema_latest->get_enumeration_names();

@@ -191,7 +191,7 @@ void load_enumerations_response_to_capnp(
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 load_enumerations_response_from_capnp(
     const capnp::LoadEnumerationsResponse::Reader& reader,
-    const Array& array,
+    const ArraySchema& array_schema,
     shared_ptr<MemoryTracker> memory_tracker) {
   std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
       ret;
@@ -204,7 +204,7 @@ load_enumerations_response_from_capnp(
     }
     // The name of the latest array schema will not be serialized in the
     // response if we are only loading enumerations from the latest schema.
-    return {{array.array_schema_latest().name(), loaded_enmrs}};
+    return {{array_schema.name(), loaded_enmrs}};
   } else if (reader.hasAllEnumerations()) {
     auto all_enmrs_reader = reader.getAllEnumerations();
     for (auto enmr_entry_reader : all_enmrs_reader.getEntries()) {
@@ -345,7 +345,8 @@ void serialize_load_enumerations_response(
 
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
-    const Array& array,
+    const ArraySchema& array_schema,
+    const Config& config,
     SerializationType serialize_type,
     span<const char> response,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -359,17 +360,26 @@ deserialize_load_enumerations_response(
         json.decode(kj::StringPtr(response.data(), response.size()), builder);
         capnp::LoadEnumerationsResponse::Reader reader = builder.asReader();
         return load_enumerations_response_from_capnp(
-            reader, array, memory_tracker);
+            reader, array_schema, memory_tracker);
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            config.get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes = reinterpret_cast<const kj::byte*>(response.data());
-        ::capnp::FlatArrayMessageReader array_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            response.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader array_reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                response.size() / sizeof(::capnp::word)),
+            readerOptions);
         capnp::LoadEnumerationsResponse::Reader reader =
             array_reader.getRoot<capnp::LoadEnumerationsResponse>();
         return load_enumerations_response_from_capnp(
-            reader, array, memory_tracker);
+            reader, array_schema, memory_tracker);
       }
       default: {
         throw EnumerationSerializationException(
@@ -414,6 +424,7 @@ void serialize_load_enumerations_response(
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
     const Array&,
+    const Config&,
     SerializationType,
     span<const char>,
     shared_ptr<MemoryTracker>) {

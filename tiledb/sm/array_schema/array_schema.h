@@ -431,6 +431,13 @@ class ArraySchema {
   std::vector<std::string> get_enumeration_names() const;
 
   /**
+   * Get a vector of loaded Enumerations.
+   *
+   * @return A vector of loaded Enumerations.
+   */
+  std::vector<shared_ptr<const Enumeration>> get_loaded_enumerations() const;
+
+  /**
    * Get a vector of loaded Enumeration names.
    *
    * @return A vector of loaded enumeration names.
@@ -568,8 +575,11 @@ class ArraySchema {
   /** Returns the timestamp range. */
   std::pair<uint64_t, uint64_t> timestamp_range() const;
 
-  /** Returns the the first timestamp. */
+  /** Returns the first timestamp. */
   uint64_t timestamp_start() const;
+
+  /** Returns the end timestamp */
+  uint64_t timestamp_end() const;
 
   /** Returns the array schema uri. */
   const URI& uri() const;
