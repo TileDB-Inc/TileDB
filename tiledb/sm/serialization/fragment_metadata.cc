@@ -390,8 +390,6 @@ Status fragment_metadata_from_capnp(
     // deserialize it as well in that way.
     frag_meta->loaded_metadata()->rtree().deserialize(
         deserializer, &domain, constants::format_version);
-
-    frag_meta->loaded_metadata()->set_rtree_loaded();
   }
 
   // It's important to do this here as init_domain depends on some fields
