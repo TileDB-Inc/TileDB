@@ -289,6 +289,7 @@ Status array_schema_evolution_serialize(
 
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution** array_schema_evolution,
+    const Config& config,
     SerializationType serialize_type,
     span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -312,11 +313,20 @@ Status array_schema_evolution_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            config.get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             reader.getRoot<capnp::ArraySchemaEvolution>();
         decoded_array_schema_evolution = array_schema_evolution_from_capnp(
@@ -363,6 +373,7 @@ Status array_schema_evolution_serialize(
 
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution**,
+    const Config&,
     SerializationType,
     span<const char>,
     shared_ptr<MemoryTracker>) {

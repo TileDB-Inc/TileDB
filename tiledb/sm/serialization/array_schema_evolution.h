@@ -70,6 +70,7 @@ Status array_schema_evolution_serialize(
 /**
  * Deserialize an array schema evolution via Cap'n Proto
  * @param array_schema_evolution pointer to store evolution object in
+ * @param config associated config object
  * @param serialize_type format to serialize into Cap'n Proto or JSON
  * @param serialized_buffer buffer where serialized bytes are stored
  * @param memory_tracker memory tracker associated with the evolution object
@@ -77,6 +78,7 @@ Status array_schema_evolution_serialize(
  */
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution** array_schema_evolution,
+    const Config& config,
     SerializationType serialize_type,
     span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker);

@@ -31,7 +31,6 @@ commence(unit_test capi_array)
   this_target_object_libraries(
     capi_array_stub
     capi_array_schema_stub
-    capi_attribute_stub
     capi_domain_stub
   )
   this_target_link_libraries(tiledb_test_support_lib)

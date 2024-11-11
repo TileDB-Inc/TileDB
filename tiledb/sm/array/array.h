@@ -52,6 +52,7 @@ namespace tiledb::sm {
 
 class ArraySchema;
 class ArraySchemaEvolution;
+class Context;
 class FragmentMetadata;
 class MemoryTracker;
 enum class QueryType : uint8_t;
@@ -1213,6 +1214,17 @@ class Array {
    **/
   void set_array_closed();
 };
+
+/**
+ * Loads an enumeration into a schema.
+ * Used to implement `tiledb_array_schema_get_enumeration*` APIs.
+ *
+ * @param ctx
+ * @param enmr_name the requested enumeration
+ * @param schema the target schema
+ */
+void load_enumeration_into_schema(
+    Context& ctx, const std::string& enmr_name, ArraySchema& array_schema);
 
 }  // namespace tiledb::sm
 
