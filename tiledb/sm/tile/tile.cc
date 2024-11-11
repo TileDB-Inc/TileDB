@@ -204,7 +204,6 @@ void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
   std::scoped_lock<std::recursive_mutex> lock{unfilter_data_compute_task_mtx_};
   if (unfilter_data_compute_task_.valid()) {
-    unfilter_data_compute_task_.wait();
     throw_if_not_ok(unfilter_data_compute_task_.get());
     unfilter_data_compute_task_ = ThreadPool::SharedTask();
   }
@@ -272,6 +271,7 @@ void WriterTile::clear_data() {
 
 void Tile::set_unfilter_data_compute_task(
     ThreadPool::SharedTask unfilter_data_compute_task) {
+  std::scoped_lock<std::recursive_mutex> lock{unfilter_data_compute_task_mtx_};
   unfilter_data_compute_task_ = std::move(unfilter_data_compute_task);
 }
 
@@ -304,12 +304,6 @@ uint64_t Tile::load_chunk_data(
     ChunkData& unfiltered_tile, uint64_t expected_original_size) {
   std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
   assert(filtered());
-
-  if (filtered_data_io_task_.valid()) {
-    filtered_data_io_task_.wait();
-    throw_if_not_ok(filtered_data_io_task_.get());
-    filtered_data_io_task_ = ThreadPool::SharedTask();
-  }
 
   Deserializer deserializer(filtered_data(), filtered_size());
 
