@@ -103,7 +103,6 @@ class TileBase {
     std::scoped_lock<std::recursive_mutex> lock{
         unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
-      unfilter_data_compute_task_.wait();
       throw_if_not_ok(unfilter_data_compute_task_.get());
       unfilter_data_compute_task_ = ThreadPool::SharedTask();
     }
@@ -130,7 +129,6 @@ class TileBase {
     std::scoped_lock<std::recursive_mutex> lock{
         unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
-      unfilter_data_compute_task_.wait();
       throw_if_not_ok(unfilter_data_compute_task_.get());
       unfilter_data_compute_task_ = ThreadPool::SharedTask();
     }
@@ -327,7 +325,6 @@ class Tile : public TileBase {
   inline char* filtered_data() {
     std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
     if (filtered_data_io_task_.valid()) {
-      filtered_data_io_task_.wait();
       throw_if_not_ok(filtered_data_io_task_.get());
       filtered_data_io_task_ = ThreadPool::SharedTask();
     }
@@ -339,7 +336,6 @@ class Tile : public TileBase {
   inline T* filtered_data_as() {
     std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
     if (filtered_data_io_task_.valid()) {
-      filtered_data_io_task_.wait();
       throw_if_not_ok(filtered_data_io_task_.get());
       filtered_data_io_task_ = ThreadPool::SharedTask();
     }
@@ -348,6 +344,10 @@ class Tile : public TileBase {
 
   /** Clears the filtered buffer. */
   void clear_filtered_buffer() {
+    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+    if (filtered_data_io_task_.valid()) {
+      throw_if_not_ok(filtered_data_io_task_.get());
+    }
     filtered_data_ = nullptr;
     filtered_size_ = 0;
   }
