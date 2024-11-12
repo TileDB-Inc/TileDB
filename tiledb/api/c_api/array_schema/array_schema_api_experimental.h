@@ -68,7 +68,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
     uint64_t* hi) TILEDB_NOEXCEPT;
 
 /**
- * Retrieves an enumeration from an array schema using the enumeration name,
+ * Retrieves an enumeration from an array schema using the enumeration name.
  *
  * **Example:**
  *
