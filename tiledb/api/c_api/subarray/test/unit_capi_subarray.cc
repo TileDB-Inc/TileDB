@@ -191,10 +191,11 @@ TEST_CASE(
         tiledb_subarray_add_point_ranges(x.ctx(), x.subarray, 0, ranges_inv, 2);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
-  SECTION("invalid count") {
-    rc = tiledb_subarray_add_point_ranges(x.ctx(), x.subarray, 0, ranges, 20);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
-  }
+  /**
+   * No "invalid count" section here;
+   * There is no way to programmatically (in)validate the count. An invalid
+   * value will result in a segfault from an OOB memcpy.
+   */
 }
 
 TEST_CASE(
