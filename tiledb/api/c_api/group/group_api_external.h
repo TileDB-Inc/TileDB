@@ -629,7 +629,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_query_type(
  * @param group The group.
  * @param dump_ascii The output string. The caller takes ownership
  *   of the c-string.
- * @param recursive should we recurse into sub-groups
+ * @param recursive True if the dump should recurse into subgroups.
  * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_dump_str(
@@ -641,11 +641,21 @@ TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_dump_str(
 /**
  * Dump a string representation of a group.
  *
+ * The output string handle must be freed by the user after use.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_group_dump_str_v2(ctx, group, &tdb_string);
+ * // Use the string
+ * tiledb_string_free(&tdb_string);
+ * @endcode
+ *
  * @param ctx The TileDB context.
  * @param group The group.
- * @param dump_ascii The output string handle. The caller has the responsibility
- * to free it.
- * @param recursive should we recurse into sub-groups
+ * @param dump_ascii The output string handle.
+ * @param recursive True if the dump should recurse into subgroups.
  * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_group_dump_str_v2(
