@@ -434,6 +434,19 @@ capi_return_t tiledb_group_dump_str(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_group_dump_str_v2(
+    tiledb_group_handle_t* group,
+    tiledb_string_handle_t** dump_ascii,
+    const uint8_t recursive) {
+  ensure_group_is_valid(group);
+  ensure_output_pointer_is_valid(dump_ascii);
+
+  *dump_ascii =
+      tiledb_string_handle_t::make_handle(group->group().dump(2, 0, recursive));
+
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_serialize_group(
     tiledb_ctx_handle_t* ctx,
     const tiledb_group_handle_t* group,
@@ -784,6 +797,16 @@ CAPI_INTERFACE(
     char** dump_ascii,
     const uint8_t recursive) {
   return api_entry_context<tiledb::api::tiledb_group_dump_str>(
+      ctx, group, dump_ascii, recursive);
+}
+
+CAPI_INTERFACE(
+    group_dump_str_v2,
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    tiledb_string_handle_t** dump_ascii,
+    const uint8_t recursive) {
+  return api_entry_context<tiledb::api::tiledb_group_dump_str_v2>(
       ctx, group, dump_ascii, recursive);
 }
 
