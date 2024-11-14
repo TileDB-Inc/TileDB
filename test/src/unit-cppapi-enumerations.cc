@@ -904,6 +904,34 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
+    "C API: ArraySchemaEvolution - Add Enumeration, retrieve with "
+    "ArraySchema::get_enumeration_from_name",
+    "[enumeration][array-schema-evolution][array-schema-get-enumeration-from-"
+    "name][rest]") {
+  create_array();
+
+  // Evolve once to add an enumeration.
+  ArraySchemaEvolution ase(ctx_);
+  std::vector<std::string> var_values{"one", "two", "three"};
+  auto var_enmr = Enumeration::create(ctx_, "ase_var_enmr", var_values);
+  ase.add_enumeration(var_enmr);
+  auto attr4 = Attribute::create<uint16_t>(ctx_, "attr4");
+  AttributeExperimental::set_enumeration_name(ctx_, attr4, "ase_var_enmr");
+  ase.add_attribute(attr4);
+  // Apply evolution to the array and reopen.
+  ase.array_evolve(uri_);
+
+  auto schema = Array::load_schema(ctx_, uri_);
+  auto actual_enumeration = ArraySchemaExperimental::get_enumeration_from_name(
+      ctx_, schema, "ase_var_enmr");
+
+  CHECK(test::is_equivalent_enumeration(
+      *var_enmr.ptr()->enumeration(),
+      *actual_enumeration.ptr()->enumeration()));
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
     "CPP: Enumeration Query - Basic",
     "[enumeration][query][basic][rest]") {
   // Basic smoke test. Check that a simple query condition applied against
