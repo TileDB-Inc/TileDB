@@ -383,7 +383,8 @@ class RestClient {
           const URI&,
           uint64_t,
           uint64_t,
-          Array*,
+          const Config&,
+          const ArraySchema&,
           const std::vector<std::string>&,
           shared_ptr<MemoryTracker>) {
     throw RestClientDisabledException();

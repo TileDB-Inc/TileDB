@@ -399,6 +399,18 @@ class ArrayDirectory {
       const EncryptionKey& encryption_key,
       shared_ptr<MemoryTracker> memory_tracker) const;
 
+  /**
+   * Load an enumeration from the given path.
+   *
+   * @param enumeration_path The enumeration path to load.
+   * @param encryption_key The encryption key to use.
+   * @return shared_ptr<Enumeration> The loaded enumeration.
+   */
+  shared_ptr<const Enumeration> load_enumeration(
+      const std::string& enumeration_path,
+      const EncryptionKey& encryption_key,
+      shared_ptr<MemoryTracker> memory_tracker) const;
+
   /** Returns the array URI. */
   const URI& uri() const;
 
@@ -819,18 +831,6 @@ class ArrayDirectory {
    * @return True if supported, false otherwise
    */
   bool consolidation_with_timestamps_supported(const URI& uri) const;
-
-  /**
-   * Load an enumeration from the given path.
-   *
-   * @param enumeration_path The enumeration path to load.
-   * @param encryption_key The encryption key to use.
-   * @return shared_ptr<Enumeration> The loaded enumeration.
-   */
-  shared_ptr<const Enumeration> load_enumeration(
-      const std::string& enumeration_path,
-      const EncryptionKey& encryption_key,
-      shared_ptr<MemoryTracker> memory_tracker) const;
 };
 
 }  // namespace tiledb::sm

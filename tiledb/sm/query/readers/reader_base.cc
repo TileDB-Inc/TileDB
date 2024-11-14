@@ -1136,7 +1136,7 @@ uint64_t ReaderBase::offsets_bytesize() const {
 uint64_t ReaderBase::get_attribute_tile_size(
     const std::string& name, unsigned f, uint64_t t) const {
   uint64_t tile_size = 0;
-  if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
+  if (skip_field(f, name)) {
     return tile_size;
   }
 
@@ -1148,8 +1148,7 @@ uint64_t ReaderBase::get_attribute_tile_size(
    * contains fixed tiles. The tile_var_size should be calculated iff
    * both the current _and_ loaded attributes are var-sized.
    */
-  if (array_schema_.var_size(name) &&
-      fragment_metadata_[f]->array_schema()->var_size(name)) {
+  if (array_schema_.var_size(name)) {
     tile_size +=
         fragment_metadata_[f]->loaded_metadata()->tile_var_size(name, t);
   }
@@ -1165,12 +1164,9 @@ uint64_t ReaderBase::get_attribute_tile_size(
 uint64_t ReaderBase::get_attribute_persisted_tile_size(
     const std::string& name, unsigned f, uint64_t t) const {
   uint64_t tile_size = 0;
-  if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
+  if (skip_field(f, name)) {
     return tile_size;
   }
-
-  tile_size +=
-      fragment_metadata_[f]->loaded_metadata()->persisted_tile_size(name, t);
 
   if (array_schema_.var_size(name)) {
     tile_size +=

@@ -1811,6 +1811,7 @@ std::tuple<
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
     const URI& uri,
+    const Config& config,
     SerializationType serialization_type,
     span<const char> data,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -1826,10 +1827,19 @@ deserialize_load_array_schema_response(
             uri, reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            config.get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
-        ::capnp::FlatArrayMessageReader array_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            data.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader array_reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                data.size() / sizeof(::capnp::word)),
+            readerOptions);
         auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
         return load_array_schema_response_from_capnp(
             uri, reader, memory_tracker);
@@ -1912,6 +1922,7 @@ std::tuple<
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
     const URI&,
+    const Config&,
     SerializationType,
     span<const char>,
     shared_ptr<MemoryTracker>) {

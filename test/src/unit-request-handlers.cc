@@ -546,7 +546,7 @@ HandleLoadArraySchemaRequestFx::call_handler(
   REQUIRE(rval == TILEDB_OK);
 
   return serialization::deserialize_load_array_schema_response(
-      uri_, stype, resp_buf->buffer(), memory_tracker_);
+      uri_, cfg_, stype, resp_buf->buffer(), memory_tracker_);
 }
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {

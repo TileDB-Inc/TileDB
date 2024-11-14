@@ -68,6 +68,61 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_timestamp_range(
     uint64_t* hi) TILEDB_NOEXCEPT;
 
 /**
+ * Retrieves an enumeration from an array schema using the enumeration name,
+ *
+ * **Example:**
+ *
+ * The following retrieves the enumeration named "states" in the schema.
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enmr;
+ * tiledb_array_schema_get_enumeration_from_name(ctx,
+ *         array_schema, "states", &enmr);
+ * tiledb_enumeration_free(&enmr);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_schema The array schema.
+ * @param[in] name The name of the enumeration to retrieve.
+ * @param[out] enmr The enumeration object to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_get_enumeration_from_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* enumeration_name,
+    tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves an enumeration from an array schema from the attribute with the
+ * given name.
+ *
+ * **Example:**
+ *
+ * The following retrieves the enumeration for the attribute named "states" in
+ * the schema.
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enmr;
+ * tiledb_array_schema_get_enumeration_from_attribute_name(ctx,
+ *         array_schema, "states", &enmr);
+ * tiledb_enumeration_free(&enmr);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_schema The array schema.
+ * @param[in] name The name of the attribute whose enumeration to retrieve.
+ * @param[out] enmr The enumeration object to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t
+tiledb_array_schema_get_enumeration_from_attribute_name(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* attribute_name,
+    tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
+
+/**
  * Adds an enumeration to an array schema.
  *
  * **Example:**

@@ -966,6 +966,7 @@ void read_sparse_v11(
  */
 void schema_equiv(
     const sm::ArraySchema& schema1, const sm::ArraySchema& schema2);
+
 }  // namespace tiledb::test
 
 #endif

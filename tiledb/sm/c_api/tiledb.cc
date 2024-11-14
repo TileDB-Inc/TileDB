@@ -1572,6 +1572,7 @@ int32_t tiledb_deserialize_array_schema_evolution(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_deserialize(
               &((*array_schema_evolution)->array_schema_evolution_),
+              ctx->config(),
               (tiledb::sm::SerializationType)serialize_type,
               buffer->buffer(),
               memory_tracker))) {
