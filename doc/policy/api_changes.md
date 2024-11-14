@@ -81,7 +81,15 @@ Function removal shall be announced one release cycle before removal, following 
 
 ### 2.27.0..2.28.0
 
+- `tiledb_filestore_schema_create`
+- `tiledb_filestore_uri_import`
+- `tiledb_filestore_uri_export`
+- `tiledb_filestore_buffer_import`
+- `tiledb_filestore_buffer_export`
+- `tiledb_filestore_size`
 - `tiledb_group_dump_str`
+- `tiledb_mime_type_to_str`
+- `tiledb_mime_type_from_str`
 
 ## Deprecation History Generation
 

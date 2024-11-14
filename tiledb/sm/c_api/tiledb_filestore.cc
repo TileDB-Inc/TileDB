@@ -29,6 +29,8 @@
  * @section DESCRIPTION
  *
  * This file defines the C API of TileDB for filestore.
+ *
+ * Note: These APIs are deprecated and will be removed in the next release.
  **/
 
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"

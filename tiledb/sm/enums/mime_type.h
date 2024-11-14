@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,8 @@
  *
  * This defines the TileDB MimeType enum that maps to tiledb_mime_type_t
  * C-API enum.
+ *
+ * Note: This enum is deprecated and will be removed in the next release.
  */
 
 #ifndef TILEDB_MIME_TYPE_H
