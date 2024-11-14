@@ -57,9 +57,9 @@ jobs:
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux2014_x86_64
           - platform: linux-aarch64
-            os: ubuntu-24.04
-            cmake_args: -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$PWD/cmake/arm64_linux_toolchain.cmake
+            os: linux-arm64-ubuntu24
             triplet: arm64-linux-release
+            manylinux: quay.io/pypa/manylinux2014_aarch64
           - platform: macos-x86_64
             os: macos-latest
             cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
@@ -84,7 +84,7 @@ jobs:
         # v4 uses node 20 which is incompatible with the libc version of the manylinux image
         uses: actions/checkout@v3
       - name: 'Homebrew setup'
-        run: brew install automake pkg-config
+        run: brew install automake pkg-config ninja
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
       - name: Export GitHub Actions cache variables
         uses: actions/github-script@v6
@@ -99,18 +99,15 @@ jobs:
           ref=${{ github.head_ref || github.ref_name }}
           echo "release_version=${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
         shell: bash
-      - name: Install aarch64 cross compilation prerequisites
-        if: ${{ matrix.platform == 'linux-aarch64' }}
-        run: |
-          sudo apt-get install -y cmake gcc g++ ninja-build libtool autoconf pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu curl zip unzip tar
-          # Use upstream libmagic port which supports cross-compilation.
-          rm -rf ports/libmagic
       - name: Install manylinux prerequisites
-        if: matrix.manylinux
+        if: ${{ startsWith(matrix.platform, 'linux') == true }}
         run: |
           set -e pipefail
           yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
           echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
+          python3.9 -m pip install ninja
+          echo "/opt/_internal/cpython-3.9.20/bin" >> $GITHUB_PATH
+          echo "VCPKG_FORCE_SYSTEM_BINARIES=YES" >> $GITHUB_ENV
       - name: Configure TileDB
         run: |
           cmake -S . -B build \
@@ -140,8 +137,9 @@ jobs:
             build/tiledb-*.tar.gz*
             build/tiledb-*.zip*
       - name: "Print log files (failed build only)"
+        shell: bash
         run: |
-          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+          $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
 
   Test-Release-Artifacts:
