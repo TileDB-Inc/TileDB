@@ -366,7 +366,6 @@ class Tile : public TileBase {
       }
     }
 
-    // filtered_data_io_task_ = ThreadPool::SharedTask;
     filtered_data_ = nullptr;
     filtered_size_ = 0;
     filtered_data_block_ = nullptr;
