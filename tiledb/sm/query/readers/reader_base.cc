@@ -865,16 +865,18 @@ Status ReaderBase::post_process_unfiltered_tile(
     return Status::Ok();
   }
 
-  auto& t = tile_tuple->fixed_tile();
-  t.clear_filtered_buffer();
+  if (!validity_only) {
+    auto& t = tile_tuple->fixed_tile();
+    t.clear_filtered_buffer();
 
-  throw_if_not_ok(zip_tile_coordinates(name, &t));
+    throw_if_not_ok(zip_tile_coordinates(name, &t));
 
-  if (var_size && !validity_only) {
-    auto& t_var = tile_tuple->var_tile();
-    t_var.clear_filtered_buffer();
-    throw_if_not_ok(zip_tile_coordinates(name, &t_var));
-    t.add_extra_offset_unsafe(t_var);
+    if (var_size) {
+      auto& t_var = tile_tuple->var_tile();
+      t_var.clear_filtered_buffer();
+      throw_if_not_ok(zip_tile_coordinates(name, &t_var));
+      t.add_extra_offset_unsafe(t_var);
+    }
   }
 
   if (nullable) {
@@ -920,9 +922,9 @@ Status ReaderBase::unfilter_tiles(
 
   for (size_t i = 0; i < num_tiles; i++) {
     auto result_tile = result_tiles[i];
-    if (skip_field(result_tile->frag_idx(), name)) {
-      continue;
-    }
+    // if (skip_field(result_tile->frag_idx(), name)) {
+    //   continue;
+    // }
     ThreadPool::SharedTask task =
         resources_.compute_tp().execute([name,
                                          validity_only,
@@ -951,11 +953,13 @@ Status ReaderBase::unfilter_tiles(
                   tiles_chunk_data,
                   tiles_chunk_var_data,
                   tiles_chunk_validity_data);
-          if (!st.ok())
+          if (!st.ok()) {
             return st;
+          }
 
-          if (tile_size.value() == 0)
+          if (tile_size.value() == 0 && tile_validity_size == 0) {
             return Status::Ok();
+          }
 
           for (uint64_t range_thread_idx = 0;
                range_thread_idx < num_range_threads;
@@ -985,12 +989,11 @@ Status ReaderBase::unfilter_tiles(
       task.wait();
       continue;
     }
-    // Store as a shared_ptr so we can move lifetimes around
-    // This should be changes once we use taskgraphs for modeling the data flow
+
     auto tile_tuple = result_tile->tile_tuple(name);
     tile_tuple->fixed_tile().set_unfilter_data_compute_task(task);
 
-    if (var_size) {
+    if (var_size && !validity_only) {
       tile_tuple->var_tile().set_unfilter_data_compute_task(task);
     }
 
