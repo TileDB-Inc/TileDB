@@ -964,7 +964,8 @@ Status ReaderBase::unfilter_tiles(
             return st;
           }
 
-          if (tile_size.value() == 0 && tile_validity_size == 0) {
+          if (tile_size.value_or(0) == 0 && tile_var_size.value_or(0) == 0 &&
+              tile_validity_size.value_or(0) == 0) {
             return Status::Ok();
           }
 
