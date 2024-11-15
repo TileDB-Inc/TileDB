@@ -69,7 +69,8 @@ class TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      tdb::pmr::memory_resource* resource);
+      tdb::pmr::memory_resource* resource,
+      const bool ignore_tasks = false);
 
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
@@ -100,13 +101,6 @@ class TileBase {
   /** Converts the data pointer to a specific type. */
   template <class T>
   inline T* data_as() const {
-    std::scoped_lock<std::recursive_mutex> lock{
-        unfilter_data_compute_task_mtx_};
-    if (unfilter_data_compute_task_.valid()) {
-      throw_if_not_ok(unfilter_data_compute_task_.get());
-      unfilter_data_compute_task_ = ThreadPool::SharedTask();
-    }
-
     return static_cast<T*>(data());
   }
 
@@ -126,11 +120,15 @@ class TileBase {
 
   /** Returns the internal buffer. */
   inline void* data() const {
-    std::scoped_lock<std::recursive_mutex> lock{
-        unfilter_data_compute_task_mtx_};
-    if (unfilter_data_compute_task_.valid()) {
-      throw_if_not_ok(unfilter_data_compute_task_.get());
-      unfilter_data_compute_task_ = ThreadPool::SharedTask();
+    if (!ignore_tasks_) {
+      std::scoped_lock<std::recursive_mutex> lock{
+          unfilter_data_compute_task_mtx_};
+      if (unfilter_data_compute_task_.valid()) {
+        throw_if_not_ok(unfilter_data_compute_task_.get());
+      } else {
+        throw std::future_error(
+            std::make_error_code(std::future_errc::no_state));
+      }
     }
 
     return data_.get();
@@ -199,6 +197,8 @@ class TileBase {
 
   /** The tile data type. */
   Datatype type_;
+
+  const bool ignore_tasks_;
 
   /** Compute task to check and block on if unfiltered data is ready. */
   mutable ThreadPool::SharedTask unfilter_data_compute_task_;
@@ -323,33 +323,53 @@ class Tile : public TileBase {
 
   /** Returns the buffer that contains the filtered, on-disk format. */
   inline char* filtered_data() {
-    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-    if (filtered_data_io_task_.valid()) {
-      throw_if_not_ok(filtered_data_io_task_.get());
-      filtered_data_io_task_ = ThreadPool::SharedTask();
+    // if an i/o task has been launched
+    if (filtered_data_block_ != nullptr) {
+      std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+      if (filtered_data_io_task_.valid()) {
+        throw_if_not_ok(filtered_data_io_task_.get());
+      } else {
+        throw std::future_error(
+            std::make_error_code(std::future_errc::no_state));
+      }
     }
+
     return static_cast<char*>(filtered_data_);
   }
 
   /** Returns the data casted as a type. */
   template <class T>
   inline T* filtered_data_as() {
-    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-    if (filtered_data_io_task_.valid()) {
-      throw_if_not_ok(filtered_data_io_task_.get());
-      filtered_data_io_task_ = ThreadPool::SharedTask();
+    // if an i/o task has been launched
+    if (filtered_data_block_ != nullptr) {
+      std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+      if (filtered_data_io_task_.valid()) {
+        throw_if_not_ok(filtered_data_io_task_.get());
+      } else {
+        throw std::future_error(
+            std::make_error_code(std::future_errc::no_state));
+      }
     }
+
     return static_cast<T*>(filtered_data_);
   }
 
   /** Clears the filtered buffer. */
   void clear_filtered_buffer() {
-    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-    if (filtered_data_io_task_.valid()) {
-      throw_if_not_ok(filtered_data_io_task_.get());
+    if (filtered_data_block_ != nullptr) {
+      std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+      if (filtered_data_io_task_.valid()) {
+        throw_if_not_ok(filtered_data_io_task_.get());
+      } else {
+        throw std::future_error(
+            std::make_error_code(std::future_errc::no_state));
+      }
     }
+
+    // filtered_data_io_task_ = ThreadPool::SharedTask;
     filtered_data_ = nullptr;
     filtered_size_ = 0;
+    filtered_data_block_ = nullptr;
   }
 
   /**
