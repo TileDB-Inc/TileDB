@@ -410,7 +410,7 @@ class FilteredData {
     auto data{block.data()};
     auto size{block.size()};
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
-    std::shared_future<Status> task =
+    ThreadPool::SharedTask task =
         resources_.io_tp().execute([this, offset, data, size, uri]() {
           auto timer_se = stats_->start_timer("read");
           return resources_.vfs().read(uri, offset, data, size, false);

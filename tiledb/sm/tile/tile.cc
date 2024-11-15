@@ -111,13 +111,15 @@ TileBase::TileBase(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    tdb::pmr::memory_resource* resource)
+    tdb::pmr::memory_resource* resource,
+    const bool ignore_tasks)
     : resource_(resource)
     , data_(tdb::pmr::make_unique<std::byte>(resource_, size))
     , size_(size)
     , cell_size_(cell_size)
     , format_version_(format_version)
-    , type_(type) {
+    , type_(type)
+    , ignore_tasks_(ignore_tasks) {
   /*
    * We can check for a bad allocation after initialization without risk
    * because none of the other member variables use its value for their own
@@ -163,7 +165,13 @@ Tile::Tile(
     tdb::pmr::memory_resource* resource,
     ThreadPool::SharedTask filtered_data_io_task,
     shared_ptr<FilteredData> filtered_data_block)
-    : TileBase(format_version, type, cell_size, size, resource)
+    : TileBase(
+          format_version,
+          type,
+          cell_size,
+          size,
+          resource,
+          filtered_data_block == nullptr)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
     , filtered_size_(filtered_size)
@@ -182,7 +190,8 @@ WriterTile::WriterTile(
           type,
           cell_size,
           size,
-          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
+          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA),
+          true)
     , filtered_buffer_(0) {
 }
 
@@ -192,7 +201,7 @@ WriterTile::WriterTile(
     const uint64_t cell_size,
     const uint64_t size,
     tdb::pmr::memory_resource* resource)
-    : TileBase(format_version, type, cell_size, size, resource)
+    : TileBase(format_version, type, cell_size, size, resource, true)
     , filtered_buffer_(0) {
 }
 
@@ -202,10 +211,14 @@ WriterTile::WriterTile(
 
 void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
-  std::scoped_lock<std::recursive_mutex> lock{unfilter_data_compute_task_mtx_};
-  if (unfilter_data_compute_task_.valid()) {
-    throw_if_not_ok(unfilter_data_compute_task_.get());
-    unfilter_data_compute_task_ = ThreadPool::SharedTask();
+  if (!ignore_tasks_) {
+    std::scoped_lock<std::recursive_mutex> lock{
+        unfilter_data_compute_task_mtx_};
+    if (unfilter_data_compute_task_.valid()) {
+      throw_if_not_ok(unfilter_data_compute_task_.get());
+    } else {
+      throw std::future_error(std::make_error_code(std::future_errc::no_state));
+    }
   }
 
   if (nbytes > size_ - offset) {
@@ -271,7 +284,8 @@ void WriterTile::clear_data() {
 
 void Tile::set_unfilter_data_compute_task(
     ThreadPool::SharedTask unfilter_data_compute_task) {
-  std::scoped_lock<std::recursive_mutex> lock{unfilter_data_compute_task_mtx_};
+  // std::scoped_lock<std::recursive_mutex>
+  // lock{unfilter_data_compute_task_mtx_};
   unfilter_data_compute_task_ = std::move(unfilter_data_compute_task);
 }
 
@@ -302,7 +316,7 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
 
 uint64_t Tile::load_chunk_data(
     ChunkData& unfiltered_tile, uint64_t expected_original_size) {
-  std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+  // std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
   assert(filtered());
 
   Deserializer deserializer(filtered_data(), filtered_size());
