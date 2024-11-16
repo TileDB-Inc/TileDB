@@ -1,3 +1,83 @@
+# TileDB v2.27.0 Release Notes
+
+## Disk Format
+
+* (documentation) The storage format specification was updated to document format changes of previous versions throughout the main document. [#5329](https://github.com/TileDB-Inc/TileDB/pull/5329)
+
+## Breaking behavior
+
+* Deleting an array or group will also delete its root directory if it was left empty. [#5269](https://github.com/TileDB-Inc/TileDB/pull/5269)
+
+## New features
+
+* Dumping fragment info now includes the name of each fragment's array schema. [#5257](https://github.com/TileDB-Inc/TileDB/pull/5257)
+* Added support for the `ssl.ca_path` config option on Azure. [#5286](https://github.com/TileDB-Inc/TileDB/pull/5286)
+* Connections to TileDB REST API now use TCP keepalive by default. [#5319](https://github.com/TileDB-Inc/TileDB/pull/5319) and curl retries [#5273](https://github.com/TileDB-Inc/TileDB/pull/5273).
+* Added support for "current domain" on dense arrays. [#5303](https://github.com/TileDB-Inc/TileDB/pull/5303)
+
+### Configuration Options
+
+* Add `vfs.log_operations` config option to log in trace level all VFS operations and their duration. [#5278](https://github.com/TileDB-Inc/TileDB/pull/5278)
+* The default value of `vfs.s3.region` was changed to empty, which will let the AWS pick the default region from sources such as environment variables, profile configuration, and instance metadata. [#5317](https://github.com/TileDB-Inc/TileDB/pull/5317)
+* Add `rest.curl.tcp_keepalive` config option that controls using TCP keepalive for TileDB REST connections. It is enabled by default. [#5319](https://github.com/TileDB-Inc/TileDB/pull/5319)
+
+## Improvements
+
+* Fix read queries on sparse arrays where only aggregates are requested and no layout is specified. [#5255](https://github.com/TileDB-Inc/TileDB/pull/5255)
+* Do not pass back RTrees to clients. [#5265](https://github.com/TileDB-Inc/TileDB/pull/5265)
+* Prevent potentially unsafe consolidation in dense arrays by fragment list. [#5251](https://github.com/TileDB-Inc/TileDB/pull/5251)
+* Improve error messages for unsupported data types in aggregates. [#5289](https://github.com/TileDB-Inc/TileDB/pull/5289)
+* Remove StorageManager from stats dumps. [#5297](https://github.com/TileDB-Inc/TileDB/pull/5297)
+* Precompute memory usage for tile offsets and error if not loadable due to memory limits. [#5310](https://github.com/TileDB-Inc/TileDB/pull/5310)
+* GCS object composition temporary files now end with `.tmp`, which may be used to set a lifecycle rule. [#5308](https://github.com/TileDB-Inc/TileDB/pull/5308)
+* Updated libmagic to version 5.45. [#5332](https://github.com/TileDB-Inc/TileDB/pull/5332)
+* Linux aarch64 release [#5271](https://github.com/TileDB-Inc/TileDB/pull/5271)
+* aarch64 release artifacts (manylinux2014 environment) [#5348](https://github.com/TileDB-Inc/TileDB/pull/5348)
+* Revert selective Rtree serialization to allow release testing [#5370](https://github.com/TileDB-Inc/TileDB/pull/5370)
+
+## Deprecations
+
+* Deprecate `tiledb_filestore_*` APIs. [#5371](https://github.com/TileDB-Inc/TileDB/pull/5371)
+
+## Defects removed
+
+* Fix an incompatibility with S3 Express One Zone, by stopping setting `Content-MD5` on all S3 uploads. [#5226](https://github.com/TileDB-Inc/TileDB/pull/5226)
+* Update range end when merging overlapping subarray ranges. [#5268](https://github.com/TileDB-Inc/TileDB/pull/5268)
+* Fixed GZip compression of empty data. [#5296](https://github.com/TileDB-Inc/TileDB/pull/5296)
+* Fix HTTP requests for AWS default credentials provider chain not honoring config options. [#5315](https://github.com/TileDB-Inc/TileDB/pull/5315)
+* Fix dense reader fill value with `sm.var_offsets.mode = elements` [#5331](https://github.com/TileDB-Inc/TileDB/pull/5331)
+* Schema evolution bug fix: Reads no longer fail after dropping a fixed attribute and adding it back as var-sized. [#5321](https://github.com/TileDB-Inc/TileDB/pull/5321)
+* Fixed the `tiledb_ctx_alloc_with_error` function not being exported from the library. [#5357](https://github.com/TileDB-Inc/TileDB/pull/5357)
+* Set increased traversal limit in enumeration deserialization [#5365](https://github.com/TileDB-Inc/TileDB/pull/5365)
+* Fix heap corruption when getting context and query stats from C++ under certain circumstances. [#5366](https://github.com/TileDB-Inc/TileDB/pull/5366)
+* Schema evolution bug fix: Reads no longer fail after dropping a fixed attribute and adding it back as var-sized, part 2. [#5362](https://github.com/TileDB-Inc/TileDB/pull/5362)
+* Remove defective test case that's failing in nightly builds. [#5369](https://github.com/TileDB-Inc/TileDB/pull/5369)
+* Follow up on #5359 [#5368](https://github.com/TileDB-Inc/TileDB/pull/5368)
+
+## API changes
+
+### C API
+
+* Add `tiledb_array_schema_get_enumeration` API. [#5359](https://github.com/TileDB-Inc/TileDB/pull/5359)
+* Add `tiledb_group_add_member_with_type` API to get group member with type in single call. [#5336](https://github.com/TileDB-Inc/TileDB/pull/5336)
+* Introduce tiledb_array_load_enumerations_all_schemas. [#5349](https://github.com/TileDB-Inc/TileDB/pull/5349)
+* Added `tiledb_group_dump_str_v2` API that returns a `tiledb_string_t*`. The existing `tiledb_group_dump_str` API is deprecated. [#5367](https://github.com/TileDB-Inc/TileDB/pull/5367)
+* Add `tiledb_fragment_info_dump_str` C API and replace `FragmentInfo::dump(FILE*)` with `operator<<` overload. [#5266](https://github.com/TileDB-Inc/TileDB/pull/5266)
+
+### C++ API
+
+* Fix error log messages when using the `Array` class in the C++ API. [#5262](https://github.com/TileDB-Inc/TileDB/pull/5262)
+* Add overload to the `Array::create` function that explicitly accepts a context. [#5325](https://github.com/TileDB-Inc/TileDB/pull/5325)
+* Update `Group::add_member` API to accept an optional type. [#5336](https://github.com/TileDB-Inc/TileDB/pull/5336)
+* Introduce `ArrayExperimental::load_enumerations_all_schemas`. [#5349](https://github.com/TileDB-Inc/TileDB/pull/5349)
+
+## Build System Changes
+
+* Update vcpkg version baseline to https://github.com/microsoft/vcpkg/commit/101cc9a69a1061969caf4b73579a34873fdd60fe. [#5010](https://github.com/TileDB-Inc/TileDB/pull/5010)
+* Fixed cross-compiling support in the libmagic vcpkg port overlay. [#5333](https://github.com/TileDB-Inc/TileDB/pull/5333)
+* The `TILEDB_CCACHE` option was fixed to have effect, after being accidentally disabled in version 2.26.0. [#5342](https://github.com/TileDB-Inc/TileDB/pull/5342)
+* Fixed double installation of a header when serialization is enabled. [#5354](https://github.com/TileDB-Inc/TileDB/pull/5354)
+
 # TileDB v2.26.2 Release Notes
 
 ## Defects removed
