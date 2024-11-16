@@ -1,3 +1,62 @@
+# TileDB v2.26.2 Release Notes
+
+## Defects removed
+
+* Fix HTTP requests for AWS default credentials provider chain not honoring config options. [#5318](https://github.com/TileDB-Inc/TileDB/pull/5318)
+
+# TileDB v2.26.1 Release Notes
+
+## Improvements
+
+* Fail early on dense reads when tile offsets are too large. [#5311](https://github.com/TileDB-Inc/TileDB/pull/5311)
+
+# TileDB v2.26.0 Release Notes
+
+## Breaking behavior
+
+* The superbuild architecture of the build system has been removed and TileDB is now a single-level CMake project. Build commands of the form `make && make -C tiledb <targets>` will have to be replaced by `make <targets>`. [#5021](https://github.com/TileDB-Inc/TileDB/pull/5021)
+
+## Breaking C API changes
+
+* All deprecated C and C++ APIs were removed. [#5146](https://github.com/TileDB-Inc/TileDB/pull/5146)
+
+## New features
+
+* Add support for getting the datatype of a ndrectangle dimension. [#5229](https://github.com/TileDB-Inc/TileDB/pull/5229)
+* Add dim num support for ndrectangle. [#5230](https://github.com/TileDB-Inc/TileDB/pull/5230)
+
+## Improvements
+
+* Added new functions to write schema dump to a string rather than stdout, so that non-console interactive environments such as Jupyter will be able to capture and print the output. [#5026](https://github.com/TileDB-Inc/TileDB/pull/5026)
+* Improve dense read performance for small reads. [#5145](https://github.com/TileDB-Inc/TileDB/pull/5145)
+* Skip caching redirect uri on array create. [#5224](https://github.com/TileDB-Inc/TileDB/pull/5224)
+* Enable curl error retries. [#5275](https://github.com/TileDB-Inc/TileDB/pull/5275)
+
+## Deprecations
+
+* Warn users using dense arrays with sparse fragments. [#5116](https://github.com/TileDB-Inc/TileDB/pull/5116)
+
+## Defects removed
+
+* Fix fragment consolidation to allow using absolute URIs. [#5135](https://github.com/TileDB-Inc/TileDB/pull/5135)
+* Reset offsets in buffer list for retries. [#5220](https://github.com/TileDB-Inc/TileDB/pull/5220)
+* Fix symbol clashes between `tiledb` and `pyarrow` by building the AWS SDK with its internal symbols hidden. [#5223](https://github.com/TileDB-Inc/TileDB/pull/5223)
+
+## Configuration changes
+
+* The `sm.use_refactored_readers` config option is no longer recognized. Refactored readers are used by default. To use the legacy reader, set the `sm.query_(dense|sparse_global_order|sparse_unordered_with_dups)_reader` config option (depending on the reader you are using) to `legacy`. [#5183](https://github.com/TileDB-Inc/TileDB/pull/5183)
+
+## API changes
+
+### C API
+
+* Add ctx to CurrentDomain CAPI. [#5219](https://github.com/TileDB-Inc/TileDB/pull/5219)
+* Add new CAPIs to dump array schema, attribute, dimension, domain, enumeration and group to a string. [#5026](https://github.com/TileDB-Inc/TileDB/pull/5026)
+
+## Build System Changes
+
+* The version of OpenSSL linked to the release artifacts was updated to 3.1.4, and moving forward will be synced to the vcpkg `builtin-baseline`. [#5174](https://github.com/TileDB-Inc/TileDB/pull/5174)
+
 # TileDB v2.25.0 Release Notes
 
 ## Announcements
