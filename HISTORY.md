@@ -24,16 +24,13 @@
 ## Improvements
 
 * Fix read queries on sparse arrays where only aggregates are requested and no layout is specified. [#5255](https://github.com/TileDB-Inc/TileDB/pull/5255)
-* Do not pass back RTrees to clients. [#5265](https://github.com/TileDB-Inc/TileDB/pull/5265)
 * Prevent potentially unsafe consolidation in dense arrays by fragment list. [#5251](https://github.com/TileDB-Inc/TileDB/pull/5251)
 * Improve error messages for unsupported data types in aggregates. [#5289](https://github.com/TileDB-Inc/TileDB/pull/5289)
 * Remove StorageManager from stats dumps. [#5297](https://github.com/TileDB-Inc/TileDB/pull/5297)
 * Precompute memory usage for tile offsets and error if not loadable due to memory limits. [#5310](https://github.com/TileDB-Inc/TileDB/pull/5310)
-* GCS object composition temporary files now end with `.tmp`, which may be used to set a lifecycle rule. [#5308](https://github.com/TileDB-Inc/TileDB/pull/5308)
+* GCS object composition temporary files now end with `.tiledb.tmp`, which may be used to set a lifecycle rule. [#5372](https://github.com/TileDB-Inc/TileDB/pull/5372)
 * Updated libmagic to version 5.45. [#5332](https://github.com/TileDB-Inc/TileDB/pull/5332)
 * Linux aarch64 release [#5271](https://github.com/TileDB-Inc/TileDB/pull/5271)
-* aarch64 release artifacts (manylinux2014 environment) [#5348](https://github.com/TileDB-Inc/TileDB/pull/5348)
-* Revert selective Rtree serialization to allow release testing [#5370](https://github.com/TileDB-Inc/TileDB/pull/5370)
 
 ## Deprecations
 
