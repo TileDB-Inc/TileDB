@@ -233,6 +233,7 @@ void check_save_to_file() {
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
   ss << "rest.load_enumerations_on_array_open false\n";
+  ss << "rest.load_enumerations_on_array_open_all_schemas false\n";
   ss << "rest.load_metadata_on_array_open true\n";
   ss << "rest.load_non_empty_domain_on_array_open true\n";
   ss << "rest.retry_count 25\n";
@@ -617,6 +618,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
   all_param_values["rest.load_enumerations_on_array_open"] = "false";
+  all_param_values["rest.load_enumerations_on_array_open_all_schemas"] =
+      "false";
   all_param_values["rest.use_refactored_array_open"] = "false";
   all_param_values["rest.use_refactored_array_open_and_query_submit"] = "false";
   all_param_values["rest.payer_namespace"] = "";

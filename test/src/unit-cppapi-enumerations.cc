@@ -434,7 +434,7 @@ TEST_CASE_METHOD(
   // Test with `rest.load_enumerations_on_array_open` enabled and disabled.
   bool load_enmrs = GENERATE(true, false);
   auto config = ctx_.config();
-  config["rest.load_enumerations_on_array_open"] =
+  config["rest.load_enumerations_on_array_open_all_schemas"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
@@ -639,7 +639,7 @@ TEST_CASE_METHOD(
   // Test with `rest.load_enumerations_on_array_open` enabled and disabled.
   bool load_enmrs = GENERATE(true, false);
   auto config = ctx_.config();
-  config["rest.load_enumerations_on_array_open"] =
+  config["rest.load_enumerations_on_array_open_all_schemas"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();

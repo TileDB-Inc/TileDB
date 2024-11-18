@@ -601,9 +601,10 @@ Status Array::open(
     // For fetching remote enumerations REST calls
     // tiledb_handle_load_enumerations_request which loads enumerations. For
     // local arrays we don't call this method.
-    if (config_.get<bool>(
-            "rest.load_enumerations_on_array_open", Config::must_find)) {
-      load_all_enumerations(use_refactored_array_open());
+    if (serialize_enumerations()) {
+      load_all_enumerations(config_.get<bool>(
+          "rest.load_enumerations_on_array_open_all_schemas",
+          Config::must_find));
     }
   }
 
@@ -1615,13 +1616,11 @@ bool Array::serialize_non_empty_domain() const {
 }
 
 bool Array::serialize_enumerations() const {
-  auto serialize = config_.get<bool>("rest.load_enumerations_on_array_open");
-  if (!serialize.has_value()) {
-    throw std::runtime_error(
-        "Cannot get rest.load_enumerations_on_array_open configuration option "
-        "from config");
-  }
-  return serialize.value();
+  return config_.get<bool>(
+             "rest.load_enumerations_on_array_open", Config::must_find) ||
+         config_.get<bool>(
+             "rest.load_enumerations_on_array_open_all_schemas",
+             Config::must_find);
 }
 
 bool Array::serialize_metadata() const {

@@ -60,16 +60,23 @@ namespace serialization {
 class LoadArraySchemaRequest {
  public:
   explicit LoadArraySchemaRequest(const Config& config)
-      : include_enumerations_(config.get<bool>(
+      : include_enumerations_latest_schema_(config.get<bool>(
+            "rest.load_enumerations_on_array_open", Config::must_find))
+      , include_enumerations_all_schemas_(config.get<bool>(
             "rest.load_enumerations_on_array_open", Config::must_find)) {
   }
 
-  inline bool include_enumerations() const {
-    return include_enumerations_;
+  inline bool include_enumerations_latest_schema() const {
+    return include_enumerations_latest_schema_;
+  }
+
+  inline bool include_enumerations_all_schemas() const {
+    return include_enumerations_all_schemas_;
   }
 
  private:
-  bool include_enumerations_;
+  bool include_enumerations_latest_schema_;
+  bool include_enumerations_all_schemas_;
 };
 
 #ifdef TILEDB_SERIALIZATION

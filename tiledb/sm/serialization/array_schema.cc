@@ -1638,7 +1638,7 @@ void load_array_schema_request_to_capnp(
   throw_if_not_ok(config_to_capnp(config, &config_builder));
   // This boolean is only serialized to support clients using TileDB < 2.26.
   // Future options should only be serialized within the Config object above.
-  builder.setIncludeEnumerations(req.include_enumerations());
+  builder.setIncludeEnumerations(req.include_enumerations_latest_schema());
 }
 
 void serialize_load_array_schema_request(
