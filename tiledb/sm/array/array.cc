@@ -991,8 +991,16 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
     }
 
     // Store the loaded enumerations in the schema
+    std::string latest_schema_name = array_schema_latest().name();
     for (auto& enmr : loaded) {
       opened_array_->array_schema_latest_ptr()->store_enumeration(enmr);
+      if (remote_ && use_refactored_array_open()) {
+        if (!array_schemas_all().contains(latest_schema_name)) {
+          throw ArrayException(
+              "No schema with name '" + latest_schema_name + "' was found.");
+        }
+        array_schemas_all().at(latest_schema_name)->store_enumeration(enmr);
+      }
     }
   }
 
@@ -1148,9 +1156,9 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   set_array_schemas_all(std::move(array_schemas_all));
   set_fragment_metadata(std::move(fragment_metadata));
 
-  if (config_.get<bool>(
-          "rest.load_enumerations_on_array_open", Config::must_find)) {
-    load_all_enumerations(use_refactored_array_open());
+  if (use_refactored_array_open()) {
+    load_all_enumerations(config_.get<bool>(
+        "rest.load_enumerations_on_array_open_all_schemas", Config::must_find));
   }
 
   return Status::Ok();
