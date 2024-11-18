@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,15 +30,19 @@
  * This file implements class Config.
  */
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
 #include "config.h"
+#include "external/include/nlohmann/json.hpp"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parse_argument.h"
+
+using json = nlohmann::json;
 
 using namespace tiledb::common;
 
@@ -60,14 +64,12 @@ bool ignore_default_via_env(const std::string& param) {
 
 namespace tiledb::sm {
 
-/** Return a Config error class Status with a given message **/
-inline Status Status_ConfigError(const std::string& msg) {
-  return {"[TileDB::Config] Error", msg};
-}
-
-void throw_config_exception(const std::string& msg) {
-  throw StatusException(Status_ConfigError(msg));
-}
+class ConfigException : public StatusException {
+ public:
+  explicit ConfigException(const std::string& msg)
+      : StatusException("Config", msg) {
+  }
+};
 
 /* ****************************** */
 /*        CONFIG DEFAULTS         */
@@ -561,17 +563,56 @@ Config::~Config() = default;
 /*                API             */
 /* ****************************** */
 
+void Config::login() {
+  // Retrieve $HOME path
+  std::string home_dir;
+#ifdef _WIN32
+  home_dir =
+      std::string(std::getenv("HOMEDRIVE")) + std::string(getenv("HOMEPATH"));
+#else
+  home_dir = std::string(std::getenv("HOME"));
+#endif
+
+  // For library versions 22 and older, simply parse the local .json file
+  if (constants::format_version <= 22) {
+    // Find and parse the cloud.json file
+    std::string file = home_dir + "/.tiledb/cloud.json";
+    if (!std::filesystem::exists(file)) {
+      throw ConfigException("Cannot login; cloud.json file does not exist.");
+    }
+    json data = json::parse(std::ifstream(file));
+
+    // Set the config values that have been saved to the file
+    if (data.contains("api_key") &&
+        data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
+      throw_if_not_ok(
+          set("rest.token", data["api_key"]["X-TILEDB-REST-API-KEY"]));
+    }
+    if (data.contains("host")) {
+      throw_if_not_ok(set("rest.server_address", data["host"]));
+    }
+    if (data.contains("password")) {
+      throw_if_not_ok(set("rest.password", data["password"]));
+    }
+    if (data.contains("username")) {
+      throw_if_not_ok(set("rest.username", data["username"]));
+    }
+    if (data.contains("verify_ssl")) {
+      throw_if_not_ok(
+          set("vfs.s3.verify_ssl", data["verify_ssl"] ? "true" : "false"));
+    }
+  }
+}
+
 Status Config::load_from_file(const std::string& filename) {
   // Do nothing if filename is empty
-  if (filename.empty())
-    return LOG_STATUS(
-        Status_ConfigError("Cannot load from file; Invalid filename"));
+  if (filename.empty()) {
+    throw ConfigException("Cannot load from file; Invalid filename");
+  }
 
   std::ifstream ifs(filename);
   if (!ifs.is_open()) {
-    std::stringstream msg;
-    msg << "Failed to open config file '" << filename << "'";
-    return LOG_STATUS(Status_ConfigError(msg.str()));
+    throw ConfigException("Failed to open config file '" + filename + "'");
   }
 
   size_t linenum = 0;
@@ -592,7 +633,7 @@ Status Config::load_from_file(const std::string& filename) {
       std::stringstream msg;
       msg << "Failed to parse config file '" << filename << "'; ";
       msg << "Missing parameter value (line: " << linenum << ")";
-      return LOG_STATUS(Status_ConfigError(msg.str()));
+      throw ConfigException(msg.str());
     }
 
     // Parse extra
@@ -601,7 +642,7 @@ Status Config::load_from_file(const std::string& filename) {
       std::stringstream msg;
       msg << "Failed to parse config file '" << filename << "'; ";
       msg << "Invalid line format (line: " << linenum << ")";
-      return LOG_STATUS(Status_ConfigError(msg.str()));
+      throw ConfigException(msg.str());
     }
 
     // Set param-value pair
@@ -614,15 +655,14 @@ Status Config::load_from_file(const std::string& filename) {
 
 Status Config::save_to_file(const std::string& filename) {
   // Do nothing if filename is empty
-  if (filename.empty())
-    return LOG_STATUS(
-        Status_ConfigError("Cannot save to file; Invalid filename"));
+  if (filename.empty()) {
+    throw ConfigException("Cannot save to file; Invalid filename");
+  }
 
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
-    std::stringstream msg;
-    msg << "Failed to open config file '" << filename << "' for writing";
-    return LOG_STATUS(Status_ConfigError(msg.str()));
+    throw ConfigException(
+        "Failed to open config file '" + filename + "' for writing");
   }
   for (auto& pv : param_values_) {
     if (unserialized_params_.count(pv.first) != 0)
@@ -664,7 +704,7 @@ Status Config::get(const std::string& param, T* value, bool* found) const {
   // Parameter found, retrieve value
   auto status = utils::parse::convert(val, value);
   if (!status.ok()) {
-    return Status_ConfigError(
+    throw ConfigException(
         std::string("Failed to parse config value '") + std::string(val) +
         std::string("' for key '") + param + "' due to: " + status.to_string());
   }
@@ -751,8 +791,7 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "config.logging_format") {
     if (value != "DEFAULT" && value != "JSON")
-      return LOG_STATUS(
-          Status_ConfigError("Invalid logging format parameter value"));
+      throw ConfigException("Invalid logging format parameter value");
   } else if (param == "sm.allow_separate_attribute_writes") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.allow_updates_experimental") {
@@ -799,8 +838,7 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.var_offsets.mode") {
     if (value != "bytes" && value != "elements")
-      return LOG_STATUS(
-          Status_ConfigError("Invalid offsets format parameter value"));
+      throw ConfigException("Invalid offsets format parameter value");
   } else if (param == "sm.fragment_info.preload_mbrs") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "ssl.verify") {
@@ -825,8 +863,7 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
-      return LOG_STATUS(
-          Status_ConfigError("Invalid S3 scheme parameter value"));
+      throw ConfigException("Invalid S3 scheme parameter value");
   } else if (param == "vfs.s3.use_virtual_addressing") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.skit_init") {
@@ -866,7 +903,7 @@ Status Config::sanity_check(
             (value == "bucket_owner_full_control"))))) {
       std::stringstream msg;
       msg << "value " << param << " invalid canned acl for " << param;
-      return Status_Error(msg.str());
+      throw ConfigException(msg.str());
     }
   }
 
@@ -970,7 +1007,7 @@ optional<T> Config::get_internal(const std::string& key) const {
     if (status.ok()) {
       return {converted_value};
     }
-    throw_config_exception(
+    throw ConfigException(
         "Failed to parse config value '" + std::string(value.value()) +
         "' for key '" + key + "'. Reason: " + status.to_string());
   }
@@ -988,7 +1025,7 @@ optional<std::string> Config::get_internal_string(
   }
 
   if constexpr (must_find_) {
-    throw_config_exception("Failed to get config value for key: " + key);
+    throw ConfigException("Failed to get config value for key: " + key);
   }
   return {nullopt};
 }
