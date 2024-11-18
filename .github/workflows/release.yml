@@ -139,7 +139,7 @@ jobs:
       - name: "Print log files (failed build only)"
         shell: bash
         run: |
-          $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
 
   Test-Release-Artifacts:
