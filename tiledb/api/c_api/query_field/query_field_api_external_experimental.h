@@ -147,10 +147,9 @@ TILEDB_EXPORT capi_return_t tiledb_field_cell_val_num(
  * tiledb_field_get_nullable(ctx, attr, &nullable);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param field The query field handle
- * @param nullable Output argument, non-zero for nullable and zero
- *    for non-nullable.
+ * @param[in] ctx The TileDB context.
+ * @param[in] field The query field handle
+ * @param[out] nullable Non-zero if `field` is nullable, and zero otherwise
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_field_get_nullable(
