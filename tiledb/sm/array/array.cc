@@ -502,8 +502,7 @@ Status Array::open(
             rest_client->get_array_schema_from_rest(array_uri_);
         throw_if_not_ok(st);
         set_array_schema_latest(array_schema_latest.value());
-        if (config_.get<bool>(
-                "rest.load_enumerations_on_array_open", Config::must_find)) {
+        if (serialize_enumerations()) {
           // The route for array open v1 does not currently support loading
           // enumerations. Once #5359 is merged and deployed to REST this will
           // not be the case.
@@ -601,10 +600,12 @@ Status Array::open(
     // For fetching remote enumerations REST calls
     // tiledb_handle_load_enumerations_request which loads enumerations. For
     // local arrays we don't call this method.
-    if (serialize_enumerations()) {
+    if (serialize_enumerations() && use_refactored_array_open()) {
       load_all_enumerations(config_.get<bool>(
           "rest.load_enumerations_on_array_open_all_schemas",
           Config::must_find));
+    } else if (serialize_enumerations()) {
+      load_all_enumerations(false);
     }
   }
 
@@ -1156,9 +1157,11 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   set_array_schemas_all(std::move(array_schemas_all));
   set_fragment_metadata(std::move(fragment_metadata));
 
-  if (use_refactored_array_open()) {
+  if (serialize_enumerations() && use_refactored_array_open()) {
     load_all_enumerations(config_.get<bool>(
         "rest.load_enumerations_on_array_open_all_schemas", Config::must_find));
+  } else if (serialize_enumerations()) {
+    load_all_enumerations(false);
   }
 
   return Status::Ok();
