@@ -595,20 +595,6 @@ Status Array::open(
     return LOG_STATUS(Status_ArrayError(e.what()));
   }
 
-  // Handle any array open config options for local arrays.
-  if (!remote_) {
-    // For fetching remote enumerations REST calls
-    // tiledb_handle_load_enumerations_request which loads enumerations. For
-    // local arrays we don't call this method.
-    if (serialize_enumerations() && use_refactored_array_open()) {
-      load_all_enumerations(config_.get<bool>(
-          "rest.load_enumerations_on_array_open_all_schemas",
-          Config::must_find));
-    } else if (serialize_enumerations()) {
-      load_all_enumerations(false);
-    }
-  }
-
   is_opening_or_closing_ = false;
   return Status::Ok();
 }
@@ -1143,13 +1129,6 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   set_array_schema_latest(array_schema_latest);
   set_array_schemas_all(std::move(array_schemas_all));
   set_fragment_metadata(std::move(fragment_metadata));
-
-  if (serialize_enumerations() && use_refactored_array_open()) {
-    load_all_enumerations(config_.get<bool>(
-        "rest.load_enumerations_on_array_open_all_schemas", Config::must_find));
-  } else if (serialize_enumerations()) {
-    load_all_enumerations(false);
-  }
 
   return Status::Ok();
 }

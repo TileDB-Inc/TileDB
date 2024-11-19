@@ -454,7 +454,7 @@ TEST_CASE_METHOD(
     if (array_open_v2) {
       // If we are not loading enmrs on array open we must load them explicitly
       // with a separate request.
-      if (!load_enmrs) {
+      if (!load_enmrs || !vfs_test_setup_.is_rest()) {
         // Load enumerations for all schemas if using array open v2.
         CHECK_NOTHROW(
             ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
@@ -657,7 +657,7 @@ TEST_CASE_METHOD(
   if (load_enmrs) {
     // Array open v1 does not support loading enumerations on array open so we
     // must load them explicitly in this case.
-    if (!array_open_v2) {
+    if (!array_open_v2 || !vfs_test_setup_.is_rest()) {
       ArrayExperimental::load_all_enumerations(ctx_, array);
     }
     REQUIRE(
@@ -736,7 +736,7 @@ TEST_CASE_METHOD(
     // Reopen and load the evolved enumerations.
     array.reopen();
     std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
-    if (!load_enmrs) {
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
       CHECK_NOTHROW(
           ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
     }
@@ -776,7 +776,7 @@ TEST_CASE_METHOD(
 
     // Reopen to apply the schema evolution and reload enumerations.
     array.reopen();
-    if (!load_enmrs) {
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
   }
@@ -860,7 +860,7 @@ TEST_CASE_METHOD(
 
     // If we are not loading enmrs on array open we must load them explicitly
     // with a separate request.
-    if (!load_enmrs) {
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
       // Load enumerations for all schemas if using array open v2.
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
@@ -1060,6 +1060,8 @@ TEST_CASE_METHOD(
     // must load them explicitly in this case.
     if (!array_open_v2) {
       ArrayExperimental::load_all_enumerations(ctx_, array);
+    } else if (!vfs_test_setup_.is_rest()) {
+      ArrayExperimental::load_enumerations_all_schemas(ctx_, array);
     }
     REQUIRE(
         array.schema().ptr()->array_schema()->is_enumeration_loaded(
@@ -1106,7 +1108,7 @@ TEST_CASE_METHOD(
     // Reopen and load the evolved enumerations.
     array.reopen();
     std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
-    if (!load_enmrs) {
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
     // Validate all array schemas now contain the expected enumerations.
@@ -1147,7 +1149,7 @@ TEST_CASE_METHOD(
 
     // Reopen to apply the schema evolution and reload enumerations.
     array.reopen();
-    if (!load_enmrs) {
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
   }
