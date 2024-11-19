@@ -142,6 +142,8 @@ class OpenedArray {
   inline void set_array_schema_latest(
       const shared_ptr<ArraySchema>& array_schema) {
     array_schema_latest_ = array_schema;
+    // Update the latest schema in the map of all array schemas.
+    array_schemas_all_[array_schema->name()] = array_schema;
   }
 
   /** Returns all array schemas. */

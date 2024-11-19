@@ -906,31 +906,23 @@ Array::get_enumerations_all_schemas() {
   }
 
   // Store the loaded enumerations into the schemas.
-  auto latest_schema = opened_array_->array_schema_latest_ptr();
-  for (const auto& schema_enmrs : ret) {
+  for (const auto& [schema_name, enmrs] : ret) {
     // This case will only be hit for remote arrays if the client evolves the
     // schema and does not reopen the array before loading all enumerations.
-    if (!array_schemas_all().contains(schema_enmrs.first)) {
+    if (!array_schemas_all().contains(schema_name)) {
       throw ArrayException(
           "Array opened using timestamp range (" +
           std::to_string(array_dir_timestamp_start_) + ", " +
           std::to_string(array_dir_timestamp_end_) +
-          ") has no loaded schema named '" + schema_enmrs.first +
+          ") has no loaded schema named '" + schema_name +
           "'; If the array was recently evolved be sure to reopen it after "
           "applying the evolution.");
     }
 
-    auto schema = array_schemas_all().at(schema_enmrs.first);
-    for (const auto& enmr : schema_enmrs.second) {
+    auto schema = array_schemas_all().at(schema_name);
+    for (const auto& enmr : enmrs) {
       if (!schema->is_enumeration_loaded(enmr->name())) {
         schema->store_enumeration(enmr);
-      }
-      // Also store enumerations into the latest schema when we encounter
-      // it.
-      if (schema_enmrs.first == latest_schema->name()) {
-        if (!latest_schema->is_enumeration_loaded(enmr->name())) {
-          latest_schema->store_enumeration(enmr);
-        }
       }
     }
   }
@@ -991,16 +983,11 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
           paths_to_load, *encryption_key(), memory_tracker_);
     }
 
-    // Store the loaded enumerations in the schema
-    std::string latest_schema_name = array_schema_latest().name();
+    // Store the loaded enumerations in the latest schema
+    auto schema = opened_array_->array_schema_latest_ptr();
     for (auto& enmr : loaded) {
-      opened_array_->array_schema_latest_ptr()->store_enumeration(enmr);
-      if (remote_ && use_refactored_array_open()) {
-        if (!array_schemas_all().contains(latest_schema_name)) {
-          throw ArrayException(
-              "No schema with name '" + latest_schema_name + "' was found.");
-        }
-        array_schemas_all().at(latest_schema_name)->store_enumeration(enmr);
+      if (!schema->is_enumeration_loaded(enmr->name())) {
+        schema->store_enumeration(enmr);
       }
     }
   }
