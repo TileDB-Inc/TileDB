@@ -83,7 +83,7 @@ class ThreadPool {
     //    }
 
     ~TaskBase() {
-      if (tp_ != nullptr) {
+      if (tp_ != nullptr && this->valid()) {
         std::ignore = tp_->wait(*this);
       }
     };
@@ -96,8 +96,8 @@ class ThreadPool {
       }
     };
 
-    T get() {
-      if (tp_ != nullptr) {
+    T get(const bool wait_thread_pool = true) {
+      if (wait_thread_pool && tp_ != nullptr) {
         throw_if_not_ok(tp_->wait(*this));
       }
       return std::future<T>::get();
@@ -160,7 +160,7 @@ class ThreadPool {
     }
 
     ~SharedTaskBase() {
-      if (tp_ != nullptr) {
+      if (tp_ != nullptr && this->valid()) {
         std::ignore = tp_->wait(*this);
       }
     };
@@ -173,8 +173,8 @@ class ThreadPool {
       }
     }
 
-    T get() {
-      if (tp_ != nullptr) {
+    T get(const bool wait_thread_pool = true) {
+      if (wait_thread_pool && tp_ != nullptr) {
         throw_if_not_ok(tp_->wait(*this));
       }
       return std::shared_future<T>::get();

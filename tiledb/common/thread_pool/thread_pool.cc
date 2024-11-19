@@ -164,7 +164,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 
       Status st = [&task] {
         try {
-          return task.get();
+          return task.get(false);
         } catch (const std::exception& e) {
           return Status_TaskError(
               "Caught std::exception: " + std::string(e.what()));
@@ -216,7 +216,7 @@ Status ThreadPool::wait(Task& task) {
 
       Status st = [&task] {
         try {
-          return task.get();
+          return task.get(false);
         } catch (const std::exception& e) {
           return Status_TaskError(
               "Caught std::exception: " + std::string(e.what()));
@@ -290,7 +290,7 @@ std::vector<Status> ThreadPool::wait_all_status(
 
       Status st = [&task] {
         try {
-          return task.get();
+          return task.get(false);
         } catch (const std::exception& e) {
           return Status_TaskError(
               "Caught std::exception: " + std::string(e.what()));
@@ -342,7 +342,7 @@ Status ThreadPool::wait(SharedTask& task) {
 
       Status st = [&task] {
         try {
-          return task.get();
+          return task.get(false);
         } catch (const std::exception& e) {
           return Status_TaskError(
               "Caught std::exception: " + std::string(e.what()));
