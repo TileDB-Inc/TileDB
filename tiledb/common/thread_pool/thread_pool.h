@@ -46,8 +46,151 @@
 namespace tiledb::common {
 
 class ThreadPool {
+  template <typename T>
+  class TaskBase : public std::future<T> {
+   public:
+    TaskBase() noexcept
+        : std::future<T>()
+        , tp_(nullptr){};
+
+    TaskBase(std::future<T>&& f) noexcept
+        : std::future<T>(std::move(f))
+        , tp_(nullptr){};
+
+    TaskBase(std::future<T>&& f, ThreadPool* tp) noexcept
+        : std::future<T>(std::move(f))
+        , tp_(tp){};
+
+    TaskBase(TaskBase&& tb) noexcept
+        : std::future<T>(std::move(tb))
+        , tp_(tb.tp_){};
+
+    // Disable copying
+    TaskBase(const TaskBase&) = delete;
+    TaskBase& operator=(const TaskBase&) = delete;
+    /*    TaskBase(const TaskBase& tb) : std::future<T>(tb),  tp_(tb.tp_) {
+    //      std::future<T>(std::move(tb))._M_swap(*this);
+        };
+        TaskBase& operator=(const TaskBase& tb) {
+          tp_ = tb.tp_;
+          std::future<T>(std::move(tb))._M_swap(*this);
+        }*/
+    //
+    //    TaskBase& operator=(TaskBase&& __fut) noexcept {
+    //      this->tp_ = __fut.tp_;
+    //      std::future<T>::operator=(__fut);
+    //      return *this;
+    //    }
+
+    ~TaskBase() {
+      if (tp_ != nullptr) {
+        std::ignore = tp_->wait(*this);
+      }
+    };
+
+    void wait() {
+      if (tp_ != nullptr) {
+        throw_if_not_ok(tp_->wait(*this));
+      } else {
+        return std::future<T>::wait();
+      }
+    };
+
+    T get() {
+      if (tp_ != nullptr) {
+        throw_if_not_ok(tp_->wait(*this));
+      }
+      return std::future<T>::get();
+    }
+
+    ThreadPool* tp() const {
+      return tp_;
+    }
+
+   private:
+    ThreadPool* tp_;
+  };
+
+  template <typename T>
+  class SharedTaskBase : public std::shared_future<T> {
+   public:
+    SharedTaskBase() noexcept
+        : std::shared_future<T>()
+        , tp_(nullptr){};
+
+    SharedTaskBase(std::shared_future<T>&& f) noexcept
+        : std::shared_future<T>(std::move(f))
+        , tp_(nullptr){};
+
+    SharedTaskBase(std::shared_future<T>&& f, ThreadPool* tp) noexcept
+        : std::shared_future<T>(std::move(f))
+        , tp_(tp){};
+
+    SharedTaskBase(std::future<T>&& f) noexcept
+        : std::shared_future<T>(std::move(f))
+        , tp_(nullptr){};
+
+    SharedTaskBase(std::future<T>&& f, ThreadPool* tp) noexcept
+        : std::shared_future<T>(std::move(f))
+        , tp_(tp){};
+
+    SharedTaskBase(TaskBase<T>&& f) noexcept
+        : std::shared_future<T>(std::move(f))
+        , tp_(f.tp()){};
+
+    SharedTaskBase(SharedTaskBase&& f) noexcept
+        : std::shared_future<T>(std::move(f))
+        , tp_(f.tp_){};
+
+    SharedTaskBase(const SharedTaskBase& __sf) noexcept
+        : std::shared_future<T>(__sf) {
+      tp_ = __sf.tp_;
+    }
+
+    SharedTaskBase& operator=(const SharedTaskBase& __sf) noexcept {
+      this->tp_ = __sf.tp_;
+      std::shared_future<T>::operator=(__sf);
+      return *this;
+    }
+
+    SharedTaskBase& operator=(SharedTaskBase&& __sf) noexcept {
+      this->tp_ = __sf.tp_;
+      std::shared_future<T>::operator=(__sf);
+      return *this;
+    }
+
+    ~SharedTaskBase() {
+      if (tp_ != nullptr) {
+        std::ignore = tp_->wait(*this);
+      }
+    };
+
+    void wait() {
+      if (tp_ != nullptr) {
+        throw_if_not_ok(tp_->wait(*this));
+      } else {
+        return std::shared_future<T>::wait();
+      }
+    }
+
+    T get() {
+      if (tp_ != nullptr) {
+        throw_if_not_ok(tp_->wait(*this));
+      }
+      return std::shared_future<T>::get();
+    }
+
+    ThreadPool* tp() const {
+      return tp_;
+    }
+
+   private:
+    ThreadPool* tp_;
+  };
+
  public:
-  using Task = std::future<Status>;
+  using Task = TaskBase<Status>;
+  using SharedTask = SharedTaskBase<Status>;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -108,7 +251,7 @@ class ThreadPool {
           return std::apply(std::move(f), std::move(args));
         });
 
-    std::future<R> future = task->get_future();
+    Task future(task->get_future(), this);
 
     task_queue_.push(task);
 
@@ -163,6 +306,43 @@ class ThreadPool {
    * status is returned
    */
   Status wait(Task& task);
+
+  /**
+   * Wait on all the given tasks to complete. This function is safe to call
+   * recursively and may execute pending tasks on the calling thread while
+   * waiting.
+   *
+   * @param tasks SharedTask list to wait on.
+   * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
+   * error status is returned
+   */
+  Status wait_all(std::vector<SharedTask>& tasks);
+
+  /**
+   * Wait on all the given tasks to complete, returning a vector of their return
+   * Status.  Exceptions caught while waiting are returned as Status_TaskError.
+   * Status are saved at the same index in the return vector as the
+   * corresponding task in the input vector.  The status vector may contain more
+   * than one error Status.
+   *
+   * This function is safe to call recursively and may execute pending tasks
+   * with the calling thread while waiting.
+   *
+   * @param tasks SharedTask list to wait on
+   * @return Vector of each task's Status.
+   */
+  std::vector<Status> wait_all_status(std::vector<SharedTask>& tasks);
+
+  /**
+   * Wait on a single tasks to complete. This function is safe to call
+   * recursively and may execute pending tasks on the calling thread while
+   * waiting.
+   *
+   * @param task SharedTask to wait on.
+   * @return Status::Ok if the task returned Status::Ok, otherwise the error
+   * status is returned
+   */
+  Status wait(SharedTask& task);
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
