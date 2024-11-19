@@ -138,6 +138,27 @@ TILEDB_EXPORT capi_return_t tiledb_field_cell_val_num(
     uint32_t* cell_val_num) TILEDB_NOEXCEPT;
 
 /**
+ * Retrieves the nullability of a field.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint8_t nullable;
+ * tiledb_field_get_nullable(ctx, attr, &nullable);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param field The query field handle
+ * @param nullable Output argument, non-zero for nullable and zero
+ *    for non-nullable.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_field_get_nullable(
+    tiledb_ctx_t* ctx,
+    tiledb_query_field_t* field,
+    uint8_t* nullable) TILEDB_NOEXCEPT;
+
+/**
  * Get the origin type of the passed field
  * **Example:**
  *

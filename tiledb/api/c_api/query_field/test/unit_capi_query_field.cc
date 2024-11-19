@@ -76,25 +76,31 @@ void QueryFieldFx::write_sparse_array(const std::string& array_name) {
 
   throw_if_setup_failed(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
 
-  int32_t a[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  int32_t b[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  uint64_t a_size = 10 * sizeof(int32_t);
-  uint64_t b_size = 10 * sizeof(int32_t);
+  int32_t a[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  int32_t b[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  uint64_t a_size = 9 * sizeof(int32_t);
+  uint64_t b_size = 9 * sizeof(int32_t);
+  uint8_t b_validity[] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+  uint64_t b_validity_size = sizeof(b_validity);
 
-  int64_t d1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  int64_t d2[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-  uint64_t d1_size = 10 * sizeof(int64_t);
-  uint64_t d2_size = 10 * sizeof(int64_t);
+  int64_t d1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  int64_t d2[] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+  uint64_t d1_size = 9 * sizeof(int64_t);
+  uint64_t d2_size = 9 * sizeof(int64_t);
   char c_data[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   uint64_t c_size = strlen(c_data);
   uint64_t c_data_offsets[] = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40};
   uint64_t c_offsets_size = sizeof(c_data_offsets);
+  uint8_t d_validity[] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
+  uint64_t d_validity_size = sizeof(b_validity);
 
   throw_if_setup_failed(
       tiledb_query_set_data_buffer(ctx, query, "a", a, &a_size));
 
   throw_if_setup_failed(
       tiledb_query_set_data_buffer(ctx, query, "b", b, &b_size));
+  throw_if_setup_failed(tiledb_query_set_validity_buffer(
+      ctx, query, "b", b_validity, &b_validity_size));
 
   throw_if_setup_failed(
       tiledb_query_set_data_buffer(ctx, query, "d1", d1, &d1_size));
@@ -111,6 +117,8 @@ void QueryFieldFx::write_sparse_array(const std::string& array_name) {
       tiledb_query_set_data_buffer(ctx, query, "d", c_data, &c_size));
   throw_if_setup_failed(tiledb_query_set_offsets_buffer(
       ctx, query, "d", c_data_offsets, &c_offsets_size));
+  throw_if_setup_failed(tiledb_query_set_validity_buffer(
+      ctx, query, "d", d_validity, &d_validity_size));
 
   throw_if_setup_failed(tiledb_query_submit(ctx, query));
 
@@ -143,6 +151,7 @@ void QueryFieldFx::create_sparse_array(const std::string& array_name) {
   throw_if_setup_failed(tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a));
   tiledb_attribute_t* b = nullptr;
   throw_if_setup_failed(tiledb_attribute_alloc(ctx, "b", TILEDB_INT32, &b));
+  throw_if_setup_failed(tiledb_attribute_set_nullable(ctx, b, true));
   tiledb_attribute_t* c = nullptr;
   throw_if_setup_failed(
       tiledb_attribute_alloc(ctx, "c", TILEDB_STRING_ASCII, &c));
@@ -153,6 +162,7 @@ void QueryFieldFx::create_sparse_array(const std::string& array_name) {
       tiledb_attribute_alloc(ctx, "d", TILEDB_STRING_UTF8, &d));
   throw_if_setup_failed(
       tiledb_attribute_set_cell_val_num(ctx, d, TILEDB_VAR_NUM));
+  throw_if_setup_failed(tiledb_attribute_set_nullable(ctx, d, true));
 
   // Create array schema
   tiledb_array_schema_t* array_schema = nullptr;
@@ -301,6 +311,7 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
   tiledb_datatype_t type;
   tiledb_field_origin_t origin;
   uint32_t cell_val_num = 0;
+  uint8_t is_nullable = false;
   tiledb_query_channel_t* channel = nullptr;
 
   SECTION("Non-existent field") {
@@ -319,6 +330,8 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(origin == TILEDB_DIMENSION_FIELD);
     REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
     CHECK(cell_val_num == 1);
+    REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
+    CHECK(is_nullable == false);
     CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
   }
 
@@ -333,6 +346,8 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
     REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
     CHECK(cell_val_num == 1);
+    REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
+    CHECK(is_nullable == false);
     CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
   }
 
@@ -346,10 +361,12 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(origin == TILEDB_DIMENSION_FIELD);
     REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
     CHECK(cell_val_num == 1);
+    REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
+    CHECK(is_nullable == false);
     CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
   }
 
-  SECTION("Attribute field") {
+  SECTION("Non-nullable attribute field") {
     // Check field api works on attribute field
     REQUIRE(tiledb_query_get_field(ctx, query, "c", &field) == TILEDB_OK);
     REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
@@ -358,10 +375,75 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
     CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
     REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
     CHECK(cell_val_num == TILEDB_VAR_NUM);
+    REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
+    CHECK(is_nullable == false);
     CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
   }
 
-  SECTION("Aggregate field") {
+  SECTION("Nullablle attribute field") {
+    // Check field api works on attribute field
+    REQUIRE(tiledb_query_get_field(ctx, query, "d", &field) == TILEDB_OK);
+    REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+    CHECK(type == TILEDB_STRING_UTF8);
+    REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+    CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
+    REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+    CHECK(cell_val_num == TILEDB_VAR_NUM);
+    REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
+    CHECK(static_cast<bool>(is_nullable) == true);
+    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  }
+
+  SECTION("Aggregate field which might be nullable") {
+    auto expect_nullable = GENERATE(true, false);
+    auto attribute = (expect_nullable ? "b" : "a");
+    // Check field api works on aggregate field
+    const tiledb_channel_operator_t* operator_sum;
+    tiledb_channel_operation_t* sum_a;
+    REQUIRE(tiledb_channel_operator_sum_get(ctx, &operator_sum) == TILEDB_OK);
+    REQUIRE(
+        tiledb_create_unary_aggregate(
+            ctx, query, operator_sum, attribute, &sum_a) == TILEDB_OK);
+    REQUIRE(
+        tiledb_query_get_default_channel(ctx, query, &channel) == TILEDB_OK);
+    REQUIRE(
+        tiledb_channel_apply_aggregate(ctx, channel, "Sum", sum_a) ==
+        TILEDB_OK);
+
+    SECTION("validate") {
+      // Check field api works on aggregate field
+      REQUIRE(tiledb_query_get_field(ctx, query, "Sum", &field) == TILEDB_OK);
+      REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+      CHECK(type == TILEDB_INT64);
+      REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+      CHECK(origin == TILEDB_AGGREGATE_FIELD);
+      REQUIRE(
+          tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+      CHECK(cell_val_num == 1);
+      REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
+      CHECK(static_cast<bool>(is_nullable) == expect_nullable);
+      CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+    }
+    SECTION("run query") {
+      uint64_t sum = 0;
+      uint64_t size = 8;
+      uint8_t sum_validity = 0;
+      uint64_t validity_size = sizeof(uint8_t);
+      REQUIRE(
+          tiledb_query_set_data_buffer(ctx, query, "Sum", &sum, &size) ==
+          TILEDB_OK);
+      if (expect_nullable) {
+        REQUIRE(
+            tiledb_query_set_validity_buffer(
+                ctx, query, "Sum", &sum_validity, &validity_size) == TILEDB_OK);
+      }
+      REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
+      CHECK(sum == 45);
+    }
+    CHECK(tiledb_query_channel_free(ctx, &channel) == TILEDB_OK);
+  }
+
+  SECTION("Non-nullable Aggregate field") {
     // Check field api works on aggregate field
     REQUIRE(
         tiledb_query_get_default_channel(ctx, query, &channel) == TILEDB_OK);
@@ -378,6 +460,8 @@ TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
       REQUIRE(
           tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
       CHECK(cell_val_num == 1);
+      REQUIRE(tiledb_field_get_nullable(ctx, field, &is_nullable) == TILEDB_OK);
+      CHECK(is_nullable == false);
       CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
     }
     SECTION("run query") {
