@@ -56,20 +56,20 @@ jobs:
             cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux2014_x86_64
-          #- platform: linux-aarch64
-          #  os: linux-arm64-ubuntu24
-          #  triplet: arm64-linux-release
-          #  manylinux: quay.io/pypa/manylinux2014_aarch64
+          - platform: linux-aarch64
+            os: linux-arm64-ubuntu24
+            triplet: arm64-linux-release
+            manylinux: quay.io/pypa/manylinux2014_aarch64
           - platform: macos-x86_64
             os: macos-12
             cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
             MACOSX_DEPLOYMENT_TARGET: 11
             triplet: x64-osx-release
-          #- platform: macos-arm64
-          #  os: macos-latest
-          #  cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
-          #  MACOSX_DEPLOYMENT_TARGET: 11
-          #  triplet: arm64-osx-release
+          - platform: macos-arm64
+            os: macos-latest
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
+            MACOSX_DEPLOYMENT_TARGET: 11
+            triplet: arm64-osx-release
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.manylinux || '' }}
     env:
