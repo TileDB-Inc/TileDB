@@ -66,7 +66,7 @@ capi_return_t tiledb_vfs_alloc(
   if (config) {
     ctx_config.inherit((config->config()));
   }
-  *vfs = tiledb_vfs_t::make_handle(
+  *vfs = make_handle<tiledb_vfs_t>(
       &stats, logger, &compute_tp, &io_tp, ctx_config);
 
   return TILEDB_OK;
@@ -75,7 +75,7 @@ capi_return_t tiledb_vfs_alloc(
 void tiledb_vfs_free(tiledb_vfs_t** vfs) {
   ensure_output_pointer_is_valid(vfs);
   ensure_vfs_is_valid(*vfs);
-  tiledb_vfs_t::break_handle(*vfs);
+  break_handle(*vfs);
 }
 
 capi_return_t tiledb_vfs_get_config(
@@ -83,7 +83,7 @@ capi_return_t tiledb_vfs_get_config(
   ensure_vfs_is_valid(vfs);
   ensure_output_pointer_is_valid(config);
 
-  *config = tiledb_config_handle_t::make_handle(vfs->config());
+  *config = make_handle<tiledb_config_handle_t>(vfs->config());
   return TILEDB_OK;
 }
 
@@ -217,7 +217,7 @@ capi_return_t tiledb_vfs_open(
   auto vfs_mode = static_cast<tiledb::sm::VFSMode>(mode);
 
   // Throws if opening the uri is unsuccessful
-  *fh = tiledb_vfs_fh_t::make_handle(fh_uri, vfs->vfs(), vfs_mode);
+  *fh = make_handle<tiledb_vfs_fh_t>(fh_uri, vfs->vfs(), vfs_mode);
 
   return TILEDB_OK;
 }
@@ -281,7 +281,7 @@ capi_return_t tiledb_vfs_ls(
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) {
   ensure_output_pointer_is_valid(fh);
   ensure_vfs_fh_is_valid(*fh);
-  tiledb_vfs_fh_t::break_handle(*fh);
+  break_handle(*fh);
 }
 
 capi_return_t tiledb_vfs_fh_is_closed(tiledb_vfs_fh_t* fh, int32_t* is_closed) {

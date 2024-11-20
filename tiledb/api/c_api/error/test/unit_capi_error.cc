@@ -32,6 +32,8 @@
 #include "../error_api_external.h"
 #include "../error_api_internal.h"
 
+using namespace tiledb::api;
+
 TEST_CASE("C API: tiledb_error_message argument validation", "[capi][error]") {
   SECTION("null error") {
     const char* p;
@@ -39,7 +41,7 @@ TEST_CASE("C API: tiledb_error_message argument validation", "[capi][error]") {
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null error message") {
-    auto error{tiledb_error_handle_t::make_handle("foo")};
+    auto error{make_handle<tiledb_error_handle_t>("foo")};
     REQUIRE(error != nullptr);
     auto rc{tiledb_error_message(error, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);

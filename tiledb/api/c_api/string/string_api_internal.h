@@ -39,8 +39,7 @@
 /**
  * Handle `struct` for API string objects.
  */
-struct tiledb_string_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_string_handle_t> {
+struct tiledb_string_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

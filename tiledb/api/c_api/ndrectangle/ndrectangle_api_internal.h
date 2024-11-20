@@ -37,8 +37,7 @@
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/array_schema/ndrectangle.h"
 
-struct tiledb_ndrectangle_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_ndrectangle_handle_t> {
+struct tiledb_ndrectangle_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

@@ -42,8 +42,7 @@
 #include "vfs_api_external.h"
 
 /** Handle `struct` for API VFS objects. */
-struct tiledb_vfs_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_vfs_handle_t> {
+struct tiledb_vfs_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */
@@ -174,8 +173,7 @@ struct tiledb_vfs_handle_t
 };
 
 /** Handle `struct` for API VFS file handle objects. */
-struct tiledb_vfs_fh_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_vfs_fh_handle_t> {
+struct tiledb_vfs_fh_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

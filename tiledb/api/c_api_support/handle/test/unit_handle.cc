@@ -31,165 +31,31 @@
 #include <test/support/tdb_catch.h>
 #include "../handle.h"
 
-namespace tiledb::api {
-namespace detail {
-/**
- * Whitebox testing version of CAPIHandle
- */
-template <class T>
-class WhiteboxCAPIHandle : public CAPIHandle<T> {
-  using base = CAPIHandle<T>;
+using namespace tiledb::api;
 
- protected:
-  WhiteboxCAPIHandle() = default;
-
+class TestHandle : public CAPIHandle {
  public:
-  using weak_ptr_type = std::weak_ptr<WhiteboxCAPIHandle>;
-  /**
-   * Return a weak pointer to the private `self_` member of the CAPIHandle base
-   * class.
-   */
-  weak_ptr_type weak_self() {
-    return {base::self_};
-  }
+  static constexpr std::string_view object_type_name = "TestHandle";
 
-  typename base::shared_ptr_type self() {
-    return {base::self_};
-  }
+  TestHandle() = default;
 };
-}  // namespace detail
 
-/**
- * Test handle object is just the handle; nothing else. The class keeps a count,
- * though, of all objects in existence.
- */
-class TestHandle : public detail::WhiteboxCAPIHandle<TestHandle> {
-  /*
-   * `counter_type` is signed to allow underflow so that error detection works
-   * correctly
-   */
-  using counter_type = int;
-  static counter_type count_;
-
- public:
-  TestHandle() {
-    ++count_;
-  }
-  ~TestHandle() {
-    --count_;
-  }
-
-  [[nodiscard]] static counter_type count() {
-    return count_;
-  }
-};
-TestHandle::counter_type TestHandle::count_{0};
-
-}  // namespace tiledb::api
-
-using THandle = tiledb::api::TestHandle;
-
-/**
- * Ensure default constructor makes an empty `self_`
- */
-TEST_CASE("CAPIHandle: constructor") {
-  REQUIRE(THandle::count() == 0);
-  THandle x;
-  auto y{x.weak_self()};
-  CHECK(y.expired());
+TEST_CASE("CAPIHandle: is_handle_valid") {
+  TestHandle* x = nullptr;
+  CHECK_FALSE(is_handle_valid(x));
+  x = make_handle<TestHandle>();
+  CHECK(is_handle_valid(x));
+  break_handle(x);
+  CHECK_FALSE(is_handle_valid(x));
 }
 
-/**
- * Factory and lifespan variation 1: weak_self in scope of creation
- */
-TEST_CASE("CAPIHandle: factory and lifespan 1") {
-  REQUIRE(THandle::count() == 0);
-  THandle* y{};
-  {
-    y = THandle::make_handle();
-    CHECK(THandle::count() == 1);
-    REQUIRE(y != nullptr);
-    REQUIRE(y == &y->get());
-    auto z{y->weak_self()};
-    CHECK(!z.expired());
-  }
-  // Now that we're out of scope, make sure we're still not expired
-  THandle::break_handle(y);
-  CHECK(THandle::count() == 0);
-  CHECK(y == nullptr);
-}
-
-/**
- * Factory and lifespan variation 2: weak_self outside scope of creation
- */
-TEST_CASE("CAPIHandle: factory and lifespan 2") {
-  REQUIRE(THandle::count() == 0);
-  THandle* y{};
-  THandle::weak_ptr_type z{};
-  {
-    y = THandle::make_handle();
-    CHECK(THandle::count() == 1);
-    REQUIRE(y != nullptr);
-    REQUIRE(y == &y->get());
-    z = y->weak_self();
-    CHECK(!z.expired());
-  }
-  // Now that we're out of scope, make sure we're still not expired
-  CHECK(!z.expired());
-  CHECK(z.use_count() == 1);
-  THandle::break_handle(y);
-  CHECK(THandle::count() == 0);
-  CHECK(y == nullptr);
-  CHECK(z.expired());
-}
-
-/**
- * Factory and lifespan variation 3: (strong) self in scope of creation
- */
-TEST_CASE("CAPIHandle: factory and lifespan 3") {
-  REQUIRE(THandle::count() == 0);
-  THandle* y{};
-  {
-    y = THandle::make_handle();
-    CHECK(THandle::count() == 1);
-    REQUIRE(y != nullptr);
-    REQUIRE(y == &y->get());
-    auto z{y->self()};
-    CHECK(THandle::count() == 1);
-    CHECK(bool(z));
-  }
-  // Now that we're out of scope, make sure we're still not expired
-  THandle::break_handle(y);
-  CHECK(THandle::count() == 0);
-  CHECK(y == nullptr);
-}
-
-/**
- * Factory and lifespan variation 4: weak_self outside scope of creation and
- * (strong) self inside
- */
-TEST_CASE("CAPIHandle: factory and lifespan 4") {
-  REQUIRE(THandle::count() == 0);
-  THandle* y{};
-  THandle::weak_ptr_type z{};
-  {
-    y = THandle::make_handle();
-    CHECK(THandle::count() == 1);
-    REQUIRE(y != nullptr);
-    REQUIRE(y == &y->get());
-    z = y->weak_self();
-    CHECK(!z.expired());
-    CHECK(z.use_count() == 1);
-    auto w{y->self()};
-    CHECK(THandle::count() == 1);
-    CHECK(bool(w));
-    CHECK(z.use_count() == 2);
-  }
-  // Now that we're out of scope, make sure we're still not expired
-  CHECK(!z.expired());
-  CHECK(z.use_count() == 1);
-  THandle::break_handle(y);
-  CHECK(THandle::count() == 0);
-  CHECK(y == nullptr);
-  CHECK(z.expired());
+TEST_CASE("CAPIHandle: ensure_handle_is_valid") {
+  TestHandle* x = nullptr;
+  CHECK_THROWS_WITH(
+      ensure_handle_is_valid(x), "Invalid TileDB TestHandle object");
+  x = make_handle<TestHandle>();
+  CHECK_NOTHROW(ensure_handle_is_valid(x));
+  break_handle(x);
+  CHECK_THROWS_WITH(
+      ensure_handle_is_valid(x), "Invalid TileDB TestHandle object");
 }

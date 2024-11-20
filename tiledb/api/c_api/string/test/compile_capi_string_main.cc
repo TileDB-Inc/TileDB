@@ -28,8 +28,10 @@
 
 #include "../string_api_internal.h"
 
+using namespace tiledb::api;
+
 int main() {
-  auto x{tiledb_string_handle_t::make_handle("foo")};
-  tiledb_string_handle_t::break_handle(x);
+  auto x{make_handle<tiledb_string_handle_t>("foo")};
+  break_handle(x);
   return 0;
 }

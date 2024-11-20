@@ -180,7 +180,7 @@ capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
 /* ********************************* */
 capi_return_t tiledb_as_built_dump(tiledb_string_t** out) {
   ensure_output_pointer_is_valid(out);
-  *out = tiledb_string_handle_t::make_handle(as_built::dump());
+  *out = make_handle<tiledb_string_handle_t>(as_built::dump());
   return TILEDB_OK;
 }
 
@@ -443,7 +443,7 @@ int32_t tiledb_query_get_config(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_output_pointer_is_valid(config);
-  *config = tiledb_config_handle_t::make_handle(query->query_->config());
+  *config = make_handle<tiledb_config_handle_t>(query->query_->config());
   return TILEDB_OK;
 }
 
@@ -683,7 +683,7 @@ int32_t tiledb_query_get_array(
     return TILEDB_ERR;
 
   // Allocate an array object, taken from the query's array.
-  *array = tiledb_array_t::make_handle(query->query_->array_shared());
+  *array = make_handle<tiledb_array_t>(query->query_->array_shared());
 
   return TILEDB_OK;
 }
@@ -827,7 +827,7 @@ int32_t tiledb_query_get_subarray_t(
     return TILEDB_ERR;
   }
   ensure_output_pointer_is_valid(subarray);
-  *subarray = tiledb_subarray_t::make_handle(*(query->query_->subarray()));
+  *subarray = make_handle<tiledb_subarray_t>(*(query->query_->subarray()));
   return TILEDB_OK;
 }
 
@@ -1358,7 +1358,7 @@ int32_t tiledb_serialize_array(
     tiledb_buffer_t** buffer) {
   ensure_array_is_valid(array);
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -1368,7 +1368,7 @@ int32_t tiledb_serialize_array(
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer(),
               client_side))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -1394,7 +1394,7 @@ int32_t tiledb_deserialize_array(
   }
 
   // Create Array object and deserialize
-  *array = tiledb_array_t::make_handle(ctx->resources(), uri);
+  *array = make_handle<tiledb_array_t>(ctx->resources(), uri);
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
   try {
@@ -1405,7 +1405,7 @@ int32_t tiledb_deserialize_array(
         ctx->resources(),
         memory_tracker);
   } catch (StatusException& e) {
-    tiledb_array_t::break_handle(*array);
+    break_handle(*array);
     return TILEDB_ERR;
   }
 
@@ -1422,7 +1422,7 @@ int32_t tiledb_serialize_array_schema(
   ensure_array_schema_is_valid(array_schema);
 
   // Create buffer
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -1432,7 +1432,7 @@ int32_t tiledb_serialize_array_schema(
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer(),
               client_side))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -1458,7 +1458,7 @@ int32_t tiledb_deserialize_array_schema(
       buffer->buffer(),
       memory_tracker);
 
-  *array_schema = tiledb_array_schema_t::make_handle(shared_schema);
+  *array_schema = make_handle<tiledb_array_schema_t>(shared_schema);
 
   return TILEDB_OK;
 }
@@ -1499,7 +1499,7 @@ int32_t tiledb_serialize_array_open(
   // the client or the Cloud server, so the variable is unused
   ensure_array_is_valid(array);
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -1508,7 +1508,7 @@ int32_t tiledb_serialize_array_open(
               *(array->array().get()),
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer()))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -1535,14 +1535,14 @@ int32_t tiledb_deserialize_array_open(
   }
 
   // Create Array object and deserialize
-  *array = tiledb_array_t::make_handle(ctx->resources(), uri);
+  *array = make_handle<tiledb_array_t>(ctx->resources(), uri);
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_open_deserialize(
               (*array)->array().get(),
               (tiledb::sm::SerializationType)serialize_type,
               buffer->buffer()))) {
-    tiledb_array_t::break_handle(*array);
+    break_handle(*array);
     return TILEDB_ERR;
   }
 
@@ -1559,7 +1559,7 @@ int32_t tiledb_serialize_array_schema_evolution(
   if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -1569,7 +1569,7 @@ int32_t tiledb_serialize_array_schema_evolution(
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer(),
               client_side))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -1681,7 +1681,7 @@ int32_t tiledb_deserialize_query_and_array(
   ensure_output_pointer_is_valid(array);
 
   // Create array object
-  *array = tiledb_array_t::make_handle(
+  *array = make_handle<tiledb_array_t>(
       ctx->resources(),
       tiledb::sm::URI(array_uri, tiledb::sm::URI::must_be_valid));
 
@@ -1696,14 +1696,14 @@ int32_t tiledb_deserialize_query_and_array(
         ctx->resources(),
         memory_tracker));
   } catch (...) {
-    tiledb_array_t::break_handle(*array);
+    break_handle(*array);
     throw;
   }
 
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
   if (*query == nullptr) {
-    tiledb_array_t::break_handle(*array);
+    break_handle(*array);
     throw CAPIException(
         "Failed to deserialize query and array; "
         "TileDB query object allocation failed.");
@@ -1718,7 +1718,7 @@ int32_t tiledb_deserialize_query_and_array(
   if ((*query)->query_ == nullptr) {
     delete *query;
     *query = nullptr;
-    tiledb_array_t::break_handle(*array);
+    break_handle(*array);
     throw CAPIException(
         "Failed to deserialize query and array; "
         "TileDB query object allocation failed.");
@@ -1736,7 +1736,7 @@ int32_t tiledb_deserialize_query_and_array(
   } catch (...) {
     delete *query;
     *query = nullptr;
-    tiledb_array_t::break_handle(*array);
+    break_handle(*array);
     throw;
   }
 
@@ -1753,7 +1753,7 @@ int32_t tiledb_serialize_array_nonempty_domain(
     tiledb_buffer_t** buffer) {
   ensure_array_is_valid(array);
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -1764,7 +1764,7 @@ int32_t tiledb_serialize_array_nonempty_domain(
               is_empty,
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer()))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -1804,7 +1804,7 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
     tiledb_buffer_t** buffer) {
   ensure_array_is_valid(array);
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -1813,7 +1813,7 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
               array->array().get(),
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer()))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -1901,7 +1901,7 @@ int32_t tiledb_serialize_array_metadata(
     tiledb_buffer_t** buffer) {
   ensure_array_is_valid(array);
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   // Get metadata to serialize, this will load it if it does not exist
@@ -1922,7 +1922,7 @@ int32_t tiledb_serialize_array_metadata(
               metadata,
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer()))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -1958,7 +1958,7 @@ int32_t tiledb_serialize_query_est_result_sizes(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -1968,7 +1968,7 @@ int32_t tiledb_serialize_query_est_result_sizes(
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
               buf->buffer()))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -2008,7 +2008,7 @@ int32_t tiledb_serialize_config(
 
   api::ensure_config_is_valid(config);
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -2018,7 +2018,7 @@ int32_t tiledb_serialize_config(
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer(),
               client_side))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -2050,7 +2050,7 @@ int32_t tiledb_deserialize_config(
     throw std::logic_error("Unexpected nullptr with OK status");
   }
   // Copy the result into a handle
-  *config = tiledb_config_handle_t::make_handle(*new_config);
+  *config = make_handle<tiledb_config_handle_t>(*new_config);
   // Caller of `config_deserialize` has the responsibility for deallocation
   delete new_config;
   return TILEDB_OK;
@@ -2066,7 +2066,7 @@ int32_t tiledb_serialize_fragment_info_request(
   // serialized by the client or the Cloud server
   ensure_fragment_info_is_valid(fragment_info);
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   if (SAVE_ERROR_CATCH(
@@ -2075,7 +2075,7 @@ int32_t tiledb_serialize_fragment_info_request(
               *fragment_info->fragment_info(),
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer()))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 
@@ -2115,7 +2115,7 @@ int32_t tiledb_serialize_fragment_info(
     tiledb_buffer_t** buffer) {
   ensure_fragment_info_is_valid(fragment_info);
 
-  auto buf = tiledb_buffer_handle_t::make_handle(
+  auto buf = make_handle<tiledb_buffer_handle_t>(
       ctx->resources().serialization_memory_tracker());
 
   // Serialize
@@ -2126,7 +2126,7 @@ int32_t tiledb_serialize_fragment_info(
               (tiledb::sm::SerializationType)serialize_type,
               buf->buffer(),
               client_side))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+    break_handle(buf);
     return TILEDB_ERR;
   }
 

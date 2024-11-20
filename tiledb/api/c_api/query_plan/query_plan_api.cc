@@ -49,7 +49,7 @@ capi_return_t tiledb_query_get_plan(
   }
 
   sm::QueryPlan plan(*query->query_);
-  *rv = tiledb_string_handle_t::make_handle(plan.dump_json());
+  *rv = make_handle<tiledb_string_handle_t>(plan.dump_json());
 
   return TILEDB_OK;
 }

@@ -60,8 +60,7 @@ class FieldFromAggregate : public FieldOrigin {
   virtual tiledb_field_origin_t origin() override;
 };
 
-struct tiledb_query_field_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_query_field_handle_t> {
+struct tiledb_query_field_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */
@@ -101,7 +100,7 @@ struct tiledb_query_field_handle_t
     return is_nullable_;
   }
   tiledb_query_channel_handle_t* channel() {
-    return tiledb_query_channel_handle_t::make_handle(channel_);
+    return make_handle<tiledb_query_channel_handle_t>(channel_);
   }
 };
 

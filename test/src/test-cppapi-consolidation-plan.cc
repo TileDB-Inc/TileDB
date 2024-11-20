@@ -45,6 +45,7 @@
 #include <test/support/tdb_catch.h>
 
 using namespace tiledb;
+using namespace tiledb::api;
 using namespace tiledb::test;
 
 struct CppConsolidationPlanFx {
@@ -187,9 +188,9 @@ tiledb::sm::ConsolidationPlan CppConsolidationPlanFx::call_handler(
     uint64_t fragment_size,
     const Array& array,
     tiledb::sm::SerializationType stype) {
-  auto req_buf = tiledb_buffer_handle_t::make_handle(
+  auto req_buf = make_handle<tiledb_buffer_handle_t>(
       ctx_.ptr().get()->resources().serialization_memory_tracker());
-  auto resp_buf = tiledb_buffer_handle_t::make_handle(
+  auto resp_buf = make_handle<tiledb_buffer_handle_t>(
       ctx_.ptr().get()->resources().serialization_memory_tracker());
 
   tiledb::sm::serialization::serialize_consolidation_plan_request(

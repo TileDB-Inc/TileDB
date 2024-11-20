@@ -44,7 +44,7 @@ capi_return_t tiledb_buffer_list_alloc(
     tiledb_ctx_handle_t* ctx, tiledb_buffer_list_t** buffer_list) {
   ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(buffer_list);
-  *buffer_list = tiledb_buffer_list_handle_t::make_handle(
+  *buffer_list = make_handle<tiledb_buffer_list_handle_t>(
       ctx->resources().serialization_memory_tracker());
   return TILEDB_OK;
 }
@@ -52,7 +52,7 @@ capi_return_t tiledb_buffer_list_alloc(
 void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) {
   ensure_output_pointer_is_valid(buffer_list);
   ensure_buffer_list_is_valid(*buffer_list);
-  tiledb_buffer_list_handle_t::break_handle(*buffer_list);
+  break_handle(*buffer_list);
 }
 
 capi_return_t tiledb_buffer_list_get_num_buffers(
@@ -74,7 +74,7 @@ capi_return_t tiledb_buffer_list_get_buffer(
   span<const char> b = buffer_list->buffer_list().get_buffer(buffer_idx);
 
   // Create a non-owning wrapper of the underlying buffer
-  *buffer = tiledb_buffer_handle_t::make_handle(
+  *buffer = make_handle<tiledb_buffer_handle_t>(
       b.data(), b.size(), buffer_list->memory_tracker());
 
   return TILEDB_OK;
@@ -95,7 +95,7 @@ capi_return_t tiledb_buffer_list_flatten(
 
   // Create a serialization buffer
   const auto nbytes = buffer_list->buffer_list().total_size();
-  *buffer = tiledb_buffer_t::make_handle(
+  *buffer = make_handle<tiledb_buffer_t>(
       buffer_list->buffer_list().total_size(), buffer_list->memory_tracker());
 
   try {
@@ -104,7 +104,7 @@ capi_return_t tiledb_buffer_list_flatten(
     buffer_list->buffer_list().read(
         (*buffer)->buffer().owned_mutable_span().data(), nbytes);
   } catch (...) {
-    tiledb_buffer_t::break_handle(*buffer);
+    break_handle(*buffer);
     throw;
   }
 

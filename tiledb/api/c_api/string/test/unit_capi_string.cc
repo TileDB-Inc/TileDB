@@ -32,8 +32,10 @@
 #include "../string_api_external.h"
 #include "../string_api_internal.h"
 
+using namespace tiledb::api;
+
 TEST_CASE("C API: tiledb_string_view argument validation", "[capi][string]") {
-  auto s{tiledb_string_handle_t::make_handle("foo")};
+  auto s{make_handle<tiledb_string_handle_t>("foo")};
   const char* data{};
   size_t length{};
   SECTION("null string handle") {
@@ -48,18 +50,18 @@ TEST_CASE("C API: tiledb_string_view argument validation", "[capi][string]") {
     auto rc{tiledb_string_view(s, &data, nullptr)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
-  tiledb_string_handle_t::break_handle(s);
+  break_handle(s);
 }
 
 TEST_CASE("C API: tiledb_string_view basic behavior", "[capi][string]") {
-  auto s{tiledb_string_handle_t::make_handle("foo")};
+  auto s{make_handle<tiledb_string_handle_t>("foo")};
   const char* data{};
   size_t length{};
   auto rc{tiledb_string_view(s, &data, &length)};
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   REQUIRE(length == 3);
   CHECK(std::string(data, length) == "foo");
-  tiledb_string_handle_t::break_handle(s);
+  break_handle(s);
 }
 
 TEST_CASE("C API: tiledb_string_free argument validation", "[capi][string]") {

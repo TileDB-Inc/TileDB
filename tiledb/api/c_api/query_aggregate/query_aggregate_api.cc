@@ -39,23 +39,23 @@
 #include "tiledb/api/c_api_support/c_api_support.h"
 
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
-    tiledb_channel_operator_handle_t::make_handle(
+    tiledb::api::make_handle<tiledb_channel_operator_handle_t>(
         tiledb::sm::constants::aggregate_sum_str);
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_min =
-    tiledb_channel_operator_handle_t::make_handle(
+    tiledb::api::make_handle<tiledb_channel_operator_handle_t>(
         tiledb::sm::constants::aggregate_min_str);
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_max =
-    tiledb_channel_operator_handle_t::make_handle(
+    tiledb::api::make_handle<tiledb_channel_operator_handle_t>(
         tiledb::sm::constants::aggregate_max_str);
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_mean =
-    tiledb_channel_operator_handle_t::make_handle(
+    tiledb::api::make_handle<tiledb_channel_operator_handle_t>(
         tiledb::sm::constants::aggregate_mean_str);
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_null_count =
-    tiledb_channel_operator_handle_t::make_handle(
+    tiledb::api::make_handle<tiledb_channel_operator_handle_t>(
         tiledb::sm::constants::aggregate_null_count_str);
 
 const tiledb_channel_operation_handle_t* tiledb_aggregate_count =
-    tiledb_channel_operation_handle_t::make_handle(
+    tiledb::api::make_handle<tiledb_channel_operation_handle_t>(
         std::make_shared<tiledb::sm::CountOperation>());
 
 namespace tiledb::api {
@@ -161,7 +161,7 @@ capi_return_t tiledb_query_get_default_channel(
     tiledb_ctx_t*, tiledb_query_t* query, tiledb_query_channel_t** channel) {
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(channel);
-  *channel = tiledb_query_channel_handle_t::make_handle(
+  *channel = make_handle<tiledb_query_channel_handle_t>(
       query->query_->default_channel());
 
   return TILEDB_OK;
@@ -184,8 +184,8 @@ capi_return_t tiledb_create_unary_aggregate(
   // Getting the field errors if there is no input_field_name associated with
   // the query.
   tiledb_query_field_t* field =
-      tiledb_query_field_handle_t::make_handle(query, input_field_name);
-  tiledb_query_field_handle_t::break_handle(field);
+      make_handle<tiledb_query_field_handle_t>(query, input_field_name);
+  break_handle(field);
 
   const auto is_dense_dim{schema.dense() && schema.is_dim(field_name)};
   const auto cell_order{schema.cell_order()};
@@ -214,7 +214,7 @@ capi_return_t tiledb_create_unary_aggregate(
       schema.type(field_name));
 
   *operation =
-      tiledb_channel_operation_handle_t::make_handle(op->make_operation(fi));
+      make_handle<tiledb_channel_operation_handle_t>(op->make_operation(fi));
 
   return TILEDB_OK;
 }
@@ -236,7 +236,7 @@ capi_return_t tiledb_channel_apply_aggregate(
 capi_return_t tiledb_aggregate_free(tiledb_channel_operation_t** operation) {
   ensure_output_pointer_is_valid(operation);
   ensure_operation_is_valid(*operation);
-  tiledb_channel_operation_handle_t::break_handle(*operation);
+  break_handle(*operation);
 
   return TILEDB_OK;
 }
@@ -244,7 +244,7 @@ capi_return_t tiledb_aggregate_free(tiledb_channel_operation_t** operation) {
 capi_return_t tiledb_query_channel_free(tiledb_query_channel_t** channel) {
   ensure_output_pointer_is_valid(channel);
   ensure_query_channel_is_valid(*channel);
-  tiledb_query_channel_handle_t::break_handle(*channel);
+  break_handle(*channel);
 
   return TILEDB_OK;
 }

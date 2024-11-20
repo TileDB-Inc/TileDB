@@ -60,6 +60,8 @@
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 static int setenv(const char* __name, const char* __value) {
+using namespace tiledb::api;
+
 #ifdef _WIN32
   return _putenv_s(__name, __value);
 #else
@@ -868,7 +870,7 @@ void create_subarray(
     tiledb_subarray_t** subarray,
     bool coalesce_ranges) {
   (void)layout;
-  tiledb_array_t tdb_array = *tiledb_array_t::make_handle(array);
+  tiledb_array_t tdb_array = *make_handle<tiledb_array_t>(array);
   require_tiledb_ok(ctx, tiledb_subarray_alloc(ctx, &tdb_array, subarray));
 
   require_tiledb_ok(

@@ -115,7 +115,7 @@ int32_t tiledb_filestore_schema_create(
     // the cpp objects constructed here
     auto memory_tracker = context.resources().create_memory_tracker();
     memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
-    *array_schema = tiledb_array_schema_t::make_handle(
+    *array_schema = make_handle<tiledb_array_schema_t>(
         tiledb::sm::ArrayType::DENSE, memory_tracker);
 
     // Define the range of the dimension.
@@ -152,7 +152,7 @@ int32_t tiledb_filestore_schema_create(
         (*array_schema)->set_cell_order(tiledb::sm::Layout::ROW_MAJOR));
     throw_if_not_ok((*array_schema)->add_attribute(attr));
   } catch (const std::exception& e) {
-    tiledb_array_schema_t::break_handle(*array_schema);
+    break_handle(*array_schema);
     throw api::CAPIStatusException(
         std::string("Internal TileDB uncaught exception; ") + e.what());
   }

@@ -39,7 +39,7 @@ namespace tiledb::api {
 void tiledb_dimension_label_free(tiledb_dimension_label_t** dim_label) {
   tiledb::api::ensure_output_pointer_is_valid(dim_label);
   ensure_dimension_label_is_valid(*dim_label);
-  tiledb_dimension_label_t::break_handle(*dim_label);
+  break_handle(*dim_label);
 }
 
 capi_return_t tiledb_dimension_label_get_dimension_index(

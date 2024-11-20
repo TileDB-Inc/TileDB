@@ -31,6 +31,8 @@
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 
+using namespace tiledb::api;
+
 /*
  * Ensure we're using the stub
  */
@@ -69,7 +71,7 @@ TEST_CASE("ExceptionAction - action") {
 }
 
 TEST_CASE("ExceptionActionCtx - construct") {
-  auto ctx{tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
+  auto ctx{make_handle<tiledb_ctx_handle_t>(tiledb::sm::Config{})};
   tiledb::api::ExceptionActionCtx h{ctx};
   CHECK_NOTHROW(h.validate());
 }
@@ -80,7 +82,7 @@ TEST_CASE("ExceptionActionCtx - construct invalid") {
 }
 
 TEST_CASE("ExceptionActionCtx - action") {
-  auto ctx{tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
+  auto ctx{make_handle<tiledb_ctx_handle_t>(tiledb::sm::Config{})};
   tiledb::api::ExceptionActionCtx h{ctx};
   auto x{ctx->context().last_error()};
   CHECK(!x.has_value());
@@ -105,13 +107,13 @@ TEST_CASE("ExceptionActionErr - construct invalid") {
  * Check that the error handle nulls out the pointer on success.
  */
 TEST_CASE("ExceptionActionErr - action on success") {
-  auto errorx{tiledb_error_handle_t::make_handle("")};
+  auto errorx{make_handle<tiledb_error_handle_t>("")};
   tiledb_error_handle_t* error{errorx};
   tiledb::api::ExceptionActionErr h{&error};
   REQUIRE(error != nullptr);
   h.action_on_success();
   CHECK(error == nullptr);
-  tiledb_error_handle_t::break_handle(errorx);
+  break_handle(errorx);
 }
 
 TEST_CASE("ExceptionActionErr - action") {
@@ -121,11 +123,11 @@ TEST_CASE("ExceptionActionErr - action") {
   REQUIRE(error != nullptr);
   REQUIRE_NOTHROW(tiledb::api::ensure_error_is_valid(error));
   CHECK(error->message() == "TileDB internal: an error message");
-  tiledb_error_handle_t::break_handle(error);
+  break_handle(error);
 }
 
 TEST_CASE("ExceptionActionCtxErr - action") {
-  auto ctx{tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
+  auto ctx{make_handle<tiledb_ctx_handle_t>(tiledb::sm::Config{})};
   tiledb_error_handle_t* error;
   tiledb::api::ExceptionActionCtxErr h{ctx, &error};
   auto x{ctx->context().last_error()};
@@ -137,19 +139,19 @@ TEST_CASE("ExceptionActionCtxErr - action") {
   REQUIRE(error != nullptr);
   REQUIRE_NOTHROW(tiledb::api::ensure_error_is_valid(error));
   CHECK(error->message() == "TileDB internal: an error message");
-  tiledb_error_handle_t::break_handle(error);
+  break_handle(error);
 }
 
 TEST_CASE("CAPIFunction - return") {
   tiledb_ctx_handle_t* ctx{
-      tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
+      make_handle<tiledb_ctx_handle_t>(tiledb::sm::Config{})};
   tiledb_error_handle_t* error{nullptr};
   always_good_wrapped::handler_type handler{ctx, &error};
   always_good_wrapped::function(handler);
   auto x{ctx->context().last_error()};
   CHECK(!x.has_value());
   CHECK(error == nullptr);
-  tiledb_ctx_handle_t::break_handle(ctx);
+  break_handle(ctx);
 }
 
 TEST_CASE("CAPIFunction - Invalid context") {
@@ -161,17 +163,17 @@ TEST_CASE("CAPIFunction - Invalid context") {
 
 TEST_CASE("CAPIFunction - Invalid error") {
   tiledb_ctx_handle_t* ctx{
-      tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
+      make_handle<tiledb_ctx_handle_t>(tiledb::sm::Config{})};
   always_good_wrapped::handler_type handler{ctx, nullptr};
   CHECK(always_good_wrapped::function(handler) == TILEDB_INVALID_ERROR);
   auto x{ctx->context().last_error()};
   CHECK(x.has_value());
-  tiledb_ctx_handle_t::break_handle(ctx);
+  break_handle(ctx);
 }
 
 TEST_CASE("CAPIFunction - throw") {
   tiledb_ctx_handle_t* ctx{
-      tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
+      make_handle<tiledb_ctx_handle_t>(tiledb::sm::Config{})};
   tiledb_error_handle_t* error{nullptr};
   always_throw_wrapped::handler_type handler{ctx, &error};
   always_throw_wrapped::function(handler);
@@ -181,7 +183,7 @@ TEST_CASE("CAPIFunction - throw") {
   REQUIRE(error != nullptr);
   REQUIRE_NOTHROW(tiledb::api::ensure_error_is_valid(error));
   CHECK(error->message() == "Test: error");
-  tiledb_error_handle_t::break_handle(error);
+  break_handle(error);
 }
 
 capi_return_t tf_assign(int input, int* output) {

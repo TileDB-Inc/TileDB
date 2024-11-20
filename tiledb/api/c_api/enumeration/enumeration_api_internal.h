@@ -41,8 +41,7 @@
 /**
  * Handle `struct` for API enumeration objects.
  */
-struct tiledb_enumeration_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_enumeration_handle_t> {
+struct tiledb_enumeration_handle_t : public tiledb::api::CAPIHandle {
  private:
   shared_ptr<const tiledb::sm::Enumeration> enumeration_;
 

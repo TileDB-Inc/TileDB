@@ -70,7 +70,7 @@ capi_return_t tiledb_enumeration_alloc(
     auto memory_tracker = ctx->context().resources().create_memory_tracker();
     memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ENUMERATION_CREATE);
 
-    *enumeration = tiledb_enumeration_handle_t::make_handle(
+    *enumeration = make_handle<tiledb_enumeration_handle_t>(
         std::string(name),
         datatype,
         cell_val_num,
@@ -102,7 +102,7 @@ capi_return_t tiledb_enumeration_extend(
       old_enumeration->extend(data, data_size, offsets, offsets_size);
 
   try {
-    *new_enumeration = tiledb_enumeration_handle_t::make_handle(new_enmr);
+    *new_enumeration = make_handle<tiledb_enumeration_handle_t>(new_enmr);
   } catch (...) {
     *new_enumeration = nullptr;
     throw;
@@ -114,14 +114,14 @@ capi_return_t tiledb_enumeration_extend(
 void tiledb_enumeration_free(tiledb_enumeration_t** enumeration) {
   ensure_output_pointer_is_valid(enumeration);
   ensure_enumeration_is_valid(*enumeration);
-  tiledb_enumeration_handle_t::break_handle(*enumeration);
+  break_handle(*enumeration);
 }
 
 capi_return_t tiledb_enumeration_get_name(
     tiledb_enumeration_t* enumeration, tiledb_string_handle_t** name) {
   ensure_enumeration_is_valid(enumeration);
   ensure_output_pointer_is_valid(name);
-  *name = tiledb_string_handle_t::make_handle(enumeration->name());
+  *name = make_handle<tiledb_string_handle_t>(enumeration->name());
   return TILEDB_OK;
 }
 
@@ -195,7 +195,7 @@ capi_return_t tiledb_enumeration_dump_str(
   ensure_output_pointer_is_valid(out);
   std::stringstream ss;
   ss << *enumeration;
-  *out = tiledb_string_handle_t::make_handle(ss.str());
+  *out = make_handle<tiledb_string_handle_t>(ss.str());
   return TILEDB_OK;
 }
 

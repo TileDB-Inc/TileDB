@@ -37,8 +37,7 @@
 #include "../error/error_api_internal.h"
 #include "tiledb/sm/group/group.h"
 
-struct tiledb_group_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_group_handle_t> {
+struct tiledb_group_handle_t : public tiledb::api::CAPIHandle {
   /**
    * Type name
    */

@@ -40,8 +40,7 @@
 #include "tiledb/sm/array/array.h"
 
 /** Handle `struct` for API Array objects. */
-struct tiledb_array_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_array_handle_t> {
+struct tiledb_array_handle_t : public tiledb::api::CAPIHandle {
   /** Type name */
   static constexpr std::string_view object_type_name{"array"};
 
