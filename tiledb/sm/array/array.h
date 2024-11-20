@@ -142,6 +142,8 @@ class OpenedArray {
   inline void set_array_schema_latest(
       const shared_ptr<ArraySchema>& array_schema) {
     array_schema_latest_ = array_schema;
+    // Update the latest schema in the map of all array schemas.
+    array_schemas_all_[array_schema->name()] = array_schema;
   }
 
   /** Returns all array schemas. */
@@ -985,7 +987,11 @@ class Array {
   bool serialize_non_empty_domain() const;
 
   /**
-   * Checks the config to se if enumerations should be serialized on array open.
+   * Checks the config to see if enumerations should be serialized on array
+   * open.
+   *
+   * @return True if either `rest.load_enumerations_on_array_open` or
+   * `rest.load_enumerations_on_array_open_all_schemas` is set, else False.
    */
   bool serialize_enumerations() const;
 
