@@ -326,7 +326,8 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
           nullable,
           cell_size,
           type,
-          query_memory_tracker_);
+          query_memory_tracker_,
+          nullptr);
     }
 
     {
@@ -358,30 +359,29 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     }
 
     if (write_task.has_value()) {
-      write_task->wait();
-      RETURN_NOT_OK(write_task->get());
+      RETURN_NOT_OK(resources_.compute_tp().wait(&write_task.value()));
     }
 
-    write_task = resources_.io_tp().execute([&, b, frag_tile_id]() {
-      close_files = (b == batch_num - 1);
-      RETURN_NOT_OK(write_tiles(
-          0,
-          tile_batches[b].size(),
-          name,
-          frag_meta,
-          frag_tile_id,
-          &tile_batches[b],
-          close_files));
+    write_task =
+        ThreadPool::Task(resources_.io_tp().execute([&, b, frag_tile_id]() {
+          close_files = (b == batch_num - 1);
+          RETURN_NOT_OK(write_tiles(
+              0,
+              tile_batches[b].size(),
+              name,
+              frag_meta,
+              frag_tile_id,
+              &tile_batches[b],
+              close_files));
 
-      return Status::Ok();
-    });
+          return Status::Ok();
+        }));
 
     frag_tile_id += batch_size;
   }
 
   if (write_task.has_value()) {
-    write_task->wait();
-    RETURN_NOT_OK(write_task->get());
+    RETURN_NOT_OK(resources_.compute_tp().wait(&write_task.value()));
   }
 
   return Status::Ok();

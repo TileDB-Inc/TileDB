@@ -213,7 +213,8 @@ Status GlobalOrderWriter::init_global_write_state() {
         nullable,
         cell_size,
         type,
-        query_memory_tracker_);
+        query_memory_tracker_,
+        nullptr);
 
     // Initialize cells written
     global_write_state_->cells_written_[name] = 0;
@@ -969,7 +970,8 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
           nullable,
           cell_size,
           type,
-          query_memory_tracker_);
+          query_memory_tracker_,
+          nullptr);
     }
 
     // Handle last tile (it must be either full or empty)
@@ -1184,7 +1186,8 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
           nullable,
           cell_size,
           type,
-          query_memory_tracker_);
+          query_memory_tracker_,
+          nullptr);
     }
 
     // Handle last tile (it must be either full or empty)

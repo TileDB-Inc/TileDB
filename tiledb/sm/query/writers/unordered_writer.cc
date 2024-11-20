@@ -430,7 +430,8 @@ Status UnorderedWriter::prepare_tiles_fixed(
         nullable,
         cell_size,
         type,
-        query_memory_tracker_);
+        query_memory_tracker_,
+        nullptr);
   }
 
   // Write all cells one by one
@@ -507,7 +508,8 @@ Status UnorderedWriter::prepare_tiles_var(
         nullable,
         cell_size,
         type,
-        query_memory_tracker_);
+        query_memory_tracker_,
+        nullptr);
   }
 
   // Write all cells one by one

@@ -138,18 +138,22 @@ void parallel_sort(
     if (begin != middle) {
       std::function<Status()> quick_sort_left =
           std::bind(quick_sort, depth + 1, begin, middle);
-      ThreadPool::Task left_task = tp->execute(std::move(quick_sort_left));
+      ThreadPool::Task left_task(tp->execute(std::move(quick_sort_left)));
       tasks.emplace_back(std::move(left_task));
     }
     if (middle != end) {
       std::function<Status()> quick_sort_right =
           std::bind(quick_sort, depth + 1, middle + 1, end);
-      ThreadPool::Task right_task = tp->execute(std::move(quick_sort_right));
+      ThreadPool::Task right_task(tp->execute(std::move(quick_sort_right)));
       tasks.emplace_back(std::move(right_task));
     }
 
+    std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+    for (auto& t : tasks) {
+      task_ptrs.emplace_back(&t);
+    }
     // Wait for the sorted partitions.
-    return tp->wait_all(tasks);
+    return tp->wait_all(task_ptrs);
   };
 
   // Start the quicksort from the entire range.
@@ -271,7 +275,12 @@ Status parallel_for(
   // Wait for all instances of `execute_subrange` to complete.
   // This is ignoring the wait status as we use failed_exception for propagating
   // the tasks exceptions.
-  (void)tp->wait_all(tasks);
+  std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+  // Wait for the sorted partitions.
+  (void)tp->wait_all(task_ptrs);
 
   if (failed_exception.has_value()) {
     std::rethrow_exception(failed_exception.value());
@@ -392,9 +401,13 @@ Status parallel_for_2d(
       tasks.emplace_back(tp->execute(std::move(bound_fn)));
     }
   }
+  std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
 
   // Wait for all instances of `execute_subrange` to complete.
-  auto wait_status = tp->wait_all(tasks);
+  auto wait_status = tp->wait_all(task_ptrs);
   if (!wait_status.ok())
     return wait_status;
   return return_st;

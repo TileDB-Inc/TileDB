@@ -49,7 +49,7 @@ ThreadPool::Task CancelableTasks::execute(
   std::function<Status()> wrapped_fn =
       std::bind(&CancelableTasks::fn_wrapper, this, fn, on_cancel);
 
-  ThreadPool::Task task = thread_pool->execute(std::move(wrapped_fn));
+  ThreadPool::Task task(thread_pool->execute(std::move(wrapped_fn)));
   if (task.valid()) {
     std::unique_lock<std::mutex> lck(outstanding_tasks_mutex_);
     ++outstanding_tasks_;

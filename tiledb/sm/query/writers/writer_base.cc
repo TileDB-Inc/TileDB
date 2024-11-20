@@ -944,7 +944,8 @@ Status WriterBase::init_tiles(
         nullable,
         cell_size,
         type,
-        query_memory_tracker_);
+        query_memory_tracker_,
+        nullptr);
   }
 
   return Status::Ok();
@@ -1064,8 +1065,13 @@ Status WriterBase::write_tiles(
     }));
   }
 
+  std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+
   // Wait for writes and check all statuses
-  auto statuses = resources_.io_tp().wait_all_status(tasks);
+  auto statuses = resources_.io_tp().wait_all_status(task_ptrs);
   for (auto& st : statuses)
     RETURN_NOT_OK(st);
 

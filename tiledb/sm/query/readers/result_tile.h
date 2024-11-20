@@ -230,14 +230,17 @@ class ResultTile {
     ~TileData() {
       // TODO: destructor should not throw, catch any exceptions
       if (fixed_filtered_data_task_.valid()) {
+        // todo fix
         fixed_filtered_data_task_.get();
       }
 
       if (var_filtered_data_task_.valid()) {
+        // todo fix
         var_filtered_data_task_.get();
       }
 
       if (validity_filtered_data_task_.valid()) {
+        // todo fix
         validity_filtered_data_task_.get();
       }
     }
@@ -332,7 +335,8 @@ class ResultTile {
         const std::string& name,
         const TileSizes tile_sizes,
         const TileData tile_data,
-        shared_ptr<MemoryTracker> memory_tracker)
+        shared_ptr<MemoryTracker> memory_tracker,
+        ContextResources* resources)
         : memory_tracker_(memory_tracker)
         , fixed_tile_(
               format_version,
@@ -345,6 +349,7 @@ class ResultTile {
               tile_data.fixed_filtered_data(),
               tile_sizes.tile_persisted_size(),
               memory_tracker_,
+              resources,
               tile_data.fixed_filtered_data_task(),
               tile_data.filtered_data()) {
       if (tile_sizes.has_var_tile()) {
@@ -358,6 +363,7 @@ class ResultTile {
             tile_data.var_filtered_data(),
             tile_sizes.tile_var_persisted_size(),
             memory_tracker_,
+            resources,
             tile_data.var_filtered_data_task(),
             tile_data.filtered_data());
       }
@@ -372,6 +378,7 @@ class ResultTile {
             tile_data.validity_filtered_data(),
             tile_sizes.tile_validity_persisted_size(),
             memory_tracker_,
+            resources,
             tile_data.validity_filtered_data_task(),
             tile_data.filtered_data());
       }
@@ -495,7 +502,8 @@ class ResultTile {
       const ArraySchema& array_schema,
       const std::string& name,
       const TileSizes tile_sizes,
-      const TileData tile_data);
+      const TileData tile_data,
+      ContextResources* resources);
 
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
@@ -504,7 +512,8 @@ class ResultTile {
       const std::string& name,
       const TileSizes tile_sizes,
       const TileData tile_data,
-      unsigned dim_idx);
+      unsigned dim_idx,
+      ContextResources* resources);
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);

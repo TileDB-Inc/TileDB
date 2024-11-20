@@ -57,7 +57,8 @@ class WriterTileTuple {
       const bool nullable,
       const uint64_t cell_size,
       const Datatype type,
-      shared_ptr<MemoryTracker> memory_tracker);
+      shared_ptr<MemoryTracker> memory_tracker,
+      ContextResources* resources);
 
   DISABLE_COPY_AND_COPY_ASSIGN(WriterTileTuple);
   DISABLE_MOVE_AND_MOVE_ASSIGN(WriterTileTuple);

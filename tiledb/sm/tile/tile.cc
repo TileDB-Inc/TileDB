@@ -72,6 +72,7 @@ shared_ptr<Tile> Tile::from_generic(
       nullptr,
       0,
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
+      nullptr,
       ThreadPool::SharedTask(),
       nullptr);
 }
@@ -84,7 +85,8 @@ shared_ptr<WriterTile> WriterTile::from_generic(
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       tile_size,
-      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
+      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
+      nullptr);
 }
 
 uint32_t WriterTile::compute_chunk_size(
@@ -112,8 +114,10 @@ TileBase::TileBase(
     const uint64_t cell_size,
     const uint64_t size,
     tdb::pmr::memory_resource* resource,
+    ContextResources* resources,
     const bool ignore_tasks)
     : resource_(resource)
+    , resources_(resources)
     , data_(tdb::pmr::make_unique<std::byte>(resource_, size))
     , size_(size)
     , cell_size_(cell_size)
@@ -139,6 +143,7 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     shared_ptr<MemoryTracker> memory_tracker,
+    ContextResources* resources,
     ThreadPool::SharedTask data_io_task,
     shared_ptr<FilteredData> filtered_data_block)
     : Tile(
@@ -150,6 +155,7 @@ Tile::Tile(
           filtered_data,
           filtered_size,
           memory_tracker->get_resource(MemoryType::TILE_DATA),
+          resources,
           std::move(data_io_task),
           std::move(filtered_data_block)) {
 }
@@ -163,6 +169,7 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     tdb::pmr::memory_resource* resource,
+    ContextResources* resources,
     ThreadPool::SharedTask filtered_data_io_task,
     shared_ptr<FilteredData> filtered_data_block)
     : TileBase(
@@ -171,6 +178,7 @@ Tile::Tile(
           cell_size,
           size,
           resource,
+          resources,
           filtered_data_block == nullptr)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
@@ -184,13 +192,15 @@ WriterTile::WriterTile(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    shared_ptr<MemoryTracker> memory_tracker)
+    shared_ptr<MemoryTracker> memory_tracker,
+    ContextResources* resources)
     : TileBase(
           format_version,
           type,
           cell_size,
           size,
           memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA),
+          resources,
           true)
     , filtered_buffer_(0) {
 }
@@ -200,8 +210,9 @@ WriterTile::WriterTile(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    tdb::pmr::memory_resource* resource)
-    : TileBase(format_version, type, cell_size, size, resource, true)
+    tdb::pmr::memory_resource* resource,
+    ContextResources* resources)
+    : TileBase(format_version, type, cell_size, size, resource, resources, true)
     , filtered_buffer_(0) {
 }
 

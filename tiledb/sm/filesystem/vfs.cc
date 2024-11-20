@@ -1110,7 +1110,13 @@ Status VFS::read(
           });
       results.push_back(std::move(task));
     }
-    Status st = io_tp_->wait_all(results);
+
+    std::vector<ThreadPool::ThreadPoolTask*> results_ptrs;
+    for (auto& r : results) {
+      results_ptrs.emplace_back(&r);
+    }
+
+    Status st = io_tp_->wait_all(results_ptrs);
     if (!st.ok()) {
       std::stringstream errmsg;
       errmsg << "VFS parallel read error '" << uri.to_string() << "'; "

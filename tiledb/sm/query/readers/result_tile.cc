@@ -142,7 +142,8 @@ void ResultTile::init_attr_tile(
     const ArraySchema& array_schema,
     const std::string& name,
     const TileSizes tile_sizes,
-    const TileData tile_data) {
+    const TileData tile_data,
+    ContextResources* resources) {
   if (name == constants::coords) {
     coords_tile_.emplace(
         format_version,
@@ -150,7 +151,8 @@ void ResultTile::init_attr_tile(
         name,
         tile_sizes,
         tile_data,
-        memory_tracker_);
+        memory_tracker_,
+        resources);
     return;
   }
 
@@ -161,7 +163,8 @@ void ResultTile::init_attr_tile(
         name,
         tile_sizes,
         tile_data,
-        memory_tracker_);
+        memory_tracker_,
+        resources);
     return;
   }
 
@@ -172,7 +175,8 @@ void ResultTile::init_attr_tile(
         name,
         tile_sizes,
         tile_data,
-        memory_tracker_);
+        memory_tracker_,
+        resources);
     return;
   }
 
@@ -183,7 +187,8 @@ void ResultTile::init_attr_tile(
         name,
         tile_sizes,
         tile_data,
-        memory_tracker_);
+        memory_tracker_,
+        resources);
     return;
   }
 
@@ -196,7 +201,8 @@ void ResultTile::init_attr_tile(
           name,
           tile_sizes,
           tile_data,
-          memory_tracker_);
+          memory_tracker_,
+          resources);
       return;
     }
   }
@@ -208,7 +214,8 @@ void ResultTile::init_coord_tile(
     const std::string& name,
     const TileSizes tile_sizes,
     const TileData tile_data,
-    unsigned dim_idx) {
+    unsigned dim_idx,
+    ContextResources* resources) {
   coord_tiles_[dim_idx].first = name;
   coord_tiles_[dim_idx].second.emplace(
       format_version,
@@ -216,7 +223,8 @@ void ResultTile::init_coord_tile(
       name,
       tile_sizes,
       tile_data,
-      memory_tracker_);
+      memory_tracker_,
+      resources);
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.

@@ -1064,7 +1064,12 @@ Status GCS::write_parts(
       tasks.emplace_back(std::move(task));
     }
 
-    const Status st = thread_pool_->wait_all(tasks);
+    std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+    for (auto& t : tasks) {
+      task_ptrs.emplace_back(&t);
+    }
+
+    const Status st = thread_pool_->wait_all(task_ptrs);
     state->update_st(st);
     state_lck.unlock();
     return st;
@@ -1207,7 +1212,12 @@ void GCS::delete_parts(
     tasks.emplace_back(std::move(task));
   }
 
-  const Status st = thread_pool_->wait_all(tasks);
+  std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+
+  const Status st = thread_pool_->wait_all(task_ptrs);
   if (!st.ok()) {
     LOG_STATUS_NO_RETURN_VALUE(st);
   }

@@ -121,6 +121,7 @@ shared_ptr<Tile> GenericTileIO::read_generic(
       filtered_data.data(),
       header.persisted_size,
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
+      &resources_,
       ThreadPool::SharedTask(),
       nullptr);
 

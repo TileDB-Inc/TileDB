@@ -381,8 +381,13 @@ Status ArrayDirectory::load() {
     }));
   }
 
+  std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+
   // Wait for all tasks to complete
-  RETURN_NOT_OK(resources_.get().compute_tp().wait_all(tasks));
+  RETURN_NOT_OK(resources_.get().compute_tp().wait_all(task_ptrs));
 
   if (mode_ != ArrayDirectoryMode::COMMITS) {
     // Add old array schema, if required.

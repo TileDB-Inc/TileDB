@@ -757,13 +757,24 @@ void ReaderBase::read_tiles(
         for (uint64_t d = 0; d < dim_num; ++d) {
           if (array_schema->dimension_ptr(d)->name() == name) {
             tile->init_coord_tile(
-                format_version, array_schema_, name, tile_sizes, tile_data, d);
+                format_version,
+                array_schema_,
+                name,
+                tile_sizes,
+                tile_data,
+                d,
+                &resources_);
             break;
           }
         }
       } else {
         tile->init_attr_tile(
-            format_version, array_schema_, name, tile_sizes, tile_data);
+            format_version,
+            array_schema_,
+            name,
+            tile_sizes,
+            tile_data,
+            &resources_);
       }
     }
   }
@@ -925,7 +936,7 @@ Status ReaderBase::unfilter_tiles(
     // if (skip_field(result_tile->frag_idx(), name)) {
     //   continue;
     // }
-    ThreadPool::SharedTask task =
+    ThreadPool::SharedTask task(
         resources_.compute_tp().execute([name,
                                          validity_only,
                                          var_size,
@@ -984,10 +995,10 @@ Status ReaderBase::unfilter_tiles(
           // Perform required post-processing of unfiltered tiles
           return post_process_unfiltered_tile(
               name, validity_only, result_tile, var_size, nullable);
-        });
+        }));
 
     if (skip_field(result_tile->frag_idx(), name)) {
-      task.wait();
+      throw_if_not_ok(resources_.compute_tp().wait(&task));
       continue;
     }
 

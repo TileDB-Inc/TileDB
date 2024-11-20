@@ -1082,7 +1082,12 @@ Status Azure::write_blocks(
       tasks.emplace_back(std::move(task));
     }
 
-    const Status st = thread_pool_->wait_all(tasks);
+    std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+    for (auto& t : tasks) {
+      task_ptrs.emplace_back(&t);
+    }
+
+    const Status st = thread_pool_->wait_all(task_ptrs);
     state->update_st(st);
     return st;
   }

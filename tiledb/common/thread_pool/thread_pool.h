@@ -47,8 +47,69 @@ namespace tiledb::common {
 
 class ThreadPool {
  public:
-  using Task = std::future<Status>;
-  using SharedTask = std::shared_future<Status>;
+  class ThreadPoolTask {
+   public:
+    virtual ~ThreadPoolTask() {};
+    virtual std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const = 0;
+    virtual bool valid() const noexcept = 0;
+    virtual Status& get() = 0;
+  };
+
+  class Task : public ThreadPoolTask {
+   public:
+    Task() = default;
+
+    Task(std::future<Status>&& f)
+        : f_(std::move(f)) {};
+
+    std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const {
+      return f_.wait_for(timeout_duration);
+    }
+
+    bool valid() const noexcept {
+      return f_.valid();
+    }
+
+    Status& get() {
+      st_ = f_.get();
+      return st_;
+    }
+
+   private:
+    std::future<Status> f_;
+    Status st_;
+  };
+
+  class SharedTask : public ThreadPoolTask {
+   public:
+    SharedTask() = default;
+
+    SharedTask(std::future<Status>&& f)
+        : f_(std::move(f)) {};
+
+    std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const {
+      return f_.wait_for(timeout_duration);
+    }
+
+    bool valid() const noexcept {
+      return f_.valid();
+    }
+
+    Status& get() {
+      st_ = f_.get();
+      return st_;
+    }
+
+   private:
+    std::shared_future<Status> f_;
+    Status st_;
+  };
+
+  // using Task = std::future<Status>;
+  // using SharedTask = std::shared_future<Status>;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -95,7 +156,7 @@ class ThreadPool {
   template <class Fn, class... Args>
   auto async(Fn&& f, Args&&... args) {
     if (concurrency_level_ == 0) {
-      Task invalid_future;
+      std::future<Status> invalid_future;
       LOG_ERROR("Cannot execute task; thread pool uninitialized.");
       return invalid_future;
     }
@@ -137,7 +198,7 @@ class ThreadPool {
    * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
    * error status is returned
    */
-  Status wait_all(std::vector<Task>& tasks);
+  Status wait_all(std::vector<ThreadPoolTask*>& tasks);
 
   /**
    * Wait on all the given tasks to complete, returning a vector of their return
@@ -152,7 +213,7 @@ class ThreadPool {
    * @param tasks Task list to wait on
    * @return Vector of each task's Status.
    */
-  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
+  std::vector<Status> wait_all_status(std::vector<ThreadPoolTask*>& tasks);
 
   /**
    * Wait on a single tasks to complete. This function is safe to call
@@ -163,7 +224,7 @@ class ThreadPool {
    * @return Status::Ok if the task returned Status::Ok, otherwise the error
    * status is returned
    */
-  Status wait(Task& task);
+  Status wait(ThreadPoolTask* const task);
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

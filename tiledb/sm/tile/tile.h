@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
@@ -70,6 +71,7 @@ class TileBase {
       const uint64_t cell_size,
       const uint64_t size,
       tdb::pmr::memory_resource* resource,
+      ContextResources* resources,
       const bool ignore_tasks = false);
 
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
@@ -80,7 +82,7 @@ class TileBase {
     std::scoped_lock<std::recursive_mutex> lock{
         unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
-      unfilter_data_compute_task_.get();
+      auto st = resources_->compute_tp().wait(&unfilter_data_compute_task_);
     }
   }
 
@@ -124,7 +126,8 @@ class TileBase {
       std::scoped_lock<std::recursive_mutex> lock{
           unfilter_data_compute_task_mtx_};
       if (unfilter_data_compute_task_.valid()) {
-        throw_if_not_ok(unfilter_data_compute_task_.get());
+        throw_if_not_ok(
+            resources_->compute_tp().wait(&unfilter_data_compute_task_));
       } else {
         throw std::future_error(
             std::make_error_code(std::future_errc::no_state));
@@ -182,6 +185,9 @@ class TileBase {
 
   /** The memory resource to use. */
   tdb::pmr::memory_resource* resource_;
+
+  /** The ContextResources object. */
+  ContextResources* resources_;
 
   /** The buffer backing the tile data. */
   tdb::pmr::unique_ptr<std::byte> data_;
@@ -242,6 +248,7 @@ class Tile : public TileBase {
    * @param filtered_data Pointer to the external filtered data.
    * @param filtered_size The filtered size to allocate.
    * @param memory_tracker The memory resource to use.
+   * @param resources The context resources.
    * @param filtered_data_io_task The I/O task to wait on for data to be valid.
    * @param filtered_data_block The FilteredData block class which backs the
    * memory for this filtered tile.
@@ -255,6 +262,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       shared_ptr<MemoryTracker> memory_tracker,
+      ContextResources* resources,
       ThreadPool::SharedTask filtered_data_io_task,
       shared_ptr<FilteredData> filtered_data_block);
 
@@ -270,6 +278,7 @@ class Tile : public TileBase {
    * @param filtered_data Pointer to the external filtered data.
    * @param filtered_size The filtered size to allocate.
    * @param resource The memory resource to use.
+   * @param resources The context resources.
    * @param filtered_data_io_task The I/O task to wait on for data to be valid.
    * @param filtered_data_block The FilteredData block class which backs the
    * memory for this filtered tile.
@@ -283,6 +292,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       tdb::pmr::memory_resource* resource,
+      ContextResources* resources,
       ThreadPool::SharedTask filtered_data_io_task,
       shared_ptr<FilteredData> filtered_data_block);
 
@@ -294,7 +304,7 @@ class Tile : public TileBase {
     std::scoped_lock<std::recursive_mutex> lock{
         unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
-      unfilter_data_compute_task_.get();
+      auto st = resources_->compute_tp().wait(&unfilter_data_compute_task_);
     }
   }
 
@@ -327,7 +337,7 @@ class Tile : public TileBase {
     if (filtered_data_block_ != nullptr) {
       std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
       if (filtered_data_io_task_.valid()) {
-        throw_if_not_ok(filtered_data_io_task_.get());
+        throw_if_not_ok(resources_->compute_tp().wait(&filtered_data_io_task_));
       } else {
         throw std::future_error(
             std::make_error_code(std::future_errc::no_state));
@@ -344,7 +354,7 @@ class Tile : public TileBase {
     if (filtered_data_block_ != nullptr) {
       std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
       if (filtered_data_io_task_.valid()) {
-        throw_if_not_ok(filtered_data_io_task_.get());
+        throw_if_not_ok(resources_->compute_tp().wait(&filtered_data_io_task_));
       } else {
         throw std::future_error(
             std::make_error_code(std::future_errc::no_state));
@@ -359,7 +369,7 @@ class Tile : public TileBase {
     if (filtered_data_block_ != nullptr) {
       std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
       if (filtered_data_io_task_.valid()) {
-        throw_if_not_ok(filtered_data_io_task_.get());
+        throw_if_not_ok(resources_->compute_tp().wait(&filtered_data_io_task_));
       } else {
         throw std::future_error(
             std::make_error_code(std::future_errc::no_state));
@@ -529,14 +539,15 @@ class WriterTile : public TileBase {
    * @param cell_size The cell size.
    * @param size The size of the tile.
    * @param memory_tracker The memory tracker to use.
-   * @param data_io_task The I/O task to wait on for data to be valid.
+   * @param resources The context resources.
    */
   WriterTile(
       const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      shared_ptr<MemoryTracker> memory_tracker);
+      shared_ptr<MemoryTracker> memory_tracker,
+      ContextResources* resources);
 
   /**
    * Constructor.
@@ -546,14 +557,15 @@ class WriterTile : public TileBase {
    * @param cell_size The cell size.
    * @param size The size of the tile.
    * @param resource The memory resource to use.
-   * @param data_io_task The I/O task to wait on for data to be valid.
+   * @param resources The context resources.
    */
   WriterTile(
       const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      tdb::pmr::memory_resource* resource);
+      tdb::pmr::memory_resource* resource,
+      ContextResources* resources);
 
   DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
   DISABLE_MOVE_AND_MOVE_ASSIGN(WriterTile);

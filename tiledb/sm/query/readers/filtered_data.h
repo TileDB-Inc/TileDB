@@ -410,11 +410,11 @@ class FilteredData {
     auto data{block.data()};
     auto size{block.size()};
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
-    ThreadPool::SharedTask task =
+    ThreadPool::SharedTask task(
         resources_.io_tp().execute([this, offset, data, size, uri]() {
           auto timer_se = stats_->start_timer("read");
           return resources_.vfs().read(uri, offset, data, size, false);
-        });
+        }));
     // This should be changes once we use taskgraphs for modeling the data flow
     block.set_io_task(task);
   }

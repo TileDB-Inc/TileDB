@@ -225,7 +225,8 @@ Status DenseTiler<T>::get_tile(
         constants::cell_var_offset_type,
         constants::cell_var_offset_size,
         tile_off_size,
-        memory_tracker_);
+        memory_tracker_,
+        nullptr);
 
     // Fill entire tile with MAX_UINT64
     std::vector<offsets_t> to_write(

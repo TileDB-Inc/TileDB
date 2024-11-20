@@ -145,8 +145,13 @@ Status GroupDirectory::load() {
   // Load (in paralell) the group details URIs
   tasks.emplace_back(tp_.execute([&] { return load_group_detail_uris(); }));
 
+  std::vector<ThreadPool::ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+
   // Wait for all tasks to complete
-  throw_if_not_ok(tp_.wait_all(tasks));
+  throw_if_not_ok(tp_.wait_all(task_ptrs));
 
   // Error check
   bool is_group = false;

@@ -49,7 +49,8 @@ WriterTileTuple::WriterTileTuple(
     const bool nullable,
     const uint64_t cell_size,
     const Datatype type,
-    shared_ptr<MemoryTracker> memory_tracker)
+    shared_ptr<MemoryTracker> memory_tracker,
+    ContextResources* resources)
     : memory_tracker_(memory_tracker)
     , fixed_tile_(
           array_schema.write_version(),
@@ -57,7 +58,8 @@ WriterTileTuple::WriterTileTuple(
           var_size ? constants::cell_var_offset_size : cell_size,
           var_size ? cell_num_per_tile * constants::cell_var_offset_size :
                      cell_num_per_tile * cell_size,
-          memory_tracker_)
+          memory_tracker_,
+          resources)
     , cell_size_(cell_size)
     , var_pre_filtered_size_(0)
     , min_size_(0)
@@ -70,7 +72,8 @@ WriterTileTuple::WriterTileTuple(
         type,
         datatype_size(type),
         cell_num_per_tile * constants::cell_var_offset_size,
-        memory_tracker_);
+        memory_tracker_,
+        resources);
   }
 
   if (nullable) {
@@ -79,7 +82,8 @@ WriterTileTuple::WriterTileTuple(
         constants::cell_validity_type,
         constants::cell_validity_size,
         cell_num_per_tile * constants::cell_validity_size,
-        memory_tracker_);
+        memory_tracker_,
+        resources);
   }
 }
 
