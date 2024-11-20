@@ -148,7 +148,8 @@ Status array_to_capnp(
   array_builder->setQueryType(query_type_str(array->get_query_type()));
 
   if (array->use_refactored_array_open() && array->serialize_enumerations()) {
-    array->load_all_enumerations(true);
+    array->load_all_enumerations(array->config().get<bool>(
+        "rest.load_enumerations_on_array_open_all_schemas", Config::must_find));
   }
 
   const auto& array_schema_latest = array->array_schema_latest();

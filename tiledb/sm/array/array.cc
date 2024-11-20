@@ -502,8 +502,7 @@ Status Array::open(
             rest_client->get_array_schema_from_rest(array_uri_);
         throw_if_not_ok(st);
         set_array_schema_latest(array_schema_latest.value());
-        if (config_.get<bool>(
-                "rest.load_enumerations_on_array_open", Config::must_find)) {
+        if (serialize_enumerations()) {
           // The route for array open v1 does not currently support loading
           // enumerations. Once #5359 is merged and deployed to REST this will
           // not be the case.
@@ -594,17 +593,6 @@ Status Array::open(
   } catch (std::exception& e) {
     set_array_closed();
     return LOG_STATUS(Status_ArrayError(e.what()));
-  }
-
-  // Handle any array open config options for local arrays.
-  if (!remote_) {
-    // For fetching remote enumerations REST calls
-    // tiledb_handle_load_enumerations_request which loads enumerations. For
-    // local arrays we don't call this method.
-    if (config_.get<bool>(
-            "rest.load_enumerations_on_array_open", Config::must_find)) {
-      load_all_enumerations(use_refactored_array_open());
-    }
   }
 
   is_opening_or_closing_ = false;
@@ -904,31 +892,23 @@ Array::get_enumerations_all_schemas() {
   }
 
   // Store the loaded enumerations into the schemas.
-  auto latest_schema = opened_array_->array_schema_latest_ptr();
-  for (const auto& schema_enmrs : ret) {
+  for (const auto& [schema_name, enmrs] : ret) {
     // This case will only be hit for remote arrays if the client evolves the
     // schema and does not reopen the array before loading all enumerations.
-    if (!array_schemas_all().contains(schema_enmrs.first)) {
+    if (!array_schemas_all().contains(schema_name)) {
       throw ArrayException(
           "Array opened using timestamp range (" +
           std::to_string(array_dir_timestamp_start_) + ", " +
           std::to_string(array_dir_timestamp_end_) +
-          ") has no loaded schema named '" + schema_enmrs.first +
+          ") has no loaded schema named '" + schema_name +
           "'; If the array was recently evolved be sure to reopen it after "
           "applying the evolution.");
     }
 
-    auto schema = array_schemas_all().at(schema_enmrs.first);
-    for (const auto& enmr : schema_enmrs.second) {
+    auto schema = array_schemas_all().at(schema_name);
+    for (const auto& enmr : enmrs) {
       if (!schema->is_enumeration_loaded(enmr->name())) {
         schema->store_enumeration(enmr);
-      }
-      // Also store enumerations into the latest schema when we encounter
-      // it.
-      if (schema_enmrs.first == latest_schema->name()) {
-        if (!latest_schema->is_enumeration_loaded(enmr->name())) {
-          latest_schema->store_enumeration(enmr);
-        }
       }
     }
   }
@@ -989,9 +969,12 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
           paths_to_load, *encryption_key(), memory_tracker_);
     }
 
-    // Store the loaded enumerations in the schema
+    // Store the loaded enumerations in the latest schema
+    auto schema = opened_array_->array_schema_latest_ptr();
     for (auto& enmr : loaded) {
-      opened_array_->array_schema_latest_ptr()->store_enumeration(enmr);
+      if (!schema->is_enumeration_loaded(enmr->name())) {
+        schema->store_enumeration(enmr);
+      }
     }
   }
 
@@ -1146,11 +1129,6 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   set_array_schema_latest(array_schema_latest);
   set_array_schemas_all(std::move(array_schemas_all));
   set_fragment_metadata(std::move(fragment_metadata));
-
-  if (config_.get<bool>(
-          "rest.load_enumerations_on_array_open", Config::must_find)) {
-    load_all_enumerations(use_refactored_array_open());
-  }
 
   return Status::Ok();
 }
@@ -1615,13 +1593,11 @@ bool Array::serialize_non_empty_domain() const {
 }
 
 bool Array::serialize_enumerations() const {
-  auto serialize = config_.get<bool>("rest.load_enumerations_on_array_open");
-  if (!serialize.has_value()) {
-    throw std::runtime_error(
-        "Cannot get rest.load_enumerations_on_array_open configuration option "
-        "from config");
-  }
-  return serialize.value();
+  return config_.get<bool>(
+             "rest.load_enumerations_on_array_open", Config::must_find) ||
+         config_.get<bool>(
+             "rest.load_enumerations_on_array_open_all_schemas",
+             Config::must_find);
 }
 
 bool Array::serialize_metadata() const {

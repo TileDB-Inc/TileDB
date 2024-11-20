@@ -164,6 +164,15 @@ TEST_CASE_METHOD(
 
   create_array(uri_);
   Array opened_array(ctx_, uri_, TILEDB_READ);
+  if (!vfs_test_setup_.is_rest() && load_enmrs) {
+    if (opened_array.ptr()->array()->use_refactored_array_open()) {
+      CHECK_NOTHROW(
+          ArrayExperimental::load_enumerations_all_schemas(ctx_, opened_array));
+    } else {
+      CHECK_NOTHROW(
+          ArrayExperimental::load_all_enumerations(ctx_, opened_array));
+    }
+  }
   auto array = opened_array.ptr()->array();
   auto schema = array->array_schema_latest_ptr();
   REQUIRE(schema->is_enumeration_loaded("my_enum") == load_enmrs);
@@ -218,6 +227,9 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(sm::Array::evolve_array_schema(
       ctx_.ptr()->resources(), uri, ase.get(), array->get_encryption_key()));
   CHECK(array->reopen().ok());
+  if (load_enmrs && !vfs_test_setup_.is_rest()) {
+    array->load_all_enumerations(array->use_refactored_array_open());
+  }
   schema = array->array_schema_latest_ptr();
   std::string schema_name_2 = schema->name();
   REQUIRE(schema->is_enumeration_loaded("my_enum") == load_enmrs);
@@ -227,6 +239,9 @@ TEST_CASE_METHOD(
   expected_enmrs[schema_name_2] = {enmr1, enmr2, var_enmr.ptr()->enumeration()};
   actual_enmrs = array->get_enumerations_all_schemas();
   if (!load_enmrs) {
+    if (!vfs_test_setup_.is_rest()) {
+      array->load_all_enumerations(array->use_refactored_array_open());
+    }
     REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
     REQUIRE(schema->is_enumeration_loaded("fruit") == true);
     REQUIRE(schema->is_enumeration_loaded("ase_var_enmr") == true);
@@ -242,6 +257,9 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(sm::Array::evolve_array_schema(
       ctx_.ptr()->resources(), uri, ase.get(), array->get_encryption_key()));
   CHECK(array->reopen().ok());
+  if (load_enmrs && !vfs_test_setup_.is_rest()) {
+    array->load_all_enumerations(array->use_refactored_array_open());
+  }
   schema = array->array_schema_latest_ptr();
   std::string schema_name_3 = schema->name();
   REQUIRE_THROWS_WITH(
@@ -253,6 +271,9 @@ TEST_CASE_METHOD(
   expected_enmrs[schema_name_3] = {enmr2, var_enmr.ptr()->enumeration()};
   actual_enmrs = array->get_enumerations_all_schemas();
   if (!load_enmrs) {
+    if (!vfs_test_setup_.is_rest()) {
+      array->load_all_enumerations(array->use_refactored_array_open());
+    }
     REQUIRE_THROWS_WITH(
         schema->is_enumeration_loaded("my_enum"),
         Catch::Matchers::ContainsSubstring("unknown enumeration"));
