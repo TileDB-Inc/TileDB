@@ -368,7 +368,7 @@ Status DenseReader::dense_read() {
   // This is as far as we should go before implementing this properly in a task
   // graph, where the start and end of every piece of work can clearly be
   // identified.
-  ThreadPool::Task compute_task;
+  ThreadPool::SharedTask compute_task;
 
   // Allow to disable the parallel read/compute in case the memory budget
   // doesn't allow it.
@@ -1038,7 +1038,7 @@ std::vector<ResultTile*> DenseReader::result_tiles_to_load(
  */
 template <class DimType, class OffType>
 Status DenseReader::apply_query_condition(
-    ThreadPool::Task& compute_task,
+    ThreadPool::SharedTask& compute_task,
     Subarray& subarray,
     const std::unordered_set<std::string>& condition_names,
     const std::vector<DimType>& tile_extents,

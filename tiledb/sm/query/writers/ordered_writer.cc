@@ -313,7 +313,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   uint64_t frag_tile_id = 0;
   bool close_files = false;
   tile_batches.resize(batch_num);
-  std::optional<ThreadPool::Task> write_task = nullopt;
+  std::optional<ThreadPool::SharedTask> write_task = nullopt;
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);
