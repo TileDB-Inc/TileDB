@@ -52,7 +52,6 @@ bool ignore_default_via_env(const std::string& param) {
     // We should not use the default value for `vfs.s3.region` if the user
     // has set either AWS_REGION or AWS_DEFAULT_REGION in their environment.
     // We defer to the SDK to interpret these values.
-
     if ((std::getenv("AWS_REGION") != nullptr) ||
         (std::getenv("AWS_DEFAULT_REGION") != nullptr)) {
       return true;
@@ -555,6 +554,7 @@ const std::set<std::string> Config::unserialized_params_ = {
 Config::Config() {
   // Set config values
   param_values_ = default_config_values;
+  login();
 }
 
 Config::~Config() = default;
@@ -573,33 +573,32 @@ void Config::login() {
   home_dir = std::string(std::getenv("HOME"));
 #endif
 
-  // For library versions 22 and older, simply parse the local .json file
-  if (constants::format_version <= 22) {
+  // For library versions 2.27.0 and older, simply parse the local .json file
+  auto version = constants::library_version;
+  if (version[0] <= 2 && version[1] <= 27) {
     // Find and parse the cloud.json file
     std::string file = home_dir + "/.tiledb/cloud.json";
     if (!std::filesystem::exists(file)) {
-      throw ConfigException("Cannot login; cloud.json file does not exist.");
+      return;
     }
     json data = json::parse(std::ifstream(file));
 
     // Set the config values that have been saved to the file
     if (data.contains("api_key") &&
         data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
-      throw_if_not_ok(
-          set("rest.token", data["api_key"]["X-TILEDB-REST-API-KEY"]));
+      set_internal("rest.token", data["api_key"]["X-TILEDB-REST-API-KEY"]);
     }
     if (data.contains("host")) {
-      throw_if_not_ok(set("rest.server_address", data["host"]));
+      set_internal("rest.server_address", data["host"]);
     }
     if (data.contains("password")) {
-      throw_if_not_ok(set("rest.password", data["password"]));
+      set_internal("rest.password", data["password"]);
     }
     if (data.contains("username")) {
-      throw_if_not_ok(set("rest.username", data["username"]));
+      set_internal("rest.username", data["username"]);
     }
     if (data.contains("verify_ssl")) {
-      throw_if_not_ok(
-          set("vfs.s3.verify_ssl", data["verify_ssl"] ? "true" : "false"));
+      set_internal("vfs.s3.verify_ssl", data["verify_ssl"] ? "true" : "false");
     }
   }
 }
@@ -1028,6 +1027,11 @@ optional<std::string> Config::get_internal_string(
     throw ConfigException("Failed to get config value for key: " + key);
   }
   return {nullopt};
+}
+
+void Config::set_internal(const std::string& param, const std::string& value) {
+  throw_if_not_ok(sanity_check(param, value));
+  param_values_[param] = value;
 }
 
 /*

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -110,17 +110,4 @@ TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
   std::string expected_value = GENERATE("test", "true", "0", "1.5");
   CHECK(c.set(key, expected_value).ok());
   TestConfig<std::string>::check_expected(expected_value, c, key);
-}
-
-TEST_CASE("Config::login", "[config][login]") {
-  Config c{};
-
-  // Upon initial Config construction, no rest token is set
-  auto initial_token = c.get<std::string>("rest.token");
-  CHECK(!initial_token.has_value());
-
-  // After login, the rest token is set from the cloud.json file
-  c.login();
-  auto login_token = c.get<std::string>("rest.token");
-  CHECK(login_token.has_value());
 }

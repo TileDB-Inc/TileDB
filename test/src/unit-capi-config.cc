@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include <map>
 #include <sstream>
 #include <thread>
+#include <unordered_set>
 
 void remove_file(const std::string& filename) {
   // Remove file
@@ -98,9 +99,7 @@ void check_load_incorrect_file_cannot_open() {
   rc = tiledb_config_load_from_file(config, "non_existent_file", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
-  check_error(
-      error,
-      "[TileDB::Config] Error: Failed to open config file 'non_existent_file'");
+  check_error(error, "Config: Failed to open config file 'non_existent_file'");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
   CHECK(config == nullptr);
@@ -127,7 +126,7 @@ void check_load_incorrect_file_missing_value() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Missing parameter value (line: 1)");
   tiledb_error_free(&error);
   CHECK(error == nullptr);
@@ -157,7 +156,7 @@ void check_load_incorrect_file_extra_word() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Invalid line format (line: 3)");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
@@ -906,6 +905,12 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["config_source"] = "auto";
   s3_param_values["install_sigpipe_handler"] = "true";
 
+  // A list of "sensitive" parameters, whose key-values should not be exposed.
+  std::unordered_set<std::string> sensitive_param_values;
+  sensitive_param_values.emplace("rest.token");
+  sensitive_param_values.emplace("rest.username");
+  sensitive_param_values.emplace("rest.password");
+
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
   rc = tiledb_config_iter_alloc(config, nullptr, &config_iter, &error);
@@ -924,7 +929,10 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
     CHECK(error == nullptr);
     CHECK(param != nullptr);
     CHECK(value != nullptr);
-    all_iter_map[std::string(param)] = std::string(value);
+    // Skip checks for sensitive params to avoid exposing their values.
+    if (!sensitive_param_values.contains(std::string(param))) {
+      all_iter_map[std::string(param)] = std::string(value);
+    }
     rc = tiledb_config_iter_next(config_iter, &error);
     CHECK(rc == TILEDB_OK);
     CHECK(error == nullptr);

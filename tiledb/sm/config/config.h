@@ -827,6 +827,16 @@ class Config {
 
   /** Returns the param -> value map. */
   const std::map<std::string, std::string>& param_values() const;
+
+  /**
+   * Internally sets the given config parameter.
+   *
+   * @note For internal use only; This API does not update the user-set params.
+   *
+   * @param param The config parameter to set.
+   * @param value The value of the parameter.
+   */
+  void set_internal(const std::string& param, const std::string& value);
 };
 
 /**
