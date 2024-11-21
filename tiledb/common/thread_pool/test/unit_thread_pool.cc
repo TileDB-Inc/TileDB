@@ -98,12 +98,17 @@ size_t random_ms(size_t max = 3) {
  */
 void wait_all(
     ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
+  std::vector<ThreadPool::ThreadPoolTask*> result_ptrs;
+  for (auto& r : results) {
+    result_ptrs.emplace_back(&r);
+  }
+
   if (use_wait) {
     for (auto& r : results) {
-      REQUIRE(pool.wait(r).ok());
+      REQUIRE(pool.wait(&r).ok());
     }
   } else {
-    REQUIRE(pool.wait_all(results).ok());
+    REQUIRE(pool.wait_all(result_ptrs).ok());
   }
 }
 
@@ -114,10 +119,15 @@ void wait_all(
  */
 Status wait_all_status(
     ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
+  std::vector<ThreadPool::ThreadPoolTask*> result_ptrs;
+  for (auto& r : results) {
+    result_ptrs.emplace_back(&r);
+  }
+
   if (use_wait) {
     Status ret;
     for (auto& r : results) {
-      auto st = pool.wait(r);
+      auto st = pool.wait(&r);
       if (ret.ok() && !st.ok()) {
         ret = st;
       }
@@ -125,7 +135,7 @@ Status wait_all_status(
 
     return ret;
   } else {
-    return pool.wait_all(results);
+    return pool.wait_all(result_ptrs);
   }
 }
 
@@ -136,13 +146,18 @@ Status wait_all_status(
  */
 uint64_t wait_all_num_status(
     ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
+  std::vector<ThreadPool::ThreadPoolTask*> result_ptrs;
+  for (auto& r : results) {
+    result_ptrs.emplace_back(&r);
+  }
+
   int num_ok = 0;
   if (use_wait) {
     for (auto& r : results) {
-      num_ok += pool.wait(r).ok() ? 1 : 0;
+      num_ok += pool.wait(&r).ok() ? 1 : 0;
     }
   } else {
-    std::vector<Status> statuses = pool.wait_all_status(results);
+    std::vector<Status> statuses = pool.wait_all_status(result_ptrs);
     for (const auto& st : statuses) {
       num_ok += st.ok() ? 1 : 0;
     }
