@@ -358,8 +358,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     }
 
     if (write_task.has_value()) {
-      write_task->wait();
-      RETURN_NOT_OK(write_task->get());
+      RETURN_NOT_OK(write_task->wait());
     }
 
     write_task = resources_.io_tp().execute([&, b, frag_tile_id]() {
@@ -380,8 +379,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   }
 
   if (write_task.has_value()) {
-    write_task->wait();
-    RETURN_NOT_OK(write_task->get());
+    RETURN_NOT_OK(write_task->wait());
   }
 
   return Status::Ok();
