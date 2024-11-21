@@ -274,6 +274,14 @@ class ThreadPool {
    */
   std::vector<Status> wait_all_status(std::vector<ThreadPoolTask*>& tasks);
 
+  /* Helper functions for lists that consists purely of Tasks */
+  Status wait_all(std::vector<Task>& tasks);
+  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
+
+  /* Helper functions for lists that consists purely of SharedTasks */
+  Status wait_all(std::vector<SharedTask>& tasks);
+  std::vector<Status> wait_all_status(std::vector<SharedTask>& tasks);
+
   /**
    * Wait on a single tasks to complete. This function is safe to call
    * recursively and may execute pending tasks on the calling thread while
