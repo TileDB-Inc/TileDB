@@ -362,9 +362,9 @@ Status Curl::set_headers(struct curl_slist** headers) const {
 
     // Check for no auth.
     if (username == nullptr || password == nullptr)
-      return LOG_STATUS(
-          Status_RestError("Cannot set curl auth; either token or "
-                           "username/password must be set."));
+      return LOG_STATUS(Status_RestError(
+          "Missing TileDB authentication: either token or username/password "
+          "must be set using the appropriate configuration parameters."));
 
     std::string basic_auth = username + std::string(":") + password;
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
