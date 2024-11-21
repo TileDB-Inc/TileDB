@@ -910,8 +910,31 @@ Status S3::is_object(
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
-  *exists = head_object_outcome.IsSuccess();
 
+  if (!head_object_outcome.IsSuccess()) {
+    if (head_object_outcome.GetError().GetResponseCode() ==
+        Aws::Http::HttpResponseCode::NOT_FOUND) {
+      *exists = false;
+      return Status::Ok();
+    }
+
+    // Because this is a HEAD request, its response will not contain a detailed
+    // message. Try to provide more information to the user depending on the
+    // status code.
+    std::string additional_context;
+    if (head_object_outcome.GetError().GetResponseCode() ==
+        Aws::Http::HttpResponseCode::MOVED_PERMANENTLY) {
+      additional_context =
+          " The bucket might be located in another region; you can set it with "
+          "the 'vfs.s3.region' option.";
+    }
+    return LOG_STATUS(Status_S3Error(
+        "Failed to check for existence of object s3://" + bucket_name + "/" +
+        object_key + outcome_error_message(head_object_outcome) +
+        additional_context));
+  }
+
+  *exists = true;
   return Status::Ok();
 }
 
@@ -1029,10 +1052,23 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
     head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
 
-  if (!head_object_outcome.IsSuccess())
+  if (!head_object_outcome.IsSuccess()) {
+    // Because this is a HEAD request, its response will not contain a detailed
+    // message. Try to provide more information to the user depending on the
+    // status code.
+    std::string additional_context;
+    if (head_object_outcome.GetError().GetResponseCode() ==
+        Aws::Http::HttpResponseCode::MOVED_PERMANENTLY) {
+      additional_context =
+          " The bucket might be located in another region; you can set it with "
+          "the 'vfs.s3.region' option.";
+    }
     return LOG_STATUS(Status_S3Error(
-        "Cannot retrieve S3 object size; Error while listing file " +
-        uri.to_string() + outcome_error_message(head_object_outcome)));
+        std::string(
+            "Cannot retrieve S3 object size; Error while listing file s3://") +
+        uri.to_string() + outcome_error_message(head_object_outcome) +
+        additional_context));
+  }
   *nbytes =
       static_cast<uint64_t>(head_object_outcome.GetResult().GetContentLength());
 
