@@ -77,7 +77,7 @@ void FragmentConsolidationWorkspace::resize_buffers(
 
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
-  auto& domain{array_schema.domain()};
+  auto& domain{array_schema.domain()}; // XXX TOUCH
   auto dim_num = array_schema.dim_num();
   auto sparse = !array_schema.dense();
 
@@ -752,11 +752,11 @@ Status FragmentConsolidator::create_queries(
       read_memory_budget));
   throw_if_not_ok(query_r->set_layout(Layout::GLOBAL_ORDER));
 
-  // Dense consolidation will do a tile aligned read.
+  // Dense consolidation will do a tile aligned read. // XXX TOUCH
   if (dense) {
     NDRange read_subarray = subarray;
-    auto& domain{array_for_reads->array_schema_latest().domain()};
-    domain.expand_to_tiles(&read_subarray);
+    auto& domain{array_for_reads->array_schema_latest().domain()}; // XXX TOUCH
+    domain.expand_to_tiles(&read_subarray); // XXX TOUCH
     throw_if_not_ok(query_r->set_subarray_unsafe(read_subarray));
   }
 
