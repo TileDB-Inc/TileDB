@@ -511,7 +511,7 @@ void Dimension::expand_range_var(const Range& r1, Range* r2) const {
 }
 
 template <class T>
-void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
+void Dimension::expand_to_tile(const Dimension* dim, Range* range) { // XXX TOUCH
   assert(dim != nullptr);
   assert(!range->empty());
 
@@ -532,7 +532,7 @@ void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
   range->set_range(res, sizeof(res));
 }
 
-void Dimension::expand_to_tile(Range* range) const {
+void Dimension::expand_to_tile(Range* range) const { // XXX TOUCH
   return dispatch_->expand_to_tile(range);
 }
 
