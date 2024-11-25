@@ -51,8 +51,9 @@ struct CPPArrayFx {
   static const unsigned d1_tile = 10;
   static const unsigned d2_tile = 5;
 
-  CPPArrayFx()
-      : ctx(vfs_test_setup_.ctx())
+  CPPArrayFx(shared_ptr<tiledb_config_t> config = nullptr)
+      : vfs_test_setup_(config.get())
+      , ctx(vfs_test_setup_.ctx())
       , array_uri_{vfs_test_setup_.array_uri("cpp_unit_array")} {
     Domain domain(ctx);
     auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, d1_tile);
@@ -83,6 +84,18 @@ struct CPPArrayFx {
   std::string array_uri_;
 };
 
+struct CPPArrayFxJsonSerialization : public CPPArrayFx {
+  static Config create_config() {
+    Config result;
+    result.set("rest.server_serialization_format", "JSON");
+    return result;
+  }
+
+  CPPArrayFxJsonSerialization()
+      : CPPArrayFx(create_config().ptr()) {
+  }
+};
+
 TEST_CASE("Config", "[cppapi][config][non-rest]") {
   // Primarily to instansiate operator[]/= template
   tiledb::Config cfg;
@@ -90,6 +103,27 @@ TEST_CASE("Config", "[cppapi][config][non-rest]") {
   cfg["vfs.s3.use_virtual_addressing"] = "true";
   CHECK((std::string)cfg["vfs.s3.region"] == "us-east-1a");
   CHECK((std::string)cfg["vfs.s3.use_virtual_addressing"] == "true");
+}
+
+TEST_CASE_METHOD(
+    CPPArrayFxJsonSerialization,
+    "C++ API: Arrays, REST JSON serialization",
+    "[cppapi][basic][rest][json]") {
+  SECTION("Dimensions") {
+    ArraySchema schema(ctx, array_uri_);
+    CHECK(schema.domain().ndim() == 2);
+    auto a = schema.domain().dimensions()[0].domain<int>();
+    auto b = schema.domain().dimensions()[1].domain<int>();
+    CHECK_THROWS(schema.domain().dimensions()[0].domain<unsigned>());
+    CHECK(a.first == -100);
+    CHECK(a.second == 100);
+    CHECK(b.first == 0);
+    CHECK(b.second == 100);
+    CHECK_THROWS(schema.domain().dimensions()[0].tile_extent<unsigned>() == 10);
+    CHECK(schema.domain().dimensions()[0].tile_extent<int>() == 10);
+    CHECK(schema.domain().dimensions()[1].tile_extent<int>() == 5);
+    CHECK(schema.domain().cell_num() == 20301);
+  }
 }
 
 TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
