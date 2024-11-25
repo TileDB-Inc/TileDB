@@ -204,7 +204,8 @@ Tile create_tile_for_unfiltering(
       tile->filtered_buffer().data(),
       tile->filtered_buffer().size(),
       tracker,
-      ThreadPool::SharedTask()};
+      ThreadPool::SharedTask(),
+      nullptr};
 }
 
 void run_reverse(
