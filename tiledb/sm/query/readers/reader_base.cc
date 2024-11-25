@@ -987,7 +987,7 @@ Status ReaderBase::unfilter_tiles(
         });
 
     if (skip_field(result_tile->frag_idx(), name)) {
-      task.wait();
+      RETURN_NOT_OK(task.wait());
       continue;
     }
 

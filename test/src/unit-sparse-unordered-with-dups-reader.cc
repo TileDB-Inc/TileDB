@@ -1064,7 +1064,7 @@ TEST_CASE_METHOD(
     if (one_frag) {
       CHECK(1 == loop_num->second);
     } else {
-      CHECK(18 == loop_num->second);
+      CHECK(16 == loop_num->second);
     }
 
     // Try to read multiple frags without partial tile offset reading. Should
