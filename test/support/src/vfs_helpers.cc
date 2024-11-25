@@ -176,12 +176,6 @@ Status SupportedFsS3::prepare_config(
       tiledb_config_set(config, "ssl.verify", "false", &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 #endif
-  if (is_rest()) {
-    REQUIRE(
-        tiledb_config_set(
-            config, "rest.server_serialization_format", "JSON", &error) ==
-        TILEDB_OK);
-  }
 
   return Status::Ok();
 }
