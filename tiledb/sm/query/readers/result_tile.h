@@ -230,15 +230,15 @@ class ResultTile {
     ~TileData() {
       // TODO: destructor should not throw, catch any exceptions
       if (fixed_filtered_data_task_.valid()) {
-        fixed_filtered_data_task_.get();
+        auto st = fixed_filtered_data_task_.wait();
       }
 
       if (var_filtered_data_task_.valid()) {
-        var_filtered_data_task_.get();
+        auto st = var_filtered_data_task_.wait();
       }
 
       if (validity_filtered_data_task_.valid()) {
-        validity_filtered_data_task_.get();
+        auto st = validity_filtered_data_task_.wait();
       }
     }
 
