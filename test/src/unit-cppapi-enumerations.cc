@@ -431,10 +431,11 @@ TEST_CASE_METHOD(
     "CPP API: Load All Enumerations - All Schemas",
     "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
   create_array();
-  // Test with `rest.load_enumerations_on_array_open` enabled and disabled.
+  // Test with `rest.load_enumerations_on_array_open_all_schemas` enabled and
+  // disabled.
   bool load_enmrs = GENERATE(true, false);
   auto config = ctx_.config();
-  config["rest.load_enumerations_on_array_open"] =
+  config["rest.load_enumerations_on_array_open_all_schemas"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
@@ -453,7 +454,7 @@ TEST_CASE_METHOD(
     if (array_open_v2) {
       // If we are not loading enmrs on array open we must load them explicitly
       // with a separate request.
-      if (!load_enmrs) {
+      if (!load_enmrs || !vfs_test_setup_.is_rest()) {
         // Load enumerations for all schemas if using array open v2.
         CHECK_NOTHROW(
             ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
@@ -636,10 +637,11 @@ TEST_CASE_METHOD(
     "[enumeration][array][schema-evolution][load-all-enumerations][all-schemas]"
     "[rest]") {
   create_array();
-  // Test with `rest.load_enumerations_on_array_open` enabled and disabled.
+  // Test with `rest.load_enumerations_on_array_open_all_schemas` enabled and
+  // disabled.
   bool load_enmrs = GENERATE(true, false);
   auto config = ctx_.config();
-  config["rest.load_enumerations_on_array_open"] =
+  config["rest.load_enumerations_on_array_open_all_schemas"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
@@ -655,16 +657,16 @@ TEST_CASE_METHOD(
   if (load_enmrs) {
     // Array open v1 does not support loading enumerations on array open so we
     // must load them explicitly in this case.
-    if (!array_open_v2) {
+    if (!array_open_v2 || !vfs_test_setup_.is_rest()) {
       ArrayExperimental::load_all_enumerations(ctx_, array);
     }
     REQUIRE(
         array.schema().ptr()->array_schema()->is_enumeration_loaded(
             "an_enumeration") == true);
   }
-  // If `rest.load_enumerations_on_array_open=false` do not load enmrs
-  // explicitly. Leave enumerations unloaded initially, evolve the array without
-  // reopening, and then attempt to load all enumerations.
+  // If `rest.load_enumerations_on_array_open_all_schemas=false` do not load
+  // enmrs explicitly. Leave enumerations unloaded initially, evolve the array
+  // without reopening, and then attempt to load all enumerations.
 
   // Evolve once to add an enumeration.
   ArraySchemaEvolution ase(ctx_);
@@ -734,7 +736,7 @@ TEST_CASE_METHOD(
     // Reopen and load the evolved enumerations.
     array.reopen();
     std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
-    if (!load_enmrs) {
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
       CHECK_NOTHROW(
           ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
     }
@@ -774,7 +776,7 @@ TEST_CASE_METHOD(
 
     // Reopen to apply the schema evolution and reload enumerations.
     array.reopen();
-    if (!load_enmrs) {
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
   }
@@ -832,6 +834,339 @@ TEST_CASE_METHOD(
   CHECK(
       array.schema().ptr()->array_schema()->is_enumeration_loaded(
           "an_enumeration") == true);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP API: Load Enumerations - Latest Schema",
+    "[enumeration][array][load-enumerations][schema][rest]") {
+  create_array();
+  // Test with `rest.load_enumerations_on_array_open` enabled and disabled.
+  bool load_enmrs = GENERATE(true, false);
+  auto config = ctx_.config();
+  config["rest.load_enumerations_on_array_open"] =
+      load_enmrs ? "true" : "false";
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+
+  auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
+  bool array_open_v2 = array.ptr()->array()->use_refactored_array_open();
+
+  // Helper function to reopen and conditionally call load_all_enumerations.
+  auto reopen_and_load_enmrs = [&]() {
+    // We always reopen because we are evolving the schema which requires
+    // reopening the array after applying the schema evolution.
+    CHECK_NOTHROW(array.reopen());
+
+    // If we are not loading enmrs on array open we must load them explicitly
+    // with a separate request.
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+      // Load enumerations for all schemas if using array open v2.
+      CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
+    }
+  };
+  reopen_and_load_enmrs();
+
+  REQUIRE(
+      array.schema().ptr()->array_schema()->has_enumeration("an_enumeration") ==
+      true);
+  REQUIRE(
+      array.schema().ptr()->array_schema()->is_enumeration_loaded(
+          "an_enumeration") == true);
+  std::string schema_name_1 = array.schema().ptr()->array_schema()->name();
+
+  // Evolve once to add an enumeration.
+  ArraySchemaEvolution ase(ctx_);
+  std::vector<std::string> var_values{"one", "two", "three"};
+  auto var_enmr = Enumeration::create(ctx_, "ase_var_enmr", var_values);
+  ase.add_enumeration(var_enmr);
+  auto attr4 = Attribute::create<uint16_t>(ctx_, "attr4");
+  AttributeExperimental::set_enumeration_name(ctx_, attr4, "ase_var_enmr");
+  ase.add_attribute(attr4);
+  // Apply evolution to the array and reopen.
+  ase.array_evolve(uri_);
+  reopen_and_load_enmrs();
+
+  std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
+  if (array_open_v2) {
+    // Check all schemas if we are using array open v2.
+    auto all_schemas = array.ptr()->array()->array_schemas_all();
+    // Previous schemas
+    CHECK(
+        all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+        false);
+
+    // Latest schema
+    CHECK(
+        all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
+        true);
+    CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
+    CHECK(
+        all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+        true);
+  }
+  // We can always validate the latest schema.
+  CHECK(
+      array.schema().ptr()->array_schema()->has_enumeration("an_enumeration") ==
+      true);
+  CHECK(
+      array.schema().ptr()->array_schema()->is_enumeration_loaded(
+          "an_enumeration") == true);
+  CHECK(
+      array.schema().ptr()->array_schema()->has_enumeration("ase_var_enmr") ==
+      true);
+  CHECK(
+      array.schema().ptr()->array_schema()->is_enumeration_loaded(
+          "ase_var_enmr") == true);
+
+  // Evolve a second time to drop an enumeration.
+  ArraySchemaEvolution ase2(ctx_);
+  ase2.drop_enumeration("an_enumeration");
+  ase2.drop_attribute("attr1");
+  // Apply evolution to the array and reopen.
+  CHECK_NOTHROW(ase2.array_evolve(uri_));
+  reopen_and_load_enmrs();
+
+  std::string schema_name_3 = array.schema().ptr()->array_schema()->name();
+  if (array_open_v2) {
+    // Check all schemas if we are using array open v2.
+    auto all_schemas = array.ptr()->array()->array_schemas_all();
+    // Previous schemas
+    CHECK(
+        all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+        false);
+    CHECK(
+        all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
+        false);
+    CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
+    CHECK(
+        all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+        false);
+
+    // Latest schema
+    CHECK(
+        all_schemas[schema_name_3]->has_enumeration("an_enumeration") == false);
+    CHECK(all_schemas[schema_name_3]->has_enumeration("ase_var_enmr") == true);
+    CHECK(
+        all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
+        true);
+  }
+  // Always validate the latest schema.
+  CHECK(
+      array.schema().ptr()->array_schema()->has_enumeration("an_enumeration") ==
+      false);
+  CHECK(
+      array.schema().ptr()->array_schema()->has_enumeration("ase_var_enmr") ==
+      true);
+  CHECK(
+      array.schema().ptr()->array_schema()->is_enumeration_loaded(
+          "ase_var_enmr") == true);
+
+  // Evolve a third time to add an enumeration with a name equal to a previously
+  // dropped enumeration.
+  ArraySchemaEvolution ase3(ctx_);
+  auto old_enmr = Enumeration::create(ctx_, "an_enumeration", var_values);
+  ase3.add_enumeration(old_enmr);
+  auto attr5 = Attribute::create<uint16_t>(ctx_, "attr5");
+  AttributeExperimental::set_enumeration_name(ctx_, attr5, "an_enumeration");
+  ase.add_attribute(attr5);
+  // Apply evolution to the array and reopen.
+  CHECK_NOTHROW(ase3.array_evolve(uri_));
+  reopen_and_load_enmrs();
+
+  // Check all schemas.
+  if (array_open_v2) {
+    auto all_schemas = array.ptr()->array()->array_schemas_all();
+    std::string schema_name_4 = array.schema().ptr()->array_schema()->name();
+    // Previous schemas.
+    CHECK(
+        all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+        false);
+    CHECK(
+        all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
+        false);
+    CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
+    CHECK(
+        all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+        false);
+    CHECK(
+        all_schemas[schema_name_3]->has_enumeration("an_enumeration") == false);
+    CHECK(all_schemas[schema_name_3]->has_enumeration("ase_var_enmr") == true);
+    CHECK(
+        all_schemas[schema_name_3]->is_enumeration_loaded("ase_var_enmr") ==
+        false);
+
+    // Latest schema.
+    CHECK(
+        all_schemas[schema_name_4]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_4]->is_enumeration_loaded("an_enumeration") ==
+        true);
+    CHECK(all_schemas[schema_name_4]->has_enumeration("ase_var_enmr") == true);
+    CHECK(
+        all_schemas[schema_name_4]->is_enumeration_loaded("ase_var_enmr") ==
+        true);
+  }
+  // Always validate the latest schema.
+  CHECK(
+      array.schema().ptr()->array_schema()->has_enumeration("an_enumeration") ==
+      true);
+  CHECK(
+      array.schema().ptr()->array_schema()->is_enumeration_loaded(
+          "an_enumeration") == true);
+  CHECK(
+      array.schema().ptr()->array_schema()->has_enumeration("ase_var_enmr") ==
+      true);
+  CHECK(
+      array.schema().ptr()->array_schema()->is_enumeration_loaded(
+          "ase_var_enmr") == true);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP API: Load Enumerations - Latest schema post evolution",
+    "[enumeration][array][schema-evolution][load-enumerations][schema][rest]") {
+  create_array();
+  // Test with `rest.load_enumerations_on_array_open` enabled and disabled.
+  bool load_enmrs = GENERATE(true, false);
+  auto config = ctx_.config();
+  config["rest.load_enumerations_on_array_open"] =
+      load_enmrs ? "true" : "false";
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+
+  // Open the array with no explicit timestamps set.
+  auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
+
+  // REST CI will test with both array open v1 and v2.
+  bool array_open_v2 = array.ptr()->array()->use_refactored_array_open();
+  REQUIRE(
+      array.schema().ptr()->array_schema()->has_enumeration("an_enumeration") ==
+      true);
+  if (load_enmrs) {
+    // Array open v1 does not support loading enumerations on array open so we
+    // must load them explicitly in this case.
+    if (!array_open_v2) {
+      ArrayExperimental::load_all_enumerations(ctx_, array);
+    } else if (!vfs_test_setup_.is_rest()) {
+      ArrayExperimental::load_enumerations_all_schemas(ctx_, array);
+    }
+    REQUIRE(
+        array.schema().ptr()->array_schema()->is_enumeration_loaded(
+            "an_enumeration") == true);
+  }
+  // If `rest.load_enumerations_on_array_open=false` do not load enmrs
+  // explicitly. Leave enumerations unloaded initially, evolve the array without
+  // reopening, and then attempt to load all enumerations.
+
+  // Evolve once to add an enumeration.
+  ArraySchemaEvolution ase(ctx_);
+  std::vector<std::string> var_values{"one", "two", "three"};
+  auto var_enmr = Enumeration::create(ctx_, "ase_var_enmr", var_values);
+  ase.add_enumeration(var_enmr);
+  auto attr4 = Attribute::create<uint16_t>(ctx_, "attr4");
+  AttributeExperimental::set_enumeration_name(ctx_, attr4, "ase_var_enmr");
+  ase.add_attribute(attr4);
+  // Apply evolution to the array and intentionally skip reopening after
+  // evolution to test exceptions.
+  ase.array_evolve(uri_);
+
+  // Store the original array schema name so we can validate all_schemas later.
+  std::string schema_name_1 = array.schema().ptr()->array_schema()->name();
+  if (array_open_v2) {
+    if (load_enmrs) {
+      // If we load enmrs before reopen, we will not load the evolved schema
+      // that contains the enumeration added during evolution. Since we
+      // explicitly load only enumerations in the latest schema, we will not hit
+      // an exception when loading enumerations on an evolved schema prior to
+      // reopening.
+      CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
+      auto all_schemas = array.ptr()->array_schemas_all();
+      CHECK(all_schemas.size() == 1);
+      CHECK(
+          all_schemas[schema_name_1]->has_enumeration("an_enumeration") ==
+          true);
+      CHECK(
+          all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+          true);
+      CHECK(
+          all_schemas[schema_name_1]->has_enumeration("ase_var_enmr") == false);
+    }
+
+    // Reopen and load the evolved enumerations.
+    array.reopen();
+    std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+      CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
+    }
+    // Validate all array schemas now contain the expected enumerations.
+    auto all_schemas = array.ptr()->array_schemas_all();
+    CHECK(
+        all_schemas[schema_name_1]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_1]->is_enumeration_loaded("an_enumeration") ==
+        false);
+
+    // Latest schema.
+    CHECK(
+        all_schemas[schema_name_2]->has_enumeration("an_enumeration") == true);
+    CHECK(
+        all_schemas[schema_name_2]->is_enumeration_loaded("an_enumeration") ==
+        true);
+    CHECK(all_schemas[schema_name_2]->has_enumeration("ase_var_enmr") == true);
+    CHECK(
+        all_schemas[schema_name_2]->is_enumeration_loaded("ase_var_enmr") ==
+        true);
+  } else {
+    // If we load enmrs before reopen, we will not load the evolved schema that
+    // contains the enumeration added during evolution.
+    CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
+    CHECK(
+        array.schema().ptr()->array_schema()->has_enumeration(
+            "an_enumeration") == true);
+    CHECK(
+        array.schema().ptr()->array_schema()->is_enumeration_loaded(
+            "an_enumeration") == true);
+    CHECK(
+        array.schema().ptr()->array_schema()->has_enumeration("ase_var_enmr") ==
+        false);
+    CHECK_THROWS_WITH(
+        array.schema().ptr()->array_schema()->is_enumeration_loaded(
+            "ase_var_enmr"),
+        Catch::Matchers::ContainsSubstring("unknown enumeration"));
+
+    // Reopen to apply the schema evolution and reload enumerations.
+    array.reopen();
+    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+      CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
+    }
+  }
+
+  // Check all original and evolved enumerations are in the latest schema.
+  CHECK(
+      array.schema().ptr()->array_schema()->has_enumeration("an_enumeration") ==
+      true);
+  CHECK(
+      array.schema().ptr()->array_schema()->is_enumeration_loaded(
+          "an_enumeration") == true);
+  CHECK(
+      array.schema().ptr()->array_schema()->has_enumeration("ase_var_enmr") ==
+      true);
+  CHECK(
+      array.schema().ptr()->array_schema()->is_enumeration_loaded(
+          "ase_var_enmr") == true);
 }
 
 TEST_CASE_METHOD(
@@ -900,6 +1235,34 @@ TEST_CASE_METHOD(
   rc = tiledb_array_schema_evolution_drop_enumeration(
       ctx_.ptr().get(), ase.ptr().get(), nullptr);
   REQUIRE(rc != TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "C API: ArraySchemaEvolution - Add Enumeration, retrieve with "
+    "ArraySchema::get_enumeration_from_name",
+    "[enumeration][array-schema-evolution][array-schema-get-enumeration-from-"
+    "name][rest]") {
+  create_array();
+
+  // Evolve once to add an enumeration.
+  ArraySchemaEvolution ase(ctx_);
+  std::vector<std::string> var_values{"one", "two", "three"};
+  auto var_enmr = Enumeration::create(ctx_, "ase_var_enmr", var_values);
+  ase.add_enumeration(var_enmr);
+  auto attr4 = Attribute::create<uint16_t>(ctx_, "attr4");
+  AttributeExperimental::set_enumeration_name(ctx_, attr4, "ase_var_enmr");
+  ase.add_attribute(attr4);
+  // Apply evolution to the array and reopen.
+  ase.array_evolve(uri_);
+
+  auto schema = Array::load_schema(ctx_, uri_);
+  auto actual_enumeration = ArraySchemaExperimental::get_enumeration_from_name(
+      ctx_, schema, "ase_var_enmr");
+
+  CHECK(test::is_equivalent_enumeration(
+      *var_enmr.ptr()->enumeration(),
+      *actual_enumeration.ptr()->enumeration()));
 }
 
 TEST_CASE_METHOD(

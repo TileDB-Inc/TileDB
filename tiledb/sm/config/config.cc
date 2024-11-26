@@ -94,6 +94,8 @@ const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_CURL_TCP_KEEPALIVE = "true";
 const std::string Config::REST_CURL_RETRY_ERRORS = "true";
 const std::string Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN = "false";
+const std::string Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN_ALL_SCHEMAS =
+    "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "true";
@@ -264,6 +266,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "rest.load_enumerations_on_array_open",
         Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN),
+    std::make_pair(
+        "rest.load_enumerations_on_array_open_all_schemas",
+        Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN_ALL_SCHEMAS),
     std::make_pair(
         "rest.load_metadata_on_array_open",
         Config::REST_LOAD_METADATA_ON_ARRAY_OPEN),

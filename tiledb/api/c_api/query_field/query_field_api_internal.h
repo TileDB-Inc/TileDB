@@ -73,6 +73,7 @@ struct tiledb_query_field_handle_t
   std::shared_ptr<FieldOrigin> field_origin_;
   tiledb::sm::Datatype type_;
   uint32_t cell_val_num_;
+  bool is_nullable_;
   std::shared_ptr<tiledb::sm::QueryChannel> channel_;
 
  public:
@@ -95,6 +96,9 @@ struct tiledb_query_field_handle_t
   }
   uint32_t cell_val_num() {
     return cell_val_num_;
+  }
+  bool is_nullable() const {
+    return is_nullable_;
   }
   tiledb_query_channel_handle_t* channel() {
     return tiledb_query_channel_handle_t::make_handle(channel_);

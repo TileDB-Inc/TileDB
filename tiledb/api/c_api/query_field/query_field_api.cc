@@ -57,19 +57,23 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
   if (field_name_ == tiledb::sm::constants::coords) {
     field_origin_ = std::make_shared<FieldFromDimension>();
     type_ = query_->array_schema().domain().dimension_ptr(0)->type();
+    is_nullable_ = false;
     cell_val_num_ = 1;
   } else if (field_name_ == tiledb::sm::constants::timestamps) {
     field_origin_ = std::make_shared<FieldFromAttribute>();
     type_ = tiledb::sm::constants::timestamp_type;
+    is_nullable_ = false;
     cell_val_num_ = 1;
   } else if (query_->array_schema().is_attr(field_name_)) {
     field_origin_ = std::make_shared<FieldFromAttribute>();
     type_ = query_->array_schema().attribute(field_name_)->type();
+    is_nullable_ = query_->array_schema().attribute(field_name_)->nullable();
     cell_val_num_ =
         query_->array_schema().attribute(field_name_)->cell_val_num();
   } else if (query_->array_schema().is_dim(field_name_)) {
     field_origin_ = std::make_shared<FieldFromDimension>();
     type_ = query_->array_schema().dimension_ptr(field_name_)->type();
+    is_nullable_ = false;
     cell_val_num_ =
         query_->array_schema().dimension_ptr(field_name_)->cell_val_num();
   } else if (query_->is_aggregate(field_name_)) {
@@ -77,6 +81,7 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     field_origin_ = std::make_shared<FieldFromAggregate>();
     auto aggregate = query_->get_aggregate(field_name_).value();
     type_ = aggregate->output_datatype();
+    is_nullable_ = aggregate->aggregation_nullable();
     cell_val_num_ =
         aggregate->aggregation_var_sized() ? tiledb::sm::constants::var_num : 1;
   } else {
@@ -152,6 +157,14 @@ capi_return_t tiledb_field_cell_val_num(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_field_get_nullable(
+    tiledb_query_field_t* field, uint8_t* nullable) {
+  ensure_query_field_is_valid(field);
+  ensure_output_pointer_is_valid(nullable);
+  *nullable = field->is_nullable();
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_field_origin(
     tiledb_query_field_t* field, tiledb_field_origin_t* origin) {
   ensure_query_field_is_valid(field);
@@ -203,6 +216,15 @@ CAPI_INTERFACE(
     uint32_t* cell_val_num) {
   return api_entry_context<tiledb::api::tiledb_field_cell_val_num>(
       ctx, field, cell_val_num);
+}
+
+CAPI_INTERFACE(
+    field_get_nullable,
+    tiledb_ctx_t* ctx,
+    tiledb_query_field_t* field,
+    uint8_t* nullable) {
+  return api_entry_context<tiledb::api::tiledb_field_get_nullable>(
+      ctx, field, nullable);
 }
 
 CAPI_INTERFACE(

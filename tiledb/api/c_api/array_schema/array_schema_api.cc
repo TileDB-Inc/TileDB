@@ -210,24 +210,30 @@ capi_return_t tiledb_array_schema_get_enumeration_from_attribute_name(
   ensure_array_schema_is_valid(array_schema);
   ensure_output_pointer_is_valid(enumeration);
 
-  tiledb_attribute_t* attribute;
-  capi_return_t getattr = tiledb_array_schema_get_attribute_from_name(
-      ctx, array_schema, attribute_name, &attribute);
-  if (tiledb_status(getattr) != TILEDB_OK) {
-    return getattr;
+  if (attribute_name == nullptr) {
+    throw CAPIException("'attribute_name' must not be null");
+  }
+  std::string attribute_name_string(attribute_name);
+  auto found_attr = array_schema->shared_attribute(attribute_name_string);
+  if (!found_attr) {
+    throw CAPIException(
+        std::string("Attribute name: ") +
+        (attribute_name_string.empty() ? "<anonymous>" : attribute_name) +
+        " does not exist for array " + array_schema->array_uri().to_string());
   }
 
-  tiledb_string_t* enumeration_name_inner;
-  capi_return_t getenmr = tiledb_attribute_get_enumeration_name(
-      ctx, attribute, &enumeration_name_inner);
-  if (tiledb_status(getenmr) != TILEDB_OK) {
-    return getenmr;
+  auto enumeration_name = found_attr->get_enumeration_name();
+  if (!enumeration_name.has_value()) {
+    *enumeration = nullptr;
+    return TILEDB_OK;
   }
 
-  std::string enumeration_name(enumeration_name_inner->view());
-  return api_entry_with_context<
-      tiledb::api::tiledb_array_schema_get_enumeration_from_name>(
-      ctx, array_schema, enumeration_name.c_str(), enumeration);
+  array_schema->load_enumeration(ctx, enumeration_name->c_str());
+
+  auto ptr = array_schema->get_enumeration(enumeration_name->c_str());
+  *enumeration = tiledb_enumeration_handle_t::make_handle(ptr);
+
+  return TILEDB_OK;
 }
 
 capi_return_t tiledb_array_schema_add_enumeration(

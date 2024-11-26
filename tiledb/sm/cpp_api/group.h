@@ -473,13 +473,11 @@ class Group {
   std::string dump(const bool recursive) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    char* str;
+    tiledb_string_t* str;
     ctx.handle_error(
-        tiledb_group_dump_str(c_ctx, group_.get(), &str, recursive));
+        tiledb_group_dump_str_v2(c_ctx, group_.get(), &str, recursive));
 
-    std::string ret(str);
-    free(str);
-    return ret;
+    return impl::convert_to_string(&str).value();
   }
 
   /**

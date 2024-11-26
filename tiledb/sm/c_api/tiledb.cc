@@ -2155,7 +2155,7 @@ capi_return_t tiledb_handle_load_array_schema_request(
           static_cast<tiledb::sm::SerializationType>(serialization_type),
           request->buffer());
 
-  if (load_schema_req.include_enumerations()) {
+  if (load_schema_req.include_enumerations_latest_schema()) {
     array->load_all_enumerations();
   }
 

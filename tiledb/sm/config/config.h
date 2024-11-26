@@ -116,8 +116,17 @@ class Config {
   /** If we should retry Curl errors in requests to REST. */
   static const std::string REST_CURL_RETRY_ERRORS;
 
-  /** If the array enumerations should be loaded on array open */
+  /**
+   * If the array enumerations should be loaded on array open for the latest
+   * array schema only.
+   */
   static const std::string REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN;
+
+  /**
+   * If the array enumerations should be loaded on array open for all array
+   * schemas.
+   */
+  static const std::string REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN_ALL_SCHEMAS;
 
   /** If the array metadata should be loaded on array open */
   static const std::string REST_LOAD_METADATA_ON_ARRAY_OPEN;
