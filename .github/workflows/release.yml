@@ -84,7 +84,7 @@ jobs:
         # v4 uses node 20 which is incompatible with the libc version of the manylinux image
         uses: actions/checkout@v3
       - name: 'Homebrew setup'
-        run: brew install automake pkg-config ninja
+        run: brew install automake ninja
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
       - name: Export GitHub Actions cache variables
         uses: actions/github-script@v6
