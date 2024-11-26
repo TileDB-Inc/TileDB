@@ -377,7 +377,7 @@ Status group_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::Group>();
         kj::String capnp_json = json.encode(groupBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -416,9 +416,7 @@ Status group_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Group::Builder group_builder =
             message_builder.initRoot<capnp::Group>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            group_builder);
+        utils::decode_json_message(serialized_buffer, group_builder, json);
         capnp::Group::Reader group_reader = group_builder.asReader();
         RETURN_NOT_OK(group_from_capnp(group_reader, group));
         break;
@@ -476,7 +474,7 @@ Status group_details_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::Group::GroupDetails>();
         kj::String capnp_json = json.encode(groupDetailsBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -515,9 +513,8 @@ Status group_details_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Group::GroupDetails::Builder group_details_builder =
             message_builder.initRoot<capnp::Group::GroupDetails>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            group_details_builder);
+        utils::decode_json_message(
+            serialized_buffer, group_details_builder, json);
         capnp::Group::GroupDetails::Reader group_details_reader =
             group_details_builder.asReader();
         RETURN_NOT_OK(group_details_from_capnp(group_details_reader, group));
@@ -578,7 +575,7 @@ Status group_update_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupUpdate>();
         kj::String capnp_json = json.encode(groupUpdateBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -617,9 +614,8 @@ Status group_update_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::GroupUpdate::Builder group_update_builder =
             message_builder.initRoot<capnp::GroupUpdate>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            group_update_builder);
+        utils::decode_json_message(
+            serialized_buffer, group_update_builder, json);
         capnp::GroupUpdate::Reader group_reader =
             group_update_builder.asReader();
         RETURN_NOT_OK(group_update_from_capnp(group_reader, group));
@@ -679,7 +675,7 @@ Status group_create_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupCreate>();
         kj::String capnp_json = json.encode(group_create_builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -723,7 +719,7 @@ Status group_metadata_serialize(
         ::capnp::JsonCodec json;
         json.handleByAnnotation<capnp::GroupCreate>();
         kj::String capnp_json = json.encode(group_metadata_builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {

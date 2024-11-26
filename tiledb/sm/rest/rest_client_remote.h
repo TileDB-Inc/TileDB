@@ -577,15 +577,6 @@ class RestClientRemote : public RestClient {
    * @return Returns the redirection URI if exists and empty string otherwise
    */
   std::string redirect_uri(const std::string& cache_key);
-
-  /**
-   * Cap'n proto requires JSON messages to be null terminated c-style strings.
-   * This function checks if using JSON that returned buffers are null delimited
-   *
-   * @param buffer of server message
-   * @return Status
-   */
-  Status ensure_json_null_delimited_string(Buffer* buffer);
 };
 
 }  // namespace tiledb::sm

@@ -1201,7 +1201,7 @@ Status array_schema_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(arraySchemaBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1238,12 +1238,9 @@ shared_ptr<ArraySchema> array_schema_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         capnp::ArraySchema::Builder array_schema_builder =
             message_builder.initRoot<capnp::ArraySchema>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            array_schema_builder);
+        utils::decode_json_message(serialized_buffer, array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
         return array_schema_from_capnp(
             array_schema_reader, URI(), memory_tracker);
@@ -1301,7 +1298,7 @@ Status nonempty_domain_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1342,12 +1339,9 @@ Status nonempty_domain_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder = message_builder.initRoot<capnp::NonEmptyDomain>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            builder);
+        utils::decode_json_message(serialized_buffer, builder);
         auto reader = builder.asReader();
 
         // Deserialize
@@ -1429,7 +1423,7 @@ Status nonempty_domain_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1472,12 +1466,9 @@ Status nonempty_domain_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder = message_builder.initRoot<capnp::NonEmptyDomain>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            builder);
+        utils::decode_json_message(serialized_buffer, builder);
         auto reader = builder.asReader();
 
         // Deserialize
@@ -1552,7 +1543,7 @@ Status nonempty_domain_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1587,12 +1578,9 @@ Status nonempty_domain_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder = message_builder.initRoot<capnp::NonEmptyDomainList>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            builder);
+        utils::decode_json_message(serialized_buffer, builder);
         auto reader = builder.asReader();
 
         // Deserialize
@@ -1655,7 +1643,7 @@ void serialize_load_array_schema_request(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        data.assign_null_terminated(capnp_json);
+        data.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1699,11 +1687,10 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
             message_builder.initRoot<capnp::LoadArraySchemaRequest>();
-        json.decode(kj::StringPtr(data.data()), builder);
+        utils::decode_json_message(data, builder);
         auto reader = builder.asReader();
         return load_array_schema_request_from_capnp(reader);
       }
@@ -1765,7 +1752,7 @@ void serialize_load_array_schema_response(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        data.assign_null_terminated(capnp_json);
+        data.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1831,11 +1818,10 @@ deserialize_load_array_schema_response(
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
             message_builder.initRoot<capnp::LoadArraySchemaResponse>();
-        json.decode(kj::StringPtr(data.data()), builder);
+        utils::decode_json_message(data, builder);
         auto reader = builder.asReader();
         return load_array_schema_response_from_capnp(
             uri, reader, memory_tracker);

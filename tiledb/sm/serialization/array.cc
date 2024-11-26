@@ -407,7 +407,7 @@ Status metadata_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(builder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -447,12 +447,9 @@ Status metadata_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder = message_builder.initRoot<capnp::ArrayMetadata>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            builder);
+        utils::decode_json_message(serialized_buffer, builder);
         auto reader = builder.asReader();
 
         // Deserialize
@@ -515,7 +512,7 @@ Status array_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(ArrayBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -551,13 +548,10 @@ void array_deserialize(
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         capnp::Array::Builder array_builder =
             message_builder.initRoot<capnp::Array>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            array_builder);
+        utils::decode_json_message(serialized_buffer, array_builder);
         capnp::Array::Reader array_reader = array_builder.asReader();
         array_from_capnp(array_reader, resources, array, true, memory_tracker);
         break;
@@ -612,7 +606,7 @@ Status array_open_serialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         kj::String capnp_json = json.encode(arrayOpenBuilder);
-        serialized_buffer.assign_null_terminated(capnp_json);
+        serialized_buffer.assign(capnp_json);
         break;
       }
       case SerializationType::CAPNP: {
@@ -652,9 +646,7 @@ Status array_open_deserialize(
         ::capnp::MallocMessageBuilder message_builder;
         capnp::ArrayOpen::Builder array_open_builder =
             message_builder.initRoot<capnp::ArrayOpen>();
-        json.decode(
-            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
-            array_open_builder);
+        utils::decode_json_message(serialized_buffer, array_open_builder, json);
         capnp::ArrayOpen::Reader array_open_reader =
             array_open_builder.asReader();
         RETURN_NOT_OK(array_open_from_capnp(array_open_reader, array));
