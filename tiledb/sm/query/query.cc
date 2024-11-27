@@ -845,7 +845,7 @@ Status Query::process() {
   if (type_ == QueryType::READ) {
     auto cd = array_schema_->get_current_domain();
     if (!cd->empty()) {
-      std::cout << "QUERY::PROCESS CHECKING CURDOM\n";
+      //std::cout << "QUERY::PROCESS CHECKING CURDOM\n";
       // See if any data was written outside of the current domain.
       bool all_ned_contained_in_current_domain = true;
       for (auto& meta : fragment_metadata_) {
@@ -860,9 +860,9 @@ Status Query::process() {
           // Make sure all ranges are contained in the current domain.
           for (auto& range : subarray_.ranges_for_dim(d)) {
             // XXX TOUCH
-            std::cout << "QUERY::PROCESS D=" << d << "\n";
-            std::cout << "QUERY::PROCESS S=" << range.start_as<int64_t>() << "\n";
-            std::cout << "QUERY::PROCESS E=" << range.end_as<int64_t>() << "\n";
+            //std::cout << "QUERY::PROCESS D=" << d << "\n";
+            //std::cout << "QUERY::PROCESS S=" << range.start_as<int64_t>() << "\n";
+            //std::cout << "QUERY::PROCESS E=" << range.end_as<int64_t>() << "\n";
             if (!cd->includes(d, range)) {
               throw QueryException(
                   "A range was set outside of the current domain.");

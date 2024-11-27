@@ -1906,10 +1906,12 @@ void expand_to_tiles_helper(
 
     if (dimptr->var_size()) {
       //std::cout << "  HELPER DIMIDX " << dimidx << " SKIP VAR-SIZE\n";
+      continue;
     }
 
     if (!dimptr->tile_extent()) {
       //std::cout << "  HELPER DIMIDX " << dimidx << " SKIP NO EXTENT\n";
+      continue;
     }
 
     switch (dimptr->type()) {
