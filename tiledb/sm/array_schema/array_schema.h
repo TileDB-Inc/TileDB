@@ -43,6 +43,8 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
+#include "tiledb/sm/array_schema/current_domain.h"
+#include "tiledb/sm/array_schema/domain.h"
 
 using namespace tiledb::common;
 
@@ -797,5 +799,11 @@ class ArraySchema {
 /** Converts the filter into a string representation. */
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::ArraySchema& schema);
+
+/** XXX COMMENT ME PLZ THX */
+void expand_to_tiles_helper(
+  const tiledb::sm::Domain& domain,
+  const tiledb::sm::CurrentDomain& current_domain,
+  tiledb::sm::NDRange* ndrange);
 
 #endif  // TILEDB_ARRAY_SCHEMA_H
