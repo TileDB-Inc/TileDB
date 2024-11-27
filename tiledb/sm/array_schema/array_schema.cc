@@ -1765,94 +1765,151 @@ std::ostream& operator<<(
   return os;
 }
 
+// This is a templatized auxiliary for expand_to_tiles_helper, dispatched on the
+// (necessarily integral) type of a given domain slot.
+// Please see expand_to_tiles_helper for comments.
 template <typename T>
 void expand_to_tiles_helper_aux(
     tiledb::sm::CurrentDomain::dimension_size_type dimidx,
     const Dimension* dimptr,
-    std::shared_ptr<NDRectangle> ndrect,
-    tiledb::sm::NDRange* ndrange) {
-  std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-            << " SIZEOF(T) = " << sizeof(T) << "\n";
+    std::shared_ptr<NDRectangle> cur_dom_ndrect,
+    tiledb::sm::NDRange* query_ndrange) {
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " SIZEOF(T) = " << sizeof(T) << "\n";
 
+  // No extents for string dims, etc.
   if (!std::is_integral_v<T>) {
-    std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " SKIP NON-INTEGRAL\n";
+    //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " SKIP NON-INTEGRAL\n";
+    return;
   }
 
-  // SKETCH
-  // * find the intersection of tile extent & current domain
-  // * expand the subarray to that
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " NDRANGE SIZE = " << query_ndrange->size() << "\n";
 
+  // Find the initial lo/hi for the query range on this dimension.
+  auto query_slot = (*query_ndrange)[dimidx];
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " RANGE SIZE = " << query_slot.size() << "\n";
+  auto query_slot_range = (const T*)query_slot.data();
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " QUERY_SLOT_RANGE[0] = " << query_slot_range[0] << "\n";
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " QUERY_SLOT_RANGE[1] = " << query_slot_range[1] << "\n";
+
+  // Find the lo/hi for the current domain on this dimension.
+  auto cur_dom_slot_range = (const T*)cur_dom_ndrect->get_range(dimidx).data();
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " CUR_DOM_SLOT_RANGE[0] = " << cur_dom_slot_range[0] << "\n";
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " CUR_DOM_SLOT_RANGE[1] = " << cur_dom_slot_range[1] << "\n";
+
+  // Find the lo/hi for the core domain (max domain) on this dimension.
+  auto dim_dom = (const T*)dimptr->domain().data();
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " DIMDOM[0] = " << dim_dom[0] << "\n";
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " DIMDOM[1] = " << dim_dom[1] << "\n";
+
+  // Find the tile extent.
   auto tile_extent = *(const T*)dimptr->tile_extent().data();
-  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " TILE_EXTENT "
-            << tile_extent << "\n";
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+  //          << " TILE_EXTENT = " << tile_extent << "\n";
 
-  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " NDRANGE SIZE "
-            << ndrange->size() << "\n";
+  // Compute tile indices: e.g. if the extent is 512 and the query lo is
+  // 1027, that's tile 2.
+  T domain_low = dim_dom[0];
+  auto tile_idx0 =
+      Dimension::tile_idx(query_slot_range[0], domain_low, tile_extent);
+  auto tile_idx1 =
+      Dimension::tile_idx(query_slot_range[1], domain_low, tile_extent);
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " TILE_IDX0 " << tile_idx0
+  //          << "\n";
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " TILE_IDX1 " << tile_idx1
+  //          << "\n";
 
-  auto range = (*ndrange)[dimidx];
-  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RANGE SIZE "
-            << range.size() << "\n";
+  // Round up to a multiple of the tile coords. E.g. if the query range
+  // starts out as (3,4) but the tile extent is 512, that will become (0,511).
+  T result[2];
+  result[0] = Dimension::tile_coord_low(tile_idx0, domain_low, tile_extent);
+  result[1] = Dimension::tile_coord_high(tile_idx1, domain_low, tile_extent);
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RESULT0 " << result[0]
+  //          << "\n";
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RESULT1 " << result[1]
+  //          << "\n";
 
-  auto r = (const T*)range.data();
-  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " R[0] " << r[0]
-            << "\n";
-  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " R[1] " << r[1]
-            << "\n";
+  // Since there is a current domain, though, rounding up to a multiple of the
+  // tile extent will lead to an out-of-bounds read. Make the query range lo
+  // no smaller than current domain lo on this dimension, and make the query
+  // range hi no larger than current domain hi on this dimension.
+  if (cur_dom_slot_range[0] > result[0]) {
+    result[0] = cur_dom_slot_range[0];
+  }
+  if (cur_dom_slot_range[1] < result[1]) {
+    result[1] = cur_dom_slot_range[1];
+  }
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RESULT0 " << result[0]
+  //          << "\n";
+  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RESULT1 " << result[1]
+  //          << "\n";
 
-  // auto dim_dom = (const T*)dimptr->domain().data();
-
-  // auto tile_idx1 = tile_idx(r[0], dim_dom[0], tile_extent);
-  // auto tile_idx2 = tile_idx(r[1], dim_dom[0], tile_extent);
-  // std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " TILE_IDX1 " <<
-  // tile_idx1 << "\n"; std::cout << "    HELPER_AUX DIM_IDX " << dimidx << "
-  // TILE_IDX2 " << tile_idx2 << "\n";
-
-  // TO PORT
-  // T res[2];
-  // res[0] = tile_coord_low(tile_idx1, dim_dom[0], tile_extent);
-  // res[1] = tile_coord_high(tile_idx2, dim_dom[0], tile_extent);
-
-  // range->set_range(res, sizeof(res));
+  // Update the query range
+  query_slot.set_range(result, sizeof(result));
 }
 
+// The job here is, for a given domain slot:
+// * Given query ranges (nominally, for dense consolidation)
+// * Given the core current domain (which may be empty)
+// * Given the core (max) domain
+// * Given initial query bounds
+// * If the current domain is empty:
+//   o round the query to tile boundaries
+// * Else:
+//   o round the query to tile boundaries, but not outside the current domain
+//
+// Example on one dim slot:
+// * Say non-empty domain is (3,4)
+// * Say tile extent is 512
+// * Say domain is (0,99999)
+// * If current domain is empty: send (3,4) to (0,511)
+// * If current domain is (2, 63): send (3,4) to (2,63)
 void expand_to_tiles_helper(
     const tiledb::sm::Domain& domain,
     const tiledb::sm::CurrentDomain& current_domain,
-    tiledb::sm::NDRange* ndrange) {
-  std::cout << "HELPER ENTER\n";
+    tiledb::sm::NDRange* query_ndrange) {
+  //std::cout << "HELPER ENTER\n";
 
-  assert(!ndrange->empty());
+  assert(!query_ndrange->empty());
 
   if (current_domain.empty()) {
-    std::cout << "HELPER EXIT: NO CURRENT DOMAIN\n";
-    domain.expand_to_tiles(ndrange);
+    //std::cout << "HELPER EXIT: NO CURRENT DOMAIN\n";
+    domain.expand_to_tiles(query_ndrange);
     return;
   }
 
   if (current_domain.type() != CurrentDomainType::NDRECTANGLE) {
-    std::cout << "HELPER EXIT: CURRENT DOMAIN IS NON-RECTANGULAR\n";
+    //std::cout << "HELPER EXIT: CURRENT DOMAIN IS NON-RECTANGULAR\n";
     return;
   }
 
-  auto ndrect = current_domain.ndrectangle();
+  auto cur_dom_ndrect = current_domain.ndrectangle();
 
-  assert(ndrange->size() == domain.dim_num());
+  assert(query_ndrange->size() == domain.dim_num());
 
   for (tiledb::sm::CurrentDomain::dimension_size_type dimidx = 0;
        dimidx < domain.dim_num();
        dimidx++) {
-    std::cout << "  HELPER DIMIDX " << dimidx << " START\n";
+    //std::cout << "  HELPER DIMIDX " << dimidx << " START\n";
 
     const auto dimptr = domain.dimension_ptr(dimidx);
 
     assert(dimptr != nullptr);
 
     if (dimptr->var_size()) {
-      std::cout << "  HELPER DIMIDX " << dimidx << " SKIP VAR-SIZE\n";
+      //std::cout << "  HELPER DIMIDX " << dimidx << " SKIP VAR-SIZE\n";
     }
 
     if (!dimptr->tile_extent()) {
-      std::cout << "  HELPER DIMIDX " << dimidx << " SKIP NO EXTENT\n";
+      //std::cout << "  HELPER DIMIDX " << dimidx << " SKIP NO EXTENT\n";
     }
 
     switch (dimptr->type()) {
@@ -1879,33 +1936,42 @@ void expand_to_tiles_helper(
       case Datatype::TIME_PS:
       case Datatype::TIME_FS:
       case Datatype::TIME_AS:
-        expand_to_tiles_helper_aux<int64_t>(dimidx, dimptr, ndrect, ndrange);
+        expand_to_tiles_helper_aux<int64_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::UINT64:
-        expand_to_tiles_helper_aux<uint64_t>(dimidx, dimptr, ndrect, ndrange);
+        expand_to_tiles_helper_aux<uint64_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::INT32:
-        expand_to_tiles_helper_aux<int32_t>(dimidx, dimptr, ndrect, ndrange);
+        expand_to_tiles_helper_aux<int32_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::UINT32:
-        expand_to_tiles_helper_aux<uint32_t>(dimidx, dimptr, ndrect, ndrange);
+        expand_to_tiles_helper_aux<uint32_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::INT16:
-        expand_to_tiles_helper_aux<int16_t>(dimidx, dimptr, ndrect, ndrange);
+        expand_to_tiles_helper_aux<int16_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::UINT16:
-        expand_to_tiles_helper_aux<uint16_t>(dimidx, dimptr, ndrect, ndrange);
+        expand_to_tiles_helper_aux<uint16_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::INT8:
-        expand_to_tiles_helper_aux<int8_t>(dimidx, dimptr, ndrect, ndrange);
+        expand_to_tiles_helper_aux<int8_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::UINT8:
-        expand_to_tiles_helper_aux<uint8_t>(dimidx, dimptr, ndrect, ndrange);
+        expand_to_tiles_helper_aux<uint8_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       default:
-        std::cout << "  HELPER DIMIDX " << dimidx << " NO TYPE MATCH\n";
+        //std::cout << "  HELPER DIMIDX " << dimidx << " NO TYPE MATCH\n";
     }
+    //std::cout << "  HELPER DIMIDX " << dimidx << " END\n";
   }
 
-  std::cout << "HELPER EXIT\n";
+  //std::cout << "HELPER EXIT\n";
 }
