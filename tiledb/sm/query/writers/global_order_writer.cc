@@ -664,7 +664,11 @@ Status GlobalOrderWriter::finalize_global_write_state() {
     // values.
     if (disable_checks_consolidation_) {
       auto expanded_subarray = subarray_.ndrange(0);
-      domain.expand_to_tiles(&expanded_subarray);
+      // XXX domain.expand_to_tiles(&expanded_subarray);
+      expand_to_tiles_helper(
+        domain,
+        array_schema_.current_domain(),
+        &expanded_subarray);
       expected_cell_num = domain.cell_num(expanded_subarray);
     }
 
