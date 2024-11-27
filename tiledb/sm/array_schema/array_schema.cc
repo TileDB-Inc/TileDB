@@ -1770,7 +1770,25 @@ void expand_to_tiles_helper(
   const tiledb::sm::CurrentDomain& current_domain,
   tiledb::sm::NDRange* ndrange) {
 
+  std::cout << "HELPER ENTER\n";
   if (current_domain.empty()) {
     return;
   }
+
+// the callsite has array_schema_
+// the callsite can do array_schema_->domain and array_schema_->current_domain
+// the callsite calls new_helper_func(array_schema->domain, array_schema->current_domain, &subarray)
+// new_helper_func does:
+// if current_domain.is_empty():
+// call domain->expand_to_tiles(&subararray)
+// return
+// see if the current domain  type is not NDRectangle
+// if it is not NDRectange: either throw, or, leave the subarray unmodified -- personally I would prefer the latter
+// return
+// now we have current domain which is of type NDRectangle
+// for each dim slot:
+// find the intersection of  tile extent & current domain
+// expand the subarray to that
+// skip if std::is_inteeral
+
 }
