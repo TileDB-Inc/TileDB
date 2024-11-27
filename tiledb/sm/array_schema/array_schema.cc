@@ -1764,3 +1764,13 @@ std::ostream& operator<<(
 
   return os;
 }
+
+void expand_to_tiles_helper(
+  const tiledb::sm::Domain& domain,
+  const tiledb::sm::CurrentDomain& current_domain,
+  tiledb::sm::NDRange* ndrange) {
+
+  if (current_domain.empty()) {
+    return;
+  }
+}
