@@ -1765,30 +1765,147 @@ std::ostream& operator<<(
   return os;
 }
 
-void expand_to_tiles_helper(
-  const tiledb::sm::Domain& domain,
-  const tiledb::sm::CurrentDomain& current_domain,
-  tiledb::sm::NDRange* ndrange) {
+template <typename T>
+void expand_to_tiles_helper_aux(
+    tiledb::sm::CurrentDomain::dimension_size_type dimidx,
+    const Dimension* dimptr,
+    std::shared_ptr<NDRectangle> ndrect,
+    tiledb::sm::NDRange* ndrange) {
+  std::cout << "    HELPER_AUX DIM_IDX " << dimidx
+            << " SIZEOF(T) = " << sizeof(T) << "\n";
 
+  if (!std::is_integral_v<T>) {
+    std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " SKIP NON-INTEGRAL\n";
+  }
+
+  // SKETCH
+  // * find the intersection of tile extent & current domain
+  // * expand the subarray to that
+
+  auto tile_extent = *(const T*)dimptr->tile_extent().data();
+  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " TILE_EXTENT "
+            << tile_extent << "\n";
+
+  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " NDRANGE SIZE "
+            << ndrange->size() << "\n";
+
+  auto range = (*ndrange)[dimidx];
+  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RANGE SIZE "
+            << range.size() << "\n";
+
+  auto r = (const T*)range.data();
+  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " R[0] " << r[0]
+            << "\n";
+  std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " R[1] " << r[1]
+            << "\n";
+
+  // auto dim_dom = (const T*)dimptr->domain().data();
+
+  // auto tile_idx1 = tile_idx(r[0], dim_dom[0], tile_extent);
+  // auto tile_idx2 = tile_idx(r[1], dim_dom[0], tile_extent);
+  // std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " TILE_IDX1 " <<
+  // tile_idx1 << "\n"; std::cout << "    HELPER_AUX DIM_IDX " << dimidx << "
+  // TILE_IDX2 " << tile_idx2 << "\n";
+
+  // TO PORT
+  // T res[2];
+  // res[0] = tile_coord_low(tile_idx1, dim_dom[0], tile_extent);
+  // res[1] = tile_coord_high(tile_idx2, dim_dom[0], tile_extent);
+
+  // range->set_range(res, sizeof(res));
+}
+
+void expand_to_tiles_helper(
+    const tiledb::sm::Domain& domain,
+    const tiledb::sm::CurrentDomain& current_domain,
+    tiledb::sm::NDRange* ndrange) {
   std::cout << "HELPER ENTER\n";
+
+  assert(!ndrange->empty());
+
   if (current_domain.empty()) {
+    std::cout << "HELPER EXIT: NO CURRENT DOMAIN\n";
+    domain.expand_to_tiles(ndrange);
     return;
   }
 
-// the callsite has array_schema_
-// the callsite can do array_schema_->domain and array_schema_->current_domain
-// the callsite calls new_helper_func(array_schema->domain, array_schema->current_domain, &subarray)
-// new_helper_func does:
-// if current_domain.is_empty():
-// call domain->expand_to_tiles(&subararray)
-// return
-// see if the current domain  type is not NDRectangle
-// if it is not NDRectange: either throw, or, leave the subarray unmodified -- personally I would prefer the latter
-// return
-// now we have current domain which is of type NDRectangle
-// for each dim slot:
-// find the intersection of  tile extent & current domain
-// expand the subarray to that
-// skip if std::is_inteeral
+  if (current_domain.type() != CurrentDomainType::NDRECTANGLE) {
+    std::cout << "HELPER EXIT: CURRENT DOMAIN IS NON-RECTANGULAR\n";
+    return;
+  }
 
+  auto ndrect = current_domain.ndrectangle();
+
+  assert(ndrange->size() == domain.dim_num());
+
+  for (tiledb::sm::CurrentDomain::dimension_size_type dimidx = 0;
+       dimidx < domain.dim_num();
+       dimidx++) {
+    std::cout << "  HELPER DIMIDX " << dimidx << " START\n";
+
+    const auto dimptr = domain.dimension_ptr(dimidx);
+
+    assert(dimptr != nullptr);
+
+    if (dimptr->var_size()) {
+      std::cout << "  HELPER DIMIDX " << dimidx << " SKIP VAR-SIZE\n";
+    }
+
+    if (!dimptr->tile_extent()) {
+      std::cout << "  HELPER DIMIDX " << dimidx << " SKIP NO EXTENT\n";
+    }
+
+    switch (dimptr->type()) {
+      case Datatype::INT64:
+      case Datatype::DATETIME_YEAR:
+      case Datatype::DATETIME_MONTH:
+      case Datatype::DATETIME_WEEK:
+      case Datatype::DATETIME_DAY:
+      case Datatype::DATETIME_HR:
+      case Datatype::DATETIME_MIN:
+      case Datatype::DATETIME_SEC:
+      case Datatype::DATETIME_MS:
+      case Datatype::DATETIME_US:
+      case Datatype::DATETIME_NS:
+      case Datatype::DATETIME_PS:
+      case Datatype::DATETIME_FS:
+      case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
+        expand_to_tiles_helper_aux<int64_t>(dimidx, dimptr, ndrect, ndrange);
+        break;
+      case Datatype::UINT64:
+        expand_to_tiles_helper_aux<uint64_t>(dimidx, dimptr, ndrect, ndrange);
+        break;
+      case Datatype::INT32:
+        expand_to_tiles_helper_aux<int32_t>(dimidx, dimptr, ndrect, ndrange);
+        break;
+      case Datatype::UINT32:
+        expand_to_tiles_helper_aux<uint32_t>(dimidx, dimptr, ndrect, ndrange);
+        break;
+      case Datatype::INT16:
+        expand_to_tiles_helper_aux<int16_t>(dimidx, dimptr, ndrect, ndrange);
+        break;
+      case Datatype::UINT16:
+        expand_to_tiles_helper_aux<uint16_t>(dimidx, dimptr, ndrect, ndrange);
+        break;
+      case Datatype::INT8:
+        expand_to_tiles_helper_aux<int8_t>(dimidx, dimptr, ndrect, ndrange);
+        break;
+      case Datatype::UINT8:
+        expand_to_tiles_helper_aux<uint8_t>(dimidx, dimptr, ndrect, ndrange);
+        break;
+      default:
+        std::cout << "  HELPER DIMIDX " << dimidx << " NO TYPE MATCH\n";
+    }
+  }
+
+  std::cout << "HELPER EXIT\n";
 }
