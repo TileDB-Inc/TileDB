@@ -1971,6 +1971,7 @@ void expand_to_tiles_helper(
         break;
       default:
         //std::cout << "  HELPER DIMIDX " << dimidx << " NO TYPE MATCH\n";
+        break;
     }
     //std::cout << "  HELPER DIMIDX " << dimidx << " END\n";
   }
