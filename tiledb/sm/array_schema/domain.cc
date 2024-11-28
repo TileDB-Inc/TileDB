@@ -390,7 +390,7 @@ void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
   }
 }
 
-void Domain::expand_to_tiles(NDRange* ndrange) const { // XXX TOUCH
+void Domain::expand_to_tiles(NDRange* ndrange) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
     const auto dim = dimension_ptrs_[d];
     // Applicable only to fixed-sized dimensions

@@ -44,7 +44,7 @@
 
 namespace tiledb::sm {
 
-CurrentDomain::CurrentDomain( // XXX TOUCH
+CurrentDomain::CurrentDomain(
     shared_ptr<MemoryTracker> memory_tracker, format_version_t version)
     : memory_tracker_(memory_tracker)
     , empty_(true)
