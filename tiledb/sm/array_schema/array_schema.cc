@@ -1765,11 +1765,11 @@ std::ostream& operator<<(
   return os;
 }
 
-// This is a templatized auxiliary for expand_to_tiles_helper, dispatched on the
+// This is a templatized auxiliary for expand_tiles_respecting_current_domain, dispatched on the
 // (necessarily integral) type of a given domain slot.
-// Please see expand_to_tiles_helper for comments.
+// Please see expand_tiles_respecting_current_domain for comments.
 template <typename T>
-void expand_to_tiles_helper_aux(
+void expand_tiles_respecting_current_domain_aux(
     tiledb::sm::CurrentDomain::dimension_size_type dimidx,
     const Dimension* dimptr,
     std::shared_ptr<NDRectangle> cur_dom_ndrect,
@@ -1872,7 +1872,7 @@ void expand_to_tiles_helper_aux(
 // * Say domain is (0,99999)
 // * If current domain is empty: send (3,4) to (0,511)
 // * If current domain is (2, 63): send (3,4) to (2,63)
-void expand_to_tiles_helper(
+void expand_tiles_respecting_current_domain(
     const tiledb::sm::Domain& domain,
     const tiledb::sm::CurrentDomain& current_domain,
     tiledb::sm::NDRange* query_ndrange) {
@@ -1938,35 +1938,35 @@ void expand_to_tiles_helper(
       case Datatype::TIME_PS:
       case Datatype::TIME_FS:
       case Datatype::TIME_AS:
-        expand_to_tiles_helper_aux<int64_t>(
+        expand_tiles_respecting_current_domain_aux<int64_t>(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::UINT64:
-        expand_to_tiles_helper_aux<uint64_t>(
+        expand_tiles_respecting_current_domain_aux<uint64_t>(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::INT32:
-        expand_to_tiles_helper_aux<int32_t>(
+        expand_tiles_respecting_current_domain_aux<int32_t>(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::UINT32:
-        expand_to_tiles_helper_aux<uint32_t>(
+        expand_tiles_respecting_current_domain_aux<uint32_t>(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::INT16:
-        expand_to_tiles_helper_aux<int16_t>(
+        expand_tiles_respecting_current_domain_aux<int16_t>(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::UINT16:
-        expand_to_tiles_helper_aux<uint16_t>(
+        expand_tiles_respecting_current_domain_aux<uint16_t>(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::INT8:
-        expand_to_tiles_helper_aux<int8_t>(
+        expand_tiles_respecting_current_domain_aux<int8_t>(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       case Datatype::UINT8:
-        expand_to_tiles_helper_aux<uint8_t>(
+        expand_tiles_respecting_current_domain_aux<uint8_t>(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       default:
