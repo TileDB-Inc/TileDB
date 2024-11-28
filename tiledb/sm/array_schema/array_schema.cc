@@ -1765,55 +1765,31 @@ std::ostream& operator<<(
   return os;
 }
 
-// This is a templatized auxiliary for expand_tiles_respecting_current_domain, dispatched on the
-// (necessarily integral) type of a given domain slot.
-// Please see expand_tiles_respecting_current_domain for comments.
+// This is a templatized auxiliary for expand_tiles_respecting_current_domain,
+// dispatched on the (necessarily integral) type of a given domain slot.
 template <typename T>
 void expand_tiles_respecting_current_domain_aux(
     tiledb::sm::CurrentDomain::dimension_size_type dimidx,
     const Dimension* dimptr,
     std::shared_ptr<NDRectangle> cur_dom_ndrect,
     tiledb::sm::NDRange* query_ndrange) {
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " SIZEOF(T) = " << sizeof(T) << "\n";
-
   // No extents for string dims, etc.
   if (!std::is_integral_v<T>) {
-    //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " SKIP NON-INTEGRAL\n";
     return;
   }
 
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " NDRANGE SIZE = " << query_ndrange->size() << "\n";
-
   // Find the initial lo/hi for the query range on this dimension.
   auto query_slot = (*query_ndrange)[dimidx];
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " RANGE SIZE = " << query_slot.size() << "\n";
   auto query_slot_range = (const T*)query_slot.data();
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " QUERY_SLOT_RANGE[0] = " << query_slot_range[0] << "\n";
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " QUERY_SLOT_RANGE[1] = " << query_slot_range[1] << "\n";
 
   // Find the lo/hi for the current domain on this dimension.
   auto cur_dom_slot_range = (const T*)cur_dom_ndrect->get_range(dimidx).data();
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " CUR_DOM_SLOT_RANGE[0] = " << cur_dom_slot_range[0] << "\n";
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " CUR_DOM_SLOT_RANGE[1] = " << cur_dom_slot_range[1] << "\n";
 
   // Find the lo/hi for the core domain (max domain) on this dimension.
   auto dim_dom = (const T*)dimptr->domain().data();
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " DIMDOM[0] = " << dim_dom[0] << "\n";
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " DIMDOM[1] = " << dim_dom[1] << "\n";
 
   // Find the tile extent.
   auto tile_extent = *(const T*)dimptr->tile_extent().data();
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx
-  //          << " TILE_EXTENT = " << tile_extent << "\n";
 
   // Compute tile indices: e.g. if the extent is 512 and the query lo is
   // 1027, that's tile 2.
@@ -1822,20 +1798,12 @@ void expand_tiles_respecting_current_domain_aux(
       Dimension::tile_idx(query_slot_range[0], domain_low, tile_extent);
   auto tile_idx1 =
       Dimension::tile_idx(query_slot_range[1], domain_low, tile_extent);
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " TILE_IDX0 " << tile_idx0
-  //          << "\n";
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " TILE_IDX1 " << tile_idx1
-  //          << "\n";
 
   // Round up to a multiple of the tile coords. E.g. if the query range
   // starts out as (3,4) but the tile extent is 512, that will become (0,511).
   T result[2];
   result[0] = Dimension::tile_coord_low(tile_idx0, domain_low, tile_extent);
   result[1] = Dimension::tile_coord_high(tile_idx1, domain_low, tile_extent);
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RESULT0 " << result[0]
-  //          << "\n";
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RESULT1 " << result[1]
-  //          << "\n";
 
   // Since there is a current domain, though, rounding up to a multiple of the
   // tile extent will lead to an out-of-bounds read. Make the query range lo
@@ -1847,10 +1815,6 @@ void expand_tiles_respecting_current_domain_aux(
   if (cur_dom_slot_range[1] < result[1]) {
     result[1] = cur_dom_slot_range[1];
   }
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RESULT0 " << result[0]
-  //          << "\n";
-  //std::cout << "    HELPER_AUX DIM_IDX " << dimidx << " RESULT1 " << result[1]
-  //          << "\n";
 
   // Update the query range
   query_slot.set_range(result, sizeof(result));
@@ -1876,18 +1840,14 @@ void expand_tiles_respecting_current_domain(
     const tiledb::sm::Domain& domain,
     const tiledb::sm::CurrentDomain& current_domain,
     tiledb::sm::NDRange* query_ndrange) {
-  //std::cout << "HELPER ENTER\n";
-
   assert(!query_ndrange->empty());
 
   if (current_domain.empty()) {
-    //std::cout << "HELPER EXIT: NO CURRENT DOMAIN\n";
     domain.expand_to_tiles(query_ndrange);
     return;
   }
 
   if (current_domain.type() != CurrentDomainType::NDRECTANGLE) {
-    //std::cout << "HELPER EXIT: CURRENT DOMAIN IS NON-RECTANGULAR\n";
     return;
   }
 
@@ -1898,19 +1858,15 @@ void expand_tiles_respecting_current_domain(
   for (tiledb::sm::CurrentDomain::dimension_size_type dimidx = 0;
        dimidx < domain.dim_num();
        dimidx++) {
-    //std::cout << "  HELPER DIMIDX " << dimidx << " START\n";
-
     const auto dimptr = domain.dimension_ptr(dimidx);
 
     assert(dimptr != nullptr);
 
     if (dimptr->var_size()) {
-      //std::cout << "  HELPER DIMIDX " << dimidx << " SKIP VAR-SIZE\n";
       continue;
     }
 
     if (!dimptr->tile_extent()) {
-      //std::cout << "  HELPER DIMIDX " << dimidx << " SKIP NO EXTENT\n";
       continue;
     }
 
@@ -1970,11 +1926,7 @@ void expand_tiles_respecting_current_domain(
             dimidx, dimptr, cur_dom_ndrect, query_ndrange);
         break;
       default:
-        //std::cout << "  HELPER DIMIDX " << dimidx << " NO TYPE MATCH\n";
         break;
     }
-    //std::cout << "  HELPER DIMIDX " << dimidx << " END\n";
   }
-
-  //std::cout << "HELPER EXIT\n";
 }

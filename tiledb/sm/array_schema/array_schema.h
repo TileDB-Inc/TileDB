@@ -39,12 +39,12 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/current_domain.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/array_schema/current_domain.h"
-#include "tiledb/sm/array_schema/domain.h"
 
 using namespace tiledb::common;
 
@@ -796,14 +796,19 @@ class ArraySchema {
 
 }  // namespace tiledb::sm
 
+/**
+ * Expands the input domain so that it aligns with the boundaries of the array's
+ * regular tiles (i.e., it maps the domain onto the regular tile grid) in the
+ * same way as Domain::expand_to_tiles(NDRange*), but while respecting the
+ * current domain.
+ */
+void expand_tiles_respecting_current_domain(
+    const tiledb::sm::Domain& domain,
+    const tiledb::sm::CurrentDomain& current_domain,
+    tiledb::sm::NDRange* ndrange);
+
 /** Converts the filter into a string representation. */
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::ArraySchema& schema);
-
-/** XXX COMMENT ME PLZ THX */
-void expand_tiles_respecting_current_domain(
-  const tiledb::sm::Domain& domain,
-  const tiledb::sm::CurrentDomain& current_domain,
-  tiledb::sm::NDRange* ndrange);
 
 #endif  // TILEDB_ARRAY_SCHEMA_H

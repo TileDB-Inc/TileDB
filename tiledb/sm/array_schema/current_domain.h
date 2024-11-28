@@ -48,7 +48,7 @@ class ArraySchema;
 class Domain;
 
 /** Defines an array current domain */
-class CurrentDomain { // XXX TOUCH
+class CurrentDomain {
  public:
   /**
    * Size type for the number of dimensions of an array and for dimension

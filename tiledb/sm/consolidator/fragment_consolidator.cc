@@ -77,7 +77,7 @@ void FragmentConsolidationWorkspace::resize_buffers(
 
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
-  auto& domain{array_schema.domain()}; // XXX TOUCH
+  auto& domain{array_schema.domain()};
   auto dim_num = array_schema.dim_num();
   auto sparse = !array_schema.dense();
 
@@ -431,11 +431,10 @@ Status FragmentConsolidator::consolidate_fragments(
 
     // Expand domain to full tiles
     auto expanded_union_non_empty_domains = union_non_empty_domains;
-    // XXX domain.expand_to_tiles(&expanded_union_non_empty_domains);
     expand_tiles_respecting_current_domain(
-      domain,
-      array_for_reads->array_schema_latest().current_domain(),
-      &expanded_union_non_empty_domains);
+        domain,
+        array_for_reads->array_schema_latest().current_domain(),
+        &expanded_union_non_empty_domains);
 
     // Now iterate all fragments and see if the consolidation can lead to data
     // loss
@@ -756,15 +755,14 @@ Status FragmentConsolidator::create_queries(
       read_memory_budget));
   throw_if_not_ok(query_r->set_layout(Layout::GLOBAL_ORDER));
 
-  // Dense consolidation will do a tile aligned read. // XXX TOUCH
+  // Dense consolidation will do a tile aligned read.
   if (dense) {
     NDRange read_subarray = subarray;
-    auto& domain{array_for_reads->array_schema_latest().domain()}; // XXX TOUCH
-    // domain.expand_to_tiles(&read_subarray); // XXX TOUCH
+    auto& domain{array_for_reads->array_schema_latest().domain()};
     expand_tiles_respecting_current_domain(
-      domain,
-      array_for_reads->array_schema_latest().current_domain(),
-      &read_subarray);
+        domain,
+        array_for_reads->array_schema_latest().current_domain(),
+        &read_subarray);
     throw_if_not_ok(query_r->set_subarray_unsafe(read_subarray));
   }
 
