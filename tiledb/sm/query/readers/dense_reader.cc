@@ -452,6 +452,9 @@ Status DenseReader::dense_read() {
     // processing.
     if (qc_coords_mode_) {
       t_start = t_end;
+      if (compute_task.valid()) {
+        throw_if_not_ok(compute_task.wait());
+      }
       continue;
     }
 
@@ -568,10 +571,10 @@ Status DenseReader::dense_read() {
 
     t_start = t_end;
     subarray_start_cell = subarray_end_cell;
-  }
 
-  if (compute_task.valid()) {
-    throw_if_not_ok(compute_task.wait());
+    if (compute_task.valid()) {
+      throw_if_not_ok(compute_task.wait());
+    }
   }
 
   // For `qc_coords_mode` just fill in the coordinates and skip attribute
