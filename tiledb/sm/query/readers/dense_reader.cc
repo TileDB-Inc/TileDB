@@ -428,7 +428,7 @@ Status DenseReader::dense_read() {
     // prevent using too much memory when the budget is small and doesn't allow
     // to process more than one batch at a time.
     if (wait_compute_task_before_read && compute_task.valid()) {
-      throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
+      throw_if_not_ok(compute_task.wait());
     }
 
     // Apply the query condition.
@@ -449,6 +449,9 @@ Status DenseReader::dense_read() {
     // processing.
     if (qc_coords_mode_) {
       t_start = t_end;
+      if (compute_task.valid()) {
+        throw_if_not_ok(compute_task.wait());
+      }
       continue;
     }
 
@@ -473,7 +476,7 @@ Status DenseReader::dense_read() {
         // is to prevent using too much memory when the budget is small and
         // doesn't allow to process more than one batch at a time.
         if (wait_compute_task_before_read && compute_task.valid()) {
-          throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
+          throw_if_not_ok(compute_task.wait());
         }
 
         // Read and unfilter tiles.
@@ -483,7 +486,7 @@ Status DenseReader::dense_read() {
       }
 
       if (compute_task.valid()) {
-        throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
+        throw_if_not_ok(compute_task.wait());
         if (read_state_.overflowed_) {
           return Status::Ok();
         }
@@ -565,10 +568,10 @@ Status DenseReader::dense_read() {
 
     t_start = t_end;
     subarray_start_cell = subarray_end_cell;
-  }
 
-  if (compute_task.valid()) {
-    throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
+    if (compute_task.valid()) {
+      throw_if_not_ok(compute_task.wait());
+    }
   }
 
   // For `qc_coords_mode` just fill in the coordinates and skip attribute
@@ -1059,7 +1062,7 @@ Status DenseReader::apply_query_condition(
     read_attribute_tiles(NameToLoad::from_string_vec(qc_names), result_tiles);
 
     if (compute_task.valid()) {
-      throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
+      throw_if_not_ok(compute_task.wait());
     }
 
     compute_task = resources_.compute_tp().execute([&,
