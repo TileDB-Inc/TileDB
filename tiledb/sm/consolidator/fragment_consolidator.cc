@@ -432,7 +432,7 @@ Status FragmentConsolidator::consolidate_fragments(
     // Expand domain to full tiles
     auto expanded_union_non_empty_domains = union_non_empty_domains;
     // XXX domain.expand_to_tiles(&expanded_union_non_empty_domains);
-    expand_to_tiles_helper(
+    expand_tiles_respecting_current_domain(
       domain,
       array_for_reads->array_schema_latest().current_domain(),
       &expanded_union_non_empty_domains);
@@ -761,7 +761,7 @@ Status FragmentConsolidator::create_queries(
     NDRange read_subarray = subarray;
     auto& domain{array_for_reads->array_schema_latest().domain()}; // XXX TOUCH
     // domain.expand_to_tiles(&read_subarray); // XXX TOUCH
-    expand_to_tiles_helper(
+    expand_tiles_respecting_current_domain(
       domain,
       array_for_reads->array_schema_latest().current_domain(),
       &read_subarray);

@@ -801,7 +801,7 @@ std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::ArraySchema& schema);
 
 /** XXX COMMENT ME PLZ THX */
-void expand_to_tiles_helper(
+void expand_tiles_respecting_current_domain(
   const tiledb::sm::Domain& domain,
   const tiledb::sm::CurrentDomain& current_domain,
   tiledb::sm::NDRange* ndrange);
