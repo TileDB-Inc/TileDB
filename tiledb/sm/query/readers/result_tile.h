@@ -221,9 +221,6 @@ class ResultTile {
         , validity_filtered_data_(validity_filtered_data) {
     }
 
-    ~TileData() {
-    }
-
     /* ********************************* */
     /*                API                */
     /* ********************************* */
