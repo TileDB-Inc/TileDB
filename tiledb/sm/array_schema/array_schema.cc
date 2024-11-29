@@ -1805,16 +1805,13 @@ void expand_tiles_respecting_current_domain_aux(
   result[0] = Dimension::tile_coord_low(tile_idx0, domain_low, tile_extent);
   result[1] = Dimension::tile_coord_high(tile_idx1, domain_low, tile_extent);
 
-  // Since there is a current domain, though, rounding up to a multiple of the
-  // tile extent will lead to an out-of-bounds read. Make the query range lo
-  // no smaller than current domain lo on this dimension, and make the query
-  // range hi no larger than current domain hi on this dimension.
-  if (cur_dom_slot_range[0] > result[0]) {
-    result[0] = cur_dom_slot_range[0];
-  }
-  if (cur_dom_slot_range[1] < result[1]) {
-    result[1] = cur_dom_slot_range[1];
-  }
+  // Since there is a current domain, though (we assume our caller checks this),
+  // rounding up to a multiple of the tile extent will lead to an out-of-bounds
+  // read. Make the query range lo no smaller than current domain lo on this
+  // dimension, and make the query range hi no larger than current domain hi on
+  // this dimension.
+  result[0] = std::max(result[0], cur_dom_slot_range[0]);
+  result[1] = std::min(result[1], cur_dom_slot_range[1]);
 
   // Update the query range
   query_slot.set_range(result, sizeof(result));
