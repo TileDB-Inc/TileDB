@@ -121,7 +121,7 @@ void ThreadPool::shutdown() {
   threads_.clear();
 }
 
-Status ThreadPool::wait_all(std::vector<Task>& tasks) {
+Status ThreadPool::wait_all(std::vector<ThreadPoolTask*>& tasks) {
   auto statuses = wait_all_status(tasks);
   for (auto& st : statuses) {
     if (!st.ok()) {
@@ -138,7 +138,8 @@ Status ThreadPool::wait_all(std::vector<Task>& tasks) {
 // context is fully constructed (which will include logger).
 // Unfortunately, C++ does not have the notion of an aggregate exception, so we
 // don't throw in the case of errors/exceptions.
-std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
+std::vector<Status> ThreadPool::wait_all_status(
+    std::vector<ThreadPoolTask*>& tasks) {
   std::vector<Status> statuses(tasks.size());
 
   std::queue<size_t> pending_tasks;
@@ -154,17 +155,17 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
     pending_tasks.pop();
     auto& task = tasks[task_id];
 
-    if (!task.valid()) {
+    if (task && !task->valid()) {
       statuses[task_id] = Status_ThreadPoolError("Invalid task future");
       LOG_STATUS_NO_RETURN_VALUE(statuses[task_id]);
     } else if (
-        task.wait_for(std::chrono::milliseconds(0)) ==
+        task->wait_for(std::chrono::milliseconds(0)) ==
         std::future_status::ready) {
       // Task is completed, get result, handling possible exceptions
 
       Status st = [&task] {
         try {
-          return task.get();
+          return task->get();
         } catch (const std::exception& e) {
           return Status_TaskError(
               "Caught std::exception: " + std::string(e.what()));
@@ -205,18 +206,18 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   return statuses;
 }
 
-Status ThreadPool::wait(Task& task) {
+Status ThreadPool::wait(ThreadPoolTask* task) {
   while (true) {
-    if (!task.valid()) {
+    if (!task->valid()) {
       return Status_ThreadPoolError("Invalid task future");
     } else if (
-        task.wait_for(std::chrono::milliseconds(0)) ==
+        task->wait_for(std::chrono::milliseconds(0)) ==
         std::future_status::ready) {
       // Task is completed, get result, handling possible exceptions
 
       Status st = [&task] {
         try {
-          return task.get();
+          return task->get();
         } catch (const std::exception& e) {
           return Status_TaskError(
               "Caught std::exception: " + std::string(e.what()));

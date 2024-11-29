@@ -285,7 +285,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Apply the query condition. */
   template <class DimType, class OffType>
   Status apply_query_condition(
-      ThreadPool::Task& compute_task,
+      ThreadPool::SharedTask& compute_task,
       Subarray& subarray,
       const std::unordered_set<std::string>& condition_names,
       const std::vector<DimType>& tile_extents,

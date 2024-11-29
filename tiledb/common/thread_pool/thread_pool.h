@@ -47,7 +47,128 @@ namespace tiledb::common {
 
 class ThreadPool {
  public:
-  using Task = std::future<Status>;
+  class ThreadPoolTask {
+   public:
+    ThreadPoolTask() = default;
+    ThreadPoolTask(ThreadPool* tp)
+        : tp_(tp) {};
+    virtual ~ThreadPoolTask() {};
+
+   protected:
+    friend class ThreadPool;
+
+    ThreadPool* tp_;
+    virtual std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const = 0;
+    virtual bool valid() const noexcept = 0;
+    virtual Status get() = 0;
+  };
+
+  class Task : public ThreadPoolTask {
+   public:
+    Task() = default;
+
+    // Constructor, std::future can only be moved
+    Task(std::future<Status>&& f, ThreadPool* tp)
+        : ThreadPoolTask(tp)
+        , f_(std::move(f)) {};
+
+    // Move constructor
+    Task(Task&& t) noexcept
+        : ThreadPoolTask(t.tp_)
+        , f_(std::move(t.f_)) {};
+
+    // Disable copying
+    Task(const Task&) = delete;
+    Task& operator=(const Task&) = delete;
+
+    Status wait() {
+      return tp_->wait(this);
+    }
+
+    bool valid() const noexcept {
+      return f_.valid();
+    }
+
+   private:
+    friend class ThreadPool;
+
+    std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const {
+      return f_.wait_for(timeout_duration);
+    }
+
+    Status get() {
+      return f_.get();
+    }
+
+    std::future<Status> f_;
+  };
+
+  class SharedTask : public ThreadPoolTask {
+   public:
+    SharedTask() = default;
+
+    SharedTask(std::shared_future<Status>&& f, ThreadPool* tp)
+        : ThreadPoolTask(tp)
+        , f_(std::move(f)) {};
+
+    SharedTask(std::future<Status>&& f, ThreadPool* tp) noexcept
+        : ThreadPoolTask(tp)
+        , f_(std::move(f)) {};
+
+    SharedTask(Task&& t) noexcept
+        : ThreadPoolTask(t.tp_)
+        , f_(std::move(t.f_)) {};
+
+    SharedTask(SharedTask&& t) noexcept
+        : ThreadPoolTask(t.tp_)
+        , f_(std::move(t.f_)) {};
+
+    SharedTask(const SharedTask& t) noexcept
+        : ThreadPoolTask(t.tp_)
+        , f_(t.f_) {};
+
+    SharedTask& operator=(const SharedTask& t) noexcept {
+      tp_ = t.tp_;
+      f_ = t.f_;
+      return *this;
+    }
+
+    SharedTask& operator=(SharedTask&& t) noexcept {
+      tp_ = t.tp_;
+      f_ = std::move(t.f_);
+      return *this;
+    }
+
+    SharedTask& operator=(Task&& t) noexcept {
+      tp_ = t.tp_;
+      f_ = std::move(t.f_);
+      return *this;
+    }
+
+    Status wait() {
+      return tp_->wait(this);
+    }
+
+    bool valid() const noexcept {
+      return f_.valid();
+    }
+
+   private:
+    friend class ThreadPool;
+
+    std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const {
+      return f_.wait_for(timeout_duration);
+    }
+
+    Status get() {
+      return f_.get();
+    }
+
+    std::shared_future<Status> f_;
+  };
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -108,7 +229,7 @@ class ThreadPool {
           return std::apply(std::move(f), std::move(args));
         });
 
-    std::future<R> future = task->get_future();
+    Task future(task->get_future(), this);
 
     task_queue_.push(task);
 
@@ -136,7 +257,7 @@ class ThreadPool {
    * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
    * error status is returned
    */
-  Status wait_all(std::vector<Task>& tasks);
+  Status wait_all(std::vector<ThreadPoolTask*>& tasks);
 
   /**
    * Wait on all the given tasks to complete, returning a vector of their return
@@ -151,7 +272,7 @@ class ThreadPool {
    * @param tasks Task list to wait on
    * @return Vector of each task's Status.
    */
-  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
+  std::vector<Status> wait_all_status(std::vector<ThreadPoolTask*>& tasks);
 
   /**
    * Wait on a single tasks to complete. This function is safe to call
@@ -162,7 +283,7 @@ class ThreadPool {
    * @return Status::Ok if the task returned Status::Ok, otherwise the error
    * status is returned
    */
-  Status wait(Task& task);
+  Status wait(ThreadPoolTask* task);
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
