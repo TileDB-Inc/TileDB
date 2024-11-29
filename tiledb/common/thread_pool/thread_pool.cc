@@ -131,6 +131,24 @@ Status ThreadPool::wait_all(std::vector<ThreadPoolTask*>& tasks) {
   return Status::Ok();
 }
 
+Status ThreadPool::wait_all(std::vector<Task>& tasks) {
+  std::vector<ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+
+  return wait_all(task_ptrs);
+}
+
+Status ThreadPool::wait_all(std::vector<SharedTask>& tasks) {
+  std::vector<ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+
+  return wait_all(task_ptrs);
+}
+
 // Return a vector of Status.  If any task returns an error value or throws an
 // exception, we save an error code in the corresponding location in the Status
 // vector.  All tasks are waited on before return.  Multiple error statuses may
@@ -204,6 +222,25 @@ std::vector<Status> ThreadPool::wait_all_status(
   }
 
   return statuses;
+}
+
+std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
+  std::vector<ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+
+  return wait_all_status(task_ptrs);
+}
+
+std::vector<Status> ThreadPool::wait_all_status(
+    std::vector<SharedTask>& tasks) {
+  std::vector<ThreadPoolTask*> task_ptrs;
+  for (auto& t : tasks) {
+    task_ptrs.emplace_back(&t);
+  }
+
+  return wait_all_status(task_ptrs);
 }
 
 Status ThreadPool::wait(ThreadPoolTask* task) {
