@@ -51,8 +51,8 @@ class ThreadPool {
    public:
     ThreadPoolTask() = default;
     ThreadPoolTask(ThreadPool* tp)
-        : tp_(tp) {};
-    virtual ~ThreadPoolTask() {};
+        : tp_(tp){};
+    virtual ~ThreadPoolTask(){};
 
    protected:
     friend class ThreadPool;
@@ -71,12 +71,12 @@ class ThreadPool {
     // Constructor, std::future can only be moved
     Task(std::future<Status>&& f, ThreadPool* tp)
         : ThreadPoolTask(tp)
-        , f_(std::move(f)) {};
+        , f_(std::move(f)){};
 
     // Move constructor
     Task(Task&& t) noexcept
         : ThreadPoolTask(t.tp_)
-        , f_(std::move(t.f_)) {};
+        , f_(std::move(t.f_)){};
 
     // Disable copying
     Task(const Task&) = delete;
@@ -111,23 +111,23 @@ class ThreadPool {
 
     SharedTask(std::shared_future<Status>&& f, ThreadPool* tp)
         : ThreadPoolTask(tp)
-        , f_(std::move(f)) {};
+        , f_(std::move(f)){};
 
     SharedTask(std::future<Status>&& f, ThreadPool* tp) noexcept
         : ThreadPoolTask(tp)
-        , f_(std::move(f)) {};
+        , f_(std::move(f)){};
 
     SharedTask(Task&& t) noexcept
         : ThreadPoolTask(t.tp_)
-        , f_(std::move(t.f_)) {};
+        , f_(std::move(t.f_)){};
 
     SharedTask(SharedTask&& t) noexcept
         : ThreadPoolTask(t.tp_)
-        , f_(std::move(t.f_)) {};
+        , f_(std::move(t.f_)){};
 
     SharedTask(const SharedTask& t) noexcept
         : ThreadPoolTask(t.tp_)
-        , f_(t.f_) {};
+        , f_(t.f_){};
 
     SharedTask& operator=(const SharedTask& t) noexcept {
       tp_ = t.tp_;
