@@ -28,7 +28,6 @@ include(unit_test)
 
 commence(unit_test filter_create)
     this_target_object_libraries(all_filters)
-    this_target_link_libraries(thread_pool)
     this_target_sources(main.cc unit_filter_create.cc)
 conclude(unit_test)
 
