@@ -212,8 +212,6 @@ WriterTile::WriterTile(
 void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
   if (!ignore_tasks_) {
-    std::scoped_lock<std::recursive_mutex> lock{
-        unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
       throw_if_not_ok(unfilter_data_compute_task_.wait());
     } else {
@@ -284,8 +282,6 @@ void WriterTile::clear_data() {
 
 void Tile::set_unfilter_data_compute_task(
     ThreadPool::SharedTask unfilter_data_compute_task) {
-  // std::scoped_lock<std::recursive_mutex>
-  // lock{unfilter_data_compute_task_mtx_};
   unfilter_data_compute_task_ = std::move(unfilter_data_compute_task);
 }
 
