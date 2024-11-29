@@ -47,6 +47,9 @@ namespace tiledb::common {
 
 class ThreadPool {
  public:
+  /**
+   * @brief Abstract base class for tasks that can run in this threadpool.
+   */
   class ThreadPoolTask {
    public:
     ThreadPoolTask() = default;
@@ -58,34 +61,74 @@ class ThreadPool {
     friend class ThreadPool;
 
     ThreadPool* tp_;
+
+    /**
+     * Pure virtual functions that tasks need to implement so that they can be
+     * run in the threadpool wait loop
+     */
     virtual std::future_status wait_for(
         const std::chrono::milliseconds timeout_duration) const = 0;
     virtual bool valid() const noexcept = 0;
     virtual Status get() = 0;
   };
 
+  /**
+   * @brief Task class encapsulating std::future. Like std::future it's shared
+   * state can only be get once and thus only one thread. It can only be moved
+   * and not copied.
+   */
   class Task : public ThreadPoolTask {
    public:
+    /**
+     * Default constructor
+     * @brief Default constructed SharedTask is possible but not valid().
+     */
     Task() = default;
 
-    // Constructor, std::future can only be moved
+    /**
+     * Constructor from std::future
+     */
     Task(std::future<Status>&& f, ThreadPool* tp)
         : ThreadPoolTask(tp)
         , f_(std::move(f)){};
 
-    // Move constructor
+    /**
+     * Move constructor
+     */
     Task(Task&& t) noexcept
         : ThreadPoolTask(t.tp_)
         , f_(std::move(t.f_)){};
 
-    // Disable copying
+    /**
+     * Move assignenent from Task
+     */
+    Task& operator=(Task&& t) noexcept {
+      tp_ = t.tp_;
+      f_ = std::move(t.f_);
+      return *this;
+    }
+
+    /**
+     * Disable copy
+     */
     Task(const Task&) = delete;
+
+    /**
+     * Disable copy assignment
+     */
     Task& operator=(const Task&) = delete;
 
+    /**
+     * Wait in the threadpool for this task to be ready. Checks internally if a
+     * task is valid.
+     */
     Status wait() {
       return tp_->wait(this);
     }
 
+    /**
+     * Is this task valid. Wait can only be called on vaid tasks.
+     */
     bool valid() const noexcept {
       return f_.valid();
     }
@@ -93,64 +136,114 @@ class ThreadPool {
    private:
     friend class ThreadPool;
 
+    /**
+     * Wait for input milliseconds for this task to be ready.
+     */
     std::future_status wait_for(
         const std::chrono::milliseconds timeout_duration) const {
       return f_.wait_for(timeout_duration);
     }
 
+    /**
+     * Get the result of that task. Can only be used once. Only accessible from
+     * within the threadpool `wait` loop.
+     */
     Status get() {
       return f_.get();
     }
 
+    /**
+     * The encapsulates std::shared_future
+     */
     std::future<Status> f_;
   };
 
+  /**
+   * @brief SharedTask class encapsulating std::shared_future. Like
+   * std::shared_future multiple threads can wait/get on the shared state
+   * multiple times. It can be both moved and copied.
+   */
   class SharedTask : public ThreadPoolTask {
    public:
+    /**
+     * Default constructor
+     * @brief Default constructed SharedTask is possible but not valid().
+     */
     SharedTask() = default;
 
+    /**
+     * Constructor from std::shared_future
+     */
     SharedTask(std::shared_future<Status>&& f, ThreadPool* tp)
         : ThreadPoolTask(tp)
         , f_(std::move(f)){};
 
+    /**
+     * Constructor from std::future
+     */
     SharedTask(std::future<Status>&& f, ThreadPool* tp) noexcept
         : ThreadPoolTask(tp)
         , f_(std::move(f)){};
 
-    SharedTask(Task&& t) noexcept
-        : ThreadPoolTask(t.tp_)
-        , f_(std::move(t.f_)){};
-
+    /**
+     * Move constructor from a SharedTask
+     */
     SharedTask(SharedTask&& t) noexcept
         : ThreadPoolTask(t.tp_)
         , f_(std::move(t.f_)){};
 
-    SharedTask(const SharedTask& t) noexcept
-        : ThreadPoolTask(t.tp_)
-        , f_(t.f_){};
-
-    SharedTask& operator=(const SharedTask& t) noexcept {
-      tp_ = t.tp_;
-      f_ = t.f_;
-      return *this;
-    }
-
+    /**
+     * Move assignenent from SharedTask
+     */
     SharedTask& operator=(SharedTask&& t) noexcept {
       tp_ = t.tp_;
       f_ = std::move(t.f_);
       return *this;
     }
 
+    /**
+     * Move constructor from a Task
+     */
+    SharedTask(Task&& t) noexcept
+        : ThreadPoolTask(t.tp_)
+        , f_(std::move(t.f_)){};
+
+    /**
+     * Move assignenent from Task
+     */
     SharedTask& operator=(Task&& t) noexcept {
       tp_ = t.tp_;
       f_ = std::move(t.f_);
       return *this;
     }
 
+    /**
+     * Copy constructor
+     */
+    SharedTask(const SharedTask& t) noexcept
+        : ThreadPoolTask(t.tp_)
+        , f_(t.f_){};
+
+    /**
+     * Copy assignenent
+     */
+    SharedTask& operator=(const SharedTask& t) noexcept {
+      tp_ = t.tp_;
+      f_ = t.f_;
+      return *this;
+    }
+
+    /**
+     * Wait in the threadpool for this task to be ready. Checks internally if a
+     * task is valid.
+     */
     Status wait() {
       return tp_->wait(this);
     }
 
+    /**
+     * Is this task valid. Wait can only be called on vaid tasks.
+     */
     bool valid() const noexcept {
       return f_.valid();
     }
@@ -158,15 +251,25 @@ class ThreadPool {
    private:
     friend class ThreadPool;
 
+    /**
+     * Wait for input milliseconds for this task to be ready.
+     */
     std::future_status wait_for(
         const std::chrono::milliseconds timeout_duration) const {
       return f_.wait_for(timeout_duration);
     }
 
+    /**
+     * Get the result of that task. Can be called multiple times from multiple
+     * threads. Only accessible from within the threadpool `wait` loop.
+     */
     Status get() {
       return f_.get();
     }
 
+    /**
+     * The encapsulates std::shared_future
+     */
     std::shared_future<Status> f_;
   };
 
