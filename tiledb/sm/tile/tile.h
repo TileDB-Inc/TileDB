@@ -77,8 +77,6 @@ class TileBase {
 
   ~TileBase() {
     // TODO: destructor should not throw, catch any exceptions
-    std::scoped_lock<std::recursive_mutex> lock{
-        unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
       auto st = unfilter_data_compute_task_.wait();
     }
@@ -121,8 +119,6 @@ class TileBase {
   /** Returns the internal buffer. */
   inline void* data() const {
     if (!ignore_tasks_) {
-      std::scoped_lock<std::recursive_mutex> lock{
-          unfilter_data_compute_task_mtx_};
       if (unfilter_data_compute_task_.valid()) {
         throw_if_not_ok(unfilter_data_compute_task_.wait());
       } else {
@@ -291,8 +287,6 @@ class Tile : public TileBase {
 
   ~Tile() {
     // TODO: destructor should not throw, catch any exceptions
-    std::scoped_lock<std::recursive_mutex> lock{
-        unfilter_data_compute_task_mtx_};
     if (unfilter_data_compute_task_.valid()) {
       auto st = unfilter_data_compute_task_.wait();
     }
