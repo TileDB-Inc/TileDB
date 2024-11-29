@@ -526,6 +526,7 @@ TEST_CASE(
   std::vector<int> data = {
       -60, 79, -8, 100, 88, -19, -100, -111, -72, -85, 58, -41};
 
+  // Write it twice so there is something to consolidate
   write_array(array_name, {0, 2, 0, 3}, data);
   write_array(array_name, {0, 2, 0, 3}, data);
 
