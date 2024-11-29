@@ -32,7 +32,7 @@ include(object_library)
 #
 commence(object_library range_subset)
 this_target_sources(range_subset.cc)
-this_target_object_libraries(baseline buffer constants range)
+this_target_object_libraries(baseline buffer constants range thread_pool)
 conclude(object_library)
 
 #

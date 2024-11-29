@@ -28,7 +28,6 @@ include(unit_test)
 
 commence(unit_test range_subset)
     this_target_object_libraries(range_subset)
-    this_target_link_libraries(thread_pool)
     this_target_sources(main.cc unit_range_subset.cc)
 conclude(unit_test)
 
