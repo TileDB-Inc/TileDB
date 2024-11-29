@@ -368,7 +368,7 @@ Status DenseReader::dense_read() {
   // This is as far as we should go before implementing this properly in a task
   // graph, where the start and end of every piece of work can clearly be
   // identified.
-  ThreadPool::Task compute_task;
+  ThreadPool::SharedTask compute_task;
 
   // Allow to disable the parallel read/compute in case the memory budget
   // doesn't allow it.
@@ -432,7 +432,7 @@ Status DenseReader::dense_read() {
     // prevent using too much memory when the budget is small and doesn't allow
     // to process more than one batch at a time.
     if (wait_compute_task_before_read && compute_task.valid()) {
-      throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+      throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
     }
 
     // Apply the query condition.
@@ -478,7 +478,7 @@ Status DenseReader::dense_read() {
         // is to prevent using too much memory when the budget is small and
         // doesn't allow to process more than one batch at a time.
         if (wait_compute_task_before_read && compute_task.valid()) {
-          throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+          throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
         }
 
         // Read and unfilter tiles.
@@ -489,7 +489,7 @@ Status DenseReader::dense_read() {
       }
 
       if (compute_task.valid()) {
-        throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+        throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
         if (read_state_.overflowed_) {
           return Status::Ok();
         }
@@ -578,7 +578,7 @@ Status DenseReader::dense_read() {
   }
 
   if (compute_task.valid()) {
-    throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+    throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
   }
 
   // For `qc_coords_mode` just fill in the coordinates and skip attribute
@@ -1038,7 +1038,7 @@ std::vector<ResultTile*> DenseReader::result_tiles_to_load(
  */
 template <class DimType, class OffType>
 Status DenseReader::apply_query_condition(
-    ThreadPool::Task& compute_task,
+    ThreadPool::SharedTask& compute_task,
     Subarray& subarray,
     const std::unordered_set<std::string>& condition_names,
     const std::vector<DimType>& tile_extents,
@@ -1075,7 +1075,7 @@ Status DenseReader::apply_query_condition(
             NameToLoad::from_string_vec(qc_names), result_tiles));
 
     if (compute_task.valid()) {
-      throw_if_not_ok(resources_.compute_tp().wait(compute_task));
+      throw_if_not_ok(resources_.compute_tp().wait(&compute_task));
     }
 
     compute_task = resources_.compute_tp().execute([&,
