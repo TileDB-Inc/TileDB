@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -235,6 +235,37 @@ struct VFSBase {
   stats::Stats* stats_;
 };
 
+/** The Azure filesystem. */
+#ifdef HAVE_AZURE
+class Azure_within_VFS {
+  /** Private member variable */
+  Azure azure_;
+
+ protected:
+  template <typename... Args>
+  Azure_within_VFS(Args&&... args)
+      : azure_(std::forward<Args>(args)...) {
+  }
+
+  /** Protected accessor for the Azure object. */
+  inline Azure& azure() {
+    return azure_;
+  }
+
+  /** Protected accessor for the const Azure object. */
+  inline const Azure& azure() const {
+    return azure_;
+  }
+};
+#else
+class Azure_within_VFS {
+ protected:
+  template <typename... Args>
+  Azure_within_VFS(Args&&...) {
+  }  // empty constructor
+};
+#endif
+
 /** The S3 filesystem. */
 #ifdef HAVE_S3
 class S3_within_VFS {
@@ -270,7 +301,7 @@ class S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase, protected S3_within_VFS {
+class VFS : private VFSBase, protected Azure_within_VFS, S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -572,7 +603,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
 #endif
       } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
-        results = azure_.ls_filtered(parent, f, d, recursive);
+        results = azure().ls_filtered(parent, f, d, recursive);
 #else
         throw filesystem::VFSException(
             "TileDB was built without Azure support");
@@ -938,10 +969,6 @@ class VFS : private VFSBase, protected S3_within_VFS {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-#ifdef HAVE_AZURE
-  Azure azure_;
-#endif
 
 #ifdef HAVE_GCS
   GCS gcs_;

@@ -64,6 +64,7 @@ VFS::VFS(
     ThreadPool* const io_tp,
     const Config& config)
     : VFSBase(parent_stats)
+    , Azure_within_VFS(io_tp, config)
     , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
     , logger_(logger)
@@ -93,10 +94,6 @@ VFS::VFS(
 
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
-  st = azure_.init(config_, io_tp_);
-  if (!st.ok()) {
-    throw VFSException("Failed to initialize Azure backend.");
-  }
 #endif
 
 #ifdef HAVE_GCS
@@ -264,7 +261,7 @@ Status VFS::touch(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.touch(uri);
+    return azure().touch(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -299,7 +296,7 @@ Status VFS::create_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.create_container(uri);
+    return azure().create_container(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -325,7 +322,7 @@ Status VFS::remove_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.remove_container(uri);
+    return azure().remove_container(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -352,7 +349,7 @@ Status VFS::empty_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.empty_container(uri);
+    return azure().empty_container(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -380,7 +377,7 @@ Status VFS::is_empty_bucket(
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.is_empty_container(uri, is_empty);
+    return azure().is_empty_container(uri, is_empty);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -417,7 +414,7 @@ Status VFS::remove_dir(const URI& uri) const {
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.remove_dir(uri);
+    return azure().remove_dir(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -484,7 +481,7 @@ Status VFS::remove_file(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.remove_blob(uri);
+    return azure().remove_blob(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -571,7 +568,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.blob_size(uri, size);
+    return azure().blob_size(uri, size);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -617,7 +614,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.is_dir(uri, is_dir);
+    return azure().is_dir(uri, is_dir);
 #else
     *is_dir = false;
     throw BuiltWithout("Azure");
@@ -668,7 +665,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.is_blob(uri, is_file);
+    return azure().is_blob(uri, is_file);
 #else
     *is_file = false;
     throw BuiltWithout("Azure");
@@ -702,7 +699,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    RETURN_NOT_OK(azure_.is_container(uri, is_bucket));
+    RETURN_NOT_OK(azure().is_container(uri, is_bucket));
     return Status::Ok();
 #else
     *is_bucket = false;
@@ -761,7 +758,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 #endif
   } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
-    entries = azure_.ls_with_sizes(parent);
+    entries = azure().ls_with_sizes(parent);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -842,7 +839,7 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_azure()) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
-      return azure_.move_object(old_uri, new_uri);
+      return azure().move_object(old_uri, new_uri);
 #else
       throw BuiltWithout("Azure");
 #endif
@@ -915,7 +912,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_azure()) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
-      return azure_.move_dir(old_uri, new_uri);
+      return azure().move_dir(old_uri, new_uri);
 #else
       throw BuiltWithout("Azure");
 #endif
@@ -1199,7 +1196,7 @@ Status VFS::read_impl(
 #ifdef HAVE_AZURE
     const auto read_fn = std::bind(
         &Azure::read,
-        &azure_,
+        &azure(),
         std::placeholders::_1,
         std::placeholders::_2,
         std::placeholders::_3,
@@ -1434,7 +1431,7 @@ Status VFS::close_file(const URI& uri) {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.flush_blob(uri);
+    return azure().flush_blob(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -1498,7 +1495,7 @@ Status VFS::write(
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.write(uri, buffer, buffer_size);
+    return azure().write(uri, buffer, buffer_size);
 #else
     throw BuiltWithout("Azure");
 #endif

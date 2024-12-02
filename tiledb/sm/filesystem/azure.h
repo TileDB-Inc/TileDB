@@ -72,19 +72,48 @@ class AzureException : public StatusException {
   }
 };
 
+/** Helper function to retrieve the given parameter from the config or env. */
+std::string get_config_with_env_fallback(
+    const Config& config, const std::string& key, const char* env_name);
+
+/** Helper function to retrieve the blob endpoint from the config or env. */
+std::string get_blob_endpoint(
+    const Config& config, const std::string& account_name);
+
 /**
  * The Azure-specific configuration parameters.
+ *
+ * @note The member variables' default declarations have not yet been moved
+ * from the Config declaration into this struct.
  */
 struct AzureParameters {
   AzureParameters() = delete;
 
-  /**
-   * Creates an AzureParameters object.
-   *
-   * @return AzureParameters or nullopt if config does not have
-   * a storage account or blob endpoint set.
-   */
-  static std::optional<AzureParameters> create(const Config& config);
+  AzureParameters(const Config& config)
+      : max_parallel_ops_(config.get<uint64_t>(
+            "vfs.azure.max_parallel_ops", Config::must_find))
+      , block_list_block_size_(config.get<uint64_t>(
+            "vfs.azure.block_list_block_size", Config::must_find))
+      , write_cache_max_size_(max_parallel_ops_ * block_list_block_size_)
+      , max_retries_(
+            config.get<uint64_t>("vfs.azure.max_retries", Config::must_find))
+      , retry_delay_(std::chrono::milliseconds(config.get<uint64_t>(
+            "vfs.azure.retry_delay_ms", Config::must_find)))
+      , max_retry_delay_(std::chrono::milliseconds(config.get<uint64_t>(
+            "vfs.azure.max_retry_delay_ms", Config::must_find)))
+      , use_block_list_upload_(config.get<bool>(
+            "vfs.azure.use_block_list_upload", Config::must_find))
+      , account_name_(get_config_with_env_fallback(
+            config, "vfs.azure.storage_account_name", "AZURE_STORAGE_ACCOUNT"))
+      , account_key_(get_config_with_env_fallback(
+            config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
+      , blob_endpoint_(get_blob_endpoint(config, account_name_))
+      , ssl_cfg_(config)
+      , has_sas_token_(!get_config_with_env_fallback(
+                            config,
+                            "vfs.azure.storage_sas_token",
+                            "AZURE_STORAGE_SAS_TOKEN")
+                            .empty()){};
 
   /**  The maximum number of parallel requests. */
   uint64_t max_parallel_ops_;
@@ -267,24 +296,26 @@ class Azure {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Azure();
+  /**
+   * Constructor.
+   *
+   * @param thread_pool The parent VFS thread pool.
+   * @param config Configuration parameters.
+   */
+  Azure(ThreadPool* thread_pool, const Config& config);
 
-  /** Destructor. */
+  /**
+   * Destructor.
+   *
+   * @note The default destructor may cause undefined behavior with
+   * `Azure::Storage::Blobs::BlobServiceClient`, so this destructor must be
+   * explicitly defined.
+   */
   ~Azure();
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
-
-  /**
-   * Initializes and connects an Azure client.
-   *
-   * @param config Configuration parameters.
-   * @param thread_pool The parent VFS thread pool.
-   * @return Status
-   */
-  Status init(const Config& config, ThreadPool* thread_pool);
 
   /**
    * Creates a container.
@@ -562,22 +593,14 @@ class Azure {
    * use of the BlobServiceClient.
    */
   const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
-    // This branch can be entered in two circumstances:
-    // 1. The init method has not been called yet.
-    // 2. The init method has been called, but the config (or environment
-    //    variables) do not contain enough information to get the Azure
-    //    endpoint.
-    // We don't distinguish between the two, because only the latter can
-    // happen under normal circumstances, and the former is a C.41 issue
-    // that will go away once the class is C.41 compliant.
-    if (!azure_params_) {
-      throw StatusException(Status_AzureError(
+    if (azure_params_.blob_endpoint_.empty()) {
+      throw AzureException(
           "Azure VFS is not configured. Please set the "
           "'vfs.azure.storage_account_name' and/or "
-          "'vfs.azure.blob_endpoint' configuration options."));
+          "'vfs.azure.blob_endpoint' configuration options.");
     }
 
-    return client_singleton_.get(*azure_params_);
+    return client_singleton_.get(azure_params_);
   }
 
  private:
@@ -655,6 +678,9 @@ class Azure {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The Azure configuration parameters. */
+  AzureParameters azure_params_;
+
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
 
@@ -666,12 +692,6 @@ class Azure {
 
   /** Protects 'write_cache_map_'. */
   std::mutex write_cache_map_lock_;
-
-  /**
-   * Contains options to configure connection to Azure.
-   * After the class becomes C.41 compliant, remove the std::optional.
-   */
-  std::optional<AzureParameters> azure_params_;
 
   /** Maps a blob URI to its block list upload state. */
   std::unordered_map<std::string, BlockListUploadState>

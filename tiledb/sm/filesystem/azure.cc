@@ -81,7 +81,10 @@ template <class T>
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Azure::Azure() {
+Azure::Azure(ThreadPool* const thread_pool, const Config& config)
+    : azure_params_(AzureParameters(config))
+    , thread_pool_(thread_pool) {
+  assert(thread_pool);
 }
 
 Azure::~Azure() {
@@ -99,7 +102,7 @@ std::string get_config_with_env_fallback(
   return result;
 }
 
-std::optional<std::string> get_blob_endpoint(
+std::string get_blob_endpoint(
     const Config& config, const std::string& account_name) {
   std::string sas_token = get_config_with_env_fallback(
       config, "vfs.azure.storage_sas_token", "AZURE_STORAGE_SAS_TOKEN");
@@ -110,7 +113,7 @@ std::optional<std::string> get_blob_endpoint(
     if (!account_name.empty()) {
       result = "https://" + account_name + ".blob.core.windows.net";
     } else {
-      return std::nullopt;
+      return "";
     }
   } else if (!(utils::parse::starts_with(result, "http://") ||
                utils::parse::starts_with(result, "https://"))) {
@@ -129,62 +132,6 @@ std::optional<std::string> get_blob_endpoint(
     result += sas_token;
   }
   return result;
-}
-
-/**
- * Check if config has a SAS token set
- * @param config Configuration parameters.
- * @return whether there is a SAS token in the config
- */
-static bool has_sas_token(const Config& config) {
-  std::string sas_token = get_config_with_env_fallback(
-      config, "vfs.azure.storage_sas_token", "AZURE_STORAGE_SAS_TOKEN");
-  return !sas_token.empty();
-}
-
-std::optional<AzureParameters> AzureParameters::create(const Config& config) {
-  auto account_name = get_config_with_env_fallback(
-      config, "vfs.azure.storage_account_name", "AZURE_STORAGE_ACCOUNT");
-  auto blob_endpoint = get_blob_endpoint(config, account_name);
-  if (!blob_endpoint) {
-    return std::nullopt;
-  }
-  return AzureParameters{config, account_name, *blob_endpoint};
-}
-
-AzureParameters::AzureParameters(
-    const Config& config,
-    const std::string& account_name,
-    const std::string& blob_endpoint)
-    : max_parallel_ops_(
-          config.get<uint64_t>("vfs.azure.max_parallel_ops", Config::must_find))
-    , block_list_block_size_(config.get<uint64_t>(
-          "vfs.azure.block_list_block_size", Config::must_find))
-    , write_cache_max_size_(max_parallel_ops_ * block_list_block_size_)
-    , max_retries_(
-          config.get<uint64_t>("vfs.azure.max_retries", Config::must_find))
-    , retry_delay_(std::chrono::milliseconds(
-          config.get<uint64_t>("vfs.azure.retry_delay_ms", Config::must_find)))
-    , max_retry_delay_(std::chrono::milliseconds(config.get<uint64_t>(
-          "vfs.azure.max_retry_delay_ms", Config::must_find)))
-    , use_block_list_upload_(config.get<bool>(
-          "vfs.azure.use_block_list_upload", Config::must_find))
-    , account_name_(account_name)
-    , account_key_(get_config_with_env_fallback(
-          config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
-    , blob_endpoint_(blob_endpoint)
-    , ssl_cfg_(config)
-    , has_sas_token_(has_sas_token(config)) {
-}
-
-Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
-  if (thread_pool == nullptr) {
-    return LOG_STATUS(
-        Status_AzureError("Can't initialize with null thread pool."));
-  }
-  thread_pool_ = thread_pool;
-  azure_params_ = AzureParameters::create(config);
-  return Status::Ok();
 }
 
 /* ********************************* */
@@ -302,8 +249,7 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
 Status Azure::create_container(const URI& uri) const {
   const auto& c = client();
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   std::string container_name;
@@ -319,8 +265,8 @@ Status Azure::create_container(const URI& uri) const {
   }
 
   if (!created) {
-    return LOG_STATUS(Status_AzureError(std::string(
-        "Create container failed on: " + uri.to_string() + error_message)));
+    throw AzureException(
+        "Create container failed on: " + uri.to_string() + error_message);
   }
 
   return Status::Ok();
@@ -331,16 +277,14 @@ Status Azure::empty_container(const URI& container) const {
 }
 
 Status Azure::flush_blob(const URI& uri) {
-  assert(azure_params_);
   const auto& c = client();
 
-  if (!azure_params_->use_block_list_upload_) {
+  if (!azure_params_.use_block_list_upload_) {
     return flush_blob_direct(uri);
   }
 
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
@@ -414,9 +358,9 @@ Status Azure::flush_blob(const URI& uri) {
           " This error might be resolved by increasing the value of the "
           "'vfs.azure.block_list_block_size' config option";
     }
-    return LOG_STATUS(Status_AzureError(
+    throw AzureException(
         "Flush blob failed on: " + uri.to_string() + "; " + e.Message +
-        msg_extra));
+        msg_extra);
   }
 
   return Status::Ok();
@@ -439,8 +383,7 @@ void Azure::finish_block_list_upload(const URI& uri) {
 Status Azure::flush_blob_direct(const URI& uri) {
   auto& c = client();
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
@@ -460,8 +403,8 @@ Status Azure::flush_blob_direct(const URI& uri) {
             static_cast<uint8_t*>(write_cache_buffer->data()),
             static_cast<size_t>(write_cache_buffer->size()));
   } catch (const ::Azure::Storage::StorageException& e) {
-    return LOG_STATUS(Status_AzureError(
-        "Flush blob failed on: " + uri.to_string() + "; " + e.Message));
+    throw AzureException(
+        "Flush blob failed on: " + uri.to_string() + "; " + e.Message);
   }
 
   // Protect 'write_cache_map_' from multiple writers.
@@ -478,8 +421,7 @@ Status Azure::is_empty_container(const URI& uri, bool* is_empty) const {
   assert(is_empty);
 
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   std::string container_name;
@@ -492,8 +434,8 @@ Status Azure::is_empty_container(const URI& uri, bool* is_empty) const {
                     .ListBlobs(options)
                     .Blobs.empty();
   } catch (const ::Azure::Storage::StorageException& e) {
-    return LOG_STATUS(Status_AzureError(
-        "List blobs failed on: " + uri.to_string() + "; " + e.Message));
+    throw AzureException(
+        "List blobs failed on: " + uri.to_string() + "; " + e.Message);
   }
 
   return Status::Ok();
@@ -503,8 +445,7 @@ Status Azure::is_container(const URI& uri, bool* const is_container) const {
   assert(is_container);
 
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   std::string container_name;
@@ -525,9 +466,9 @@ Status Azure::is_container(
       *is_container = false;
       return Status_Ok();
     }
-    return LOG_STATUS(Status_AzureError(
+    throw AzureException(
         "Get container properties failed on: " + container_name + "; " +
-        e.Message));
+        e.Message);
   }
 
   *is_container = true;
@@ -569,8 +510,8 @@ Status Azure::is_blob(
       *is_blob = false;
       return Status_Ok();
     }
-    return LOG_STATUS(Status_AzureError(
-        "Get blob properties failed on: " + blob_path + "; " + e.Message));
+    throw AzureException(
+        "Get blob properties failed on: " + blob_path + "; " + e.Message);
   }
 
   *is_blob = true;
@@ -674,17 +615,12 @@ Status Azure::move_object(const URI& old_uri, const URI& new_uri) {
 }
 
 Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
-  assert(azure_params_);
   auto& c = client();
-
   if (!old_uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + old_uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + old_uri.to_string());
   }
-
   if (!new_uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + new_uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + new_uri.to_string());
   }
 
   std::string old_container_name;
@@ -702,10 +638,10 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
     c.GetBlobContainerClient(new_container_name)
         .GetBlobClient(new_blob_path)
         .StartCopyFromUri(source_uri)
-        .PollUntilDone(azure_params_->retry_delay_);
+        .PollUntilDone(azure_params_.retry_delay_);
   } catch (const ::Azure::Storage::StorageException& e) {
-    return LOG_STATUS(Status_AzureError(
-        "Copy blob failed on: " + old_uri.to_string() + "; " + e.Message));
+    throw AzureException(
+        "Copy blob failed on: " + old_uri.to_string() + "; " + e.Message);
   }
 
   return Status::Ok();
@@ -727,8 +663,7 @@ Status Azure::blob_size(const URI& uri, uint64_t* const nbytes) const {
   assert(nbytes);
 
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   std::string container_name;
@@ -754,8 +689,8 @@ Status Azure::blob_size(const URI& uri, uint64_t* const nbytes) const {
   }
 
   if (error_message.has_value()) {
-    return LOG_STATUS(Status_AzureError(
-        "Get blob size failed on: " + uri.to_string() + error_message.value()));
+    throw AzureException(
+        "Get blob size failed on: " + uri.to_string() + error_message.value());
   }
 
   return Status::Ok();
@@ -771,8 +706,7 @@ Status Azure::read(
   const auto& c = client();
 
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   std::string container_name;
@@ -793,16 +727,15 @@ Status Azure::read(
                  .Download(options)
                  .Value;
   } catch (const ::Azure::Storage::StorageException& e) {
-    return LOG_STATUS(Status_AzureError(
-        "Read blob failed on: " + uri.to_string() + "; " + e.Message));
+    throw AzureException(
+        "Read blob failed on: " + uri.to_string() + "; " + e.Message);
   }
 
   *length_returned = result.BodyStream->ReadToCount(
       static_cast<uint8_t*>(buffer), total_length);
 
   if (*length_returned < length) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Read operation read unexpected number of bytes.")));
+    throw AzureException("Read operation read unexpected number of bytes.");
   }
 
   return Status::Ok();
@@ -827,8 +760,8 @@ Status Azure::remove_container(const URI& uri) const {
   }
 
   if (!deleted) {
-    return LOG_STATUS(Status_AzureError(std::string(
-        "Remove container failed on: " + uri.to_string() + error_message)));
+    throw AzureException(
+        "Remove container failed on: " + uri.to_string() + error_message);
   }
 
   return Status::Ok();
@@ -853,8 +786,8 @@ Status Azure::remove_blob(const URI& uri) const {
   }
 
   if (!deleted) {
-    return LOG_STATUS(Status_AzureError(std::string(
-        "Remove blob failed on: " + uri.to_string() + error_message)));
+    throw AzureException(
+        "Remove blob failed on: " + uri.to_string() + error_message);
   }
 
   return Status::Ok();
@@ -876,13 +809,12 @@ Status Azure::touch(const URI& uri) const {
   auto& c = client();
 
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   if (uri.to_string().back() == '/') {
-    return LOG_STATUS(Status_AzureError(std::string(
-        "Cannot create file; URI is a directory: " + uri.to_string())));
+    throw AzureException(
+        "Cannot create file; URI is a directory: " + uri.to_string());
   }
 
   bool is_blob;
@@ -900,8 +832,8 @@ Status Azure::touch(const URI& uri) const {
         .GetBlockBlobClient(blob_path)
         .UploadFrom(nullptr, 0);
   } catch (const ::Azure::Storage::StorageException& e) {
-    return LOG_STATUS(Status_AzureError(
-        "Touch blob failed on: " + uri.to_string() + "; " + e.Message));
+    throw AzureException(
+        "Touch blob failed on: " + uri.to_string() + "; " + e.Message);
   }
 
   return Status::Ok();
@@ -909,11 +841,9 @@ Status Azure::touch(const URI& uri) const {
 
 Status Azure::write(
     const URI& uri, const void* const buffer, const uint64_t length) {
-  assert(azure_params_);
-  auto write_cache_max_size = azure_params_->write_cache_max_size_;
+  auto write_cache_max_size = azure_params_.write_cache_max_size_;
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
@@ -922,12 +852,12 @@ Status Azure::write(
   RETURN_NOT_OK(
       fill_write_cache(write_cache_buffer, buffer, length, &nbytes_filled));
 
-  if (!azure_params_->use_block_list_upload_) {
+  if (!azure_params_.use_block_list_upload_) {
     if (nbytes_filled != length) {
       std::stringstream errmsg;
       errmsg << "Direct write failed! " << nbytes_filled
              << " bytes written to buffer, " << length << " bytes requested.";
-      return LOG_STATUS(Status_AzureError(errmsg.str()));
+      throw AzureException(errmsg.str());
     } else {
       return Status::Ok();
     }
@@ -978,14 +908,12 @@ Status Azure::fill_write_cache(
     const void* const buffer,
     const uint64_t length,
     uint64_t* const nbytes_filled) {
-  assert(azure_params_);
   assert(write_cache_buffer);
   assert(buffer);
   assert(nbytes_filled);
 
   *nbytes_filled = std::min(
-      azure_params_->write_cache_max_size_ - write_cache_buffer->size(),
-      length);
+      azure_params_.write_cache_max_size_ - write_cache_buffer->size(), length);
 
   if (*nbytes_filled > 0) {
     RETURN_NOT_OK(write_cache_buffer->write(buffer, *nbytes_filled));
@@ -1016,11 +944,9 @@ Status Azure::write_blocks(
     const void* const buffer,
     const uint64_t length,
     const bool last_block) {
-  assert(azure_params_);
-  auto block_list_block_size = azure_params_->block_list_block_size_;
+  auto block_list_block_size = azure_params_.block_list_block_size_;
   if (!uri.is_azure()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri.to_string())));
+    throw AzureException("URI is not an Azure URI: " + uri.to_string());
   }
 
   // Ensure that each thread is responsible for exactly block_list_block_size_
@@ -1031,12 +957,11 @@ Status Azure::write_blocks(
   uint64_t num_ops = last_block ?
                          utils::math::ceil(length, block_list_block_size) :
                          (length / block_list_block_size);
-  num_ops = std::min(
-      std::max(num_ops, uint64_t(1)), azure_params_->max_parallel_ops_);
+  num_ops =
+      std::min(std::max(num_ops, uint64_t(1)), azure_params_.max_parallel_ops_);
 
   if (!last_block && length % block_list_block_size != 0) {
-    return LOG_STATUS(
-        Status_AzureError("Length not evenly divisible by block size"));
+    throw AzureException("Length not evenly divisible by block size");
   }
 
   BlockListUploadState* state;
@@ -1192,8 +1117,8 @@ Status Azure::upload_block(
         .GetBlockBlobClient(blob_path)
         .StageBlock(block_id, stream);
   } catch (const ::Azure::Storage::StorageException& e) {
-    return LOG_STATUS(Status_AzureError(
-        "Upload block failed on: " + blob_path + "; " + e.Message));
+    throw AzureException(
+        "Upload block failed on: " + blob_path + "; " + e.Message);
   }
 
   return Status::Ok();
