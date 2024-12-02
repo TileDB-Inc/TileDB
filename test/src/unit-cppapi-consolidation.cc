@@ -492,7 +492,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test consolidation that respects the current domain",
-    "[cppapi][consolidation][current-domain]") {
+    "[cppapi][consolidation][current_domain]") {
   std::string array_name = "cppapi_consolidation_current_domain";
   remove_array(array_name);
 
