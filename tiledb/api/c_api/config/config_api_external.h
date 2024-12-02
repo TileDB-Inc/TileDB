@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -455,6 +455,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The maximum permissible delay between Azure netwwork request retry
  *    attempts, in milliseconds.
  *    **Default**: 60000
+ * - `vfs.gcs.endpoint` <br>
+ *    The GCS endpoint. <br>
+ *    **Default**: ""
  * - `vfs.gcs.project_id` <br>
  *    Set the GCS project ID to create new buckets to. Not required unless you
  *    are going to use the VFS to create buckets. <br>
