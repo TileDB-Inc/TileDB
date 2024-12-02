@@ -60,7 +60,7 @@ class ThreadPool {
    protected:
     friend class ThreadPool;
 
-    ThreadPool* tp_;
+    ThreadPool* tp_{nullptr};
 
     /**
      * Pure virtual functions that tasks need to implement so that they can be
@@ -119,11 +119,16 @@ class ThreadPool {
     Task& operator=(const Task&) = delete;
 
     /**
-     * Wait in the threadpool for this task to be ready. Checks internally if a
-     * task is valid.
+     * Wait in the threadpool for this task to be ready.
      */
     Status wait() {
-      return tp_->wait(this);
+      if (tp_ == nullptr) {
+        throw std::runtime_error("Cannot wait, threadpool is not initialized.");
+      } else if (!f_.valid()) {
+        throw std::runtime_error("Cannot wait, task is invalid.");
+      } else {
+        return tp_->wait(this);
+      }
     }
 
     /**
@@ -234,11 +239,16 @@ class ThreadPool {
     }
 
     /**
-     * Wait in the threadpool for this task to be ready. Checks internally if a
-     * task is valid.
+     * Wait in the threadpool for this task to be ready.
      */
     Status wait() {
-      return tp_->wait(this);
+      if (tp_ == nullptr) {
+        throw std::runtime_error("Cannot wait, threadpool is not initialized.");
+      } else if (!f_.valid()) {
+        throw std::runtime_error("Cannot wait, shared task is invalid.");
+      } else {
+        return tp_->wait(this);
+      }
     }
 
     /**
