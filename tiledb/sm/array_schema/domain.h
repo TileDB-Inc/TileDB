@@ -39,6 +39,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/common/types/untyped_datum.h"
+#include "tiledb/sm/array_schema/current_domain.h"
+#include "tiledb/sm/array_schema/ndrectangle.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
@@ -277,8 +279,23 @@ class Domain {
    * the array's regular tiles (i.e., it maps it on the regular tile grid).
    * If the array has no regular tile grid or real domain, the function
    * does not do anything.
+   *
+   * @param query_ndrange The query domain to be expanded.
    */
-  void expand_to_tiles(NDRange* ndrange) const;
+  void expand_to_tiles_when_no_current_domain(NDRange& query_ndrange) const;
+
+  /**
+   * Expands the input query domain (query_ndrange) so that it aligns with the
+   * boundaries of the array's regular tiles. (i.e., it maps the domain onto the
+   * regular tile grid) in the same way as
+   * Domain::expand_to_tiles_when_no_current_domain(NDRange*), but while
+   * respecting the current domain.
+   *
+   * @param current_domain The current domain to be considered.
+   * @param query_ndrange The query domain to be expanded.
+   */
+  void expand_to_tiles(
+      const CurrentDomain& current_domain, NDRange& query_ndrange) const;
 
   /**
    * Retrieves the tile coordinates of the input cell coordinates.

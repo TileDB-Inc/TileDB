@@ -431,10 +431,9 @@ Status FragmentConsolidator::consolidate_fragments(
 
     // Expand domain to full tiles
     auto expanded_union_non_empty_domains = union_non_empty_domains;
-    expand_tiles_respecting_current_domain(
-        domain,
+    domain.expand_to_tiles(
         array_for_reads->array_schema_latest().current_domain(),
-        &expanded_union_non_empty_domains);
+        expanded_union_non_empty_domains);
 
     // Now iterate all fragments and see if the consolidation can lead to data
     // loss
@@ -759,10 +758,8 @@ Status FragmentConsolidator::create_queries(
   if (dense) {
     NDRange read_subarray = subarray;
     auto& domain{array_for_reads->array_schema_latest().domain()};
-    expand_tiles_respecting_current_domain(
-        domain,
-        array_for_reads->array_schema_latest().current_domain(),
-        &read_subarray);
+    domain.expand_to_tiles(
+        array_for_reads->array_schema_latest().current_domain(), read_subarray);
     throw_if_not_ok(query_r->set_subarray_unsafe(read_subarray));
   }
 

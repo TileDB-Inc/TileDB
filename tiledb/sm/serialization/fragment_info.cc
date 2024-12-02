@@ -231,10 +231,8 @@ single_fragment_info_from_capnp(
 
   auto expanded_non_empty_domain = meta->non_empty_domain();
   if (meta->dense()) {
-    expand_tiles_respecting_current_domain(
-        meta->array_schema()->domain(),
-        meta->array_schema()->current_domain(),
-        &expanded_non_empty_domain);
+    meta->array_schema()->domain().expand_to_tiles(
+        meta->array_schema()->current_domain(), expanded_non_empty_domain);
   }
   SingleFragmentInfo single_frag_info{
       meta->fragment_uri(),
