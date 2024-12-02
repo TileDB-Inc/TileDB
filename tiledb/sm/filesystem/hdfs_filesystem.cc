@@ -61,11 +61,11 @@
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb::sm::hdfs {
+namespace tiledb::sm {
 
 Status close_library(void* handle) {
   if (dlclose(handle)) {
-    return Status_HDFSError(dlerror());
+    throw HDFSException(dlerror());
   }
   return Status::Ok();
 }
@@ -73,7 +73,7 @@ Status close_library(void* handle) {
 Status load_library(const char* library_filename, void** handle) {
   *handle = dlopen(library_filename, RTLD_NOW | RTLD_LOCAL);
   if (!*handle) {
-    return Status_HDFSError(dlerror());
+    throw HDFSException(dlerror());
   }
   return Status::Ok();
 }
@@ -81,7 +81,7 @@ Status load_library(const char* library_filename, void** handle) {
 Status library_symbol(void* handle, const char* symbol_name, void** symbol) {
   *symbol = dlsym(handle, symbol_name);
   if (!*symbol) {
-    return Status_HDFSError(dlerror());
+    throw HDFSException(dlerror());
   }
   return Status::Ok();
 }
@@ -182,7 +182,8 @@ class LibHDFS {
     // Use the path as specified in the libhdfs documentation.
     const char* hdfs_home = getenv("HADOOP_HOME");
     if (hdfs_home == nullptr) {
-      status_ = Status_HDFSError("Environment variable HADOOP_HOME not set");
+      status_ = Status_Error(
+          "[TileDB::HDFS] Error: Environment variable HADOOP_HOME not set");
       return;
     }
 #if defined(__APPLE__)
@@ -207,71 +208,58 @@ class LibHDFS {
   void* handle_ = nullptr;
 };
 
-HDFS::HDFS()
+HDFS::HDFS(const Config& config)
     : hdfs_(nullptr)
-    , libhdfs_(LibHDFS::load()) {
-}
-
-Status HDFS::init(const Config& config) {
-  // Get config
-  bool found = false;
-  std::string name_node_uri = config.get("vfs.hdfs.name_node_uri", &found);
-  assert(found);
-  std::string username = config.get("vfs.hdfs.username", &found);
-  assert(found);
-  std::string kerb_ticket_cache_path =
-      config.get("vfs.hdfs.kerb_ticket_cache_path", &found);
-  assert(found);
-
+    , libhdfs_(LibHDFS::load())
+    , hdfs_params_(HDFSParameters(config)) {
   // if libhdfs does not exist, just return and fail lazily on connection
   if (!libhdfs_->status().ok()) {
-    return Status::Ok();
+    return;
   }
   struct hdfsBuilder* builder = libhdfs_->hdfsNewBuilder();
   if (builder == nullptr) {
-    return LOG_STATUS(Status_HDFSError(
-        "Failed to connect to hdfs, could not create connection builder"));
+    throw HDFSException(
+        "Failed to connect to hdfs, could not create connection builder");
   }
   libhdfs_->hdfsBuilderSetForceNewInstance(builder);
-  if (name_node_uri.empty())
-    name_node_uri = "default";
-  libhdfs_->hdfsBuilderSetNameNode(builder, name_node_uri.c_str());
-  if (!username.empty())
-    libhdfs_->hdfsBuilderSetUserName(builder, username.c_str());
-  if (!kerb_ticket_cache_path.empty()) {
+  if (hdfs_params_.name_node_uri_.empty())
+    hdfs_params_.name_node_uri_ = "default";
+  libhdfs_->hdfsBuilderSetNameNode(
+      builder, hdfs_params_.name_node_uri_.c_str());
+  if (!hdfs_params_.username_.empty())
+    libhdfs_->hdfsBuilderSetUserName(builder, hdfs_params_.username_.c_str());
+  if (!hdfs_params_.kerb_ticket_cache_path_.empty()) {
     libhdfs_->hdfsBuilderSetKerbTicketCachePath(
-        builder, kerb_ticket_cache_path.c_str());
+        builder, hdfs_params_.kerb_ticket_cache_path_.c_str());
   }
   // TODO: Set config strings
   hdfs_ = libhdfs_->hdfsBuilderConnect(builder);
   if (hdfs_ == nullptr) {
-    // TODO: errno for better options
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Failed to connect to HDFS namenode: ") + name_node_uri));
+    throw HDFSException(
+        "Failed to connect to HDFS namenode: " + hdfs_params_.name_node_uri_);
   }
-  return Status::Ok();
 }
 
 Status HDFS::disconnect() {
   RETURN_NOT_OK(libhdfs_->status());
   if (libhdfs_->hdfsDisconnect(hdfs_) != 0) {
-    return LOG_STATUS(Status_HDFSError("Failed to disconnect hdfs"));
+    throw HDFSException("Failed to disconnect hdfs");
   }
   hdfs_ = nullptr;
   return Status::Ok();
 }
 
 // Stub definition, we only try to connect once to a single fs at a time
-Status HDFS::connect(hdfsFS* fs) {
+Status HDFS::connect(hdfsFS* fs) const {
   RETURN_NOT_OK(libhdfs_->status());
   if (hdfs_ == nullptr) {
-    return LOG_STATUS(Status_HDFSError("Not connected to HDFS namenode"));
+    throw HDFSException("Not connected to HDFS namenode");
   }
   *fs = hdfs_;
   return Status::Ok();
 }
 
-Status HDFS::is_dir(const URI& uri, bool* is_dir) {
+Status HDFS::is_dir(const URI& uri, bool* is_dir) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   int exists = libhdfs_->hdfsExists(fs, uri.to_path().c_str());
@@ -293,54 +281,52 @@ Status HDFS::is_dir(const URI& uri, bool* is_dir) {
   return Status::Ok();
 }
 
-Status HDFS::create_dir(const URI& uri) {
+Status HDFS::create_dir(const URI& uri) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   bool dir_exists = false;
   RETURN_NOT_OK(is_dir(uri, &dir_exists));
   if (dir_exists) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot create directory ") + uri.to_string() +
-        "'; Directory already exists"));
+    throw HDFSException(
+        "Cannot create directory " + uri.to_string() +
+        "'; Directory already exists");
   }
   int ret = libhdfs_->hdfsCreateDirectory(fs, uri.to_path().c_str());
   if (ret < 0) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot create directory ") + uri.to_string()));
+    throw HDFSException("Cannot create directory " + uri.to_string());
   }
   return Status::Ok();
 }
 
-Status HDFS::remove_dir(const URI& uri) {
+Status HDFS::remove_dir(const URI& uri) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   int rc = libhdfs_->hdfsDelete(fs, uri.to_path().c_str(), 1);
   if (rc < 0) {
-    return LOG_STATUS(
-        Status_HDFSError("Cannot remove path: " + uri.to_string()));
+    throw HDFSException("Cannot remove path: " + uri.to_string());
   }
   return Status::Ok();
 }
 
-Status HDFS::move_path(const URI& old_uri, const URI& new_uri) {
+Status HDFS::move_path(const URI& old_uri, const URI& new_uri) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   if (libhdfs_->hdfsExists(fs, new_uri.to_path().c_str()) == 0) {
-    return LOG_STATUS(Status_HDFSError(
+    throw HDFSException(
         "Cannot move path " + old_uri.to_string() + " to " +
-        new_uri.to_string() + "; path exists."));
+        new_uri.to_string() + "; path exists.");
   }
   int ret = libhdfs_->hdfsRename(
       fs, old_uri.to_path().c_str(), new_uri.to_path().c_str());
   if (ret < 0) {
-    return LOG_STATUS(Status_HDFSError(
+    throw HDFSException(
         "Error moving path " + old_uri.to_string() + " to " +
-        new_uri.to_string()));
+        new_uri.to_string());
   }
   return Status::Ok();
 }
 
-Status HDFS::is_file(const URI& uri, bool* is_file) {
+Status HDFS::is_file(const URI& uri, bool* is_file) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   int ret = libhdfs_->hdfsExists(fs, uri.to_path().c_str());
@@ -362,10 +348,10 @@ Status HDFS::is_file(const URI& uri, bool* is_file) {
   return Status::Ok();
 }
 
-Status HDFS::touch(const URI& uri) {
+Status HDFS::touch(const URI& uri) const {
   if (uri.to_string().back() == '/') {
-    return LOG_STATUS(Status_HDFSError(std::string(
-        "Cannot create file; URI is a directory: " + uri.to_string())));
+    throw HDFSException(
+        "Cannot create file; URI is a directory: " + uri.to_string());
   }
 
   hdfsFS fs = nullptr;
@@ -373,50 +359,46 @@ Status HDFS::touch(const URI& uri) {
   hdfsFile writeFile =
       libhdfs_->hdfsOpenFile(fs, uri.to_path().c_str(), O_WRONLY, 0, 0, 0);
   if (!writeFile) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot create file ") + uri.to_string() +
-        "; File opening error"));
+    throw HDFSException(
+        "Cannot create file " + uri.to_string() + "; File opening error");
   }
   // Close file
   if (libhdfs_->hdfsCloseFile(fs, writeFile)) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot create file ") + uri.to_string() +
-        "; File closing error"));
+    throw HDFSException(
+        "Cannot create file " + uri.to_string() + "; File closing error");
   }
   return Status::Ok();
 }
 
-Status HDFS::remove_file(const URI& uri) {
+Status HDFS::remove_file(const URI& uri) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   int ret = libhdfs_->hdfsDelete(fs, uri.to_path().c_str(), 0);
   if (ret < 0) {
-    return LOG_STATUS(
-        Status_HDFSError(std::string("Cannot delete file ") + uri.to_string()));
+    throw HDFSException("Cannot delete file " + uri.to_string());
   }
   return Status::Ok();
 }
 
-Status HDFS::read(const URI& uri, off_t offset, void* buffer, uint64_t length) {
+Status HDFS::read(
+    const URI& uri, off_t offset, void* buffer, uint64_t length) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   hdfsFile readFile =
       libhdfs_->hdfsOpenFile(fs, uri.to_path().c_str(), O_RDONLY, length, 0, 0);
   if (!readFile) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot read file ") + uri.to_string() +
-        ": file open error"));
+    throw HDFSException(
+        "Cannot read file " + uri.to_string() + ": file open error");
   }
   if (offset > std::numeric_limits<tOffset>::max()) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot read from from '") + uri.to_string() +
-        "'; offset > typemax(tOffset)"));
+    throw HDFSException(
+        "Cannot read from from '" + uri.to_string() +
+        "'; offset > typemax(tOffset)");
   }
   tOffset off = static_cast<tOffset>(offset);
   int ret = libhdfs_->hdfsSeek(fs, readFile, off);
   if (ret < 0) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot seek to offset ") + uri.to_string()));
+    throw HDFSException("Cannot seek to offset " + uri.to_string());
   }
   uint64_t bytes_to_read = length;
   char* buffptr = static_cast<char*>(buffer);
@@ -425,8 +407,8 @@ Status HDFS::read(const URI& uri, off_t offset, void* buffer, uint64_t length) {
     tSize bytes_read =
         libhdfs_->hdfsRead(fs, readFile, static_cast<void*>(buffptr), nbytes);
     if (bytes_read < 0) {
-      return LOG_STATUS(Status_HDFSError(
-          "Cannot read from file " + uri.to_string() + "; File reading error"));
+      throw HDFSException(
+          "Cannot read from file " + uri.to_string() + "; File reading error");
     }
     bytes_to_read -= bytes_read;
     buffptr += bytes_read;
@@ -434,14 +416,14 @@ Status HDFS::read(const URI& uri, off_t offset, void* buffer, uint64_t length) {
 
   // Close file
   if (libhdfs_->hdfsCloseFile(fs, readFile)) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot read from file ") + uri.to_string() +
-        "; File closing error"));
+    throw HDFSException(
+        "Cannot read from file " + uri.to_string() + "; File closing error");
   }
   return Status::Ok();
 }
 
-Status HDFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
+Status HDFS::write(
+    const URI& uri, const void* buffer, uint64_t buffer_size) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   bool file_exists = false;
@@ -450,9 +432,8 @@ Status HDFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   hdfsFile write_file = libhdfs_->hdfsOpenFile(
       fs, uri.to_path().c_str(), flags, constants::max_write_bytes, 0, 0);
   if (!write_file) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot write to file ") + uri.to_string() +
-        "; File opening error"));
+    throw HDFSException(
+        "Cannot write to file " + uri.to_string() + "; File opening error");
   }
   // Append data to the file in batches of
   // constants::max_write_bytes bytes at a time
@@ -466,9 +447,8 @@ Status HDFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
         constants::max_write_bytes);
     if (bytes_written < 0 ||
         static_cast<uint64_t>(bytes_written) != constants::max_write_bytes) {
-      return LOG_STATUS(Status_HDFSError(
-          std::string("Cannot write to file ") + uri.to_string() +
-          "; File writing error"));
+      throw HDFSException(
+          "Cannot write to file " + uri.to_string() + "; File writing error");
     }
     buffer_bytes_written += bytes_written;
     buffer_size -= bytes_written;
@@ -477,20 +457,18 @@ Status HDFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
       fs, write_file, buffer_bytes_ptr + buffer_bytes_written, buffer_size);
   if (bytes_written < 0 ||
       static_cast<uint64_t>(bytes_written) != buffer_size) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot write to file '") + uri.to_string() +
-        "'; File writing error"));
+    throw HDFSException(
+        "Cannot write to file '" + uri.to_string() + "'; File writing error");
   }
   // Close file
   if (libhdfs_->hdfsCloseFile(fs, write_file)) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot write to file ") + uri.to_string() +
-        "; File closing error"));
+    throw HDFSException(
+        "Cannot write to file " + uri.to_string() + "; File closing error");
   }
   return Status::Ok();
 }
 
-Status HDFS::sync(const URI& uri) {
+Status HDFS::sync(const URI& uri) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
 
@@ -503,48 +481,40 @@ Status HDFS::sync(const URI& uri) {
   hdfsFile file = libhdfs_->hdfsOpenFile(
       fs, uri.to_path().c_str(), O_WRONLY | O_APPEND, 0, 0, 0);
   if (!file) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot sync file '") + uri.to_string() +
-        "'; File open error"));
+    throw HDFSException(
+        "Cannot sync file '" + uri.to_string() + "'; File open error");
   }
   // Sync
   if (libhdfs_->hdfsHFlush(fs, file)) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Failed syncing file '") + uri.to_string() + "'"));
+    throw HDFSException("Failed syncing file '" + uri.to_string() + "'");
   }
   // Close file
   if (libhdfs_->hdfsCloseFile(fs, file)) {
-    return LOG_STATUS(Status_HDFSError(
-        std::string("Cannot sync file ") + uri.to_string() +
-        "; File closing error"));
+    throw HDFSException(
+        "Cannot sync file " + uri.to_string() + "; File closing error");
   }
   return Status::Ok();
 }
 
-Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) {
-  auto&& [st, entries] = ls_with_sizes(uri);
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
+Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) const {
+  auto entries = ls_with_sizes(uri);
+  for (auto& fs : entries) {
     paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> HDFS::ls_with_sizes(
-    const URI& uri) {
+std::vector<directory_entry> HDFS::ls_with_sizes(const URI& uri) const {
   hdfsFS fs = nullptr;
-  RETURN_NOT_OK_TUPLE(connect(&fs), nullopt);
+  throw_if_not_ok(connect(&fs));
 
   int numEntries = 0;
   hdfsFileInfo* fileList =
       libhdfs_->hdfsListDirectory(fs, uri.to_path().c_str(), &numEntries);
   if (fileList == NULL) {
     if (errno) {
-      auto st = LOG_STATUS(Status_HDFSError(
-          std::string("Cannot list files in ") + uri.to_string()));
-      return {st, nullopt};
+      throw HDFSException("Cannot list files in " + uri.to_string());
     }
   }
 
@@ -561,28 +531,26 @@ tuple<Status, optional<std::vector<directory_entry>>> HDFS::ls_with_sizes(
     }
   }
   libhdfs_->hdfsFreeFileInfo(fileList, numEntries);
-  return {Status::Ok(), entries};
+  return entries;
 }
 
-Status HDFS::file_size(const URI& uri, uint64_t* nbytes) {
+Status HDFS::file_size(const URI& uri, uint64_t* nbytes) const {
   hdfsFS fs = nullptr;
   RETURN_NOT_OK(connect(&fs));
   hdfsFileInfo* fileInfo = libhdfs_->hdfsGetPathInfo(fs, uri.to_path().c_str());
   if (fileInfo == nullptr) {
-    return LOG_STATUS(
-        Status_HDFSError(std::string("Not a file ") + uri.to_string()));
+    throw HDFSException("Not a file " + uri.to_string());
   }
   if ((char)(fileInfo->mKind) == 'F') {
     *nbytes = static_cast<uint64_t>(fileInfo->mSize);
   } else {
     libhdfs_->hdfsFreeFileInfo(fileInfo, 1);
-    return LOG_STATUS(
-        Status_HDFSError(std::string("Not a file ") + uri.to_string()));
+    throw HDFSException("Not a file " + uri.to_string());
   }
   libhdfs_->hdfsFreeFileInfo(fileInfo, 1);
   return Status::Ok();
 }
 
-}  // namespace tiledb::sm::hdfs
+}  // namespace tiledb::sm
 
 #endif  // HAVE_HDFS

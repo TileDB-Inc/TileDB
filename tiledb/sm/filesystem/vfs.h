@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -235,6 +235,37 @@ struct VFSBase {
   stats::Stats* stats_;
 };
 
+/** The HDFS filesystem. */
+#ifdef HAVE_HDFS
+class HDFS_within_VFS {
+  /** Private member variable */
+  HDFS hdfs_;
+
+ protected:
+  template <typename... Args>
+  HDFS_within_VFS(Args&&... args)
+      : hdfs_(std::forward<Args>(args)...) {
+  }
+
+  /** Protected accessor for the HDFS object. */
+  inline HDFS& hdfs() {
+    return hdfs_;
+  }
+
+  /** Protected accessor for the const HDFS object. */
+  inline const HDFS& hdfs() const {
+    return hdfs_;
+  }
+};
+#else
+class HDFS_within_VFS {
+ protected:
+  template <typename... Args>
+  HDFS_within_VFS(Args&&...) {
+  }  // empty constructor
+};
+#endif
+
 /** The S3 filesystem. */
 #ifdef HAVE_S3
 class S3_within_VFS {
@@ -270,7 +301,7 @@ class S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase, protected S3_within_VFS {
+class VFS : private VFSBase, protected HDFS_within_VFS, S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -951,10 +982,6 @@ class VFS : private VFSBase, protected S3_within_VFS {
   Win win_;
 #else
   Posix posix_;
-#endif
-
-#ifdef HAVE_HDFS
-  tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
   /** The in-memory filesystem which is always supported */

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file includes declarations of HDFS filesystem functions.
+ * This file defines the HDFS class.
  */
 
 #ifndef TILEDB_HDFS_FILESYSTEM_H
@@ -39,7 +39,8 @@
 #include <string>
 #include <vector>
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/exception/exception.h"
+#include "tiledb/sm/config/config.h"
 
 using namespace tiledb::common;
 
@@ -48,37 +49,75 @@ using namespace tiledb::common;
 struct hdfs_internal;
 typedef struct hdfs_internal* hdfsFS;
 
-namespace tiledb {
-
-namespace common::filesystem {
+namespace tiledb::common::filesystem {
 class directory_entry;
-}
+}  // namespace tiledb::common::filesystem
 
-namespace sm {
-
-class Config;
-class URI;
-
-namespace hdfs {
+namespace tiledb::sm {
 
 class LibHDFS;
+class URI;
+
+/** Class for HDFS StatusExceptions. */
+class HDFSException : public StatusException {
+ public:
+  explicit HDFSException(const std::string& msg)
+      : StatusException("HDFS", msg) {
+  }
+};
+
+/**
+ * The HDFS-specific configuration parameters.
+ *
+ * @note The member variables' default declarations have not yet been moved
+ * from the Config declaration into this struct.
+ */
+struct HDFSParameters {
+  HDFSParameters() = delete;
+
+  HDFSParameters(const Config& config)
+      : name_node_uri_(config.get<std::string>(
+            "vfs.hdfs.name_node_uri", Config::must_find))
+      , username_(
+            config.get<std::string>("vfs.hdfs.username", Config::must_find))
+      , kerb_ticket_cache_path_(config.get<std::string>(
+            "vfs.hdfs.kerb_ticket_cache_path", Config::must_find)){};
+
+  ~HDFSParameters() = default;
+
+  /** Name node for HDFS.  */
+  std::string name_node_uri_;
+
+  /** HDFS username.  */
+  std::string username_;
+
+  /** HDFS kerb ticket cache path.  */
+  std::string kerb_ticket_cache_path_;
+};
 
 class HDFS {
  public:
-  HDFS();
-  ~HDFS() = default;
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
   /**
-   * Initializes the HDFS VFS backend
+   * Constructor.
    *
    * If libhdfs is not found, returns immediately.
    * If libhdfs is found, attempts to connect to the
-   * default HDFS namenode defined in the Config::HDFSParams object.
+   * default name_node_uri_ defined in the HDFSParameters struct.
    *
-   * @param config HDFS configuration parameter object
-   * @return Status
+   * @param config Configuration parameters.
    */
-  Status init(const Config& config);
+  HDFS(const Config& config);
+
+  /** Destructor. */
+  ~HDFS() = default;
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
 
   /**
    * Disconnects an HDFS filesystem
@@ -93,7 +132,7 @@ class HDFS {
    * @param uri The URI of the directory resource to be created.
    * @return Status
    */
-  Status create_dir(const URI& uri);
+  Status create_dir(const URI& uri) const;
 
   /**
    * Checks if the given URI is an existing HDFS directory
@@ -101,7 +140,7 @@ class HDFS {
    * @param *True* if the *file* is an existing file, and *false* otherwise.
    * @return Status
    */
-  Status is_dir(const URI& uri, bool* is_dir);
+  Status is_dir(const URI& uri, bool* is_dir) const;
 
   /**
    * Checks if the given URI is an existing HDFS file
@@ -110,7 +149,7 @@ class HDFS {
    * @param uri The URI of the file to be checked.
    * @return *True* if the *file* is an existing file, and *false* otherwise.
    */
-  Status is_file(const URI& uri, bool* is_file);
+  Status is_file(const URI& uri, bool* is_file) const;
 
   /**
    * Move a given filesystem path.
@@ -119,7 +158,7 @@ class HDFS {
    * @param new_uri The URI of the new directory.
    * @return Status
    */
-  Status move_path(const URI& old_uri, const URI& new_uri);
+  Status move_path(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Creates an empty file.
@@ -128,7 +167,7 @@ class HDFS {
    * @param uri The URI of the file to be created.
    * @return Status
    */
-  Status touch(const URI& uri);
+  Status touch(const URI& uri) const;
 
   /**
    * Delete a file with a given URI.
@@ -137,7 +176,7 @@ class HDFS {
    * @param uri The URI of the file to be deleted.
    * @return Status
    */
-  Status remove_file(const URI& uri);
+  Status remove_file(const URI& uri) const;
 
   /**
    * Remove a directory with a given URI (recursively)
@@ -146,7 +185,7 @@ class HDFS {
    * @param uri The URI of the directory to be removed.
    * @return Status
    */
-  Status remove_dir(const URI& uri);
+  Status remove_dir(const URI& uri) const;
 
   /**
    *  Reads data from a file into a buffer.
@@ -157,7 +196,8 @@ class HDFS {
    * @param buffer_size The size of the data to be read from the file.
    * @return Status
    */
-  Status read(const URI& uri, off_t offset, void* buffer, uint64_t length);
+  Status read(
+      const URI& uri, off_t offset, void* buffer, uint64_t length) const;
 
   /**
    * Writes the input buffer to a file.
@@ -171,7 +211,7 @@ class HDFS {
    * @param buffer_size The size of the input buffer.
    * @return Status
    */
-  Status write(const URI& uri, const void* buffer, const uint64_t length);
+  Status write(const URI& uri, const void* buffer, const uint64_t length) const;
 
   /**
    * Commits all changes to the persistent storage.
@@ -180,7 +220,7 @@ class HDFS {
    * @param uri The file to be synced.
    * @return Status
    */
-  Status sync(const URI& uri);
+  Status sync(const URI& uri) const;
 
   /**
    * Lists the files one level deep under a given path.
@@ -189,17 +229,15 @@ class HDFS {
    * @param paths Pointer ot a vector of URIs to store the retrieved paths.
    * @return Status
    */
-  Status ls(const URI& uri, std::vector<std::string>* paths);
+  Status ls(const URI& uri, std::vector<std::string>* paths) const;
 
   /**
-   *
    * Lists objects and object information that start with `uri`.
    *
    * @param uri The parent path to list sub-paths.
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& uri);
+  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& uri) const;
 
   /**
    * Returns the size of the input file with a given URI in bytes.
@@ -208,24 +246,28 @@ class HDFS {
    * @param nbytes Pointer to unint64_t bytes to return.
    * @return Status
    */
-  Status file_size(const URI& uri, uint64_t* nbytes);
+  Status file_size(const URI& uri, uint64_t* nbytes) const;
 
  private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
   hdfsFS hdfs_;
   LibHDFS* libhdfs_;
 
+  /** The HDFS configuration parameters. */
+  HDFSParameters hdfs_params_;
+
   /** Connect to hdfsFS and return handle, stub for future cached dynamic
    * connections **/
-  Status connect(hdfsFS* fs);
+  Status connect(hdfsFS* fs) const;
 
   HDFS(HDFS const& l);             // disable copy ctor
   HDFS& operator=(HDFS const& l);  // disable assignment
 };
 
-}  // namespace hdfs
-
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // HAVE_HDFS
 #endif  // TILEDB_HDFS_FILESYSTEM_H

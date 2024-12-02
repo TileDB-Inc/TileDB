@@ -64,6 +64,7 @@ VFS::VFS(
     ThreadPool* const io_tp,
     const Config& config)
     : VFSBase(parent_stats)
+    , HDFS_within_VFS(config)
     , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
     , logger_(logger)
@@ -80,11 +81,6 @@ VFS::VFS(
 
 #ifdef HAVE_HDFS
   supported_fs_.insert(Filesystem::HDFS);
-  hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
-  st = hdfs_->init(config_);
-  if (!st.ok()) {
-    throw VFSException("Failed to initialize HDFS backend.");
-  }
 #endif
 
   if constexpr (s3_enabled) {
@@ -173,7 +169,7 @@ Status VFS::create_dir(const URI& uri) const {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->create_dir(uri);
+    return hdfs().create_dir(uri);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -249,7 +245,7 @@ Status VFS::touch(const URI& uri) const {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->touch(uri);
+    return hdfs().touch(uri);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -405,7 +401,7 @@ Status VFS::remove_dir(const URI& uri) const {
 #endif
   } else if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->remove_dir(uri);
+    return hdfs().remove_dir(uri);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -470,7 +466,7 @@ Status VFS::remove_file(const URI& uri) const {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->remove_file(uri);
+    return hdfs().remove_file(uri);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -557,7 +553,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->file_size(uri, size);
+    return hdfs().file_size(uri, size);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -601,7 +597,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->is_dir(uri, is_dir);
+    return hdfs().is_dir(uri, is_dir);
 #else
     *is_dir = false;
     throw BuiltWithout("HDFS");
@@ -651,7 +647,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->is_file(uri, is_file);
+    return hdfs().is_file(uri, is_file);
 #else
     *is_file = false;
     throw BuiltWithout("HDFS");
@@ -773,9 +769,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 #endif
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
-    auto&& [st, entries_optional] = hdfs_->ls_with_sizes(parent);
-    throw_if_not_ok(st);
-    entries = *std::move(entries_optional);
+    entries = hdfs().ls_with_sizes(parent);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -820,7 +814,7 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_hdfs()) {
     if (new_uri.is_hdfs())
 #ifdef HAVE_HDFS
-      return hdfs_->move_path(old_uri, new_uri);
+      return hdfs().move_path(old_uri, new_uri);
 #else
       throw BuiltWithout("HDFS");
 #endif
@@ -891,7 +885,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_hdfs()) {
     if (new_uri.is_hdfs())
 #ifdef HAVE_HDFS
-      return hdfs_->move_path(old_uri, new_uri);
+      return hdfs().move_path(old_uri, new_uri);
 #else
       throw BuiltWithout("HDFS");
 #endif
@@ -1173,7 +1167,7 @@ Status VFS::read_impl(
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->read(uri, offset, buffer, nbytes);
+    return hdfs().read(uri, offset, buffer, nbytes);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -1328,7 +1322,7 @@ Status VFS::sync(const URI& uri) {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->sync(uri);
+    return hdfs().sync(uri);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -1420,7 +1414,7 @@ Status VFS::close_file(const URI& uri) {
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->sync(uri);
+    return hdfs().sync(uri);
 #else
     throw BuiltWithout("HDFS");
 #endif
@@ -1483,7 +1477,7 @@ Status VFS::write(
   }
   if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
-    return hdfs_->write(uri, buffer, buffer_size);
+    return hdfs().write(uri, buffer, buffer_size);
 #else
     throw BuiltWithout("HDFS");
 #endif
