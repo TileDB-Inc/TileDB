@@ -796,17 +796,6 @@ class ArraySchema {
 
 }  // namespace tiledb::sm
 
-/**
- * Expands the input query domain (query_ndrange) so that it aligns with the
- * boundaries of the array's regular tiles. (i.e., it maps the domain onto the
- * regular tile grid) in the same way as Domain::expand_to_tiles(NDRange*), but
- * while respecting the current domain.
- */
-void expand_tiles_respecting_current_domain(
-    const tiledb::sm::Domain& domain,
-    const tiledb::sm::CurrentDomain& current_domain,
-    tiledb::sm::NDRange* query_ndrange);
-
 /** Converts the filter into a string representation. */
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::ArraySchema& schema);
