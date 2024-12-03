@@ -403,8 +403,10 @@ void Domain::expand_to_tiles_when_no_current_domain(
   }
 }
 
-// This is a templatized auxiliary for expand_to_tiles,
-// dispatched on the (necessarily integral) type of a given domain slot.
+/*
+ * This is a templatized auxiliary for expand_to_tiles,
+ * dispatched on the (necessarily integral) type of a given domain slot.
+ */
 template <typename T>
 void expand_to_tiles_aux(
     CurrentDomain::dimension_size_type dimidx,
@@ -443,11 +445,13 @@ void expand_to_tiles_aux(
   result[0] = Dimension::tile_coord_low(tile_idx0, domain_low, tile_extent);
   result[1] = Dimension::tile_coord_high(tile_idx1, domain_low, tile_extent);
 
-  // Since there is a current domain, though (we assume our caller checks this),
-  // rounding up to a multiple of the tile extent will lead to an out-of-bounds
-  // read. Make the query range lo no smaller than current domain lo on this
-  // dimension, and make the query range hi no larger than current domain hi on
-  // this dimension.
+  /*
+   * Since there is a current domain, though (we assume our caller checks this),
+   * rounding up to a multiple of the tile extent will lead to an out-of-bounds
+   * read. Make the query range lo no smaller than current domain lo on this
+   * dimension, and make the query range hi no larger than current domain hi on
+   * this dimension.
+   */
   result[0] = std::max(result[0], cur_dom_slot_range[0]);
   result[1] = std::min(result[1], cur_dom_slot_range[1]);
 
@@ -455,22 +459,23 @@ void expand_to_tiles_aux(
   query_slot.set_range(result, sizeof(result));
 }
 
-// The job here is, for a given domain slot:
-// * Given query ranges (nominally, for dense consolidation)
-// * Given the core current domain (which may be empty)
-// * Given the core (max) domain
-// * Given initial query bounds
-// * If the current domain is empty:
-//   o round the query to tile boundaries
-// * Else:
-//   o round the query to tile boundaries, but not outside the current domain
-//
-// Example on one dim slot:
-// * Say non-empty domain is (3,4)
-// * Say tile extent is 512
-// * Say domain is (0,99999)
-// * If current domain is empty: send (3,4) to (0,511)
-// * If current domain is (2, 63): send (3,4) to (2,63)
+/* The job here is, for a given domain slot:
+ * Given query ranges (nominally, for dense consolidation)
+ * Given the core current domain (which may be empty)
+ * Given the core (max) domain
+ * Given initial query bounds
+ * If the current domain is empty:
+ * o round the query to tile boundaries
+ * Else:
+ * o round the query to tile boundaries, but not outside the current domain
+ *
+ * Example on one dim slot:
+ * - Say non-empty domain is (3,4)
+ * - Say tile extent is 512
+ * - Say domain is (0,99999)
+ * - If current domain is empty: send (3,4) to (0,511)
+ * - If current domain is (2, 63): send (3,4) to (2,63)
+ */
 void Domain::expand_to_tiles(
     const CurrentDomain& current_domain, NDRange& query_ndrange) const {
   if (query_ndrange.empty()) {
