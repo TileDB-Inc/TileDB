@@ -711,7 +711,7 @@ void FragmentMetadata::init_domain(const NDRange& non_empty_domain) {
 
     // Set expanded domain
     domain_ = non_empty_domain_;
-    domain.expand_to_tiles(array_schema_->current_domain(), domain_);
+    array_schema_->current_domain().expand_to_tiles(domain, domain_);
   }
 }
 
@@ -2173,8 +2173,8 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
   // Get expanded domain
   if (!non_empty_domain_.empty()) {
     domain_ = non_empty_domain_;
-    array_schema_->domain().expand_to_tiles(
-        array_schema_->current_domain(), domain_);
+    array_schema_->current_domain().expand_to_tiles(
+        array_schema_->domain(), domain_);
   }
 }
 
