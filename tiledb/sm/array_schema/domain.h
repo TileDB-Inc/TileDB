@@ -39,8 +39,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/common/types/untyped_datum.h"
-#include "tiledb/sm/array_schema/current_domain.h"
-#include "tiledb/sm/array_schema/ndrectangle.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
@@ -60,6 +58,8 @@ class Buffer;
 class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
+class CurrentDomain;
+class NDRectangle;
 class FilterPipeline;
 class MemoryTracker;
 enum class Datatype : uint8_t;
