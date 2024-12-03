@@ -1413,6 +1413,14 @@ TILEDB_EXPORT int32_t tiledb_stats_enable(void) TILEDB_NOEXCEPT;
 TILEDB_EXPORT int32_t tiledb_stats_disable(void) TILEDB_NOEXCEPT;
 
 /**
+ * Returns whether internal statistics gathering is enabled.
+ *
+ * @param enabled Output argument, non-zero for enabled and zero for disabled.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error
+ */
+TILEDB_EXPORT int32_t tiledb_stats_is_enabled(uint8_t* enabled) TILEDB_NOEXCEPT;
+
+/**
  * Reset all internal statistics counters to 0.
  *
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.

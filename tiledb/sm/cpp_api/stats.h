@@ -35,6 +35,8 @@
 
 #include "tiledb.h"
 
+#include <string>
+
 namespace tiledb {
 
 /**
@@ -62,6 +64,12 @@ class Stats {
   /** Disables internal TileDB statistics gathering. */
   static void disable() {
     check_error(tiledb_stats_disable(), "error disabling stats");
+  }
+
+  static bool is_enabled() {
+    uint8_t enabled;
+    check_error(tiledb_stats_is_enabled(&enabled), "error checking stats");
+    return static_cast<bool>(enabled);
   }
 
   /** Reset all internal statistics counters to 0. */
