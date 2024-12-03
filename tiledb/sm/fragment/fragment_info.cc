@@ -913,8 +913,8 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
       // compute expanded non-empty domain (only for dense fragments)
       auto expanded_non_empty_domain = non_empty_domain;
       if (!sparse) {
-        array_schema->domain().expand_to_tiles(
-            array_schema->current_domain(), expanded_non_empty_domain);
+        array_schema->current_domain().expand_to_tiles(
+            array_schema->domain(), expanded_non_empty_domain);
       }
 
       // Push new fragment info
@@ -1157,8 +1157,8 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   const auto& non_empty_domain = meta->non_empty_domain();
   auto expanded_non_empty_domain = non_empty_domain;
   if (!sparse) {
-    meta->array_schema()->domain().expand_to_tiles(
-        meta->array_schema()->current_domain(), expanded_non_empty_domain);
+    meta->array_schema()->current_domain().expand_to_tiles(
+        meta->array_schema()->domain(), expanded_non_empty_domain);
   }
 
   // Set fragment info

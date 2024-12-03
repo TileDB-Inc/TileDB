@@ -285,19 +285,6 @@ class Domain {
   void expand_to_tiles_when_no_current_domain(NDRange& query_ndrange) const;
 
   /**
-   * Expands the input query domain (query_ndrange) so that it aligns with the
-   * boundaries of the array's regular tiles. (i.e., it maps the domain onto the
-   * regular tile grid) in the same way as
-   * Domain::expand_to_tiles_when_no_current_domain(NDRange*), but while
-   * respecting the current domain.
-   *
-   * @param current_domain The current domain to be considered.
-   * @param query_ndrange The query domain to be expanded.
-   */
-  void expand_to_tiles(
-      const CurrentDomain& current_domain, NDRange& query_ndrange) const;
-
-  /**
    * Retrieves the tile coordinates of the input cell coordinates.
    *
    * @tparam T The domain type.
