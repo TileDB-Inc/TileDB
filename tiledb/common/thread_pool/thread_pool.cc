@@ -243,18 +243,18 @@ std::vector<Status> ThreadPool::wait_all_status(
   return wait_all_status(task_ptrs);
 }
 
-Status ThreadPool::wait(ThreadPoolTask* task) {
+Status ThreadPool::wait(ThreadPoolTask& task) {
   while (true) {
-    if (!task->valid()) {
+    if (!task.valid()) {
       return Status_ThreadPoolError("Invalid task future");
     } else if (
-        task->wait_for(std::chrono::milliseconds(0)) ==
+        task.wait_for(std::chrono::milliseconds(0)) ==
         std::future_status::ready) {
       // Task is completed, get result, handling possible exceptions
 
       Status st = [&task] {
         try {
-          return task->get();
+          return task.get();
         } catch (const std::exception& e) {
           return Status_TaskError(
               "Caught std::exception: " + std::string(e.what()));
