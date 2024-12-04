@@ -73,7 +73,8 @@ class Stats {
    */
   static bool is_enabled() {
     uint8_t enabled;
-    check_error(tiledb_stats_is_enabled(&enabled), "error checking stats enabled");
+    check_error(
+        tiledb_stats_is_enabled(&enabled), "error checking stats enabled");
     return static_cast<bool>(enabled);
   }
 
