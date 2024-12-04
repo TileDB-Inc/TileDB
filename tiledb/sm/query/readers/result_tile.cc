@@ -261,6 +261,12 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   return nullptr;
 }
 
+void ResultTile::wait_all_coords() const {
+  for (auto& coord_tile : coord_tiles_) {
+    coord_tile.second->fixed_tile().data_as<char>();
+  }
+}
+
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile = coord_tiles_[dim_idx].second->fixed_tile();
   const uint64_t offset = pos * coord_tile.cell_size();
