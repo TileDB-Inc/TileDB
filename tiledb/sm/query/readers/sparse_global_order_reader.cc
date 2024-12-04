@@ -1545,6 +1545,12 @@ AddNextCellResult SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
         }
       }
     }
+    
+    // This enforces all the coords unfiltering results to be available before
+    // taking the lock on tile_queue_mutex_. This is to avoid a deadlock where a
+    // lock is held forever while waiting for a result to be available, while
+    // the next scheduled task is deadlocking on that lock
+    rc.tile_->wait_all_coords();
 
     std::unique_lock<std::mutex> ul(tile_queue_mutex_);
 
