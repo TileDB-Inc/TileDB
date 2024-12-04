@@ -66,6 +66,11 @@ class Stats {
     check_error(tiledb_stats_disable(), "error disabling stats");
   }
 
+  /**
+   * Returns whether internal statistics gathering is enabled.
+   *
+   * @return true if statistics gathering is enabled and false otherwise.
+   */
   static bool is_enabled() {
     uint8_t enabled;
     check_error(tiledb_stats_is_enabled(&enabled), "error checking stats enabled");
