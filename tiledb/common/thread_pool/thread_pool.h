@@ -101,18 +101,6 @@ class ThreadPool {
         , f_(std::move(f)){};
 
     /**
-     * Move is supported
-     */
-    Task(Task&&) = default;
-    Task& operator=(Task&&) = default;
-
-    /**
-     * Disable copy and copy assignment
-     */
-    Task(const Task&) = delete;
-    Task& operator=(const Task&) = delete;
-
-    /**
      * Wait in the threadpool for this task to be ready.
      */
     Status wait() {
@@ -307,6 +295,19 @@ class ThreadPool {
     return async(std::forward<Fn>(f), std::forward<Args>(args)...);
   }
 
+  /* Helper functions for lists that consists purely of Tasks */
+  Status wait_all(std::vector<Task>& tasks);
+  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
+
+  /* Helper functions for lists that consists purely of SharedTasks */
+  Status wait_all(std::vector<SharedTask>& tasks);
+  std::vector<Status> wait_all_status(std::vector<SharedTask>& tasks);
+
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+ private:
   /**
    * Wait on all the given tasks to complete. This function is safe to call
    * recursively and may execute pending tasks on the calling thread while
@@ -333,14 +334,6 @@ class ThreadPool {
    */
   std::vector<Status> wait_all_status(std::vector<ThreadPoolTask*>& tasks);
 
-  /* Helper functions for lists that consists purely of Tasks */
-  Status wait_all(std::vector<Task>& tasks);
-  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
-
-  /* Helper functions for lists that consists purely of SharedTasks */
-  Status wait_all(std::vector<SharedTask>& tasks);
-  std::vector<Status> wait_all_status(std::vector<SharedTask>& tasks);
-
   /**
    * Wait on a single tasks to complete. This function is safe to call
    * recursively and may execute pending tasks on the calling thread while
@@ -352,11 +345,6 @@ class ThreadPool {
    */
   Status wait(ThreadPoolTask& task);
 
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
- private:
   /** The worker thread routine */
   void worker();
 
