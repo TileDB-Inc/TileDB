@@ -1268,7 +1268,7 @@ int32_t tiledb_stats_disable() {
 
 int32_t tiledb_stats_is_enabled(uint8_t* enabled) {
   ensure_output_pointer_is_valid(enabled);
-  *enabled = static_cast<int8_t>(tiledb::sm::stats::all_stats.enabled());
+  *enabled = static_cast<uint8_t>(tiledb::sm::stats::all_stats.enabled());
   return TILEDB_OK;
 }
 
