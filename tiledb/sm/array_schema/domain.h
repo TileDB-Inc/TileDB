@@ -253,6 +253,13 @@ class Domain {
     return dimensions_[i];
   }
 
+  /**
+   * @return a view over the dimensions
+   */
+  inline std::span<const shared_ptr<Dimension>> dimensions() const {
+    return std::span(dimensions_.begin(), dimensions_.end());
+  }
+
   /** Returns the dimension given a name (nullptr upon error). */
   const Dimension* dimension_ptr(const std::string& name) const;
 
