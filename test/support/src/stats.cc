@@ -1,5 +1,5 @@
 /**
- * @file   array_schema_helpers.cc
+ * @file   stats.cc
  *
  * @section LICENSE
  *
