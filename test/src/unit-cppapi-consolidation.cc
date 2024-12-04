@@ -29,6 +29,7 @@
  *
  * Consolidation tests with the C++ API.
  */
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
@@ -487,4 +488,53 @@ TEST_CASE(
   REQUIRE(a1_r[1] == 1);
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Test consolidation that respects the current domain",
+    "[cppapi][consolidation][current_domain]") {
+  std::string array_name = "cppapi_consolidation_current_domain";
+  remove_array(array_name);
+
+  Context ctx;
+
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int32_t>(ctx, "d1", {{0, 1000000000}}, 50);
+  auto d2 = Dimension::create<int32_t>(ctx, "d2", {{0, 1000000000}}, 50);
+  domain.add_dimensions(d1, d2);
+
+  auto a = Attribute::create<int>(ctx, "a");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attributes(a);
+
+  tiledb::NDRectangle ndrect(ctx, domain);
+  int32_t range_one[] = {0, 2};
+  int32_t range_two[] = {0, 3};
+  ndrect.set_range(0, range_one[0], range_one[1]);
+  ndrect.set_range(1, range_two[0], range_two[1]);
+
+  tiledb::CurrentDomain current_domain(ctx);
+  current_domain.set_ndrectangle(ndrect);
+
+  tiledb::ArraySchemaExperimental::set_current_domain(
+      ctx, schema, current_domain);
+
+  Array::create(array_name, schema);
+
+  std::vector<int> data = {
+      -60, 79, -8, 100, 88, -19, -100, -111, -72, -85, 58, -41};
+
+  // Write it twice so there is something to consolidate
+  write_array(array_name, {0, 2, 0, 3}, data);
+  write_array(array_name, {0, 2, 0, 3}, data);
+
+  CHECK(tiledb::test::num_fragments(array_name) == 2);
+  Context ctx2;
+  Config config;
+  REQUIRE_NOTHROW(Array::consolidate(ctx2, array_name, &config));
+  CHECK(tiledb::test::num_fragments(array_name) == 3);
+
+  remove_array(array_name);
 }
