@@ -81,8 +81,40 @@ template <class T>
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Azure::Azure(ThreadPool* const thread_pool, const Config& config)
-    : azure_params_(AzureParameters(config))
+AzureParameters::AzureParameters(const Config& config)
+    : max_parallel_ops_(
+          config.get<uint64_t>("vfs.azure.max_parallel_ops", Config::must_find))
+    , block_list_block_size_(config.get<uint64_t>(
+          "vfs.azure.block_list_block_size", Config::must_find))
+    , write_cache_max_size_(max_parallel_ops_ * block_list_block_size_)
+    , max_retries_(
+          config.get<uint64_t>("vfs.azure.max_retries", Config::must_find))
+    , retry_delay_(std::chrono::milliseconds(
+          config.get<uint64_t>("vfs.azure.retry_delay_ms", Config::must_find)))
+    , max_retry_delay_(std::chrono::milliseconds(config.get<uint64_t>(
+          "vfs.azure.max_retry_delay_ms", Config::must_find)))
+    , use_block_list_upload_(config.get<bool>(
+          "vfs.azure.use_block_list_upload", Config::must_find))
+    , account_name_(get_config_with_env_fallback(
+          config, "vfs.azure.storage_account_name", "AZURE_STORAGE_ACCOUNT"))
+    , account_key_(get_config_with_env_fallback(
+          config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
+    , blob_endpoint_(get_blob_endpoint(config, account_name_))
+    , ssl_cfg_(config)
+    , has_sas_token_(
+          !get_config_with_env_fallback(
+               config, "vfs.azure.storage_sas_token", "AZURE_STORAGE_SAS_TOKEN")
+               .empty()) {
+  if (blob_endpoint_.empty()) {
+    throw AzureException(
+        "Azure VFS is not configured. Please set the "
+        "'vfs.azure.storage_account_name' and/or "
+        "'vfs.azure.blob_endpoint' configuration options.");
+  }
+}
+
+Azure::Azure(ThreadPool* const thread_pool, const AzureParameters& config)
+    : azure_params_(config)
     , thread_pool_(thread_pool) {
   assert(thread_pool);
 }

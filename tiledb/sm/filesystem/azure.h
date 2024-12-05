@@ -89,31 +89,7 @@ std::string get_blob_endpoint(
 struct AzureParameters {
   AzureParameters() = delete;
 
-  AzureParameters(const Config& config)
-      : max_parallel_ops_(config.get<uint64_t>(
-            "vfs.azure.max_parallel_ops", Config::must_find))
-      , block_list_block_size_(config.get<uint64_t>(
-            "vfs.azure.block_list_block_size", Config::must_find))
-      , write_cache_max_size_(max_parallel_ops_ * block_list_block_size_)
-      , max_retries_(
-            config.get<uint64_t>("vfs.azure.max_retries", Config::must_find))
-      , retry_delay_(std::chrono::milliseconds(config.get<uint64_t>(
-            "vfs.azure.retry_delay_ms", Config::must_find)))
-      , max_retry_delay_(std::chrono::milliseconds(config.get<uint64_t>(
-            "vfs.azure.max_retry_delay_ms", Config::must_find)))
-      , use_block_list_upload_(config.get<bool>(
-            "vfs.azure.use_block_list_upload", Config::must_find))
-      , account_name_(get_config_with_env_fallback(
-            config, "vfs.azure.storage_account_name", "AZURE_STORAGE_ACCOUNT"))
-      , account_key_(get_config_with_env_fallback(
-            config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
-      , blob_endpoint_(get_blob_endpoint(config, account_name_))
-      , ssl_cfg_(config)
-      , has_sas_token_(!get_config_with_env_fallback(
-                            config,
-                            "vfs.azure.storage_sas_token",
-                            "AZURE_STORAGE_SAS_TOKEN")
-                            .empty()){};
+  AzureParameters(const Config& config);
 
   /**  The maximum number of parallel requests. */
   uint64_t max_parallel_ops_;
@@ -302,7 +278,7 @@ class Azure {
    * @param thread_pool The parent VFS thread pool.
    * @param config Configuration parameters.
    */
-  Azure(ThreadPool* thread_pool, const Config& config);
+  Azure(ThreadPool* thread_pool, const AzureParameters& config);
 
   /**
    * Destructor.
@@ -593,13 +569,6 @@ class Azure {
    * use of the BlobServiceClient.
    */
   const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
-    if (azure_params_.blob_endpoint_.empty()) {
-      throw AzureException(
-          "Azure VFS is not configured. Please set the "
-          "'vfs.azure.storage_account_name' and/or "
-          "'vfs.azure.blob_endpoint' configuration options.");
-    }
-
     return client_singleton_.get(azure_params_);
   }
 
