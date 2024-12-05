@@ -103,7 +103,7 @@ jobs:
         if: ${{ startsWith(matrix.platform, 'linux') == true }}
         run: |
           set -e pipefail
-          yum install -y ninja-build perl-IPC-Cmd
+          yum install -y ninja-build perl-IPC-Cmd curl zip unzip tar
           echo "VCPKG_FORCE_SYSTEM_BINARIES=YES" >> $GITHUB_ENV
       - name: Configure TileDB
         run: |
