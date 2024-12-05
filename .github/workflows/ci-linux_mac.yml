@@ -114,7 +114,7 @@ jobs:
           python-version: '3.12'
 
       - name: Prevent vpckg from building debug variants
-        run: python ./scripts/ci/patch_vcpkg_triplets.py
+        run: python3 ./scripts/ci/patch_vcpkg_triplets.py
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
