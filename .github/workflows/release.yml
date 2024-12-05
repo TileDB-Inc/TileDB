@@ -106,7 +106,6 @@ jobs:
           run: |
             set -e pipefail
             yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
-            source /opt/rh/devtoolset-7/enable
             python3.9 -m pip install ninja
             export PATH="${PATH}:/opt/_internal/cpython-3.9.20/bin"
             export VCPKG_FORCE_SYSTEM_BINARIES=YES
