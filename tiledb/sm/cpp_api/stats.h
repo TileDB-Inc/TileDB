@@ -75,7 +75,7 @@ class Stats {
     uint8_t enabled;
     check_error(
         tiledb_stats_is_enabled(&enabled), "error checking stats enabled");
-    return static_cast<bool>(enabled);
+    return enabled != 0;
   }
 
   /** Reset all internal statistics counters to 0. */
