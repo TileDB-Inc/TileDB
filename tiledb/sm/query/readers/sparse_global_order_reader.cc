@@ -344,17 +344,21 @@ void SparseGlobalOrderReader<BitmapType>::compute_result_tile_order() {
 
   // first apply subarray (in parallel)
   std::vector<std::vector<ResultTileId>> fragment_result_tiles(
-      {}, fragment_metadata_.size());
+      fragment_metadata_.size());
 
   if (!subarray_.is_set()) {
     for (const auto& f : relevant_fragments) {
       fragment_result_tiles[f].reserve(fragment_metadata_[f]->tile_num());
     }
   } else {
+    const uint64_t num_relevant_fragments = relevant_fragments.size();
+
     /**
      * Determines which tiles from a given fragment qualify for the subarray.
      */
-    auto populate_relevant_tiles = [&](uint64_t f) {
+    auto populate_relevant_tiles = [&](unsigned rf) {
+      const unsigned f = relevant_fragments[rf];
+
       std::vector<bool> tile_is_relevant(
           false, fragment_metadata_[f]->tile_num());
 
@@ -381,43 +385,49 @@ void SparseGlobalOrderReader<BitmapType>::compute_result_tile_order() {
     auto populate_fragment_relevant_tiles = parallel_for(
         &resources_.compute_tp(),
         0,
-        relevant_fragments,
+        num_relevant_fragments,
         populate_relevant_tiles);
     throw_if_not_ok(populate_fragment_relevant_tiles);
+  }
+
+  size_t num_result_tiles = 0;
+  for (const auto& fragment : fragment_result_tiles) {
+    num_result_tiles += fragment.size();
   }
 
   /* then do parallel merge */
   std::vector<std::span<ResultTileId>> fragment_result_tile_spans;
   fragment_result_tile_spans.reserve(fragment_result_tiles.size());
-  for (const auto& f : fragment_result_tiles) {
-    fragment_result_tile_spans = f;
+  for (auto& f : fragment_result_tiles) {
+    fragment_result_tile_spans.push_back(std::span(f));
   }
 
-  std::vector<ResultTileId> merged_result_tiles;
-  merged_result_tiles.reserve(std::accumulate(
-      fragment_result_tiles.begin(), fragment_result_tiles.end(), 0));
+  std::vector<ResultTileId> merged_result_tiles(
+      num_result_tiles, ResultTileId{.fragment_idx_ = 0, .tile_idx_ = 0});
 
   algorithm::ParallelMergeOptions merge_options = {
       .parallel_factor = resources_.compute_tp().concurrency_level(),
-      .min_merge_size =
+      .min_merge_items =
           128  // TODO: do some experiments to figure something out
   };
 
   auto do_global_order_merge = [&]<Layout TILE_ORDER, Layout CELL_ORDER>() {
     GlobalOrderMBRCmp<TILE_ORDER, CELL_ORDER> cmp(
         array_schema_.domain(), fragment_metadata_);
-    auto merge_stream = algorithm::parallel_merge(
+    auto merge_stream = algorithm::parallel_merge<ResultTileId, decltype(cmp)>(
         resources_.compute_tp(),
         merge_options,
+        fragment_result_tile_spans,
+        /*
         std::span(
             fragment_result_tile_spans.begin(),
-            fragment_result_tile_spans.end()),
-        &merged_result_tiles[0],
-        cmp);
+            fragment_result_tile_spans.end()),*/
+        cmp,
+        &merged_result_tiles[0]);
 
     // TODO: we can begin the query as soon as the first merge unit is
     // done. this will require extending the lifetime of `cmp`.
-    merge_stream.block();
+    merge_stream->block();
   };
 
   switch (array_schema_.cell_order()) {

@@ -56,6 +56,7 @@ int cell_order_cmp_NDRange(
 
 template <Layout TILE_ORDER, Layout CELL_ORDER>
 class GlobalOrderMBRCmp {
+ public:
   explicit GlobalOrderMBRCmp(
       const Domain& domain,
       const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata)
