@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
+#include "tiledb/common/algorithm/parallel_merge.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
@@ -46,6 +47,7 @@
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/tile/comparators.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -331,6 +333,132 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
       query_memory_tracker_);
 
   return false;
+}
+
+template <class BitmapType>
+void SparseGlobalOrderReader<BitmapType>::compute_result_tile_order() {
+  auto relevant_fragments = subarray_.relevant_fragments();
+
+  // FIXME: make sure `load_initial_data` is called first since that
+  // is the function which fills in the subarray stuff
+
+  // first apply subarray (in parallel)
+  std::vector<std::vector<ResultTileId>> fragment_result_tiles(
+      {}, fragment_metadata_.size());
+
+  if (!subarray_.is_set()) {
+    for (const auto& f : relevant_fragments) {
+      fragment_result_tiles[f].reserve(fragment_metadata_[f]->tile_num());
+    }
+  } else {
+    /**
+     * Determines which tiles from a given fragment qualify for the subarray.
+     */
+    auto populate_relevant_tiles = [&](uint64_t f) {
+      std::vector<bool> tile_is_relevant(
+          false, fragment_metadata_[f]->tile_num());
+
+      for (uint64_t t = 0; t < fragment_metadata_[f]->tile_num(); t++) {
+        if (tmp_read_state_.contains_tile(t, f)) {
+          tile_is_relevant[t] = true;
+        }
+      }
+
+      const uint64_t num_relevant_tiles =
+          std::count(tile_is_relevant.begin(), tile_is_relevant.end(), true);
+
+      fragment_result_tiles[f].reserve(num_relevant_tiles);
+      for (uint64_t t = 0; t < tile_is_relevant.size(); t++) {
+        if (tile_is_relevant[t]) {
+          fragment_result_tiles[f].push_back(
+              ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+        }
+      }
+
+      return Status::Ok();
+    };
+
+    auto populate_fragment_relevant_tiles = parallel_for(
+        &resources_.compute_tp(),
+        0,
+        relevant_fragments,
+        populate_relevant_tiles);
+    throw_if_not_ok(populate_fragment_relevant_tiles);
+  }
+
+  /* then do parallel merge */
+  std::vector<std::span<ResultTileId>> fragment_result_tile_spans;
+  fragment_result_tile_spans.reserve(fragment_result_tiles.size());
+  for (const auto& f : fragment_result_tiles) {
+    fragment_result_tile_spans = f;
+  }
+
+  std::vector<ResultTileId> merged_result_tiles;
+  merged_result_tiles.reserve(std::accumulate(
+      fragment_result_tiles.begin(), fragment_result_tiles.end(), 0));
+
+  algorithm::ParallelMergeOptions merge_options = {
+      .parallel_factor = resources_.compute_tp().concurrency_level(),
+      .min_merge_size =
+          128  // TODO: do some experiments to figure something out
+  };
+
+  auto do_global_order_merge = [&]<Layout TILE_ORDER, Layout CELL_ORDER>() {
+    GlobalOrderMBRCmp<TILE_ORDER, CELL_ORDER> cmp(
+        array_schema_.domain(), fragment_metadata_);
+    auto merge_stream = algorithm::parallel_merge(
+        resources_.compute_tp(),
+        merge_options,
+        std::span(
+            fragment_result_tile_spans.begin(),
+            fragment_result_tile_spans.end()),
+        &merged_result_tiles[0],
+        cmp);
+
+    // TODO: we can begin the query as soon as the first merge unit is
+    // done. this will require extending the lifetime of `cmp`.
+    merge_stream.block();
+  };
+
+  switch (array_schema_.cell_order()) {
+    case Layout::ROW_MAJOR:
+      switch (array_schema_.tile_order()) {
+        case Layout::ROW_MAJOR: {
+          do_global_order_merge
+              .template operator()<Layout::ROW_MAJOR, Layout::ROW_MAJOR>();
+          break;
+        }
+        case Layout::COL_MAJOR: {
+          do_global_order_merge
+              .template operator()<Layout::ROW_MAJOR, Layout::COL_MAJOR>();
+          break;
+        }
+        default:
+          abort();  // TODO: rpobably an error?
+      }
+      break;
+    case Layout::COL_MAJOR:
+      switch (array_schema_.tile_order()) {
+        case Layout::ROW_MAJOR: {
+          do_global_order_merge
+              .template operator()<Layout::COL_MAJOR, Layout::ROW_MAJOR>();
+          break;
+        }
+        case Layout::COL_MAJOR: {
+          do_global_order_merge
+              .template operator()<Layout::COL_MAJOR, Layout::COL_MAJOR>();
+          break;
+        }
+        default:
+          abort();  // TODO: rpobably an error?
+      }
+      break;
+    case Layout::HILBERT:
+    default:
+      abort();  // TODO
+  }
+
+  result_tiles_ = merged_result_tiles;
 }
 
 template <class BitmapType>

@@ -136,6 +136,14 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    */
   std::vector<ResultTilesList> result_tiles_leftover_;
 
+  /**
+   * IDs of result tiles, arranged in global order.
+   * Note that tiles from different fragments may overlap
+   * (and may need to be de-duplicated if the schema requires unique
+   * coordinates).
+   */
+  std::vector<ResultTileId> result_tiles_;
+
   /** Memory used for coordinates tiles per fragment. */
   std::vector<uint64_t> memory_used_for_coords_;
 
@@ -221,6 +229,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const uint64_t t,
       const FragmentMetadata& frag_md,
       std::vector<ResultTilesList>& result_tiles);
+
+  void compute_result_tile_order();
 
   /**
    * Create the result tiles.
