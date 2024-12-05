@@ -207,6 +207,18 @@ class CurrentDomain {
    */
   void check_schema_sanity(shared_ptr<Domain> schema_domain) const;
 
+  /**
+   * Expands the input query domain (query_ndrange) so that it aligns with the
+   * boundaries of the array's regular tiles. (i.e., it maps the domain onto the
+   * regular tile grid) in the same way as
+   * Domain::expand_to_tiles_when_no_current_domain(NDRange*), but while
+   * respecting the current domain.
+   *
+   * @param domain The domain to be considered.
+   * @param query_ndrange The query domain to be expanded.
+   */
+  void expand_to_tiles(const Domain& domain, NDRange& query_ndrange) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
