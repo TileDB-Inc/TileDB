@@ -907,27 +907,27 @@ TEST_CASE_METHOD(
   bool use_subarray = false;
   int tile_idx = 0;
   int qc_idx = GENERATE(1, 2);
-  SECTION("- No subarray") {
+  SECTION("No subarray") {
     use_subarray = false;
-    SECTION("- First tile") {
+    SECTION("First tile") {
       tile_idx = 0;
     }
-    SECTION("- Second tile") {
+    SECTION("Second tile") {
       tile_idx = 1;
     }
-    SECTION("- Last tile") {
+    SECTION("Last tile") {
       tile_idx = 2;
     }
   }
-  SECTION("- Subarray") {
+  SECTION("Subarray") {
     use_subarray = true;
-    SECTION("- First tile") {
+    SECTION("First tile") {
       tile_idx = 0;
     }
-    SECTION("- Second tile") {
+    SECTION("Second tile") {
       tile_idx = 1;
     }
-    SECTION("- Last tile") {
+    SECTION("Last tile") {
       tile_idx = 2;
     }
   }
