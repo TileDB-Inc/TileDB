@@ -71,7 +71,7 @@ class GlobalOrderMBRCmp {
   bool operator()(const NDRange& left_mbr, const NDRange& right_mbr) const {
     for (unsigned di = 0; di < domain_.dim_num(); ++di) {
       const unsigned d =
-          (TILE_ORDER == Layout::ROW_MAJOR ? d : (domain_.dim_num() - d - 1));
+          (TILE_ORDER == Layout::ROW_MAJOR ? di : (domain_.dim_num() - di - 1));
 
       // Not applicable to var-sized dimensions
       if (domain_.dimension_ptr(d)->var_size())
@@ -90,7 +90,7 @@ class GlobalOrderMBRCmp {
     // then cell order
     for (unsigned di = 0; di < domain_.dim_num(); ++di) {
       const unsigned d =
-          (CELL_ORDER == Layout::ROW_MAJOR ? d : (domain_.dim_num() - d - 1));
+          (CELL_ORDER == Layout::ROW_MAJOR ? di : (domain_.dim_num() - di - 1));
       auto res = cell_order_cmp_NDRange(domain_, d, left_mbr, right_mbr);
 
       if (res < 0) {
