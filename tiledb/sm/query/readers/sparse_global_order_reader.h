@@ -142,7 +142,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * (and may need to be de-duplicated if the schema requires unique
    * coordinates).
    */
-  std::vector<ResultTileId> result_tiles_;
+  std::vector<ResultTileId> result_tile_ids_;
+  size_t result_tile_cursor_;
 
   /** Memory used for coordinates tiles per fragment. */
   std::vector<uint64_t> memory_used_for_coords_;
