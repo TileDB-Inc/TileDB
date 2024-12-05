@@ -438,7 +438,8 @@ class SparseIndexReaderBase : public ReaderBase {
      */
     bool contains_tile(unsigned f, uint64_t t) const {
       // TODO: the comment claims this is reverse sorted, this can probably
-      // exploit that?
+      // exploit that? Looks like the previous implementation did do so,
+      // iterating in reverse order and then popping off the back
       for (const auto& tile_range : tile_ranges_[f]) {
         if (tile_range.first <= t && t <= tile_range.second) {
           return true;
