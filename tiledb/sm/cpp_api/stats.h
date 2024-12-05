@@ -35,8 +35,6 @@
 
 #include "tiledb.h"
 
-#include <string>
-
 namespace tiledb {
 
 /**
