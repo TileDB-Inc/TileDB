@@ -423,7 +423,7 @@ class ParallelMerge {
       const ParallelMergeOptions& options,
       Streams streams,
       Compare& cmp,
-      uint64_t* output) {
+      T* output) {
     std::unique_ptr<ParallelMergeFuture> future(new ParallelMergeFuture());
     ParallelMerge::spawn_merge_units(
         pool, options, streams, cmp, output, *future);
