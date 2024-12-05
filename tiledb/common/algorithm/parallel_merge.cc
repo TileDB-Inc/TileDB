@@ -49,4 +49,3 @@ void ParallelMergeFuture::block() {
 }
 
 }  // namespace tiledb::algorithm
-                                 
