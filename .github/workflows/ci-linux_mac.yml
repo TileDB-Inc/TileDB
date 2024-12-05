@@ -128,7 +128,7 @@ jobs:
         if: inputs.manylinux
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core perl-IPC-Cmd
+          yum install -y redhat-lsb-core perl-IPC-Cmd curl zip unzip tar
 
       # This must happen after checkout, because checkout would remove the directory.
       - name: Install Ninja
