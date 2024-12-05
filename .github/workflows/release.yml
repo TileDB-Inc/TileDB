@@ -103,10 +103,7 @@ jobs:
         if: ${{ startsWith(matrix.platform, 'linux') == true }}
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
-          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
-          python3.9 -m pip install ninja
-          echo "/opt/_internal/cpython-3.9.20/bin" >> $GITHUB_PATH
+          yum install -y ninja-build perl-IPC-Cmd
           echo "VCPKG_FORCE_SYSTEM_BINARIES=YES" >> $GITHUB_ENV
       - name: Configure TileDB
         run: |
