@@ -128,8 +128,7 @@ jobs:
         if: inputs.manylinux
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
-          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
+          yum install -y redhat-lsb-core perl-IPC-Cmd
 
       # This must happen after checkout, because checkout would remove the directory.
       - name: Install Ninja
