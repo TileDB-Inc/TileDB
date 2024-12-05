@@ -80,9 +80,6 @@ env:
   bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'arm64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
-  # Manylinux does not support Node 20 due to libc incompatibility. Temporarily opt out.
-  # https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ inputs.manylinux && 'true' || 'false' }}
 
 jobs:
   build:
@@ -91,7 +88,7 @@ jobs:
         os:
           - ${{ inputs.matrix_image }}
     runs-on: ${{matrix.os}}
-    container: ${{inputs.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || ''}}
+    container: ${{inputs.manylinux && 'quay.io/pypa/manylinux_2_28_x86_64' || ''}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: ${{ inputs.timeout || 90 }}
