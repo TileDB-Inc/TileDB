@@ -145,12 +145,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   std::vector<ResultTileId> result_tile_ids_;
   size_t result_tile_cursor_;
 
-  /** Memory used for coordinates tiles per fragment. */
-  std::vector<uint64_t> memory_used_for_coords_;
-
-  /** Memory budget per fragment. */
-  double per_fragment_memory_;
-
   /** Enables consolidation with timestamps or not. */
   bool consolidation_with_timestamps_;
 

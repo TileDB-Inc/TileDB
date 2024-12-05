@@ -79,7 +79,6 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
           params,
           true)
     , result_tiles_leftover_(array_->fragment_metadata().size())
-    , memory_used_for_coords_(array_->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
     , last_cells_(array_->fragment_metadata().size())
     , tile_offsets_loaded_(false) {
@@ -322,15 +321,12 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
   auto tiles_size = get_coord_tiles_size(dim_num, f, t);
 
   // Don't load more tiles than the memory budget.
-  if (memory_used_for_coords_[f] + tiles_size > memory_budget_coords_tiles) {
+  if (memory_used_for_coords_total_ + tiles_size > memory_budget_coords_tiles) {
     return true;
   }
 
   // Adjust total memory used.
   memory_used_for_coords_total_ += tiles_size;
-
-  // Adjust per fragment memory used.
-  memory_used_for_coords_[f] += tiles_size;
 
   // Add the tile.
   result_tiles[f].emplace_back(
@@ -2296,9 +2292,6 @@ void SparseGlobalOrderReader<BitmapType>::remove_result_tile(
   auto tile_idx = rt->tile_idx();
   auto tiles_size =
       get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
-
-  // Adjust per fragment memory usage.
-  memory_used_for_coords_[frag_idx] -= tiles_size;
 
   // Adjust total memory usage.
   memory_used_for_coords_total_ -= tiles_size;
