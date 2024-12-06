@@ -71,13 +71,9 @@ jobs:
             MACOSX_DEPLOYMENT_TARGET: 11
             triplet: arm64-osx-release
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.manylinux || '' }}
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
-      # Manylinux does not support Node 20 due to libc incompatibility. Temporarily opt out.
-      # https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ matrix.manylinux && 'true' || 'false' }}
 
     steps:
       - name: Checkout TileDB
@@ -99,16 +95,39 @@ jobs:
           ref=${{ github.head_ref || github.ref_name }}
           echo "release_version=${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
         shell: bash
-      - name: Install manylinux prerequisites
+      - uses: addnab/docker-run-action@v3
         if: ${{ startsWith(matrix.platform, 'linux') == true }}
-        run: |
-          set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
-          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
-          python3.9 -m pip install ninja
-          echo "/opt/_internal/cpython-3.9.20/bin" >> $GITHUB_PATH
-          echo "VCPKG_FORCE_SYSTEM_BINARIES=YES" >> $GITHUB_ENV
+        with:
+          image: ${{ matrix.manylinux }}
+          options: -v ${{ github.workspace }}:/work -e TILEDB_PACKAGE_VERSION=${{ steps.get-values.outputs.release_version }}
+          run: |
+            set -e pipefail
+            yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
+            python3.9 -m pip install ninja
+            export PATH="${PATH}:/opt/_internal/cpython-3.9.21/bin"
+            export VCPKG_FORCE_SYSTEM_BINARIES=YES
+
+            ninja --version
+
+            cmake -S /work -B /work/build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_SHARED_LIBS=ON \
+              -DCMAKE_INSTALL_PREFIX=/work/dist \
+              -DTILEDB_INSTALL_LIBDIR=lib \
+              -DTILEDB_S3=ON \
+              -DTILEDB_AZURE=ON \
+              -DTILEDB_GCS=ON \
+              -DTILEDB_HDFS=${{ startsWith(matrix.platform, 'windows') && 'OFF' || 'ON' }} \
+              -DTILEDB_SERIALIZATION=ON \
+              -DTILEDB_WEBP=ON \
+              -DTILEDB_TESTS=OFF \
+              -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
+              ${{ matrix.cmake_args }}
+
+            cmake --build /work/build -j4 --config Release --target package
+
       - name: Configure TileDB
+        if: ${{ startsWith(matrix.platform, 'linux') == false }}
         run: |
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -126,6 +145,7 @@ jobs:
             ${{ matrix.cmake_args }}
         shell: bash
       - name: Build TileDB
+        if: ${{ startsWith(matrix.platform, 'linux') == false }}
         env:
           TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
         run: cmake --build build -j4 --config Release --target package
