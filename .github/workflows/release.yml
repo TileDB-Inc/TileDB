@@ -125,7 +125,7 @@ jobs:
               -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
               ${{ matrix.cmake_args }}
 
-            cmake --build build -j4 --config Release --target package
+            cmake --build /work/build -j4 --config Release --target package
 
       - name: Configure TileDB
         if: ${{ startsWith(matrix.platform, 'linux') == false }}
