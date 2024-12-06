@@ -31,5 +31,5 @@ commence(unit_test tile)
         main.cc
         unit_tile.cc
     )
-    this_target_object_libraries(tile mem_helpers)
+    this_target_object_libraries(tile mem_helpers thread_pool)
 conclude(unit_test)
