@@ -131,6 +131,44 @@ struct VerifyIdentifyMergeUnit {
   }
 };
 
+template <typename T>
+struct VerifyTournamentMerge {
+  Streams<T> streams;
+  std::shared_ptr<MergeUnit> unit;
+
+  void verify() {
+    auto cmp = std::less<T>{};
+
+    std::vector<T> output(unit->num_items());
+
+    // SAFETY: the merge unit will begin writing at index `unit->output_start()`
+    T* output_ptr = &output[-unit->output_start()];
+
+    std::vector<std::span<T>> spans;
+    for (size_t s = 0; s < streams.size(); s++) {
+      auto& stream = streams[s];
+      spans.push_back(std::span(stream));
+    }
+
+    auto result =
+        ParallelMerge<T>::tournament_merge(spans, &cmp, unit, output_ptr);
+    RC_ASSERT(result.ok());
+
+    // compare against a naive and slow merge
+    std::vector<T> inputcmp;
+    inputcmp.reserve(output.size());
+    for (size_t s = 0; s < streams.size(); s++) {
+      inputcmp.insert(
+          inputcmp.end(),
+          streams[s].begin() + unit->starts[s],
+          streams[s].begin() + unit->ends[s]);
+    }
+    std::sort(inputcmp.begin(), inputcmp.end());
+
+    RC_ASSERT(inputcmp == output);
+  }
+};
+
 }  // namespace tiledb::algorithm
 
 namespace rc {
@@ -159,6 +197,42 @@ Gen<Streams<T>> streams_non_empty() {
   });
 }
 
+template <typename T>
+Gen<MergeUnit> merge_unit(const Streams<T>& streams) {
+  std::vector<Gen<std::pair<uint64_t, uint64_t>>> all_stream_bounds;
+  for (const auto& stream : streams) {
+    Gen<std::pair<uint64_t, uint64_t>> bounds = gen::apply(
+        [](uint64_t a, uint64_t b) {
+          return std::make_pair(std::min(a, b), std::max(a, b));
+        },
+        gen::inRange<uint64_t>(0, stream.size() + 1),
+        gen::inRange<uint64_t>(0, stream.size() + 1));
+    all_stream_bounds.push_back(bounds);
+  }
+
+  Gen<std::vector<std::pair<uint64_t, uint64_t>>> gen_stream_bounds =
+      //   gen::arbitrary<std::vector<std::pair<uint64_t, uint64_t>>>();
+      gen::exec([all_stream_bounds] {
+        std::vector<std::pair<uint64_t, uint64_t>> bounds;
+        for (const auto& stream_bound : all_stream_bounds) {
+          bounds.push_back(*stream_bound);
+        }
+        return bounds;
+      });
+
+  return gen::map(
+      gen_stream_bounds, [](std::vector<std::pair<uint64_t, uint64_t>> bounds) {
+        MergeUnit unit;
+        unit.starts.reserve(bounds.size());
+        unit.ends.reserve(bounds.size());
+        for (const auto& bound : bounds) {
+          unit.starts.push_back(bound.first);
+          unit.ends.push_back(bound.second);
+        }
+        return unit;
+      });
+}
+
 /**
  * Arbitrary `VerifySplitPointStream` input.
  *
@@ -179,47 +253,19 @@ struct Arbitrary<VerifySplitPointStream<T>> {
       }
 
       auto which = gen::elementOf(which_candidates);
-
-      std::vector<Gen<std::pair<uint64_t, uint64_t>>> all_stream_bounds;
-      for (const auto& stream : streams) {
-        Gen<std::pair<uint64_t, uint64_t>> bounds = gen::apply(
-            [](uint64_t a, uint64_t b) {
-              return std::make_pair(std::min(a, b), std::max(a, b));
-            },
-            gen::inRange<uint64_t>(0, stream.size() + 1),
-            gen::inRange<uint64_t>(0, stream.size() + 1));
-        all_stream_bounds.push_back(bounds);
-      }
-
-      Gen<std::vector<std::pair<uint64_t, uint64_t>>> gen_stream_bounds =
-          //   gen::arbitrary<std::vector<std::pair<uint64_t, uint64_t>>>();
-          gen::exec([all_stream_bounds] {
-            std::vector<std::pair<uint64_t, uint64_t>> bounds;
-            for (const auto& stream_bound : all_stream_bounds) {
-              bounds.push_back(*stream_bound);
-            }
-            return bounds;
-          });
+      auto search_bounds = merge_unit(streams);
 
       return gen::apply(
-          [](Streams<T> streams,
-             uint64_t which,
-             std::vector<std::pair<uint64_t, uint64_t>> bounds) {
-            MergeUnit search_bounds;
-            for (size_t s = 0; s < bounds.size(); s++) {
-              const auto& bound = bounds[s];
-              if (s == which && bound.first == bound.second) {
+          [](Streams<T> streams, uint64_t which, MergeUnit search_bounds) {
+            for (size_t s = 0; s < streams.size(); s++) {
+              if (s == which &&
+                  search_bounds.starts[s] == search_bounds.ends[s]) {
                 // tweak to ensure that the split point is valid
-                if (bound.first == 0) {
-                  search_bounds.starts.push_back(0);
-                  search_bounds.ends.push_back(1);
+                if (search_bounds.starts[s] == 0) {
+                  search_bounds.ends[s] = 1;
                 } else {
-                  search_bounds.starts.push_back(bound.first - 1);
-                  search_bounds.ends.push_back(bound.second);
+                  search_bounds.starts[s] -= 1;
                 }
-              } else {
-                search_bounds.starts.push_back(bound.first);
-                search_bounds.ends.push_back(bound.second);
               }
             }
             return VerifySplitPointStream{
@@ -229,7 +275,7 @@ struct Arbitrary<VerifySplitPointStream<T>> {
           },
           gen::just(streams),
           which,
-          gen_stream_bounds);
+          search_bounds);
     });
   }
 };
@@ -253,6 +299,22 @@ struct Arbitrary<VerifyIdentifyMergeUnit<T>> {
   }
 };
 
+template <typename T>
+struct Arbitrary<VerifyTournamentMerge<T>> {
+  static Gen<VerifyTournamentMerge<T>> arbitrary() {
+    return gen::mapcat(streams<T>(), [](Streams<T> streams) {
+      auto unit = merge_unit(streams);
+      return gen::apply(
+          [](Streams<T> streams, MergeUnit unit) {
+            return VerifyTournamentMerge{
+                .streams = streams, .unit = std::make_shared<MergeUnit>(unit)};
+          },
+          gen::just(streams),
+          unit);
+    });
+  }
+};
+
 template <>
 void show<VerifyIdentifyMergeUnit<uint64_t>>(
     const VerifyIdentifyMergeUnit<uint64_t>& instance, std::ostream& os) {
@@ -261,6 +323,23 @@ void show<VerifyIdentifyMergeUnit<uint64_t>>(
   show<decltype(instance.streams)>(instance.streams, os);
   os << "," << std::endl;
   os << "\t\"target_items\": " << instance.target_items << std::endl;
+  os << "}";
+}
+
+template <>
+void show<VerifyTournamentMerge<uint64_t>>(
+    const VerifyTournamentMerge<uint64_t>& instance, std::ostream& os) {
+  os << "{" << std::endl;
+  os << "\t\"streams\": ";
+  show<decltype(instance.streams)>(instance.streams, os);
+  os << "," << std::endl;
+  os << "\t\"starts\": [";
+  show(instance.unit->starts, os);
+  os << "]" << std::endl;
+  os << "," << std::endl;
+  os << "\t\"ends\": [";
+  show(instance.unit->ends, os);
+  os << "]" << std::endl;
   os << "}";
 }
 
@@ -278,8 +357,16 @@ TEST_CASE(
     "parallel merge rapidcheck VerifyIdentifyMergeUnit",
     "[algorithm][parallel_merge]") {
   rc::prop(
-      "verify_split_point_stream_bounds",
+      "verify_identify_merge_unit",
       [](VerifyIdentifyMergeUnit<uint64_t> input) { input.verify(); });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck VerifyTournamentMerge",
+    "[algorithm][parallel_merge]") {
+  rc::prop(
+      "verify_tournament_merge",
+      [](VerifyTournamentMerge<uint64_t> input) { input.verify(); });
 }
 
 TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
