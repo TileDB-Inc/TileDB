@@ -456,7 +456,7 @@ void show<VerifyParallelMerge<uint64_t>>(
 }  // namespace rc
 
 TEST_CASE(
-    "parallel merge rapidcheck VerifySplitPointStream",
+    "parallel merge rapidcheck uint64_t VerifySplitPointStream",
     "[algorithm][parallel_merge]") {
   rc::prop(
       "verify_split_point_stream_bounds",
@@ -464,7 +464,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "parallel merge rapidcheck VerifyIdentifyMergeUnit",
+    "parallel merge rapidcheck uint64_t VerifyIdentifyMergeUnit",
     "[algorithm][parallel_merge]") {
   rc::prop(
       "verify_identify_merge_unit",
@@ -472,7 +472,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "parallel merge rapidcheck VerifyTournamentMerge",
+    "parallel merge rapidcheck uint64_t VerifyTournamentMerge",
     "[algorithm][parallel_merge]") {
   rc::prop(
       "verify_tournament_merge",
@@ -480,9 +480,99 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "parallel merge rapidcheck VerifyParallelMerge",
+    "parallel merge rapidcheck uint64_t VerifyParallelMerge",
     "[algorithm][parallel_merge]") {
   rc::prop("verify_parallel_merge", [](VerifyParallelMerge<uint64_t> input) {
+    input.verify();
+  });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck int8_t VerifySplitPointStream",
+    "[algorithm][parallel_merge]") {
+  rc::prop(
+      "verify_split_point_stream_bounds",
+      [](VerifySplitPointStream<int8_t> input) { input.verify(); });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck int8_t VerifyIdentifyMergeUnit",
+    "[algorithm][parallel_merge]") {
+  rc::prop(
+      "verify_identify_merge_unit",
+      [](VerifyIdentifyMergeUnit<int8_t> input) { input.verify(); });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck int8_t VerifyTournamentMerge",
+    "[algorithm][parallel_merge]") {
+  rc::prop("verify_tournament_merge", [](VerifyTournamentMerge<int8_t> input) {
+    input.verify();
+  });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck int8_t VerifyParallelMerge",
+    "[algorithm][parallel_merge]") {
+  rc::prop("verify_parallel_merge", [](VerifyParallelMerge<int8_t> input) {
+    input.verify();
+  });
+}
+
+struct OneDigit {
+  uint8_t value_;
+
+  operator uint8_t() const {
+    return value_;
+  }
+
+  /*
+  bool operator==(const OneDigit& other) const {
+    return value_ == other.value_;
+  }
+  */
+};
+
+namespace rc {
+template <>
+struct Arbitrary<OneDigit> {
+  static Gen<OneDigit> arbitrary() {
+    return gen::map(gen::inRange(0, 10), [](uint8_t value) {
+      RC_PRE(0 <= value && value < 10);
+      return OneDigit{.value_ = value};
+    });
+  }
+};
+}  // namespace rc
+
+TEST_CASE(
+    "parallel merge rapidcheck OneDigit VerifySplitPointStream",
+    "[algorithm][parallel_merge]") {
+  rc::prop(
+      "verify_split_point_stream_bounds",
+      [](VerifySplitPointStream<OneDigit> input) { input.verify(); });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck OneDigit VerifyIdentifyMergeUnit",
+    "[algorithm][parallel_merge]") {
+  rc::prop(
+      "verify_identify_merge_unit",
+      [](VerifyIdentifyMergeUnit<OneDigit> input) { input.verify(); });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck OneDigit VerifyTournamentMerge",
+    "[algorithm][parallel_merge]") {
+  rc::prop(
+      "verify_tournament_merge",
+      [](VerifyTournamentMerge<OneDigit> input) { input.verify(); });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck OneDigit VerifyParallelMerge",
+    "[algorithm][parallel_merge]") {
+  rc::prop("verify_parallel_merge", [](VerifyParallelMerge<OneDigit> input) {
     input.verify();
   });
 }
