@@ -45,6 +45,13 @@
 
 namespace tiledb::algorithm {
 
+class ParallelMergeException : public tiledb::common::StatusException {
+ public:
+  explicit ParallelMergeException(const std::string& detail)
+      : tiledb::common::StatusException("ParallelMerge", detail) {
+  }
+};
+
 struct ParallelMergeOptions {
   uint64_t parallel_factor;
   uint64_t min_merge_items;
@@ -163,6 +170,7 @@ class ParallelMerge {
       auto stream = tournament.top();
       tournament.pop();
 
+      // empty streams are not put on the priority queue
       assert(!stream.empty());
 
       output[o++] = stream.front();
@@ -250,9 +258,11 @@ class ParallelMerge {
         // temporarily shrink the split point stream bounds to indicate the
         // split point
         auto original_end = search_bounds_.ends[split_point_stream_];
-        assert(
-            search_bounds_.starts[split_point_stream_] <
-            search_bounds_.ends[split_point_stream_]);
+        if (search_bounds_.starts[split_point_stream_] >=
+            search_bounds_.ends[split_point_stream_]) {
+          throw ParallelMergeException("Internal error: invalid split point");
+        }
+
         search_bounds_.ends[split_point_stream_] =
             (search_bounds_.starts[split_point_stream_] +
              search_bounds_.ends[split_point_stream_] + 1) /
@@ -273,6 +283,12 @@ class ParallelMerge {
         // the split point has too few tuples
         // we will include everything we found and advance
         assert(search_bounds_.num_items() > 0);
+
+        if (search_bounds_.num_items() == 0) {
+          throw ParallelMergeException(
+              "Internal error: split point found zero tuples");
+        }
+
         remaining_items_ -= num_split_point_items;
         search_bounds_.starts = split_point_bounds.ends;
         return SearchStep::MadeProgress;
@@ -304,7 +320,8 @@ class ParallelMerge {
           return;
         }
       }
-      abort();
+      throw ParallelMergeException(
+          "Internal error: advance_split_point_stream");
     }
   };
 
@@ -318,7 +335,10 @@ class ParallelMerge {
       switch (step) {
         case SearchStep::Stalled:
           stalled++;
-          assert(stalled < streams.size());
+          if (stalled >= streams.size()) {
+            throw ParallelMergeException(
+                "Internal error: no split point shrinks bounds");
+          }
           continue;
         case SearchStep::MadeProgress:
           stalled = 0;
