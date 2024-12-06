@@ -169,6 +169,65 @@ struct VerifyTournamentMerge {
   }
 };
 
+template <typename T>
+struct VerifyParallelMerge {
+  Streams<T> streams;
+  ParallelMergeOptions options;
+  size_t pool_concurrency;
+
+  void verify() {
+    auto cmp = std::less<T>{};
+
+    uint64_t total_items = 0;
+    for (const auto& stream : streams) {
+      total_items += stream.size();
+    }
+
+    std::vector<std::span<T>> spans;
+    for (auto& stream : streams) {
+      spans.push_back(std::span(stream));
+    }
+
+    // compare against a naive and slow merge
+    std::vector<T> inputcmp;
+    {
+      inputcmp.reserve(total_items);
+      for (size_t s = 0; s < streams.size(); s++) {
+        inputcmp.insert(inputcmp.end(), streams[s].begin(), streams[s].end());
+      }
+      std::sort(inputcmp.begin(), inputcmp.end());
+    }
+
+    std::vector<T> output(total_items);
+
+    ThreadPool pool(pool_concurrency);
+    auto future =
+        parallel_merge<T, decltype(cmp)>(pool, options, spans, cmp, &output[0]);
+
+    std::optional<uint64_t> prev_bound;
+    std::optional<uint64_t> bound;
+    while ((bound = future->await()).has_value()) {
+      if (prev_bound.has_value()) {
+        RC_ASSERT(*prev_bound < *bound);
+        RC_ASSERT(std::equal(
+            inputcmp.begin() + *prev_bound,
+            inputcmp.begin() + *bound,
+            output.begin() + *prev_bound,
+            output.begin() + *bound));
+      } else {
+        RC_ASSERT(std::equal(
+            inputcmp.begin(),
+            inputcmp.begin() + *bound,
+            output.begin(),
+            output.begin() + *bound));
+      }
+      prev_bound = bound;
+    }
+
+    RC_ASSERT(inputcmp == output);
+  }
+};
+
 }  // namespace tiledb::algorithm
 
 namespace rc {
@@ -232,6 +291,22 @@ Gen<MergeUnit> merge_unit(const Streams<T>& streams) {
         return unit;
       });
 }
+
+template <>
+struct Arbitrary<ParallelMergeOptions> {
+  static Gen<ParallelMergeOptions> arbitrary() {
+    auto parallel_factor = gen::inRange(1, 16);
+    auto min_merge_items = gen::inRange(1, 16 * 1024);
+    return gen::apply(
+        [](uint64_t parallel_factor, uint64_t min_merge_items) {
+          return ParallelMergeOptions{
+              .parallel_factor = parallel_factor,
+              .min_merge_items = min_merge_items};
+        },
+        parallel_factor,
+        min_merge_items);
+  }
+};
 
 /**
  * Arbitrary `VerifySplitPointStream` input.
@@ -315,6 +390,24 @@ struct Arbitrary<VerifyTournamentMerge<T>> {
   }
 };
 
+template <typename T>
+struct Arbitrary<VerifyParallelMerge<T>> {
+  static Gen<VerifyParallelMerge<T>> arbitrary() {
+    return gen::apply(
+        [](Streams<T> streams,
+           ParallelMergeOptions options,
+           size_t pool_concurrency) {
+          return VerifyParallelMerge{
+              .streams = streams,
+              .options = options,
+              .pool_concurrency = pool_concurrency};
+        },
+        streams<T>(),
+        gen::arbitrary<ParallelMergeOptions>(),
+        gen::inRange(1, 32));
+  }
+};
+
 template <>
 void show<VerifyIdentifyMergeUnit<uint64_t>>(
     const VerifyIdentifyMergeUnit<uint64_t>& instance, std::ostream& os) {
@@ -343,6 +436,23 @@ void show<VerifyTournamentMerge<uint64_t>>(
   os << "}";
 }
 
+template <>
+void show<VerifyParallelMerge<uint64_t>>(
+    const VerifyParallelMerge<uint64_t>& instance, std::ostream& os) {
+  os << "{" << std::endl;
+  os << "\t\"streams\": ";
+  show<decltype(instance.streams)>(instance.streams, os);
+  os << "," << std::endl;
+  os << "\t\"options\": {" << std::endl;
+  os << "\t\t\"parallel_factor\": " << instance.options.parallel_factor
+     << std::endl;
+  os << "\t\t\"min_merge_items\": " << instance.options.min_merge_items
+     << std::endl;
+  os << "\t}," << std::endl;
+  os << "\t\"pool_concurrency\": " << instance.pool_concurrency << std::endl;
+  os << "}";
+}
+
 }  // namespace rc
 
 TEST_CASE(
@@ -367,6 +477,14 @@ TEST_CASE(
   rc::prop(
       "verify_tournament_merge",
       [](VerifyTournamentMerge<uint64_t> input) { input.verify(); });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck VerifyParallelMerge",
+    "[algorithm][parallel_merge]") {
+  rc::prop("verify_parallel_merge", [](VerifyParallelMerge<uint64_t> input) {
+    input.verify();
+  });
 }
 
 TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {

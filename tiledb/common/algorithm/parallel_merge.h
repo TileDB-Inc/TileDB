@@ -62,17 +62,24 @@ struct ParallelMergeFuture {
   tiledb::common::ProducerConsumerQueue<tiledb::common::ThreadPool::Task>
       merge_units_;
 
+  ParallelMergeFuture()
+      : merge_cursor_(0) {
+  }
+
   /**
    * Wait for more data to finish merging.
    *
    * @return the bound in the output stream up to which the merge has completed
    */
-  uint64_t await();
+  std::optional<uint64_t> await();
 
   /**
    * Wait for all data to finish merging.
    */
   void block();
+
+ private:
+  uint64_t merge_cursor_;
 };
 
 template <typename T, class Compare = std::less<T>>

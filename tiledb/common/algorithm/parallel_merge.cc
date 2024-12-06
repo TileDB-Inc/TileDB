@@ -37,6 +37,16 @@ using namespace tiledb::common;
 
 namespace tiledb::algorithm {
 
+std::optional<uint64_t> ParallelMergeFuture::await() {
+  auto maybe_unit = merge_units_.pop();
+  if (maybe_unit.has_value()) {
+    maybe_unit->wait();
+    return merge_bounds_[merge_cursor_++];
+  } else {
+    return std::nullopt;
+  }
+}
+
 void ParallelMergeFuture::block() {
   while (true) {
     auto unit = merge_units_.pop();
