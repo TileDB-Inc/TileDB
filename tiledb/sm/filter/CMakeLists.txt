@@ -32,7 +32,7 @@ include(object_library)
 #
 commence(object_library filter)
     this_target_sources(filter.cc filter_buffer.cc filter_storage.cc)
-    this_target_object_libraries(baseline buffer tiledb_crypto)
+    this_target_object_libraries(baseline buffer tiledb_crypto thread_pool)
 conclude(object_library)
 
 #
