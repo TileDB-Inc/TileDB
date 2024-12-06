@@ -870,7 +870,7 @@ void create_subarray(
     tiledb_subarray_t** subarray,
     bool coalesce_ranges) {
   (void)layout;
-  tiledb_array_t tdb_array = *make_handle<tiledb_array_t>(array);
+  tiledb_array_t tdb_array(array);
   require_tiledb_ok(ctx, tiledb_subarray_alloc(ctx, &tdb_array, subarray));
 
   require_tiledb_ok(
