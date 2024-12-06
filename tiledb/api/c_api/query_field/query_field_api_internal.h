@@ -100,7 +100,7 @@ struct tiledb_query_field_handle_t : public tiledb::api::CAPIHandle {
     return is_nullable_;
   }
   tiledb_query_channel_handle_t* channel() {
-    return make_handle<tiledb_query_channel_handle_t>(channel_);
+    return tiledb::api::make_handle<tiledb_query_channel_handle_t>(channel_);
   }
 };
 

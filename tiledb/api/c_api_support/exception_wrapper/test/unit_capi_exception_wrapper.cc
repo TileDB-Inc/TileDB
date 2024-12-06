@@ -31,8 +31,6 @@
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 
-using namespace tiledb::api;
-
 /*
  * Ensure we're using the stub
  */
@@ -42,6 +40,7 @@ static_assert(tiledb::sm::StorageManager::is_overriding_class);
 #include "../exception_wrapper.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_context.h"
 
+using namespace tiledb::api;
 using tiledb::api::test_support::ordinary_context;
 
 capi_return_t tf_always_good() {

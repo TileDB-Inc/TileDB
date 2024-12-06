@@ -127,7 +127,7 @@ void ensure_handle_is_valid(const T* p) {
  * to do things. We use it, however, in the exception wrapper, whose action
  * classes cannot be fully C.41-compliant.
  */
-bool is_handle_valid(const CAPIHandle* p) {
+inline bool is_handle_valid(const CAPIHandle* p) {
   return p != nullptr;
 }
 
