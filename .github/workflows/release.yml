@@ -74,9 +74,6 @@ jobs:
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
-      # Manylinux does not support Node 20 due to libc incompatibility. Temporarily opt out.
-      # https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ matrix.manylinux && 'true' || 'false' }}
 
     steps:
       - name: Checkout TileDB
@@ -107,8 +104,10 @@ jobs:
             set -e pipefail
             yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
             python3.9 -m pip install ninja
-            export PATH="${PATH}:/opt/_internal/cpython-3.9.20/bin"
+            export PATH="${PATH}:/opt/_internal/cpython-3.9.20/lib/python-3.9/site-packages"
             export VCPKG_FORCE_SYSTEM_BINARIES=YES
+
+            ninja --version
 
             cmake -S /work -B /work/build \
               -DCMAKE_BUILD_TYPE=Release \

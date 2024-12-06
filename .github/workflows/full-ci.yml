@@ -106,17 +106,6 @@ jobs:
       timeout: 120
       bootstrap_args: '--enable-azure'
 
-  ci_manylinux:
-    uses: ./.github/workflows/ci-linux_mac.yml
-    with:
-      ci_backend: MANYLINUX
-      matrix_image: ubuntu-20.04
-      matrix_compiler_cflags: "-lrt"
-      matrix_compiler_cxxflags: "-lrt"
-      timeout: 120
-      bootstrap_args: '--enable-serialization'
-      manylinux: true
-
   ci_msvc:
     uses: ./.github/workflows/build-windows.yml
 
@@ -145,7 +134,6 @@ jobs:
         ci7,
         ci8,
         ci9,
-        ci_manylinux,
         ci_msvc,
         backward_compatibility,
         standalone
