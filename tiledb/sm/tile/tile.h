@@ -122,8 +122,7 @@ class TileBase {
       if (unfilter_data_compute_task_.valid()) {
         throw_if_not_ok(unfilter_data_compute_task_.wait());
       } else {
-        throw std::future_error(
-            std::make_error_code(std::future_errc::no_state));
+        throw std::future_error(std::future_errc::no_state);
       }
     }
 
@@ -323,8 +322,7 @@ class Tile : public TileBase {
       if (filtered_data_io_task_.valid()) {
         throw_if_not_ok(filtered_data_io_task_.wait());
       } else {
-        throw std::future_error(
-            std::make_error_code(std::future_errc::no_state));
+        throw std::future_error(std::future_errc::no_state);
       }
     }
 
@@ -340,8 +338,7 @@ class Tile : public TileBase {
       if (filtered_data_io_task_.valid()) {
         throw_if_not_ok(filtered_data_io_task_.wait());
       } else {
-        throw std::future_error(
-            std::make_error_code(std::future_errc::no_state));
+        throw std::future_error(std::future_errc::no_state);
       }
     }
 
@@ -355,8 +352,7 @@ class Tile : public TileBase {
       if (filtered_data_io_task_.valid()) {
         throw_if_not_ok(filtered_data_io_task_.wait());
       } else {
-        throw std::future_error(
-            std::make_error_code(std::future_errc::no_state));
+        throw std::future_error(std::future_errc::no_state);
       }
     }
 
