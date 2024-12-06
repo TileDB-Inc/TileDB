@@ -124,6 +124,8 @@ struct MergeUnit {
 // forward declarations of friend classes for testing
 template <typename T>
 struct VerifySplitPointStream;
+template <typename T>
+struct VerifyIdentifyMergeUnit;
 
 template <typename T, class Compare = std::less<T>>
 class ParallelMerge {
@@ -207,11 +209,11 @@ class ParallelMerge {
             streams[i].begin() + search_bounds.starts[i],
             streams[i].begin() + search_bounds.ends[i]);
 
-        auto upper_bound =
-            std::upper_bound<decltype(substream.begin()), T, Compare>(
+        auto lower_bound =
+            std::lower_bound<decltype(substream.begin()), T, Compare>(
                 substream.begin(), substream.end(), split_point, cmp);
         output.ends.push_back(
-            output.starts[i] + std::distance(substream.begin(), upper_bound));
+            output.starts[i] + std::distance(substream.begin(), lower_bound));
       }
     }
 
@@ -443,6 +445,7 @@ class ParallelMerge {
 
   // friend declarations for testing
   friend struct VerifySplitPointStream<T>;
+  friend struct VerifyIdentifyMergeUnit<T>;
 
  public:
   static std::unique_ptr<ParallelMergeFuture> start(
