@@ -39,6 +39,8 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/current_domain.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
