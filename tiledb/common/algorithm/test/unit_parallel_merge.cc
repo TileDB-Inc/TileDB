@@ -525,12 +525,6 @@ struct OneDigit {
   operator uint8_t() const {
     return value_;
   }
-
-  /*
-  bool operator==(const OneDigit& other) const {
-    return value_ == other.value_;
-  }
-  */
 };
 
 namespace rc {
