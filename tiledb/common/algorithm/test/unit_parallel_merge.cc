@@ -84,6 +84,53 @@ struct VerifySplitPointStream {
   }
 };
 
+template <typename T>
+struct VerifyIdentifyMergeUnit {
+  Streams<T> streams;
+  uint64_t target_items;
+
+  void verify() {
+    std::vector<std::span<T>> spans;
+    for (auto& stream : streams) {
+      spans.push_back(std::span(stream));
+    }
+
+    auto cmp = std::less<T>{};
+    auto result =
+        ParallelMerge<T>::identify_merge_unit(spans, &cmp, target_items);
+    RC_ASSERT(target_items == result->num_items());
+
+    for (size_t s = 0; s < streams.size(); s++) {
+      if (streams[s].empty()) {
+        RC_ASSERT(result->starts[s] == 0);
+        RC_ASSERT(result->ends[s] == 0);
+      } else if (result->starts[s] == result->ends[s]) {
+        // this stream is not used at all, its first item must exceed
+        // what lies at the boundary for all other streams
+        for (size_t s2 = 0; s2 < streams.size(); s2++) {
+          if (result->starts[s2] != result->ends[s2]) {
+            RC_ASSERT(streams[s][0] >= streams[s2][result->ends[s2] - 1]);
+          }
+        }
+      } else {
+        // items from this stream in range `[starts[s], ends[s])` are included
+        // in the merge unit, so everything outside of the merge unit must
+        // exceed it
+        auto& bound_item = streams[s][result->ends[s] - 1];
+        for (size_t s2 = 0; s2 < streams.size(); s2++) {
+          if (result->ends[s2] == streams[s2].size()) {
+            // the entirety of `s2` is included in the merge unit,
+            // we can infer no relation to `bound_item`
+            continue;
+          } else {
+            RC_ASSERT(bound_item <= streams[s2][result->ends[s2]]);
+          }
+        }
+      }
+    }
+  }
+};
+
 }  // namespace tiledb::algorithm
 
 namespace rc {
@@ -102,6 +149,16 @@ Gen<Streams<T>> streams() {
   return gen::nonEmpty(gen::container<std::vector<std::vector<T>>>(stream));
 }
 
+template <typename T>
+Gen<Streams<T>> streams_non_empty() {
+  return gen::suchThat(streams<T>(), [](const Streams<T>& streams) {
+    return std::any_of(
+        streams.begin(), streams.end(), [](const std::vector<T>& stream) {
+          return !stream.empty();
+        });
+  });
+}
+
 /**
  * Arbitrary `VerifySplitPointStream` input.
  *
@@ -113,14 +170,7 @@ Gen<Streams<T>> streams() {
 template <typename T>
 struct Arbitrary<VerifySplitPointStream<T>> {
   static Gen<VerifySplitPointStream<T>> arbitrary() {
-    auto valid_streams =
-        gen::suchThat(streams<T>(), [](const Streams<T>& streams) {
-          return std::any_of(
-              streams.begin(), streams.end(), [](const std::vector<T>& stream) {
-                return !stream.empty();
-              });
-        });
-    return gen::mapcat(valid_streams, [](Streams<T> streams) {
+    return gen::mapcat(streams_non_empty<T>(), [](Streams<T> streams) {
       std::vector<uint64_t> which_candidates;
       for (size_t s = 0; s < streams.size(); s++) {
         if (!streams[s].empty()) {
@@ -184,6 +234,36 @@ struct Arbitrary<VerifySplitPointStream<T>> {
   }
 };
 
+template <typename T>
+struct Arbitrary<VerifyIdentifyMergeUnit<T>> {
+  static Gen<VerifyIdentifyMergeUnit<T>> arbitrary() {
+    auto fields =
+        gen::mapcat(streams_non_empty<T>(), [](const Streams<T> streams) {
+          uint64_t total_items = 0;
+          for (const auto& stream : streams) {
+            total_items += stream.size();
+          }
+          return gen::pair(
+              gen::just(streams), gen::inRange<uint64_t>(1, total_items + 1));
+        });
+    return gen::map(fields, [](std::pair<Streams<T>, uint64_t> fields) {
+      return VerifyIdentifyMergeUnit{
+          .streams = fields.first, .target_items = fields.second};
+    });
+  }
+};
+
+template <>
+void show<VerifyIdentifyMergeUnit<uint64_t>>(
+    const VerifyIdentifyMergeUnit<uint64_t>& instance, std::ostream& os) {
+  os << "{" << std::endl;
+  os << "\t\"streams\": ";
+  show<decltype(instance.streams)>(instance.streams, os);
+  os << "," << std::endl;
+  os << "\t\"target_items\": " << instance.target_items << std::endl;
+  os << "}";
+}
+
 }  // namespace rc
 
 TEST_CASE(
@@ -192,6 +272,14 @@ TEST_CASE(
   rc::prop(
       "verify_split_point_stream_bounds",
       [](VerifySplitPointStream<uint64_t> input) { input.verify(); });
+}
+
+TEST_CASE(
+    "parallel merge rapidcheck VerifyIdentifyMergeUnit",
+    "[algorithm][parallel_merge]") {
+  rc::prop(
+      "verify_split_point_stream_bounds",
+      [](VerifyIdentifyMergeUnit<uint64_t> input) { input.verify(); });
 }
 
 TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
