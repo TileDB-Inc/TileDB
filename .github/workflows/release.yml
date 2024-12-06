@@ -102,7 +102,7 @@ jobs:
         if: ${{ startsWith(matrix.platform, 'linux') == true }}
         with:
           image: ${{ matrix.manylinux }}
-          options: -v ${{ github.workspace }}:/work
+          options: -v ${{ github.workspace }}:/work -e TILEDB_PACKAGE_VERSION=${{ steps.get-values.outputs.release_version }}
           run: |
             set -e pipefail
             yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
