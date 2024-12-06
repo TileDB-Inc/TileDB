@@ -126,6 +126,8 @@ template <typename T>
 struct VerifySplitPointStream;
 template <typename T>
 struct VerifyIdentifyMergeUnit;
+template <typename T>
+struct VerifyTournamentMerge;
 
 template <typename T, class Compare = std::less<T>>
 class ParallelMerge {
@@ -446,6 +448,7 @@ class ParallelMerge {
   // friend declarations for testing
   friend struct VerifySplitPointStream<T>;
   friend struct VerifyIdentifyMergeUnit<T>;
+  friend struct VerifyTournamentMerge<T>;
 
  public:
   static std::unique_ptr<ParallelMergeFuture> start(
