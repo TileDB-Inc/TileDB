@@ -347,6 +347,15 @@ if (LIBFAKETIME)
     set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=path_list_append:${LIBFAKETIME}")
 endif()
 
+find_library(
+  LIBRAPIDCHECK
+  NAMES rapidcheck
+)
+
+#if (LIBRAPIDCHECK)
+#  add_subdirectory(${LIBRAPIDCHECK})
+#endif()
+
 add_test(
   NAME "tiledb_unit"
   COMMAND tiledb_unit --durations=yes

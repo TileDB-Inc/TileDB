@@ -68,58 +68,62 @@ struct ParallelMergeFuture {
   void block();
 };
 
-template <typename T, class Compare>
+template <typename T, class Compare = std::less<T>>
 std::unique_ptr<ParallelMergeFuture> parallel_merge(
     tiledb::common::ThreadPool& pool,
     const ParallelMergeOptions& options,
     std::span<std::span<T>> streams,
     T* output);
 
-template <typename T, class Compare>
+/**
+ * Represents one sequential unit of the parallel merge.
+ *
+ * Merges values in the ranges for each stream `s`, [starts[s], ends[s]].
+ * This unit writes to the output in the range [sum(starts), sum(ends)].
+ */
+struct MergeUnit {
+  std::vector<uint64_t> starts;
+  std::vector<uint64_t> ends;
+
+  uint64_t num_items() const {
+    uint64_t total_items = 0;
+    for (size_t i = 0; i < starts.size(); i++) {
+      total_items += (ends[i] - starts[i]);
+    }
+    return total_items;
+  }
+
+  uint64_t output_start() const {
+    uint64_t total_bound = 0;
+    for (size_t i = 0; i < ends.size(); i++) {
+      total_bound += starts[i];
+    }
+    return total_bound;
+  }
+
+  uint64_t output_end() const {
+    uint64_t total_bound = 0;
+    for (size_t i = 0; i < ends.size(); i++) {
+      total_bound += ends[i];
+    }
+    return total_bound;
+  }
+
+  bool operator==(const MergeUnit& other) const {
+    return (starts == other.starts) && (ends == other.ends);
+  }
+};
+
+// forward declarations of friend classes for testing
+template <typename T>
+struct VerifySplitPointStream;
+
+template <typename T, class Compare = std::less<T>>
 class ParallelMerge {
  public:
   typedef std::span<std::span<T>> Streams;
 
  private:
-  /**
-   * Represents one sequential unit of the parallel merge.
-   *
-   * Merges values in the ranges for each stream `s`, [starts[s], ends[s]].
-   * This unit writes to the output in the range [sum(starts), sum(ends)].
-   */
-  struct MergeUnit {
-    std::vector<uint64_t> starts;
-    std::vector<uint64_t> ends;
-
-    uint64_t num_items() const {
-      uint64_t total_items = 0;
-      for (size_t i = 0; i < starts.size(); i++) {
-        total_items += (ends[i] - starts[i]);
-      }
-      return total_items;
-    }
-
-    uint64_t output_start() const {
-      uint64_t total_bound = 0;
-      for (size_t i = 0; i < ends.size(); i++) {
-        total_bound += starts[i];
-      }
-      return total_bound;
-    }
-
-    uint64_t output_end() const {
-      uint64_t total_bound = 0;
-      for (size_t i = 0; i < ends.size(); i++) {
-        total_bound += ends[i];
-      }
-      return total_bound;
-    }
-
-    bool operator==(const MergeUnit& other) const {
-      return (starts == other.starts) && (ends == other.ends);
-    }
-  };
-
   struct span_greater {
     span_greater(Compare& cmp)
         : cmp_(cmp) {
@@ -416,6 +420,9 @@ class ParallelMerge {
         output,
         &future);
   }
+
+  // friend declarations for testing
+  friend struct VerifySplitPointStream<T>;
 
  public:
   static std::unique_ptr<ParallelMergeFuture> start(
