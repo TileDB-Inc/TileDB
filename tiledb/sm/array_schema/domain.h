@@ -58,6 +58,8 @@ class Buffer;
 class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
+class CurrentDomain;
+class NDRectangle;
 class FilterPipeline;
 class MemoryTracker;
 enum class Datatype : uint8_t;
@@ -277,8 +279,10 @@ class Domain {
    * the array's regular tiles (i.e., it maps it on the regular tile grid).
    * If the array has no regular tile grid or real domain, the function
    * does not do anything.
+   *
+   * @param query_ndrange The query domain to be expanded.
    */
-  void expand_to_tiles(NDRange* ndrange) const;
+  void expand_to_tiles_when_no_current_domain(NDRange& query_ndrange) const;
 
   /**
    * Retrieves the tile coordinates of the input cell coordinates.

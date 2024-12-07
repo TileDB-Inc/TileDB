@@ -49,17 +49,17 @@ jobs:
             triplet: x64-windows-release
           - platform: linux-x86_64
             os: ubuntu-20.04
-            manylinux: quay.io/pypa/manylinux2014_x86_64
+            manylinux: quay.io/pypa/manylinux_2_28_x86_64
             triplet: x64-linux-release
           - platform: linux-x86_64-noavx2
             os: ubuntu-20.04
             cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
             triplet: x64-linux-release
-            manylinux: quay.io/pypa/manylinux2014_x86_64
+            manylinux: quay.io/pypa/manylinux_2_28_x86_64
           - platform: linux-aarch64
             os: linux-arm64-ubuntu24
             triplet: arm64-linux-release
-            manylinux: quay.io/pypa/manylinux2014_aarch64
+            manylinux: quay.io/pypa/manylinux_2_28_aarch64
           - platform: macos-x86_64
             os: macos-12
             cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
@@ -75,9 +75,6 @@ jobs:
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
-      # Manylinux does not support Node 20 due to libc incompatibility. Temporarily opt out.
-      # https://github.blog/changelog/2024-03-07-github-actions-all-actions-will-run-on-node20-instead-of-node16-by-default/
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ matrix.manylinux && 'true' || 'false' }}
 
     steps:
       - name: Checkout TileDB
@@ -103,10 +100,7 @@ jobs:
         if: ${{ startsWith(matrix.platform, 'linux') == true }}
         run: |
           set -e pipefail
-          yum install -y redhat-lsb-core centos-release-scl devtoolset-7 perl-IPC-Cmd
-          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
-          python3.9 -m pip install ninja
-          echo "/opt/_internal/cpython-3.9.20/bin" >> $GITHUB_PATH
+          yum install -y ninja-build perl-IPC-Cmd curl zip unzip tar
           echo "VCPKG_FORCE_SYSTEM_BINARIES=YES" >> $GITHUB_ENV
       - name: Configure TileDB
         run: |
