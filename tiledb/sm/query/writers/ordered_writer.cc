@@ -313,7 +313,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   uint64_t frag_tile_id = 0;
   bool close_files = false;
   tile_batches.resize(batch_num);
-  std::optional<ThreadPool::Task> write_task = nullopt;
+  std::optional<ThreadPool::SharedTask> write_task = nullopt;
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);
@@ -358,8 +358,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     }
 
     if (write_task.has_value()) {
-      write_task->wait();
-      RETURN_NOT_OK(write_task->get());
+      RETURN_NOT_OK(write_task->wait());
     }
 
     write_task = resources_.io_tp().execute([&, b, frag_tile_id]() {
@@ -380,8 +379,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   }
 
   if (write_task.has_value()) {
-    write_task->wait();
-    RETURN_NOT_OK(write_task->get());
+    RETURN_NOT_OK(write_task->wait());
   }
 
   return Status::Ok();
