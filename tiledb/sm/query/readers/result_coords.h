@@ -77,6 +77,14 @@ struct ResultCoordsBase {
       , pos_(pos) {
   }
 
+  unsigned fragment_idx() const {
+    return tile_->frag_idx();
+  }
+
+  uint64_t tile_idx() const {
+    return tile_->tile_idx();
+  }
+
   /**
    * Returns a string coordinate. Applicable only to string
    * dimensions.
