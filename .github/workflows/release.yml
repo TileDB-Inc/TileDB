@@ -61,7 +61,7 @@ jobs:
             triplet: arm64-linux-release
             manylinux: quay.io/pypa/manylinux2014_aarch64
           - platform: macos-x86_64
-            os: macos-12
+            os: macos-13
             cmake_args: -DCMAKE_OSX_ARCHITECTURES=x86_64
             MACOSX_DEPLOYMENT_TARGET: 11
             triplet: x64-osx-release
