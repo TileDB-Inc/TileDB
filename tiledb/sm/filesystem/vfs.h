@@ -332,7 +332,10 @@ class S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase, protected Azure_within_VFS, GCS_within_VFS, S3_within_VFS {
+class VFS : private VFSBase,
+            protected Azure_within_VFS,
+            GCS_within_VFS,
+            S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
