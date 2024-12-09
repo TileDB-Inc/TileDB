@@ -101,9 +101,26 @@ struct CSparseGlobalOrderFx {
   void reset_config();
   void update_config();
 
+  std::string error_if_any() const;
+
   CSparseGlobalOrderFx();
   ~CSparseGlobalOrderFx();
 };
+
+std::string CSparseGlobalOrderFx::error_if_any() const {
+  tiledb_error_t* error = NULL;
+  auto rc = tiledb_ctx_get_last_error(ctx_, &error);
+  REQUIRE(rc == TILEDB_OK);
+  if (error == nullptr) {
+    return "";
+  }
+
+  const char* msg;
+  rc = tiledb_error_message(error, &msg);
+  REQUIRE(rc == TILEDB_OK);
+
+  return std::string(msg);
+}
 
 CSparseGlobalOrderFx::CSparseGlobalOrderFx() {
   reset_config();
@@ -705,6 +722,242 @@ TEST_CASE_METHOD(
   CHECK(retrieved_data == expected_correct_data);
 }
 
+/**
+ * Tests that the reader will not yield results out of order across multiple
+ * iterations or `submit`s if the fragments are heavily skewed when the memory
+ * budget is heavily constrained.
+ *
+ * e.g. two fragments
+ * F0: 1-1000,1001-2000,2001-3000
+ * F1: 2001-3000
+ *
+ * If the memory budget allows only one tile per fragment at a time then there
+ * must be a mechanism for emitting (F0, T1) before (F1, T0) even though the
+ * the memory budget might not process them in the same loop.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment skew",
+    "[sparse-global-order]") {
+  reset_config();
+
+  // the tile extent is 2
+  create_default_array_1d(true);
+
+  // Write a fragment F0 with unique coordinates
+  std::vector<int> f0coords(200);
+  std::iota(f0coords.begin(), f0coords.end(), 1);
+  uint64_t f0coords_size = f0coords.size() * sizeof(int);
+
+  // Write a fragment F1 with lots of duplicates
+  // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
+  std::vector<int> f1coords(200);
+  for (size_t i = 0; i < f1coords.size(); i++) {
+    f1coords[i] = static_cast<int>(i / 10) + 100;
+  }
+  uint64_t f1coords_size = f1coords.size() * sizeof(int);
+
+  std::vector<int> att(200);
+  std::iota(att.begin(), att.end(), 200);
+  uint64_t att_size = att.size() * sizeof(int);
+
+  write_1d_fragment(f0coords.data(), &f0coords_size, att.data(), &att_size);
+  REQUIRE(f0coords_size == f0coords.size() * sizeof(int));
+  REQUIRE(att_size == att.size() * sizeof(int));
+
+  write_1d_fragment(f1coords.data(), &f1coords_size, att.data(), &att_size);
+  REQUIRE(f1coords_size == f1coords.size() * sizeof(int));
+  REQUIRE(att_size == att.size() * sizeof(int));
+
+  /**
+   * Now we should have 200 tiles, each of which has 2 coordinates,
+   * and each of which is size is 1584.
+   * In global order we skew towards fragment 1 which has lots of duplicates.
+   */
+  total_budget_ = "20000";
+  ratio_array_data_ = "0.5";
+  update_config();
+
+  std::vector<int> outcoords(400);
+  std::vector<int> outatt(400);
+
+  // Open array for reading.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+
+  constexpr size_t num_output_cells_per_iter = 8;
+
+  uint64_t outcursor = 0;
+  while (true) {
+    uint64_t outcoords_size;
+    uint64_t outatt_size;
+    outcoords_size = outatt_size = num_output_cells_per_iter * sizeof(int);
+
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "a", &outatt[outcursor], &outatt_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "d", &outcoords[outcursor], &outcoords_size);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE("" == error_if_any());
+
+    CHECK(outcoords_size == num_output_cells_per_iter * sizeof(int));
+    outcursor += num_output_cells_per_iter;
+
+    tiledb_query_status_t status;
+    rc = tiledb_query_get_status(ctx_, query, &status);
+    REQUIRE(rc == TILEDB_OK);
+    if (status == TILEDB_COMPLETED) {
+      break;
+    }
+  }
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  std::vector<int> expectcoords;
+  expectcoords.insert(expectcoords.end(), f0coords.begin(), f0coords.end());
+  expectcoords.insert(expectcoords.end(), f1coords.begin(), f1coords.end());
+  std::sort(expectcoords.begin(), expectcoords.end());
+
+  CHECK(expectcoords == outcoords);
+}
+
+/**
+ * Tests that the reader will not yield results out of order across multiple
+ * iterations or `submit`s if the tile MBRs across different fragments are
+ * interleaved.
+ *
+ * The test sets up data with two fragments so that each tile overlaps with
+ * two tiles from the other fragment.  This way when the tiles are arranged
+ * in global order the only way to ensure that we don't emit out of order
+ * results with a naive implementation is to have *all* the tiles loaded
+ * in one pass, which is not practical.
+ *
+ * TODO:
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment interleave",
+    "[sparse-global-order]") {
+  reset_config();
+
+  // the tile extent is 2
+  create_default_array_1d(true);
+
+  // Write a fragment F0 with tiles
+  // [1,3][3,5][5,7][7,9]...
+  std::vector<int> f0coords(180);
+  f0coords[0] = 1;
+  for (size_t i = 1; i < f0coords.size(); i++) {
+    f0coords[i] = 1 + 2 * ((i + 1) / 2);
+  }
+  uint64_t f0coords_size = f0coords.size() * sizeof(int);
+
+  // Write a fragment F1 with tiles
+  // [2,4][4,6][6,8][8,10]...
+  std::vector<int> f1coords(f0coords.size());
+  for (size_t i = 0; i < f1coords.size(); i++) {
+    f1coords[i] = f0coords[i] + 1;
+  }
+  uint64_t f1coords_size = f1coords.size() * sizeof(int);
+
+  std::vector<int> att(f0coords.size());
+  std::iota(att.begin(), att.end(), f0coords.size());
+  uint64_t att_size = att.size() * sizeof(int);
+
+  write_1d_fragment(f0coords.data(), &f0coords_size, att.data(), &att_size);
+  REQUIRE(f0coords_size == f0coords.size() * sizeof(int));
+  REQUIRE(att_size == att.size() * sizeof(int));
+
+  write_1d_fragment(f1coords.data(), &f1coords_size, att.data(), &att_size);
+  REQUIRE(f1coords_size == f1coords.size() * sizeof(int));
+  REQUIRE(att_size == att.size() * sizeof(int));
+
+  /**
+   * Now we should have 200 tiles, each of which has 2 coordinates,
+   * and each of which is size is 1584.
+   * In global order we skew towards fragment 1 which has lots of duplicates.
+   */
+  total_budget_ = "20000";
+  ratio_array_data_ = "0.5";
+  update_config();
+
+  std::vector<int> outcoords(f0coords.size() + f1coords.size());
+  std::vector<int> outatt(outcoords.size());
+
+  // Open array for reading.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+
+  constexpr size_t num_output_cells_per_iter = 8;
+
+  uint64_t outcursor = 0;
+  while (true) {
+    uint64_t outcoords_size;
+    uint64_t outatt_size;
+    outcoords_size = outatt_size = num_output_cells_per_iter * sizeof(int);
+
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "a", &outatt[outcursor], &outatt_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "d", &outcoords[outcursor], &outcoords_size);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE("" == error_if_any());
+
+    CHECK(outcoords_size == num_output_cells_per_iter * sizeof(int));
+    outcursor += num_output_cells_per_iter;
+
+    tiledb_query_status_t status;
+    rc = tiledb_query_get_status(ctx_, query, &status);
+    REQUIRE(rc == TILEDB_OK);
+    if (status == TILEDB_COMPLETED) {
+      break;
+    }
+  }
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  std::vector<int> expectcoords;
+  expectcoords.insert(expectcoords.end(), f0coords.begin(), f0coords.end());
+  expectcoords.insert(expectcoords.end(), f1coords.begin(), f1coords.end());
+  std::sort(expectcoords.begin(), expectcoords.end());
+
+  CHECK(expectcoords == outcoords);
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: tile offsets budget exceeded",
@@ -762,10 +1015,10 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   bool use_subarray = false;
-  SECTION("- No subarray") {
+  SECTION("No subarray") {
     use_subarray = false;
   }
-  SECTION("- Subarray") {
+  SECTION("Subarray") {
     use_subarray = true;
   }
 
@@ -789,6 +1042,7 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
+  // FIXME: there is no per fragment budget anymore
   // Two result tile (2 * (~3000 + 8) will be bigger than the per fragment
   // budget (1000).
   total_budget_ = "35000";
@@ -1312,6 +1566,7 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
+  // FIXME: there is no per fragment budget anymore
   // Two result tile (2 * (~4000 + 8) will be bigger than the per fragment
   // budget (1000).
   total_budget_ = "40000";
