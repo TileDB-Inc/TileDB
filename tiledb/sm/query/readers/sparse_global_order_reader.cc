@@ -512,16 +512,8 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
   }
 
   if (result_tile_cursor_ < result_tile_ids_.size()) {
-    // FIXME:
-    // when there is a real budget constraint we will probably
-    // have to peek at the result tile MBRs to make sure that
-    // what gets put in `result_tiles` are fully disjoint with
-    // tiles from other fragments that *don't* get put in `result_tiles`.
-    // this will be necessary for the merge later on to prevent
-    // a subsequent `submit` from getting out of order data.
-    size_t merge_ok_bound = result_tile_cursor_;
-
-    for (size_t rt = result_tile_cursor_; rt < result_tile_ids_.size(); rt++) {
+    size_t rt;
+    for (rt = result_tile_cursor_; rt < result_tile_ids_.size(); rt++) {
       const auto f = result_tile_ids_[rt].fragment_idx_;
       const auto t = result_tile_ids_[rt].tile_idx_;
 
@@ -540,28 +532,19 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
             f,
             t);
 
-        if (merge_ok_bound == result_tile_cursor_) {
+        if (rt == result_tile_cursor_) {
           // this means we cannot safely produce any results
           throw SparseGlobalOrderReaderException("TODO");
         } else {
+          // this tile has the lowest MBR lower bound of the remaining tiles,
+          // we cannot safely emit cells exceeding its lower bound later
           break;
         }
       }
-
-      // FIXME: see comment above
-      // really what we need to do is flip the iteration to identify the merge
-      // ok units, and then see if we can fit *all* of them within the memory
-      // budget
-      merge_ok_bound++;
-    }
-
-    if (merge_ok_bound == result_tile_cursor_) {
-      // cannot progress
-      throw SparseGlobalOrderReaderException("TODO");
     }
 
     // update position for next iteration
-    result_tile_cursor_ = merge_ok_bound;
+    result_tile_cursor_ = rt;
 
     if (result_tile_cursor_ == result_tile_ids_.size()) {
       // TODO: original version sets a flag in tmp_read_state_ on a per-fragment
@@ -928,6 +911,55 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
                      frag_idx, rc, result_tiles)) {
       return true;
     }
+
+    // If the cell value exceeds the lower bound of the un-populated result
+    // tiles then it is not correct to emit it; hopefully we cleared out
+    // a tile somewhere and trying again will make progress
+    if (result_tile_cursor_ < result_tile_ids_.size()) {
+      const auto& next_global_order_tile =
+          result_tile_ids_[result_tile_cursor_];
+      const auto& emit_bound =
+          fragment_metadata_[next_global_order_tile.fragment_idx_]->mbr(
+              next_global_order_tile.tile_idx_);
+
+      // Skip comparison if the next one is the same fragment,
+      // in that case we know the cells are ordered correctly
+      if (frag_idx != next_global_order_tile.fragment_idx_) {
+        struct FutureResultTileLowerBound {
+          const ResultTileId& tile;
+          const NDRange& mbr;
+
+          const void* coord(unsigned dim) const {
+            return mbr[dim].data();
+          }
+
+          UntypedDatumView dimension_datum(
+              const Dimension&, unsigned dim) const {
+            return mbr[dim].start_datum();
+          }
+
+          unsigned fragment_idx() const {
+            return tile.fragment_idx_;
+          }
+
+          uint64_t tile_idx() const {
+            return tile.tile_idx_;
+          }
+        };
+
+        FutureResultTileLowerBound target = {
+            .tile = next_global_order_tile, .mbr = emit_bound};
+
+        GlobalCellCmp cmp(array_schema_.domain());
+
+        if (cmp(target, rc)) {
+          // more tiles needed, out-of-order tiles is a possibility if we
+          // continue
+          return true;
+        }
+      }
+    }
+
     std::unique_lock<std::mutex> ul(tile_queue_mutex_);
 
     // Add all the cells in this tile with the same coordinates as this cell
