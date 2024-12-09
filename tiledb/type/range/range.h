@@ -37,6 +37,7 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/tag.h"
+#include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/enums/datatype.h"
 
 #include <algorithm>
@@ -350,6 +351,29 @@ class Range {
     }
     const size_t fixed_size = range_.size() / 2;
     std::memcpy(&range_[fixed_size], end, fixed_size);
+  }
+
+  /**
+   * @return an un-typed non-owning view into the start of the range
+   */
+  UntypedDatumView start_datum() const {
+    if (var_size_) {
+      return UntypedDatumView(range_.data(), range_start_size_);
+    } else {
+      return UntypedDatumView(start_fixed(), range_.size() / 2);
+    }
+  }
+
+  /**
+   * @return an un-typed non-owning view into the end of the range
+   */
+  UntypedDatumView end_datum() const {
+    if (var_size_) {
+      return UntypedDatumView(
+          range_.data() + range_start_size_, range_.size() - range_start_size_);
+    } else {
+      return UntypedDatumView(end_fixed(), range_.size() / 2);
+    }
   }
 
   /** Returns the start range as the requested type. */
