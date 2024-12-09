@@ -85,31 +85,7 @@ class GCSException : public StatusException {
 struct GCSParameters {
   GCSParameters() = delete;
 
-  GCSParameters(const Config& config)
-      : endpoint_(
-            config.get<std::string>("vfs.gcs.endpoint", Config::must_find))
-      , project_id_(
-            config.get<std::string>("vfs.gcs.project_id", Config::must_find))
-      , service_account_key_(config.get<std::string>(
-            "vfs.gcs.service_account_key", Config::must_find))
-      , workload_identity_configuration_(config.get<std::string>(
-            "vfs.gcs.workload_identity_configuration", Config::must_find))
-      , impersonate_service_account_(config.get<std::string>(
-            "vfs.gcs.impersonate_service_account", Config::must_find))
-      , multi_part_size_(
-            config.get<uint64_t>("vfs.gcs.multi_part_size", Config::must_find))
-      , max_parallel_ops_(
-            config.get<uint64_t>("vfs.gcs.max_parallel_ops", Config::must_find))
-      , use_multi_part_upload_(config.get<bool>(
-            "vfs.gcs.use_multi_part_upload", Config::must_find))
-      , request_timeout_ms_(config.get<uint64_t>(
-            "vfs.gcs.request_timeout_ms", Config::must_find))
-      , max_direct_upload_size_(config.get<uint64_t>(
-            "vfs.gcs.max_direct_upload_size", Config::must_find)) {
-    if (endpoint_.empty() && getenv("TILEDB_TEST_GCS_ENDPOINT")) {
-      endpoint_ = getenv("TILEDB_TEST_GCS_ENDPOINT");
-    }
-  };
+  GCSParameters(const Config& config);
 
   ~GCSParameters() = default;
 
