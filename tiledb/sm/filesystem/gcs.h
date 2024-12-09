@@ -178,30 +178,27 @@ class GCS {
    * Creates a bucket.
    *
    * @param uri The uri of the bucket to be created.
-   * @return Status
    */
-  Status create_bucket(const URI& uri) const;
+  void create_bucket(const URI& uri) const;
 
   /** Removes the contents of a GCS bucket. */
-  Status empty_bucket(const URI& uri) const;
+  void empty_bucket(const URI& uri) const;
 
   /**
    * Check if a bucket is empty.
    *
    * @param bucket The name of the bucket.
-   * @param is_empty Mutates to `true` if the bucket is empty.
-   * @return Status
+   * @param `true` if the bucket is empty, `false` otherwise.
    */
-  Status is_empty_bucket(const URI& uri, bool* is_empty) const;
+  bool is_empty_bucket(const URI& uri) const;
 
   /**
    * Check if a bucket exists.
    *
    * @param bucket The name of the bucket.
-   * @param is_bucket Mutates to `true` if `uri` is a bucket.
-   * @return Status
+   * @return `true` if `uri` is a bucket, `false` otherwise.
    */
-  Status is_bucket(const URI& uri, bool* is_bucket) const;
+  bool is_bucket(const URI& uri) const;
 
   /**
    * Check if 'is_object' is a object on GCS.
@@ -227,26 +224,23 @@ class GCS {
    * prefix `gcs://some_gcs/foo2/` (in this case there is not).
    *
    * @param uri The URI to check.
-   * @param exists Sets it to `true` if the above mentioned condition holds.
-   * @return Status
+   * @return `true` if the above mentioned condition holds, `false` otherwise.
    */
-  Status is_dir(const URI& uri, bool* exists) const;
+  bool is_dir(const URI& uri) const;
 
   /**
    * Deletes a bucket.
    *
    * @param uri The URI of the bucket to be deleted.
-   * @return Status
    */
-  Status remove_bucket(const URI& uri) const;
+  void remove_bucket(const URI& uri) const;
 
   /**
    * Deletes an object with a given URI.
    *
    * @param uri The URI of the object to be deleted.
-   * @return Status
    */
-  Status remove_object(const URI& uri) const;
+  void remove_object(const URI& uri) const;
 
   /**
    * Deletes all objects with prefix `uri/` (if the ending `/` does not
@@ -271,9 +265,8 @@ class GCS {
    * this example.
    *
    * @param uri The prefix uri of the objects to be deleted.
-   * @return Status
    */
-  Status remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const;
 
   /**
    * Lists the objects that start with `uri`. Full URI paths are
@@ -292,15 +285,13 @@ class GCS {
    * - `foo/bar`
    *
    * @param uri The prefix URI.
-   * @param paths Pointer of a vector of URIs to store the retrieved paths.
    * @param delimiter The delimiter that will
    * @param max_paths The maximum number of paths to be retrieved. The default
    *     `-1` indicates that no upper bound is specified.
-   * @return Status
+   * @return A vector of the retrieved paths' URIs.
    */
-  Status ls(
+  std::vector<std::string> ls(
       const URI& uri,
-      std::vector<std::string>* paths,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
 
@@ -349,9 +340,8 @@ class GCS {
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status move_object(const URI& old_uri, const URI& new_uri);
+  void move_object(const URI& old_uri, const URI& new_uri);
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -361,17 +351,15 @@ class GCS {
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
+  void move_dir(const URI& old_uri, const URI& new_uri);
 
   /**
    * Creates an empty object.
    *
    * @param uri The URI of the object to be created.
-   * @return Status
    */
-  Status touch(const URI& uri) const;
+  void touch(const URI& uri) const;
 
   /**
    * Writes the input buffer to an GCS object. Note that this is essentially
@@ -380,9 +368,8 @@ class GCS {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @return Status
    */
-  Status write(const URI& uri, const void* buffer, uint64_t length);
+  void write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
    * Reads data from an object into a buffer.
@@ -407,18 +394,16 @@ class GCS {
    * Returns the size of the input object with a given URI in bytes.
    *
    * @param uri The URI of the object.
-   * @param nbytes Pointer to `uint64_t` bytes to return.
-   * @return Status
+   * @return The size of the input object, in bytes.
    */
-  Status object_size(const URI& uri, uint64_t* nbytes) const;
+  uint64_t object_size(const URI& uri) const;
 
   /**
    * Flushes an object to GCS, finalizing the upload.
    *
    * @param uri The URI of the object to be flushed.
-   * @return Status
    */
-  Status flush_object(const URI& uri);
+  void flush_object(const URI& uri);
 
   /**
    * Creates a GCS credentials object.
@@ -568,12 +553,8 @@ class GCS {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /**
-   * Initializes the client, if it has not already been initialized.
-   *
-   * @return Status
-   */
-  Status init_client() const;
+  /** Initializes the client, if it has not already been initialized. */
+  void init_client() const;
 
   /**
    * Parses a URI into a bucket name and object path. For example,
@@ -581,12 +562,9 @@ class GCS {
    * `*bucket_name == "my-bucket"` and `*object_path == "dir1/file1"`.
    *
    * @param uri The URI to parse.
-   * @param bucket_name Mutates to the bucket name.
-   * @param object_path Mutates to the object path.
-   * @return Status
+   * @return A tuple of the bucket name and object path.
    */
-  Status parse_gcs_uri(
-      const URI& uri, std::string* bucket_name, std::string* object_path) const;
+  std::tuple<std::string, std::string> parse_gcs_uri(const URI& uri) const;
 
   /**
    * Removes a leading slash from 'path' if it exists.
@@ -610,15 +588,6 @@ class GCS {
   static std::string remove_trailing_slash(const std::string& path);
 
   /**
-   * Copies the object at 'old_uri' to `new_uri`.
-   *
-   * @param old_uri The object's current URI.
-   * @param new_uri The object's URI to move to.
-   * @return Status
-   */
-  Status copy_object(const URI& old_uri, const URI& new_uri);
-
-  /**
    * Waits for a object with `bucket_name` and `object_path`
    * to exist on GCS.
    *
@@ -628,35 +597,6 @@ class GCS {
    */
   Status wait_for_object_to_propagate(
       const std::string& bucket_name, const std::string& object_path) const;
-
-  /**
-   * Waits for a object with `bucket_name` and `object_path`
-   * to not exist on GCS.
-   *
-   * @param bucket_name The object's bucket name.
-   * @param object_path The object's path
-   * @return Status
-   */
-  Status wait_for_object_to_be_deleted(
-      const std::string& bucket_name, const std::string& object_path) const;
-
-  /**
-   * Waits for a bucket with `bucket_name`
-   * to exist on GCS.
-   *
-   * @param bucket_name The bucket's name.
-   * @return Status
-   */
-  Status wait_for_bucket_to_propagate(const std::string& bucket_name) const;
-
-  /**
-   * Waits for a bucket with `bucket_name`
-   * to not exist on GCS.
-   *
-   * @param bucket_name The bucket's name.
-   * @return Status
-   */
-  Status wait_for_bucket_to_be_deleted(const std::string& bucket_name) const;
 
   /**
    * Check if 'is_object' is a object on GCS.
@@ -670,15 +610,6 @@ class GCS {
       const std::string& bucket_name,
       const std::string& object_path,
       bool* const is_object) const;
-
-  /**
-   * Check if 'bucket_name' is a bucket on GCS.
-   *
-   * @param bucket_name The bucket's name.
-   * @param is_bucket Mutates to the output.
-   * @return Status
-   */
-  Status is_bucket(const std::string& bucket_name, bool* const is_bucket) const;
 
   /**
    * Contains the implementation of ls_filtered.
@@ -724,14 +655,10 @@ class GCS {
    * @param write_cache_buffer The destination write cache buffer to fill.
    * @param buffer The source binary buffer to fill the data from.
    * @param length The length of `buffer`.
-   * @param nbytes_filled The number of bytes filled into `write_cache_buffer`.
-   * @return Status
+   * @return The number of bytes filled into `write_cache_buffer`.
    */
-  Status fill_write_cache(
-      Buffer* write_cache_buffer,
-      const void* buffer,
-      const uint64_t length,
-      uint64_t* nbytes_filled);
+  uint64_t fill_write_cache(
+      Buffer* write_cache_buffer, const void* buffer, const uint64_t length);
 
   /**
    * Writes the contents of the input buffer to the object given by
@@ -756,9 +683,8 @@ class GCS {
    * @param length The size of the input buffer.
    * @param last_part Should be true only when this is the last part of a
    * object.
-   * @return Status
    */
-  Status write_parts(
+  void write_parts(
       const URI& uri, const void* buffer, uint64_t length, bool last_part);
 
   /**
@@ -807,7 +733,7 @@ class GCS {
    * Uploads the write cache buffer associated with 'uri' as an entire
    * object.
    */
-  Status flush_object_direct(const URI& uri);
+  void flush_object_direct(const URI& uri);
 };
 
 }  // namespace tiledb::sm

@@ -102,6 +102,7 @@ GCS::GCS(ThreadPool* thread_pool, const Config& config)
           gcs_params_.max_parallel_ops_ * gcs_params_.multi_part_size_ :
           gcs_params_.max_direct_upload_size_;
   state_ = State::INITIALIZED;
+  init_client();
 }
 
 GCS::~GCS() {
@@ -190,13 +191,11 @@ std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
       creds, gcs_params_.impersonate_service_account_, options);
 }
 
-Status GCS::init_client() const {
+void GCS::init_client() const {
   assert(state_ == State::INITIALIZED);
-
   std::lock_guard<std::mutex> lck(client_init_mtx_);
-
   if (client_) {
-    return Status::Ok();
+    return;
   }
 
   google::cloud::Options ca_options;
@@ -237,20 +236,14 @@ Status GCS::init_client() const {
   } catch (const std::exception& e) {
     throw GCSException("Failed to initialize GCS: " + std::string(e.what()));
   }
-
-  return Status::Ok();
 }
 
-Status GCS::create_bucket(const URI& uri) const {
-  RETURN_NOT_OK(init_client());
-
+void GCS::create_bucket(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
 
-  std::string bucket_name;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, nullptr));
-
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
   google::cloud::StatusOr<google::cloud::storage::BucketMetadata>
       bucket_metadata = client_->CreateBucketForProject(
           bucket_name,
@@ -263,33 +256,35 @@ Status GCS::create_bucket(const URI& uri) const {
         bucket_metadata.status().message() + ")");
   }
 
-  return wait_for_bucket_to_propagate(bucket_name);
+  // Wait for bucket to propagate
+  unsigned attempts = 0;
+  while (attempts++ < constants::gcs_max_attempts) {
+    if (is_bucket(URI(bucket_name))) {
+      return;
+    }
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
+  }
+  throw GCSException(
+      "Timed out waiting on bucket to propogate: " + bucket_name);
 }
 
-Status GCS::empty_bucket(const URI& uri) const {
-  RETURN_NOT_OK(init_client());
-
+void GCS::empty_bucket(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
 
-  return remove_dir(uri);
+  remove_dir(uri);
 }
 
-Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
-  RETURN_NOT_OK(init_client());
-  assert(is_empty);
-
+bool GCS::is_empty_bucket(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
 
-  std::string bucket_name;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, nullptr));
-
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
   google::cloud::storage::ListObjectsReader objects_reader =
       client_->ListObjects(bucket_name);
-
   for (const google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>&
            object_metadata : objects_reader) {
     if (!object_metadata) {
@@ -297,79 +292,52 @@ Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
           "List bucket objects failed on: " + uri.to_string() + " (" +
           object_metadata.status().message() + ")");
     }
-
-    *is_empty = false;
-    return Status::Ok();
+    return false;
   }
-
-  *is_empty = true;
-  return Status::Ok();
+  return true;
 }
 
-Status GCS::is_bucket(const URI& uri, bool* const is_bucket) const {
-  RETURN_NOT_OK(init_client());
-  assert(is_bucket);
-
+bool GCS::is_bucket(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
-  std::string bucket_name;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, nullptr));
-
-  return this->is_bucket(bucket_name, is_bucket);
-}
-
-Status GCS::is_bucket(
-    const std::string& bucket_name, bool* const is_bucket) const {
   google::cloud::StatusOr<google::cloud::storage::BucketMetadata>
       bucket_metadata = client_->GetBucketMetadata(bucket_name);
 
   if (!bucket_metadata.ok()) {
     const google::cloud::Status status = bucket_metadata.status();
     const google::cloud::StatusCode code = status.code();
-
     if (code == google::cloud::StatusCode::kNotFound) {
-      *is_bucket = false;
-      return Status::Ok();
+      return false;
     } else {
       throw GCSException(
           "Get bucket failed on: " + bucket_name + " (" + status.message() +
           ")");
     }
   }
-
-  *is_bucket = true;
-  return Status::Ok();
+  return true;
 }
 
-Status GCS::is_dir(const URI& uri, bool* const exists) const {
-  RETURN_NOT_OK(init_client());
-  assert(exists);
-
+bool GCS::is_dir(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
-
-  std::vector<std::string> paths;
-  RETURN_NOT_OK(ls(uri, &paths, "/", 1));
-  *exists = (bool)paths.size();
-  return Status::Ok();
+  std::vector<std::string> paths = ls(uri, "/", 1);
+  return (bool)paths.size();
 }
 
-Status GCS::remove_bucket(const URI& uri) const {
-  RETURN_NOT_OK(init_client());
-
+void GCS::remove_bucket(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
 
   // Empty bucket
-  RETURN_NOT_OK(empty_bucket(uri));
+  empty_bucket(uri);
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
-  std::string bucket_name;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, nullptr));
-
+  // Delete bucket
   const google::cloud::Status status = client_->DeleteBucket(bucket_name);
   if (!status.ok()) {
     throw GCSException(
@@ -377,20 +345,25 @@ Status GCS::remove_bucket(const URI& uri) const {
         status.message() + ")");
   }
 
-  return wait_for_bucket_to_be_deleted(bucket_name);
+  // Wait for bucket to be deleted
+  unsigned attempts = 0;
+  while (attempts++ < constants::gcs_max_attempts) {
+    if (!is_bucket(URI(bucket_name))) {
+      return;
+    }
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
+  }
+  throw GCSException(
+      "Timed out waiting on bucket to be deleted: " + bucket_name);
 }
 
-Status GCS::remove_object(const URI& uri) const {
-  RETURN_NOT_OK(init_client());
-
+void GCS::remove_object(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
-
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
   const google::cloud::Status status =
       client_->DeleteObject(bucket_name, object_path);
   if (!status.ok()) {
@@ -399,25 +372,30 @@ Status GCS::remove_object(const URI& uri) const {
         status.message() + ")");
   }
 
-  return wait_for_object_to_be_deleted(bucket_name, object_path);
+  // Wait for object to be deleted
+  unsigned attempts = 0;
+  while (attempts++ < constants::gcs_max_attempts) {
+    bool is_object;
+    throw_if_not_ok(this->is_object(bucket_name, object_path, &is_object));
+    if (!is_object) {
+      return;
+    }
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
+  }
+  throw GCSException(
+      "Timed out waiting on object to be deleted: " + object_path);
 }
 
-Status GCS::remove_dir(const URI& uri) const {
-  RETURN_NOT_OK(init_client());
-
+void GCS::remove_dir(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
-
-  std::vector<std::string> paths;
-  RETURN_NOT_OK(ls(uri, &paths, ""));
-  auto status = parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
-    throw_if_not_ok(remove_object(URI(paths[i])));
+  std::vector<std::string> paths = ls(uri, "");
+  throw_if_not_ok(parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
+    remove_object(URI(paths[i]));
     return Status::Ok();
-  });
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+  }));
 }
 
 std::string GCS::remove_front_slash(const std::string& path) {
@@ -444,33 +422,22 @@ std::string GCS::remove_trailing_slash(const std::string& path) {
   return path;
 }
 
-Status GCS::ls(
-    const URI& uri,
-    std::vector<std::string>* paths,
-    const std::string& delimiter,
-    const int max_paths) const {
-  assert(paths);
-
+std::vector<std::string> GCS::ls(
+    const URI& uri, const std::string& delimiter, const int max_paths) const {
+  std::vector<std::string> paths;
   for (auto& fs : ls_with_sizes(uri, delimiter, max_paths)) {
-    paths->emplace_back(fs.path().native());
+    paths.emplace_back(fs.path().native());
   }
-
-  return Status::Ok();
+  return paths;
 }
 
 std::vector<directory_entry> GCS::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
-  throw_if_not_ok(init_client());
-
   const URI uri_dir = uri.add_trailing_slash();
-
   if (!uri_dir.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri_dir.to_string());
   }
-
-  std::string bucket_name;
-  std::string object_path;
-  throw_if_not_ok(parse_gcs_uri(uri_dir, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   std::vector<directory_entry> entries;
   google::cloud::storage::Prefix prefix_option(object_path);
@@ -523,22 +490,14 @@ LsObjects GCS::ls_filtered_impl(
     const URI& uri,
     std::function<bool(const std::string_view, uint64_t)> file_filter,
     bool recursive) const {
-  throw_if_not_ok(init_client());
-
   const URI uri_dir = uri.add_trailing_slash();
-
   if (!uri_dir.is_gcs()) {
-    throw GCSException(
-        std::string("URI is not a GCS URI: " + uri_dir.to_string()));
+    throw GCSException("URI is not a GCS URI: " + uri_dir.to_string());
   }
 
   std::string prefix = uri_dir.backend_name() + "://";
-  std::string bucket_name;
-  std::string object_path;
-  throw_if_not_ok(parse_gcs_uri(uri_dir, &bucket_name, &object_path));
-
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
   LsObjects result;
-
   auto to_directory_entry =
       [&bucket_name, &prefix](const google::cloud::storage::ObjectMetadata& obj)
       -> LsObjects::value_type {
@@ -596,52 +555,35 @@ LsObjects GCS::ls_filtered_impl(
   return result;
 }
 
-Status GCS::move_object(const URI& old_uri, const URI& new_uri) {
-  RETURN_NOT_OK(init_client());
-
-  RETURN_NOT_OK(copy_object(old_uri, new_uri));
-  RETURN_NOT_OK(remove_object(old_uri));
-  return Status::Ok();
-}
-
-Status GCS::copy_object(const URI& old_uri, const URI& new_uri) {
-  RETURN_NOT_OK(init_client());
-
+void GCS::move_object(const URI& old_uri, const URI& new_uri) {
+  // Copy old object into new object
   if (!old_uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + old_uri.to_string());
   }
-
   if (!new_uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + new_uri.to_string());
   }
-
-  std::string old_bucket_name;
-  std::string old_object_path;
-  RETURN_NOT_OK(parse_gcs_uri(old_uri, &old_bucket_name, &old_object_path));
-
-  std::string new_bucket_name;
-  std::string new_object_path;
-  RETURN_NOT_OK(parse_gcs_uri(new_uri, &new_bucket_name, &new_object_path));
-
+  auto [old_bucket_name, old_object_path] = parse_gcs_uri(old_uri);
+  auto [new_bucket_name, new_object_path] = parse_gcs_uri(new_uri);
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->CopyObject(
           old_bucket_name, old_object_path, new_bucket_name, new_object_path);
 
   if (!object_metadata.ok()) {
     const google::cloud::Status status = object_metadata.status();
-
     throw GCSException(
         "Copy object failed on: " + old_uri.to_string() + " (" +
         status.message() + ")");
   }
+  throw_if_not_ok(
+      wait_for_object_to_propagate(new_bucket_name, new_object_path));
 
-  return wait_for_object_to_propagate(new_bucket_name, new_object_path);
+  // Remove the old object
+  remove_object(old_uri);
 }
 
 Status GCS::wait_for_object_to_propagate(
     const std::string& bucket_name, const std::string& object_path) const {
-  RETURN_NOT_OK(init_client());
-
   unsigned attempts = 0;
   while (attempts++ < constants::gcs_max_attempts) {
     bool is_object;
@@ -658,113 +600,37 @@ Status GCS::wait_for_object_to_propagate(
       "Timed out waiting on object to propogate: " + object_path);
 }
 
-Status GCS::wait_for_object_to_be_deleted(
-    const std::string& bucket_name, const std::string& object_path) const {
-  RETURN_NOT_OK(init_client());
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    bool is_object;
-    RETURN_NOT_OK(this->is_object(bucket_name, object_path, &is_object));
-    if (!is_object) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  throw GCSException(
-      "Timed out waiting on object to be deleted: " + object_path);
-}
-
-Status GCS::wait_for_bucket_to_propagate(const std::string& bucket_name) const {
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    bool is_bucket;
-    RETURN_NOT_OK(this->is_bucket(bucket_name, &is_bucket));
-
-    if (is_bucket) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  throw GCSException(
-      "Timed out waiting on bucket to propogate: " + bucket_name);
-}
-
-Status GCS::wait_for_bucket_to_be_deleted(
-    const std::string& bucket_name) const {
-  RETURN_NOT_OK(init_client());
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    bool is_bucket;
-    RETURN_NOT_OK(this->is_bucket(bucket_name, &is_bucket));
-    if (!is_bucket) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  throw GCSException(
-      "Timed out waiting on bucket to be deleted: " + bucket_name);
-}
-
-Status GCS::move_dir(const URI& old_uri, const URI& new_uri) {
-  RETURN_NOT_OK(init_client());
-
-  std::vector<std::string> paths;
-  RETURN_NOT_OK(ls(old_uri, &paths, ""));
+void GCS::move_dir(const URI& old_uri, const URI& new_uri) {
+  std::vector<std::string> paths = ls(old_uri, "");
   for (const auto& path : paths) {
     const std::string suffix = path.substr(old_uri.to_string().size());
     const URI new_path = new_uri.join_path(suffix);
-    RETURN_NOT_OK(move_object(URI(path), new_path));
+    move_object(URI(path), new_path);
   }
-  return Status::Ok();
 }
 
-Status GCS::touch(const URI& uri) const {
-  RETURN_NOT_OK(init_client());
-
+void GCS::touch(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
-
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->InsertObject(bucket_name, object_path, "");
-
   if (!object_metadata.ok()) {
     const google::cloud::Status status = object_metadata.status();
-
     throw GCSException(
         "Touch object failed on: " + uri.to_string() + " (" + status.message() +
         ")");
   }
-
-  return Status::Ok();
 }
 
 Status GCS::is_object(const URI& uri, bool* const is_object) const {
-  RETURN_NOT_OK(init_client());
   assert(is_object);
-
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
-
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   return this->is_object(bucket_name, object_path, is_object);
 }
@@ -797,18 +663,14 @@ Status GCS::is_object(
   return Status::Ok();
 }
 
-Status GCS::write(
+void GCS::write(
     const URI& uri, const void* const buffer, const uint64_t length) {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
 
   Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
-
-  uint64_t nbytes_filled;
-  RETURN_NOT_OK(
-      fill_write_cache(write_cache_buffer, buffer, length, &nbytes_filled));
-
+  uint64_t nbytes_filled = fill_write_cache(write_cache_buffer, buffer, length);
   if (!gcs_params_.use_multi_part_upload_) {
     if (nbytes_filled != length) {
       std::stringstream errmsg;
@@ -817,67 +679,52 @@ Status GCS::write(
                 "configured with the 'vfs.gcs.max_direct_upload_size' option.";
       throw GCSException(errmsg.str());
     } else {
-      return Status::Ok();
+      return;
     }
   }
 
   if (write_cache_buffer->size() == write_cache_max_size_) {
-    RETURN_NOT_OK(flush_write_cache(uri, write_cache_buffer, false));
+    throw_if_not_ok(flush_write_cache(uri, write_cache_buffer, false));
   }
 
   uint64_t new_length = length - nbytes_filled;
   uint64_t offset = nbytes_filled;
   while (new_length > 0) {
     if (new_length >= write_cache_max_size_) {
-      RETURN_NOT_OK(write_parts(
+      write_parts(
           uri,
           static_cast<const char*>(buffer) + offset,
           write_cache_max_size_,
-          false));
+          false);
       offset += write_cache_max_size_;
       new_length -= write_cache_max_size_;
     } else {
-      RETURN_NOT_OK(fill_write_cache(
+      nbytes_filled = fill_write_cache(
           write_cache_buffer,
           static_cast<const char*>(buffer) + offset,
-          new_length,
-          &nbytes_filled));
+          new_length);
       offset += nbytes_filled;
       new_length -= nbytes_filled;
     }
   }
-
   assert(offset == length);
-
-  return Status::Ok();
 }
 
-Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
-  RETURN_NOT_OK(init_client());
-  assert(nbytes);
-
+uint64_t GCS::object_size(const URI& uri) const {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
-
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->GetObjectMetadata(bucket_name, object_path);
-
   if (!object_metadata.ok()) {
     const google::cloud::Status status = object_metadata.status();
-
     throw GCSException(
         "Get object size failed on: " + object_path + " (" + status.message() +
         ")");
   }
-
-  *nbytes = object_metadata->size();
-
-  return Status::Ok();
+  return object_metadata->size();
 }
 
 Buffer* GCS::get_write_cache_buffer(const std::string& uri) {
@@ -889,40 +736,40 @@ Buffer* GCS::get_write_cache_buffer(const std::string& uri) {
   }
 }
 
-Status GCS::fill_write_cache(
+uint64_t GCS::fill_write_cache(
     Buffer* const write_cache_buffer,
     const void* const buffer,
-    const uint64_t length,
-    uint64_t* const nbytes_filled) {
+    const uint64_t length) {
   assert(write_cache_buffer);
   assert(buffer);
-  assert(nbytes_filled);
 
-  *nbytes_filled =
+  uint64_t nbytes_filled =
       std::min(write_cache_max_size_ - write_cache_buffer->size(), length);
-
-  if (*nbytes_filled > 0) {
-    RETURN_NOT_OK(write_cache_buffer->write(buffer, *nbytes_filled));
+  if (nbytes_filled > 0) {
+    throw_if_not_ok(write_cache_buffer->write(buffer, nbytes_filled));
   }
-
-  return Status::Ok();
+  return nbytes_filled;
 }
 
 Status GCS::flush_write_cache(
     const URI& uri, Buffer* const write_cache_buffer, const bool last_part) {
   assert(write_cache_buffer);
-
   if (write_cache_buffer->size() > 0) {
-    const Status st = write_parts(
-        uri, write_cache_buffer->data(), write_cache_buffer->size(), last_part);
-    write_cache_buffer->reset_size();
-    RETURN_NOT_OK(st);
+    try {
+      write_parts(
+          uri,
+          write_cache_buffer->data(),
+          write_cache_buffer->size(),
+          last_part);
+      write_cache_buffer->reset_size();
+    } catch (std::exception& e) {
+      return Status("[TileDB::GCS]", e.what());
+    }
   }
-
   return Status::Ok();
 }
 
-Status GCS::write_parts(
+void GCS::write_parts(
     const URI& uri,
     const void* const buffer,
     const uint64_t length,
@@ -943,13 +790,9 @@ Status GCS::write_parts(
       std::min(std::max(num_ops, uint64_t(1)), gcs_params_.max_parallel_ops_);
 
   if (!last_part && length % gcs_params_.multi_part_size_ != 0) {
-    return LOG_STATUS(
-        Status_S3Error("Length not evenly divisible by part size"));
+    throw GCSException("Length not evenly divisible by part size");
   }
-
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   MultiPartUploadState* state;
   std::unique_lock<std::mutex> state_lck;
@@ -981,9 +824,9 @@ Status GCS::write_parts(
 
       // Delete file if it exists (overwrite).
       bool exists;
-      RETURN_NOT_OK(is_object(uri, &exists));
+      throw_if_not_ok(is_object(uri, &exists));
       if (exists) {
-        RETURN_NOT_OK(remove_object(uri));
+        remove_object(uri);
       }
     } else {
       // If another thread switched state, switch back to a read lock
@@ -1009,7 +852,8 @@ Status GCS::write_parts(
         upload_part(bucket_name, object_part_path, buffer, length);
     state->update_st(st);
     state_lck.unlock();
-    return st;
+    throw_if_not_ok(st);
+    return;
   } else {
     std::vector<ThreadPool::Task> tasks;
     tasks.reserve(num_ops);
@@ -1036,10 +880,8 @@ Status GCS::write_parts(
     const Status st = thread_pool_->wait_all(tasks);
     state->update_st(st);
     state_lck.unlock();
-    return st;
+    throw_if_not_ok(st);
   }
-
-  return Status::Ok();
 }
 
 Status GCS::upload_part(
@@ -1065,15 +907,14 @@ Status GCS::upload_part(
   return Status::Ok();
 }
 
-Status GCS::flush_object(const URI& uri) {
-  RETURN_NOT_OK(init_client());
-
+void GCS::flush_object(const URI& uri) {
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
 
   if (!gcs_params_.use_multi_part_upload_) {
-    return flush_object_direct(uri);
+    flush_object_direct(uri);
+    return;
   }
 
   Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
@@ -1085,7 +926,7 @@ Status GCS::flush_object(const URI& uri) {
   UniqueReadLock unique_rl(&multipart_upload_rwlock_);
 
   if (multi_part_upload_states_.count(uri.to_string()) == 0) {
-    return flush_write_cache_st;
+    throw_if_not_ok(flush_write_cache_st);
   }
 
   MultiPartUploadState* const state =
@@ -1096,10 +937,7 @@ Status GCS::flush_object(const URI& uri) {
   unique_rl.unlock();
 
   const std::vector<std::string> part_paths = state->get_part_paths();
-
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   // Wait for the last written part to propogate to ensure all parts
   // are available for composition into a single object.
@@ -1115,8 +953,7 @@ Status GCS::flush_object(const URI& uri) {
     // Release all instance state associated with this part list
     // transactions.
     finish_multi_part_upload(uri);
-
-    return Status::Ok();
+    return;
   }
 
   // Build a list of objects to compose.
@@ -1160,7 +997,7 @@ Status GCS::flush_object(const URI& uri) {
         status.message() + ")");
   }
 
-  return wait_for_object_to_propagate(bucket_name, object_path);
+  throw_if_not_ok(wait_for_object_to_propagate(bucket_name, object_path));
 }
 
 void GCS::delete_parts(
@@ -1205,17 +1042,12 @@ void GCS::finish_multi_part_upload(const URI& uri) {
   cache_lock.unlock();
 }
 
-Status GCS::flush_object_direct(const URI& uri) {
+void GCS::flush_object_direct(const URI& uri) {
   Buffer* const write_cache_buffer = get_write_cache_buffer(uri.to_string());
-
   if (write_cache_buffer->size() == 0) {
-    return Status::Ok();
+    return;
   }
-
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
-
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
   Buffer buffer_moved;
 
   // Protect 'write_cache_map_' from multiple writers.
@@ -1241,7 +1073,7 @@ Status GCS::flush_object_direct(const URI& uri) {
         ")");
   }
 
-  return wait_for_object_to_propagate(bucket_name, object_path);
+  throw_if_not_ok(wait_for_object_to_propagate(bucket_name, object_path));
 }
 
 Status GCS::read(
@@ -1251,15 +1083,10 @@ Status GCS::read(
     const uint64_t length,
     const uint64_t read_ahead_length,
     uint64_t* const length_returned) const {
-  RETURN_NOT_OK(init_client());
-
   if (!uri.is_gcs()) {
     throw GCSException("URI is not an GCS URI: " + uri.to_string());
   }
-
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   google::cloud::storage::ObjectReadStream stream = client_->ReadObject(
       bucket_name,
@@ -1275,7 +1102,6 @@ Status GCS::read(
 
   stream.read(static_cast<char*>(buffer), length + read_ahead_length);
   *length_returned = stream.gcount();
-
   stream.Close();
 
   if (*length_returned < length) {
@@ -1285,10 +1111,7 @@ Status GCS::read(
   return Status::Ok();
 }
 
-Status GCS::parse_gcs_uri(
-    const URI& uri,
-    std::string* const bucket_name,
-    std::string* const object_path) const {
+std::tuple<std::string, std::string> GCS::parse_gcs_uri(const URI& uri) const {
   assert(uri.is_gcs());
   const std::string uri_str = uri.to_string();
 
@@ -1297,11 +1120,7 @@ Status GCS::parse_gcs_uri(
   assert(uri_str.rfind(gcs_prefix, 0) == 0);
 
   if (uri_str.size() == gcs_prefix.size()) {
-    if (bucket_name)
-      *bucket_name = "";
-    if (object_path)
-      *object_path = "";
-    return Status::Ok();
+    return std::make_tuple("", "");
   }
 
   // Find the '/' after the bucket name.
@@ -1311,11 +1130,8 @@ Status GCS::parse_gcs_uri(
   if (separator == std::string::npos) {
     const size_t c_pos_start = gcs_prefix.size();
     const size_t c_pos_end = uri_str.size();
-    if (bucket_name)
-      *bucket_name = uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
-    if (object_path)
-      *object_path = "";
-    return Status::Ok();
+    return std::make_tuple(
+        uri_str.substr(c_pos_start, c_pos_end - c_pos_start), "");
   }
 
   // There is only a bucket name if there aren't any characters past the
@@ -1323,11 +1139,8 @@ Status GCS::parse_gcs_uri(
   if (uri_str.size() == separator) {
     const size_t c_pos_start = gcs_prefix.size();
     const size_t c_pos_end = separator;
-    if (bucket_name)
-      *bucket_name = uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
-    if (object_path)
-      *object_path = "";
-    return Status::Ok();
+    return std::make_tuple(
+        uri_str.substr(c_pos_start, c_pos_end - c_pos_start), "");
   }
 
   const size_t c_pos_start = gcs_prefix.size();
@@ -1335,12 +1148,9 @@ Status GCS::parse_gcs_uri(
   const size_t b_pos_start = separator + 1;
   const size_t b_pos_end = uri_str.size();
 
-  if (bucket_name)
-    *bucket_name = uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
-  if (object_path)
-    *object_path = uri_str.substr(b_pos_start, b_pos_end - b_pos_start);
-
-  return Status::Ok();
+  return std::make_tuple(
+      uri_str.substr(c_pos_start, c_pos_end - c_pos_start),
+      uri_str.substr(b_pos_start, b_pos_end - b_pos_start));
 }
 
 }  // namespace tiledb::sm
