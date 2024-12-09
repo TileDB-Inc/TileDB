@@ -543,6 +543,8 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
         if (merge_ok_bound == result_tile_cursor_) {
           // this means we cannot safely produce any results
           throw SparseGlobalOrderReaderException("TODO");
+        } else {
+          break;
         }
       }
 
