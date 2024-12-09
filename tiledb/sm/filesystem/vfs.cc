@@ -261,7 +261,8 @@ Status VFS::touch(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().touch(uri);
+    azure().touch(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -296,7 +297,8 @@ Status VFS::create_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().create_container(uri);
+    azure().create_container(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -322,7 +324,8 @@ Status VFS::remove_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().remove_container(uri);
+    azure().remove_container(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -349,7 +352,8 @@ Status VFS::empty_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().empty_container(uri);
+    azure().empty_container(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -377,7 +381,8 @@ Status VFS::is_empty_bucket(
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().is_empty_container(uri, is_empty);
+    *is_empty = azure().is_empty_container(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -414,7 +419,7 @@ Status VFS::remove_dir(const URI& uri) const {
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().remove_dir(uri);
+    azure().remove_dir(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -481,7 +486,8 @@ Status VFS::remove_file(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().remove_blob(uri);
+    azure().remove_blob(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -568,7 +574,8 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().blob_size(uri, size);
+    *size = azure().blob_size(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -614,7 +621,8 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().is_dir(uri, is_dir);
+    *is_dir = azure().is_dir(uri);
+    return Status::Ok();
 #else
     *is_dir = false;
     throw BuiltWithout("Azure");
@@ -665,7 +673,8 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().is_blob(uri, is_file);
+    *is_file = azure().is_blob(uri);
+    return Status::Ok();
 #else
     *is_file = false;
     throw BuiltWithout("Azure");
@@ -699,7 +708,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    RETURN_NOT_OK(azure().is_container(uri, is_bucket));
+    *is_bucket = azure().is_container(uri);
     return Status::Ok();
 #else
     *is_bucket = false;
@@ -839,7 +848,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_azure()) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
-      return azure().move_object(old_uri, new_uri);
+      azure().move_object(old_uri, new_uri);
+    return Status::Ok();
 #else
       throw BuiltWithout("Azure");
 #endif
@@ -912,7 +922,8 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_azure()) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
-      return azure().move_dir(old_uri, new_uri);
+      azure().move_dir(old_uri, new_uri);
+    return Status::Ok();
 #else
       throw BuiltWithout("Azure");
 #endif
@@ -1431,7 +1442,8 @@ Status VFS::close_file(const URI& uri) {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().flush_blob(uri);
+    azure().flush_blob(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
@@ -1495,7 +1507,8 @@ Status VFS::write(
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure().write(uri, buffer, buffer_size);
+    azure().write(uri, buffer, buffer_size);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
