@@ -960,6 +960,14 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
         if (cmp(target, rc)) {
           // more tiles needed, out-of-order tiles is a possibility if we
           // continue
+
+          // TODO: make sure we have test coverage here.
+          // 1) scenario where this does not guarantee progress, i.e.
+          //    too many overlapping tiles, we can't emit anything else
+          //    and increasing memory budget really is the only way out
+          // 2) scenario where this does make progress because we
+          //    finish a tile and thus gain budget to load the next one
+
           return true;
         }
       }
