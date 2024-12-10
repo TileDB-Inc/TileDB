@@ -433,17 +433,17 @@ void SparseGlobalOrderReader<BitmapType>::compute_result_tile_order() {
           128  // TODO: do some experiments to figure something out
   };
 
+  algorithm::ParallelMergeMemoryResources merge_resources(
+      *query_memory_tracker_.get());
+
   auto do_global_order_merge = [&]<Layout TILE_ORDER, Layout CELL_ORDER>() {
     GlobalOrderMBRCmp<TILE_ORDER, CELL_ORDER> cmp(
         array_schema_.domain(), fragment_metadata_);
     auto merge_stream = algorithm::parallel_merge<ResultTileId, decltype(cmp)>(
         resources_.compute_tp(),
+        merge_resources,
         merge_options,
         fragment_result_tile_spans,
-        /*
-        std::span(
-            fragment_result_tile_spans.begin(),
-            fragment_result_tile_spans.end()),*/
         cmp,
         &merged_result_tiles[0]);
 

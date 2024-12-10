@@ -76,6 +76,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "GenericTileIO";
     case MemoryType::METADATA:
       return "Metadata";
+    case MemoryType::PARALLEL_MERGE_CONTROL:
+      return "ParallelMergeControl";
     case MemoryType::QUERY_CONDITION:
       return "QueryCondition";
     case MemoryType::RESULT_TILE:

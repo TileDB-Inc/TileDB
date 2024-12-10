@@ -37,25 +37,30 @@ using namespace tiledb::common;
 
 namespace tiledb::algorithm {
 
+ParallelMergeFuture::ParallelMergeFuture(
+    ParallelMergeMemoryResources& memory, size_t parallel_factor)
+    : memory_(memory)
+    , merge_bounds_(&memory.control)
+    , merge_cursor_(0) {
+  merge_bounds_.reserve(parallel_factor);
+  for (size_t p = 0; p < parallel_factor; p++) {
+    merge_bounds_.push_back(MergeUnit(memory.control));
+  }
+}
+
 std::optional<uint64_t> ParallelMergeFuture::await() {
-  auto maybe_unit = merge_units_.pop();
-  if (maybe_unit.has_value()) {
-    maybe_unit->wait();
-    return merge_bounds_[merge_cursor_++];
+  auto maybe_task = merge_tasks_.pop();
+  if (maybe_task.has_value()) {
+    maybe_task->wait();
+    return merge_bounds_[merge_cursor_++].output_end();
   } else {
     return std::nullopt;
   }
 }
 
 void ParallelMergeFuture::block() {
-  while (true) {
-    auto unit = merge_units_.pop();
-    if (!unit.has_value()) {
-      break;
-    } else {
-      unit->wait();
-    }
-  }
+  while (await().has_value())
+    ;
 }
 
 }  // namespace tiledb::algorithm
