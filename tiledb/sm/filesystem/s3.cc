@@ -630,6 +630,9 @@ void S3::write(
             uri, (char*)buffer + offset, file_buffer_size_, is_last_part));
         offset += file_buffer_size_;
         new_length -= file_buffer_size_;
+        if (new_length <= 0) {
+          buff->reset_size();
+        }
       } else {
         throw_if_not_ok(fill_file_buffer(
             buff, (char*)buffer + offset, new_length, &nbytes_filled));
