@@ -47,7 +47,6 @@
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/subarray/subarray.h"
-#include "tiledb/sm/tile/comparators.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -59,6 +58,21 @@ class SparseGlobalOrderReaderException : public StatusException {
  public:
   explicit SparseGlobalOrderReaderException(const std::string& message)
       : StatusException("SparseGlobalOrderReader", message) {
+  }
+};
+
+/**
+ * View into NDRange for using the range start / lower bound in comparisons.
+ */
+struct RangeLowerBound {
+  const NDRange& mbr;
+
+  const void* coord(unsigned dim) const {
+    return mbr[dim].data();
+  }
+
+  UntypedDatumView dimension_datum(const Dimension&, unsigned dim) const {
+    return mbr[dim].start_datum();
   }
 };
 
@@ -437,8 +451,30 @@ void SparseGlobalOrderReader<BitmapType>::compute_result_tile_order() {
       *query_memory_tracker_.get());
 
   auto do_global_order_merge = [&]<Layout TILE_ORDER, Layout CELL_ORDER>() {
-    GlobalOrderMBRCmp<TILE_ORDER, CELL_ORDER> cmp(
-        array_schema_.domain(), fragment_metadata_);
+    struct ResultTileCmp {
+      using PerFragmentMetadata =
+          const std::vector<std::shared_ptr<FragmentMetadata>>;
+
+      ResultTileCmp(
+          const Domain& domain, const PerFragmentMetadata& fragment_metadata)
+          : cmp_(domain)
+          , fragment_metadata_(fragment_metadata) {
+      }
+
+      bool operator()(const ResultTileId& a, const ResultTileId& b) const {
+        const RangeLowerBound a_mbr = {
+            .mbr = fragment_metadata_[a.fragment_idx_]->mbr(a.tile_idx_)};
+        const RangeLowerBound b_mbr = {
+            .mbr = fragment_metadata_[b.fragment_idx_]->mbr(b.tile_idx_)};
+        return cmp_(a_mbr, b_mbr);
+      }
+
+      GlobalCellCmpStaticDispatch<TILE_ORDER, CELL_ORDER> cmp_;
+      const PerFragmentMetadata& fragment_metadata_;
+    };
+
+    ResultTileCmp cmp(array_schema_.domain(), fragment_metadata_);
+
     auto merge_stream = algorithm::parallel_merge<ResultTileId, decltype(cmp)>(
         resources_.compute_tp(),
         merge_resources,
@@ -942,30 +978,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
       // Skip comparison if the next one is the same fragment,
       // in that case we know the cells are ordered correctly
       if (frag_idx != next_global_order_tile.fragment_idx_) {
-        struct FutureResultTileLowerBound {
-          const ResultTileId& tile;
-          const NDRange& mbr;
-
-          const void* coord(unsigned dim) const {
-            return mbr[dim].data();
-          }
-
-          UntypedDatumView dimension_datum(
-              const Dimension&, unsigned dim) const {
-            return mbr[dim].start_datum();
-          }
-
-          unsigned fragment_idx() const {
-            return tile.fragment_idx_;
-          }
-
-          uint64_t tile_idx() const {
-            return tile.tile_idx_;
-          }
-        };
-
-        FutureResultTileLowerBound target = {
-            .tile = next_global_order_tile, .mbr = emit_bound};
+        RangeLowerBound target = {.mbr = emit_bound};
 
         GlobalCellCmp cmp(array_schema_.domain());
 
