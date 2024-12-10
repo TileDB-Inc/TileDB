@@ -104,7 +104,7 @@ unique_ptr_exceptions = {
     "zstd_compressor.h": ["std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx_;", "std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx_;"],
     "posix.cc": ["std::unique_ptr<DIR, UniqueDIRDeleter>", "static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);"],
     "curl.h": ["std::unique_ptr<CURL, decltype(&curl_easy_cleanup)>"],
-    "pmr.h": ["std::unique_ptr", "unique_ptr<Tp> make_unique("],
+    "pmr.h": ["std::unique_ptr", "unique_ptr<Tp> make_unique(", "unique_ptr<Tp> emplace_unique("],
 }
 
 
