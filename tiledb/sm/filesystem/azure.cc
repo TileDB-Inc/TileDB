@@ -345,8 +345,12 @@ void Azure::flush_blob(const URI& uri) {
     //
     // Alternatively, we could do nothing and let Azure release the
     // uncommited blocks ~7 days later. We chose to delete the blob
-    // as a best-effort operation.
-    remove_blob(uri);
+    // as a best-effort operation. We are intentionally ignoring any
+    // errors thrown by `remove_blob`.
+    try {
+      remove_blob(uri);
+    } catch (...) {
+    }
 
     // Release all instance state associated with this block list
     // transactions.
@@ -438,19 +442,16 @@ bool Azure::is_empty_container(const URI& uri) const {
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri);
-  bool is_empty = false;
   ::Azure::Storage::Blobs::ListBlobsOptions options;
   options.PageSizeHint = 1;
   try {
-    is_empty = c.GetBlobContainerClient(container_name)
-                   .ListBlobs(options)
-                   .Blobs.empty();
+    return c.GetBlobContainerClient(container_name)
+        .ListBlobs(options)
+        .Blobs.empty();
   } catch (const ::Azure::Storage::StorageException& e) {
     throw AzureException(
         "List blobs failed on: " + uri.to_string() + "; " + e.Message);
   }
-
-  return is_empty;
 }
 
 bool Azure::is_container(const URI& uri) const {
@@ -623,29 +624,16 @@ uint64_t Azure::blob_size(const URI& uri) const {
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri);
-  std::optional<std::string> error_message = nullopt;
-  uint64_t nbytes;
-  try {
-    ::Azure::Storage::Blobs::ListBlobsOptions options;
-    options.Prefix = blob_path;
-    options.PageSizeHint = 1;
-
-    auto response = c.GetBlobContainerClient(container_name).ListBlobs(options);
-
-    if (response.Blobs.empty()) {
-      error_message = "Blob does not exist.";
-    } else {
-      nbytes = static_cast<uint64_t>(response.Blobs[0].BlobSize);
-    }
-  } catch (const ::Azure::Storage::StorageException& e) {
-    error_message = e.Message;
-  }
-
-  if (error_message.has_value()) {
+  ::Azure::Storage::Blobs::ListBlobsOptions options;
+  options.Prefix = blob_path;
+  options.PageSizeHint = 1;
+  auto response = c.GetBlobContainerClient(container_name).ListBlobs(options);
+  if (response.Blobs.empty()) {
     throw AzureException(
-        "Get blob size failed on: " + uri.to_string() + error_message.value());
+        "Get blob size failed on: " + uri.to_string() + "Blob does not exist.");
+  } else {
+    return static_cast<uint64_t>(response.Blobs[0].BlobSize);
   }
-  return nbytes;
 }
 
 Status Azure::read(
