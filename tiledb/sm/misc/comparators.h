@@ -49,6 +49,23 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+template <typename T>
+concept CellCmpable =
+    requires(const T& a, const Dimension& dim, unsigned dim_idx) {
+      { a.dimension_datum(dim, dim_idx) } -> std::same_as<UntypedDatumView>;
+    };
+
+namespace cell_compare {
+template <CellCmpable RCTypeL, CellCmpable RCTypeR>
+int compare(
+    const Domain& domain, unsigned int d, const RCTypeL& a, const RCTypeR& b) {
+  const auto& dim{*(domain.dimension_ptr(d))};
+  auto v1{a.dimension_datum(dim, d)};
+  auto v2{b.dimension_datum(dim, d)};
+  return domain.cell_order_cmp(d, v1, v2);
+}
+}  // namespace cell_compare
+
 class CellCmpBase {
  protected:
   /** The domain. */
@@ -63,13 +80,10 @@ class CellCmpBase {
       , dim_num_(domain.dim_num()) {
   }
 
-  template <class RCTypeL, class RCTypeR>
+  template <CellCmpable RCTypeL, CellCmpable RCTypeR>
   [[nodiscard]] int cell_order_cmp_RC(
       unsigned int d, const RCTypeL& a, const RCTypeR& b) const {
-    const auto& dim{*(domain_.dimension_ptr(d))};
-    auto v1{a.dimension_datum(dim, d)};
-    auto v2{b.dimension_datum(dim, d)};
-    return domain_.cell_order_cmp(d, v1, v2);
+    return cell_compare::compare(domain_, d, a, b);
   }
 };
 
@@ -330,12 +344,67 @@ class HilbertCmpRCI : protected CellCmpBase {
  */
 template <typename T>
 concept GlobalCellCmpable =
-    requires(const T& a, const Dimension& dim, unsigned d) {
+    CellCmpable<T> and requires(const T& a, const Dimension& dim, unsigned d) {
       { a.coord(d) } -> std::convertible_to<const void*>;
-      { a.dimension_datum(dim, d) } -> std::same_as<UntypedDatumView>;
-      { a.fragment_idx() } -> std::convertible_to<unsigned>;
-      { a.tile_idx() } -> std::convertible_to<uint64_t>;
     };
+
+template <Layout TILE_ORDER, Layout CELL_ORDER>
+struct global_order_compare {
+  template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
+  static int compare(
+      const Domain& domain, const GlobalCmpL& a, const GlobalCmpR& b) {
+    const auto num_dims = domain.dim_num();
+
+    for (unsigned di = 0; di < num_dims; ++di) {
+      const unsigned d =
+          (TILE_ORDER == Layout::ROW_MAJOR ? di : (num_dims - di - 1));
+
+      // Not applicable to var-sized dimensions
+      if (domain.dimension_ptr(d)->var_size())
+        continue;
+
+      auto res = domain.tile_order_cmp(d, a.coord(d), b.coord(d));
+      if (res != 0) {
+        return res;
+      }
+      // else same tile on dimension d --> continue
+    }
+
+    // then cell order
+    for (unsigned di = 0; di < num_dims; ++di) {
+      const unsigned d =
+          (CELL_ORDER == Layout::ROW_MAJOR ? di : (num_dims - di - 1));
+      auto res = cell_compare::compare(domain, d, a, b);
+
+      if (res != 0) {
+        return res;
+      }
+      // else same tile on dimension d --> continue
+    }
+
+    // NB: some other comparators care about timestamps here, we will not bother
+    // (for now?)
+    return 0;
+  }
+};
+
+template <Layout TILE_ORDER, Layout CELL_ORDER>
+class GlobalCellCmpStaticDispatch : public CellCmpBase {
+ public:
+  explicit GlobalCellCmpStaticDispatch(const Domain& domain)
+      : CellCmpBase(domain) {
+    static_assert(
+        TILE_ORDER == Layout::ROW_MAJOR || TILE_ORDER == Layout::COL_MAJOR);
+    static_assert(
+        CELL_ORDER == Layout::ROW_MAJOR || CELL_ORDER == Layout::COL_MAJOR);
+  }
+
+  template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
+  bool operator()(const GlobalCmpL& a, const GlobalCmpR& b) const {
+    return global_order_compare<TILE_ORDER, CELL_ORDER>::compare(
+               domain_, a, b) < 0;
+  }
+};
 
 class GlobalCellCmp : public CellCmpBase {
  public:
@@ -348,53 +417,22 @@ class GlobalCellCmp : public CellCmpBase {
   template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
   int compare(const GlobalCmpL& a, const GlobalCmpR& b) const {
     if (tile_order_ == Layout::ROW_MAJOR) {
-      for (unsigned d = 0; d < dim_num_; ++d) {
-        // Not applicable to var-sized dimensions
-        if (domain_.dimension_ptr(d)->var_size())
-          continue;
-
-        auto res = domain_.tile_order_cmp(d, a.coord(d), b.coord(d));
-        if (res != 0) {
-          return res;
-        }
-        // else same tile on dimension d --> continue
+      if (cell_order_ == Layout::ROW_MAJOR) {
+        return global_order_compare<Layout::ROW_MAJOR, Layout::ROW_MAJOR>::
+            compare(domain_, a, b);
+      } else {
+        return global_order_compare<Layout::ROW_MAJOR, Layout::COL_MAJOR>::
+            compare(domain_, a, b);
       }
-    } else {  // COL_MAJOR
-      assert(tile_order_ == Layout::COL_MAJOR);
-      for (int32_t d = static_cast<int32_t>(dim_num_) - 1; d >= 0; d--) {
-        // Not applicable to var-sized dimensions
-        if (domain_.dimension_ptr(d)->var_size())
-          continue;
-
-        auto res = domain_.tile_order_cmp(d, a.coord(d), b.coord(d));
-        if (res != 0) {
-          return res;
-        }
-        // else same tile on dimension d --> continue
+    } else {
+      if (cell_order_ == Layout::ROW_MAJOR) {
+        return global_order_compare<Layout::COL_MAJOR, Layout::ROW_MAJOR>::
+            compare(domain_, a, b);
+      } else {
+        return global_order_compare<Layout::COL_MAJOR, Layout::COL_MAJOR>::
+            compare(domain_, a, b);
       }
     }
-
-    // Compare cell order
-    if (cell_order_ == Layout::ROW_MAJOR) {
-      for (unsigned d = 0; d < dim_num_; ++d) {
-        auto res = cell_order_cmp_RC(d, a, b);
-        if (res != 0) {
-          return res;
-        }
-        // else same tile on dimension d --> continue
-      }
-    } else {  // COL_MAJOR
-      assert(cell_order_ == Layout::COL_MAJOR);
-      for (int32_t d = static_cast<int32_t>(dim_num_) - 1; d >= 0; d--) {
-        auto res = cell_order_cmp_RC(d, a, b);
-        if (res != 0) {
-          return res;
-        }
-        // else same tile on dimension d --> continue
-      }
-    }
-
-    return 0;
   }
 
   template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
@@ -408,6 +446,14 @@ class GlobalCellCmp : public CellCmpBase {
   /** The cell order. */
   Layout cell_order_;
 };
+
+template <typename T>
+concept GlobalTileCmpable =
+    GlobalCellCmpable<T> and requires(const T& a, uint64_t pos) {
+      { a.fragment_idx() } -> std::convertible_to<unsigned>;
+      { a.tile_idx() } -> std::convertible_to<uint64_t>;
+      { a.tile_->timestamp(pos) } -> std::same_as<uint64_t>;
+    };
 
 /**
  * Wrapper of comparison function for sorting coords on the global order
@@ -434,13 +480,13 @@ class GlobalCmp : public ResultTileCmpBase {
   }
 
   /**
-   * Comparison operator for a vector of `GlobalCellCmpable`.
+   * Comparison operator for a vector of `GlobalTileCmpable`.
    *
    * @param a The first coordinate.
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
+  template <GlobalTileCmpable GlobalCmpL, GlobalTileCmpable GlobalCmpR>
   bool operator()(const GlobalCmpL& a, const GlobalCmpR& b) const {
     const int cellcmp = cellcmp_.compare(a, b);
     if (cellcmp < 0) {
@@ -501,8 +547,8 @@ class GlobalCmpReverse {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  template <class RCType>
-  bool operator()(const RCType& a, const RCType& b) const {
+  template <GlobalTileCmpable GlobalCmpL, GlobalTileCmpable GlobalCmpR>
+  bool operator()(const GlobalCmpL& a, const GlobalCmpR& b) const {
     return !cmp_.operator()(a, b);
   }
 
