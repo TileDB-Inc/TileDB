@@ -102,7 +102,6 @@ GCS::GCS(ThreadPool* thread_pool, const Config& config)
           gcs_params_.max_parallel_ops_ * gcs_params_.multi_part_size_ :
           gcs_params_.max_direct_upload_size_;
   state_ = State::INITIALIZED;
-  init_client();
 }
 
 GCS::~GCS() {
@@ -239,6 +238,7 @@ void GCS::init_client() const {
 }
 
 void GCS::create_bucket(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -270,6 +270,7 @@ void GCS::create_bucket(const URI& uri) const {
 }
 
 void GCS::empty_bucket(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -278,6 +279,7 @@ void GCS::empty_bucket(const URI& uri) const {
 }
 
 bool GCS::is_empty_bucket(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -298,6 +300,7 @@ bool GCS::is_empty_bucket(const URI& uri) const {
 }
 
 bool GCS::is_bucket(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -321,6 +324,7 @@ bool GCS::is_bucket(const URI& uri) const {
 }
 
 bool GCS::is_dir(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -329,6 +333,7 @@ bool GCS::is_dir(const URI& uri) const {
 }
 
 void GCS::remove_bucket(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -359,6 +364,7 @@ void GCS::remove_bucket(const URI& uri) const {
 }
 
 void GCS::remove_object(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -388,6 +394,7 @@ void GCS::remove_object(const URI& uri) const {
 }
 
 void GCS::remove_dir(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -433,6 +440,7 @@ std::vector<std::string> GCS::ls(
 
 std::vector<directory_entry> GCS::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
+  init_client();
   const URI uri_dir = uri.add_trailing_slash();
   if (!uri_dir.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri_dir.to_string());
@@ -490,6 +498,7 @@ LsObjects GCS::ls_filtered_impl(
     const URI& uri,
     std::function<bool(const std::string_view, uint64_t)> file_filter,
     bool recursive) const {
+  init_client();
   const URI uri_dir = uri.add_trailing_slash();
   if (!uri_dir.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri_dir.to_string());
@@ -556,6 +565,7 @@ LsObjects GCS::ls_filtered_impl(
 }
 
 void GCS::move_object(const URI& old_uri, const URI& new_uri) {
+  init_client();
   // Copy old object into new object
   if (!old_uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + old_uri.to_string());
@@ -584,6 +594,7 @@ void GCS::move_object(const URI& old_uri, const URI& new_uri) {
 
 Status GCS::wait_for_object_to_propagate(
     const std::string& bucket_name, const std::string& object_path) const {
+  init_client();
   unsigned attempts = 0;
   while (attempts++ < constants::gcs_max_attempts) {
     bool is_object;
@@ -601,6 +612,7 @@ Status GCS::wait_for_object_to_propagate(
 }
 
 void GCS::move_dir(const URI& old_uri, const URI& new_uri) {
+  init_client();
   std::vector<std::string> paths = ls(old_uri, "");
   for (const auto& path : paths) {
     const std::string suffix = path.substr(old_uri.to_string().size());
@@ -610,6 +622,7 @@ void GCS::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 void GCS::touch(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -626,6 +639,7 @@ void GCS::touch(const URI& uri) const {
 }
 
 Status GCS::is_object(const URI& uri, bool* const is_object) const {
+  init_client();
   assert(is_object);
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
@@ -711,6 +725,7 @@ void GCS::write(
 }
 
 uint64_t GCS::object_size(const URI& uri) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -908,6 +923,7 @@ Status GCS::upload_part(
 }
 
 void GCS::flush_object(const URI& uri) {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
   }
@@ -1083,6 +1099,7 @@ Status GCS::read(
     const uint64_t length,
     const uint64_t read_ahead_length,
     uint64_t* const length_returned) const {
+  init_client();
   if (!uri.is_gcs()) {
     throw GCSException("URI is not an GCS URI: " + uri.to_string());
   }
