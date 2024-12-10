@@ -532,13 +532,25 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
             f,
             t);
 
-        if (rt == result_tile_cursor_) {
+        bool canProgress = false;
+        for (const auto& rts : result_tiles) {
+          if (!rts.empty()) {
+            canProgress = true;
+            break;
+          }
+        }
+
+        if (!canProgress) {
           // this means we cannot safely produce any results
           const auto tiles_size = get_coord_tiles_size(num_dims, f, t);
           throw SparseGlobalOrderReaderException(
               "Cannot load a single tile, increase memory budget: "
-              "next tile size = " +
-              std::to_string(tiles_size) + ", total_budget = " +
+              "current coords tile size = " +
+              std::to_string(memory_used_for_coords_total_) +
+              ", next coords tile size = " + std::to_string(tiles_size) +
+              ", coords tile budget = " +
+              std::to_string(memory_budget_.coordinates_budget()) +
+              ", total_budget = " +
               std::to_string(memory_budget_.total_budget()));
         } else {
           // this tile has the lowest MBR lower bound of the remaining tiles,
