@@ -75,24 +75,30 @@ class unique_ptr_deleter {
  public:
   unique_ptr_deleter() = delete;
 
-  unique_ptr_deleter(memory_resource* resource, size_t size, size_t alignment)
+  unique_ptr_deleter(memory_resource* resource, size_t nmemb, size_t alignment)
       : resource_(resource)
-      , size_(size)
+      , nmemb_(nmemb)
       , alignment_(alignment) {
   }
 
   void operator()(Tp* ptr) {
-    if (ptr != nullptr) {
-      resource_->deallocate(ptr, size_, alignment_);
+    if (ptr == nullptr) {
+      return;
     }
-  }
+    if (!std::is_trivially_destructible<Tp>::value) {
+      // destruct in reverse order since the elements are constructed in
+      // forwards order
+      for (size_t i = nmemb_; i > 0; i--) {
+        ptr[i - 1].~Tp();
+      }
+    }
 
-  void set_size(size_t size) {
-    size_ = size;
+    const size_t dealloc_size = nmemb_ * sizeof(Tp);
+    resource_->deallocate(ptr, dealloc_size, alignment_);
   }
 
   memory_resource* resource_;
-  size_t size_;
+  size_t nmemb_;
   size_t alignment_;
 };
 
@@ -101,24 +107,37 @@ using unique_ptr = std::unique_ptr<Tp, unique_ptr_deleter<Tp>>;
 
 template <class Tp>
 unique_ptr<Tp> make_unique(
-    memory_resource* resource, size_t size, size_t alignment) {
+    memory_resource* resource, size_t nmemb, size_t alignment) {
   static_assert(std::is_arithmetic_v<Tp> || std::is_same_v<Tp, std::byte>);
 
-  auto alloc_size = size * sizeof(Tp);
+  auto alloc_size = nmemb * sizeof(Tp);
   Tp* data = static_cast<Tp*>(resource->allocate(alloc_size, alignment));
 
   if (data == nullptr) {
     throw std::bad_alloc();
   }
 
-  auto deleter = unique_ptr_deleter<Tp>(resource, alloc_size, alignment);
+  auto deleter = unique_ptr_deleter<Tp>(resource, nmemb, alignment);
 
   return std::unique_ptr<Tp, unique_ptr_deleter<Tp>>(data, deleter);
 }
 
 template <class Tp>
-unique_ptr<Tp> make_unique(memory_resource* resource, size_t size) {
-  return make_unique<Tp>(resource, size, alignof(Tp));
+unique_ptr<Tp> make_unique(memory_resource* resource, size_t nmemb) {
+  return make_unique<Tp>(resource, nmemb, alignof(Tp));
+}
+
+/**
+ * Constructs an object in place and returns it in a `unique_ptr`.
+ */
+template <class Tp, typename... Args>
+unique_ptr<Tp> emplace_unique(memory_resource* resource, Args&&... args) {
+  Tp* obj = static_cast<Tp*>(resource->allocate(sizeof(Tp), alignof(Tp)));
+  new (obj) Tp(std::forward<Args>(args)...);
+
+  auto deleter = unique_ptr_deleter<Tp>(resource, 1, alignof(Tp));
+
+  return std::unique_ptr<Tp, unique_ptr_deleter<Tp>>(obj, deleter);
 }
 
 /* ********************************* */
