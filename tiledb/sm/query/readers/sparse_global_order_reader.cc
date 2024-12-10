@@ -534,7 +534,12 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
 
         if (rt == result_tile_cursor_) {
           // this means we cannot safely produce any results
-          throw SparseGlobalOrderReaderException("TODO");
+          const auto tiles_size = get_coord_tiles_size(num_dims, f, t);
+          throw SparseGlobalOrderReaderException(
+              "Cannot load a single tile, increase memory budget: "
+              "next tile size = " +
+              std::to_string(tiles_size) + ", total_budget = " +
+              std::to_string(memory_budget_.total_budget()));
         } else {
           // this tile has the lowest MBR lower bound of the remaining tiles,
           // we cannot safely emit cells exceeding its lower bound later
