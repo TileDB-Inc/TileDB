@@ -101,17 +101,24 @@ struct CSparseGlobalOrderFx {
   void reset_config();
   void update_config();
 
-  std::string error_if_any() const;
+  template <typename CAPIReturn>
+  std::string error_if_any(CAPIReturn apirc) const;
 
   CSparseGlobalOrderFx();
   ~CSparseGlobalOrderFx();
 };
 
-std::string CSparseGlobalOrderFx::error_if_any() const {
+template <typename CAPIReturn>
+std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
+  if (apirc == TILEDB_OK) {
+    return "";
+  }
+
   tiledb_error_t* error = NULL;
   auto rc = tiledb_ctx_get_last_error(ctx_, &error);
   REQUIRE(rc == TILEDB_OK);
   if (error == nullptr) {
+    // probably should be unreachable
     return "";
   }
 
@@ -811,7 +818,7 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
 
     rc = tiledb_query_submit(ctx_, query);
-    REQUIRE("" == error_if_any());
+    REQUIRE("" == error_if_any(rc));
 
     CHECK(outcoords_size == num_output_cells_per_iter * sizeof(int));
     outcursor += num_output_cells_per_iter;
@@ -931,7 +938,7 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
 
     rc = tiledb_query_submit(ctx_, query);
-    REQUIRE("" == error_if_any());
+    REQUIRE("" == error_if_any(rc));
 
     CHECK(outcoords_size == num_output_cells_per_iter * sizeof(int));
     outcursor += num_output_cells_per_iter;
@@ -1539,10 +1546,10 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   bool use_subarray = false;
-  SECTION("- No subarray") {
+  SECTION("No subarray") {
     use_subarray = false;
   }
-  SECTION("- Subarray") {
+  SECTION("Subarray") {
     use_subarray = true;
   }
 
@@ -1602,8 +1609,9 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(&loop_idx, data_r, data_r_size));
   loop_idx++;
 
-  while (status == TILEDB_INCOMPLETE && rc == TILEDB_OK) {
+  while (status == TILEDB_INCOMPLETE) {
     rc = tiledb_query_submit(ctx_, query);
+    CHECK("" == error_if_any(rc));
     tiledb_query_get_status(ctx_, query, &status);
     CHECK(4 == data_r_size);
     CHECK(4 == coords_r_size);
