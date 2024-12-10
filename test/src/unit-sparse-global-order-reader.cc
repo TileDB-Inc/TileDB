@@ -752,20 +752,20 @@ TEST_CASE_METHOD(
   create_default_array_1d(true);
 
   // Write a fragment F0 with unique coordinates
-  std::vector<int> f0coords(200);
+  std::vector<int> f0coords(16);
   std::iota(f0coords.begin(), f0coords.end(), 1);
   uint64_t f0coords_size = f0coords.size() * sizeof(int);
 
   // Write a fragment F1 with lots of duplicates
   // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
-  std::vector<int> f1coords(200);
+  std::vector<int> f1coords(f0coords.size());
   for (size_t i = 0; i < f1coords.size(); i++) {
-    f1coords[i] = static_cast<int>(i / 10) + 100;
+    f1coords[i] = static_cast<int>(i / 10) + (f0coords.size() / 2);
   }
   uint64_t f1coords_size = f1coords.size() * sizeof(int);
 
-  std::vector<int> att(200);
-  std::iota(att.begin(), att.end(), 200);
+  std::vector<int> att(f0coords.size());
+  std::iota(att.begin(), att.end(), f0coords.size());
   uint64_t att_size = att.size() * sizeof(int);
 
   write_1d_fragment(f0coords.data(), &f0coords_size, att.data(), &att_size);
@@ -785,8 +785,8 @@ TEST_CASE_METHOD(
   ratio_array_data_ = "0.5";
   update_config();
 
-  std::vector<int> outcoords(400);
-  std::vector<int> outatt(400);
+  std::vector<int> outcoords(f0coords.size() + f1coords.size());
+  std::vector<int> outatt(outcoords.size());
 
   // Open array for reading.
   tiledb_array_t* array;
