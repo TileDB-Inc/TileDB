@@ -118,6 +118,8 @@ const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB
 const std::string Config::SM_QUERY_DENSE_QC_COORDS_MODE = "false";
 const std::string Config::SM_QUERY_DENSE_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
+const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE =
+    "false";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
@@ -315,6 +317,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.query.sparse_global_order.reader",
         Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER),
+    std::make_pair(
+        "sm.query.sparse_global_order.preprocess_tile_merge",
+        Config::SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE),
     std::make_pair(
         "sm.query.sparse_unordered_with_dups.reader",
         Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER),
@@ -522,7 +527,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.hdfs.kerb_ticket_cache_path",
         Config::VFS_HDFS_KERB_TICKET_CACHE_PATH),
     std::make_pair("filestore.buffer_size", Config::FILESTORE_BUFFER_SIZE),
-};
+};  // namespace tiledb::sm
 
 /* ****************************** */
 /*        PRIVATE CONSTANTS       */
