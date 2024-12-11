@@ -155,7 +155,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   // Determine result tile order
   // (this happens after load_initial_data which identifies which tiles pass
   // subarray)
-  if (result_tile_ids_.empty()) {
+  if (preprocess_tile_order_.tiles_.empty()) {
     compute_result_tile_order();
   }
 
@@ -166,7 +166,8 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       !array_schema_.allows_dups() && purge_deletes_consolidation_;
 
   // Load tile offsets, if required.
-  // FIXME: only needs to load offsets in result_tile_ids_
+  // TODO: this can be improved to load only the offsets from
+  // `preprocess_tile_orders_.tiles_`.
   load_all_tile_offsets();
 
   // Field names to process.
@@ -526,8 +527,8 @@ void SparseGlobalOrderReader<BitmapType>::compute_result_tile_order() {
       abort();  // TODO
   }
 
-  result_tile_ids_ = merged_result_tiles;
-  result_tile_cursor_ = 0;
+  preprocess_tile_order_.tiles_ = merged_result_tiles;
+  preprocess_tile_order_.cursor_ = 0;
 }
 
 template <class BitmapType>
@@ -547,11 +548,13 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
     rt_list_num_tiles[i] = result_tiles[i].size();
   }
 
-  if (result_tile_cursor_ < result_tile_ids_.size()) {
+  if (preprocess_tile_order_.cursor_ < preprocess_tile_order_.tiles_.size()) {
     size_t rt;
-    for (rt = result_tile_cursor_; rt < result_tile_ids_.size(); rt++) {
-      const auto f = result_tile_ids_[rt].fragment_idx_;
-      const auto t = result_tile_ids_[rt].tile_idx_;
+    for (rt = preprocess_tile_order_.cursor_;
+         rt < preprocess_tile_order_.tiles_.size();
+         rt++) {
+      const auto f = preprocess_tile_order_.tiles_[rt].fragment_idx_;
+      const auto t = preprocess_tile_order_.tiles_[rt].tile_idx_;
 
       auto budget_exceeded = add_result_tile(
           num_dims,
@@ -597,13 +600,17 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
     }
 
     // update position for next iteration
-    result_tile_cursor_ = rt;
+    preprocess_tile_order_.cursor_ = rt;
 
-    if (result_tile_cursor_ == result_tile_ids_.size()) {
+    if (preprocess_tile_order_.cursor_ ==
+        preprocess_tile_order_.tiles_.size()) {
       // TODO: original version sets a flag in tmp_read_state_ on a per-fragment
       // basis, does that have any effect other than computing this?
       read_state_.set_done_adding_result_tiles(true);
 
+      // TODO: would we gain anything from being more precise by checking
+      // which fragments have nothing remaining in the preprocess list
+      // in the general case?
       for (unsigned f = 0; f < num_fragments; f++) {
         tmp_read_state_.set_all_tiles_loaded(f);
       }
@@ -968,9 +975,9 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     // If the cell value exceeds the lower bound of the un-populated result
     // tiles then it is not correct to emit it; hopefully we cleared out
     // a tile somewhere and trying again will make progress
-    if (result_tile_cursor_ < result_tile_ids_.size()) {
+    if (preprocess_tile_order_.cursor_ < preprocess_tile_order_.tiles_.size()) {
       const auto& next_global_order_tile =
-          result_tile_ids_[result_tile_cursor_];
+          preprocess_tile_order_.tiles_[preprocess_tile_order_.cursor_];
       const auto& emit_bound =
           fragment_metadata_[next_global_order_tile.fragment_idx_]->mbr(
               next_global_order_tile.tile_idx_);

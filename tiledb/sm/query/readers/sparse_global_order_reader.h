@@ -137,13 +137,17 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   std::vector<ResultTilesList> result_tiles_leftover_;
 
   /**
-   * IDs of result tiles, arranged in global order.
-   * Note that tiles from different fragments may overlap
-   * (and may need to be de-duplicated if the schema requires unique
-   * coordinates).
+   * State for the optional mode to preprocess the tile MBRs
+   * and merge them into a single globally-ordered list prior
+   * to loading any tiles.
+   *
+   * Tile identifiers in this list are sorted using their starting ranges
+   * and have already had the subarray (if any) applied.
    */
-  std::vector<ResultTileId> result_tile_ids_;
-  size_t result_tile_cursor_;
+  struct {
+    std::vector<ResultTileId> tiles_;
+    size_t cursor_;
+  } preprocess_tile_order_;
 
   /** Enables consolidation with timestamps or not. */
   bool consolidation_with_timestamps_;
