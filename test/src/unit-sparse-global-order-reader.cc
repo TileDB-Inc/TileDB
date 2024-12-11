@@ -44,6 +44,7 @@
 #endif
 
 #include <test/support/tdb_catch.h>
+#include <test/support/tdb_rapidcheck.h>
 #include <numeric>
 
 using namespace tiledb;
@@ -240,6 +241,15 @@ void CSparseGlobalOrderFx::update_config() {
 void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
   int domain[] = {1, 200};
   int tile_extent = 2;
+
+  tiledb_object_t type;
+  auto rc = tiledb_object_type(ctx_, array_name_.c_str(), &type);
+  REQUIRE(rc == TILEDB_OK);
+  if (type == TILEDB_ARRAY) {
+    rc = tiledb_array_delete(ctx_, array_name_.c_str());
+    REQUIRE(rc == TILEDB_OK);
+  }
+
   create_array(
       ctx_,
       array_name_,
@@ -770,33 +780,47 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew",
     "[sparse-global-order]") {
-  // Write a fragment F0 with unique coordinates
-  struct FxFragment1D fragment0;
-  fragment0.coords.resize(16);
-  std::iota(fragment0.coords.begin(), fragment0.coords.end(), 1);
+  auto doit = [this](size_t fragment_size, size_t num_user_cells) {
+    // Write a fragment F0 with unique coordinates
+    struct FxFragment1D fragment0;
+    fragment0.coords.resize(fragment_size);
+    std::iota(fragment0.coords.begin(), fragment0.coords.end(), 1);
 
-  // Write a fragment F1 with lots of duplicates
-  // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
-  struct FxFragment1D fragment1;
-  fragment1.coords.resize(fragment0.coords.size());
-  for (size_t i = 0; i < fragment1.coords.size(); i++) {
-    fragment1.coords[i] =
-        static_cast<int>(i / 10) + (fragment0.coords.size() / 2);
+    // Write a fragment F1 with lots of duplicates
+    // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
+    struct FxFragment1D fragment1;
+    fragment1.coords.resize(fragment0.coords.size());
+    for (size_t i = 0; i < fragment1.coords.size(); i++) {
+      fragment1.coords[i] =
+          static_cast<int>(i / 10) + (fragment0.coords.size() / 2);
+    }
+
+    // atts are whatever
+    fragment0.atts.resize(fragment0.coords.size());
+    std::iota(fragment0.atts.begin(), fragment0.atts.end(), 0);
+    fragment1.atts.resize(fragment1.coords.size());
+    std::iota(
+        fragment1.atts.begin(), fragment1.atts.end(), fragment0.coords.size());
+
+    struct FxRun1D instance;
+    instance.fragments.push_back(fragment0);
+    instance.fragments.push_back(fragment1);
+    instance.num_user_cells = num_user_cells;
+
+    run_1d(instance);
+  };
+
+  SECTION("Example") {
+    doit(200, 8);
   }
 
-  // atts are whatever
-  fragment0.atts.resize(fragment0.coords.size());
-  std::iota(fragment0.atts.begin(), fragment0.atts.end(), 0);
-  fragment1.atts.resize(fragment1.coords.size());
-  std::iota(
-      fragment1.atts.begin(), fragment1.atts.end(), fragment0.coords.size());
-
-  struct FxRun1D instance;
-  instance.fragments.push_back(fragment0);
-  instance.fragments.push_back(fragment1);
-  instance.num_user_cells = 8;
-
-  run_1d(instance);
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck fragment skew", [doit]() {
+      const size_t fragment_size = *rc::gen::inRange(2, 200);
+      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      doit(fragment_size, num_user_cells);
+    });
+  }
 }
 
 /**

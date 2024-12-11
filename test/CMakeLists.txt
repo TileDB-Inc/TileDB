@@ -233,6 +233,7 @@ target_link_libraries(tiledb_unit
     Catch2::Catch2
     tiledb_test_support_lib
     configuration_definitions
+    ${LIBRAPIDCHECK}
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
