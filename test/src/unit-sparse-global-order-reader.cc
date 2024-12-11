@@ -53,6 +53,23 @@ using namespace tiledb::test;
 /*         STRUCT DEFINITION         */
 /* ********************************* */
 
+/**
+ * Contains the data for a single fragment
+ * of the 1D array created by `CSparseGlobalOrderFx`
+ */
+struct FxFragment1D {
+  std::vector<int> coords;
+  std::vector<int> atts;
+};
+
+/**
+ * An instance of input to `CSparseGlobalOrderFx::run_1d`
+ */
+struct FxRun1D {
+  uint64_t num_user_cells;
+  std::vector<FxFragment1D> fragments;
+};
+
 struct CSparseGlobalOrderFx {
   tiledb_ctx_t* ctx_ = nullptr;
   tiledb_vfs_t* vfs_ = nullptr;
@@ -100,6 +117,13 @@ struct CSparseGlobalOrderFx {
       std::vector<int> subarray = {1, 10});
   void reset_config();
   void update_config();
+
+  /**
+   * Runs an input against a fresh 1D array.
+   * Inserts fragments one at a time, then reads them back in global order
+   * and checks that what we read out matches what we put in.
+   */
+  void run_1d(FxRun1D instance);
 
   template <typename CAPIReturn>
   std::string error_if_any(CAPIReturn apirc) const;
@@ -277,11 +301,11 @@ void CSparseGlobalOrderFx::write_1d_fragment(
 
   // Submit query.
   rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE("" == error_if_any(rc));
 
   // Close array.
   rc = tiledb_array_close(ctx_, array);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE("" == error_if_any(rc));
 
   // Clean up.
   tiledb_array_free(&array);
@@ -746,103 +770,33 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew",
     "[sparse-global-order]") {
-  reset_config();
-
-  // the tile extent is 2
-  create_default_array_1d(true);
-
   // Write a fragment F0 with unique coordinates
-  std::vector<int> f0coords(16);
-  std::iota(f0coords.begin(), f0coords.end(), 1);
-  uint64_t f0coords_size = f0coords.size() * sizeof(int);
+  struct FxFragment1D fragment0;
+  fragment0.coords.resize(16);
+  std::iota(fragment0.coords.begin(), fragment0.coords.end(), 1);
 
   // Write a fragment F1 with lots of duplicates
   // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
-  std::vector<int> f1coords(f0coords.size());
-  for (size_t i = 0; i < f1coords.size(); i++) {
-    f1coords[i] = static_cast<int>(i / 10) + (f0coords.size() / 2);
-  }
-  uint64_t f1coords_size = f1coords.size() * sizeof(int);
-
-  std::vector<int> att(f0coords.size());
-  std::iota(att.begin(), att.end(), f0coords.size());
-  uint64_t att_size = att.size() * sizeof(int);
-
-  write_1d_fragment(f0coords.data(), &f0coords_size, att.data(), &att_size);
-  REQUIRE(f0coords_size == f0coords.size() * sizeof(int));
-  REQUIRE(att_size == att.size() * sizeof(int));
-
-  write_1d_fragment(f1coords.data(), &f1coords_size, att.data(), &att_size);
-  REQUIRE(f1coords_size == f1coords.size() * sizeof(int));
-  REQUIRE(att_size == att.size() * sizeof(int));
-
-  /**
-   * Now we should have 200 tiles, each of which has 2 coordinates,
-   * and each of which is size is 1584.
-   * In global order we skew towards fragment 1 which has lots of duplicates.
-   */
-  total_budget_ = "20000";
-  ratio_array_data_ = "0.5";
-  update_config();
-
-  std::vector<int> outcoords(f0coords.size() + f1coords.size());
-  std::vector<int> outatt(outcoords.size());
-
-  // Open array for reading.
-  tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Create query
-  tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
-  CHECK(rc == TILEDB_OK);
-
-  constexpr size_t num_output_cells_per_iter = 8;
-
-  uint64_t outcursor = 0;
-  while (true) {
-    uint64_t outcoords_size;
-    uint64_t outatt_size;
-    outcoords_size = outatt_size = num_output_cells_per_iter * sizeof(int);
-
-    rc = tiledb_query_set_data_buffer(
-        ctx_, query, "a", &outatt[outcursor], &outatt_size);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_data_buffer(
-        ctx_, query, "d", &outcoords[outcursor], &outcoords_size);
-    CHECK(rc == TILEDB_OK);
-
-    rc = tiledb_query_submit(ctx_, query);
-    REQUIRE("" == error_if_any(rc));
-
-    CHECK(outcoords_size == num_output_cells_per_iter * sizeof(int));
-    outcursor += num_output_cells_per_iter;
-
-    tiledb_query_status_t status;
-    rc = tiledb_query_get_status(ctx_, query, &status);
-    REQUIRE(rc == TILEDB_OK);
-    if (status == TILEDB_COMPLETED) {
-      break;
-    }
+  struct FxFragment1D fragment1;
+  fragment1.coords.resize(fragment0.coords.size());
+  for (size_t i = 0; i < fragment1.coords.size(); i++) {
+    fragment1.coords[i] =
+        static_cast<int>(i / 10) + (fragment0.coords.size() / 2);
   }
 
-  // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
+  // atts are whatever
+  fragment0.atts.resize(fragment0.coords.size());
+  std::iota(fragment0.atts.begin(), fragment0.atts.end(), 0);
+  fragment1.atts.resize(fragment1.coords.size());
+  std::iota(
+      fragment1.atts.begin(), fragment1.atts.end(), fragment0.coords.size());
 
-  std::vector<int> expectcoords;
-  expectcoords.insert(expectcoords.end(), f0coords.begin(), f0coords.end());
-  expectcoords.insert(expectcoords.end(), f1coords.begin(), f1coords.end());
-  std::sort(expectcoords.begin(), expectcoords.end());
+  struct FxRun1D instance;
+  instance.fragments.push_back(fragment0);
+  instance.fragments.push_back(fragment1);
+  instance.num_user_cells = 8;
 
-  CHECK(expectcoords == outcoords);
+  run_1d(instance);
 }
 
 /**
@@ -1817,4 +1771,144 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
+  reset_config();
+
+  // the tile extent is 2
+  create_default_array_1d(true);
+
+  // write all fragments
+  for (auto& fragment : instance.fragments) {
+    uint64_t coords_size = sizeof(int) * fragment.coords.size();
+    uint64_t atts_size = sizeof(int) * fragment.atts.size();
+
+    // precondition: fragment must have the same number of cells for each field
+    REQUIRE(coords_size == atts_size);
+
+    write_1d_fragment(
+        fragment.coords.data(), &coords_size, fragment.atts.data(), &atts_size);
+    REQUIRE(coords_size == sizeof(int) * fragment.coords.size());
+    REQUIRE(atts_size == sizeof(int) * fragment.atts.size());
+  }
+
+  std::vector<int> expectcoords;
+  std::vector<int> expectatts;
+  for (const auto& fragment : instance.fragments) {
+    expectcoords.reserve(expectcoords.size() + fragment.coords.size());
+    expectatts.reserve(expectatts.size() + fragment.atts.size());
+
+    expectcoords.insert(
+        expectcoords.end(), fragment.coords.begin(), fragment.coords.end());
+    expectatts.insert(
+        expectatts.end(), fragment.atts.begin(), fragment.atts.end());
+  }
+
+  // sort for naive comparison
+  {
+    std::vector<int> idxs(expectcoords.size());
+    std::iota(idxs.begin(), idxs.end(), 0);
+
+    std::sort(idxs.begin(), idxs.end(), [&](int ia, int ib) -> bool {
+      return expectcoords[ia] < expectcoords[ib];
+    });
+
+    std::vector<int> sortatts;
+    sortatts.reserve(idxs.size());
+    for (const auto i : idxs) {
+      sortatts.push_back(expectatts[i]);
+    }
+    REQUIRE(sortatts.size() == expectatts.size());
+    expectatts = sortatts;
+
+    std::sort(expectcoords.begin(), expectcoords.end());
+  }
+
+  // Open array for reading.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  CHECK(rc == TILEDB_OK);
+
+  // Prepare output buffer
+  std::vector<int> outcoords;
+  std::vector<int> outatts;
+  for (const auto& fragment : instance.fragments) {
+    outcoords.resize(outcoords.size() + fragment.coords.size(), 0);
+    outatts.resize(outatts.size() + fragment.atts.size(), 0);
+  }
+
+  uint64_t outcursor = 0;
+  while (true) {
+    uint64_t outcoords_size;
+    uint64_t outatts_size;
+    outcoords_size = outatts_size = instance.num_user_cells * sizeof(int);
+
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "a", &outatts[outcursor], &outatts_size);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "d", &outcoords[outcursor], &outcoords_size);
+    CHECK(rc == TILEDB_OK);
+
+    rc = tiledb_query_submit(ctx_, query);
+    REQUIRE("" == error_if_any(rc));
+
+    tiledb_query_status_t status;
+    rc = tiledb_query_get_status(ctx_, query, &status);
+    REQUIRE(rc == TILEDB_OK);
+
+    if (outcoords_size < instance.num_user_cells * sizeof(int)) {
+      CHECK(status == TILEDB_COMPLETED);
+    } else {
+      CHECK(outcoords_size == instance.num_user_cells * sizeof(int));
+    }
+    CHECK(outcoords_size % sizeof(int) == 0);
+    outcursor += outcoords_size / sizeof(int);
+
+    // since they are the same data type
+    CHECK(outatts_size == outcoords_size);
+
+    if (status == TILEDB_COMPLETED) {
+      break;
+    }
+  }
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+
+  CHECK(expectcoords == outcoords);
+
+  // Checking attributes is more complicated because equal coords
+  // can manifest their attributes in any order.
+  // Identify the runs of equal coords and then compare using those
+  REQUIRE(expectatts.size() == outatts.size());
+  int attcursor = 0;
+  int runlength = 1;
+  for (size_t i = 1; i < expectcoords.size(); i++) {
+    if (expectcoords[i] == expectcoords[i - 1]) {
+      runlength++;
+    } else {
+      std::set<int> expectattsrun(
+          expectatts.begin() + attcursor,
+          expectatts.begin() + attcursor + runlength);
+      std::set<int> outattsrun(
+          outatts.begin() + attcursor, outatts.begin() + attcursor + runlength);
+      CHECK(expectattsrun == outattsrun);
+      attcursor += runlength;
+      runlength = 1;
+    }
+  }
 }
