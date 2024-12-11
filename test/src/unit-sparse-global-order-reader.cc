@@ -63,12 +63,28 @@ struct FxFragment1D {
   std::vector<int> atts;
 };
 
+struct MemoryBudget {
+  std::string total_budget_;
+  std::string ratio_tile_ranges_;
+  std::string ratio_array_data_;
+  std::string ratio_coords_;
+
+  MemoryBudget()
+      : total_budget_("1048576")
+      , ratio_tile_ranges_("0.1")
+      , ratio_array_data_("0.1")
+      , ratio_coords_("0.5") {
+  }
+};
+
 /**
  * An instance of input to `CSparseGlobalOrderFx::run_1d`
  */
 struct FxRun1D {
   uint64_t num_user_cells;
   std::vector<FxFragment1D> fragments;
+
+  MemoryBudget memory;
 };
 
 struct CSparseGlobalOrderFx {
@@ -78,10 +94,8 @@ struct CSparseGlobalOrderFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_global_order";
   tiledb_array_t* array_ = nullptr;
-  std::string total_budget_;
-  std::string ratio_tile_ranges_;
-  std::string ratio_array_data_;
-  std::string ratio_coords_;
+
+  MemoryBudget memory_;
 
   void create_default_array_1d(bool allow_dups = false);
   void create_default_array_1d_strings(bool allow_dups = false);
@@ -175,10 +189,7 @@ CSparseGlobalOrderFx::~CSparseGlobalOrderFx() {
 }
 
 void CSparseGlobalOrderFx::reset_config() {
-  total_budget_ = "1048576";
-  ratio_tile_ranges_ = "0.1";
-  ratio_array_data_ = "0.1";
-  ratio_coords_ = "0.5";
+  memory_ = MemoryBudget();
   update_config();
 }
 
@@ -204,15 +215,17 @@ void CSparseGlobalOrderFx::update_config() {
 
   REQUIRE(
       tiledb_config_set(
-          config, "sm.mem.total_budget", total_budget_.c_str(), &error) ==
-      TILEDB_OK);
+          config,
+          "sm.mem.total_budget",
+          memory_.total_budget_.c_str(),
+          &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
   REQUIRE(
       tiledb_config_set(
           config,
           "sm.mem.reader.sparse_global_order.ratio_tile_ranges",
-          ratio_tile_ranges_.c_str(),
+          memory_.ratio_tile_ranges_.c_str(),
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -220,7 +233,7 @@ void CSparseGlobalOrderFx::update_config() {
       tiledb_config_set(
           config,
           "sm.mem.reader.sparse_global_order.ratio_array_data",
-          ratio_array_data_.c_str(),
+          memory_.ratio_array_data_.c_str(),
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -228,7 +241,7 @@ void CSparseGlobalOrderFx::update_config() {
       tiledb_config_set(
           config,
           "sm.mem.reader.sparse_global_order.ratio_coords",
-          ratio_coords_.c_str(),
+          memory_.ratio_coords_.c_str(),
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -569,8 +582,8 @@ TEST_CASE_METHOD(
 
   // We should have one tile range (size 16) which will be bigger than budget
   // (10).
-  total_budget_ = "1000";
-  ratio_tile_ranges_ = "0.01";
+  memory_.total_budget_ = "1000";
+  memory_.ratio_tile_ranges_ = "0.01";
   update_config();
 
   // Try to read.
@@ -622,7 +635,7 @@ TEST_CASE_METHOD(
 
   // Specific relationship for failure not known, but these values
   // will result in failure with data being written.
-  total_budget_ = "10000";
+  memory_.total_budget_ = "10000";
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
@@ -711,7 +724,7 @@ TEST_CASE_METHOD(
 
   // specific relationship for failure not known, but these values
   // will result in failure with data being written.
-  total_budget_ = "15000";
+  memory_.total_budget_ = "15000";
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
@@ -840,107 +853,59 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment interleave",
     "[sparse-global-order]") {
-  reset_config();
+  // NB: the tile extent is 2
+  auto doit = [this](size_t fragment_size, size_t num_user_cells) {
+    struct FxFragment1D fragment0;
+    struct FxFragment1D fragment1;
 
-  // the tile extent is 2
-  create_default_array_1d(true);
+    // Write a fragment F0 with tiles [1,3][3,5][5,7][7,9]...
+    fragment0.coords.resize(fragment_size);
+    fragment0.coords[0] = 1;
+    for (size_t i = 1; i < fragment0.coords.size(); i++) {
+      fragment0.coords[i] = 1 + 2 * ((i + 1) / 2);
+    }
 
-  // Write a fragment F0 with tiles
-  // [1,3][3,5][5,7][7,9]...
-  std::vector<int> f0coords(180);
-  f0coords[0] = 1;
-  for (size_t i = 1; i < f0coords.size(); i++) {
-    f0coords[i] = 1 + 2 * ((i + 1) / 2);
+    // Write a fragment F1 with tiles [2,4][4,6][6,8][8,10]...
+    fragment1.coords.resize(fragment0.coords.size());
+    for (size_t i = 0; i < fragment1.coords.size(); i++) {
+      fragment1.coords[i] = fragment0.coords[i] + 1;
+    }
+
+    // atts don't really matter
+    fragment0.atts.resize(fragment0.coords.size());
+    std::iota(fragment0.atts.begin(), fragment0.atts.end(), 0);
+
+    fragment1.atts.resize(fragment1.coords.size());
+    std::iota(
+        fragment1.atts.begin(), fragment1.atts.end(), fragment0.atts.size());
+
+    struct FxRun1D instance;
+    instance.fragments.push_back(fragment0);
+    instance.fragments.push_back(fragment1);
+    instance.num_user_cells = num_user_cells;
+    instance.memory.total_budget_ = "20000";
+    instance.memory.ratio_array_data_ = "0.5";
+
+    run_1d(instance);
+  };
+
+  SECTION("Example") {
+    doit(196, 8);
   }
-  uint64_t f0coords_size = f0coords.size() * sizeof(int);
 
-  // Write a fragment F1 with tiles
-  // [2,4][4,6][6,8][8,10]...
-  std::vector<int> f1coords(f0coords.size());
-  for (size_t i = 0; i < f1coords.size(); i++) {
-    f1coords[i] = f0coords[i] + 1;
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck fragment interleave", [doit]() {
+      const size_t fragment_size = *rc::gen::inRange(2, 196);
+      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      doit(fragment_size, num_user_cells);
+    });
   }
-  uint64_t f1coords_size = f1coords.size() * sizeof(int);
-
-  std::vector<int> att(f0coords.size());
-  std::iota(att.begin(), att.end(), f0coords.size());
-  uint64_t att_size = att.size() * sizeof(int);
-
-  write_1d_fragment(f0coords.data(), &f0coords_size, att.data(), &att_size);
-  REQUIRE(f0coords_size == f0coords.size() * sizeof(int));
-  REQUIRE(att_size == att.size() * sizeof(int));
-
-  write_1d_fragment(f1coords.data(), &f1coords_size, att.data(), &att_size);
-  REQUIRE(f1coords_size == f1coords.size() * sizeof(int));
-  REQUIRE(att_size == att.size() * sizeof(int));
 
   /**
    * Now we should have 200 tiles, each of which has 2 coordinates,
    * and each of which is size is 1584.
    * In global order we skew towards fragment 1 which has lots of duplicates.
    */
-  total_budget_ = "20000";
-  ratio_array_data_ = "0.5";
-  update_config();
-
-  std::vector<int> outcoords(f0coords.size() + f1coords.size());
-  std::vector<int> outatt(outcoords.size());
-
-  // Open array for reading.
-  tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
-
-  // Create query
-  tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
-  CHECK(rc == TILEDB_OK);
-
-  constexpr size_t num_output_cells_per_iter = 8;
-
-  uint64_t outcursor = 0;
-  while (true) {
-    uint64_t outcoords_size;
-    uint64_t outatt_size;
-    outcoords_size = outatt_size = num_output_cells_per_iter * sizeof(int);
-
-    rc = tiledb_query_set_data_buffer(
-        ctx_, query, "a", &outatt[outcursor], &outatt_size);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_data_buffer(
-        ctx_, query, "d", &outcoords[outcursor], &outcoords_size);
-    CHECK(rc == TILEDB_OK);
-
-    rc = tiledb_query_submit(ctx_, query);
-    REQUIRE("" == error_if_any(rc));
-
-    CHECK(outcoords_size == num_output_cells_per_iter * sizeof(int));
-    outcursor += num_output_cells_per_iter;
-
-    tiledb_query_status_t status;
-    rc = tiledb_query_get_status(ctx_, query, &status);
-    REQUIRE(rc == TILEDB_OK);
-    if (status == TILEDB_COMPLETED) {
-      break;
-    }
-  }
-
-  // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
-
-  std::vector<int> expectcoords;
-  expectcoords.insert(expectcoords.end(), f0coords.begin(), f0coords.end());
-  expectcoords.insert(expectcoords.end(), f1coords.begin(), f1coords.end());
-  std::sort(expectcoords.begin(), expectcoords.end());
-
-  CHECK(expectcoords == outcoords);
 }
 
 TEST_CASE_METHOD(
@@ -964,8 +929,8 @@ TEST_CASE_METHOD(
 
   // We should have 100 tiles (tile offset size 800) which will be bigger than
   // leftover budget.
-  total_budget_ = "3000";
-  ratio_array_data_ = "0.5";
+  memory_.total_budget_ = "3000";
+  memory_.ratio_array_data_ = "0.5";
   update_config();
 
   // Try to read.
@@ -1030,8 +995,8 @@ TEST_CASE_METHOD(
   // FIXME: there is no per fragment budget anymore
   // Two result tile (2 * (~3000 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "35000";
-  ratio_coords_ = "0.11";
+  memory_.total_budget_ = "35000";
+  memory_.ratio_coords_ = "0.11";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -1109,8 +1074,8 @@ TEST_CASE_METHOD(
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
   // One result tile (8 + ~440) will be bigger than the budget (400).
-  total_budget_ = "19000";
-  ratio_coords_ = "0.04";
+  memory_.total_budget_ = "19000";
+  memory_.ratio_coords_ = "0.04";
   update_config();
 
   // Try to read.
@@ -1554,8 +1519,8 @@ TEST_CASE_METHOD(
   // FIXME: there is no per fragment budget anymore
   // Two result tile (2 * (~4000 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "40000";
-  ratio_coords_ = "0.22";
+  memory_.total_budget_ = "40000";
+  memory_.ratio_coords_ = "0.22";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -1799,6 +1764,9 @@ TEST_CASE_METHOD(
 
 void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   reset_config();
+
+  memory_ = instance.memory;
+  update_config();
 
   // the tile extent is 2
   create_default_array_1d(true);
