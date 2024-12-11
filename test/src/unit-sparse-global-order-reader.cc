@@ -820,6 +820,9 @@ TEST_CASE_METHOD(
     instance.fragments.push_back(fragment1);
     instance.num_user_cells = num_user_cells;
 
+    instance.memory.total_budget_ = "20000";
+    instance.memory.ratio_array_data_ = "0.5";
+
     run_1d(instance);
   };
 
