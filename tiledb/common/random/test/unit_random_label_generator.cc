@@ -28,86 +28,111 @@
  * Tests for the random label generator.
  */
 
+#include <math.h>
+#include <ranges>
+#include <string>
+
 #include <test/support/tdb_catch.h>
 #include "../random_label.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-size_t generate_labels(std::vector<std::string>& labels) {
-  size_t labels_size = labels.size();
-  auto now = utils::time::timestamp_now_ms();
-  size_t idx = 0;
-  while ((utils::time::timestamp_now_ms()) < now + 100 && idx < labels_size) {
-    labels[idx++] = random_label();
-  }
+class TestRandomLabelGenerator : public RandomLabelGenerator {
+ public:
+  TestRandomLabelGenerator() = default;
+  ~TestRandomLabelGenerator() = default;
 
-  return idx;
+  RandomLabelWithTimestamp generate_at(uint64_t timestamp) {
+    return generate(timestamp);
+  }
+};
+
+uint32_t prefix_as_uint32(std::string& label) {
+  return std::stoul(label.substr(0, 8), nullptr, 16);
 }
 
-void validate_labels(std::vector<std::string>& labels, size_t num_labels) {
-  // Given the label randomness and the fact that we're racing the processor,
-  // the best we can do here (for now) is assert that there's 10 ordered groups.
-  // In this manner, groups are defined as sharing the first 4 bytes.
-  uint64_t num_groups = 0;
-  uint64_t this_group = 0;
-  for (size_t i = 1; i < num_labels; i++) {
-    bool match = true;
-    for (size_t j = 0; j < 4; j++) {
-      if (labels[i - 1][j] != labels[i][j]) {
-        match = false;
-        break;
-      }
-    }
-    if (!match) {
-      if (this_group > 10) {
-        num_groups += 1;
-      }
-      this_group = 0;
-      continue;
-    }
+TEST_CASE("RandomLabelGenerator: validation", "[RandomLabelGenerator]") {
+  TestRandomLabelGenerator x;
 
-    // We share a prefix so assert that they're ordered.
-    REQUIRE(labels[i] > labels[i - 1]);
-    this_group += 1;
-  }
+  // Generate a random label to validate initialization.
+  auto label0 = x.generate_at(0);
+  REQUIRE(label0.timestamp_ == 0);
+  REQUIRE(label0.random_label_.size() == 32);
 
-  REQUIRE(num_groups > 10);
+  // Generate a second label, at a second timestamp
+  auto label1 = x.generate_at(1);
+  REQUIRE(label1.timestamp_ == 1);
+  REQUIRE(label1.random_label_.size() == 32);
+  REQUIRE(label1.random_label_ != label0.random_label_);
+
+  // Check that prefixes aren't off by one to show that the prefix was
+  // regenerated after the time change.
+  auto prefix0 = prefix_as_uint32(label0.random_label_);
+  auto prefix1 = prefix_as_uint32(label1.random_label_);
+  REQUIRE(std::max(prefix0, prefix1) - std::min(prefix0, prefix1) > 1);
+
+  // Check that the label prefix is random by going backwards in time and
+  // generating another label at time 0.
+  auto label0_2 = x.generate_at(0);
+  REQUIRE(label0_2.timestamp_ == 0);
+  REQUIRE(label0_2.random_label_.size() == 32);
+  REQUIRE(label0_2.random_label_ != label1.random_label_);
+  REQUIRE(label0_2.random_label_ != label0.random_label_);
+
+  // Validate that label0_2 had a different prefix generated.
+  auto prefix0_2 = prefix_as_uint32(label0_2.random_label_);
+  REQUIRE(std::max(prefix0_2, prefix0) - std::min(prefix0_2, prefix0) > 1);
 }
 
 TEST_CASE(
     "RandomLabelGenerator: serial generation",
     "[RandomLabelGenerator][serial]") {
-  // Generate a random label to validate initialization.
-  auto label = random_label();
-  REQUIRE(label.size() == 32);
+  TestRandomLabelGenerator x;
 
-  // Test one million strings. Let's assume the buffer overflow check works.
-  std::vector<std::string> labels{1000000};
-  auto num_labels = generate_labels(labels);
-  validate_labels(labels, num_labels);
+  // Generating a large number of labels at the same time results
+  // in a common prefix for all labels, with all labels sorted, while having
+  // no duplicates generated.
+  std::vector<std::string> labels(25000);
+  for (auto idx : std::views::iota(0, 25000)) {
+    labels[idx] = x.generate_at(5).random_label_;
+  }
+  auto prefix = prefix_as_uint32(labels[0]);
+  auto prev = labels[0];
+
+  // Every generated label should have the same prefix and be strictly
+  // greater than the previous label. Strictly greater assures that there are
+  // no duplicates given that these strings are strictly ordered.
+  for (auto idx : std::views::iota(1, 25000)) {
+    auto curr_prefix = prefix_as_uint32(labels[idx]);
+    REQUIRE(curr_prefix - prefix == 1);
+    REQUIRE(labels[idx] > prev);
+    prefix = curr_prefix;
+    prev = labels[idx];
+  }
 }
 
 TEST_CASE(
     "RandomLabelGenerator: parallel generation",
     "[RandomLabelGenerator][parallel]") {
+  TestRandomLabelGenerator x;
   const unsigned nthreads = 20;
+  const unsigned labels_per_thread = 25000;
   std::vector<std::thread> threads;
   std::vector<std::vector<std::string>> labels{nthreads};
-  size_t num_labels[nthreads];
 
   // Pre-allocate our buffers so we're getting as much contention as possible
   for (size_t i = 0; i < nthreads; i++) {
-    labels[i].resize(1000000);
+    labels[i].resize(labels_per_thread);
   }
 
   // Generate labels simultaneously in multiple threads.
   for (size_t i = 0; i < nthreads; i++) {
-    auto num_ptr = &num_labels[i];
     auto vec_ptr = &labels[i];
-    threads.emplace_back([num_ptr, vec_ptr]() {
-      auto num = generate_labels(*vec_ptr);
-      *num_ptr = num;
+    threads.emplace_back([&x, vec_ptr]() {
+      for (size_t idx = 0; idx < labels_per_thread; idx++) {
+        (*vec_ptr)[idx] = x.generate_at(3).random_label_;
+      }
     });
   }
 
@@ -116,23 +141,26 @@ TEST_CASE(
     t.join();
   }
 
-  // Check that we've generated the correct number of random labels.
-  std::unordered_set<std::string> label_set;
-  size_t total_labels = 0;
-  for (size_t i = 0; i < nthreads; i++) {
-    total_labels += num_labels[i];
-    for (size_t j = 0; j < num_labels[i]; j++) {
-      label_set.insert(labels[i][j]);
+  // Sort and validate the parallel threads as if they were serially generated.
+  std::vector<std::string> all_labels{labels_per_thread * nthreads};
+  size_t idx = 0;
+  for (auto thrlabels : labels) {
+    for (auto label : thrlabels) {
+      all_labels[idx++] = label;
     }
   }
-  REQUIRE(label_set.size() == total_labels);
-
-  // Sort and validate the parallel threads as if they were serially generated.
-  std::vector<std::string> all_labels{total_labels};
-  size_t idx = 0;
-  for (auto label : label_set) {
-    all_labels[idx++] = label;
-  }
   std::sort(all_labels.begin(), all_labels.end());
-  validate_labels(all_labels, total_labels);
+
+  // Verify a common prefix and unique suffix amongst all generated labels.
+  REQUIRE(all_labels[0].size() == 32);
+  auto prefix = prefix_as_uint32(all_labels[0]);
+  auto prev = all_labels[0];
+  for (size_t idx = 1; idx < labels_per_thread * nthreads; idx++) {
+    auto curr_prefix = prefix_as_uint32(all_labels[idx]);
+    REQUIRE(curr_prefix - prefix == 1);
+    REQUIRE(all_labels[idx].size() == 32);
+    REQUIRE(all_labels[idx] > prev);
+    prefix = curr_prefix;
+    prev = all_labels[idx];
+  }
 }

@@ -100,7 +100,7 @@ void wait_all(
     ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
   if (use_wait) {
     for (auto& r : results) {
-      REQUIRE(pool.wait(r).ok());
+      REQUIRE(r.wait().ok());
     }
   } else {
     REQUIRE(pool.wait_all(results).ok());
@@ -117,7 +117,7 @@ Status wait_all_status(
   if (use_wait) {
     Status ret;
     for (auto& r : results) {
-      auto st = pool.wait(r);
+      auto st = r.wait();
       if (ret.ok() && !st.ok()) {
         ret = st;
       }
@@ -139,7 +139,7 @@ uint64_t wait_all_num_status(
   int num_ok = 0;
   if (use_wait) {
     for (auto& r : results) {
-      num_ok += pool.wait(r).ok() ? 1 : 0;
+      num_ok += r.wait().ok() ? 1 : 0;
     }
   } else {
     std::vector<Status> statuses = pool.wait_all_status(results);

@@ -31,9 +31,11 @@
  */
 
 #include "domain.h"
+#include "current_domain.h"
 #include "dimension.h"
 #include "domain_data_ref.h"
 #include "domain_typed_data_view.h"
+#include "ndrectangle.h"
 #include "tiledb/common/blank.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -390,12 +392,13 @@ void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
   }
 }
 
-void Domain::expand_to_tiles(NDRange* ndrange) const {
+void Domain::expand_to_tiles_when_no_current_domain(
+    NDRange& query_ndrange) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
     const auto dim = dimension_ptrs_[d];
     // Applicable only to fixed-sized dimensions
     if (!dim->var_size()) {
-      dim->expand_to_tile(&(*ndrange)[d]);
+      dim->expand_to_tile(&(query_ndrange)[d]);
     }
   }
 }

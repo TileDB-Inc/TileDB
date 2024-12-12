@@ -240,6 +240,174 @@ void CurrentDomain::check_schema_sanity(
   }
 }
 
+/*
+ * This is a templatized auxiliary for expand_to_tiles,
+ * dispatched on the (necessarily integral) type of a given domain slot.
+ */
+template <typename T>
+void expand_to_tiles_aux(
+    CurrentDomain::dimension_size_type dimidx,
+    const Dimension* dimptr,
+    std::shared_ptr<NDRectangle> cur_dom_ndrect,
+    NDRange& query_ndrange) {
+  // No extents for string dims, etc.
+  if constexpr (!std::is_integral_v<T>) {
+    return;
+  }
+
+  // Find the initial lo/hi for the query range on this dimension.
+  auto query_slot = query_ndrange[dimidx];
+  auto query_slot_range = (const T*)query_slot.data();
+
+  // Find the lo/hi for the current domain on this dimension.
+  auto cur_dom_slot_range = (const T*)cur_dom_ndrect->get_range(dimidx).data();
+
+  // Find the lo/hi for the core domain (max domain) on this dimension.
+  auto dim_dom = (const T*)dimptr->domain().data();
+
+  // Find the tile extent.
+  auto tile_extent = *(const T*)dimptr->tile_extent().data();
+
+  // Compute tile indices: e.g. if the extent is 512 and the query lo is
+  // 1027, that's tile 2.
+  T domain_low = dim_dom[0];
+  auto tile_idx0 =
+      Dimension::tile_idx(query_slot_range[0], domain_low, tile_extent);
+  auto tile_idx1 =
+      Dimension::tile_idx(query_slot_range[1], domain_low, tile_extent);
+
+  // Round up to a multiple of the tile coords. E.g. if the query range
+  // starts out as (3,4) but the tile extent is 512, that will become (0,511).
+  T result[2];
+  result[0] = Dimension::tile_coord_low(tile_idx0, domain_low, tile_extent);
+  result[1] = Dimension::tile_coord_high(tile_idx1, domain_low, tile_extent);
+
+  /*
+   * Since there is a current domain, though (we assume our caller checks this),
+   * rounding up to a multiple of the tile extent will lead to an out-of-bounds
+   * read. Make the query range lo no smaller than current domain lo on this
+   * dimension, and make the query range hi no larger than current domain hi on
+   * this dimension.
+   */
+  result[0] = std::max(result[0], cur_dom_slot_range[0]);
+  result[1] = std::min(result[1], cur_dom_slot_range[1]);
+
+  // Update the query range
+  query_slot.set_range(result, sizeof(result));
+}
+
+/* The job here is, for a given domain slot:
+ * Given query ranges (nominally, for dense consolidation)
+ * Given the core current domain (which may be empty)
+ * Given the core (max) domain
+ * Given initial query bounds
+ * If the current domain is empty:
+ * o round the query to tile boundaries
+ * Else:
+ * o round the query to tile boundaries, but not outside the current domain
+ *
+ * Example on one dim slot:
+ * - Say non-empty domain is (3,4)
+ * - Say tile extent is 512
+ * - Say domain is (0,99999)
+ * - If current domain is empty: send (3,4) to (0,511)
+ * - If current domain is (2, 63): send (3,4) to (2,63)
+ */
+void CurrentDomain::expand_to_tiles(
+    const Domain& domain, NDRange& query_ndrange) const {
+  if (query_ndrange.empty()) {
+    throw std::invalid_argument("Query range is empty");
+  }
+
+  if (this->empty()) {
+    domain.expand_to_tiles_when_no_current_domain(query_ndrange);
+    return;
+  }
+
+  if (this->type() != CurrentDomainType::NDRECTANGLE) {
+    return;
+  }
+
+  auto cur_dom_ndrect = this->ndrectangle();
+
+  if (query_ndrange.size() != domain.dim_num()) {
+    throw std::invalid_argument(
+        "Query range size does not match domain dimension size");
+  }
+
+  for (CurrentDomain::dimension_size_type dimidx = 0; dimidx < domain.dim_num();
+       dimidx++) {
+    const auto dimptr = domain.dimension_ptr(dimidx);
+
+    if (dimptr->var_size()) {
+      continue;
+    }
+
+    if (!dimptr->tile_extent()) {
+      continue;
+    }
+
+    switch (dimptr->type()) {
+      case Datatype::INT64:
+      case Datatype::DATETIME_YEAR:
+      case Datatype::DATETIME_MONTH:
+      case Datatype::DATETIME_WEEK:
+      case Datatype::DATETIME_DAY:
+      case Datatype::DATETIME_HR:
+      case Datatype::DATETIME_MIN:
+      case Datatype::DATETIME_SEC:
+      case Datatype::DATETIME_MS:
+      case Datatype::DATETIME_US:
+      case Datatype::DATETIME_NS:
+      case Datatype::DATETIME_PS:
+      case Datatype::DATETIME_FS:
+      case Datatype::DATETIME_AS:
+      case Datatype::TIME_HR:
+      case Datatype::TIME_MIN:
+      case Datatype::TIME_SEC:
+      case Datatype::TIME_MS:
+      case Datatype::TIME_US:
+      case Datatype::TIME_NS:
+      case Datatype::TIME_PS:
+      case Datatype::TIME_FS:
+      case Datatype::TIME_AS:
+        expand_to_tiles_aux<int64_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
+        break;
+      case Datatype::UINT64:
+        expand_to_tiles_aux<uint64_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
+        break;
+      case Datatype::INT32:
+        expand_to_tiles_aux<int32_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
+        break;
+      case Datatype::UINT32:
+        expand_to_tiles_aux<uint32_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
+        break;
+      case Datatype::INT16:
+        expand_to_tiles_aux<int16_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
+        break;
+      case Datatype::UINT16:
+        expand_to_tiles_aux<uint16_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
+        break;
+      case Datatype::INT8:
+        expand_to_tiles_aux<int8_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
+        break;
+      case Datatype::UINT8:
+        expand_to_tiles_aux<uint8_t>(
+            dimidx, dimptr, cur_dom_ndrect, query_ndrange);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
 }  // namespace tiledb::sm
 
 std::ostream& operator<<(
