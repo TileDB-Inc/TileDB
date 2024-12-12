@@ -1401,7 +1401,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
           stdx::reverse_comparator<GlobalCellCmp> cmp(array_schema_.domain());
           if (tile_queue.empty()) {
             length = to_process.max_slab_length(global_order_lower_bound, cmp);
-          } else if (cmp(global_order_lower_bound, tile_queue.top())) {
+          } else if (cmp(tile_queue.top(), global_order_lower_bound)) {
             length = to_process.max_slab_length(global_order_lower_bound, cmp);
           } else {
             length = to_process.max_slab_length(tile_queue.top(), cmp);
