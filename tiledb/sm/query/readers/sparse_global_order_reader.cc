@@ -100,6 +100,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
   refresh_config();
 
   preprocess_tile_order_.enabled_ =
+      array_schema_.cell_order() != Layout::HILBERT &&
       config_.get<bool>("sm.query.sparse_global_order.preprocess_tile_merge")
           .value_or(false);
   preprocess_tile_order_.cursor_ = 0;
