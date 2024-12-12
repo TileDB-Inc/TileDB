@@ -34,6 +34,7 @@
 #include "tiledb/common/algorithm/parallel_merge.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -528,7 +529,7 @@ void SparseGlobalOrderReader<
           break;
         }
         default:
-          abort();  // TODO: rpobably an error?
+          stdx::unreachable();
       }
       break;
     case Layout::COL_MAJOR:
@@ -544,12 +545,12 @@ void SparseGlobalOrderReader<
           break;
         }
         default:
-          abort();  // TODO: rpobably an error?
+          stdx::unreachable();
       }
       break;
     case Layout::HILBERT:
     default:
-      abort();  // TODO
+      stdx::unreachable();
   }
 
   preprocess_tile_order_.tiles_ = merged_result_tiles;
@@ -1387,11 +1388,31 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       // Compute the length of the cell slab.
       uint64_t length = 1;
       if (to_process.has_next_ || single_cell_only) {
-        if (tile_queue.empty()) {
-          length = to_process.max_slab_length();
+        if (preprocess_tile_order_.cursor_ <
+            preprocess_tile_order_.tiles_.size()) {
+          // the cell slab may overlap the lower bound of tiles which aren't in
+          // the queue yet
+          const auto& next_global_order_tile =
+              preprocess_tile_order_.tiles_[preprocess_tile_order_.cursor_];
+          const auto& emit_bound =
+              fragment_metadata_[next_global_order_tile.fragment_idx_]->mbr(
+                  next_global_order_tile.tile_idx_);
+          RangeLowerBound global_order_lower_bound = {.mbr = emit_bound};
+          stdx::reverse_comparator<GlobalCellCmp> cmp(array_schema_.domain());
+          if (tile_queue.empty()) {
+            length = to_process.max_slab_length(global_order_lower_bound, cmp);
+          } else if (cmp(global_order_lower_bound, tile_queue.top())) {
+            length = to_process.max_slab_length(global_order_lower_bound, cmp);
+          } else {
+            length = to_process.max_slab_length(tile_queue.top(), cmp);
+          }
         } else {
-          length =
-              to_process.max_slab_length(tile_queue.top(), cmp_max_slab_length);
+          if (tile_queue.empty()) {
+            length = to_process.max_slab_length();
+          } else {
+            length = to_process.max_slab_length(
+                tile_queue.top(), cmp_max_slab_length);
+          }
         }
       }
 
