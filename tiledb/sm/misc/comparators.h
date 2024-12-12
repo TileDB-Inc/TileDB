@@ -38,22 +38,39 @@
 #include <cinttypes>
 #include <vector>
 
-#include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/misc/type_traits.h"
 #include "tiledb/sm/query/readers/result_coords.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 
-using namespace tiledb::common;
+namespace stdx {
+
+/**
+ * Generic comparator adapter which reverses the comparison arguments.
+ * For a comparison `c(a, b)`, this returns `c(b, a)`.
+ */
+template <typename Comparator>
+struct reverse_comparator {
+  Comparator inner_;
+
+  template <typename... Args>
+  reverse_comparator(Args&&... args)
+      : inner_(std::forward<Args>(args)...) {
+  }
+
+  template <typename L, typename R>
+  bool operator()(const L& a, const R& b) const {
+    return inner_(b, a);
+  }
+};
+
+}  // namespace stdx
 
 namespace tiledb::sm {
 
-template <typename T>
-concept CellCmpable =
-    requires(const T& a, const Dimension& dim, unsigned dim_idx) {
-      { a.dimension_datum(dim, dim_idx) } -> std::same_as<UntypedDatumView>;
-    };
+using namespace tiledb::common;
 
 namespace cell_compare {
 template <CellCmpable RCTypeL, CellCmpable RCTypeR>
@@ -338,15 +355,6 @@ class HilbertCmpRCI : protected CellCmpBase {
     return false;
   }
 };
-
-/**
- * Concept describing types which can be ordered using `GlobalCmp`.
- */
-template <typename T>
-concept GlobalCellCmpable =
-    CellCmpable<T> and requires(const T& a, const Dimension& dim, unsigned d) {
-      { a.coord(d) } -> std::convertible_to<const void*>;
-    };
 
 template <Layout TILE_ORDER, Layout CELL_ORDER>
 struct global_order_compare {
