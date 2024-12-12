@@ -1973,3 +1973,59 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     }
   }
 }
+
+namespace rc {
+template <>
+struct Arbitrary<FxRun1D> {
+  static Gen<FxRun1D> arbitrary() {
+    // NB: `gen::inRange` is exclusive at the upper end but tiledb domain is
+    // inclusive. So we have to use `int64_t` to avoid overflow.
+    auto domain = gen::mapcat(gen::arbitrary<int>(), [](int lb) {
+      return gen::pair(
+          gen::just(lb),
+          gen::cast<int>(gen::inRange(
+              int64_t(lb), int64_t(std::numeric_limits<int>::max()) + 1)));
+    });
+
+    auto coord = gen::mapcat(domain, [](std::pair<int, int> domain) {
+      return gen::cast<int>(
+          gen::inRange(int64_t(domain.first), int64_t(domain.second) + 1));
+    });
+
+    auto dimension = gen::mapcat(domain, [](std::pair<int, int> domain) {
+      auto extent_lower_bound = 1;
+      auto extent_upper_bound = std::min<int>(
+          1024 * 16, int(int64_t(domain.second) - int64_t(domain.first) + 1));
+      auto extent = gen::inRange(extent_lower_bound, extent_upper_bound);
+      return gen::tuple(
+          gen::just(domain.first), gen::just(domain.second), extent);
+    });
+
+    auto fragment = gen::mapcat(
+        gen::container<std::vector<int>>(coord), [](std::vector<int> coords) {
+          return gen::map(
+              gen::container<std::vector<int>>(
+                  coords.size(), gen::arbitrary<int>()),
+              [coords](std::vector<int> atts) {
+                return FxFragment1D{.coords = coords, .atts = atts};
+              });
+        });
+
+    auto fragments = gen::container<std::vector<FxFragment1D>>(fragment);
+
+    return gen::apply(
+        [](std::vector<FxFragment1D> fragments,
+           std::tuple<int, int, int> dimension) {
+          FxRun1D instance;
+          instance.fragments = fragments;
+          std::tie(
+              instance.array.domain[0],
+              instance.array.domain[1],
+              instance.array.extent) = dimension;
+          return instance;
+        },
+        fragments,
+        dimension);
+  }
+};
+}  // namespace rc
