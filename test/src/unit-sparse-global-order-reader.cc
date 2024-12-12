@@ -384,15 +384,11 @@ template <typename Asserter>
 void CSparseGlobalOrderFx::write_1d_fragment(
     int* coords, uint64_t* coords_size, int* data, uint64_t* data_size) {
   // Open array for writing.
-  tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  RCCATCH_REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  RCCATCH_REQUIRE(rc == TILEDB_OK);
+  CApiArray array(ctx_, array_name_.c_str(), TILEDB_WRITE);
 
   // Create the query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   RCCATCH_REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   RCCATCH_REQUIRE(rc == TILEDB_OK);
@@ -405,12 +401,7 @@ void CSparseGlobalOrderFx::write_1d_fragment(
   rc = tiledb_query_submit(ctx_, query);
   RCCATCH_REQUIRE("" == error_if_any(rc));
 
-  // Close array.
-  rc = tiledb_array_close(ctx_, array);
-  RCCATCH_REQUIRE("" == error_if_any(rc));
-
   // Clean up.
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
