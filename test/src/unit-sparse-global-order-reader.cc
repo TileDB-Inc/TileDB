@@ -78,12 +78,35 @@ struct MemoryBudget {
 };
 
 /**
+ * Options for configuring the CSparseGlobalFx default 1D array
+ */
+struct DefaultArray1DConfig {
+  bool allow_dups;
+  int domain[2];
+  int extent;
+
+  DefaultArray1DConfig()
+      : allow_dups(false)
+      , extent(2) {
+    domain[0] = 1;
+    domain[1] = 200;
+  }
+
+  DefaultArray1DConfig with_allow_dups(bool allow_dups) const {
+    auto copy = *this;
+    copy.allow_dups = allow_dups;
+    return copy;
+  }
+};
+
+/**
  * An instance of input to `CSparseGlobalOrderFx::run_1d`
  */
 struct FxRun1D {
   uint64_t num_user_cells;
   std::vector<FxFragment1D> fragments;
 
+  DefaultArray1DConfig array;
   MemoryBudget memory;
 };
 
@@ -131,25 +154,6 @@ struct CApiArray {
 
   operator tiledb_array_t*() const {
     return array_;
-  }
-};
-
-struct DefaultArray1DConfig {
-  bool allow_dups;
-  int domain[2];
-  int extent;
-
-  DefaultArray1DConfig()
-      : allow_dups(false)
-      , extent(2) {
-    domain[0] = 1;
-    domain[1] = 200;
-  }
-
-  DefaultArray1DConfig with_allow_dups(bool allow_dups) const {
-    auto copy = *this;
-    copy.allow_dups = allow_dups;
-    return copy;
   }
 };
 
@@ -862,7 +866,7 @@ TEST_CASE_METHOD(
     "Sparse global order reader: fragment skew",
     "[sparse-global-order]") {
   auto doit = [this]<typename Asserter>(
-                  size_t fragment_size, size_t num_user_cells) {
+                  size_t fragment_size, size_t num_user_cells, int extent) {
     // Write a fragment F0 with unique coordinates
     struct FxFragment1D fragment0;
     fragment0.coords.resize(fragment_size);
@@ -889,6 +893,8 @@ TEST_CASE_METHOD(
     instance.fragments.push_back(fragment1);
     instance.num_user_cells = num_user_cells;
 
+    instance.array.extent = extent;
+
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
 
@@ -896,14 +902,16 @@ TEST_CASE_METHOD(
   };
 
   SECTION("Example") {
-    doit.operator()<tiledb::test::Catch>(200, 8);
+    doit.operator()<tiledb::test::Catch>(200, 8, 2);
   }
 
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck fragment skew", [doit]() {
       const size_t fragment_size = *rc::gen::inRange(2, 200);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
-      doit.operator()<tiledb::test::Rapidcheck>(fragment_size, num_user_cells);
+      const int extent = *rc::gen::inRange(1, 200);
+      doit.operator()<tiledb::test::Rapidcheck>(
+          fragment_size, num_user_cells, extent);
     });
   }
 }
