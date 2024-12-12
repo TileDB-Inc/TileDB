@@ -1835,8 +1835,7 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   update_config();
 
   // the tile extent is 2
-  create_default_array_1d<Asserter>(
-      DefaultArray1DConfig().with_allow_dups(true));
+  create_default_array_1d<Asserter>(instance.array);
 
   // write all fragments
   for (auto& fragment : instance.fragments) {
@@ -1846,7 +1845,7 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     // precondition: fragment must have the same number of cells for each field
     RCCATCH_REQUIRE(coords_size == atts_size);
 
-    write_1d_fragment(
+    write_1d_fragment<Asserter>(
         fragment.coords.data(), &coords_size, fragment.atts.data(), &atts_size);
     RCCATCH_REQUIRE(coords_size == sizeof(int) * fragment.coords.size());
     RCCATCH_REQUIRE(atts_size == sizeof(int) * fragment.atts.size());
@@ -1972,51 +1971,117 @@ struct Arbitrary<FxRun1D> {
     // NB: `gen::inRange` is exclusive at the upper end but tiledb domain is
     // inclusive. So we have to use `int64_t` to avoid overflow.
     auto domain = gen::mapcat(gen::arbitrary<int>(), [](int lb) {
+      auto ub_limit = int64_t(std::numeric_limits<int>::max()) + 1;
       return gen::pair(
-          gen::just(lb),
-          gen::cast<int>(gen::inRange(
-              int64_t(lb), int64_t(std::numeric_limits<int>::max()) + 1)));
-    });
-
-    auto coord = gen::mapcat(domain, [](std::pair<int, int> domain) {
-      return gen::cast<int>(
-          gen::inRange(int64_t(domain.first), int64_t(domain.second) + 1));
+          gen::just(lb), gen::cast<int>(gen::inRange(int64_t(lb), ub_limit)));
     });
 
     auto dimension = gen::mapcat(domain, [](std::pair<int, int> domain) {
       auto extent_lower_bound = 1;
       auto extent_upper_bound = std::min<int>(
           1024 * 16, int(int64_t(domain.second) - int64_t(domain.first) + 1));
-      auto extent = gen::inRange(extent_lower_bound, extent_upper_bound);
+      auto extent = gen::inRange(extent_lower_bound, extent_upper_bound + 1);
       return gen::tuple(
           gen::just(domain.first), gen::just(domain.second), extent);
     });
 
-    auto fragment = gen::mapcat(
-        gen::container<std::vector<int>>(coord), [](std::vector<int> coords) {
-          return gen::map(
-              gen::container<std::vector<int>>(
-                  coords.size(), gen::arbitrary<int>()),
-              [coords](std::vector<int> atts) {
-                return FxFragment1D{.coords = coords, .atts = atts};
-              });
+    auto fragments =
+        gen::mapcat(dimension, [](std::tuple<int, int, int> dimension) {
+          int coord_lb, coord_ub;
+          std::tie(coord_lb, coord_ub, std::ignore) = dimension;
+          auto coord = gen::cast<int>(
+              gen::inRange(int64_t(coord_lb), int64_t(coord_ub) + 1));
+
+          auto coords = gen::suchThat(
+              gen::container<std::vector<int>>(coord),
+              [](std::vector<int> coords) { return !coords.empty(); });
+
+          auto fragment = gen::mapcat(coords, [](std::vector<int> coords) {
+            return gen::map(
+                gen::container<std::vector<int>>(
+                    coords.size(), gen::arbitrary<int>()),
+                [coords](std::vector<int> atts) {
+                  return FxFragment1D{.coords = coords, .atts = atts};
+                });
+          });
+
+          return gen::pair(
+              gen::just(dimension),
+              gen::suchThat(
+                  gen::container<std::vector<FxFragment1D>>(fragment),
+                  [](auto fragments) { return !fragments.empty(); }));
         });
 
-    auto fragments = gen::container<std::vector<FxFragment1D>>(fragment);
-
     return gen::apply(
-        [](std::vector<FxFragment1D> fragments,
-           std::tuple<int, int, int> dimension) {
+        [](std::pair<std::tuple<int, int, int>, std::vector<FxFragment1D>>
+               fragments) {
           FxRun1D instance;
-          instance.fragments = fragments;
+
+          std::tuple<int, int, int> dimension;
+          std::tie(dimension, instance.fragments) = fragments;
+          instance.array.allow_dups = true;
           std::tie(
               instance.array.domain[0],
               instance.array.domain[1],
               instance.array.extent) = dimension;
           return instance;
         },
-        fragments,
-        dimension);
+        fragments);
   }
 };
+
+template <>
+void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
+  size_t f = 0;
+
+  os << "{" << std::endl;
+  os << "\t\"fragments\": [" << std::endl;
+  for (const auto& fragment : instance.fragments) {
+    os << "\t\t{" << std::endl;
+    os << "\t\t\t\"coords\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(fragment.coords, os);
+    os << std::endl;
+    os << "\t\t\t], " << std::endl;
+    os << "\t\t\t\"atts\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(fragment.atts, os);
+    os << std::endl;
+    os << "\t\t\t] " << std::endl;
+    os << "\t\t}";
+    if ((f++) + 1 < instance.fragments.size()) {
+      os << ", " << std::endl;
+    } else {
+      os << std::endl;
+    }
+  }
+  os << "\t]," << std::endl;
+  os << "\t\"num_user_cells\": " << instance.num_user_cells << std::endl;
+  os << "\t\"array\": {" << std::endl;
+  os << "\t\t\"allow_dups\": " << instance.array.allow_dups << std::endl;
+  os << "\t\t\"domain\": [" << instance.array.domain[0] << ", "
+     << instance.array.domain[1] << "]," << std::endl;
+  os << "\t\t\"extent\": " << instance.array.extent << std::endl;
+  os << "\t}," << std::endl;
+  os << "\t\"memory\": {" << std::endl;
+  os << "\t\t\"total_budget\": " << instance.memory.total_budget_ << ", "
+     << std::endl;
+  os << "\t\t\"ratio_tile_ranges\": " << instance.memory.ratio_tile_ranges_
+     << ", " << std::endl;
+  os << "\t\t\"ratio_array_data\": " << instance.memory.ratio_array_data_
+     << ", " << std::endl;
+  os << "\t\t\"ratio_coords\": " << instance.memory.ratio_coords_ << std::endl;
+  os << "\t}" << std::endl;
+  os << "}";
+}
+
 }  // namespace rc
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: rapidcheck 1d",
+    "[sparse-global-order]") {
+  rc::prop("rapidcheck arbitrary 1d", [this](FxRun1D instance) {
+    run_1d<tiledb::test::Rapidcheck>(instance);
+  });
+}
