@@ -44,4 +44,67 @@
 #include <rapidcheck.h>
 #include <rapidcheck/catch.h>
 
+#include <type_traits>
+
+namespace tiledb::test {
+
+/**
+ * Marker that a template is instantiated by top-level CATCH code
+ */
+struct Catch {};
+
+/**
+ * Marker that a template is instantiated by a rapidcheck property
+ */
+struct Rapidcheck {};
+
+}  // namespace tiledb::test
+
+/**
+ * Helper macro for running an assert in a context
+ * where it could be either in a top-level catch test,
+ * or in a rapidcheck property
+ * (e.g. a function which could be called from either)
+ *
+ * Expects a type named `Asserter` to be either `Catch` or `Rapidcheck`.
+ *
+ * This expands to REQUIRE for `Catch` and RC_ASSERT for `Rapidcheck`.
+ * For both type markers this will throw an exception.
+ */
+#define RCCATCH_REQUIRE(...)                                      \
+  do {                                                            \
+    static_assert(                                                \
+        std::is_same<Asserter, tiledb::test::Catch>::value ||     \
+        std::is_same<Asserter, tiledb::test::Rapidcheck>::value); \
+    if (std::is_same<Asserter, tiledb::test::Catch>::value) {     \
+      REQUIRE(__VA_ARGS__);                                       \
+    } else {                                                      \
+      RC_ASSERT(__VA_ARGS__);                                     \
+    }                                                             \
+  } while (0)
+
+/**
+ * Helper macro for running an assert in a context
+ * where it could be either in a top-level catch test,
+ * or in a rapidcheck property
+ * (e.g. a function which could be called from either)
+ *
+ * Expects a type named `Asserter` to be either `Catch` or `Rapidcheck`.
+ *
+ * This expands to CHECK for `Catch` and RC_ASSERT for `Rapidcheck`.
+ * For `Catch`, this will not throw an exception - the test will continue.
+ * For `Rapidcheck` this will throw an exception.
+ */
+#define RCCATCH_CHECK(...)                                               \
+  do {                                                                   \
+    static_assert(                                                       \
+        std::is_same_type::<Asserter, tiledb::test::Catch>::value ||     \
+        std::is_same_type::<Asserter, tiledb::test::Rapidcheck>::value); \
+    if (std::is_same_type::<Asserter, tiledb::test::Catch>::value) {     \
+      CHECK(__VA_ARGS__);                                                \
+    } else {                                                             \
+      RC_ASSERT(__VA_ARGS__);                                            \
+    }                                                                    \
+  } while (0)
+
 #endif  // TILEDB_MISC_TDB_RAPIDCHECK_H

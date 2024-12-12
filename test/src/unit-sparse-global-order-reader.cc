@@ -87,6 +87,53 @@ struct FxRun1D {
   MemoryBudget memory;
 };
 
+/**
+ * RAII to make sure we close our arrays so that keeping the same array URI
+ * open from one test to the next doesn't muck things up
+ * (this is especially important for rapidcheck)
+ */
+struct CApiArray {
+  tiledb_ctx_t* ctx_;
+  tiledb_array_t* array_;
+
+  CApiArray()
+      : ctx_(nullptr)
+      , array_(nullptr) {
+  }
+
+  CApiArray(tiledb_ctx_t* ctx, const char* uri, tiledb_query_type_t mode)
+      : ctx_(ctx)
+      , array_(nullptr) {
+    auto rc = tiledb_array_alloc(ctx, uri, &array_);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array_, mode);
+    REQUIRE(rc == TILEDB_OK);
+  }
+
+  CApiArray(CApiArray&& from)
+      : ctx_(from.ctx_)
+      , array_(from.movefrom()) {
+  }
+
+  ~CApiArray() {
+    if (array_) {
+      auto rc = tiledb_array_close(ctx_, array_);
+      REQUIRE(rc == TILEDB_OK);
+      tiledb_array_free(&array_);
+    }
+  }
+
+  tiledb_array_t* movefrom() {
+    auto array = array_;
+    array_ = nullptr;
+    return array;
+  }
+
+  operator tiledb_array_t*() const {
+    return array_;
+  }
+};
+
 struct CSparseGlobalOrderFx {
   tiledb_ctx_t* ctx_ = nullptr;
   tiledb_vfs_t* vfs_ = nullptr;
@@ -97,10 +144,15 @@ struct CSparseGlobalOrderFx {
 
   MemoryBudget memory_;
 
+  template <typename Asserter = tiledb::test::Catch>
   void create_default_array_1d(bool allow_dups = false);
+
   void create_default_array_1d_strings(bool allow_dups = false);
+
+  template <typename Asserter = tiledb::test::Catch>
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
+
   void write_1d_fragment_strings(
       int* coords,
       uint64_t* coords_size,
@@ -117,7 +169,7 @@ struct CSparseGlobalOrderFx {
       int* data,
       uint64_t* data_size,
       tiledb_query_t** query = nullptr,
-      tiledb_array_t** array_ret = nullptr,
+      CApiArray* array_ret = nullptr,
       std::vector<int> subarray = {1, 10});
   int32_t read_strings(
       bool set_subarray,
@@ -138,6 +190,7 @@ struct CSparseGlobalOrderFx {
    * Inserts fragments one at a time, then reads them back in global order
    * and checks that what we read out matches what we put in.
    */
+  template <typename Asserter>
   void run_1d(FxRun1D instance);
 
   template <typename CAPIReturn>
@@ -182,7 +235,9 @@ CSparseGlobalOrderFx::CSparseGlobalOrderFx() {
 }
 
 CSparseGlobalOrderFx::~CSparseGlobalOrderFx() {
-  tiledb_array_free(&array_);
+  if (array_) {
+    tiledb_array_free(&array_);
+  }
   remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
@@ -251,16 +306,17 @@ void CSparseGlobalOrderFx::update_config() {
   tiledb_config_free(&config);
 }
 
+template <typename Asserter>
 void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
   int domain[] = {1, 200};
   int tile_extent = 2;
 
   tiledb_object_t type;
   auto rc = tiledb_object_type(ctx_, array_name_.c_str(), &type);
-  REQUIRE(rc == TILEDB_OK);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
   if (type == TILEDB_ARRAY) {
     rc = tiledb_array_delete(ctx_, array_name_.c_str());
-    REQUIRE(rc == TILEDB_OK);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
   }
 
   create_array(
@@ -302,33 +358,34 @@ void CSparseGlobalOrderFx::create_default_array_1d_strings(bool allow_dups) {
       allow_dups);
 }
 
+template <typename Asserter>
 void CSparseGlobalOrderFx::write_1d_fragment(
     int* coords, uint64_t* coords_size, int* data, uint64_t* data_size) {
   // Open array for writing.
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  REQUIRE(rc == TILEDB_OK);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  REQUIRE(rc == TILEDB_OK);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
 
   // Create the query.
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
-  REQUIRE(rc == TILEDB_OK);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
-  REQUIRE(rc == TILEDB_OK);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
-  REQUIRE(rc == TILEDB_OK);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
-  REQUIRE(rc == TILEDB_OK);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
 
   // Submit query.
   rc = tiledb_query_submit(ctx_, query);
-  REQUIRE("" == error_if_any(rc));
+  RCCATCH_REQUIRE("" == error_if_any(rc));
 
   // Close array.
   rc = tiledb_array_close(ctx_, array);
-  REQUIRE("" == error_if_any(rc));
+  RCCATCH_REQUIRE("" == error_if_any(rc));
 
   // Clean up.
   tiledb_array_free(&array);
@@ -421,18 +478,14 @@ int32_t CSparseGlobalOrderFx::read(
     int* data,
     uint64_t* data_size,
     tiledb_query_t** query_ret,
-    tiledb_array_t** array_ret,
+    CApiArray* array_ret,
     std::vector<int> subarray) {
   // Open array for reading.
-  tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
 
   // Create query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
   if (set_subarray) {
@@ -488,14 +541,11 @@ int32_t CSparseGlobalOrderFx::read(
   // Submit query.
   auto ret = tiledb_query_submit(ctx_, query);
   if (query_ret == nullptr || array_ret == nullptr) {
-    // Clean up.
-    rc = tiledb_array_close(ctx_, array);
-    CHECK(rc == TILEDB_OK);
-    tiledb_array_free(&array);
+    // Clean up (RAII will do it for the array)
     tiledb_query_free(&query);
   } else {
     *query_ret = query;
-    *array_ret = array;
+    new (array_ret) CApiArray(std::move(array));
   }
 
   return ret;
@@ -639,7 +689,7 @@ TEST_CASE_METHOD(
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   // Try to read.
@@ -728,7 +778,7 @@ TEST_CASE_METHOD(
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   // Try to read.
@@ -793,7 +843,8 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew",
     "[sparse-global-order]") {
-  auto doit = [this](size_t fragment_size, size_t num_user_cells) {
+  auto doit = [this]<typename Asserter>(
+                  size_t fragment_size, size_t num_user_cells) {
     // Write a fragment F0 with unique coordinates
     struct FxFragment1D fragment0;
     fragment0.coords.resize(fragment_size);
@@ -823,18 +874,18 @@ TEST_CASE_METHOD(
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
 
-    run_1d(instance);
+    run_1d<Asserter>(instance);
   };
 
   SECTION("Example") {
-    doit(200, 8);
+    doit.operator()<tiledb::test::Catch>(200, 8);
   }
 
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck fragment skew", [doit]() {
       const size_t fragment_size = *rc::gen::inRange(2, 200);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
-      doit(fragment_size, num_user_cells);
+      doit.operator()<tiledb::test::Rapidcheck>(fragment_size, num_user_cells);
     });
   }
 }
@@ -857,7 +908,8 @@ TEST_CASE_METHOD(
     "Sparse global order reader: fragment interleave",
     "[sparse-global-order]") {
   // NB: the tile extent is 2
-  auto doit = [this](size_t fragment_size, size_t num_user_cells) {
+  auto doit = [this]<typename Asserter>(
+                  size_t fragment_size, size_t num_user_cells) {
     struct FxFragment1D fragment0;
     struct FxFragment1D fragment1;
 
@@ -889,18 +941,18 @@ TEST_CASE_METHOD(
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
 
-    run_1d(instance);
+    run_1d<Asserter>(instance);
   };
 
   SECTION("Example") {
-    doit(196, 8);
+    doit.operator()<tiledb::test::Catch>(196, 8);
   }
 
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck fragment interleave", [doit]() {
       const size_t fragment_size = *rc::gen::inRange(2, 196);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
-      doit(fragment_size, num_user_cells);
+      doit.operator()<tiledb::test::Rapidcheck>(fragment_size, num_user_cells);
     });
   }
 
@@ -1002,7 +1054,7 @@ TEST_CASE_METHOD(
   memory_.ratio_coords_ = "0.11";
   update_config();
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   uint32_t rc;
@@ -1049,7 +1101,6 @@ TEST_CASE_METHOD(
   // Clean up.
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -1151,7 +1202,7 @@ TEST_CASE_METHOD(
   uint64_t coords_size = sizeof(coords_1);
   uint64_t data_size = sizeof(data_1);
 
-  // Create the aray so the removed tile is at the correct index.
+  // Create the array so the removed tile is at the correct index.
   switch (tile_idx) {
     case 0:
       write_1d_fragment(coords_3, &coords_size, data_3, &data_size);
@@ -1316,7 +1367,7 @@ TEST_CASE_METHOD(
   uint64_t coords_size = sizeof(coords_1);
   uint64_t data_size = sizeof(data_1);
 
-  // Create the aray.
+  // Create the array.
   write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
   write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
 
@@ -1526,7 +1577,7 @@ TEST_CASE_METHOD(
   memory_.ratio_coords_ = "0.22";
   update_config();
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   // Try to read.
@@ -1569,9 +1620,6 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -1594,7 +1642,7 @@ TEST_CASE_METHOD(
   uint64_t data2_size = sizeof(data2);
   write_1d_fragment(coords, &coords_size, data2, &data2_size);
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   // Read with buffers that can only fit one cell.
@@ -1647,9 +1695,6 @@ TEST_CASE_METHOD(
   CHECK(status == TILEDB_COMPLETED);
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -1765,6 +1810,7 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 }
 
+template <typename Asserter>
 void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   reset_config();
 
@@ -1772,7 +1818,7 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   update_config();
 
   // the tile extent is 2
-  create_default_array_1d(true);
+  create_default_array_1d<Asserter>(true);
 
   // write all fragments
   for (auto& fragment : instance.fragments) {
@@ -1780,12 +1826,12 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     uint64_t atts_size = sizeof(int) * fragment.atts.size();
 
     // precondition: fragment must have the same number of cells for each field
-    REQUIRE(coords_size == atts_size);
+    RCCATCH_REQUIRE(coords_size == atts_size);
 
     write_1d_fragment(
         fragment.coords.data(), &coords_size, fragment.atts.data(), &atts_size);
-    REQUIRE(coords_size == sizeof(int) * fragment.coords.size());
-    REQUIRE(atts_size == sizeof(int) * fragment.atts.size());
+    RCCATCH_REQUIRE(coords_size == sizeof(int) * fragment.coords.size());
+    RCCATCH_REQUIRE(atts_size == sizeof(int) * fragment.atts.size());
   }
 
   std::vector<int> expectcoords;
@@ -1814,25 +1860,21 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     for (const auto i : idxs) {
       sortatts.push_back(expectatts[i]);
     }
-    REQUIRE(sortatts.size() == expectatts.size());
+    RCCATCH_REQUIRE(sortatts.size() == expectatts.size());
     expectatts = sortatts;
 
     std::sort(expectcoords.begin(), expectcoords.end());
   }
 
   // Open array for reading.
-  tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
-  CHECK(rc == TILEDB_OK);
+  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
-  CHECK(rc == TILEDB_OK);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
 
   // Prepare output buffer
   std::vector<int> outcoords;
@@ -1850,28 +1892,28 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
 
     rc = tiledb_query_set_data_buffer(
         ctx_, query, "a", &outatts[outcursor], &outatts_size);
-    CHECK(rc == TILEDB_OK);
+    RCCATCH_REQUIRE(rc == TILEDB_OK);
     rc = tiledb_query_set_data_buffer(
         ctx_, query, "d", &outcoords[outcursor], &outcoords_size);
-    CHECK(rc == TILEDB_OK);
+    RCCATCH_REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_query_submit(ctx_, query);
-    REQUIRE("" == error_if_any(rc));
+    RCCATCH_REQUIRE("" == error_if_any(rc));
 
     tiledb_query_status_t status;
     rc = tiledb_query_get_status(ctx_, query, &status);
-    REQUIRE(rc == TILEDB_OK);
+    RCCATCH_REQUIRE(rc == TILEDB_OK);
 
     if (outcoords_size < instance.num_user_cells * sizeof(int)) {
-      CHECK(status == TILEDB_COMPLETED);
+      RCCATCH_REQUIRE(status == TILEDB_COMPLETED);
     } else {
-      CHECK(outcoords_size == instance.num_user_cells * sizeof(int));
+      RCCATCH_REQUIRE(outcoords_size == instance.num_user_cells * sizeof(int));
     }
-    CHECK(outcoords_size % sizeof(int) == 0);
+    RCCATCH_REQUIRE(outcoords_size % sizeof(int) == 0);
     outcursor += outcoords_size / sizeof(int);
 
     // since they are the same data type
-    CHECK(outatts_size == outcoords_size);
+    RCCATCH_REQUIRE(outatts_size == outcoords_size);
 
     if (status == TILEDB_COMPLETED) {
       break;
@@ -1879,17 +1921,14 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   }
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 
-  CHECK(expectcoords == outcoords);
+  RCCATCH_REQUIRE(expectcoords == outcoords);
 
   // Checking attributes is more complicated because equal coords
   // can manifest their attributes in any order.
   // Identify the runs of equal coords and then compare using those
-  REQUIRE(expectatts.size() == outatts.size());
+  RCCATCH_REQUIRE(expectatts.size() == outatts.size());
   int attcursor = 0;
   int runlength = 1;
   for (size_t i = 1; i < expectcoords.size(); i++) {
@@ -1901,7 +1940,7 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
           expectatts.begin() + attcursor + runlength);
       std::set<int> outattsrun(
           outatts.begin() + attcursor, outatts.begin() + attcursor + runlength);
-      CHECK(expectattsrun == outattsrun);
+      RCCATCH_REQUIRE(expectattsrun == outattsrun);
       attcursor += runlength;
       runlength = 1;
     }
