@@ -134,6 +134,25 @@ struct CApiArray {
   }
 };
 
+struct DefaultArray1DConfig {
+  bool allow_dups;
+  int domain[2];
+  int extent;
+
+  DefaultArray1DConfig()
+      : allow_dups(false)
+      , extent(2) {
+    domain[0] = 1;
+    domain[1] = 200;
+  }
+
+  DefaultArray1DConfig with_allow_dups(bool allow_dups) const {
+    auto copy = *this;
+    copy.allow_dups = allow_dups;
+    return copy;
+  }
+};
+
 struct CSparseGlobalOrderFx {
   tiledb_ctx_t* ctx_ = nullptr;
   tiledb_vfs_t* vfs_ = nullptr;
@@ -145,7 +164,8 @@ struct CSparseGlobalOrderFx {
   MemoryBudget memory_;
 
   template <typename Asserter = tiledb::test::Catch>
-  void create_default_array_1d(bool allow_dups = false);
+  void create_default_array_1d(
+      const DefaultArray1DConfig& config = DefaultArray1DConfig());
 
   void create_default_array_1d_strings(bool allow_dups = false);
 
@@ -307,10 +327,8 @@ void CSparseGlobalOrderFx::update_config() {
 }
 
 template <typename Asserter>
-void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
-  int domain[] = {1, 200};
-  int tile_extent = 2;
-
+void CSparseGlobalOrderFx::create_default_array_1d(
+    const DefaultArray1DConfig& config) {
   tiledb_object_t type;
   auto rc = tiledb_object_type(ctx_, array_name_.c_str(), &type);
   RCCATCH_REQUIRE(rc == TILEDB_OK);
@@ -325,8 +343,8 @@ void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
       TILEDB_SPARSE,
       {"d"},
       {TILEDB_INT32},
-      {domain},
-      {&tile_extent},
+      std::vector<void*>{(void*)(&config.domain[0])},
+      std::vector<void*>{(void*)(&config.extent)},
       {"a"},
       {TILEDB_INT32},
       {1},
@@ -334,7 +352,7 @@ void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       2,
-      allow_dups);
+      config.allow_dups);
 }
 
 void CSparseGlobalOrderFx::create_default_array_1d_strings(bool allow_dups) {
@@ -1256,7 +1274,7 @@ TEST_CASE_METHOD(
   bool extra_fragment = GENERATE(true, false);
   int qc_idx = GENERATE(1, 2);
 
-  create_default_array_1d(dups);
+  create_default_array_1d(DefaultArray1DConfig().with_allow_dups(dups));
 
   int coords_1[] = {1, 2, 3};
   int data_1[] = {2, 2, 2};
@@ -1353,7 +1371,7 @@ TEST_CASE_METHOD(
     "[sparse-global-order][merge][subarray][dups]") {
   // Create default array.
   reset_config();
-  create_default_array_1d(true);
+  create_default_array_1d(DefaultArray1DConfig().with_allow_dups(true));
 
   bool use_subarray = false;
   int qc_idx = GENERATE(1, 2);
@@ -1628,7 +1646,7 @@ TEST_CASE_METHOD(
     "Sparse global order reader: correct read state on duplicates",
     "[sparse-global-order][no-dups][read-state]") {
   bool dups = GENERATE(false, true);
-  create_default_array_1d(dups);
+  create_default_array_1d(DefaultArray1DConfig().with_allow_dups(dups));
 
   // Write one fragment in coordinates 1-10 with data 1-10.
   int coords[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -1818,7 +1836,8 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   update_config();
 
   // the tile extent is 2
-  create_default_array_1d<Asserter>(true);
+  create_default_array_1d<Asserter>(
+      DefaultArray1DConfig().with_allow_dups(true));
 
   // write all fragments
   for (auto& fragment : instance.fragments) {
