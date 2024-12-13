@@ -1266,6 +1266,12 @@ int32_t tiledb_stats_disable() {
   return TILEDB_OK;
 }
 
+int32_t tiledb_stats_is_enabled(uint8_t* enabled) {
+  ensure_output_pointer_is_valid(enabled);
+  *enabled = tiledb::sm::stats::all_stats.enabled() ? 1 : 0;
+  return TILEDB_OK;
+}
+
 int32_t tiledb_stats_reset() {
   tiledb::sm::stats::all_stats.reset();
   return TILEDB_OK;
@@ -3075,6 +3081,10 @@ CAPI_INTERFACE_NULL(stats_enable) {
 
 CAPI_INTERFACE_NULL(stats_disable) {
   return api_entry_plain<tiledb::api::tiledb_stats_disable>();
+}
+
+CAPI_INTERFACE(stats_is_enabled, uint8_t* enabled) {
+  return api_entry_plain<tiledb::api::tiledb_stats_is_enabled>(enabled);
 }
 
 CAPI_INTERFACE_NULL(stats_reset) {
