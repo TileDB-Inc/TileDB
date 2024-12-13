@@ -53,6 +53,16 @@ static std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
+namespace {
+/**
+ * The maximum number of committed parts a block blob can have.
+ *
+ * This value was obtained from
+ * https://learn.microsoft.com/en-us/azure/storage/blobs/scalability-targets
+ */
+constexpr int max_committed_block_num = 50000;
+}  // namespace
+
 namespace tiledb::sm {
 
 /** Converts an Azure nullable value to an STL optional. */
@@ -390,8 +400,23 @@ Status Azure::flush_blob(const URI& uri) {
         .GetBlockBlobClient(blob_path)
         .CommitBlockList(std::vector(block_ids.begin(), block_ids.end()));
   } catch (const ::Azure::Storage::StorageException& e) {
+    std::string msg_extra;
+    // Unlike S3 where each part has its number and uploading a part with an out
+    // of bounds number fails, Azure blocks do not have a sequenced number. We
+    // could fail ourselves as soon as we hit the limit, but if Azure ever
+    // increases it, it would need updating our own code. Therefore delay the
+    // check until we finish the upload.
+    // We could also add an explanation if we hit the limit of uncommitted
+    // blocks (100,000 at the time of writing this), but it would require more
+    // refactorings, and it's much harder to hit with reasonably sized blocks.
+    if (block_ids.size() > max_committed_block_num) {
+      msg_extra +=
+          " This error might be resolved by increasing the value of the "
+          "'vfs.azure.block_list_block_size' config option";
+    }
     return LOG_STATUS(Status_AzureError(
-        "Flush blob failed on: " + uri.to_string() + "; " + e.Message));
+        "Flush blob failed on: " + uri.to_string() + "; " + e.Message +
+        msg_extra));
   }
 
   return Status::Ok();
