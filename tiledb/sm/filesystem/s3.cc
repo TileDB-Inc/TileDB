@@ -2038,7 +2038,7 @@ Status S3::get_make_upload_part_req(
     UniqueReadLock unique_rl(&multipart_upload_rwlock_);
     auto state = &multipart_upload_states_.at(uri_path);
     auto msg = std::string("Failed to upload part of S3 object '") +
-               uri.c_str() + outcome_error_message(upload_part_outcome);
+               uri.c_str() + "' " + outcome_error_message(upload_part_outcome);
     if (ctx.upload_part_num > max_multipart_part_num) {
       msg +=
           " This error might be resolved by increasing the value of the "
