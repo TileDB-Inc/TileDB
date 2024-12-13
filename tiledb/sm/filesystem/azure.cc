@@ -105,12 +105,6 @@ AzureParameters::AzureParameters(const Config& config)
           !get_config_with_env_fallback(
                config, "vfs.azure.storage_sas_token", "AZURE_STORAGE_SAS_TOKEN")
                .empty()) {
-  if (blob_endpoint_.empty()) {
-    throw AzureException(
-        "Azure VFS is not configured. Please set the "
-        "'vfs.azure.storage_account_name' and/or "
-        "'vfs.azure.blob_endpoint' configuration options.");
-  }
 }
 
 Azure::Azure(ThreadPool* const thread_pool, const Config& config)

@@ -547,6 +547,12 @@ class Azure {
    * use of the BlobServiceClient.
    */
   const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
+    if (azure_params_.blob_endpoint_.empty()) {
+      throw AzureException(
+          "Azure VFS is not configured. Please set the "
+          "'vfs.azure.storage_account_name' and/or "
+          "'vfs.azure.blob_endpoint' configuration options.");
+    }
     return client_singleton_.get(azure_params_);
   }
 
