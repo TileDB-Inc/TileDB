@@ -82,6 +82,14 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace {
 
+/**
+ * The maximum number of parts a multipart upload can have.
+ *
+ * This value was obtained from
+ * https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html
+ */
+constexpr int max_multipart_part_num = 10000;
+
 /*
  * Functions to convert strings to AWS enums.
  *
@@ -2029,9 +2037,14 @@ Status S3::get_make_upload_part_req(
   if (!success) {
     UniqueReadLock unique_rl(&multipart_upload_rwlock_);
     auto state = &multipart_upload_states_.at(uri_path);
-    Status st = Status_S3Error(
-        std::string("Failed to upload part of S3 object '") + uri.c_str() +
-        outcome_error_message(upload_part_outcome));
+    auto msg = std::string("Failed to upload part of S3 object '") +
+               uri.c_str() + outcome_error_message(upload_part_outcome);
+    if (ctx.upload_part_num > max_multipart_part_num) {
+      msg +=
+          " This error might be resolved by increasing the value of the "
+          "'vfs.s3.multipart_part_size' config option";
+    }
+    Status st = Status_S3Error(msg);
     // Lock multipart state
     std::unique_lock<std::mutex> state_lck(state->mtx);
     unique_rl.unlock();
