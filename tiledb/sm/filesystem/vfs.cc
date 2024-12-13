@@ -574,7 +574,11 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    *size = azure().blob_size(uri);
+    try {
+      *size = azure().blob_size(uri);
+    } catch (std::exception& e) {
+      return Status_Error(e.what());
+    }
     return Status::Ok();
 #else
     throw BuiltWithout("Azure");

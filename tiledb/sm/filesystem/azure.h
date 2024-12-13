@@ -821,6 +821,8 @@ AzureScanner<F, D>::AzureScanner(
 
   auto [container_name, blob_path] =
       Azure::parse_azure_uri(prefix.add_trailing_slash());
+  container_name_ = container_name;
+  blob_path_ = blob_path;
   fetch_results();
   next(begin_);
 }
