@@ -353,10 +353,6 @@ find_library(
   NAMES rapidcheck
 )
 
-#if (LIBRAPIDCHECK)
-#  add_subdirectory(${LIBRAPIDCHECK})
-#endif()
-
 add_test(
   NAME "tiledb_unit"
   COMMAND tiledb_unit --durations=yes
