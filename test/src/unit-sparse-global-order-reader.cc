@@ -885,6 +885,7 @@ TEST_CASE_METHOD(
     instance.num_user_cells = num_user_cells;
 
     instance.array.extent = extent;
+    instance.array.allow_dups = true;
 
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
@@ -957,6 +958,7 @@ TEST_CASE_METHOD(
     instance.num_user_cells = num_user_cells;
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
+    instance.array.allow_dups = true;
 
     run_1d<Asserter>(instance);
   };
