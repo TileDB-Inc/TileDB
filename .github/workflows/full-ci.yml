@@ -1,5 +1,6 @@
 name: "Full CI"
 on:
+  workflow_dispatch:
   push:
     branches:
       - dev
