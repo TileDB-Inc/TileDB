@@ -394,7 +394,11 @@ Status ResultTile::read(
   if ((!is_dim && name != constants::coords && !use_fragment_ts) ||
       (is_dim && !coord_tiles_[0].first.empty()) ||
       (name == constants::coords && coords_tile_.has_value())) {
-    const auto& tile = this->tile_tuple(name)->fixed_tile();
+    auto tile_tuple = this->tile_tuple(name);
+    if (tile_tuple == nullptr) {
+      return Status::Ok();
+    }
+    const auto& tile = tile_tuple->fixed_tile();
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
