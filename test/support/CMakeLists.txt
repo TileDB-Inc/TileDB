@@ -45,6 +45,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   src/mem_helpers.h
   src/mem_helpers.cc
   src/serialization_wrappers.cc
+  src/stats.cc
   src/temporary_local_directory.cc
   src/vfs_helpers.cc
   )
