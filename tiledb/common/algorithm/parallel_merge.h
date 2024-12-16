@@ -100,12 +100,19 @@ struct ParallelMergeFuture {
   /**
    * Wait for more data to finish merging.
    *
-   * @return the bound in the output buffer up to which the merge has completed
+   * @return The bound in the output buffer up to which the merge has completed
+   * @throws If a task finished with error status.
+   *         If this happens then this future is left in an invalid state
+   *         and should not be used.
    */
   std::optional<uint64_t> await();
 
   /**
    * Wait for all data to finish merging.
+   *
+   * @throws If a task finished with error status.
+   *         If this happens then this future is left in an invalid state
+   *         and should not be used.
    */
   void block();
 

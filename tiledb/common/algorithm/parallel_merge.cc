@@ -51,7 +51,7 @@ ParallelMergeFuture::ParallelMergeFuture(
 std::optional<uint64_t> ParallelMergeFuture::await() {
   auto maybe_task = merge_tasks_.pop();
   if (maybe_task.has_value()) {
-    maybe_task->wait();
+    throw_if_not_ok(maybe_task->wait());
     return merge_bounds_[merge_cursor_++].output_end();
   } else {
     return std::nullopt;
