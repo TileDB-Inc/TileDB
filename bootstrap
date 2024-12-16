@@ -119,7 +119,7 @@ while test $# != 0; do
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --linkage=*) linkage=`arg "$1"`;;
-    --force-build-all-deps) echo "Argument '--force-build-all-deps' has no effect and will be removed in a future version. Vcpkg builds all dependencies by default, please consult the guide in doc/dev/BUILD.md or vcpkg's documentation to see how to provide your own dependencies.";;
+    --force-build-all-deps) echo "Argument '--force-build-all-deps' has no effect and will be removed in a future version. Vcpkg builds all dependencies by default, please consult the guide in doc/main/BUILD.md or vcpkg's documentation to see how to provide your own dependencies.";;
     --remove-deprecations) tiledb_remove_deprecations="ON";;
     --disable-werror) tiledb_werror="OFF";;
     --disable-tests) tiledb_tests="OFF";;

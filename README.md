@@ -1,10 +1,10 @@
-<a href="https://tiledb.com"><img src="https://github.com/TileDB-Inc/TileDB/raw/dev/doc/source/_static/tiledb-logo_color_no_margin_@4x.png" alt="TileDB logo" width="400"></a>
+<a href="https://tiledb.com"><img src="https://github.com/TileDB-Inc/TileDB/raw/main/doc/source/_static/tiledb-logo_color_no_margin_@4x.png" alt="TileDB logo" width="400"></a>
 
-[![Full CI](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml/badge.svg?branch=dev)](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml) [![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=dev)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=dev) [![](doc/anaconda.svg)![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
+[![Full CI](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml/badge.svg?branch=main)](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml) [![Azure Pipelines](https://main.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=main)](https://main.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=main) [![](doc/anaconda.svg)![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
 
 # The Universal Storage Engine
 
-TileDB is a powerful engine for storing and accessing **dense and sparse multi-dimensional arrays**, which can help you model any complex data efficiently. It is an embeddable C++ library that works on Linux, macOS, and Windows. It is open-sourced under the permissive MIT License, developed and maintained by [TileDB, Inc](https://tiledb.com/). To distinguish this project from other TileDB offerings, we often refer to it as *TileDB Embedded*. 
+TileDB is a powerful engine for storing and accessing **dense and sparse multi-dimensional arrays**, which can help you model any complex data efficiently. It is an embeddable C++ library that works on Linux, macOS, and Windows. It is open-sourced under the permissive MIT License, maineloped and maintained by [TileDB, Inc](https://tiledb.com/). To distinguish this project from other TileDB offerings, we often refer to it as *TileDB Embedded*. 
 
 TileDB includes the following features:
 
@@ -41,10 +41,10 @@ $ docker pull tiledb/tiledb
 $ docker run -it tiledb/tiledb
 ```
 
-We include several [examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples). You can start with the following:
+We include several [examples](https://github.com/TileDB-Inc/TileDB/tree/main/examples). You can start with the following:
 
-* [Dense array example](https://github.com/TileDB-Inc/TileDB/blob/dev/examples/cpp_api/quickstart_dense.cc)
-* [Sparse array example](https://github.com/TileDB-Inc/TileDB/blob/dev/examples/cpp_api/quickstart_sparse.cc)
+* [Dense array example](https://github.com/TileDB-Inc/TileDB/blob/main/examples/cpp_api/quickstart_dense.cc)
+* [Sparse array example](https://github.com/TileDB-Inc/TileDB/blob/main/examples/cpp_api/quickstart_sparse.cc)
 
 ## Documentation
 
@@ -71,8 +71,8 @@ The TileDB data format is open-source and can be found [here](format_spec/FORMAT
 
 The TileDB team maintains a variety of APIs built on top of the C++ library:
 
-* C ([examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples/c_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c-api.html))
-* C++ ([examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples/cpp_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c++-api.html))
+* C ([examples](https://github.com/TileDB-Inc/TileDB/tree/main/examples/c_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c-api.html))
+* C++ ([examples](https://github.com/TileDB-Inc/TileDB/tree/main/examples/cpp_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c++-api.html))
 * [Python](https://github.com/TileDB-Inc/TileDB-Py)
 * [R](https://github.com/TileDB-Inc/TileDB-R)
 * [Java](https://github.com/TileDB-Inc/TileDB-Java)
@@ -91,6 +91,6 @@ TileDB is also integrated with several popular databases and data science tools:
 
 ## Get involved
 
-TileDB Embedded is an open-source project and welcomes all forms of contributions. Contributors to the project should read over the [contribution docs](https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md) for more information.
+TileDB Embedded is an open-source project and welcomes all forms of contributions. Contributors to the project should read over the [contribution docs](https://github.com/TileDB-Inc/TileDB/blob/main/CONTRIBUTING.md) for more information.
 
 We'd love to hear from you. Drop us a line at [hello@tiledb.com](mailto:hello@tiledb.com), visit our [forum](https://forum.tiledb.com/) or [contact form](https://tiledb.com/contact), or [follow us on Twitter](https://twitter.com/tiledb) to stay informed of updates and news.

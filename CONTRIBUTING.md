@@ -5,9 +5,9 @@ help you file issues, bug reports, or contribute code to the open source TileDB 
 
 ## Contribution Checklist:
 
-* Reporting a bug?  Please read [how to file a bug report](https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md#reporting-a-bug) section to make sure sufficient information is included.
+* Reporting a bug?  Please read [how to file a bug report](https://github.com/TileDB-Inc/TileDB/blob/main/CONTRIBUTING.md#reporting-a-bug) section to make sure sufficient information is included.
 
-* Contributing code? You rock! Be sure to [review the contributor section](https://github.com/TileDB-Inc/TileDB/blob/dev/CONTRIBUTING.md#contributing-code) for helpful tips on the tools we use to build TileDB, format code, and issue pull requests (PR)'s.
+* Contributing code? You rock! Be sure to [review the contributor section](https://github.com/TileDB-Inc/TileDB/blob/main/CONTRIBUTING.md#contributing-code) for helpful tips on the tools we use to build TileDB, format code, and issue pull requests (PR)'s.
 
 ## Reporting a Bug
 
@@ -16,7 +16,7 @@ A useful bug report filed as a GitHub issue provides information about how to re
 1. Before opening a new [GitHub issue](https://github.com/TileDB-Inc/TileDB/issues) try searching the existing issues to see if someone else has already noticed the same problem.
 
 2. When filing a bug report, provide where possible:
-  - The version TileDB (`tiledb_version()`) or if a `dev` version, specific commit that triggers the error.
+  - The version TileDB (`tiledb_version()`) or if a `main` version, specific commit that triggers the error.
   - The full error message, including the backtrace (if possible).  Verbose error reporting is enabled by building TileDB with `../bootstrap --enable-verbose`.
   - A minimal working example, i.e. the smallest chunk of code that triggers the error. Ideally, this should be code that can be a small reduced C / C++ source file. If the code to reproduce is somewhat long, consider putting it in a [gist](https://gist.github.com).
 
@@ -25,7 +25,7 @@ A useful bug report filed as a GitHub issue provides information about how to re
 
 ## Contributing Code
 
-*By contributing code to TileDB, you are agreeing to release it under the [MIT License](https://github.com/TileDB-Inc/TileDB/tree/dev/LICENSE).*
+*By contributing code to TileDB, you are agreeing to release it under the [MIT License](https://github.com/TileDB-Inc/TileDB/tree/main/LICENSE).*
 
 ### Quickstart Workflow:
 
@@ -49,7 +49,7 @@ for dependencies and detailed build instructions.
 [Issue a PR from your updated TileDB fork](https://help.github.com/articles/creating-a-pull-request-from-a-fork/)
 
 Branch conventions:
-- `dev` is the development branch of TileDB, all PR's are merged into `dev`.
+- `main` is the mainelopment branch of TileDB, all PR's are merged into `main`.
 - `master` tracks the latest stable / released version of TileDB.
 - `release-x.y.z` are major / bugfix release branches of TileDB.
 
@@ -63,13 +63,13 @@ Formatting conventions:
 
 ### Pull Requests:
 
-- `dev` is the development branch, all PR’s should be rebased on top of the latest `dev` commit.
+- `main` is the mainelopment branch, all PR’s should be rebased on top of the latest `main` commit.
 
 - Commit changes to a local branch.  The convention is to use your initials to identify branches: (ex. “Fred Jones” , `fj/my_bugfix_branch`).  Branch names should be identifiable and reflect the feature or bug that they want to address / fix. This helps in deleting old branches later.
 
 - Make sure the test suite passes by running `make check`.
 
-- When ready to submit a PR, `git rebase` the branch on top of the latest `dev` commit.  Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most.  Each atomic commit in a PR should be able to pass the test suite.
+- When ready to submit a PR, `git rebase` the branch on top of the latest `main` commit.  Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most.  Each atomic commit in a PR should be able to pass the test suite.
 
 - Run the limiting / code format tooling (`make format`) before submitting a final PR.
   Make sure that your contribution generally follows the format and naming conventions used by surrounding code.
