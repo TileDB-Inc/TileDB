@@ -51,6 +51,11 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
+namespace rc {
+Gen<std::vector<std::pair<int, int>>> make_subarray_1d(
+    int domain_lower, int domain_upper);
+}
+
 /* ********************************* */
 /*         STRUCT DEFINITION         */
 /* ********************************* */
@@ -107,8 +112,25 @@ struct FxRun1D {
   uint64_t num_user_cells;
   std::vector<FxFragment1D> fragments;
 
+  // NB: for now this always has length 1, global order query does not
+  // support multi-range subarray
+  std::vector<std::pair<int, int>> subarray;
+
   DefaultArray1DConfig array;
   MemoryBudget memory;
+
+  bool accept_coord(int coord) const {
+    if (subarray.empty()) {
+      return true;
+    } else {
+      for (const auto& range : subarray) {
+        if (range.first <= coord && coord <= range.second) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
 };
 
 /**
@@ -224,6 +246,12 @@ struct CSparseGlobalOrderFx {
   CSparseGlobalOrderFx();
   ~CSparseGlobalOrderFx();
 };
+
+#define TRY(thing)                           \
+  do {                                       \
+    auto rc = (thing);                       \
+    RCCATCH_REQUIRE("" == error_if_any(rc)); \
+  } while (0)
 
 template <typename CAPIReturn>
 std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
@@ -858,7 +886,11 @@ TEST_CASE_METHOD(
     "Sparse global order reader: fragment skew",
     "[sparse-global-order]") {
   auto doit = [this]<typename Asserter>(
-                  size_t fragment_size, size_t num_user_cells, int extent) {
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  int extent,
+                  const std::vector<std::pair<int, int>>& subarray =
+                      std::vector<std::pair<int, int>>()) {
     // Write a fragment F0 with unique coordinates
     struct FxFragment1D fragment0;
     fragment0.coords.resize(fragment_size);
@@ -891,6 +923,8 @@ TEST_CASE_METHOD(
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
 
+    instance.subarray = subarray;
+
     run_1d<Asserter>(instance);
   };
 
@@ -903,8 +937,9 @@ TEST_CASE_METHOD(
       const size_t fragment_size = *rc::gen::inRange(2, 200);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
       const int extent = *rc::gen::inRange(1, 200);
+      const auto subarray = *rc::make_subarray_1d(1, 200);
       doit.operator()<tiledb::test::Rapidcheck>(
-          fragment_size, num_user_cells, extent);
+          fragment_size, num_user_cells, extent, subarray);
     });
   }
 }
@@ -1859,13 +1894,27 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   std::vector<int> expectcoords;
   std::vector<int> expectatts;
   for (const auto& fragment : instance.fragments) {
-    expectcoords.reserve(expectcoords.size() + fragment.coords.size());
-    expectatts.reserve(expectatts.size() + fragment.atts.size());
-
-    expectcoords.insert(
-        expectcoords.end(), fragment.coords.begin(), fragment.coords.end());
-    expectatts.insert(
-        expectatts.end(), fragment.atts.begin(), fragment.atts.end());
+    if (instance.subarray.empty()) {
+      expectcoords.reserve(expectcoords.size() + fragment.coords.size());
+      expectatts.reserve(expectatts.size() + fragment.atts.size());
+      expectcoords.insert(
+          expectcoords.end(), fragment.coords.begin(), fragment.coords.end());
+      expectatts.insert(
+          expectatts.end(), fragment.atts.begin(), fragment.atts.end());
+    } else {
+      std::vector<uint64_t> passing_idxs;
+      for (uint64_t i = 0; i < fragment.coords.size(); i++) {
+        if (instance.accept_coord(fragment.coords[i])) {
+          passing_idxs.push_back(i);
+        }
+      }
+      expectcoords.reserve(expectcoords.size() + passing_idxs.size());
+      expectatts.reserve(expectatts.size() + passing_idxs.size());
+      for (const uint64_t i : passing_idxs) {
+        expectcoords.push_back(fragment.coords[i]);
+        expectatts.push_back(fragment.atts[i]);
+      }
+    }
   }
 
   // sort for naive comparison
@@ -1897,6 +1946,17 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   RCCATCH_REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   RCCATCH_REQUIRE(rc == TILEDB_OK);
+
+  if (!instance.subarray.empty()) {
+    tiledb_subarray_t* subarray;
+    TRY(tiledb_subarray_alloc(ctx_, array, &subarray));
+    for (const auto& range : instance.subarray) {
+      TRY(tiledb_subarray_add_range(
+          ctx_, subarray, 0, &range.first, &range.second, nullptr));
+    }
+    TRY(tiledb_query_set_subarray_t(ctx_, query, subarray));
+    tiledb_subarray_free(&subarray);
+  }
 
   // Prepare output buffer
   std::vector<int> outcoords;
@@ -1945,6 +2005,9 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   // Clean up.
   tiledb_query_free(&query);
 
+  outcoords.resize(outcursor);
+  outatts.resize(outcursor);
+
   RCCATCH_REQUIRE(expectcoords == outcoords);
 
   // Checking attributes is more complicated because equal coords
@@ -1970,6 +2033,36 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
 }
 
 namespace rc {
+
+Gen<std::vector<std::pair<int, int>>> make_subarray_1d(
+    int domain_lower, int domain_upper) {
+  auto point = gen::cast<int>(
+      gen::inRange(int64_t(domain_lower), int64_t(domain_upper) + 1));
+
+  auto range = gen::apply(
+      [](int point1, int point2) {
+        return std::make_pair(
+            std::min(point1, point2), std::max(point1, point2));
+      },
+      point,
+      point);
+
+  // NB: when (if) multi-range subarray is supported for global order
+  // (or if this is used for non-global order)
+  // change `num_ranges` to use the weighted element version
+  std::optional<Gen<int>> num_ranges;
+  if (true) {
+    num_ranges = gen::just<int>(1);
+  } else {
+    num_ranges = gen::weightedElement<int>(
+        {{50, 1}, {25, 2}, {13, 3}, {7, 4}, {4, 5}, {1, 6}});
+  }
+
+  return gen::mapcat(*num_ranges, [range](int num_ranges) {
+    return gen::container<std::vector<std::pair<int, int>>>(num_ranges, range);
+  });
+}
+
 template <>
 struct Arbitrary<FxRun1D> {
   static Gen<FxRun1D> arbitrary() {
