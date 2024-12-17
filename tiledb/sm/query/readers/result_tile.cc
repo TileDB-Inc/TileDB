@@ -84,11 +84,6 @@ ResultTile::ResultTile(
     auto attribute = array_schema->attribute(i);
     attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
   }
-  for (uint64_t i = 0; i < array_schema->dim_num(); i++) {
-    auto dimension = array_schema->dimension_ptr(i);
-    coord_tiles_[i] = std::make_pair(dimension->name(), nullopt);
-  }
-
   set_compute_results_func();
 
   // Default `coord_func_` to fetch from `coord_tile_` until at least
