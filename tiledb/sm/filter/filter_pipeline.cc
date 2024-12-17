@@ -68,6 +68,8 @@ FilterPipeline::FilterPipeline(
     , max_chunk_size_(max_chunk_size) {
 }
 
+// Unlike move constructors, copy constructors must not use default,
+// because individual filters are being copied by calling clone.
 FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   for (auto& filter : other.filters_) {
     add_filter(*filter);
@@ -85,9 +87,7 @@ FilterPipeline::FilterPipeline(
   max_chunk_size_ = other.max_chunk_size_;
 }
 
-FilterPipeline::FilterPipeline(FilterPipeline&& other) {
-  swap(other);
-}
+FilterPipeline::FilterPipeline(FilterPipeline&& other) = default;
 
 FilterPipeline& FilterPipeline::operator=(const FilterPipeline& other) {
   // Call copy constructor
@@ -97,10 +97,7 @@ FilterPipeline& FilterPipeline::operator=(const FilterPipeline& other) {
   return *this;
 }
 
-FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
-  swap(other);
-  return *this;
-}
+FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) = default;
 
 void FilterPipeline::add_filter(const Filter& filter) {
   shared_ptr<Filter> copy(filter.clone());
