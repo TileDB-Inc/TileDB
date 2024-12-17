@@ -36,6 +36,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
+#include "tiledb/sm/stats/duration_instrument.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -1831,6 +1832,8 @@ TEST_CASE_METHOD(
 
 template <typename Asserter>
 void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
+  RCCATCH_REQUIRE(instance.num_user_cells > 0);
+
   reset_config();
 
   memory_ = instance.memory;
@@ -2014,10 +2017,14 @@ struct Arbitrary<FxRun1D> {
                   [](auto fragments) { return !fragments.empty(); }));
         });
 
+    auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
+
     return gen::apply(
         [](std::pair<std::tuple<int, int, int>, std::vector<FxFragment1D>>
-               fragments) {
+               fragments,
+           int num_user_cells) {
           FxRun1D instance;
+          instance.num_user_cells = num_user_cells;
 
           std::tuple<int, int, int> dimension;
           std::tie(dimension, instance.fragments) = fragments;
@@ -2028,7 +2035,8 @@ struct Arbitrary<FxRun1D> {
               instance.array.extent) = dimension;
           return instance;
         },
-        fragments);
+        fragments,
+        num_user_cells);
   }
 };
 
@@ -2083,7 +2091,177 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 1d",
     "[sparse-global-order]") {
-  rc::prop("rapidcheck arbitrary 1d", [this](FxRun1D instance) {
-    run_1d<tiledb::test::Rapidcheck>(instance);
-  });
+  SECTION("Shrink") {
+    FxFragment1D fragment;
+    fragment.coords = std::vector<int>{0};
+    fragment.atts = std::vector<int>{0};
+
+    FxRun1D instance;
+    instance.fragments.push_back(fragment);
+    instance.array.domain[0] = 0;
+    instance.array.domain[1] = 0;
+    instance.array.extent = 1;
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck arbitrary 1d", [this](FxRun1D instance) {
+      run_1d<tiledb::test::Rapidcheck>(instance);
+    });
+  }
 }
+
+struct TimeKeeper {
+  std::map<std::string, std::vector<double>> durations;
+
+  tiledb::sm::stats::DurationInstrument<TimeKeeper> start_timer(
+      const std::string& stat) {
+    return tiledb::sm::stats::DurationInstrument<TimeKeeper>(*this, stat);
+  }
+
+  void report_duration(
+      const std::string& stat, const std::chrono::duration<double> duration) {
+    durations[stat].push_back(duration.count());
+  }
+};
+
+/**
+ * Runs sparse global order reader on a 2D array which is
+ * highly representative of SOMA workloads
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: jkerl SOMA",
+    "[sparse-global-order]") {
+  using Asserter = tiledb::test::Catch;
+
+  const char* array_uri =
+      "s3://tiledb-johnkerl/s/v/tabula-sapiens-immune/ms/RNA/X/data";
+
+  memory_.total_budget_ = std::to_string(1024 * 1024 * 1024);
+  memory_.ratio_tile_ranges_ = "0.01";
+  update_config();
+
+  const uint64_t num_user_cells = 1024 * 1024;
+
+  std::vector<int64_t> offdim0(num_user_cells);
+  std::vector<int64_t> offdim1(num_user_cells);
+  std::vector<float> offdata(num_user_cells);
+  std::vector<int64_t> ondim0(num_user_cells);
+  std::vector<int64_t> ondim1(num_user_cells);
+  std::vector<float> ondata(num_user_cells);
+
+  // Open array for reading.
+  CApiArray array(ctx_, array_uri, TILEDB_READ);
+
+  // Create query which does NOT do merge
+  tiledb_query_t* off_query;
+  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &off_query);
+  RCCATCH_REQUIRE("" == error_if_any(rc));
+  rc = tiledb_query_set_layout(ctx_, off_query, TILEDB_GLOBAL_ORDER);
+  RCCATCH_REQUIRE("" == error_if_any(rc));
+
+  // Create query which DOES do merge
+  tiledb_query_t* on_query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &on_query);
+  RCCATCH_REQUIRE("" == error_if_any(rc));
+  rc = tiledb_query_set_layout(ctx_, on_query, TILEDB_GLOBAL_ORDER);
+  RCCATCH_REQUIRE("" == error_if_any(rc));
+  {
+    tiledb_config_t* qconfig;
+    tiledb_error_t* error = nullptr;
+    RCCATCH_REQUIRE(tiledb_config_alloc(&qconfig, &error) == TILEDB_OK);
+    RCCATCH_REQUIRE(error == nullptr);
+    rc = tiledb_config_set(
+        qconfig,
+        "sm.query.sparse_global_order.preprocess_tile_merge",
+        "true",
+        &error);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
+    rc = tiledb_query_set_config(ctx_, on_query, qconfig);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
+    tiledb_config_free(&qconfig);
+  }
+
+  TimeKeeper time_keeper;
+
+  // helper to do basic checks on both
+  auto do_submit = [&](auto& key,
+                       auto& query,
+                       auto& outdim0,
+                       auto& outdim1,
+                       auto& outdata) -> uint64_t {
+    uint64_t outdim0_size = outdim0.size() * sizeof(int64_t);
+    uint64_t outdim1_size = outdim1.size() * sizeof(int64_t);
+    uint64_t outdata_size = outdata.size() * sizeof(float);
+
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "soma_dim_0", &outdim0[0], &outdim0_size);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "soma_dim_1", &outdim1[0], &outdim1_size);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
+    rc = tiledb_query_set_data_buffer(
+        ctx_, query, "soma_data", &outdata[0], &outdata_size);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
+
+    {
+      tiledb::sm::stats::DurationInstrument<TimeKeeper> qtimer =
+          time_keeper.start_timer(key);
+      rc = tiledb_query_submit(ctx_, query);
+      RCCATCH_REQUIRE("" == error_if_any(rc));
+    }
+
+    tiledb_query_status_t status;
+    rc = tiledb_query_get_status(ctx_, query, &status);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
+
+    RCCATCH_REQUIRE(outdim0_size % sizeof(int64_t) == 0);
+    RCCATCH_REQUIRE(outdim1_size % sizeof(int64_t) == 0);
+    RCCATCH_REQUIRE(outdata_size % sizeof(float) == 0);
+
+    const uint64_t num_dim0 = outdim0_size / sizeof(int64_t);
+    const uint64_t num_dim1 = outdim1_size / sizeof(int64_t);
+    const uint64_t num_data = outdata_size / sizeof(float);
+
+    RCCATCH_REQUIRE(num_dim0 == num_dim1);
+    RCCATCH_REQUIRE(num_dim0 == num_data);
+
+    if (num_dim0 < outdim0.size()) {
+      RCCATCH_REQUIRE(status == TILEDB_COMPLETED);
+    }
+
+    return num_dim0;
+  };
+
+  while (true) {
+    const uint64_t off_num_cells =
+        do_submit("off", off_query, offdim0, offdim1, offdata);
+    const uint64_t on_num_cells =
+        do_submit("on", on_query, ondim0, ondim1, ondata);
+
+    RCCATCH_REQUIRE(off_num_cells == on_num_cells);
+
+    offdim0.resize(off_num_cells);
+    offdim1.resize(off_num_cells);
+    offdata.resize(off_num_cells);
+    ondim0.resize(on_num_cells);
+    ondim1.resize(on_num_cells);
+    ondata.resize(on_num_cells);
+
+    RCCATCH_REQUIRE(offdim0 == ondim0);
+    RCCATCH_REQUIRE(offdim1 == ondim1);
+    RCCATCH_REQUIRE(offdata == ondata);
+
+    offdim0.resize(num_user_cells);
+    offdim1.resize(num_user_cells);
+    offdata.resize(num_user_cells);
+    ondim0.resize(num_user_cells);
+    ondim1.resize(num_user_cells);
+    ondata.resize(num_user_cells);
+
+    if (off_num_cells < num_user_cells) {
+      break;
+    }
+  }
+}
+
