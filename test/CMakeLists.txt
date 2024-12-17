@@ -351,6 +351,7 @@ endif()
 find_library(
   LIBRAPIDCHECK
   NAMES rapidcheck
+  REQUIRED
 )
 
 add_test(
