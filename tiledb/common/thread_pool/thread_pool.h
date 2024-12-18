@@ -101,6 +101,31 @@ class ThreadPool {
         , f_(std::move(f)){};
 
     /**
+     * Move is supported
+     */
+    Task(Task&&) = default;
+    Task& operator=(Task&&) = default;
+
+    /**
+     * Disable copy and copy assignment
+     */
+    Task(const Task&) = delete;
+    Task& operator=(const Task&) = delete;
+
+    /*
+     * Destructor waits for the task to be ready
+     */
+    ~Task() {
+      if (f_.valid()) {
+        try {
+          f_.wait();
+        } catch (...) {
+          return;
+        }
+      }
+    }
+
+    /**
      * Wait in the threadpool for this task to be ready.
      */
     Status wait() {
@@ -159,6 +184,14 @@ class ThreadPool {
     SharedTask() = default;
 
     /**
+     * Both copy and move are supported
+     */
+    SharedTask(SharedTask&& t) = default;
+    SharedTask& operator=(SharedTask&& t) = default;
+    SharedTask(const SharedTask& t) = default;
+    SharedTask& operator=(const SharedTask& t) = default;
+
+    /**
      * Constructor from std::future or std::shared_future
      */
     SharedTask(auto&& f, ThreadPool* tp)
@@ -171,6 +204,19 @@ class ThreadPool {
     SharedTask(Task&& t) noexcept
         : ThreadPoolTask(t.tp_)
         , f_(std::move(t.f_)){};
+
+    /*
+     * Destructor waits for the task to be ready
+     */
+    ~SharedTask() {
+      if (f_.valid()) {
+        try {
+          f_.wait();
+        } catch (...) {
+          return;
+        }
+      }
+    }
 
     /**
      * Wait in the threadpool for this task to be ready.
