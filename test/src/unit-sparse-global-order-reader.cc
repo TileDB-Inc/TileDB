@@ -2184,18 +2184,6 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 1d",
     "[sparse-global-order]") {
-  SECTION("Shrink") {
-    FxFragment1D fragment;
-    fragment.coords = std::vector<int>{0};
-    fragment.atts = std::vector<int>{0};
-
-    FxRun1D instance;
-    instance.fragments.push_back(fragment);
-    instance.array.domain[0] = 0;
-    instance.array.domain[1] = 0;
-    instance.array.extent = 1;
-  }
-
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck arbitrary 1d", [this](FxRun1D instance) {
       run_1d<tiledb::test::Rapidcheck>(instance);
