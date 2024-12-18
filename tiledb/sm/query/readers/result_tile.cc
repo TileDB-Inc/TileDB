@@ -91,6 +91,16 @@ ResultTile::ResultTile(
   coord_func_ = &ResultTile::zipped_coord;
 }
 
+ResultTile::~ResultTile() {
+  try {
+    // Wait for all tasks to be done
+    wait_all_attrs();
+    wait_all_coords();
+  } catch (...) {
+    return;
+  }
+}
+
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -130,7 +140,7 @@ void ResultTile::erase_tile(const std::string& name) {
 
   // Handle attribute tile
   for (auto& at : attr_tiles_) {
-    if (at.first == name) {
+    if (at.second.has_value() && at.first == name) {
       at.second.reset();
       return;
     }
@@ -262,8 +272,32 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
 }
 
 void ResultTile::wait_all_coords() const {
-  for (auto& coord_tile : coord_tiles_) {
-    coord_tile.second->fixed_tile().data_as<char>();
+  for (auto& at : coord_tiles_) {
+    auto& tile_tuple = at.second;
+    if (tile_tuple.has_value()) {
+      tile_tuple.value().fixed_tile().data();
+      if (tile_tuple.value().var_tile_opt().has_value()) {
+        tile_tuple.value().var_tile_opt().value().data();
+      }
+      if (tile_tuple.value().validity_tile_opt().has_value()) {
+        tile_tuple.value().validity_tile_opt().value().data();
+      }
+    }
+  }
+}
+
+void ResultTile::wait_all_attrs() const {
+  for (auto& at : attr_tiles_) {
+    const auto& tile_tuple = at.second;
+    if (tile_tuple.has_value()) {
+      tile_tuple.value().fixed_tile().data();
+      if (tile_tuple.value().var_tile_opt().has_value()) {
+        tile_tuple.value().var_tile_opt().value().data();
+      }
+      if (tile_tuple.value().validity_tile_opt().has_value()) {
+        tile_tuple.value().validity_tile_opt().value().data();
+      }
+    }
   }
 }
 

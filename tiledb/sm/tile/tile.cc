@@ -112,14 +112,14 @@ TileBase::TileBase(
     const uint64_t cell_size,
     const uint64_t size,
     tdb::pmr::memory_resource* resource,
-    const bool ignore_tasks)
+    const bool skip_waiting_on_io_task)
     : resource_(resource)
     , data_(tdb::pmr::make_unique<std::byte>(resource_, size))
     , size_(size)
     , cell_size_(cell_size)
     , format_version_(format_version)
     , type_(type)
-    , ignore_tasks_(ignore_tasks) {
+    , skip_waiting_on_io_task_(skip_waiting_on_io_task) {
   /*
    * We can check for a bad allocation after initialization without risk
    * because none of the other member variables use its value for their own
@@ -211,7 +211,7 @@ WriterTile::WriterTile(
 
 void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
-  if (!ignore_tasks_) {
+  if (!skip_waiting_on_io_task_) {
     if (unfilter_data_compute_task_.valid()) {
       throw_if_not_ok(unfilter_data_compute_task_.wait());
     } else {
@@ -312,7 +312,7 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
 
 uint64_t Tile::load_chunk_data(
     ChunkData& unfiltered_tile, uint64_t expected_original_size) {
-  // std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+  std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
   assert(filtered());
 
   Deserializer deserializer(filtered_data(), filtered_size());
