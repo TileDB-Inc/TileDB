@@ -420,21 +420,18 @@ void SparseGlobalOrderReader<
     auto populate_relevant_tiles = [&](unsigned rf) {
       const unsigned f = relevant_fragments[rf];
 
-      std::vector<bool> tile_is_relevant(
-          fragment_metadata_[f]->tile_num(), false);
+      const auto& fragment_tile_ranges = tmp_read_state_.tile_ranges(f);
 
-      for (uint64_t t = 0; t < fragment_metadata_[f]->tile_num(); t++) {
-        if (tmp_read_state_.contains_tile(f, t)) {
-          tile_is_relevant[t] = true;
-        }
+      uint64_t num_qualifying_tiles = 0;
+      for (const auto& tile_range : fragment_tile_ranges) {
+        num_qualifying_tiles += 1 + tile_range.second - tile_range.first;
       }
+      fragment_result_tiles[f].reserve(num_qualifying_tiles);
 
-      const uint64_t num_relevant_tiles =
-          std::count(tile_is_relevant.begin(), tile_is_relevant.end(), true);
-
-      fragment_result_tiles[f].reserve(num_relevant_tiles);
-      for (uint64_t t = 0; t < tile_is_relevant.size(); t++) {
-        if (tile_is_relevant[t]) {
+      for (auto tile_range = fragment_tile_ranges.rbegin();
+           tile_range != fragment_tile_ranges.rend();
+           ++tile_range) {
+        for (uint64_t t = tile_range->first; t <= tile_range->second; t++) {
           fragment_result_tiles[f].push_back(
               ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
         }
