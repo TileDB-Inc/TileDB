@@ -408,6 +408,16 @@ class ResultTile {
       return validity_tile_.value();
     }
 
+    /** @returns Var tile. */
+    const std::optional<Tile>& var_tile_opt() const {
+      return var_tile_;
+    }
+
+    /** @returns Validity tile. */
+    const std::optional<Tile>& validity_tile_opt() const {
+      return validity_tile_;
+    }
+
     /** @returns Fixed tile. */
     const Tile& fixed_tile() const {
       return fixed_tile_;
@@ -469,7 +479,7 @@ class ResultTile {
   DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTile);
 
   /** Default destructor. */
-  ~ResultTile() = default;
+  virtual ~ResultTile();
 
   /* ********************************* */
   /*                API                */
@@ -757,6 +767,9 @@ class ResultTile {
 
   /* Waits for all coord tiles results to be available */
   void wait_all_coords() const;
+
+  /* Waits for all attr tiles results to be available */
+  void wait_all_attrs() const;
 
  protected:
   /* ********************************* */

@@ -62,7 +62,9 @@ class TileBase {
    * @param cell_size The cell size.
    * @param size The size of the tile.
    * @param resource The memory resource to use.
-   * @param data_io_task The I/O task to wait on for data to be valid.
+   * @param skip_waiting_on_io_task whether to skip waiting on I/O tasks and
+   * directly access data() or block. By default is false, so by default we
+   * block waiting. Used when we create generic tiles or in testing.
    */
   TileBase(
       const format_version_t format_version,
@@ -70,15 +72,18 @@ class TileBase {
       const uint64_t cell_size,
       const uint64_t size,
       tdb::pmr::memory_resource* resource,
-      const bool ignore_tasks = false);
+      const bool skip_waiting_on_io_task = false);
 
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
 
-  ~TileBase() {
-    // TODO: destructor should not throw, catch any exceptions
+  virtual ~TileBase() {
     if (unfilter_data_compute_task_.valid()) {
-      auto st = unfilter_data_compute_task_.wait();
+      try {
+        auto st = unfilter_data_compute_task_.wait();
+      } catch (...) {
+        return;
+      }
     }
   }
 
@@ -118,7 +123,7 @@ class TileBase {
 
   /** Returns the internal buffer. */
   inline void* data() const {
-    if (!ignore_tasks_) {
+    if (!skip_waiting_on_io_task_) {
       if (unfilter_data_compute_task_.valid()) {
         throw_if_not_ok(unfilter_data_compute_task_.wait());
       } else {
@@ -193,18 +198,12 @@ class TileBase {
   /** The tile data type. */
   Datatype type_;
 
-  const bool ignore_tasks_;
+  /** Whether to block waiting for io data to be ready before accessing data()
+   */
+  const bool skip_waiting_on_io_task_;
 
   /** Compute task to check and block on if unfiltered data is ready. */
   mutable ThreadPool::SharedTask unfilter_data_compute_task_;
-
-  /**
-   * Lock for checking task, since this tile can be used by multiple threads.
-   * The ThreadPool::SharedTask lets multiple threads copy the task, but it
-   * doesn't let multiple threads access a single task itself. Due to this we
-   * need a mutext since the tile will be accessed by multiple threads.
-   */
-  mutable std::recursive_mutex unfilter_data_compute_task_mtx_;
 };
 
 /**
@@ -285,9 +284,12 @@ class Tile : public TileBase {
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
 
   ~Tile() {
-    // TODO: destructor should not throw, catch any exceptions
     if (unfilter_data_compute_task_.valid()) {
-      auto st = unfilter_data_compute_task_.wait();
+      try {
+        auto st = unfilter_data_compute_task_.wait();
+      } catch (...) {
+        return;
+      }
     }
   }
 
@@ -519,7 +521,6 @@ class WriterTile : public TileBase {
    * @param cell_size The cell size.
    * @param size The size of the tile.
    * @param memory_tracker The memory tracker to use.
-   * @param data_io_task The I/O task to wait on for data to be valid.
    */
   WriterTile(
       const format_version_t format_version,
@@ -536,7 +537,6 @@ class WriterTile : public TileBase {
    * @param cell_size The cell size.
    * @param size The size of the tile.
    * @param resource The memory resource to use.
-   * @param data_io_task The I/O task to wait on for data to be valid.
    */
   WriterTile(
       const format_version_t format_version,
