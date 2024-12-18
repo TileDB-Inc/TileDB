@@ -90,12 +90,14 @@ struct MemoryBudget {
  * Options for configuring the CSparseGlobalFx default 1D array
  */
 struct DefaultArray1DConfig {
+  uint64_t capacity;
   bool allow_dups;
 
   tdbrc::Dimension<int> dimension;
 
   DefaultArray1DConfig()
-      : allow_dups(false) {
+      : capacity(2)
+      , allow_dups(false) {
     dimension.domain.lower_bound = 1;
     dimension.domain.upper_bound = 200;
     dimension.extent = 2;
@@ -387,7 +389,7 @@ void CSparseGlobalOrderFx::create_default_array_1d(
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      2,
+      config.capacity,
       config.allow_dups);
 }
 
@@ -957,8 +959,6 @@ TEST_CASE_METHOD(
  * in global order the only way to ensure that we don't emit out of order
  * results with a naive implementation is to have *all* the tiles loaded
  * in one pass, which is not practical.
- *
- * TODO:
  */
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
@@ -1020,6 +1020,81 @@ TEST_CASE_METHOD(
    * and each of which is size is 1584.
    * In global order we skew towards fragment 1 which has lots of duplicates.
    */
+}
+
+/**
+ * Tests that the reader correctly returns an error if it cannot
+ * make progress due to being unable to make progress.
+ * The reader can stall if there is a point where F fragments
+ * fit in memory, but `F + 1` or more fragments overlap
+ *
+ * For example, suppose 2 tiles fit in memory. If the tiles are:
+ * [0, 1, 2, 3, 4]
+ * [1, 2, 3, 4, 5]
+ * [2, 3, 4, 5, 6]
+ *
+ * Then we will process the first two tiles first after ordering
+ * them on their lower bound.  We cannot emit anything past "2"
+ * because it would be out of order with the third tile.
+ *
+ * After the first iteration, the state is
+ * [_, _, _, 3, 4]
+ * [_, _, 3, 4, 5]
+ * [2, 3, 4, 5, 6]
+ *
+ * We could make progress by un-loading a tile and then loading
+ * the third tile, but instead we will just error out because
+ * that's complicated.
+ *
+ * The user's recourse to that is to either:
+ * 1) increase memory budget; or
+ * 2) consolidate some fragments.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: too wide",
+    "[sparse-global-order]") {
+  auto doit = [this]<typename Asserter>(
+                  size_t num_fragments,
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  const std::vector<tdbrc::Domain<int>>& subarray =
+                      std::vector<tdbrc::Domain<int>>()) {
+    FxRun1D instance;
+    instance.array.capacity = num_fragments * 2;
+    instance.array.dimension.extent = num_fragments * 2;
+    instance.array.allow_dups = true;
+    instance.subarray = subarray;
+
+    instance.memory.total_budget_ = "100000";
+    instance.memory.ratio_coords_ = "0.2";
+    instance.memory.ratio_array_data_ = "0.6";
+
+    for (size_t f = 0; f < num_fragments; f++) {
+      FxFragment1D fragment;
+      fragment.coords.resize(fragment_size);
+      std::iota(
+          fragment.coords.begin(),
+          fragment.coords.end(),
+          instance.array.dimension.domain.lower_bound + f);
+
+      fragment.atts.resize(fragment_size);
+      std::iota(
+          fragment.atts.begin(),
+          fragment.atts.end(),
+          fragment_size * num_fragments);
+
+      instance.fragments.push_back(fragment);
+    }
+
+    instance.num_user_cells = num_user_cells;
+
+    run_1d<Asserter>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(16, 100, 64);
+  }
 }
 
 TEST_CASE_METHOD(
