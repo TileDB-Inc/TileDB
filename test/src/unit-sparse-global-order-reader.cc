@@ -30,6 +30,7 @@
  * Tests for the sparse global order reader.
  */
 
+#include "test/support/rapidcheck/array.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -54,8 +55,8 @@ using namespace tiledb;
 using namespace tiledb::test;
 
 namespace rc {
-Gen<std::vector<std::pair<int, int>>> make_subarray_1d(
-    int domain_lower, int domain_upper);
+Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
+    const tdbrc::Domain<int>& domain);
 }
 
 /* ********************************* */
@@ -90,14 +91,14 @@ struct MemoryBudget {
  */
 struct DefaultArray1DConfig {
   bool allow_dups;
-  int domain[2];
-  int extent;
+
+  tdbrc::Dimension<int> dimension;
 
   DefaultArray1DConfig()
-      : allow_dups(false)
-      , extent(2) {
-    domain[0] = 1;
-    domain[1] = 200;
+      : allow_dups(false) {
+    dimension.domain.lower_bound = 1;
+    dimension.domain.upper_bound = 200;
+    dimension.extent = 2;
   }
 
   DefaultArray1DConfig with_allow_dups(bool allow_dups) const {
@@ -116,7 +117,7 @@ struct FxRun1D {
 
   // NB: for now this always has length 1, global order query does not
   // support multi-range subarray
-  std::vector<std::pair<int, int>> subarray;
+  std::vector<tdbrc::Domain<int>> subarray;
 
   DefaultArray1DConfig array;
   MemoryBudget memory;
@@ -126,7 +127,7 @@ struct FxRun1D {
       return true;
     } else {
       for (const auto& range : subarray) {
-        if (range.first <= coord && coord <= range.second) {
+        if (range.contains(coord)) {
           return true;
         }
       }
@@ -192,13 +193,13 @@ struct CSparseGlobalOrderFx {
 
   MemoryBudget memory_;
 
-  template <typename Asserter = tiledb::test::Catch>
+  template <typename Asserter = tiledb::test::AsserterCatch>
   void create_default_array_1d(
       const DefaultArray1DConfig& config = DefaultArray1DConfig());
 
   void create_default_array_1d_strings(bool allow_dups = false);
 
-  template <typename Asserter = tiledb::test::Catch>
+  template <typename Asserter = tiledb::test::AsserterCatch>
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
 
@@ -378,8 +379,8 @@ void CSparseGlobalOrderFx::create_default_array_1d(
       TILEDB_SPARSE,
       {"d"},
       {TILEDB_INT32},
-      std::vector<void*>{(void*)(&config.domain[0])},
-      std::vector<void*>{(void*)(&config.extent)},
+      std::vector<void*>{(void*)(&config.dimension.domain.lower_bound)},
+      std::vector<void*>{(void*)(&config.dimension.extent)},
       {"a"},
       {TILEDB_INT32},
       {1},
@@ -891,8 +892,8 @@ TEST_CASE_METHOD(
                   size_t fragment_size,
                   size_t num_user_cells,
                   int extent,
-                  const std::vector<std::pair<int, int>>& subarray =
-                      std::vector<std::pair<int, int>>()) {
+                  const std::vector<tdbrc::Domain<int>>& subarray =
+                      std::vector<tdbrc::Domain<int>>()) {
     // Write a fragment F0 with unique coordinates
     struct FxFragment1D fragment0;
     fragment0.coords.resize(fragment_size);
@@ -919,7 +920,7 @@ TEST_CASE_METHOD(
     instance.fragments.push_back(fragment1);
     instance.num_user_cells = num_user_cells;
 
-    instance.array.extent = extent;
+    instance.array.dimension.extent = extent;
     instance.array.allow_dups = true;
 
     instance.memory.total_budget_ = "20000";
@@ -931,7 +932,7 @@ TEST_CASE_METHOD(
   };
 
   SECTION("Example") {
-    doit.operator()<tiledb::test::Catch>(200, 8, 2);
+    doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
   }
 
   SECTION("Rapidcheck") {
@@ -939,8 +940,8 @@ TEST_CASE_METHOD(
       const size_t fragment_size = *rc::gen::inRange(2, 200);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
       const int extent = *rc::gen::inRange(1, 200);
-      const auto subarray = *rc::make_subarray_1d(1, 200);
-      doit.operator()<tiledb::test::Rapidcheck>(
+      const auto subarray = *rc::make_subarray_1d(tdbrc::Domain<int>(1, 200));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
           fragment_size, num_user_cells, extent, subarray);
     });
   }
@@ -1002,14 +1003,15 @@ TEST_CASE_METHOD(
   };
 
   SECTION("Example") {
-    doit.operator()<tiledb::test::Catch>(196, 8);
+    doit.operator()<tiledb::test::AsserterCatch>(196, 8);
   }
 
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck fragment interleave", [doit]() {
       const size_t fragment_size = *rc::gen::inRange(2, 196);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
-      doit.operator()<tiledb::test::Rapidcheck>(fragment_size, num_user_cells);
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          fragment_size, num_user_cells);
     });
   }
 
@@ -1954,7 +1956,7 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     TRY(tiledb_subarray_alloc(ctx_, array, &subarray));
     for (const auto& range : instance.subarray) {
       TRY(tiledb_subarray_add_range(
-          ctx_, subarray, 0, &range.first, &range.second, nullptr));
+          ctx_, subarray, 0, &range.lower_bound, &range.upper_bound, nullptr));
     }
     TRY(tiledb_query_set_subarray_t(ctx_, query, subarray));
     tiledb_subarray_free(&subarray);
@@ -2036,19 +2038,8 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
 
 namespace rc {
 
-Gen<std::vector<std::pair<int, int>>> make_subarray_1d(
-    int domain_lower, int domain_upper) {
-  auto point = gen::cast<int>(
-      gen::inRange(int64_t(domain_lower), int64_t(domain_upper) + 1));
-
-  auto range = gen::apply(
-      [](int point1, int point2) {
-        return std::make_pair(
-            std::min(point1, point2), std::max(point1, point2));
-      },
-      point,
-      point);
-
+Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
+    const tdbrc::Domain<int>& domain) {
   // NB: when (if) multi-range subarray is supported for global order
   // (or if this is used for non-global order)
   // change `num_ranges` to use the weighted element version
@@ -2060,74 +2051,44 @@ Gen<std::vector<std::pair<int, int>>> make_subarray_1d(
         {{50, 1}, {25, 2}, {13, 3}, {7, 4}, {4, 5}, {1, 6}});
   }
 
-  return gen::mapcat(*num_ranges, [range](int num_ranges) {
-    return gen::container<std::vector<std::pair<int, int>>>(num_ranges, range);
+  return gen::mapcat(*num_ranges, [domain](int num_ranges) {
+    return gen::container<std::vector<tdbrc::Domain<int>>>(
+        num_ranges, rc::make_range<int>(domain));
   });
 }
 
 template <>
 struct Arbitrary<FxRun1D> {
   static Gen<FxRun1D> arbitrary() {
-    // NB: `gen::inRange` is exclusive at the upper end but tiledb domain is
-    // inclusive. So we have to use `int64_t` to avoid overflow.
-    auto domain = gen::mapcat(gen::arbitrary<int>(), [](int lb) {
-      auto ub_limit = int64_t(std::numeric_limits<int>::max()) + 1;
-      return gen::pair(
-          gen::just(lb), gen::cast<int>(gen::inRange(int64_t(lb), ub_limit)));
-    });
-
-    auto dimension = gen::mapcat(domain, [](std::pair<int, int> domain) {
-      auto extent_lower_bound = 1;
-      auto extent_upper_bound = std::min<int>(
-          1024 * 16, int(int64_t(domain.second) - int64_t(domain.first) + 1));
-      auto extent = gen::inRange(extent_lower_bound, extent_upper_bound + 1);
-      return gen::tuple(
-          gen::just(domain.first), gen::just(domain.second), extent);
-    });
+    auto dimension = gen::arbitrary<tdbrc::Dimension<int>>();
 
     auto fragments =
-        gen::mapcat(dimension, [](std::tuple<int, int, int> dimension) {
-          int coord_lb, coord_ub;
-          std::tie(coord_lb, coord_ub, std::ignore) = dimension;
-          auto coord = gen::cast<int>(
-              gen::inRange(int64_t(coord_lb), int64_t(coord_ub) + 1));
-
-          auto coords = gen::suchThat(
-              gen::container<std::vector<int>>(coord),
-              [](std::vector<int> coords) { return !coords.empty(); });
-
-          auto fragment = gen::mapcat(coords, [](std::vector<int> coords) {
-            return gen::map(
-                gen::container<std::vector<int>>(
-                    coords.size(), gen::arbitrary<int>()),
-                [coords](std::vector<int> atts) {
-                  return FxFragment1D{.coords = coords, .atts = atts};
-                });
-          });
+        gen::mapcat(dimension, [](tdbrc::Dimension<int> dimension) {
+          auto fragment = gen::map(
+              rc::make_fragment_1d<int, int>(dimension.domain),
+              [](tdbrc::Fragment1D<int, int> fragment) {
+                return FxFragment1D{
+                    .coords = fragment.dim, .atts = std::get<0>(fragment.atts)};
+              });
 
           return gen::pair(
               gen::just(dimension),
-              gen::suchThat(
-                  gen::container<std::vector<FxFragment1D>>(fragment),
-                  [](auto fragments) { return !fragments.empty(); }));
+              gen::nonEmpty(
+                  gen::container<std::vector<FxFragment1D>>(fragment)));
         });
 
     auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
 
     return gen::apply(
-        [](std::pair<std::tuple<int, int, int>, std::vector<FxFragment1D>>
+        [](std::pair<tdbrc::Dimension<int>, std::vector<FxFragment1D>>
                fragments,
            int num_user_cells) {
           FxRun1D instance;
-          instance.num_user_cells = num_user_cells;
+          std::tie(instance.array.dimension, instance.fragments) = fragments;
 
-          std::tuple<int, int, int> dimension;
-          std::tie(dimension, instance.fragments) = fragments;
+          instance.num_user_cells = num_user_cells;
           instance.array.allow_dups = true;
-          std::tie(
-              instance.array.domain[0],
-              instance.array.domain[1],
-              instance.array.extent) = dimension;
+
           return instance;
         },
         fragments,
@@ -2164,9 +2125,10 @@ void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
   os << "\t\"num_user_cells\": " << instance.num_user_cells << std::endl;
   os << "\t\"array\": {" << std::endl;
   os << "\t\t\"allow_dups\": " << instance.array.allow_dups << std::endl;
-  os << "\t\t\"domain\": [" << instance.array.domain[0] << ", "
-     << instance.array.domain[1] << "]," << std::endl;
-  os << "\t\t\"extent\": " << instance.array.extent << std::endl;
+  os << "\t\t\"domain\": [" << instance.array.dimension.domain.lower_bound
+     << ", " << instance.array.dimension.domain.upper_bound << "],"
+     << std::endl;
+  os << "\t\t\"extent\": " << instance.array.dimension.extent << std::endl;
   os << "\t}," << std::endl;
   os << "\t\"memory\": {" << std::endl;
   os << "\t\t\"total_budget\": " << instance.memory.total_budget_ << ", "
@@ -2188,7 +2150,7 @@ TEST_CASE_METHOD(
     "[sparse-global-order]") {
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck arbitrary 1d", [this](FxRun1D instance) {
-      run_1d<tiledb::test::Rapidcheck>(instance);
+      run_1d<tiledb::test::AsserterRapidcheck>(instance);
     });
   }
 }
@@ -2214,7 +2176,7 @@ TEST_CASE_METHOD(
 
   // NB: `Rapidcheck` just throws a normal exception,
   // we are not actually in a rapidcheck context.
-  REQUIRE_THROWS(run_1d<tiledb::test::Rapidcheck>(instance));
+  REQUIRE_THROWS(run_1d<tiledb::test::AsserterRapidcheck>(instance));
 
   tiledb_error_t* error = NULL;
   auto rc = tiledb_ctx_get_last_error(ctx_, &error);
@@ -2273,7 +2235,7 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: benchmark compare",
     "[sparse-global-order]") {
-  using Asserter = tiledb::test::Catch;
+  using Asserter = tiledb::test::AsserterCatch;
 
   const char* array_uri =
       "s3://tiledb-johnkerl/s/v/tabula-sapiens-immune/ms/RNA/X/data";
