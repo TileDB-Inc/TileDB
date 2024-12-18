@@ -2191,6 +2191,44 @@ TEST_CASE_METHOD(
   }
 }
 
+/**
+ * This test will fail if multi-range subarrays become supported
+ * for global order.
+ * When that happens please update all the related `NB` comments
+ * (and also feel free to remove this at that time).
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: multi-range subarray signal",
+    "[sparse-global-order]") {
+  FxFragment1D fragment0;
+  fragment0.coords.push_back(1);
+  fragment0.atts.push_back(1);
+
+  FxRun1D instance;
+  instance.fragments.push_back(fragment0);
+  instance.subarray.push_back({1, 1});
+  instance.subarray.push_back({3, 3});
+
+  // NB: `Rapidcheck` just throws a normal exception,
+  // we are not actually in a rapidcheck context.
+  REQUIRE_THROWS(run_1d<tiledb::test::Rapidcheck>(instance));
+
+  tiledb_error_t* error = NULL;
+  auto rc = tiledb_ctx_get_last_error(ctx_, &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error != nullptr);
+
+  const char* msg;
+  rc = tiledb_error_message(error, &msg);
+  REQUIRE(rc == TILEDB_OK);
+
+  REQUIRE(
+      std::string(msg).find(
+          "Multi-range reads are not supported on a global order query") !=
+      std::string::npos);
+}
+
 struct TimeKeeper {
   std::map<std::string, std::vector<double>> durations;
 
