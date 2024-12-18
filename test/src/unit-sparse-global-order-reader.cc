@@ -46,6 +46,8 @@
 
 #include <test/support/tdb_catch.h>
 #include <test/support/tdb_rapidcheck.h>
+
+#include <fstream>
 #include <numeric>
 
 using namespace tiledb;
@@ -2241,6 +2243,26 @@ struct TimeKeeper {
       const std::string& stat, const std::chrono::duration<double> duration) {
     durations[stat].push_back(duration.count());
   }
+
+  void dump_durations(const char* path) const {
+    std::ofstream dump(path);
+
+    for (const auto& stat : durations) {
+      dump << stat.first << " = [";
+
+      bool is_first = true;
+      for (const auto& duration : stat.second) {
+        if (!is_first) {
+          dump << ", ";
+        } else {
+          is_first = false;
+        }
+        dump << duration;
+      }
+
+      dump << "]" << std::endl << std::endl;
+    }
+  }
 };
 
 /**
@@ -2249,7 +2271,7 @@ struct TimeKeeper {
  */
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
-    "Sparse global order reader: jkerl SOMA",
+    "Sparse global order reader: benchmark compare",
     "[sparse-global-order]") {
   using Asserter = tiledb::test::Catch;
 
@@ -2382,4 +2404,6 @@ TEST_CASE_METHOD(
       break;
     }
   }
+
+  time_keeper.dump_durations("/tmp/time_keeper.out");
 }
