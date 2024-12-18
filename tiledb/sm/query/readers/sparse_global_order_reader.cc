@@ -237,6 +237,10 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       result_cell_slabs = std::move(rcs);
     }
 
+    if (created_tiles.empty() && result_cell_slabs.empty() && incomplete()) {
+      throw SparseGlobalOrderReaderException("No progress, TODO");
+    }
+
     // No more tiles to process, done.
     if (!result_cell_slabs.empty()) {
       // Copy cell slabs.
