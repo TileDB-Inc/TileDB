@@ -107,9 +107,11 @@ class TileBase {
     return static_cast<T*>(data());
   }
 
-  /** Converts the data pointer to a specific type with no check on compute
+  /**
+   * Converts the data pointer to a specific type with no check on compute
    * task. This is used for getting thte data from inside the compute thread
-   * itself for unfiltering. */
+   * itself for unfiltering.
+   */
   template <class T>
   inline T* data_as_unsafe() const {
     return static_cast<T*>(data_unsafe());
@@ -134,8 +136,10 @@ class TileBase {
     return data_.get();
   }
 
-  /** Returns the internal buffer. This is used for getting thte data from
-   * inside the compute thread itself for unfiltering. */
+  /**
+   * Returns the internal buffer. This is used for getting thte data from
+   * inside the compute thread itself for unfiltering.
+   */
   inline void* data_unsafe() const {
     return data_.get();
   }
@@ -198,7 +202,8 @@ class TileBase {
   /** The tile data type. */
   Datatype type_;
 
-  /** Whether to block waiting for io data to be ready before accessing data()
+  /**
+   * Whether to block waiting for io data to be ready before accessing data()
    */
   const bool skip_waiting_on_io_task_;
 

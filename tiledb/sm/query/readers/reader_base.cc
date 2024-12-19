@@ -969,6 +969,9 @@ Status ReaderBase::unfilter_tiles(
             return Status::Ok();
           }
 
+          // The current threadpool design does not allow for unfiltering to
+          // happen in chunks using a parallel for within this async task as the
+          // wait_all in the end of the parallel for can deadlock.
           for (uint64_t range_thread_idx = 0;
                range_thread_idx < num_range_threads;
                range_thread_idx++) {
@@ -998,6 +1001,9 @@ Status ReaderBase::unfilter_tiles(
       continue;
     }
 
+    // Unfiltering tasks have been launched, set the tasks to wait for in the
+    // corresponding tiles. When those tasks(futures) will be ready the tile
+    // processing that depends on the unfiltered tile will get unblocked.
     auto tile_tuple = result_tile->tile_tuple(name);
     tile_tuple->fixed_tile().set_unfilter_data_compute_task(task);
 

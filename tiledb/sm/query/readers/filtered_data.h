@@ -415,7 +415,7 @@ class FilteredData {
           auto timer_se = stats_->start_timer("read");
           return resources_.vfs().read(uri, offset, data, size, false);
         });
-    // This should be changes once we use taskgraphs for modeling the data flow
+    // This should be changed once we use taskgraphs for modeling the data flow
     block.set_io_task(task);
   }
 
