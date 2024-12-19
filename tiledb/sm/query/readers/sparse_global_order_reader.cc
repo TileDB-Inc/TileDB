@@ -62,6 +62,14 @@ class SparseGlobalOrderReaderException : public StatusException {
   }
 };
 
+class SparseGlobalOrderReaderInternalError
+    : public SparseGlobalOrderReaderException {
+ public:
+  explicit SparseGlobalOrderReaderInternalError(const std::string& message)
+      : SparseGlobalOrderReaderException("Internal error: " + message) {
+  }
+};
+
 /**
  * View into NDRange for using the range start / lower bound in comparisons.
  */
@@ -74,6 +82,37 @@ struct RangeLowerBound {
 
   UntypedDatumView dimension_datum(const Dimension&, unsigned dim) const {
     return mbr[dim].start_datum();
+  }
+};
+
+/**
+ * Encapsulates the input to the preprocess tile merge, and the
+ * merge output future for polling.
+ *
+ * It is necessary to
+ * Holds
+ */
+struct PreprocessTileMergeFuture {
+  /** merge configuration, looks unused but must out-live the merge future */
+  algorithm::ParallelMergeOptions merge_options_;
+
+  /** merge input, looks unused but must out-live the merge future */
+  std::vector<std::vector<ResultTileId>> fragment_result_tiles_;
+
+  std::vector<std::span<ResultTileId>> fragment_result_tile_spans_;
+
+  /** comparator, looks unused but must out-live the merge future */
+  std::shared_ptr<CellCmpBase> cmp_;
+
+  /** the merge future */
+  std::optional<tdb::pmr::unique_ptr<algorithm::ParallelMergeFuture>> merge_;
+
+  std::optional<uint64_t> await() {
+    auto ret = merge_.value()->await();
+    if (merge_.value()->finished()) {
+      fragment_result_tiles_.clear();
+    }
+    return ret;
   }
 };
 
@@ -167,9 +206,11 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   // Determine result tile order
   // (this happens after load_initial_data which identifies which tiles pass
   // subarray)
+  std::optional<PreprocessTileMergeFuture> preprocess_future;
   if (preprocess_tile_order_.enabled_ &&
       preprocess_tile_order_.tiles_.empty()) {
-    preprocess_compute_result_tile_order();
+    preprocess_future = PreprocessTileMergeFuture();
+    preprocess_compute_result_tile_order(preprocess_future.value());
   }
 
   purge_deletes_consolidation_ = !deletes_consolidation_no_purge_ &&
@@ -192,7 +233,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
     stats_->add_counter("internal_loop_num", 1);
 
     // Create the result tiles we are going to process.
-    auto created_tiles = create_result_tiles(result_tiles);
+    auto created_tiles = create_result_tiles(result_tiles, preprocess_future);
 
     if (created_tiles.size() > 0) {
       // Read and unfilter coords.
@@ -267,6 +308,13 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   }
 
   stats_->add_counter("ignored_tiles", tmp_read_state_.num_ignored_tiles());
+
+  if (preprocess_future.has_value()) {
+    // wait for tile merge to complete so we don't have to keep this
+    // state around for the next iteration, and if this errors for
+    // some reason we should return that
+    preprocess_future->merge_.value()->block();
+  }
 
   return Status::Ok();
 }
@@ -389,19 +437,20 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
  * subarray (e.g. by calling `load_initial_data`)
  */
 template <class BitmapType>
-void SparseGlobalOrderReader<
-    BitmapType>::preprocess_compute_result_tile_order() {
+void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
+    PreprocessTileMergeFuture& future) {
   const auto& relevant_fragments = subarray_.relevant_fragments();
   const uint64_t num_relevant_fragments = relevant_fragments.size();
 
-  // first apply subarray (in parallel)
-  std::vector<std::vector<ResultTileId>> fragment_result_tiles(
-      fragment_metadata_.size());
+  future.fragment_result_tiles_.resize(fragment_metadata_.size());
+
+  auto& fragment_result_tiles = future.fragment_result_tiles_;
 
   // TODO: ideally this could be async or on demand for each tile
   // so that we could be closer to a proper LIMIT
   subarray_.load_relevant_fragment_rtrees(&resources_.compute_tp());
 
+  // first apply subarray (in parallel)
   if (!subarray_.is_set()) {
     for (const auto& f : relevant_fragments) {
       fragment_result_tiles[f].reserve(fragment_metadata_[f]->tile_num());
@@ -460,16 +509,16 @@ void SparseGlobalOrderReader<
   }
 
   /* then do parallel merge */
-  std::vector<std::span<ResultTileId>> fragment_result_tile_spans;
+  auto& fragment_result_tile_spans = future.fragment_result_tile_spans_;
   fragment_result_tile_spans.reserve(fragment_result_tiles.size());
   for (auto& f : fragment_result_tiles) {
     fragment_result_tile_spans.push_back(std::span(f));
   }
 
-  std::vector<ResultTileId> merged_result_tiles(
+  preprocess_tile_order_.tiles_.resize(
       num_result_tiles, ResultTileId{.fragment_idx_ = 0, .tile_idx_ = 0});
 
-  algorithm::ParallelMergeOptions merge_options = {
+  future.merge_options_ = {
       .parallel_factor = resources_.compute_tp().concurrency_level(),
       .min_merge_items =
           128  // TODO: do some experiments to figure something out
@@ -479,13 +528,15 @@ void SparseGlobalOrderReader<
       *query_memory_tracker_.get());
 
   auto do_global_order_merge = [&]<Layout TILE_ORDER, Layout CELL_ORDER>() {
-    struct ResultTileCmp {
+    struct ResultTileCmp
+        : public GlobalCellCmpStaticDispatch<TILE_ORDER, CELL_ORDER> {
+      using Base = GlobalCellCmpStaticDispatch<TILE_ORDER, CELL_ORDER>;
       using PerFragmentMetadata =
           const std::vector<std::shared_ptr<FragmentMetadata>>;
 
       ResultTileCmp(
           const Domain& domain, const PerFragmentMetadata& fragment_metadata)
-          : cmp_(domain)
+          : Base(domain)
           , fragment_metadata_(fragment_metadata) {
       }
 
@@ -494,26 +545,25 @@ void SparseGlobalOrderReader<
             .mbr = fragment_metadata_[a.fragment_idx_]->mbr(a.tile_idx_)};
         const RangeLowerBound b_mbr = {
             .mbr = fragment_metadata_[b.fragment_idx_]->mbr(b.tile_idx_)};
-        return cmp_(a_mbr, b_mbr);
+        return (*static_cast<const Base*>(this))(a_mbr, b_mbr);
       }
 
-      GlobalCellCmpStaticDispatch<TILE_ORDER, CELL_ORDER> cmp_;
       const PerFragmentMetadata& fragment_metadata_;
     };
 
-    ResultTileCmp cmp(array_schema_.domain(), fragment_metadata_);
+    {
+      std::shared_ptr<ResultTileCmp> cmp = std::make_shared<ResultTileCmp>(
+          array_schema_.domain(), fragment_metadata_);
+      future.cmp_ = std::static_pointer_cast<CellCmpBase>(cmp);
+    }
 
-    auto merge_stream = algorithm::parallel_merge<ResultTileId, decltype(cmp)>(
+    future.merge_ = algorithm::parallel_merge<ResultTileId, ResultTileCmp>(
         resources_.compute_tp(),
         merge_resources,
-        merge_options,
+        future.merge_options_,
         fragment_result_tile_spans,
-        cmp,
-        &merged_result_tiles[0]);
-
-    // TODO: we can begin the query as soon as the first merge unit is
-    // done. this will require extending the lifetime of `cmp`.
-    merge_stream->block();
+        *static_cast<ResultTileCmp*>(future.cmp_.get()),
+        &preprocess_tile_order_.tiles_[0]);
   };
 
   switch (array_schema_.cell_order()) {
@@ -554,14 +604,14 @@ void SparseGlobalOrderReader<
       stdx::unreachable();
   }
 
-  preprocess_tile_order_.tiles_ = merged_result_tiles;
   preprocess_tile_order_.cursor_ = 0;
 }
 
 template <class BitmapType>
 std::vector<ResultTile*>
 SparseGlobalOrderReader<BitmapType>::create_result_tiles(
-    std::vector<ResultTilesList>& result_tiles) {
+    std::vector<ResultTilesList>& result_tiles,
+    std::optional<PreprocessTileMergeFuture>& maybe_preprocess_future) {
   auto timer_se = stats_->start_timer("create_result_tiles");
 
   // Distinguish between leftover result tiles from the previous `submit`
@@ -572,7 +622,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
   }
 
   if (preprocess_tile_order_.enabled_) {
-    create_result_tiles_using_preprocess(result_tiles);
+    create_result_tiles_using_preprocess(result_tiles, maybe_preprocess_future);
   } else {
     create_result_tiles_all_fragments(result_tiles);
   }
@@ -722,16 +772,37 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_all_fragments(
 
 template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
-    std::vector<ResultTilesList>& result_tiles) {
+    std::vector<ResultTilesList>& result_tiles,
+    std::optional<PreprocessTileMergeFuture>& merge_future) {
   // For easy reference.
   const auto num_fragments = fragment_metadata_.size();
   const auto num_dims = array_schema_.dim_num();
 
   if (preprocess_tile_order_.cursor_ < preprocess_tile_order_.tiles_.size()) {
-    size_t rt;
-    for (rt = preprocess_tile_order_.cursor_;
-         rt < preprocess_tile_order_.tiles_.size();
-         rt++) {
+    size_t rt = preprocess_tile_order_.cursor_;
+    size_t rt_merge_bound =
+        (merge_future.has_value() ? rt : preprocess_tile_order_.tiles_.size());
+    while (rt < preprocess_tile_order_.tiles_.size()) {
+      if (rt == rt_merge_bound) {
+        auto merge_await = merge_future->await();
+        if (merge_await.has_value()) {
+          rt_merge_bound = merge_await.value();
+        } else if ((merge_await =
+                        merge_future->merge_.value()->valid_output_bound())
+                       .has_value()) {
+          rt_merge_bound = merge_await.value();
+        } else {
+          throw SparseGlobalOrderReaderInternalError(
+              "Unexpected preprocess tile merge state: expected new merge "
+              "bound but found none");
+        }
+        if (merge_await.value() <= rt) {
+          throw SparseGlobalOrderReaderInternalError(
+              "Unexpected preprocess tile merge state: out of order merge "
+              "bound");
+        }
+      }
+
       const auto f = preprocess_tile_order_.tiles_[rt].fragment_idx_;
       const auto t = preprocess_tile_order_.tiles_[rt].tile_idx_;
 
@@ -771,6 +842,7 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
           break;
         }
       }
+      rt++;
     }
 
     // update position for next iteration

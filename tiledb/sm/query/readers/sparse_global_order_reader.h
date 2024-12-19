@@ -51,6 +51,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class Array;
+struct PreprocessTileMergeFuture;
 
 /** Processes sparse global order read queries. */
 
@@ -245,17 +246,25 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * Computes the single list of tiles across all fragments
    * arranged in the order they must be processed for this query.
    * See `preprocess_tile_order_`.
+   *
+   * @param [out] merge_future where to put input for the merge and the merge
+   * future
    */
-  void preprocess_compute_result_tile_order();
+  void preprocess_compute_result_tile_order(
+      PreprocessTileMergeFuture& merge_future);
 
   /**
    * Create the result tiles.
    *
    * @param result_tiles Result tiles per fragment.
+   * @param maybe_preprocess_future future for polling the global order tile
+   * stream, if running in preprocess mode
+   *
    * @return Newly created tiles.
    */
   std::vector<ResultTile*> create_result_tiles(
-      std::vector<ResultTilesList>& result_tiles);
+      std::vector<ResultTilesList>& result_tiles,
+      std::optional<PreprocessTileMergeFuture>& maybe_preprocess_future);
 
   /**
    * Create the result tiles naively, without coordinating
@@ -275,9 +284,12 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * tile order. See `preprocess_tile_order_`.
    *
    * @param result_tiles [in-out] Result tiles per fragment.
+   * @param merge_future handle to polling the preprocess merge stream
+   *                     (if it has not completed yet)
    */
   void create_result_tiles_using_preprocess(
-      std::vector<ResultTilesList>& result_tiles);
+      std::vector<ResultTilesList>& result_tiles,
+      std::optional<PreprocessTileMergeFuture>& merge_future);
 
   /**
    * Clean tiles that have 0 results from the tile lists.
