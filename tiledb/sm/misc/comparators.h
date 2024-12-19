@@ -690,6 +690,36 @@ class HilbertCmpQB : protected DomainValueCmpBaseQB {
   }
 };
 
+/**
+ * View into NDRange for using the range start / lower bound in comparisons.
+ */
+struct RangeLowerBound {
+  const NDRange& mbr;
+
+  const void* coord(unsigned dim) const {
+    return mbr[dim].data();
+  }
+
+  UntypedDatumView dimension_datum(const Dimension&, unsigned dim) const {
+    return mbr[dim].start_datum();
+  }
+};
+
+/**
+ * View into NDRange for using the range end / upper bound in comparisons.
+ */
+struct RangeUpperBound {
+  const NDRange& mbr;
+
+  const void* coord(unsigned dim) const {
+    return mbr[dim].end_datum().content();
+  }
+
+  UntypedDatumView dimension_datum(const Dimension&, unsigned dim) const {
+    return mbr[dim].end_datum();
+  }
+};
+
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_COMPARATORS_H

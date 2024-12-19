@@ -98,17 +98,28 @@ struct AsserterRapidcheck {};
  * the test will continue. For `AsserterRapidcheck` this will throw an
  * exception.
  */
-#define RCCATCH_CHECK(...)                                                   \
-  do {                                                                       \
-    static_assert(                                                           \
-        std::is_same_type::<Asserter, tiledb::test::AsserterCatch>::value || \
-        std::is_same_type::<Asserter, tiledb::test::AsserterRapidcheck>::    \
-            value);                                                          \
-    if (std::is_same_type::<Asserter, tiledb::test::AsserterCatch>::value) { \
-      CHECK(__VA_ARGS__);                                                    \
-    } else {                                                                 \
-      RC_ASSERT(__VA_ARGS__);                                                \
-    }                                                                        \
+#define RCCATCH_CHECK(...)                                                \
+  do {                                                                    \
+    static_assert(                                                        \
+        std::is_same<Asserter, tiledb::test::AsserterCatch>::value ||     \
+        std::is_same<Asserter, tiledb::test::AsserterRapidcheck>::value); \
+    if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {     \
+      CHECK(__VA_ARGS__);                                                 \
+    } else {                                                              \
+      RC_ASSERT(__VA_ARGS__);                                             \
+    }                                                                     \
+  } while (0)
+
+#define RCCATCH_THROWS(...)                                               \
+  do {                                                                    \
+    static_assert(                                                        \
+        std::is_same<Asserter, tiledb::test::AsserterCatch>::value ||     \
+        std::is_same<Asserter, tiledb::test::AsserterRapidcheck>::value); \
+    if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {     \
+      REQUIRE_THROWS(__VA_ARGS__);                                        \
+    } else {                                                              \
+      RC_ASSERT_THROWS(__VA_ARGS__);                                      \
+    }                                                                     \
   } while (0)
 
 #endif  // TILEDB_MISC_TDB_RAPIDCHECK_H

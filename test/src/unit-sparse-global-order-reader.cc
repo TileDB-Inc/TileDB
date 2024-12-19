@@ -33,9 +33,13 @@
 #include "test/support/rapidcheck/array.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/misc/comparators.h"
+#include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/stats/duration_instrument.h"
 
@@ -181,6 +185,10 @@ struct CApiArray {
   }
 
   operator tiledb_array_t*() const {
+    return array_;
+  }
+
+  tiledb_array_t* operator->() const {
     return array_;
   }
 };
@@ -658,6 +666,96 @@ int32_t CSparseGlobalOrderFx::read_strings(
   return ret;
 }
 
+/**
+ * @return true if the array fragments are "too wide" to merge with the given
+ * memory budget. "too wide" means that there are overlapping tiles from
+ * different fragments to fit in memory, so the merge cannot progress without
+ * producing out-of-order data*.
+ *
+ * *there are ways to get around this but they are not implemented.
+ */
+static bool can_complete_in_memory_budget(
+    tiledb_ctx_t* ctx, const char* array_uri, const FxRun1D& instance) {
+  CApiArray array(ctx, array_uri, TILEDB_READ);
+
+  // TODO: verify that the conditions for the error are correct
+  const auto& fragment_metadata = array->array()->fragment_metadata();
+  for (const auto& fragment : fragment_metadata) {
+    const_cast<sm::FragmentMetadata*>(fragment.get())
+        ->loaded_metadata()
+        ->load_rtree(array->array()->get_encryption_key());
+  }
+
+  auto tiles_size = [fragment_metadata](unsigned f, uint64_t t) {
+    const size_t data_size = fragment_metadata[f]->tile_size("d", t);
+    const size_t rt_size = sizeof(sm::GlobalOrderResultTile<uint8_t>);
+    return data_size + rt_size;
+  };
+
+  sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
+  stdx::reverse_comparator<sm::GlobalCellCmp> reverseglobalcmp(globalcmp);
+
+  using RT = sm::ResultTileId;
+
+  auto cmp_pq_lower_bound = [&](const RT& rtl, const RT& rtr) {
+    const sm::RangeLowerBound l_mbr = {
+        .mbr = fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_)};
+    const sm::RangeLowerBound r_mbr = {
+        .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
+    return reverseglobalcmp(l_mbr, r_mbr);
+  };
+  auto cmp_pq_upper_bound = [&](const RT& rtl, const RT& rtr) {
+    const sm::RangeUpperBound l_mbr = {
+        .mbr = fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_)};
+    const sm::RangeUpperBound r_mbr = {
+        .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
+    return reverseglobalcmp(l_mbr, r_mbr);
+  };
+  auto cmp_lower_to_upper = [&](const RT& rtl, const RT& rtr) {
+    const sm::RangeLowerBound l_mbr = {
+        .mbr = fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_)};
+    const sm::RangeUpperBound r_mbr = {
+        .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
+    return globalcmp(l_mbr, r_mbr);
+  };
+
+  // order all tiles on their lower bound
+  std::priority_queue<RT, std::vector<RT>, decltype(cmp_pq_lower_bound)>
+      mbr_lower_bound(cmp_pq_lower_bound);
+  for (unsigned f = 0; f < instance.fragments.size(); f++) {
+    for (uint64_t t = 0; t < fragment_metadata[f]->tile_num(); t++) {
+      mbr_lower_bound.push(
+          sm::ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+    }
+  }
+
+  // and track tiles which are active using their upper bound
+  std::priority_queue<RT, std::vector<RT>, decltype(cmp_pq_upper_bound)>
+      mbr_upper_bound(cmp_pq_upper_bound);
+
+  // there must be some point where the tiles have overlapping MBRs
+  // and take more memory
+  const uint64_t coords_budget = std::stoi(instance.memory.total_budget_) *
+                                 std::stod(instance.memory.ratio_coords_);
+  uint64_t active_tile_size = 0;
+  while (!mbr_lower_bound.empty() && active_tile_size < coords_budget) {
+    auto next_rt = mbr_lower_bound.top();
+    mbr_lower_bound.pop();
+
+    active_tile_size += tiles_size(next_rt.fragment_idx_, next_rt.tile_idx_);
+    mbr_upper_bound.push(next_rt);
+
+    if (!cmp_lower_to_upper(next_rt, mbr_upper_bound.top())) {
+      auto finish_rt = mbr_upper_bound.top();
+      mbr_upper_bound.pop();
+      active_tile_size +=
+          tiles_size(finish_rt.fragment_idx_, finish_rt.tile_idx_);
+    }
+  }
+
+  return mbr_lower_bound.empty();
+}
+
 /* ********************************* */
 /*                TESTS              */
 /* ********************************* */
@@ -1052,7 +1150,7 @@ TEST_CASE_METHOD(
  */
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
-    "Sparse global order reader: too wide",
+    "Sparse global order reader: many overlapping fragments",
     "[sparse-global-order]") {
   auto doit = [this]<typename Asserter>(
                   size_t num_fragments,
@@ -1060,14 +1158,17 @@ TEST_CASE_METHOD(
                   size_t num_user_cells,
                   const std::vector<tdbrc::Domain<int>>& subarray =
                       std::vector<tdbrc::Domain<int>>()) {
+    const uint64_t total_budget = 100000;
+    const double ratio_coords = 0.2;
+
     FxRun1D instance;
     instance.array.capacity = num_fragments * 2;
     instance.array.dimension.extent = num_fragments * 2;
     instance.array.allow_dups = true;
     instance.subarray = subarray;
 
-    instance.memory.total_budget_ = "100000";
-    instance.memory.ratio_coords_ = "0.2";
+    instance.memory.total_budget_ = std::to_string(total_budget);
+    instance.memory.ratio_coords_ = std::to_string(ratio_coords);
     instance.memory.ratio_array_data_ = "0.6";
 
     for (size_t f = 0; f < num_fragments; f++) {
@@ -1089,7 +1190,10 @@ TEST_CASE_METHOD(
 
     instance.num_user_cells = num_user_cells;
 
-    run_1d<Asserter>(instance);
+    RCCATCH_THROWS(run_1d<tiledb::test::AsserterRapidcheck>(instance));
+
+    RCCATCH_REQUIRE(
+        !can_complete_in_memory_budget(ctx_, array_name_.c_str(), instance));
   };
 
   SECTION("Example") {

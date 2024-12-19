@@ -71,21 +71,6 @@ class SparseGlobalOrderReaderInternalError
 };
 
 /**
- * View into NDRange for using the range start / lower bound in comparisons.
- */
-struct RangeLowerBound {
-  const NDRange& mbr;
-
-  const void* coord(unsigned dim) const {
-    return mbr[dim].data();
-  }
-
-  UntypedDatumView dimension_datum(const Dimension&, unsigned dim) const {
-    return mbr[dim].start_datum();
-  }
-};
-
-/**
  * Encapsulates the input to the preprocess tile merge, and the
  * merge output future for polling.
  *
