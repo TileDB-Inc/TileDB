@@ -748,7 +748,7 @@ static bool can_complete_in_memory_budget(
     if (!cmp_lower_to_upper(next_rt, mbr_upper_bound.top())) {
       auto finish_rt = mbr_upper_bound.top();
       mbr_upper_bound.pop();
-      active_tile_size +=
+      active_tile_size -=
           tiles_size(finish_rt.fragment_idx_, finish_rt.tile_idx_);
     }
   }
@@ -2163,6 +2163,16 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     RCCATCH_REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_query_submit(ctx_, query);
+    {
+      const auto err = error_if_any(rc);
+      if (err.find("Cannot load enough tiles to emit results from all "
+                   "fragments in global order") != std::string::npos) {
+        RCCATCH_REQUIRE(!can_complete_in_memory_budget(
+            ctx_, array_name_.c_str(), instance));
+      } else {
+        RCCATCH_REQUIRE("" == err);
+      }
+    }
     RCCATCH_REQUIRE("" == error_if_any(rc));
 
     tiledb_query_status_t status;
@@ -2213,6 +2223,10 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
       runlength = 1;
     }
   }
+
+  // lastly, check the correctness of our memory budgeting function
+  RCCATCH_REQUIRE(
+      can_complete_in_memory_budget(ctx_, array_name_.c_str(), instance));
 }
 
 namespace rc {
