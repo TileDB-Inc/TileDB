@@ -48,11 +48,59 @@ ParallelMergeFuture::ParallelMergeFuture(
   }
 }
 
+ParallelMergeFuture::~ParallelMergeFuture() {
+  // make sure all threads are finished because they reference
+  // data which is contractually expected to outlive `this`,
+  // but makes no guarantee after that
+  while (true) {
+    const auto m = merge_cursor_;
+    try {
+      if (!await().has_value()) {
+        break;
+      }
+    } catch (...) {
+      // Swallow it. Yes, really.
+      // 1) exceptions cannot propagate out of destructors.
+      // 2) the tasks only throw on internal error, i.e. we wrote bad code.
+      // 3) the user did not wait for all the tasks to finish, so we had better
+      //    do so else we risk undefined behavior.
+      // 4) the user did not wait for all the tasks to finish, ergo they don't
+      //    care about the result, ergo they don't care if there is an error
+      //    here.  Most likely we are tearing down the stack to propagate
+      //    a different exception anyway, we don't want to mask that up
+      //    by signaling.
+      //
+      // If this is happening *not* due to an exception, then either:
+      // 1) the developer is responsible for blocking prior to destruction
+      //    so as to correctly handle any errors
+      // 2) the developer is responsible for not caring about any
+      //    results beyond what was previously consumed
+    }
+
+    // however we definitely do want to avoid an infinite loop here,
+    // so we had better have made progress.
+    assert(merge_cursor_ > m);
+  }
+}
+
+bool ParallelMergeFuture::finished() const {
+  return merge_cursor_ == merge_bounds_.size();
+}
+
+std::optional<uint64_t> ParallelMergeFuture::valid_output_bound() const {
+  if (merge_cursor_ > 0) {
+    return merge_bounds_[merge_cursor_ - 1].output_end();
+  } else {
+    return std::nullopt;
+  }
+}
+
 std::optional<uint64_t> ParallelMergeFuture::await() {
   auto maybe_task = merge_tasks_.pop();
   if (maybe_task.has_value()) {
+    const auto m = merge_cursor_++;
     throw_if_not_ok(maybe_task->wait());
-    return merge_bounds_[merge_cursor_++].output_end();
+    return merge_bounds_[m].output_end();
   } else {
     return std::nullopt;
   }
