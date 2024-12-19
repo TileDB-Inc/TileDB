@@ -90,12 +90,24 @@ struct ParallelMergeFuture {
   ParallelMergeFuture(
       ParallelMergeMemoryResources& memory, size_t parallel_factor);
 
+  ~ParallelMergeFuture();
+
   /**
    * @return memory resource used for parallel merge control structures
    */
   tdb::pmr::memory_resource& control_memory() const {
     return memory_.control;
   }
+
+  /**
+   * @return true if the merge has completed
+   */
+  bool finished() const;
+
+  /**
+   * @return the position in the output up to which the merge has completed
+   */
+  std::optional<uint64_t> valid_output_bound() const;
 
   /**
    * Wait for more data to finish merging.
