@@ -228,17 +228,20 @@ class ResultTile {
     }
 
     ~TileData() {
-      // TODO: destructor should not throw, catch any exceptions
-      if (fixed_filtered_data_task_.valid()) {
-        auto st = fixed_filtered_data_task_.wait();
-      }
+      try {
+        if (fixed_filtered_data_task_.valid()) {
+          auto st = fixed_filtered_data_task_.wait();
+        }
 
-      if (var_filtered_data_task_.valid()) {
-        auto st = var_filtered_data_task_.wait();
-      }
+        if (var_filtered_data_task_.valid()) {
+          auto st = var_filtered_data_task_.wait();
+        }
 
-      if (validity_filtered_data_task_.valid()) {
-        auto st = validity_filtered_data_task_.wait();
+        if (validity_filtered_data_task_.valid()) {
+          auto st = validity_filtered_data_task_.wait();
+        }
+      } catch (...) {
+        return;
       }
     }
 
