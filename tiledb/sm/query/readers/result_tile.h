@@ -466,7 +466,7 @@ class ResultTile {
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTile);
 
-  /** Default destructor. */
+  /** Destructor needs to be virtual, this is a base class. */
   virtual ~ResultTile();
 
   /* ********************************* */
@@ -930,6 +930,9 @@ class ResultTileWithBitmap : public ResultTile {
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTileWithBitmap);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTileWithBitmap);
+
+  /** Default destructor needs to be virtual, this is a base class. */
+  virtual ~ResultTileWithBitmap() = default;
 
  public:
   /* ********************************* */
