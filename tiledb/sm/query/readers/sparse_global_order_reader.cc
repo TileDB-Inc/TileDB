@@ -264,7 +264,9 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
     }
 
     if (created_tiles.empty() && result_cell_slabs.empty() && incomplete()) {
-      throw SparseGlobalOrderReaderException("No progress, TODO");
+      throw SparseGlobalOrderReaderException(
+          "Cannot load enough tiles to emit results from all fragments in "
+          "global order");
     }
 
     // No more tiles to process, done.
