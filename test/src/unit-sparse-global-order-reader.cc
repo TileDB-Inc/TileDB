@@ -1125,7 +1125,9 @@ TEST_CASE_METHOD(
     "[sparse-global-order]") {
   // NB: the tile extent is 2
   auto doit = [this]<typename Asserter>(
-                  size_t fragment_size, size_t num_user_cells) {
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  const std::vector<tdbrc::Domain<int>>& subarray = {}) {
     struct FxFragment1D fragment0;
     struct FxFragment1D fragment1;
 
@@ -1154,6 +1156,7 @@ TEST_CASE_METHOD(
     instance.fragments.push_back(fragment0);
     instance.fragments.push_back(fragment1);
     instance.num_user_cells = num_user_cells;
+    instance.subarray = subarray;
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
     instance.array.allow_dups = true;
@@ -1169,8 +1172,9 @@ TEST_CASE_METHOD(
     rc::prop("rapidcheck fragment interleave", [doit]() {
       const size_t fragment_size = *rc::gen::inRange(2, 196);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      const auto subarray = *rc::make_subarray_1d(tdbrc::Domain<int>(1, 200));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
-          fragment_size, num_user_cells);
+          fragment_size, num_user_cells, subarray);
     });
   }
 
@@ -2335,8 +2339,9 @@ struct Arbitrary<FxRun1D> {
                     .coords = fragment.dim, .atts = std::get<0>(fragment.atts)};
               });
 
-          return gen::pair(
+          return gen::tuple(
               gen::just(dimension),
+              make_subarray_1d(dimension.domain),
               gen::nonEmpty(
                   gen::container<std::vector<FxFragment1D>>(fragment)));
         });
@@ -2344,11 +2349,15 @@ struct Arbitrary<FxRun1D> {
     auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
 
     return gen::apply(
-        [](std::pair<tdbrc::Dimension<int>, std::vector<FxFragment1D>>
-               fragments,
+        [](std::tuple<
+               tdbrc::Dimension<int>,
+               std::vector<tdbrc::Domain<int>>,
+               std::vector<FxFragment1D>> fragments,
            int num_user_cells) {
           FxRun1D instance;
-          std::tie(instance.array.dimension, instance.fragments) = fragments;
+          std::tie(
+              instance.array.dimension, instance.subarray, instance.fragments) =
+              fragments;
 
           instance.num_user_cells = num_user_cells;
           instance.array.allow_dups = true;
