@@ -171,6 +171,15 @@ class Range {
     set_str_range(s1, s2);
   }
 
+  template <typename T>
+  Range(const T& start, const T& end, const allocator_type& alloc = {})
+      : Range(
+            static_cast<const void*>(&start),
+            static_cast<const void*>(&end),
+            sizeof(T),
+            alloc) {
+  }
+
   /**
    * Construct from two values of a fixed size type.
    *
