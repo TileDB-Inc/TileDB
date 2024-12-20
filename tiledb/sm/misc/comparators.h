@@ -66,6 +66,26 @@ struct reverse_comparator {
   }
 };
 
+/**
+ * Generic comparator adapter which transforms a `int compare(a, b)` function
+ * into a `bool operator` which returns true if `a <= b`
+ * (whereas a typical comparator's `bool operator` returns true if `a < b`).
+ */
+template <typename Comparator>
+struct or_equal {
+  Comparator inner_;
+
+  template <typename... Args>
+  or_equal(Args&&... args)
+      : inner_(std::forward<Args>(args)...) {
+  }
+
+  template <typename L, typename R>
+  bool operator()(const L& a, const R& b) const {
+    return inner_.compare(a, b) <= 0;
+  }
+};
+
 }  // namespace stdx
 
 namespace tiledb::sm {

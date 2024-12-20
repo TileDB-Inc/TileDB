@@ -686,10 +686,15 @@ static bool can_complete_in_memory_budget(
         ->load_rtree(array->array()->get_encryption_key());
   }
 
-  auto tiles_size = [fragment_metadata](unsigned f, uint64_t t) {
+  auto tiles_size = [&](unsigned f, uint64_t t) {
+    using BitmapType = uint8_t;
     const size_t data_size = fragment_metadata[f]->tile_size("d", t);
-    const size_t rt_size = sizeof(sm::GlobalOrderResultTile<uint8_t>);
-    return data_size + rt_size;
+    const size_t rt_size = sizeof(sm::GlobalOrderResultTile<BitmapType>);
+    const size_t subarray_size =
+        (instance.subarray.empty() ?
+             0 :
+             fragment_metadata[f]->cell_num(t) * sizeof(BitmapType));
+    return data_size + rt_size + subarray_size;
   };
 
   sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
@@ -711,12 +716,35 @@ static bool can_complete_in_memory_budget(
         .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
     return reverseglobalcmp(l_mbr, r_mbr);
   };
-  auto cmp_lower_to_upper = [&](const RT& rtl, const RT& rtr) {
-    const sm::RangeLowerBound l_mbr = {
+
+  /**
+   * @return true if `rtl.upper < rtr.lower`, i.e. we can process
+   * the entirety of `rtl` before any of `rtr`
+   */
+  auto cmp_upper_to_lower = [&](const RT& rtl, const RT& rtr) {
+    const sm::RangeUpperBound l_mbr = {
         .mbr = fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_)};
-    const sm::RangeUpperBound r_mbr = {
+    const sm::RangeLowerBound r_mbr = {
         .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
-    return globalcmp(l_mbr, r_mbr);
+
+    int cmp;
+    if (instance.subarray.empty()) {
+      cmp = globalcmp.compare(l_mbr, r_mbr);
+    } else {
+      assert(instance.subarray.size() == 1);  // need to tweak this logic if not
+
+      const auto& subarray = instance.subarray[0];
+      if (subarray.upper_bound < *static_cast<const int*>(l_mbr.coord(0))) {
+        // in this case, the bitmap will filter out the other coords in the
+        // tile and it will be discarded
+        std::vector<Range> subarrayrange = {subarray.range()};
+        const sm::RangeUpperBound sub_mbr = {.mbr = subarrayrange};
+        cmp = globalcmp.compare(sub_mbr, r_mbr);
+      } else {
+        cmp = globalcmp.compare(l_mbr, r_mbr);
+      }
+    }
+    return cmp <= 0;
   };
 
   // order all tiles on their lower bound
@@ -724,8 +752,22 @@ static bool can_complete_in_memory_budget(
       mbr_lower_bound(cmp_pq_lower_bound);
   for (unsigned f = 0; f < instance.fragments.size(); f++) {
     for (uint64_t t = 0; t < fragment_metadata[f]->tile_num(); t++) {
-      mbr_lower_bound.push(
-          sm::ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+      if (instance.subarray.empty()) {
+        mbr_lower_bound.push(
+            sm::ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+      } else {
+        auto accept = [&](const auto& range) {
+          const auto& untyped_mbr = fragment_metadata[f]->mbr(t)[0];
+          const tdbrc::Domain<int> typed_mbr(
+              untyped_mbr.start_as<int>(), untyped_mbr.end_as<int>());
+          return range.intersects(typed_mbr);
+        };
+        if (std::any_of(
+                instance.subarray.begin(), instance.subarray.end(), accept)) {
+          mbr_lower_bound.push(
+              sm::ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+        }
+      }
     }
   }
 
@@ -738,14 +780,33 @@ static bool can_complete_in_memory_budget(
   const uint64_t coords_budget = std::stoi(instance.memory.total_budget_) *
                                  std::stod(instance.memory.ratio_coords_);
   uint64_t active_tile_size = 0;
-  while (!mbr_lower_bound.empty() && active_tile_size < coords_budget) {
-    auto next_rt = mbr_lower_bound.top();
-    mbr_lower_bound.pop();
+  uint64_t next_tile_size = 0;
+  while (active_tile_size + next_tile_size < coords_budget &&
+         !mbr_lower_bound.empty()) {
+    RT next_rt;
 
-    active_tile_size += tiles_size(next_rt.fragment_idx_, next_rt.tile_idx_);
-    mbr_upper_bound.push(next_rt);
+    // add new result tiles
+    while (!mbr_lower_bound.empty()) {
+      next_rt = mbr_lower_bound.top();
 
-    if (!cmp_lower_to_upper(next_rt, mbr_upper_bound.top())) {
+      next_tile_size = tiles_size(next_rt.fragment_idx_, next_rt.tile_idx_);
+      if (active_tile_size + next_tile_size <= coords_budget) {
+        mbr_lower_bound.pop();
+        active_tile_size += next_tile_size;
+        mbr_upper_bound.push(next_rt);
+      } else {
+        break;
+      }
+    }
+
+    if (mbr_lower_bound.empty()) {
+      break;
+    }
+
+    // emit from created result tiles, removing any which are exhausted
+    next_rt = mbr_lower_bound.top();
+    while (!mbr_upper_bound.empty() &&
+           cmp_upper_to_lower(mbr_upper_bound.top(), next_rt)) {
       auto finish_rt = mbr_upper_bound.top();
       mbr_upper_bound.pop();
       active_tile_size -=
@@ -1190,14 +1251,23 @@ TEST_CASE_METHOD(
 
     instance.num_user_cells = num_user_cells;
 
-    RCCATCH_THROWS(run_1d<tiledb::test::AsserterRapidcheck>(instance));
-
-    RCCATCH_REQUIRE(
-        !can_complete_in_memory_budget(ctx_, array_name_.c_str(), instance));
+    run_1d<Asserter>(instance);
   };
 
   SECTION("Example") {
     doit.operator()<tiledb::test::AsserterCatch>(16, 100, 64);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck many overlapping fragments", [doit]() {
+      const size_t num_fragments = *rc::gen::inRange(10, 24);
+      const size_t fragment_size = *rc::gen::inRange(2, 200 - 64);
+      // const size_t num_user_cells = *rc::gen::inRange(1, 1024 * 1024);
+      const size_t num_user_cells = 1024;
+      const auto subarray = *rc::make_subarray_1d(tdbrc::Domain<int>(1, 200));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          num_fragments, fragment_size, num_user_cells, subarray);
+    });
   }
 }
 
@@ -2169,11 +2239,12 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
                    "fragments in global order") != std::string::npos) {
         RCCATCH_REQUIRE(!can_complete_in_memory_budget(
             ctx_, array_name_.c_str(), instance));
+        tiledb_query_free(&query);
+        return;
       } else {
         RCCATCH_REQUIRE("" == err);
       }
     }
-    RCCATCH_REQUIRE("" == error_if_any(rc));
 
     tiledb_query_status_t status;
     rc = tiledb_query_get_status(ctx_, query, &status);
