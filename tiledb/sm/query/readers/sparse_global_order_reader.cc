@@ -1114,7 +1114,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
 
 template <class BitmapType>
 template <class CompType>
-bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
+AddNextCellResult SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     GlobalOrderResultCoords<BitmapType>& rc,
     std::vector<TileListIt>& result_tiles_it,
     const std::vector<ResultTilesList>& result_tiles,
@@ -1127,7 +1127,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
   // This would be because a cell after this one in the fragment was added to
   // the queue as it had the same coordinates as this one.
   if (!rc.has_next_) {
-    return false;
+    return AddNextCellResult::Done;
   }
 
   // Try the next cell in the same tile.
@@ -1162,11 +1162,11 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
       // This fragment has more tiles potentially.
       if (!tmp_read_state_.all_tiles_loaded(frag_idx)) {
         // Return we need more tiles.
-        return true;
+        return AddNextCellResult::NeedMoreTiles;
       }
 
       // All tiles processed, done.
-      return false;
+      return AddNextCellResult::Done;
     }
   }
 
@@ -1176,7 +1176,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     //  with timestamps if not all tiles are loaded.
     if (!dups && last_in_memory_cell_of_consolidated_fragment(
                      frag_idx, rc, result_tiles)) {
-      return true;
+      return AddNextCellResult::NeedMoreTiles;
     }
 
     // If the cell value exceeds the lower bound of the un-populated result
@@ -1207,7 +1207,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
           // 2) scenario where this does make progress because we
           //    finish a tile and thus gain budget to load the next one
 
-          return true;
+          return AddNextCellResult::MergeBound;
         }
       }
     }
@@ -1220,14 +1220,14 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
         fragment_metadata_[frag_idx]->has_timestamps()) {
       if (add_all_dups_to_queue(
               rc, result_tiles_it, result_tiles, tile_queue, to_delete)) {
-        return true;
+        return AddNextCellResult::NeedMoreTiles;
       }
     }
     tile_queue.emplace(std::move(rc));
   }
 
   // We don't need more tiles as a tile was found.
-  return false;
+  return AddNextCellResult::FoundCell;
 }
 
 template <class BitmapType>
@@ -1317,7 +1317,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
   TileMinHeap<CompType> tile_queue(cmp, std::move(container));
 
   // If any fragments needs to load more tiles.
-  bool need_more_tiles = false;
+  AddNextCellResult add_next_cell_result;
 
   // Tile iterators, per fragments.
   std::vector<TileListIt> rt_it(result_tiles.size());
@@ -1336,11 +1336,13 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
                   read_state_.frag_idx()[f].cell_idx_ :
                   0;
           GlobalOrderResultCoords rc(&*(rt_it[f]), cell_idx);
-          bool res = add_next_cell_to_queue(
+          auto res = add_next_cell_to_queue(
               rc, rt_it, result_tiles, tile_queue, to_delete);
           {
             std::unique_lock<std::mutex> ul(tile_queue_mutex_);
-            need_more_tiles |= res;
+            if (res == AddNextCellResult::NeedMoreTiles) {
+              add_next_cell_result = res;
+            }
           }
         }
 
@@ -1351,7 +1353,9 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
   // Process all elements.
   bool user_buffers_full = false;
-  while (!tile_queue.empty() && !need_more_tiles && num_cells > 0) {
+  while (!tile_queue.empty() &&
+         add_next_cell_result != AddNextCellResult::NeedMoreTiles &&
+         num_cells > 0) {
     auto to_process = tile_queue.top();
     auto tile = to_process.tile_;
     tile_queue.pop();
@@ -1411,13 +1415,13 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
         tile_queue.pop();
 
         // Put the next cell from the processed tile in the queue.
-        need_more_tiles = add_next_cell_to_queue(
+        add_next_cell_result = add_next_cell_to_queue(
             to_remove, rt_it, result_tiles, tile_queue, to_delete);
       } else {
         update_frag_idx(tile, to_process.pos_ + 1);
 
         // Put the next cell from the processed tile in the queue.
-        need_more_tiles = add_next_cell_to_queue(
+        add_next_cell_result = add_next_cell_to_queue(
             to_process, rt_it, result_tiles, tile_queue, to_delete);
 
         to_process = tile_queue.top();
@@ -1458,7 +1462,8 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
               fragment_metadata_[next_global_order_tile.fragment_idx_]->mbr(
                   next_global_order_tile.tile_idx_);
           RangeLowerBound global_order_lower_bound = {.mbr = emit_bound};
-          stdx::reverse_comparator<GlobalCellCmp> cmp(array_schema_.domain());
+          stdx::reverse_comparator<stdx::or_equal<GlobalCellCmp>> cmp(
+              stdx::or_equal<GlobalCellCmp>(array_schema_.domain()));
           if (tile_queue.empty()) {
             length = to_process.max_slab_length(global_order_lower_bound, cmp);
           } else if (cmp(tile_queue.top(), global_order_lower_bound)) {
@@ -1523,7 +1528,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
     }
 
     // Put the next cell in the queue.
-    need_more_tiles = add_next_cell_to_queue(
+    add_next_cell_result = add_next_cell_to_queue(
         to_process, rt_it, result_tiles, tile_queue, to_delete);
   }
 

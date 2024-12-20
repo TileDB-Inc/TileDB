@@ -53,6 +53,18 @@ namespace tiledb::sm {
 class Array;
 struct PreprocessTileMergeFuture;
 
+enum class AddNextCellResult {
+  // finished the current tile
+  Done,
+  // successfully added a cell to the queue
+  FoundCell,
+  // more tiles from the same fragment are needed to continue
+  NeedMoreTiles,
+  // this tile cannot continue because it would be out of order with
+  // un-created result tiles
+  MergeBound
+};
+
 /** Processes sparse global order read queries. */
 
 template <class BitmapType>
@@ -372,10 +384,10 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param tile_queue Queue of one result coords, per fragment, sorted.
    * @param to_delete List of tiles to delete.
    *
-   * @return If more tiles are needed.
+   * @return result of trying to add a cell
    */
   template <class CompType>
-  bool add_next_cell_to_queue(
+  AddNextCellResult add_next_cell_to_queue(
       GlobalOrderResultCoords<BitmapType>& rc,
       std::vector<TileListIt>& result_tiles_it,
       const std::vector<ResultTilesList>& result_tiles,

@@ -35,6 +35,8 @@
 #ifndef TILEDB_RAPIDCHECK_ARRAY_H
 #define TILEDB_RAPIDCHECK_ARRAY_H
 
+#include "tiledb/type/range/range.h"
+
 #include <test/support/tdb_rapidcheck.h>
 
 #include <algorithm>
@@ -79,6 +81,21 @@ struct Domain {
 
   bool contains(D point) const {
     return lower_bound <= point && point <= upper_bound;
+  }
+
+  bool intersects(const Domain<D>& other) const {
+    return (other.lower_bound <= lower_bound &&
+            lower_bound <= other.upper_bound) ||
+           (other.lower_bound <= upper_bound &&
+            upper_bound <= other.upper_bound) ||
+           (lower_bound <= other.lower_bound &&
+            other.lower_bound <= upper_bound) ||
+           (lower_bound <= other.upper_bound &&
+            other.upper_bound <= upper_bound);
+  }
+
+  tiledb::type::Range range() const {
+    return tiledb::type::Range(lower_bound, upper_bound);
   }
 };
 
