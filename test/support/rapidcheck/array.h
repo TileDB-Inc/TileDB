@@ -277,26 +277,6 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
   auto cells = gen::nonEmpty(gen::container<std::vector<Cell>>(cell));
 
   return gen::map(cells, [](std::vector<Cell> cells) {
-    /*
-  std::vector<D1> coords_d1;
-  std::vector<D2> coords_d2;
-  std::tuple<std::vector<Att>...> atts;
-
-  coords_d1.reserve(cells.size());
-  coords_d2.reserve(cells.size());
-  atts.reserve(cells.size())...;
-
-  for (uint64_t i = 0; i < cells.size(); i++) {
-    D1 coord_d1;
-    D2 coord_d2;
-    Att... att;
-    std::tie(coord_d1, coord_d2, att...) = cells[i];
-    coords_d1.push_back(coord_d1);
-    coords_d2.push_back(coord_d2);
-    atts.push_back(att)...;
-  }
-  */
-
     std::vector<D1> coords_d1;
     std::vector<D2> coords_d2;
     std::tuple<std::vector<Att>...> atts;
@@ -308,8 +288,6 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
           atts = std::make_tuple(tup_atts...);
         },
         stdx::transpose(cells));
-
-    //    std::tie(coords_d1, coords_d2, atts...) = stdx::transpose(cells);
 
     return Fragment2D<D1, D2, Att...>{
         .d1 = coords_d1, .d2 = coords_d2, .atts = atts};
