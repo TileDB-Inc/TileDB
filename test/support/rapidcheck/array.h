@@ -294,6 +294,11 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
   });
 }
 
+template <>
+void show<Domain<int>>(const Domain<int>& domain, std::ostream& os) {
+  os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
+}
+
 }  // namespace rc
 
 #endif
