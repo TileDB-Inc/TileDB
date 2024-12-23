@@ -37,6 +37,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/readers/result_tile.h"
@@ -58,6 +59,11 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
+using tiledb::sm::Datatype;
+using tiledb::test::tdbrc::AttributeType;
+using tiledb::test::tdbrc::DimensionType;
+using tiledb::test::tdbrc::FragmentType;
+
 namespace rc {
 Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
     const tdbrc::Domain<int>& domain);
@@ -74,6 +80,14 @@ Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
 struct FxFragment1D {
   std::vector<int> coords;
   std::vector<int> atts;
+
+  std::tuple<const std::vector<int>&> dimensions() const {
+    return std::tuple<const std::vector<int>&>(coords);
+  }
+
+  std::tuple<const std::vector<int>&> attributes() const {
+    return std::tuple<const std::vector<int>&>(atts);
+  }
 };
 
 struct MemoryBudget {
@@ -97,7 +111,7 @@ struct DefaultArray1DConfig {
   uint64_t capacity;
   bool allow_dups;
 
-  tdbrc::Dimension<int> dimension;
+  tdbrc::Dimension<Datatype::INT32> dimension;
 
   DefaultArray1DConfig()
       : capacity(2)
@@ -139,6 +153,15 @@ struct FxRun1D {
       }
       return false;
     }
+  }
+
+  std::tuple<const tdbrc::Dimension<Datatype::INT32>&> dimensions() const {
+    return std::tuple<const tdbrc::Dimension<Datatype::INT32>&>(
+        array.dimension);
+  }
+
+  std::tuple<Datatype> attributes() const {
+    return std::make_tuple(Datatype::INT32);
   }
 };
 
@@ -193,6 +216,13 @@ struct CApiArray {
   }
 };
 
+template <typename T>
+concept InstanceType = requires(const T& instance) {
+  instance.fragments;
+  instance.dimensions();
+  instance.attributes();
+};
+
 struct CSparseGlobalOrderFx {
   tiledb_ctx_t* ctx_ = nullptr;
   tiledb_vfs_t* vfs_ = nullptr;
@@ -212,6 +242,9 @@ struct CSparseGlobalOrderFx {
   template <typename Asserter = tiledb::test::AsserterCatch>
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
+
+  template <typename Asserter, FragmentType Fragment>
+  void write_fragment(const Fragment& fragment);
 
   void write_1d_fragment_strings(
       int* coords,
@@ -244,6 +277,9 @@ struct CSparseGlobalOrderFx {
       std::vector<int> subarray = {1, 10});
   void reset_config();
   void update_config();
+
+  template <typename Asserter, InstanceType Instance>
+  void create_array(const Instance& instance);
 
   /**
    * Runs an input against a fresh 1D array.
@@ -383,7 +419,7 @@ void CSparseGlobalOrderFx::create_default_array_1d(
     RCCATCH_REQUIRE("" == error_if_any(rc));
   }
 
-  create_array(
+  tiledb::test::create_array(
       ctx_,
       array_name_,
       TILEDB_SPARSE,
@@ -404,7 +440,7 @@ void CSparseGlobalOrderFx::create_default_array_1d(
 void CSparseGlobalOrderFx::create_default_array_1d_strings(bool allow_dups) {
   int domain[] = {1, 200};
   int tile_extent = 2;
-  create_array(
+  tiledb::test::create_array(
       ctx_,
       array_name_,
       TILEDB_SPARSE,
@@ -442,6 +478,115 @@ void CSparseGlobalOrderFx::write_1d_fragment(
   // Submit query.
   rc = tiledb_query_submit(ctx_, query);
   RCCATCH_REQUIRE("" == error_if_any(rc));
+
+  // Clean up.
+  tiledb_query_free(&query);
+}
+
+template <typename Asserter, FragmentType Fragment>
+void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
+  // Open array for writing.
+  CApiArray array(ctx_, array_name_.c_str(), TILEDB_WRITE);
+
+  const std::tuple<const std::vector<int>&> dimensions = fragment.dimensions();
+  const std::tuple<const std::vector<int>&> attributes = fragment.attributes();
+
+  // make field size locations
+  std::optional<uint64_t> num_cells;
+  auto make_field_size = [&num_cells]<typename T>(const std::vector<T>& field) {
+    const uint64_t field_size = field.size() * sizeof(T);
+    if (num_cells.has_value()) {
+      // precondition: each field must have the same number of cells
+      RCCATCH_REQUIRE(field.size() == num_cells.value());
+    } else {
+      num_cells.emplace(field.size());
+    }
+    return field_size;
+  };
+
+  std::tuple<uint64_t> dimension_sizes = std::apply(
+      [make_field_size]<typename... Ds>(const std::vector<Ds>&... dimension) {
+        return std::make_tuple(make_field_size(dimension)...);
+      },
+      dimensions);
+
+  std::tuple<uint64_t> attribute_sizes = std::apply(
+      [make_field_size]<typename... As>(const std::vector<As>&... attribute) {
+        return std::make_tuple(make_field_size(attribute)...);
+      },
+      attributes);
+
+  // Create the query.
+  tiledb_query_t* query;
+  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
+
+  auto set_data_buffer = [this, query]<typename T>(
+                             const std::string& name,
+                             const std::vector<T>& field,
+                             uint64_t& field_size) {
+    auto rc = tiledb_query_set_data_buffer(
+        ctx_, query, name.c_str(), const_cast<T*>(field.data()), &field_size);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
+  };
+
+  // add dimensions to query
+  uint64_t d = 1;
+  std::apply(
+      [&]<typename... Ds>(const std::vector<Ds>&... dimension) {
+        std::apply(
+            [&]<typename... Us>(Us&... dimension_size) {
+              (set_data_buffer(
+                   "d" + std::to_string(d++), dimension, dimension_size),
+               ...);
+            },
+            dimension_sizes);
+      },
+      dimensions);
+
+  // add attributes to query
+  uint64_t a = 1;
+  std::apply(
+      [&]<typename... As>(const std::vector<As>&... attribute) {
+        std::apply(
+            [&]<typename... Us>(Us&... attribute_size) {
+              (set_data_buffer(
+                   "a" + std::to_string(a++), attribute, attribute_size),
+               ...);
+            },
+            attribute_sizes);
+      },
+      attributes);
+
+  // Submit query.
+  rc = tiledb_query_submit(ctx_, query);
+  RCCATCH_REQUIRE("" == error_if_any(rc));
+
+  // check that sizes match what we expect
+  auto require_full_write =
+      []<typename T>(const std::vector<T>& field, uint64_t write_size) {
+        RCCATCH_REQUIRE(write_size == field.size() * sizeof(T));
+      };
+  std::apply(
+      [&]<typename... Ds>(const std::vector<Ds>&... dimension) {
+        std::apply(
+            [&]<typename... Us>(const Us&... dimension_size) {
+              (require_full_write(dimension, dimension_size), ...);
+            },
+            dimension_sizes);
+      },
+      dimensions);
+  std::apply(
+      [&]<typename... As>(const std::vector<As>&... attribute) {
+        std::apply(
+            [&]<typename... Us>(const Us&... attribute_size) {
+              (require_full_write(attribute, attribute_size), ...);
+            },
+            attribute_sizes);
+      },
+      attributes);
 
   // Clean up.
   tiledb_query_free(&query);
@@ -688,7 +833,7 @@ static bool can_complete_in_memory_budget(
 
   auto tiles_size = [&](unsigned f, uint64_t t) {
     using BitmapType = uint8_t;
-    const size_t data_size = fragment_metadata[f]->tile_size("d", t);
+    const size_t data_size = fragment_metadata[f]->tile_size("d1", t);
     const size_t rt_size = sizeof(sm::GlobalOrderResultTile<BitmapType>);
     const size_t subarray_size =
         (instance.subarray.empty() ?
@@ -2122,6 +2267,69 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 }
 
+template <typename Asserter, InstanceType Instance>
+void CSparseGlobalOrderFx::create_array(const Instance& instance) {
+  tiledb_object_t type;
+  auto rc = tiledb_object_type(ctx_, array_name_.c_str(), &type);
+  RCCATCH_REQUIRE(rc == TILEDB_OK);
+  if (type == TILEDB_ARRAY) {
+    rc = tiledb_array_delete(ctx_, array_name_.c_str());
+    RCCATCH_REQUIRE("" == error_if_any(rc));
+  }
+
+  const auto dimensions = instance.dimensions();
+  const auto attributes = instance.attributes();
+
+  std::vector<std::string> dimension_names;
+  std::vector<tiledb_datatype_t> dimension_types;
+  std::vector<void*> dimension_ranges;
+  std::vector<void*> dimension_extents;
+  auto add_dimension = [&]<Datatype D>(const tdbrc::Dimension<D>& dimension) {
+    using CoordType = tdbrc::Dimension<D>::value_type;
+    dimension_names.push_back("d" + std::to_string(dimension_names.size() + 1));
+    dimension_types.push_back(static_cast<tiledb_datatype_t>(D));
+    dimension_ranges.push_back(
+        const_cast<CoordType*>(&dimension.domain.lower_bound));
+    dimension_extents.push_back(const_cast<CoordType*>(&dimension.extent));
+  };
+  std::apply(
+      [&]<Datatype... Ds>(const tdbrc::Dimension<Ds>&... dimension) {
+        (add_dimension(dimension), ...);
+      },
+      dimensions);
+
+  std::vector<std::string> attribute_names;
+  std::vector<tiledb_datatype_t> attribute_types;
+  std::vector<uint32_t> attribute_cell_val_nums;
+  std::vector<std::pair<tiledb_filter_type_t, int>> attribute_compressors;
+  auto add_attribute = [&](Datatype attribute) {
+    attribute_names.push_back("a" + std::to_string(attribute_names.size() + 1));
+    attribute_types.push_back(static_cast<tiledb_datatype_t>(attribute));
+    attribute_cell_val_nums.push_back(1);
+    attribute_compressors.push_back(std::make_pair(TILEDB_FILTER_NONE, -1));
+  };
+  std::apply(
+      [&]<typename... As>(As... attribute) { (add_attribute(attribute), ...); },
+      attributes);
+
+  tiledb::test::create_array(
+      ctx_,
+      array_name_,
+      TILEDB_SPARSE,
+      dimension_names,
+      dimension_types,
+      dimension_ranges,
+      dimension_extents,
+      attribute_names,
+      attribute_types,
+      attribute_cell_val_nums,
+      attribute_compressors,
+      TILEDB_ROW_MAJOR,
+      TILEDB_ROW_MAJOR,
+      instance.array.capacity,
+      instance.array.allow_dups);
+}
+
 template <typename Asserter>
 void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   RCCATCH_REQUIRE(instance.num_user_cells > 0);
@@ -2132,20 +2340,12 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   update_config();
 
   // the tile extent is 2
-  create_default_array_1d<Asserter>(instance.array);
+  // create_default_array_1d<Asserter>(instance.array);
+  create_array<Asserter, decltype(instance)>(instance);
 
   // write all fragments
   for (auto& fragment : instance.fragments) {
-    uint64_t coords_size = sizeof(int) * fragment.coords.size();
-    uint64_t atts_size = sizeof(int) * fragment.atts.size();
-
-    // precondition: fragment must have the same number of cells for each field
-    RCCATCH_REQUIRE(coords_size == atts_size);
-
-    write_1d_fragment<Asserter>(
-        fragment.coords.data(), &coords_size, fragment.atts.data(), &atts_size);
-    RCCATCH_REQUIRE(coords_size == sizeof(int) * fragment.coords.size());
-    RCCATCH_REQUIRE(atts_size == sizeof(int) * fragment.atts.size());
+    write_fragment<Asserter, decltype(fragment)>(fragment);
   }
 
   std::vector<int> expectcoords;
@@ -2230,11 +2430,11 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     outcoords_size = outatts_size = instance.num_user_cells * sizeof(int);
 
     rc = tiledb_query_set_data_buffer(
-        ctx_, query, "a", &outatts[outcursor], &outatts_size);
-    RCCATCH_REQUIRE(rc == TILEDB_OK);
+        ctx_, query, "a1", &outatts[outcursor], &outatts_size);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
     rc = tiledb_query_set_data_buffer(
-        ctx_, query, "d", &outcoords[outcursor], &outcoords_size);
-    RCCATCH_REQUIRE(rc == TILEDB_OK);
+        ctx_, query, "d1", &outcoords[outcursor], &outcoords_size);
+    RCCATCH_REQUIRE("" == error_if_any(rc));
 
     rc = tiledb_query_submit(ctx_, query);
     {
@@ -2328,15 +2528,19 @@ Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
 template <>
 struct Arbitrary<FxRun1D> {
   static Gen<FxRun1D> arbitrary() {
-    auto dimension = gen::arbitrary<tdbrc::Dimension<int>>();
+    constexpr Datatype DimensionType = Datatype::INT32;
+    using CoordType = tiledb::type::datatype_traits<DimensionType>::value_type;
+
+    auto dimension = gen::arbitrary<tdbrc::Dimension<DimensionType>>();
 
     auto fragments =
-        gen::mapcat(dimension, [](tdbrc::Dimension<int> dimension) {
+        gen::mapcat(dimension, [](tdbrc::Dimension<DimensionType> dimension) {
           auto fragment = gen::map(
-              rc::make_fragment_1d<int, int>(dimension.domain),
-              [](tdbrc::Fragment1D<int, int> fragment) {
+              rc::make_fragment_1d<CoordType, int>(dimension.domain),
+              [](tdbrc::Fragment1D<CoordType, int> fragment) {
                 return FxFragment1D{
-                    .coords = fragment.dim, .atts = std::get<0>(fragment.atts)};
+                    .coords = fragment.dim_,
+                    .atts = std::get<0>(fragment.atts_)};
               });
 
           return gen::tuple(
@@ -2350,8 +2554,8 @@ struct Arbitrary<FxRun1D> {
 
     return gen::apply(
         [](std::tuple<
-               tdbrc::Dimension<int>,
-               std::vector<tdbrc::Domain<int>>,
+               tdbrc::Dimension<DimensionType>,
+               std::vector<tdbrc::Domain<CoordType>>,
                std::vector<FxFragment1D>> fragments,
            int num_user_cells) {
           FxRun1D instance;
