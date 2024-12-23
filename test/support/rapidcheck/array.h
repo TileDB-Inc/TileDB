@@ -35,6 +35,7 @@
 #ifndef TILEDB_RAPIDCHECK_ARRAY_H
 #define TILEDB_RAPIDCHECK_ARRAY_H
 
+#include "tiledb/type/datatype_traits.h"
 #include "tiledb/type/range/range.h"
 
 #include <test/support/tdb_rapidcheck.h>
@@ -62,6 +63,14 @@ concept DimensionType = requires(const D& coord) {
 template <typename T>
 concept AttributeType =
     requires(const T& coord) { typename ::rc::Arbitrary<T>; };
+
+template <typename T>
+concept FragmentType = requires(const T& fragment) {
+  // not sure how to specify "returns any tuple whose elements decay to
+  // std::vector"
+  fragment.dimensions();
+  fragment.attributes();
+};
 
 /**
  * A generic, statically-typed range which is inclusive on both ends.
@@ -102,10 +111,12 @@ struct Domain {
 /**
  * A description of a dimension as it pertains to its datatype.
  */
-template <DimensionType D>
+template <tiledb::sm::Datatype DATATYPE>
 struct Dimension {
-  Domain<D> domain;
-  D extent;
+  using value_type = tiledb::type::datatype_traits<DATATYPE>::value_type;
+
+  Domain<value_type> domain;
+  value_type extent;
 };
 
 /**
@@ -113,8 +124,20 @@ struct Dimension {
  */
 template <DimensionType D, AttributeType... Att>
 struct Fragment1D {
-  std::vector<D> dim;
-  std::tuple<std::vector<Att>...> atts;
+  std::vector<D> dim_;
+  std::tuple<std::vector<Att>...> atts_;
+
+  std::tuple<const std::vector<D>&> dimensions() const {
+    return std::tuple<const std::vector<D>&>(dim_);
+  }
+
+  std::tuple<const std::vector<Att>&...> attributes() const {
+    return std::apply(
+        [](const std::vector<Att>&... attribute) {
+          return std::tuple<const std::vector<Att>&...>(attribute...);
+        },
+        atts_);
+  }
 };
 
 /**
@@ -122,9 +145,22 @@ struct Fragment1D {
  */
 template <DimensionType D1, DimensionType D2, AttributeType... Att>
 struct Fragment2D {
-  std::vector<D1> d1;
-  std::vector<D2> d2;
-  std::tuple<std::vector<Att>...> atts;
+  std::vector<D1> d1_;
+  std::vector<D2> d2_;
+  std::tuple<std::vector<Att>...> atts_;
+
+  std::tuple<const std::vector<D1>&, const std::vector<D2>&> dimensions()
+      const {
+    return std::tuple<const std::vector<D1>&, const std::vector<D2>&>(d1_, d2_);
+  }
+
+  std::tuple<const std::vector<Att>&...> attributes() const {
+    return std::apply(
+        [](const std::vector<Att>&... attribute) {
+          return std::tuple<const std::vector<Att>&...>(attribute...);
+        },
+        atts_);
+  }
 };
 
 }  // namespace tiledb::test::tdbrc
@@ -212,15 +248,17 @@ Gen<D> make_extent(const Domain<D>& domain) {
   return gen::inRange(extent_lower_bound, extent_upper_bound + 1);
 }
 
-template <DimensionType D>
+template <tiledb::sm::Datatype D>
 struct Arbitrary<Dimension<D>> {
   static Gen<Dimension<D>> arbitrary() {
-    auto tup = gen::mapcat(gen::arbitrary<Domain<D>>(), [](Domain<D> domain) {
-      return gen::pair(gen::just(domain), make_extent(domain));
-    });
+    using CoordType = Dimension<D>::value_type;
+    auto tup = gen::mapcat(
+        gen::arbitrary<Domain<CoordType>>(), [](Domain<CoordType> domain) {
+          return gen::pair(gen::just(domain), make_extent(domain));
+        });
 
-    return gen::map(tup, [](std::pair<Domain<D>, D> tup) {
-      return Dimension{.domain = tup.first, .extent = tup.second};
+    return gen::map(tup, [](std::pair<Domain<CoordType>, CoordType> tup) {
+      return Dimension<D>{.domain = tup.first, .extent = tup.second};
     });
   }
 };
@@ -277,7 +315,7 @@ Gen<Fragment1D<D, Att...>> make_fragment_1d(const Domain<D>& d) {
         },
         stdx::transpose(cells));
 
-    return Fragment1D<D, Att...>{.dim = coords, .atts = atts};
+    return Fragment1D<D, Att...>{.dim_ = coords, .atts_ = atts};
   });
 }
 
