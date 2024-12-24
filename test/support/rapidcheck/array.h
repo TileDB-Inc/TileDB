@@ -42,6 +42,7 @@
 
 #include <algorithm>
 #include <concepts>
+#include <span>
 #include <type_traits>
 
 namespace tiledb::test::tdbrc {
@@ -66,6 +67,8 @@ concept AttributeType =
 
 template <typename T>
 concept FragmentType = requires(const T& fragment) {
+  { fragment.size() } -> std::convertible_to<uint64_t>;
+
   // not sure how to specify "returns any tuple whose elements decay to
   // std::vector"
   fragment.dimensions();
@@ -127,6 +130,10 @@ struct Fragment1D {
   std::vector<D> dim_;
   std::tuple<std::vector<Att>...> atts_;
 
+  uint64_t size() const {
+    return dim_.size();
+  }
+
   std::tuple<const std::vector<D>&> dimensions() const {
     return std::tuple<const std::vector<D>&>(dim_);
   }
@@ -148,6 +155,10 @@ struct Fragment2D {
   std::vector<D1> d1_;
   std::vector<D2> d2_;
   std::tuple<std::vector<Att>...> atts_;
+
+  uint64_t size() const {
+    return d1_.size();
+  }
 
   std::tuple<const std::vector<D1>&, const std::vector<D2>&> dimensions()
       const {
@@ -186,6 +197,57 @@ std::tuple<std::vector<Ts>...> transpose(std::vector<std::tuple<Ts...>> rows) {
   }
 
   return cols;
+}
+
+template <typename... Ts>
+std::tuple<const Ts&...> reference_tuple(const std::tuple<Ts...>& tuple) {
+  return std::apply(
+      [](const Ts&... field) { return std::forward_as_tuple(field...); },
+      tuple);
+}
+
+template <typename... Ts>
+void extend(
+    std::tuple<std::vector<Ts>&...>& dest,
+    std::tuple<const std::vector<Ts>&...> src) {
+  std::apply(
+      [&](std::vector<Ts>&... dest_col) {
+        std::apply(
+            [&](const std::vector<Ts>&... src_col) {
+              (dest_col.reserve(dest_col.size() + src_col.size()), ...);
+              (dest_col.insert(dest_col.end(), src_col.begin(), src_col.end()),
+               ...);
+            },
+            src);
+      },
+      dest);
+}
+
+template <typename... Ts>
+std::tuple<std::vector<Ts>...> select(
+    std::tuple<const std::vector<Ts>&...> records,
+    std::span<const uint64_t> idxs) {
+  std::tuple<std::vector<Ts>...> selected;
+
+  auto select_into = [&idxs]<typename T>(
+                         std::vector<T>& dest, std::span<const T> src) {
+    dest.reserve(idxs.size());
+    for (auto i : idxs) {
+      dest.push_back(src[i]);
+    }
+  };
+
+  std::apply(
+      [&](std::vector<Ts>&... sel) {
+        std::apply(
+            [&](const std::vector<Ts>&... col) {
+              (select_into.template operator()<Ts>(sel, std::span(col)), ...);
+            },
+            records);
+      },
+      selected);
+
+  return selected;
 }
 
 }  // namespace stdx

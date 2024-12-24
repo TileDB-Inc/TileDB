@@ -81,8 +81,20 @@ struct FxFragment1D {
   std::vector<int> coords;
   std::vector<int> atts;
 
+  uint64_t size() const {
+    return coords.size();
+  }
+
+  std::tuple<std::vector<int>&> dimensions() {
+    return std::tuple<std::vector<int>&>(coords);
+  }
+
   std::tuple<const std::vector<int>&> dimensions() const {
     return std::tuple<const std::vector<int>&>(coords);
+  }
+
+  std::tuple<std::vector<int>&> attributes() {
+    return std::tuple<std::vector<int>&>(atts);
   }
 
   std::tuple<const std::vector<int>&> attributes() const {
@@ -142,10 +154,11 @@ struct FxRun1D {
   DefaultArray1DConfig array;
   MemoryBudget memory;
 
-  bool accept_coord(int coord) const {
+  bool accept(const FxFragment1D& fragment, int record) const {
     if (subarray.empty()) {
       return true;
     } else {
+      const int coord = fragment.coords[record];
       for (const auto& range : subarray) {
         if (range.contains(coord)) {
           return true;
@@ -219,6 +232,7 @@ struct CApiArray {
 template <typename T>
 concept InstanceType = requires(const T& instance) {
   instance.fragments;
+  instance.subarray;
   instance.dimensions();
   instance.attributes();
 };
@@ -2348,31 +2362,34 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     write_fragment<Asserter, decltype(fragment)>(fragment);
   }
 
-  std::vector<int> expectcoords;
-  std::vector<int> expectatts;
+  std::decay_t<decltype(instance.fragments[0])> expect;
   for (const auto& fragment : instance.fragments) {
+    auto expect_dimensions = expect.dimensions();
+    auto expect_attributes = expect.attributes();
+
     if (instance.subarray.empty()) {
-      expectcoords.reserve(expectcoords.size() + fragment.coords.size());
-      expectatts.reserve(expectatts.size() + fragment.atts.size());
-      expectcoords.insert(
-          expectcoords.end(), fragment.coords.begin(), fragment.coords.end());
-      expectatts.insert(
-          expectatts.end(), fragment.atts.begin(), fragment.atts.end());
+      stdx::extend(expect_dimensions, fragment.dimensions());
+      stdx::extend(expect_attributes, fragment.attributes());
     } else {
-      std::vector<uint64_t> passing_idxs;
-      for (uint64_t i = 0; i < fragment.coords.size(); i++) {
-        if (instance.accept_coord(fragment.coords[i])) {
-          passing_idxs.push_back(i);
+      std::vector<uint64_t> accept;
+      for (uint64_t i = 0; i < fragment.size(); i++) {
+        if (instance.accept(fragment, i)) {
+          accept.push_back(i);
         }
       }
-      expectcoords.reserve(expectcoords.size() + passing_idxs.size());
-      expectatts.reserve(expectatts.size() + passing_idxs.size());
-      for (const uint64_t i : passing_idxs) {
-        expectcoords.push_back(fragment.coords[i]);
-        expectatts.push_back(fragment.atts[i]);
-      }
+      const auto fdimensions =
+          stdx::select(fragment.dimensions(), std::span(accept));
+      const auto fattributes =
+          stdx::select(fragment.attributes(), std::span(accept));
+      stdx::extend(expect_dimensions, stdx::reference_tuple(fdimensions));
+      stdx::extend(expect_attributes, stdx::reference_tuple(fattributes));
     }
   }
+
+  std::vector<int> expectcoords;
+  std::vector<int> expectatts;
+  std::tie(expectcoords) = expect.dimensions();
+  std::tie(expectatts) = expect.attributes();
 
   // sort for naive comparison
   {
