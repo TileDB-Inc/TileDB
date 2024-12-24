@@ -317,13 +317,13 @@ struct CSparseGlobalOrderFx {
   } while (0)
 
 template <typename CAPIReturn>
-std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
+std::string error_if_any(tiledb_ctx_t* ctx, CAPIReturn apirc) {
   if (apirc == TILEDB_OK) {
     return "";
   }
 
   tiledb_error_t* error = NULL;
-  auto rc = tiledb_ctx_get_last_error(ctx_, &error);
+  auto rc = tiledb_ctx_get_last_error(ctx, &error);
   REQUIRE(rc == TILEDB_OK);
   if (error == nullptr) {
     // probably should be unreachable
@@ -335,6 +335,11 @@ std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
   REQUIRE(rc == TILEDB_OK);
 
   return std::string(msg);
+}
+
+template <typename CAPIReturn>
+std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
+  return ::error_if_any(ctx_, apirc);
 }
 
 CSparseGlobalOrderFx::CSparseGlobalOrderFx() {
@@ -497,6 +502,89 @@ void CSparseGlobalOrderFx::write_1d_fragment(
   tiledb_query_free(&query);
 }
 
+template <typename Asserter, typename... Ts>
+struct query_applicator {
+  static auto make_field_sizes(
+      const std::tuple<Ts&...> fields,
+      uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+    std::optional<uint64_t> num_cells;
+    auto make_field_size = [&]<typename T>(const std::vector<T>& field) {
+      const uint64_t field_cells = std::min(cell_limit, field.size());
+      const uint64_t field_size = field_cells * sizeof(T);
+      if (num_cells.has_value()) {
+        // precondition: each field must have the same number of cells
+        RCCATCH_REQUIRE(field_cells == num_cells.value());
+      } else {
+        num_cells.emplace(field_cells);
+      }
+      return field_size;
+    };
+
+    return std::apply(
+        [make_field_size](const auto&... field) {
+          return std::make_tuple(make_field_size(field)...);
+        },
+        fields);
+  }
+
+  static void set(
+      tiledb_ctx_t* ctx,
+      tiledb_query_t* query,
+      auto& field_sizes,
+      std::tuple<Ts&...> fields,
+      const char* basename,
+      uint64_t cell_offset = 0) {
+    auto set_data_buffer =
+        [&](const std::string& name, auto& field, uint64_t& field_size) {
+          auto ptr = const_cast<void*>(
+              static_cast<const void*>(&field.data()[cell_offset]));
+          auto rc = tiledb_query_set_data_buffer(
+              ctx, query, name.c_str(), ptr, &field_size);
+          RCCATCH_REQUIRE("" == error_if_any(ctx, rc));
+        };
+
+    uint64_t d = 1;
+    std::apply(
+        [&](const auto&... field) {
+          std::apply(
+              [&]<typename... Us>(Us&... field_size) {
+                (set_data_buffer(
+                     basename + std::to_string(d++), field, field_size),
+                 ...);
+              },
+              field_sizes);
+        },
+        fields);
+  }
+
+  static uint64_t num_cells(const auto& fields, const auto& field_sizes) {
+    std::optional<uint64_t> num_cells;
+
+    auto check_field = [&]<typename T>(
+                           const std::vector<T>& field, uint64_t field_size) {
+      RCCATCH_REQUIRE(field_size % sizeof(T) == 0);
+      RCCATCH_REQUIRE(field_size <= field.size() * sizeof(T));
+      if (num_cells.has_value()) {
+        RCCATCH_REQUIRE(num_cells.value() == field_size / sizeof(T));
+      } else {
+        num_cells.emplace(field_size / sizeof(T));
+      }
+    };
+
+    std::apply(
+        [&](const auto&... field) {
+          std::apply(
+              [&]<typename... Us>(const auto&... field_size) {
+                (check_field(field, field_size), ...);
+              },
+              field_sizes);
+        },
+        fields);
+
+    return num_cells.value();
+  }
+};
+
 template <typename Asserter, FragmentType Fragment>
 void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   // Open array for writing.
@@ -506,29 +594,12 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   const auto attributes = fragment.attributes();
 
   // make field size locations
-  std::optional<uint64_t> num_cells;
-  auto make_field_size = [&num_cells]<typename T>(const std::vector<T>& field) {
-    const uint64_t field_size = field.size() * sizeof(T);
-    if (num_cells.has_value()) {
-      // precondition: each field must have the same number of cells
-      RCCATCH_REQUIRE(field.size() == num_cells.value());
-    } else {
-      num_cells.emplace(field.size());
-    }
-    return field_size;
-  };
-
-  auto dimension_sizes = std::apply(
-      [make_field_size]<typename... Ds>(const std::vector<Ds>&... dimension) {
-        return std::make_tuple(make_field_size(dimension)...);
-      },
-      dimensions);
-
-  auto attribute_sizes = std::apply(
-      [make_field_size]<typename... As>(const std::vector<As>&... attribute) {
-        return std::make_tuple(make_field_size(attribute)...);
-      },
-      attributes);
+  auto dimension_sizes = []<typename... Ds>(std::tuple<Ds...> dimensions) {
+    return query_applicator<Asserter, Ds...>::make_field_sizes(dimensions);
+  }(dimensions);
+  auto attribute_sizes = []<typename... As>(std::tuple<As...> attributes) {
+    return query_applicator<Asserter, As...>::make_field_sizes(attributes);
+  }(attributes);
 
   // Create the query.
   tiledb_query_t* query;
@@ -537,70 +608,33 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   RCCATCH_REQUIRE(rc == TILEDB_OK);
 
-  auto set_data_buffer = [this, query]<typename T>(
-                             const std::string& name,
-                             const std::vector<T>& field,
-                             uint64_t& field_size) {
-    auto rc = tiledb_query_set_data_buffer(
-        ctx_, query, name.c_str(), const_cast<T*>(field.data()), &field_size);
-    RCCATCH_REQUIRE("" == error_if_any(rc));
-  };
-
   // add dimensions to query
-  uint64_t d = 1;
-  std::apply(
-      [&]<typename... Ds>(const std::vector<Ds>&... dimension) {
-        std::apply(
-            [&]<typename... Us>(Us&... dimension_size) {
-              (set_data_buffer(
-                   "d" + std::to_string(d++), dimension, dimension_size),
-               ...);
-            },
-            dimension_sizes);
-      },
-      dimensions);
+  [&]<typename... Ds>(std::tuple<Ds...> dims) {
+    query_applicator<Asserter, Ds...>::set(
+        ctx_, query, dimension_sizes, dims, "d");
+  }(dimensions);
 
   // add attributes to query
-  uint64_t a = 1;
-  std::apply(
-      [&]<typename... As>(const std::vector<As>&... attribute) {
-        std::apply(
-            [&]<typename... Us>(Us&... attribute_size) {
-              (set_data_buffer(
-                   "a" + std::to_string(a++), attribute, attribute_size),
-               ...);
-            },
-            attribute_sizes);
-      },
-      attributes);
+  [&]<typename... As>(std::tuple<As...> atts) {
+    query_applicator<Asserter, As...>::set(
+        ctx_, query, attribute_sizes, atts, "a");
+  }(attributes);
 
   // Submit query.
   rc = tiledb_query_submit(ctx_, query);
   RCCATCH_REQUIRE("" == error_if_any(rc));
 
   // check that sizes match what we expect
-  auto require_full_write =
-      []<typename T>(const std::vector<T>& field, uint64_t write_size) {
-        RCCATCH_REQUIRE(write_size == field.size() * sizeof(T));
-      };
-  std::apply(
-      [&]<typename... Ds>(const std::vector<Ds>&... dimension) {
-        std::apply(
-            [&]<typename... Us>(const Us&... dimension_size) {
-              (require_full_write(dimension, dimension_size), ...);
-            },
-            dimension_sizes);
-      },
-      dimensions);
-  std::apply(
-      [&]<typename... As>(const std::vector<As>&... attribute) {
-        std::apply(
-            [&]<typename... Us>(const Us&... attribute_size) {
-              (require_full_write(attribute, attribute_size), ...);
-            },
-            attribute_sizes);
-      },
-      attributes);
+  const uint64_t expect_num_cells = fragment.size();
+  const uint64_t dim_num_cells = [&]<typename... Ds>(auto dims) {
+    return query_applicator<Asserter, Ds...>::num_cells(dims, dimension_sizes);
+  }(dimensions);
+  const uint64_t att_num_cells = [&]<typename... As>(auto atts) {
+    return query_applicator<Asserter, As...>::num_cells(atts, attribute_sizes);
+  }(attributes);
+
+  RCCATCH_REQUIRE(dim_num_cells == expect_num_cells);
+  RCCATCH_REQUIRE(att_num_cells == expect_num_cells);
 
   // Clean up.
   tiledb_query_free(&query);
@@ -2435,25 +2469,38 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   }
 
   // Prepare output buffer
-  std::vector<int> outcoords;
-  std::vector<int> outatts;
-  for (const auto& fragment : instance.fragments) {
-    outcoords.resize(outcoords.size() + fragment.coords.size(), 0);
-    outatts.resize(outatts.size() + fragment.atts.size(), 0);
-  }
+  std::decay_t<decltype(instance.fragments[0])> out;
 
+  auto outdims = out.dimensions();
+  auto outatts = out.attributes();
+  std::apply(
+      [&](auto&... field) {
+        (field.resize(std::max(1UL, expectcoords.size()), 0), ...);
+      },
+      std::tuple_cat(outdims, outatts));
+
+  // Query loop
   uint64_t outcursor = 0;
   while (true) {
-    uint64_t outcoords_size;
-    uint64_t outatts_size;
-    outcoords_size = outatts_size = instance.num_user_cells * sizeof(int);
+    // make field size locations
+    auto dimension_sizes = [&]<typename... Ds>(std::tuple<Ds...> outdims) {
+      return query_applicator<Asserter, Ds...>::make_field_sizes(
+          outdims, instance.num_user_cells);
+    }(outdims);
+    auto attribute_sizes = [&]<typename... As>(std::tuple<As...> outdims) {
+      return query_applicator<Asserter, As...>::make_field_sizes(
+          outdims, instance.num_user_cells);
+    }(outatts);
 
-    rc = tiledb_query_set_data_buffer(
-        ctx_, query, "a1", &outatts[outcursor], &outatts_size);
-    RCCATCH_REQUIRE("" == error_if_any(rc));
-    rc = tiledb_query_set_data_buffer(
-        ctx_, query, "d1", &outcoords[outcursor], &outcoords_size);
-    RCCATCH_REQUIRE("" == error_if_any(rc));
+    // add fields to query
+    [&]<typename... Ds>(std::tuple<Ds...> dims) {
+      query_applicator<Asserter, Ds...>::set(
+          ctx_, query, dimension_sizes, dims, "d", outcursor);
+    }(outdims);
+    [&]<typename... As>(std::tuple<As...> atts) {
+      query_applicator<Asserter, As...>::set(
+          ctx_, query, attribute_sizes, atts, "a", outcursor);
+    }(outatts);
 
     rc = tiledb_query_submit(ctx_, query);
     {
@@ -2473,16 +2520,24 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     rc = tiledb_query_get_status(ctx_, query, &status);
     RCCATCH_REQUIRE(rc == TILEDB_OK);
 
-    if (outcoords_size < instance.num_user_cells * sizeof(int)) {
+    const uint64_t dim_num_cells = [&]<typename... Ds>(auto dims) {
+      return query_applicator<Asserter, Ds...>::num_cells(
+          dims, dimension_sizes);
+    }(outdims);
+    const uint64_t att_num_cells = [&]<typename... As>(auto atts) {
+      return query_applicator<Asserter, As...>::num_cells(
+          atts, attribute_sizes);
+    }(outatts);
+
+    RCCATCH_REQUIRE(dim_num_cells == att_num_cells);
+
+    if (dim_num_cells < instance.num_user_cells) {
       RCCATCH_REQUIRE(status == TILEDB_COMPLETED);
     } else {
-      RCCATCH_REQUIRE(outcoords_size == instance.num_user_cells * sizeof(int));
+      RCCATCH_REQUIRE(dim_num_cells == instance.num_user_cells);
     }
-    RCCATCH_REQUIRE(outcoords_size % sizeof(int) == 0);
-    outcursor += outcoords_size / sizeof(int);
 
-    // since they are the same data type
-    RCCATCH_REQUIRE(outatts_size == outcoords_size);
+    outcursor += dim_num_cells;
 
     if (status == TILEDB_COMPLETED) {
       break;
@@ -2492,15 +2547,20 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   // Clean up.
   tiledb_query_free(&query);
 
-  outcoords.resize(outcursor);
-  outatts.resize(outcursor);
+  std::apply(
+      [outcursor](auto&... outfield) { (outfield.resize(outcursor), ...); },
+      std::tuple_cat(outdims, outatts));
 
-  RCCATCH_REQUIRE(expectcoords == outcoords);
+  std::vector<int> outcoords, outa1;
+  std::tie(outcoords) = outdims;
+  std::tie(outa1) = outatts;
+
+  RCCATCH_REQUIRE(expect.dimensions() == out.dimensions());
 
   // Checking attributes is more complicated because equal coords
   // can manifest their attributes in any order.
   // Identify the runs of equal coords and then compare using those
-  RCCATCH_REQUIRE(expectatts.size() == outatts.size());
+  RCCATCH_REQUIRE(expectatts.size() == outa1.size());
   int attcursor = 0;
   int runlength = 1;
   for (size_t i = 1; i < expectcoords.size(); i++) {
@@ -2511,7 +2571,7 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
           expectatts.begin() + attcursor,
           expectatts.begin() + attcursor + runlength);
       std::set<int> outattsrun(
-          outatts.begin() + attcursor, outatts.begin() + attcursor + runlength);
+          outa1.begin() + attcursor, outa1.begin() + attcursor + runlength);
       RCCATCH_REQUIRE(expectattsrun == outattsrun);
       attcursor += runlength;
       runlength = 1;
