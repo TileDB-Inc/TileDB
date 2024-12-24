@@ -502,8 +502,8 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   // Open array for writing.
   CApiArray array(ctx_, array_name_.c_str(), TILEDB_WRITE);
 
-  const std::tuple<const std::vector<int>&> dimensions = fragment.dimensions();
-  const std::tuple<const std::vector<int>&> attributes = fragment.attributes();
+  const auto dimensions = fragment.dimensions();
+  const auto attributes = fragment.attributes();
 
   // make field size locations
   std::optional<uint64_t> num_cells;
@@ -518,13 +518,13 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
     return field_size;
   };
 
-  std::tuple<uint64_t> dimension_sizes = std::apply(
+  auto dimension_sizes = std::apply(
       [make_field_size]<typename... Ds>(const std::vector<Ds>&... dimension) {
         return std::make_tuple(make_field_size(dimension)...);
       },
       dimensions);
 
-  std::tuple<uint64_t> attribute_sizes = std::apply(
+  auto attribute_sizes = std::apply(
       [make_field_size]<typename... As>(const std::vector<As>&... attribute) {
         return std::make_tuple(make_field_size(attribute)...);
       },
