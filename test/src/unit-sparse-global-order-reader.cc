@@ -2386,30 +2386,32 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
     }
   }
 
+  // sort for naive comparison
+  {
+    std::vector<uint64_t> idxs(expect.size());
+    std::iota(idxs.begin(), idxs.end(), 0);
+
+    std::sort(idxs.begin(), idxs.end(), [&](uint64_t ia, uint64_t ib) -> bool {
+      return std::apply(
+          [ia, ib]<typename... Ts>(const std::vector<Ts>&... dims) {
+            const auto l = {dims[ia]...};
+            const auto r = {dims[ib]...};
+            return std::lexicographical_compare(
+                l.begin(), l.end(), r.begin(), r.end());
+          },
+          expect.dimensions());
+    });
+
+    expect.dimensions() = stdx::select(
+        stdx::reference_tuple(expect.dimensions()), std::span(idxs));
+    expect.attributes() = stdx::select(
+        stdx::reference_tuple(expect.attributes()), std::span(idxs));
+  }
+
   std::vector<int> expectcoords;
   std::vector<int> expectatts;
   std::tie(expectcoords) = expect.dimensions();
   std::tie(expectatts) = expect.attributes();
-
-  // sort for naive comparison
-  {
-    std::vector<int> idxs(expectcoords.size());
-    std::iota(idxs.begin(), idxs.end(), 0);
-
-    std::sort(idxs.begin(), idxs.end(), [&](int ia, int ib) -> bool {
-      return expectcoords[ia] < expectcoords[ib];
-    });
-
-    std::vector<int> sortatts;
-    sortatts.reserve(idxs.size());
-    for (const auto i : idxs) {
-      sortatts.push_back(expectatts[i]);
-    }
-    RCCATCH_REQUIRE(sortatts.size() == expectatts.size());
-    expectatts = sortatts;
-
-    std::sort(expectcoords.begin(), expectcoords.end());
-  }
 
   // Open array for reading.
   CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
