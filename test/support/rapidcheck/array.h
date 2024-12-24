@@ -200,9 +200,12 @@ std::tuple<std::vector<Ts>...> transpose(std::vector<std::tuple<Ts...>> rows) {
 }
 
 template <typename... Ts>
-std::tuple<const Ts&...> reference_tuple(const std::tuple<Ts...>& tuple) {
+std::tuple<const std::decay_t<Ts>&...> reference_tuple(
+    const std::tuple<Ts...>& tuple) {
   return std::apply(
-      [](const Ts&... field) { return std::forward_as_tuple(field...); },
+      [](const std::decay_t<Ts>&... field) {
+        return std::forward_as_tuple(field...);
+      },
       tuple);
 }
 
