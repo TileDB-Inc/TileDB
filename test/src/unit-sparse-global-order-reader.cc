@@ -141,7 +141,7 @@ struct DefaultArray1DConfig {
 };
 
 /**
- * An instance of input to `CSparseGlobalOrderFx::run_1d`
+ * An instance of one-dimension array input to `CSparseGlobalOrderFx::run`
  */
 struct FxRun1D {
   uint64_t num_user_cells;
@@ -296,12 +296,12 @@ struct CSparseGlobalOrderFx {
   void create_array(const Instance& instance);
 
   /**
-   * Runs an input against a fresh 1D array.
+   * Runs an input against a fresh array.
    * Inserts fragments one at a time, then reads them back in global order
    * and checks that what we read out matches what we put in.
    */
-  template <typename Asserter>
-  void run_1d(FxRun1D instance);
+  template <typename Asserter, InstanceType Instance>
+  void run(Instance instance);
 
   template <typename CAPIReturn>
   std::string error_if_any(CAPIReturn apirc) const;
@@ -1282,7 +1282,7 @@ TEST_CASE_METHOD(
 
     instance.subarray = subarray;
 
-    run_1d<Asserter>(instance);
+    run<Asserter, FxRun1D>(instance);
   };
 
   SECTION("Example") {
@@ -1354,7 +1354,7 @@ TEST_CASE_METHOD(
     instance.memory.ratio_array_data_ = "0.5";
     instance.array.allow_dups = true;
 
-    run_1d<Asserter>(instance);
+    run<Asserter, FxRun1D>(instance);
   };
 
   SECTION("Example") {
@@ -1448,7 +1448,7 @@ TEST_CASE_METHOD(
 
     instance.num_user_cells = num_user_cells;
 
-    run_1d<Asserter>(instance);
+    run<Asserter, FxRun1D>(instance);
   };
 
   SECTION("Example") {
@@ -2378,8 +2378,8 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
       instance.array.allow_dups);
 }
 
-template <typename Asserter>
-void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
+template <typename Asserter, InstanceType Instance>
+void CSparseGlobalOrderFx::run(Instance instance) {
   RCCATCH_REQUIRE(instance.num_user_cells > 0);
 
   reset_config();
@@ -2719,7 +2719,7 @@ TEST_CASE_METHOD(
     "[sparse-global-order]") {
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck arbitrary 1d", [this](FxRun1D instance) {
-      run_1d<tiledb::test::AsserterRapidcheck>(instance);
+      run<tiledb::test::AsserterRapidcheck, FxRun1D>(instance);
     });
   }
 }
@@ -2745,7 +2745,7 @@ TEST_CASE_METHOD(
 
   // NB: `Rapidcheck` just throws a normal exception,
   // we are not actually in a rapidcheck context.
-  REQUIRE_THROWS(run_1d<tiledb::test::AsserterRapidcheck>(instance));
+  REQUIRE_THROWS(run<tiledb::test::AsserterRapidcheck, FxRun1D>(instance));
 
   tiledb_error_t* error = NULL;
   auto rc = tiledb_ctx_get_last_error(ctx_, &error);
