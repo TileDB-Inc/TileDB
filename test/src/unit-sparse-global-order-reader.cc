@@ -2555,24 +2555,37 @@ void CSparseGlobalOrderFx::run_1d(FxRun1D instance) {
   std::tie(outcoords) = outdims;
   std::tie(outa1) = outatts;
 
-  RCCATCH_REQUIRE(expect.dimensions() == out.dimensions());
+  RCCATCH_REQUIRE(expect.dimensions() == outdims);
 
   // Checking attributes is more complicated because equal coords
   // can manifest their attributes in any order.
   // Identify the runs of equal coords and then compare using those
-  RCCATCH_REQUIRE(expectatts.size() == outa1.size());
-  int attcursor = 0;
-  int runlength = 1;
-  for (size_t i = 1; i < expectcoords.size(); i++) {
-    if (expectcoords[i] == expectcoords[i - 1]) {
+  size_t attcursor = 0;
+  size_t runlength = 1;
+  for (size_t i = 1; i < out.size(); i++) {
+    if (std::apply(
+            [&](const auto&... outdim) {
+              return (... && (outdim[i] == outdim[i - 1]));
+            },
+            outdims)) {
       runlength++;
     } else {
-      std::set<int> expectattsrun(
-          expectatts.begin() + attcursor,
-          expectatts.begin() + attcursor + runlength);
-      std::set<int> outattsrun(
-          outa1.begin() + attcursor, outa1.begin() + attcursor + runlength);
-      RCCATCH_REQUIRE(expectattsrun == outattsrun);
+      auto viewtuple = [&](const auto& atttuple, size_t i) {
+        return std::apply(
+            [&](const auto&... att) { return std::make_tuple(att[i]...); },
+            atttuple);
+      };
+
+      std::set<decltype(viewtuple(outatts, 0))> outattsrun;
+      std::set<decltype(viewtuple(outatts, 0))> expectattsrun;
+
+      for (size_t j = attcursor; j < attcursor + runlength; j++) {
+        outattsrun.insert(viewtuple(outatts, j));
+        expectattsrun.insert(viewtuple(expect.attributes(), j));
+      }
+
+      RCCATCH_REQUIRE(outattsrun == expectattsrun);
+
       attcursor += runlength;
       runlength = 1;
     }
