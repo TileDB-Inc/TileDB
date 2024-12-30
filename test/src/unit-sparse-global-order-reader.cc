@@ -2611,18 +2611,24 @@ void CSparseGlobalOrderFx::run(Instance instance) {
     }
   }
 
+  // Open array for reading.
+  CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
+
   // sort for naive comparison
   {
     std::vector<uint64_t> idxs(expect.size());
     std::iota(idxs.begin(), idxs.end(), 0);
 
+    sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
+
     std::sort(idxs.begin(), idxs.end(), [&](uint64_t ia, uint64_t ib) -> bool {
       return std::apply(
-          [ia, ib]<typename... Ts>(const std::vector<Ts>&... dims) {
-            const auto l = {dims[ia]...};
-            const auto r = {dims[ib]...};
-            return std::lexicographical_compare(
-                l.begin(), l.end(), r.begin(), r.end());
+          [&globalcmp, ia, ib]<typename... Ts>(const std::vector<Ts>&... dims) {
+            const auto l = std::make_tuple(dims[ia]...);
+            const auto r = std::make_tuple(dims[ib]...);
+            return globalcmp(
+                tdbrc::global_cell_cmp_std_tuple<decltype(l)>(l),
+                tdbrc::global_cell_cmp_std_tuple<decltype(r)>(r));
           },
           expect.dimensions());
     });
@@ -2632,9 +2638,6 @@ void CSparseGlobalOrderFx::run(Instance instance) {
     expect.attributes() = stdx::select(
         stdx::reference_tuple(expect.attributes()), std::span(idxs));
   }
-
-  // Open array for reading.
-  CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
 
   // Create query
   tiledb_query_t* query;
