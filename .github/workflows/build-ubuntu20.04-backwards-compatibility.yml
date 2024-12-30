@@ -43,7 +43,7 @@ jobs:
 
       # Save the tiledb_unit binary for use in the next step
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tiledb_unit
           path: ${{ github.workspace }}/build/test/tiledb_unit
@@ -66,7 +66,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Download a single artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: tiledb_unit
           path: ${{ github.workspace }}/build/test/
