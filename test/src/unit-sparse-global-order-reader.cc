@@ -2849,6 +2849,29 @@ struct Arbitrary<FxRun1D> {
   }
 };
 
+Gen<std::vector<std::pair<
+    std::optional<tdbrc::Domain<int>>,
+    std::optional<tdbrc::Domain<int>>>>>
+make_subarray_2d(const tdbrc::Domain<int>& d1, const tdbrc::Domain<int>& d2) {
+  // NB: multi-range subarray is not supported (yet?) for global order read
+
+  return gen::apply(
+      [](auto d1, auto d2) {
+        std::optional<typename decltype(d1)::ValueType> d1opt;
+        std::optional<typename decltype(d2)::ValueType> d2opt;
+        if (d1) {
+          d1opt.emplace(*d1);
+        }
+        if (d2) {
+          d2opt.emplace(*d2);
+        }
+        return std::vector<std::pair<decltype(d1opt), decltype(d2opt)>>{
+            std::make_pair(d1opt, d2opt)};
+      },
+      gen::maybe(rc::make_range<int>(d1)),
+      gen::maybe(rc::make_range(d2)));
+}
+
 template <>
 struct Arbitrary<FxRun2D> {
   static Gen<FxRun2D> arbitrary() {
@@ -2873,6 +2896,7 @@ struct Arbitrary<FxRun2D> {
       return gen::tuple(
           gen::just(dimensions.first),
           gen::just(dimensions.second),
+          make_subarray_2d(dimensions.first.domain, dimensions.second.domain),
           gen::nonEmpty(
               gen::container<std::vector<FxRun2D::FragmentType>>(fragment)));
     });
@@ -2882,7 +2906,9 @@ struct Arbitrary<FxRun2D> {
     return gen::apply(
         [](auto fragments, int num_user_cells) {
           FxRun2D instance;
-          std::tie(instance.d1, instance.d2, instance.fragments) = fragments;
+          std::tie(
+              instance.d1, instance.d2, instance.subarray, instance.fragments) =
+              fragments;
 
           // TODO: capacity, subarray
           instance.num_user_cells = num_user_cells;
