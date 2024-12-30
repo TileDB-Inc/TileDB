@@ -186,6 +186,7 @@ jobs:
             });
             const globber = await glob.create('dist/**/*');
             for await (const file of globber.globGenerator()) {
+              console.log(`Uploading file: ${file}`);
               await github.rest.repos.uploadReleaseAsset({
                 owner: repo.owner,
                 repo: repo.repo,
