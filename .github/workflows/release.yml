@@ -168,7 +168,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           pattern: '*'
-          merge-multiple: true
           path: dist
       - name: DEBUG
         run: |
