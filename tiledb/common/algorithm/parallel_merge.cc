@@ -53,7 +53,7 @@ ParallelMergeFuture::~ParallelMergeFuture() {
   // data which is contractually expected to outlive `this`,
   // but makes no guarantee after that
   while (true) {
-    const auto m = merge_cursor_;
+    [[maybe_unused]] const auto m = merge_cursor_;
     try {
       if (!await().has_value()) {
         break;
