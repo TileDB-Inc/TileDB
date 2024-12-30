@@ -2967,6 +2967,65 @@ void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
   os << "}";
 }
 
+template <>
+void show<FxRun2D>(const FxRun2D& instance, std::ostream& os) {
+  size_t f = 0;
+
+  os << "{" << std::endl;
+  os << "\t\"fragments\": [" << std::endl;
+  for (const auto& fragment : instance.fragments) {
+    os << "\t\t{" << std::endl;
+    os << "\t\t\t\"d1\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(fragment.d1_, os);
+    os << std::endl;
+    os << "\t\t\t\"d2\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(fragment.d2_, os);
+    os << std::endl;
+    os << "\t\t\t], " << std::endl;
+    os << "\t\t\t\"atts\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(std::get<0>(fragment.atts_), os);
+    os << std::endl;
+    os << "\t\t\t] " << std::endl;
+    os << "\t\t}";
+    if ((f++) + 1 < instance.fragments.size()) {
+      os << ", " << std::endl;
+    } else {
+      os << std::endl;
+    }
+  }
+  os << "\t]," << std::endl;
+  os << "\t\"num_user_cells\": " << instance.num_user_cells << std::endl;
+  os << "\t\"array\": {" << std::endl;
+  os << "\t\t\"allow_dups\": " << instance.allow_dups << std::endl;
+  os << "\t\t\"dimensions\": [" << std::endl;
+  os << "\t\t\t{" << std::endl;
+  os << "\t\t\t\t\"domain\": [" << instance.d1.domain.lower_bound << ", "
+     << instance.d1.domain.upper_bound << "]," << std::endl;
+  os << "\t\t\t\t\"extent\": " << instance.d1.extent << "," << std::endl;
+  os << "\t\t\t}," << std::endl;
+  os << "\t\t\t{" << std::endl;
+  os << "\t\t\t\t\"domain\": [" << instance.d2.domain.lower_bound << ", "
+     << instance.d2.domain.upper_bound << "]," << std::endl;
+  os << "\t\t\t\t\"extent\": " << instance.d2.extent << "," << std::endl;
+  os << "\t\t\t}" << std::endl;
+  os << "\t\t]" << std::endl;
+
+  os << "\t}," << std::endl;
+  os << "\t\"memory\": {" << std::endl;
+  os << "\t\t\"total_budget\": " << instance.memory.total_budget_ << ", "
+     << std::endl;
+  os << "\t\t\"ratio_tile_ranges\": " << instance.memory.ratio_tile_ranges_
+     << ", " << std::endl;
+  os << "\t\t\"ratio_array_data\": " << instance.memory.ratio_array_data_
+     << ", " << std::endl;
+  os << "\t\t\"ratio_coords\": " << instance.memory.ratio_coords_ << std::endl;
+  os << "\t}" << std::endl;
+  os << "}";
+}
+
 }  // namespace rc
 
 TEST_CASE_METHOD(
