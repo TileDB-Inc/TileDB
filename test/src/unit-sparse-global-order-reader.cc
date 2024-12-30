@@ -69,6 +69,14 @@ Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
     const tdbrc::Domain<int>& domain);
 }
 
+#define RETURN_IF_ERR(thing) \
+  do {                       \
+    auto rc = (thing);       \
+    if (rc != TILEDB_OK) {   \
+      return rc;             \
+    }                        \
+  } while (0)
+
 /* ********************************* */
 /*         STRUCT DEFINITION         */
 /* ********************************* */
@@ -144,8 +152,9 @@ struct DefaultArray1DConfig {
  * An instance of one-dimension array input to `CSparseGlobalOrderFx::run`
  */
 struct FxRun1D {
+  using FragmentType = FxFragment1D;
   uint64_t num_user_cells;
-  std::vector<FxFragment1D> fragments;
+  std::vector<FragmentType> fragments;
 
   // NB: for now this always has length 1, global order query does not
   // support multi-range subarray
@@ -154,7 +163,25 @@ struct FxRun1D {
   DefaultArray1DConfig array;
   MemoryBudget memory;
 
-  bool accept(const FxFragment1D& fragment, int record) const {
+  uint64_t tile_capacity() const {
+    return array.capacity;
+  }
+
+  bool allow_duplicates() const {
+    return array.allow_dups;
+  }
+
+  template <typename Asserter>
+  capi_return_t apply_subarray(
+      tiledb_ctx_t* ctx, tiledb_subarray_t* subarray) const {
+    for (const auto& range : this->subarray) {
+      RETURN_IF_ERR(tiledb_subarray_add_range(
+          ctx, subarray, 0, &range.lower_bound, &range.upper_bound, nullptr));
+    }
+    return TILEDB_OK;
+  }
+
+  bool accept(const FragmentType& fragment, int record) const {
     if (subarray.empty()) {
       return true;
     } else {
@@ -179,9 +206,172 @@ struct FxRun1D {
            std::any_of(subarray.begin(), subarray.end(), accept);
   }
 
+  sm::NDRange clamp(const sm::NDRange& mbr) const {
+    if (subarray.empty()) {
+      return mbr;
+    }
+    assert(subarray.size() == 1);
+    if (subarray[0].upper_bound < mbr[0].end_as<int>()) {
+      // in this case, the bitmap will filter out the other coords in the
+      // tile and it will be discarded
+      return std::vector<type::Range>{subarray[0].range()};
+    } else {
+      return mbr;
+    }
+  }
+
   std::tuple<const tdbrc::Dimension<Datatype::INT32>&> dimensions() const {
     return std::tuple<const tdbrc::Dimension<Datatype::INT32>&>(
         array.dimension);
+  }
+
+  std::tuple<Datatype> attributes() const {
+    return std::make_tuple(Datatype::INT32);
+  }
+};
+
+struct FxRun2D {
+  using Coord0Type = int;
+  using Coord1Type = int;
+  using FragmentType = tdbrc::Fragment2D<Coord0Type, Coord1Type, int>;
+
+  std::vector<FragmentType> fragments;
+  std::vector<std::pair<
+      std::optional<tdbrc::Domain<Coord0Type>>,
+      std::optional<tdbrc::Domain<Coord1Type>>>>
+      subarray;
+
+  size_t num_user_cells;
+
+  uint64_t capacity;
+  bool allow_dups;
+  tdbrc::Dimension<Datatype::INT32> d1;
+  tdbrc::Dimension<Datatype::INT32> d2;
+
+  MemoryBudget memory;
+
+  FxRun2D()
+      : num_user_cells(8)
+      , capacity(64)
+      , allow_dups(true) {
+    d1.domain = tdbrc::Domain<int>(1, 200);
+    d1.extent = 8;
+    d2.domain = tdbrc::Domain<int>(1, 200);
+    d2.extent = 8;
+  }
+
+  uint64_t tile_capacity() const {
+    return capacity;
+  }
+
+  bool allow_duplicates() const {
+    return allow_dups;
+  }
+
+  template <typename Asserter>
+  capi_return_t apply_subarray(
+      tiledb_ctx_t* ctx, tiledb_subarray_t* subarray) const {
+    for (const auto& range : this->subarray) {
+      if (range.first.has_value()) {
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx,
+            subarray,
+            0,
+            &range.first->lower_bound,
+            &range.first->upper_bound,
+            nullptr));
+      } else {
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx,
+            subarray,
+            0,
+            &d1.domain.lower_bound,
+            &d1.domain.upper_bound,
+            nullptr));
+      }
+      if (range.second.has_value()) {
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx,
+            subarray,
+            1,
+            &range.second->lower_bound,
+            &range.second->upper_bound,
+            nullptr));
+      } else {
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx,
+            subarray,
+            1,
+            &d2.domain.lower_bound,
+            &d2.domain.upper_bound,
+            nullptr));
+      }
+    }
+    return TILEDB_OK;
+  }
+
+  bool accept(const FragmentType& fragment, int record) const {
+    if (subarray.empty()) {
+      return true;
+    } else {
+      const int r = fragment.d1_[record], c = fragment.d2_[record];
+      for (const auto& range : subarray) {
+        if (range.first.has_value() && !range.first->contains(r)) {
+          continue;
+        } else if (range.second.has_value() && !range.second->contains(c)) {
+          continue;
+        } else {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  bool intersects(const sm::NDRange& mbr) const {
+    if (subarray.empty()) {
+      return true;
+    }
+
+    const tdbrc::Domain<Coord0Type> typed_domain0(
+        mbr[0].start_as<Coord0Type>(), mbr[0].end_as<Coord0Type>());
+    const tdbrc::Domain<Coord0Type> typed_domain1(
+        mbr[1].start_as<Coord1Type>(), mbr[1].end_as<Coord1Type>());
+
+    for (const auto& range : subarray) {
+      if (range.first.has_value() && !range.first->intersects(typed_domain0)) {
+        continue;
+      } else if (
+          range.second.has_value() &&
+          !range.second->intersects(typed_domain1)) {
+        continue;
+      } else {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  sm::NDRange clamp(const sm::NDRange& mbr) const {
+    sm::NDRange clamped = mbr;
+    for (const auto& range : subarray) {
+      if (range.first.has_value() &&
+          range.first->upper_bound < clamped[0].end_as<Coord0Type>()) {
+        clamped[0].set_end_fixed(&range.first->upper_bound);
+      }
+      if (range.second.has_value() &&
+          range.second->upper_bound < clamped[1].end_as<Coord1Type>()) {
+        clamped[1].set_end_fixed(&range.second->upper_bound);
+      }
+    }
+    return clamped;
+  }
+
+  using CoordsRefType = std::tuple<
+      const tdbrc::Dimension<Datatype::INT32>&,
+      const tdbrc::Dimension<Datatype::INT32>&>;
+  CoordsRefType dimensions() const {
+    return CoordsRefType(d1, d2);
   }
 
   std::tuple<Datatype> attributes() const {
@@ -242,10 +432,18 @@ struct CApiArray {
 
 template <typename T>
 concept InstanceType = requires(const T& instance) {
+  { instance.tile_capacity() } -> std::convertible_to<uint64_t>;
+  { instance.allow_duplicates() } -> std::same_as<bool>;
+
+  { instance.num_user_cells } -> std::convertible_to<size_t>;
+
   instance.fragments;
+  instance.memory;
   instance.subarray;
   instance.dimensions();
   instance.attributes();
+
+  // also `accept(Self::FragmentType, int)`, unclear how to represent that
 };
 
 struct CSparseGlobalOrderFx {
@@ -935,28 +1133,13 @@ static bool can_complete_in_memory_budget(
    * the entirety of `rtl` before any of `rtr`
    */
   auto cmp_upper_to_lower = [&](const RT& rtl, const RT& rtr) {
-    const sm::RangeUpperBound l_mbr = {
-        .mbr = fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_)};
+    const auto rtl_mbr_clamped = instance.clamp(
+        fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_));
+    const sm::RangeUpperBound l_mbr = {.mbr = rtl_mbr_clamped};
     const sm::RangeLowerBound r_mbr = {
         .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
 
-    int cmp;
-    if (instance.subarray.empty()) {
-      cmp = globalcmp.compare(l_mbr, r_mbr);
-    } else {
-      assert(instance.subarray.size() == 1);  // need to tweak this logic if not
-
-      const auto& subarray = instance.subarray[0];
-      if (subarray.upper_bound < *static_cast<const int*>(l_mbr.coord(0))) {
-        // in this case, the bitmap will filter out the other coords in the
-        // tile and it will be discarded
-        std::vector<Range> subarrayrange = {subarray.range()};
-        const sm::RangeUpperBound sub_mbr = {.mbr = subarrayrange};
-        cmp = globalcmp.compare(sub_mbr, r_mbr);
-      } else {
-        cmp = globalcmp.compare(l_mbr, r_mbr);
-      }
-    }
+    const int cmp = globalcmp.compare(l_mbr, r_mbr);
     return cmp <= 0;
   };
 
@@ -1416,7 +1599,7 @@ TEST_CASE_METHOD(
  */
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
-    "Sparse global order reader: many overlapping fragments",
+    "Sparse global order reader: fragment wide overlap",
     "[sparse-global-order]") {
   auto doit = [this]<typename Asserter>(
                   size_t num_fragments,
@@ -2382,8 +2565,8 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
       attribute_compressors,
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      instance.array.capacity,
-      instance.array.allow_dups);
+      instance.tile_capacity(),
+      instance.allow_duplicates());
 }
 
 template <typename Asserter, InstanceType Instance>
@@ -2450,11 +2633,6 @@ void CSparseGlobalOrderFx::run(Instance instance) {
         stdx::reference_tuple(expect.attributes()), std::span(idxs));
   }
 
-  std::vector<int> expectcoords;
-  std::vector<int> expectatts;
-  std::tie(expectcoords) = expect.dimensions();
-  std::tie(expectatts) = expect.attributes();
-
   // Open array for reading.
   CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
 
@@ -2468,10 +2646,7 @@ void CSparseGlobalOrderFx::run(Instance instance) {
   if (!instance.subarray.empty()) {
     tiledb_subarray_t* subarray;
     TRY(tiledb_subarray_alloc(ctx_, array, &subarray));
-    for (const auto& range : instance.subarray) {
-      TRY(tiledb_subarray_add_range(
-          ctx_, subarray, 0, &range.lower_bound, &range.upper_bound, nullptr));
-    }
+    TRY(instance.template apply_subarray<Asserter>(ctx_, subarray));
     TRY(tiledb_query_set_subarray_t(ctx_, query, subarray));
     tiledb_subarray_free(&subarray);
   }
@@ -2483,7 +2658,7 @@ void CSparseGlobalOrderFx::run(Instance instance) {
   auto outatts = out.attributes();
   std::apply(
       [&](auto&... field) {
-        (field.resize(std::max(1UL, expectcoords.size()), 0), ...);
+        (field.resize(std::max(1UL, expect.size()), 0), ...);
       },
       std::tuple_cat(outdims, outatts));
 
@@ -2558,10 +2733,6 @@ void CSparseGlobalOrderFx::run(Instance instance) {
   std::apply(
       [outcursor](auto&... outfield) { (outfield.resize(outcursor), ...); },
       std::tuple_cat(outdims, outatts));
-
-  std::vector<int> outcoords, outa1;
-  std::tie(outcoords) = outdims;
-  std::tie(outa1) = outatts;
 
   RCCATCH_REQUIRE(expect.dimensions() == outdims);
 
@@ -2674,6 +2845,52 @@ struct Arbitrary<FxRun1D> {
 };
 
 template <>
+struct Arbitrary<FxRun2D> {
+  static Gen<FxRun2D> arbitrary() {
+    constexpr Datatype Dim0Type = Datatype::INT32;
+    constexpr Datatype Dim1Type = Datatype::INT32;
+    using Coord0Type = FxRun2D::Coord0Type;
+    using Coord1Type = FxRun2D::Coord1Type;
+
+    static_assert(std::is_same_v<
+                  tiledb::type::datatype_traits<Dim0Type>::value_type,
+                  Coord0Type>);
+    static_assert(std::is_same_v<
+                  tiledb::type::datatype_traits<Dim1Type>::value_type,
+                  Coord1Type>);
+
+    auto d0 = gen::arbitrary<tdbrc::Dimension<Dim0Type>>();
+    auto d1 = gen::arbitrary<tdbrc::Dimension<Dim1Type>>();
+
+    auto fragments = gen::mapcat(gen::pair(d0, d1), [](auto dimensions) {
+      auto fragment = rc::make_fragment_2d<Coord0Type, Coord1Type, int>(
+          dimensions.first.domain, dimensions.second.domain);
+      return gen::tuple(
+          gen::just(dimensions.first),
+          gen::just(dimensions.second),
+          gen::nonEmpty(
+              gen::container<std::vector<FxRun2D::FragmentType>>(fragment)));
+    });
+
+    auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
+
+    return gen::apply(
+        [](auto fragments, int num_user_cells) {
+          FxRun2D instance;
+          std::tie(instance.d1, instance.d2, instance.fragments) = fragments;
+
+          // TODO: capacity, subarray
+          instance.num_user_cells = num_user_cells;
+          instance.allow_dups = true;
+
+          return instance;
+        },
+        fragments,
+        num_user_cells);
+  }
+};
+
+template <>
 void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
   size_t f = 0;
 
@@ -2728,6 +2945,17 @@ TEST_CASE_METHOD(
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck arbitrary 1d", [this](FxRun1D instance) {
       run<tiledb::test::AsserterRapidcheck, FxRun1D>(instance);
+    });
+  }
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: rapidcheck 2d",
+    "[sparse-global-order]") {
+  SECTION("rapidcheck") {
+    rc::prop("rapidcheck arbitrary 2d", [this](FxRun2D instance) {
+      run<tiledb::test::AsserterRapidcheck>(instance);
     });
   }
 }

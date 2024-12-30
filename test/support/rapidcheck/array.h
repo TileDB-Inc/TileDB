@@ -73,6 +73,10 @@ concept FragmentType = requires(const T& fragment) {
   // std::vector"
   fragment.dimensions();
   fragment.attributes();
+} and requires(T& fragment) {
+  // non-const versions
+  fragment.dimensions();
+  fragment.attributes();
 };
 
 /**
@@ -165,10 +169,22 @@ struct Fragment2D {
     return std::tuple<const std::vector<D1>&, const std::vector<D2>&>(d1_, d2_);
   }
 
+  std::tuple<std::vector<D1>&, std::vector<D2>&> dimensions() {
+    return std::tuple<std::vector<D1>&, std::vector<D2>&>(d1_, d2_);
+  }
+
   std::tuple<const std::vector<Att>&...> attributes() const {
     return std::apply(
         [](const std::vector<Att>&... attribute) {
           return std::tuple<const std::vector<Att>&...>(attribute...);
+        },
+        atts_);
+  }
+
+  std::tuple<std::vector<Att>&...> attributes() {
+    return std::apply(
+        [](std::vector<Att>&... attribute) {
+          return std::tuple<std::vector<Att>&...>(attribute...);
         },
         atts_);
   }
@@ -410,7 +426,7 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
         stdx::transpose(cells));
 
     return Fragment2D<D1, D2, Att...>{
-        .d1 = coords_d1, .d2 = coords_d2, .atts = atts};
+        .d1_ = coords_d1, .d2_ = coords_d2, .atts_ = atts};
   });
 }
 
