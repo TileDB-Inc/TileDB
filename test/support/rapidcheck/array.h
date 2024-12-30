@@ -45,7 +45,42 @@
 #include <span>
 #include <type_traits>
 
+namespace tiledb::sm {
+class Dimension;
+}
+
 namespace tiledb::test::tdbrc {
+
+template <typename StdTuple>
+struct global_cell_cmp_std_tuple {
+  global_cell_cmp_std_tuple(const StdTuple& tup)
+      : tup_(tup) {
+  }
+
+  tiledb::common::UntypedDatumView dimension_datum(
+      const tiledb::sm::Dimension&, unsigned dim_idx) const {
+    return std::apply(
+        [&](const auto&... field) {
+          size_t sizes[] = {sizeof(std::decay_t<decltype(field)>)...};
+          const void* const ptrs[] = {
+              static_cast<const void*>(std::addressof(field))...};
+          return UntypedDatumView(ptrs[dim_idx], sizes[dim_idx]);
+        },
+        tup_);
+  }
+
+  const void* coord(unsigned dim) const {
+    return std::apply(
+        [&](const auto&... field) {
+          const void* const ptrs[] = {
+              static_cast<const void*>(std::addressof(field))...};
+          return ptrs[dim];
+        },
+        tup_);
+  }
+
+  const StdTuple& tup_;
+};
 
 /**
  * Describes types which can be used for rapidcheck-generated dimensions.
