@@ -136,6 +136,9 @@ jobs:
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
 
+  Build-R-Binaries:
+    uses: ./.github/workflows/build-rtools40.yml
+
   Test-Release-Artifacts:
     needs:
       - Package-Binary-Release
@@ -157,14 +160,19 @@ jobs:
     needs:
       - Test-Release-Artifacts
       - Package-Source-Release
+      - Build-R-Binaries
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v3
         with:
-          name: release
+          pattern: *
+          merge-multiple: true
           path: dist
+      - name: DEBUG
+        run: |
+          ls dist/
       - name: Publish release artifacts
         uses: actions/github-script@v6
         with:
