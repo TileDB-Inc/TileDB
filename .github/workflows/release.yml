@@ -171,7 +171,7 @@ jobs:
           path: dist
       - name: DEBUG
         run: |
-          ls dist/
+          ls -R dist/
       - name: Publish release artifacts
         uses: actions/github-script@v6
         with:
@@ -184,7 +184,7 @@ jobs:
               repo: repo.repo,
               tag: "${{ github.ref_name }}"
             });
-            const globber = await glob.create('dist/*');
+            const globber = await glob.create('dist/**/*');
             for await (const file of globber.globGenerator()) {
               await github.rest.repos.uploadReleaseAsset({
                 owner: repo.owner,
