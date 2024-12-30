@@ -168,6 +168,17 @@ struct FxRun1D {
     }
   }
 
+  bool intersects(const sm::NDRange& mbr) const {
+    auto accept = [&](const auto& range) {
+      const auto& untyped_mbr = mbr[0];
+      const tdbrc::Domain<int> typed_mbr(
+          untyped_mbr.start_as<int>(), untyped_mbr.end_as<int>());
+      return range.intersects(typed_mbr);
+    };
+    return subarray.empty() ||
+           std::any_of(subarray.begin(), subarray.end(), accept);
+  }
+
   std::tuple<const tdbrc::Dimension<Datatype::INT32>&> dimensions() const {
     return std::tuple<const tdbrc::Dimension<Datatype::INT32>&>(
         array.dimension);
@@ -867,8 +878,9 @@ int32_t CSparseGlobalOrderFx::read_strings(
  *
  * *there are ways to get around this but they are not implemented.
  */
+template <InstanceType Instance>
 static bool can_complete_in_memory_budget(
-    tiledb_ctx_t* ctx, const char* array_uri, const FxRun1D& instance) {
+    tiledb_ctx_t* ctx, const char* array_uri, const Instance& instance) {
   CApiArray array(ctx, array_uri, TILEDB_READ);
 
   // TODO: verify that the conditions for the error are correct
@@ -881,7 +893,15 @@ static bool can_complete_in_memory_budget(
 
   auto tiles_size = [&](unsigned f, uint64_t t) {
     using BitmapType = uint8_t;
-    const size_t data_size = fragment_metadata[f]->tile_size("d1", t);
+
+    size_t data_size = 0;
+    for (size_t d = 0;
+         d < std::tuple_size<decltype(instance.dimensions())>::value;
+         d++) {
+      data_size +=
+          fragment_metadata[f]->tile_size("d" + std::to_string(d + 1), t);
+    }
+
     const size_t rt_size = sizeof(sm::GlobalOrderResultTile<BitmapType>);
     const size_t subarray_size =
         (instance.subarray.empty() ?
@@ -945,21 +965,9 @@ static bool can_complete_in_memory_budget(
       mbr_lower_bound(cmp_pq_lower_bound);
   for (unsigned f = 0; f < instance.fragments.size(); f++) {
     for (uint64_t t = 0; t < fragment_metadata[f]->tile_num(); t++) {
-      if (instance.subarray.empty()) {
+      if (instance.intersects(fragment_metadata[f]->mbr(t))) {
         mbr_lower_bound.push(
             sm::ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
-      } else {
-        auto accept = [&](const auto& range) {
-          const auto& untyped_mbr = fragment_metadata[f]->mbr(t)[0];
-          const tdbrc::Domain<int> typed_mbr(
-              untyped_mbr.start_as<int>(), untyped_mbr.end_as<int>());
-          return range.intersects(typed_mbr);
-        };
-        if (std::any_of(
-                instance.subarray.begin(), instance.subarray.end(), accept)) {
-          mbr_lower_bound.push(
-              sm::ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
-        }
       }
     }
   }
