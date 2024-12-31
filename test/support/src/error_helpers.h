@@ -91,4 +91,3 @@ std::string error_if_any(tiledb_ctx_t* ctx, CAPIReturn apirc) {
 }  // namespace tiledb::test
 
 #endif
-
