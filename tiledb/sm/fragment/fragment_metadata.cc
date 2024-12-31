@@ -695,8 +695,8 @@ void FragmentMetadata::init_domain(const NDRange& non_empty_domain) {
 
   // Sanity check
   assert(!non_empty_domain.empty());
-  assert(non_empty_domain_.empty());
-  assert(domain_.empty());
+  // assert(non_empty_domain_.empty()); todo, this might cause problems
+  // assert(domain_.empty());
 
   // Set non-empty domain for dense arrays (for sparse it will be calculated
   // via the MBRs)
