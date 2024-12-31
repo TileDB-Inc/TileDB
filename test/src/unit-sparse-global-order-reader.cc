@@ -2648,8 +2648,11 @@ void CSparseGlobalOrderFx::run(Instance instance) {
       const auto err = error_if_any(rc);
       if (err.find("Cannot load enough tiles to emit results from all "
                    "fragments in global order") != std::string::npos) {
-        RCCATCH_REQUIRE(!can_complete_in_memory_budget(
-            ctx_, array_name_.c_str(), instance));
+        if (!vfs_test_setup_.is_rest()) {
+          // skip for REST since we will not have access to tile sizes
+          RCCATCH_REQUIRE(!can_complete_in_memory_budget(
+              ctx_, array_name_.c_str(), instance));
+        }
         tiledb_query_free(&query);
         return;
       } else if (err.find("Cannot load tile offsets") != std::string::npos) {
@@ -2684,6 +2687,7 @@ void CSparseGlobalOrderFx::run(Instance instance) {
     }
 
     outcursor += dim_num_cells;
+    REQUIRE(outcursor <= expect.size());
 
     if (status == TILEDB_COMPLETED) {
       break;
@@ -2734,8 +2738,11 @@ void CSparseGlobalOrderFx::run(Instance instance) {
   }
 
   // lastly, check the correctness of our memory budgeting function
-  RCCATCH_REQUIRE(
-      can_complete_in_memory_budget(ctx_, array_name_.c_str(), instance));
+  // (skip for REST since we will not have access to tile sizes)
+  if (!vfs_test_setup_.is_rest()) {
+    RCCATCH_REQUIRE(
+        can_complete_in_memory_budget(ctx_, array_name_.c_str(), instance));
+  }
 }
 
 namespace rc {
