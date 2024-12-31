@@ -39,6 +39,7 @@
 #endif
 
 #include <test/support/tdb_catch.h>
+#include "error_helpers.h"
 #include "helpers.h"
 #include "serialization_wrappers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
@@ -194,7 +195,7 @@ bool use_refactored_dense_reader() {
   REQUIRE(err == nullptr);
 
   rc = tiledb_config_get(cfg, "sm.query.dense.reader", &value, &err);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(err == nullptr);
 
   bool use_refactored_readers = strcmp(value, "refactored") == 0;
@@ -214,7 +215,7 @@ bool use_refactored_sparse_global_order_reader() {
 
   rc = tiledb_config_get(
       cfg, "sm.query.sparse_global_order.reader", &value, &err);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(err == nullptr);
 
   bool use_refactored_readers = strcmp(value, "refactored") == 0;
@@ -234,7 +235,7 @@ bool use_refactored_sparse_unordered_with_dups_reader() {
 
   rc = tiledb_config_get(
       cfg, "sm.query.sparse_unordered_with_dups.reader", &value, &err);
-  CHECK(rc == TILEDB_OK);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(err == nullptr);
 
   bool use_refactored_readers = strcmp(value, "refactored") == 0;
@@ -461,70 +462,72 @@ void create_array(
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_alloc(ctx, array_type, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_cell_order(ctx, array_schema, cell_order);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_tile_order(ctx, array_schema, tile_order);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_capacity(ctx, array_schema, capacity);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_allows_dups(ctx, array_schema, (int)allows_dups);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_alloc(ctx, array_type, &array_schema));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_cell_order(ctx, array_schema, cell_order));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_tile_order(ctx, array_schema, tile_order));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_capacity(ctx, array_schema, capacity));
+  require_tiledb_ok(
+      ctx,
+      tiledb_array_schema_set_allows_dups(ctx, array_schema, (int)allows_dups));
 
   // Create dimensions and domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_alloc(ctx, &domain);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_domain_alloc(ctx, &domain));
   for (size_t i = 0; i < dim_num; ++i) {
     tiledb_dimension_t* d;
-    rc = tiledb_dimension_alloc(
+    require_tiledb_ok(
         ctx,
-        dim_names[i].c_str(),
-        dim_types[i],
-        dim_domains[i],
-        tile_extents[i],
-        &d);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(ctx, domain, d);
-    REQUIRE(rc == TILEDB_OK);
+        tiledb_dimension_alloc(
+            ctx,
+            dim_names[i].c_str(),
+            dim_types[i],
+            dim_domains[i],
+            tile_extents[i],
+            &d));
+    require_tiledb_ok(ctx, tiledb_domain_add_dimension(ctx, domain, d));
     tiledb_dimension_free(&d);
   }
 
   // Set domain to schema
-  rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_domain(ctx, array_schema, domain));
   tiledb_domain_free(&domain);
 
   // Create attributes
   for (size_t i = 0; i < attr_num; ++i) {
     tiledb_attribute_t* a;
-    rc = tiledb_attribute_alloc(ctx, attr_names[i].c_str(), attr_types[i], &a);
-    REQUIRE(rc == TILEDB_OK);
-    rc = set_attribute_compression_filter(
-        ctx, a, compressors[i].first, compressors[i].second);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(
+        ctx,
+        tiledb_attribute_alloc(ctx, attr_names[i].c_str(), attr_types[i], &a));
+    require_tiledb_ok(
+        ctx,
+        set_attribute_compression_filter(
+            ctx, a, compressors[i].first, compressors[i].second));
+    require_tiledb_ok(
+        ctx, tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]));
 
     if (nullable != nullopt) {
-      rc = tiledb_attribute_set_nullable(ctx, a, nullable.value()[i]);
-      REQUIRE(rc == TILEDB_OK);
+      require_tiledb_ok(
+          ctx, tiledb_attribute_set_nullable(ctx, a, nullable.value()[i]));
     }
 
-    rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(
+        ctx, tiledb_array_schema_add_attribute(ctx, array_schema, a));
     tiledb_attribute_free(&a);
   }
 
   // Check array schema
-  rc = tiledb_array_schema_check(ctx, array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_array_schema_check(ctx, array_schema));
 
   // Create array
-  rc = tiledb_array_create_serialization_wrapper(
-      ctx, array_name, array_schema, serialize_array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx,
+      tiledb_array_create_serialization_wrapper(
+          ctx, array_name, array_schema, serialize_array_schema));
 
   // Clean up
   tiledb_array_schema_free(&array_schema);
@@ -561,76 +564,80 @@ void create_array(
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_alloc(ctx, array_type, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_cell_order(ctx, array_schema, cell_order);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_tile_order(ctx, array_schema, tile_order);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_capacity(ctx, array_schema, capacity);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_alloc(ctx, array_type, &array_schema));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_cell_order(ctx, array_schema, cell_order));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_tile_order(ctx, array_schema, tile_order));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_capacity(ctx, array_schema, capacity));
 
   // Create dimensions and domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_alloc(ctx, &domain);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_domain_alloc(ctx, &domain));
   for (size_t i = 0; i < dim_num; ++i) {
     tiledb_dimension_t* d;
-    rc = tiledb_dimension_alloc(
+    require_tiledb_ok(
         ctx,
-        dim_names[i].c_str(),
-        dim_types[i],
-        dim_domains[i],
-        tile_extents[i],
-        &d);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(ctx, domain, d);
-    REQUIRE(rc == TILEDB_OK);
+        tiledb_dimension_alloc(
+            ctx,
+            dim_names[i].c_str(),
+            dim_types[i],
+            dim_domains[i],
+            tile_extents[i],
+            &d));
+    require_tiledb_ok(ctx, tiledb_domain_add_dimension(ctx, domain, d));
     tiledb_dimension_free(&d);
   }
 
   // Set domain to schema
-  rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_domain(ctx, array_schema, domain));
   tiledb_domain_free(&domain);
 
   // Create attributes
   for (size_t i = 0; i < attr_num; ++i) {
     tiledb_attribute_t* a;
-    rc = tiledb_attribute_alloc(ctx, attr_names[i].c_str(), attr_types[i], &a);
-    REQUIRE(rc == TILEDB_OK);
-    rc = set_attribute_compression_filter(
-        ctx, a, compressors[i].first, compressors[i].second);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(
+        ctx,
+        tiledb_attribute_alloc(ctx, attr_names[i].c_str(), attr_types[i], &a));
+    require_tiledb_ok(
+        ctx,
+        set_attribute_compression_filter(
+            ctx, a, compressors[i].first, compressors[i].second));
+    require_tiledb_ok(
+        ctx, tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]));
+    require_tiledb_ok(
+        ctx, tiledb_array_schema_add_attribute(ctx, array_schema, a));
     tiledb_attribute_free(&a);
   }
 
   // Check array schema
-  rc = tiledb_array_schema_check(ctx, array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_array_schema_check(ctx, array_schema));
 
   // Create array
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
-  rc = tiledb_config_alloc(&config, &error);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_config_alloc(&config, &error));
   REQUIRE(error == nullptr);
   std::string encryption_type_string =
       encryption_type_str((tiledb::sm::EncryptionType)enc_type);
-  rc = tiledb_config_set(
-      config, "sm.encryption_type", encryption_type_string.c_str(), &error);
+  require_tiledb_ok(
+      ctx,
+      tiledb_config_set(
+          config,
+          "sm.encryption_type",
+          encryption_type_string.c_str(),
+          &error));
   REQUIRE(error == nullptr);
-  rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_config_set(config, "sm.encryption_key", key, &error));
   REQUIRE(error == nullptr);
   tiledb_ctx_t* ctx_array;
   REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
-  rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_array_create(ctx_array, array_name.c_str(), array_schema));
 
   // Clean up
   tiledb_array_schema_free(&array_schema);
@@ -666,59 +673,60 @@ tiledb_array_schema_t* create_array_schema(
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  int rc = tiledb_array_schema_alloc(ctx, array_type, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_cell_order(ctx, array_schema, cell_order);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_tile_order(ctx, array_schema, tile_order);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_capacity(ctx, array_schema, capacity);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_allows_dups(ctx, array_schema, (int)allows_dups);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_alloc(ctx, array_type, &array_schema));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_cell_order(ctx, array_schema, cell_order));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_tile_order(ctx, array_schema, tile_order));
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_capacity(ctx, array_schema, capacity));
+  require_tiledb_ok(
+      ctx,
+      tiledb_array_schema_set_allows_dups(ctx, array_schema, (int)allows_dups));
 
   // Create dimensions and domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_alloc(ctx, &domain);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_domain_alloc(ctx, &domain));
   for (size_t i = 0; i < dim_num; ++i) {
     tiledb_dimension_t* d;
-    rc = tiledb_dimension_alloc(
+    require_tiledb_ok(
         ctx,
-        dim_names[i].c_str(),
-        dim_types[i],
-        dim_domains[i],
-        tile_extents[i],
-        &d);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_domain_add_dimension(ctx, domain, d);
-    REQUIRE(rc == TILEDB_OK);
+        tiledb_dimension_alloc(
+            ctx,
+            dim_names[i].c_str(),
+            dim_types[i],
+            dim_domains[i],
+            tile_extents[i],
+            &d));
+    require_tiledb_ok(ctx, tiledb_domain_add_dimension(ctx, domain, d));
     tiledb_dimension_free(&d);
   }
 
   // Set domain to schema
-  rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_array_schema_set_domain(ctx, array_schema, domain));
   tiledb_domain_free(&domain);
 
   // Create attributes
   for (size_t i = 0; i < attr_num; ++i) {
     tiledb_attribute_t* a;
-    rc = tiledb_attribute_alloc(ctx, attr_names[i].c_str(), attr_types[i], &a);
-    REQUIRE(rc == TILEDB_OK);
-    rc = set_attribute_compression_filter(
-        ctx, a, compressors[i].first, compressors[i].second);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(
+        ctx,
+        tiledb_attribute_alloc(ctx, attr_names[i].c_str(), attr_types[i], &a));
+    require_tiledb_ok(
+        ctx,
+        set_attribute_compression_filter(
+            ctx, a, compressors[i].first, compressors[i].second));
+    require_tiledb_ok(
+        ctx, tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]));
+    require_tiledb_ok(
+        ctx, tiledb_array_schema_add_attribute(ctx, array_schema, a));
     tiledb_attribute_free(&a);
   }
 
   // Check array schema
-  rc = tiledb_array_schema_check(ctx, array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_array_schema_check(ctx, array_schema));
 
   // Clean up
   return array_schema;
@@ -732,11 +740,11 @@ void create_s3_bucket(
   if (s3_supported) {
     // Create bucket if it does not exist
     int is_bucket = 0;
-    int rc = tiledb_vfs_is_bucket(ctx, vfs, bucket_name.c_str(), &is_bucket);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(
+        ctx, tiledb_vfs_is_bucket(ctx, vfs, bucket_name.c_str(), &is_bucket));
     if (!is_bucket) {
-      rc = tiledb_vfs_create_bucket(ctx, vfs, bucket_name.c_str());
-      REQUIRE(rc == TILEDB_OK);
+      require_tiledb_ok(
+          ctx, tiledb_vfs_create_bucket(ctx, vfs, bucket_name.c_str()));
     }
   }
 }
@@ -749,12 +757,12 @@ void create_azure_container(
   if (azure_supported) {
     // Create container if it does not exist
     int is_container = 0;
-    int rc =
-        tiledb_vfs_is_bucket(ctx, vfs, container_name.c_str(), &is_container);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(
+        ctx,
+        tiledb_vfs_is_bucket(ctx, vfs, container_name.c_str(), &is_container));
     if (!is_container) {
-      rc = tiledb_vfs_create_bucket(ctx, vfs, container_name.c_str());
-      REQUIRE(rc == TILEDB_OK);
+      require_tiledb_ok(
+          ctx, tiledb_vfs_create_bucket(ctx, vfs, container_name.c_str()));
     }
   }
 }
@@ -823,22 +831,21 @@ void create_subarray(
     tiledb_subarray_t** subarray,
     bool coalesce_ranges) {
   (void)layout;
-  int32_t rc;
   tiledb_array_t tdb_array = *tiledb_array_t::make_handle(array);
-  rc = tiledb_subarray_alloc(ctx, &tdb_array, subarray);
-  REQUIRE(rc == TILEDB_OK);
-  if (rc == TILEDB_OK) {
-    rc = tiledb_subarray_set_coalesce_ranges(ctx, *subarray, coalesce_ranges);
-    REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_subarray_alloc(ctx, &tdb_array, subarray));
 
-    auto dim_num = (unsigned)ranges.size();
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim_range_num = ranges[d].size() / 2;
-      for (size_t j = 0; j < dim_range_num; ++j) {
-        rc = tiledb_subarray_add_range(
-            ctx, *subarray, d, &ranges[d][2 * j], &ranges[d][2 * j + 1], 0);
-        REQUIRE(rc == TILEDB_OK);
-      }
+  require_tiledb_ok(
+      ctx,
+      tiledb_subarray_set_coalesce_ranges(ctx, *subarray, coalesce_ranges));
+
+  auto dim_num = (unsigned)ranges.size();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim_range_num = ranges[d].size() / 2;
+    for (size_t j = 0; j < dim_range_num; ++j) {
+      require_tiledb_ok(
+          ctx,
+          tiledb_subarray_add_range(
+              ctx, *subarray, d, &ranges[d][2 * j], &ranges[d][2 * j + 1], 0));
     }
   }
 }
@@ -906,17 +913,14 @@ int set_attribute_compression_filter(
     return TILEDB_OK;
 
   tiledb_filter_t* filter;
-  int rc = tiledb_filter_alloc(ctx, compressor, &filter);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_filter_alloc(ctx, compressor, &filter));
+  require_tiledb_ok(
+      ctx,
+      tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level));
   tiledb_filter_list_t* list;
-  rc = tiledb_filter_list_alloc(ctx, &list);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_filter_list_add_filter(ctx, list, filter);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_filter_list(ctx, attr, list);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_filter_list_alloc(ctx, &list));
+  require_tiledb_ok(ctx, tiledb_filter_list_add_filter(ctx, list, filter));
+  require_tiledb_ok(ctx, tiledb_attribute_set_filter_list(ctx, attr, list));
 
   tiledb_filter_free(&filter);
   tiledb_filter_list_free(&list);
@@ -1076,22 +1080,22 @@ void write_array(
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
   REQUIRE(err == nullptr);
 
-  rc = tiledb_array_set_open_timestamp_end(ctx, array, timestamp);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_array_set_open_timestamp_end(ctx, array, timestamp));
 
   // Open array
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     std::string encryption_type_string =
         encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
-    rc = tiledb_config_set(
-        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(
+        ctx,
+        tiledb_config_set(
+            cfg, "sm.encryption_type", encryption_type_string.c_str(), &err));
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(
+        ctx, tiledb_config_set(cfg, "sm.encryption_key", key, &err));
     REQUIRE(err == nullptr);
-    rc = tiledb_array_set_config(ctx, array, cfg);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(ctx, tiledb_array_set_config(ctx, array, cfg));
   }
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1102,12 +1106,9 @@ void write_array(
   CHECK(rc == TILEDB_OK);
   tiledb_subarray_t* subarray;
   if (sub != nullptr) {
-    rc = tiledb_subarray_alloc(ctx, array, &subarray);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_subarray_set_subarray(ctx, subarray, sub);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_query_set_subarray_t(ctx, query, subarray);
-    REQUIRE(rc == TILEDB_OK);
+    require_tiledb_ok(ctx, tiledb_subarray_alloc(ctx, array, &subarray));
+    require_tiledb_ok(ctx, tiledb_subarray_set_subarray(ctx, subarray, sub));
+    require_tiledb_ok(ctx, tiledb_query_set_subarray_t(ctx, query, subarray));
   }
   rc = tiledb_query_set_layout(ctx, query, layout);
   CHECK(rc == TILEDB_OK);
@@ -1150,13 +1151,12 @@ void write_array(
 
   // Get fragment uri
   const char* temp_uri;
-  rc = tiledb_query_get_fragment_uri(ctx, query, 0, &temp_uri);
-  REQUIRE(rc == TILEDB_OK);
+  require_tiledb_ok(
+      ctx, tiledb_query_get_fragment_uri(ctx, query, 0, &temp_uri));
   *uri = std::string(temp_uri);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
-  CHECK(rc == TILEDB_OK);
+  require_tiledb_ok(ctx, tiledb_array_close(ctx, array));
 
   // Clean up
   tiledb_array_free(&array);
