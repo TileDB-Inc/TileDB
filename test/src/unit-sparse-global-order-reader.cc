@@ -1385,7 +1385,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew",
-    "[sparse-global-order]") {
+    "[sparse-global-order][rest]") {
   auto doit = [this]<typename Asserter>(
                   size_t fragment_size,
                   size_t num_user_cells,
@@ -1459,7 +1459,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment interleave",
-    "[sparse-global-order]") {
+    "[sparse-global-order][rest]") {
   // NB: the tile extent is 2
   auto doit = [this]<typename Asserter>(
                   size_t fragment_size,
@@ -1553,7 +1553,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment wide overlap",
-    "[sparse-global-order]") {
+    "[sparse-global-order][rest]") {
   auto doit = [this]<typename Asserter>(
                   size_t num_fragments,
                   size_t fragment_size,

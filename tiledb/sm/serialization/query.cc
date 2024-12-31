@@ -933,6 +933,12 @@ Status index_reader_to_capnp(
   auto stats_builder = reader_builder->initStats();
   stats_to_capnp(stats, &stats_builder);
 
+  // Tile order
+  if (reader.preprocess_tile_order().enabled_) {
+    auto preprocess = reader_builder->initPreprocess();
+    preprocess.setCursor(reader.preprocess_tile_order().cursor_);
+  }
+
   return Status::Ok();
 }
 
@@ -1164,6 +1170,11 @@ Status index_reader_from_capnp(
   if (reader_reader.hasStats()) {
     auto stats_data = stats_from_capnp(reader_reader.getStats());
     reader->set_stats(stats_data);
+  }
+
+  if (reader_reader.hasPreprocess()) {
+    reader->set_preprocess_tile_order_cursor(
+        reader_reader.getPreprocess().getCursor());
   }
 
   return Status::Ok();

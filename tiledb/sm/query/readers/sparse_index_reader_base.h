@@ -295,6 +295,16 @@ struct ignored_tile_hash {
 };
 
 /**
+ * Identifies an order in which to load result tiles.
+ * See `SparseIndexReader::preprocess_tile_order_`.
+ */
+struct PreprocessTileOrder {
+  bool enabled_;
+  size_t cursor_;
+  std::vector<ResultTileId> tiles_;
+};
+
+/**
  * Processes sparse read queries by keeping progress in fragments as indexes.
  */
 class SparseIndexReaderBase : public ReaderBase {
@@ -601,10 +611,33 @@ class SparseIndexReaderBase : public ReaderBase {
    */
   void set_read_state(ReadState read_state);
 
+  const PreprocessTileOrder preprocess_tile_order() const;
+
+  /**
+   * Sets the preprocess tile order cursor. Used only for deserialization
+   *
+   * @param cursor New cursor value.
+   */
+  virtual void set_preprocess_tile_order_cursor(uint64_t cursor);
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * State for the optional mode to preprocess the tiles across
+   * all fragments and merge them into a single list which identifies
+   * the order they should be read in.
+   *
+   * This is used by SparseGlobalOrderReader to merge the tiles
+   * into a single globally-ordered list prior to loading.
+   * Tile identifiers in this list are sorted using their starting ranges
+   * and have already had the subarray (if any) applied.
+   *
+   * (this is declared here for serialization purposes)
+   */
+  PreprocessTileOrder preprocess_tile_order_;
 
   /** Read state. */
   ReadState read_state_;

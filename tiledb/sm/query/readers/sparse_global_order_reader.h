@@ -135,6 +135,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Returns the name of the strategy */
   std::string name();
 
+  /** Used in deserialization */
+  virtual void set_preprocess_tile_order_cursor(uint64_t cursor) override;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -148,20 +151,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * process in the previous iteration.
    */
   std::vector<ResultTilesList> result_tiles_leftover_;
-
-  /**
-   * State for the optional mode to preprocess the tile MBRs
-   * and merge them into a single globally-ordered list prior
-   * to loading any tiles.
-   *
-   * Tile identifiers in this list are sorted using their starting ranges
-   * and have already had the subarray (if any) applied.
-   */
-  struct {
-    bool enabled_;
-    std::vector<ResultTileId> tiles_;
-    size_t cursor_;
-  } preprocess_tile_order_;
 
   /**
    * State for the default mode to evenly distribute memory
