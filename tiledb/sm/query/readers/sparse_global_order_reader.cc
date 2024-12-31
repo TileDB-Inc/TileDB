@@ -542,6 +542,8 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
       }
 
       bool operator()(const ResultTileId& a, const ResultTileId& b) const {
+        // FIXME: this can potentially make a better global order if
+        // we clamp the MBR lower bounds using the subarray
         const RangeLowerBound a_mbr = {
             .mbr = fragment_metadata_[a.fragment_idx_]->mbr(a.tile_idx_)};
         const RangeLowerBound b_mbr = {
@@ -604,7 +606,7 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
     default:
       stdx::unreachable();
   }
-}
+}  // namespace tiledb::sm
 
 template <class BitmapType>
 std::vector<ResultTile*>
@@ -1204,6 +1206,8 @@ AddNextCellResult SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
       // Skip comparison if the next one is the same fragment,
       // in that case we know the cells are ordered correctly
       if (frag_idx != next_global_order_tile.fragment_idx_) {
+        // FIXME: this can potentially make better slabs if we clamp
+        // the MBR lower bound using the subarray and/or bitmap
         RangeLowerBound target = {.mbr = emit_bound};
 
         GlobalCellCmp cmp(array_schema_.domain());
@@ -1211,14 +1215,6 @@ AddNextCellResult SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
         if (cmp(target, rc)) {
           // more tiles needed, out-of-order tiles is a possibility if we
           // continue
-
-          // TODO: make sure we have test coverage here.
-          // 1) scenario where this does not guarantee progress, i.e.
-          //    too many overlapping tiles, we can't emit anything else
-          //    and increasing memory budget really is the only way out
-          // 2) scenario where this does make progress because we
-          //    finish a tile and thus gain budget to load the next one
-
           return AddNextCellResult::MergeBound;
         }
       }
