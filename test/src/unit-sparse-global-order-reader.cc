@@ -31,6 +31,7 @@
  */
 
 #include "test/support/rapidcheck/array.h"
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
@@ -68,14 +69,6 @@ namespace rc {
 Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
     const tdbrc::Domain<int>& domain);
 }
-
-#define RETURN_IF_ERR(thing) \
-  do {                       \
-    auto rc = (thing);       \
-    if (rc != TILEDB_OK) {   \
-      return rc;             \
-    }                        \
-  } while (0)
 
 /* ********************************* */
 /*         STRUCT DEFINITION         */
@@ -447,9 +440,9 @@ concept InstanceType = requires(const T& instance) {
 };
 
 struct CSparseGlobalOrderFx {
+  VFSTestSetup vfs_test_setup_;
+
   tiledb_ctx_t* ctx_ = nullptr;
-  tiledb_vfs_t* vfs_ = nullptr;
-  std::string temp_dir_;
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_global_order";
   tiledb_array_t* array_ = nullptr;
@@ -519,58 +512,22 @@ struct CSparseGlobalOrderFx {
   ~CSparseGlobalOrderFx();
 };
 
-#define TRY(thing)                           \
-  do {                                       \
-    auto rc = (thing);                       \
-    RCCATCH_REQUIRE("" == error_if_any(rc)); \
-  } while (0)
-
-template <typename CAPIReturn>
-std::string error_if_any(tiledb_ctx_t* ctx, CAPIReturn apirc) {
-  if (apirc == TILEDB_OK) {
-    return "";
-  }
-
-  tiledb_error_t* error = NULL;
-  auto rc = tiledb_ctx_get_last_error(ctx, &error);
-  REQUIRE(rc == TILEDB_OK);
-  if (error == nullptr) {
-    // probably should be unreachable
-    return "";
-  }
-
-  const char* msg;
-  rc = tiledb_error_message(error, &msg);
-  REQUIRE(rc == TILEDB_OK);
-
-  return std::string(msg);
-}
-
 template <typename CAPIReturn>
 std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
-  return ::error_if_any(ctx_, apirc);
+  return tiledb::test::error_if_any(ctx_, apirc);
 }
 
 CSparseGlobalOrderFx::CSparseGlobalOrderFx() {
   reset_config();
 
-  // Create temporary directory based on the supported filesystem.
-#ifdef _WIN32
-  temp_dir_ = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  temp_dir_ = "file://" + tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
-  create_dir(temp_dir_, ctx_, vfs_);
-  array_name_ = temp_dir_ + ARRAY_NAME;
+  array_name_ = vfs_test_setup_.array_uri("tiledb_test");
 }
 
 CSparseGlobalOrderFx::~CSparseGlobalOrderFx() {
   if (array_) {
     tiledb_array_free(&array_);
   }
-  remove_dir(temp_dir_, ctx_, vfs_);
   tiledb_ctx_free(&ctx_);
-  tiledb_vfs_free(&vfs_);
 }
 
 void CSparseGlobalOrderFx::reset_config() {
@@ -581,9 +538,6 @@ void CSparseGlobalOrderFx::reset_config() {
 void CSparseGlobalOrderFx::update_config() {
   if (ctx_ != nullptr)
     tiledb_ctx_free(&ctx_);
-
-  if (vfs_ != nullptr)
-    tiledb_vfs_free(&vfs_);
 
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
@@ -632,7 +586,6 @@ void CSparseGlobalOrderFx::update_config() {
 
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
 }
 
@@ -2087,12 +2040,13 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(data_c, data_r, data_r_size));
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
     "Sparse global order reader: user buffer cannot fit single cell",
     "[sparse-global-order][user-buffer][too-small][rest]") {
-  VFSTestSetup vfs_test_setup;
-  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
-  auto ctx = vfs_test_setup.ctx();
+  std::string array_name =
+      vfs_test_setup_.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup_.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -2157,14 +2111,15 @@ TEST_CASE(
   array2.close();
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
     "Sparse global order reader: attribute copy memory limit",
     "[sparse-global-order][attribute-copy][memory-limit][rest]") {
   Config config;
   config["sm.mem.total_budget"] = "20000";
-  VFSTestSetup vfs_test_setup(config.ptr().get());
-  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
-  auto ctx = vfs_test_setup.ctx();
+  std::string array_name =
+      vfs_test_setup_.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup_.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -2648,9 +2603,9 @@ void CSparseGlobalOrderFx::run(Instance instance) {
 
   if (!instance.subarray.empty()) {
     tiledb_subarray_t* subarray;
-    TRY(tiledb_subarray_alloc(ctx_, array, &subarray));
-    TRY(instance.template apply_subarray<Asserter>(ctx_, subarray));
-    TRY(tiledb_query_set_subarray_t(ctx_, query, subarray));
+    TRY(ctx_, tiledb_subarray_alloc(ctx_, array, &subarray));
+    TRY(ctx_, instance.template apply_subarray<Asserter>(ctx_, subarray));
+    TRY(ctx_, tiledb_query_set_subarray_t(ctx_, query, subarray));
     tiledb_subarray_free(&subarray);
   }
 
