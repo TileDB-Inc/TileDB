@@ -126,8 +126,10 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
 
   preprocess_tile_order_.enabled_ =
       array_schema_.cell_order() != Layout::HILBERT &&
-      config_.get<bool>("sm.query.sparse_global_order.preprocess_tile_merge")
-          .value_or(false);
+      0 < config_
+              .get<uint64_t>(
+                  "sm.query.sparse_global_order.preprocess_tile_merge")
+              .value_or(0);
   preprocess_tile_order_.cursor_ = 0;
 
   if (!preprocess_tile_order_.enabled_) {
@@ -515,11 +517,13 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
   preprocess_tile_order_.tiles_.resize(
       num_result_tiles, ResultTileId{.fragment_idx_ = 0, .tile_idx_ = 0});
 
+  const auto min_merge_items =
+      config_
+          .get<uint64_t>("sm.query.sparse_global_order.preprocess_tile_merge")
+          .value();
   future.merge_options_ = {
       .parallel_factor = resources_.compute_tp().concurrency_level(),
-      .min_merge_items =
-          128  // TODO: do some experiments to figure something out
-  };
+      .min_merge_items = min_merge_items};
 
   algorithm::ParallelMergeMemoryResources merge_resources(
       *query_memory_tracker_.get());

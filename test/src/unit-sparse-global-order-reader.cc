@@ -3137,7 +3137,7 @@ TEST_CASE_METHOD(
     rc = tiledb_config_set(
         qconfig,
         "sm.query.sparse_global_order.preprocess_tile_merge",
-        "true",
+        "128",
         &error);
     RCCATCH_REQUIRE("" == error_if_any(rc));
     rc = tiledb_query_set_config(ctx_, on_query, qconfig);
