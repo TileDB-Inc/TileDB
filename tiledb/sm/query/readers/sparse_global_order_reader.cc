@@ -163,6 +163,16 @@ void SparseGlobalOrderReader<BitmapType>::refresh_config() {
 }
 
 template <class BitmapType>
+void SparseGlobalOrderReader<BitmapType>::set_preprocess_tile_order_cursor(
+    uint64_t cursor) {
+  preprocess_tile_order_.enabled_ = true;
+  preprocess_tile_order_.cursor_ = cursor;
+
+  // The tile order itself will be recomputed.
+  // We get smaller messages but at a higher CPU cost.
+}
+
+template <class BitmapType>
 Status SparseGlobalOrderReader<BitmapType>::dowork() {
   auto timer_se = stats_->start_timer("dowork");
   stats_->add_counter("loop_num", 1);
@@ -590,8 +600,6 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
     default:
       stdx::unreachable();
   }
-
-  preprocess_tile_order_.cursor_ = 0;
 }
 
 template <class BitmapType>
