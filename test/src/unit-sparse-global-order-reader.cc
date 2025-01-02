@@ -1034,8 +1034,13 @@ static bool can_complete_in_memory_budget(
     tiledb_ctx_t* ctx, const char* array_uri, const Instance& instance) {
   CApiArray array(ctx, array_uri, TILEDB_READ);
 
-  // TODO: verify that the conditions for the error are correct
   const auto& fragment_metadata = array->array()->fragment_metadata();
+
+  uint64_t num_tiles = 0;
+  for (const auto& fragment : fragment_metadata) {
+    num_tiles += fragment->tile_num();
+  }
+
   for (const auto& fragment : fragment_metadata) {
     const_cast<sm::FragmentMetadata*>(fragment.get())
         ->loaded_metadata()
@@ -1116,7 +1121,7 @@ static bool can_complete_in_memory_budget(
   // and take more memory
   const uint64_t coords_budget = std::stoi(instance.memory.total_budget_) *
                                  std::stod(instance.memory.ratio_coords_);
-  uint64_t active_tile_size = 0;
+  uint64_t active_tile_size = sizeof(RT) * num_tiles;
   uint64_t next_tile_size = 0;
   while (active_tile_size + next_tile_size < coords_budget &&
          !mbr_lower_bound.empty()) {

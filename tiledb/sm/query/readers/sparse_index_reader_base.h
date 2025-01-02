@@ -302,6 +302,10 @@ struct PreprocessTileOrder {
   bool enabled_;
   size_t cursor_;
   std::vector<ResultTileId> tiles_;
+
+  bool has_more_tiles() const {
+    return cursor_ < tiles_.size();
+  }
 };
 
 /**
