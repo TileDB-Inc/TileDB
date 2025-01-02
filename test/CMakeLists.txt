@@ -210,6 +210,12 @@ if (NOT MSVC)
   add_compile_options(-Wno-deprecated-declarations)
 endif()
 
+find_library(
+  LIBRAPIDCHECK
+  NAMES rapidcheck
+  REQUIRED
+)
+
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
@@ -347,12 +353,6 @@ if (LIBFAKETIME)
 
     set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=path_list_append:${LIBFAKETIME}")
 endif()
-
-find_library(
-  LIBRAPIDCHECK
-  NAMES rapidcheck
-  REQUIRED
-)
 
 add_test(
   NAME "tiledb_unit"

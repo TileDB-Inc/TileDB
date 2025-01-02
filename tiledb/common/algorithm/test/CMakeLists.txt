@@ -26,6 +26,12 @@
 
 include(unit_test)
 
+find_library(
+  LIBRAPIDCHECK
+  NAMES rapidcheck
+  REQUIRED
+)
+
 commence(unit_test algorithm)
     this_target_object_libraries(algorithm)
     this_target_sources(main.cc unit_parallel_merge.cc)
