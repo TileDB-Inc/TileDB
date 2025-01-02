@@ -614,8 +614,8 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
     };
 
     {
-      std::shared_ptr<ResultTileCmp> cmp = std::make_shared<ResultTileCmp>(
-          array_schema_.domain(), fragment_metadata_);
+      std::shared_ptr<ResultTileCmp> cmp = tdb::make_shared<ResultTileCmp>(
+          "ResultTileCmp", array_schema_.domain(), fragment_metadata_);
       future.cmp_ = std::static_pointer_cast<CellCmpBase>(cmp);
     }
 
