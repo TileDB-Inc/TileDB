@@ -55,11 +55,7 @@ FilterBuffer::BufferOrView::BufferOrView(
       tdb_new(Buffer, (char*)buffer->data() + offset, nbytes));
 }
 
-FilterBuffer::BufferOrView::BufferOrView(BufferOrView&& other) {
-  underlying_buffer_.swap(other.underlying_buffer_);
-  view_.swap(other.view_);
-  std::swap(is_view_, other.is_view_);
-}
+FilterBuffer::BufferOrView::BufferOrView(BufferOrView&& other) = default;
 
 Buffer* FilterBuffer::BufferOrView::buffer() const {
   return is_view_ ? view_.get() : underlying_buffer_.get();

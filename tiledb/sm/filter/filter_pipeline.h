@@ -323,7 +323,7 @@ class FilterPipeline {
   std::vector<shared_ptr<Filter>> filters_;
 
   /** The max chunk size allowed within tiles. */
-  uint32_t max_chunk_size_{0};
+  uint32_t max_chunk_size_;
 
   /**
    * Get the chunk offsets for a var sized tile so that integral cells are
