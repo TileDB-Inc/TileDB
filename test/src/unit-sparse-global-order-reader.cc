@@ -75,35 +75,6 @@ Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
 /*         STRUCT DEFINITION         */
 /* ********************************* */
 
-/**
- * Contains the data for a single fragment
- * of the 1D array created by `CSparseGlobalOrderFx`
- */
-struct FxFragment1D {
-  std::vector<int> coords;
-  std::vector<int> atts;
-
-  uint64_t size() const {
-    return coords.size();
-  }
-
-  std::tuple<std::vector<int>&> dimensions() {
-    return std::tuple<std::vector<int>&>(coords);
-  }
-
-  std::tuple<const std::vector<int>&> dimensions() const {
-    return std::tuple<const std::vector<int>&>(coords);
-  }
-
-  std::tuple<std::vector<int>&> attributes() {
-    return std::tuple<std::vector<int>&>(atts);
-  }
-
-  std::tuple<const std::vector<int>&> attributes() const {
-    return std::tuple<const std::vector<int>&>(atts);
-  }
-};
-
 struct MemoryBudget {
   std::string total_budget_;
   std::string ratio_tile_ranges_;
@@ -146,7 +117,8 @@ struct DefaultArray1DConfig {
  * An instance of one-dimension array input to `CSparseGlobalOrderFx::run`
  */
 struct FxRun1D {
-  using FragmentType = FxFragment1D;
+  using FragmentType = tdbrc::Fragment1D<int, int>;
+
   uint64_t num_user_cells;
   std::vector<FragmentType> fragments;
 
@@ -179,7 +151,7 @@ struct FxRun1D {
     if (subarray.empty()) {
       return true;
     } else {
-      const int coord = fragment.coords[record];
+      const int coord = fragment.dim_[record];
       for (const auto& range : subarray) {
         if (range.contains(coord)) {
           return true;
@@ -1399,25 +1371,27 @@ TEST_CASE_METHOD(
                   const std::vector<tdbrc::Domain<int>>& subarray =
                       std::vector<tdbrc::Domain<int>>()) {
     // Write a fragment F0 with unique coordinates
-    struct FxFragment1D fragment0;
-    fragment0.coords.resize(fragment_size);
-    std::iota(fragment0.coords.begin(), fragment0.coords.end(), 1);
+    tdbrc::Fragment1D<int, int> fragment0;
+    fragment0.dim_.resize(fragment_size);
+    std::iota(fragment0.dim_.begin(), fragment0.dim_.end(), 1);
 
     // Write a fragment F1 with lots of duplicates
     // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
-    struct FxFragment1D fragment1;
-    fragment1.coords.resize(fragment0.coords.size());
-    for (size_t i = 0; i < fragment1.coords.size(); i++) {
-      fragment1.coords[i] =
-          static_cast<int>(i / 10) + (fragment0.coords.size() / 2);
+    tdbrc::Fragment1D<int, int> fragment1;
+    fragment1.dim_.resize(fragment0.dim_.size());
+    for (size_t i = 0; i < fragment1.dim_.size(); i++) {
+      fragment1.dim_[i] =
+          static_cast<int>(i / 10) + (fragment0.dim_.size() / 2);
     }
 
     // atts are whatever
-    fragment0.atts.resize(fragment0.coords.size());
-    std::iota(fragment0.atts.begin(), fragment0.atts.end(), 0);
-    fragment1.atts.resize(fragment1.coords.size());
-    std::iota(
-        fragment1.atts.begin(), fragment1.atts.end(), fragment0.coords.size());
+    auto& f0atts = std::get<0>(fragment0.atts_);
+    f0atts.resize(fragment0.dim_.size());
+    std::iota(f0atts.begin(), f0atts.end(), 0);
+
+    auto& f1atts = std::get<0>(fragment1.atts_);
+    f1atts.resize(fragment1.dim_.size());
+    std::iota(f1atts.begin(), f1atts.end(), fragment0.dim_.size());
 
     struct FxRun1D instance;
     instance.fragments.push_back(fragment0);
@@ -1471,29 +1445,30 @@ TEST_CASE_METHOD(
                   size_t fragment_size,
                   size_t num_user_cells,
                   const std::vector<tdbrc::Domain<int>>& subarray = {}) {
-    struct FxFragment1D fragment0;
-    struct FxFragment1D fragment1;
+    tdbrc::Fragment1D<int, int> fragment0;
+    tdbrc::Fragment1D<int, int> fragment1;
 
     // Write a fragment F0 with tiles [1,3][3,5][5,7][7,9]...
-    fragment0.coords.resize(fragment_size);
-    fragment0.coords[0] = 1;
-    for (size_t i = 1; i < fragment0.coords.size(); i++) {
-      fragment0.coords[i] = 1 + 2 * ((i + 1) / 2);
+    fragment0.dim_.resize(fragment_size);
+    fragment0.dim_[0] = 1;
+    for (size_t i = 1; i < fragment0.dim_.size(); i++) {
+      fragment0.dim_[i] = 1 + 2 * ((i + 1) / 2);
     }
 
     // Write a fragment F1 with tiles [2,4][4,6][6,8][8,10]...
-    fragment1.coords.resize(fragment0.coords.size());
-    for (size_t i = 0; i < fragment1.coords.size(); i++) {
-      fragment1.coords[i] = fragment0.coords[i] + 1;
+    fragment1.dim_.resize(fragment0.dim_.size());
+    for (size_t i = 0; i < fragment1.dim_.size(); i++) {
+      fragment1.dim_[i] = fragment0.dim_[i] + 1;
     }
 
     // atts don't really matter
-    fragment0.atts.resize(fragment0.coords.size());
-    std::iota(fragment0.atts.begin(), fragment0.atts.end(), 0);
+    auto& f0atts = std::get<0>(fragment0.atts_);
+    f0atts.resize(fragment0.dim_.size());
+    std::iota(f0atts.begin(), f0atts.end(), 0);
 
-    fragment1.atts.resize(fragment1.coords.size());
-    std::iota(
-        fragment1.atts.begin(), fragment1.atts.end(), fragment0.atts.size());
+    auto& f1atts = std::get<0>(fragment1.atts_);
+    f1atts.resize(fragment1.dim_.size());
+    std::iota(f1atts.begin(), f1atts.end(), f0atts.size());
 
     struct FxRun1D instance;
     instance.fragments.push_back(fragment0);
@@ -1580,18 +1555,16 @@ TEST_CASE_METHOD(
     instance.memory.ratio_array_data_ = "0.6";
 
     for (size_t f = 0; f < num_fragments; f++) {
-      FxFragment1D fragment;
-      fragment.coords.resize(fragment_size);
+      tdbrc::Fragment1D<int, int> fragment;
+      fragment.dim_.resize(fragment_size);
       std::iota(
-          fragment.coords.begin(),
-          fragment.coords.end(),
+          fragment.dim_.begin(),
+          fragment.dim_.end(),
           instance.array.dimension.domain.lower_bound + f);
 
-      fragment.atts.resize(fragment_size);
-      std::iota(
-          fragment.atts.begin(),
-          fragment.atts.end(),
-          fragment_size * num_fragments);
+      auto& atts = std::get<0>(fragment.atts_);
+      atts.resize(fragment_size);
+      std::iota(atts.begin(), atts.end(), fragment_size * num_fragments);
 
       instance.fragments.push_back(fragment);
     }
@@ -2782,19 +2755,15 @@ struct Arbitrary<FxRun1D> {
 
     auto fragments =
         gen::mapcat(dimension, [](tdbrc::Dimension<DimensionType> dimension) {
-          auto fragment = gen::map(
-              rc::make_fragment_1d<CoordType, int>(dimension.domain),
-              [](tdbrc::Fragment1D<CoordType, int> fragment) {
-                return FxFragment1D{
-                    .coords = fragment.dim_,
-                    .atts = std::get<0>(fragment.atts_)};
-              });
+          auto fragment =
+              rc::make_fragment_1d<CoordType, int>(dimension.domain);
 
           return gen::tuple(
               gen::just(dimension),
               make_subarray_1d(dimension.domain),
               gen::nonEmpty(
-                  gen::container<std::vector<FxFragment1D>>(fragment)));
+                  gen::container<std::vector<tdbrc::Fragment1D<int, int>>>(
+                      fragment)));
         });
 
     auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
@@ -2803,7 +2772,7 @@ struct Arbitrary<FxRun1D> {
         [](std::tuple<
                tdbrc::Dimension<DimensionType>,
                std::vector<tdbrc::Domain<CoordType>>,
-               std::vector<FxFragment1D>> fragments,
+               std::vector<tdbrc::Fragment1D<int, int>>> fragments,
            int num_user_cells) {
           FxRun1D instance;
           std::tie(
@@ -2902,12 +2871,12 @@ void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
     os << "\t\t{" << std::endl;
     os << "\t\t\t\"coords\": [" << std::endl;
     os << "\t\t\t\t";
-    show(fragment.coords, os);
+    show(fragment.dim_, os);
     os << std::endl;
     os << "\t\t\t], " << std::endl;
     os << "\t\t\t\"atts\": [" << std::endl;
     os << "\t\t\t\t";
-    show(fragment.atts, os);
+    show(std::get<0>(fragment.atts_), os);
     os << std::endl;
     os << "\t\t\t] " << std::endl;
     os << "\t\t}";
@@ -3031,9 +3000,9 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: multi-range subarray signal",
     "[sparse-global-order]") {
-  FxFragment1D fragment0;
-  fragment0.coords.push_back(1);
-  fragment0.atts.push_back(1);
+  tdbrc::Fragment1D<int, int> fragment0;
+  fragment0.dim_.push_back(1);
+  std::get<0>(fragment0.atts_).push_back(1);
 
   FxRun1D instance;
   instance.fragments.push_back(fragment0);
