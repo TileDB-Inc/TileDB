@@ -75,6 +75,10 @@ Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
 /*         STRUCT DEFINITION         */
 /* ********************************* */
 
+/**
+ * Encapsulates memory budget configuration parameters for the sparse global
+ * order reader
+ */
 struct MemoryBudget {
   std::string total_budget_;
   std::string ratio_tile_ranges_;
@@ -137,6 +141,9 @@ struct FxRun1D {
     return array.allow_dups;
   }
 
+  /**
+   * Add `subarray` to a read query
+   */
   template <typename Asserter>
   capi_return_t apply_subarray(
       tiledb_ctx_t* ctx, tiledb_subarray_t* subarray) const {
@@ -147,6 +154,9 @@ struct FxRun1D {
     return TILEDB_OK;
   }
 
+  /**
+   * @return true if the cell at index `record` in `fragment` passes `subarray`
+   */
   bool accept(const FragmentType& fragment, int record) const {
     if (subarray.empty()) {
       return true;
@@ -161,6 +171,9 @@ struct FxRun1D {
     }
   }
 
+  /**
+   * @return true if `mbr` intersects with any of the ranges in `subarray`
+   */
   bool intersects(const sm::NDRange& mbr) const {
     auto accept = [&](const auto& range) {
       const auto& untyped_mbr = mbr[0];
@@ -172,6 +185,10 @@ struct FxRun1D {
            std::any_of(subarray.begin(), subarray.end(), accept);
   }
 
+  /**
+   * @return a new range which is `mbr` with its upper bound "clamped" to that
+   * of `subarray`
+   */
   sm::NDRange clamp(const sm::NDRange& mbr) const {
     if (subarray.empty()) {
       return mbr;
@@ -234,6 +251,9 @@ struct FxRun2D {
     return allow_dups;
   }
 
+  /**
+   * Add `subarray` to a read query
+   */
   template <typename Asserter>
   capi_return_t apply_subarray(
       tiledb_ctx_t* ctx, tiledb_subarray_t* subarray) const {
@@ -276,6 +296,9 @@ struct FxRun2D {
     return TILEDB_OK;
   }
 
+  /**
+   * @return true if the cell at index `record` in `fragment` passes `subarray`
+   */
   bool accept(const FragmentType& fragment, int record) const {
     if (subarray.empty()) {
       return true;
@@ -294,6 +317,9 @@ struct FxRun2D {
     }
   }
 
+  /**
+   * @return true if `mbr` intersects with any of the ranges in `subarray`
+   */
   bool intersects(const sm::NDRange& mbr) const {
     if (subarray.empty()) {
       return true;
@@ -318,6 +344,10 @@ struct FxRun2D {
     return false;
   }
 
+  /**
+   * @return a new range which is `mbr` with its upper bound "clamped" to that
+   * of `subarray`
+   */
   sm::NDRange clamp(const sm::NDRange& mbr) const {
     sm::NDRange clamped = mbr;
     for (const auto& range : subarray) {
@@ -396,6 +426,9 @@ struct CApiArray {
   }
 };
 
+/**
+ * Describes types which can be used with `CSparseGlobalOrderFx::run`.
+ */
 template <typename T>
 concept InstanceType = requires(const T& instance) {
   { instance.tile_capacity() } -> std::convertible_to<uint64_t>;
@@ -637,8 +670,14 @@ void CSparseGlobalOrderFx::write_1d_fragment(
   tiledb_query_free(&query);
 }
 
+/**
+ * Binds variadic field data to a tiledb query
+ */
 template <typename Asserter, typename... Ts>
 struct query_applicator {
+  /**
+   * @return a tuple containing the size of each input field
+   */
   static auto make_field_sizes(
       const std::tuple<Ts&...> fields,
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
@@ -662,6 +701,9 @@ struct query_applicator {
         fields);
   }
 
+  /**
+   * Sets buffers on `query` for the variadic `fields` and `fields_sizes`
+   */
   static void set(
       tiledb_ctx_t* ctx,
       tiledb_query_t* query,
@@ -692,6 +734,9 @@ struct query_applicator {
         fields);
   }
 
+  /**
+   * @return the number of cells written into `fields` by a read query
+   */
   static uint64_t num_cells(const auto& fields, const auto& field_sizes) {
     std::optional<uint64_t> num_cells;
 
@@ -720,6 +765,9 @@ struct query_applicator {
   }
 };
 
+/**
+ * Writes a generic `FragmentType` into the array.
+ */
 template <typename Asserter, FragmentType Fragment>
 void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   // Open array for writing.
@@ -1094,6 +1142,10 @@ static bool can_complete_in_memory_budget(
   // and take more memory
   const uint64_t coords_budget = std::stoi(instance.memory.total_budget_) *
                                  std::stod(instance.memory.ratio_coords_);
+  /*
+   * Iterate through the tiles in the same order that the sparse
+   * reader would process them in, tracking memory usage as we go.
+   */
   uint64_t active_tile_size = sizeof(RT) * num_tiles;
   uint64_t next_tile_size = 0;
   while (active_tile_size + next_tile_size < coords_budget &&
@@ -1495,12 +1547,6 @@ TEST_CASE_METHOD(
           fragment_size, num_user_cells, subarray);
     });
   }
-
-  /**
-   * Now we should have 200 tiles, each of which has 2 coordinates,
-   * and each of which is size is 1584.
-   * In global order we skew towards fragment 1 which has lots of duplicates.
-   */
 }
 
 /**
@@ -2440,6 +2486,10 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 }
 
+/**
+ * Creates an array with a schema whose dimensions and attributes
+ * come from `Instance`.
+ */
 template <typename Asserter, InstanceType Instance>
 void CSparseGlobalOrderFx::create_array(const Instance& instance) {
   tiledb_object_t type;
@@ -2503,6 +2553,13 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
       instance.allow_duplicates());
 }
 
+/**
+ * Runs a correctness check upon `instance`.
+ *
+ * Inserts all of the fragments, then submits a global order read
+ * query and compares the results of the query against the
+ * expected result order computed from the input data.
+ */
 template <typename Asserter, InstanceType Instance>
 void CSparseGlobalOrderFx::run(Instance instance) {
   RCCATCH_REQUIRE(instance.num_user_cells > 0);
@@ -2724,8 +2781,12 @@ void CSparseGlobalOrderFx::run(Instance instance) {
   }
 }
 
+// rapidcheck generators and Arbitrary specializations
 namespace rc {
 
+/**
+ * @return a generator of valid subarrays within `domain`
+ */
 Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
     const tdbrc::Domain<int>& domain) {
   // NB: when (if) multi-range subarray is supported for global order
@@ -2789,6 +2850,9 @@ struct Arbitrary<FxRun1D> {
   }
 };
 
+/**
+ * @return a generator of valid subarrays within the domains `d1` and `d2`
+ */
 Gen<std::vector<std::pair<
     std::optional<tdbrc::Domain<int>>,
     std::optional<tdbrc::Domain<int>>>>>
@@ -2861,6 +2925,9 @@ struct Arbitrary<FxRun2D> {
   }
 };
 
+/**
+ * Specializes `show` to print the final test case after shrinking
+ */
 template <>
 void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
   size_t f = 0;
@@ -2907,6 +2974,9 @@ void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
   os << "}";
 }
 
+/**
+ * Specializes `show` to print the final test case after shrinking
+ */
 template <>
 void show<FxRun2D>(const FxRun2D& instance, std::ostream& os) {
   size_t f = 0;
@@ -2968,6 +3038,16 @@ void show<FxRun2D>(const FxRun2D& instance, std::ostream& os) {
 
 }  // namespace rc
 
+/**
+ * Applies `::run` to completely arbitrary 1D input.
+ *
+ * `NonShrinking` is used because the shrink space is very large,
+ * and rapidcheck does not appear to give up. Hence if an instance
+ * fails, it will shrink for an arbitrarily long time, which is
+ * not appropriate for CI. If this happens, copy the seed and open a story,
+ * and whoever investigates can remove the `NonShrinking` part and let
+ * it run for... well who knows how long, really.
+ */
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 1d",
@@ -2979,6 +3059,16 @@ TEST_CASE_METHOD(
   }
 }
 
+/**
+ * Applies `::run` to completely arbitrary 2D input.
+ *
+ * `NonShrinking` is used because the shrink space is very large,
+ * and rapidcheck does not appear to give up. Hence if an instance
+ * fails, it will shrink for an arbitrarily long time, which is
+ * not appropriate for CI. If this happens, copy the seed and open a story,
+ * and whoever investigates can remove the `NonShrinking` part and let
+ * it run for... well who knows how long, really.
+ */
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 2d",
@@ -3028,6 +3118,9 @@ TEST_CASE_METHOD(
       std::string::npos);
 }
 
+/**
+ * Records durations as reported by `tiledb::sm::stats::DurationInstrument`.
+ */
 struct TimeKeeper {
   std::map<std::string, std::vector<double>> durations;
 
@@ -3041,6 +3134,9 @@ struct TimeKeeper {
     durations[stat].push_back(duration.count());
   }
 
+  /**
+   * Write durations to a file for analysis.
+   */
   void dump_durations(const char* path) const {
     std::ofstream dump(path);
 
@@ -3063,8 +3159,14 @@ struct TimeKeeper {
 };
 
 /**
- * Runs sparse global order reader on a 2D array which is
- * highly representative of SOMA workloads
+ * Runs sparse global order reader on a 2D array
+ * with two `int64_t` dimensions and a `float` attribute.
+ * This schema is common in SOMA, comparing the results
+ * from "preprocess merge off" and "preprocess merge on".
+ *
+ * The time of each `tiledb_query_submit` is recorded
+ * for both variations, and then dumped to `/tmp/time_keeper.out`
+ * when the test is completed.
  */
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
