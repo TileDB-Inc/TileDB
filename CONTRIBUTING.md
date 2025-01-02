@@ -50,7 +50,6 @@ for dependencies and detailed build instructions.
 
 Branch conventions:
 - `main` is the development branch of TileDB, all PR's are merged into `main`.
-- `master` tracks the latest stable / released version of TileDB.
 - `release-x.y.z` are major / bugfix release branches of TileDB.
 
 Formatting conventions:
