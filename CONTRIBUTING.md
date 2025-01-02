@@ -49,7 +49,7 @@ for dependencies and detailed build instructions.
 [Issue a PR from your updated TileDB fork](https://help.github.com/articles/creating-a-pull-request-from-a-fork/)
 
 Branch conventions:
-- `main` is the mainelopment branch of TileDB, all PR's are merged into `main`.
+- `main` is the development branch of TileDB, all PR's are merged into `main`.
 - `master` tracks the latest stable / released version of TileDB.
 - `release-x.y.z` are major / bugfix release branches of TileDB.
 
@@ -63,7 +63,7 @@ Formatting conventions:
 
 ### Pull Requests:
 
-- `main` is the mainelopment branch, all PR’s should be rebased on top of the latest `main` commit.
+- `main` is the development branch, all PR’s should be rebased on top of the latest `main` commit.
 
 - Commit changes to a local branch.  The convention is to use your initials to identify branches: (ex. “Fred Jones” , `fj/my_bugfix_branch`).  Branch names should be identifiable and reflect the feature or bug that they want to address / fix. This helps in deleting old branches later.
 
