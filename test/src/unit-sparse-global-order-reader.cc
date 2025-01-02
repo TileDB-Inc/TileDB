@@ -64,6 +64,7 @@ using tiledb::sm::Datatype;
 using tiledb::test::tdbrc::AttributeType;
 using tiledb::test::tdbrc::DimensionType;
 using tiledb::test::tdbrc::FragmentType;
+using tiledb::test::tdbrc::NonShrinking;
 
 namespace rc {
 Gen<std::vector<tdbrc::Domain<int>>> make_subarray_1d(
@@ -3001,9 +3002,9 @@ void show<FxRun2D>(const FxRun2D& instance, std::ostream& os) {
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 1d",
-    "[sparse-global-order]") {
+    "[sparse-global-order][rapidcheck]") {
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck arbitrary 1d", [this](FxRun1D instance) {
+    rc::prop("rapidcheck arbitrary 1d", [this](NonShrinking<FxRun1D> instance) {
       run<tiledb::test::AsserterRapidcheck, FxRun1D>(instance);
     });
   }
@@ -3012,10 +3013,10 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 2d",
-    "[sparse-global-order]") {
+    "[sparse-global-order][rapidcheck]") {
   SECTION("rapidcheck") {
-    rc::prop("rapidcheck arbitrary 2d", [this](FxRun2D instance) {
-      run<tiledb::test::AsserterRapidcheck>(instance);
+    rc::prop("rapidcheck arbitrary 2d", [this](NonShrinking<FxRun2D> instance) {
+      run<tiledb::test::AsserterRapidcheck, FxRun2D>(instance);
     });
   }
 }
