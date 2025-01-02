@@ -122,4 +122,49 @@ struct AsserterRapidcheck {};
     }                                                                     \
   } while (0)
 
+namespace tiledb::test::tdbrc {
+
+/**
+ * Wrapper struct whose `Arbitrary` specialization returns
+ * a non-shrinking generator.
+ *
+ * This is meant to be used for generators which have a
+ * very very large shrinking space, such that by default
+ * we do not want to shrink (e.g. in CI - instead we want
+ * to capture the seed immediately and file a bug report
+ * where the assignee can kick off the shrinking).
+ */
+template <typename T>
+struct NonShrinking {
+  NonShrinking(T&& inner)
+      : inner_(inner) {
+  }
+
+  T inner_;
+
+  operator T&() {
+    return inner_;
+  }
+
+  operator const T&() const {
+    return inner_;
+  }
+};
+
+}  // namespace tiledb::test::tdbrc
+
+namespace rc {
+template <typename T>
+struct Arbitrary<tiledb::test::tdbrc::NonShrinking<T>> {
+  static Gen<tiledb::test::tdbrc::NonShrinking<T>> arbitrary() {
+    auto inner = gen::noShrink(gen::arbitrary<T>());
+    return gen::apply(
+        [](T inner) {
+          return tiledb::test::tdbrc::NonShrinking<T>(std::move(inner));
+        },
+        inner);
+  }
+};
+}  // namespace rc
+
 #endif  // TILEDB_MISC_TDB_RAPIDCHECK_H
