@@ -604,13 +604,17 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   // add dimensions to query
   [&]<typename... Ds>(std::tuple<Ds...> dims) {
     query_applicator<Asserter, Ds...>::set(
-        ctx_, query, dimension_sizes, dims, "d");
+        ctx_, query, dimension_sizes, dims, [](unsigned d) {
+          return "d" + std::to_string(d);
+        });
   }(dimensions);
 
   // add attributes to query
   [&]<typename... As>(std::tuple<As...> atts) {
     query_applicator<Asserter, As...>::set(
-        ctx_, query, attribute_sizes, atts, "a");
+        ctx_, query, attribute_sizes, atts, [](unsigned a) {
+          return "a" + std::to_string(a);
+        });
   }(attributes);
 
   // Submit query.
@@ -2486,11 +2490,21 @@ void CSparseGlobalOrderFx::run(Instance instance) {
     // add fields to query
     [&]<typename... Ds>(std::tuple<Ds...> dims) {
       query_applicator<Asserter, Ds...>::set(
-          ctx_, query, dimension_sizes, dims, "d", outcursor);
+          ctx_,
+          query,
+          dimension_sizes,
+          dims,
+          [](unsigned d) { return "d" + std::to_string(d); },
+          outcursor);
     }(outdims);
     [&]<typename... As>(std::tuple<As...> atts) {
       query_applicator<Asserter, As...>::set(
-          ctx_, query, attribute_sizes, atts, "a", outcursor);
+          ctx_,
+          query,
+          attribute_sizes,
+          atts,
+          [](unsigned a) { return "a" + std::to_string(a); },
+          outcursor);
     }(outatts);
 
     rc = tiledb_query_submit(ctx_, query);
