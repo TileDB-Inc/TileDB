@@ -937,6 +937,7 @@ Status index_reader_to_capnp(
   if (reader.preprocess_tile_order().enabled_) {
     auto preprocess = reader_builder->initPreprocess();
     preprocess.setCursor(reader.preprocess_tile_order().cursor_);
+    preprocess.setNumTiles(reader.preprocess_tile_order().num_tiles_);
   }
 
   return Status::Ok();
@@ -1174,7 +1175,8 @@ Status index_reader_from_capnp(
 
   if (reader_reader.hasPreprocess()) {
     reader->set_preprocess_tile_order_cursor(
-        reader_reader.getPreprocess().getCursor());
+        reader_reader.getPreprocess().getCursor(),
+        reader_reader.getPreprocess().getNumTiles());
   }
 
   return Status::Ok();

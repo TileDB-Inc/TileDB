@@ -156,6 +156,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
                   "sm.query.sparse_global_order.preprocess_tile_merge")
               .value_or(0);
   preprocess_tile_order_.cursor_ = 0;
+  preprocess_tile_order_.num_tiles_ = 1;  // will be adjusted later if needed
 
   if (!preprocess_tile_order_.enabled_) {
     all_fragment_tile_order_.memory_used_for_coords_.resize(
@@ -198,11 +199,12 @@ void SparseGlobalOrderReader<BitmapType>::refresh_config() {
 
 template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::set_preprocess_tile_order_cursor(
-    uint64_t cursor) {
+    uint64_t cursor, uint64_t num_tiles) {
   preprocess_tile_order_.enabled_ = true;
   preprocess_tile_order_.cursor_ = cursor;
+  preprocess_tile_order_.num_tiles_ = num_tiles;
 
-  // The tile order itself will be recomputed.
+  // The tile order itself will be recomputed if needed.
   // We get smaller messages but at a higher CPU cost.
 }
 
@@ -237,6 +239,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   // subarray)
   std::optional<PreprocessTileMergeFuture> preprocess_future;
   if (preprocess_tile_order_.enabled_ &&
+      preprocess_tile_order_.has_more_tiles() &&
       preprocess_tile_order_.tiles_.empty()) {
     preprocess_future.emplace(memory_used_for_coords_total_);
     preprocess_compute_result_tile_order(preprocess_future.value());
@@ -573,6 +576,7 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
     fragment_result_tile_spans.push_back(std::span(f));
   }
 
+  preprocess_tile_order_.num_tiles_ = num_result_tiles;
   preprocess_tile_order_.tiles_.resize(
       num_result_tiles, ResultTileId{.fragment_idx_ = 0, .tile_idx_ = 0});
 

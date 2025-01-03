@@ -1039,7 +1039,7 @@ struct PreprocessTileOrder {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(818a8600b3452aa4, 1, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(818a8600b3452aa4, 2, 0)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -9198,6 +9198,8 @@ class PreprocessTileOrder::Reader {
 
   inline ::uint64_t getCursor() const;
 
+  inline ::uint64_t getNumTiles() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -9239,6 +9241,9 @@ class PreprocessTileOrder::Builder {
 
   inline ::uint64_t getCursor();
   inline void setCursor(::uint64_t value);
+
+  inline ::uint64_t getNumTiles();
+  inline void setNumTiles(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -25790,6 +25795,20 @@ inline ::uint64_t PreprocessTileOrder::Builder::getCursor() {
 inline void PreprocessTileOrder::Builder::setCursor(::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t PreprocessTileOrder::Reader::getNumTiles() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t PreprocessTileOrder::Builder::getNumTiles() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void PreprocessTileOrder::Builder::setNumTiles(::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ReaderIndex::Reader::hasLayout() const {
