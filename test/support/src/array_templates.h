@@ -288,7 +288,7 @@ struct query_applicator {
       tiledb_query_t* query,
       auto& field_sizes,
       std::tuple<Ts&...> fields,
-      const char* basename,
+      std::function<std::string(unsigned)> fieldname,
       uint64_t cell_offset = 0) {
     auto set_data_buffer =
         [&](const std::string& name, auto& field, uint64_t& field_size) {
@@ -304,9 +304,7 @@ struct query_applicator {
         [&](const auto&... field) {
           std::apply(
               [&]<typename... Us>(Us&... field_size) {
-                (set_data_buffer(
-                     basename + std::to_string(d++), field, field_size),
-                 ...);
+                (set_data_buffer(fieldname(d++), field, field_size), ...);
               },
               field_sizes);
         },
