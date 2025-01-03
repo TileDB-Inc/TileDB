@@ -339,7 +339,7 @@ class FilterBuffer {
     shared_ptr<Buffer> underlying_buffer_;
 
     /** True if this instance is a view on the underlying buffer. */
-    bool is_view_;
+    bool is_view_{false};
 
     /**
      * If this instance is a view, the view Buffer (which does not own its

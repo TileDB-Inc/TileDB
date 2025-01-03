@@ -58,7 +58,7 @@ using ResultSetType = std::map<std::string, std::any>;
 namespace {
 
 template <class T>
-bool check_result(const T a, const T b, size_t start, size_t end) {
+bool check_result(const T& a, const T& b, size_t start, size_t end) {
   auto a_exp = T(a.begin() + start, a.begin() + end);
   auto b_exp = T(b.begin() + start, b.begin() + end);
   return a_exp == b_exp;
