@@ -35,6 +35,9 @@
 
 #include "tiledb.h"
 
+#include <stdexcept>
+#include <string>
+
 /**
  * Calls a C API function and returns its status if it is not TILEDB_OK.
  */
@@ -74,19 +77,26 @@ std::string error_if_any(tiledb_ctx_t* ctx, CAPIReturn apirc) {
   }
 
   tiledb_error_t* error = NULL;
-  auto rc = tiledb_ctx_get_last_error(ctx, &error);
-  REQUIRE(rc == TILEDB_OK);
-  if (error == nullptr) {
+  if (tiledb_ctx_get_last_error(ctx, &error) != TILEDB_OK) {
+    return "Internal error: tiledb_ctx_get_last_error";
+  } else if (error == nullptr) {
     // probably should be unreachable
     return "";
   }
 
   const char* msg;
-  rc = tiledb_error_message(error, &msg);
-  REQUIRE(rc == TILEDB_OK);
-
-  return std::string(msg);
+  if (tiledb_error_message(error, &msg) != TILEDB_OK) {
+    return "Internal error: tiledb_error_message";
+  } else {
+    return std::string(msg);
+  }
 }
+
+/**
+ * Throws a `std::runtime_error` if the operation returning `thing`
+ * did not return `TILEDB_OK`.
+ */
+void throw_if_error(tiledb_ctx_t* ctx, capi_return_t thing);
 
 }  // namespace tiledb::test
 

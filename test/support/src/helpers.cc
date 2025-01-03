@@ -173,6 +173,13 @@ void require_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
   REQUIRE(rc == TILEDB_OK);
 }
 
+void throw_if_error(tiledb_ctx_t* ctx, capi_return_t thing) {
+  auto err = error_if_any(ctx, thing);
+  if (err != "") {
+    throw std::runtime_error(err);
+  }
+}
+
 int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {
   if (!vfs.empty()) {
     if (std::find(vfs_fs.begin(), vfs_fs.end(), vfs) == vfs_fs.end()) {

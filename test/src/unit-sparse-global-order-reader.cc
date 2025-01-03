@@ -77,24 +77,6 @@ Gen<std::vector<templates::Domain<int>>> make_subarray_1d(
 /* ********************************* */
 
 /**
- * Encapsulates memory budget configuration parameters for the sparse global
- * order reader
- */
-struct MemoryBudget {
-  std::string total_budget_;
-  std::string ratio_tile_ranges_;
-  std::string ratio_array_data_;
-  std::string ratio_coords_;
-
-  MemoryBudget()
-      : total_budget_("1048576")
-      , ratio_tile_ranges_("0.1")
-      , ratio_array_data_("0.1")
-      , ratio_coords_("0.5") {
-  }
-};
-
-/**
  * Options for configuring the CSparseGlobalFx default 1D array
  */
 struct DefaultArray1DConfig {
@@ -132,7 +114,7 @@ struct FxRun1D {
   std::vector<templates::Domain<int>> subarray;
 
   DefaultArray1DConfig array;
-  MemoryBudget memory;
+  SparseGlobalOrderReaderMemoryBudget memory;
 
   uint64_t tile_capacity() const {
     return array.capacity;
@@ -232,7 +214,7 @@ struct FxRun2D {
   templates::Dimension<Datatype::INT32> d1;
   templates::Dimension<Datatype::INT32> d2;
 
-  MemoryBudget memory;
+  SparseGlobalOrderReaderMemoryBudget memory;
 
   FxRun2D()
       : num_user_cells(8)
@@ -403,7 +385,7 @@ struct CSparseGlobalOrderFx {
   const char* ARRAY_NAME = "test_sparse_global_order";
   tiledb_array_t* array_ = nullptr;
 
-  MemoryBudget memory_;
+  SparseGlobalOrderReaderMemoryBudget memory_;
 
   template <typename Asserter = tiledb::test::AsserterCatch>
   void create_default_array_1d(
@@ -487,7 +469,7 @@ CSparseGlobalOrderFx::~CSparseGlobalOrderFx() {
 }
 
 void CSparseGlobalOrderFx::reset_config() {
-  memory_ = MemoryBudget();
+  memory_ = SparseGlobalOrderReaderMemoryBudget();
   update_config();
 }
 
@@ -508,37 +490,7 @@ void CSparseGlobalOrderFx::update_config() {
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.total_budget",
-          memory_.total_budget_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.reader.sparse_global_order.ratio_tile_ranges",
-          memory_.ratio_tile_ranges_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.reader.sparse_global_order.ratio_array_data",
-          memory_.ratio_array_data_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.reader.sparse_global_order.ratio_coords",
-          memory_.ratio_coords_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  REQUIRE(memory_.apply(config) == nullptr);
 
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);

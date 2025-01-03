@@ -33,7 +33,10 @@
 #ifndef TILEDB_TEST_ARRAY_HELPERS_H
 #define TILEDB_TEST_ARRAY_HELPERS_H
 
+#include "test/support/src/error_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+
+#include <string>
 
 namespace tiledb::test {
 
@@ -54,10 +57,8 @@ struct CApiArray {
   CApiArray(tiledb_ctx_t* ctx, const char* uri, tiledb_query_type_t mode)
       : ctx_(ctx)
       , array_(nullptr) {
-    auto rc = tiledb_array_alloc(ctx, uri, &array_);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_open(ctx, array_, mode);
-    REQUIRE(rc == TILEDB_OK);
+    throw_if_error(ctx, tiledb_array_alloc(ctx, uri, &array_));
+    throw_if_error(ctx, tiledb_array_open(ctx, array_, mode));
   }
 
   CApiArray(CApiArray&& from)
@@ -67,8 +68,8 @@ struct CApiArray {
 
   ~CApiArray() {
     if (array_) {
-      auto rc = tiledb_array_close(ctx_, array_);
-      REQUIRE(rc == TILEDB_OK);
+      // yes this may std::terminate but hey it's test code
+      throw_if_error(ctx_, tiledb_array_close(ctx_, array_));
       tiledb_array_free(&array_);
     }
   }
@@ -87,6 +88,32 @@ struct CApiArray {
     return array_;
   }
 };
+
+/**
+ * Encapsulates memory budget configuration parameters for the sparse global
+ * order reader
+ */
+struct SparseGlobalOrderReaderMemoryBudget {
+  std::string total_budget_;
+  std::string ratio_tile_ranges_;
+  std::string ratio_array_data_;
+  std::string ratio_coords_;
+
+  SparseGlobalOrderReaderMemoryBudget()
+      : total_budget_("1048576")
+      , ratio_tile_ranges_("0.1")
+      , ratio_array_data_("0.1")
+      , ratio_coords_("0.5") {
+  }
+
+  /**
+   * Apply this memory budget to `config`.
+   *
+   * @return an error if one occurred, or nullptr if successful
+   */
+  tiledb_error_t* apply(tiledb_config_t* config);
+};
+
 }  // namespace tiledb::test
 
 #endif
