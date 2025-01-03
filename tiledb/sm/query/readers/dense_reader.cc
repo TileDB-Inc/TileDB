@@ -1539,7 +1539,12 @@ tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
     const NDRange& ndrange,
     const std::vector<DimType>& coords,
     const uint64_t length) {
-  const unsigned slab_dim = (layout_ == Layout::ROW_MAJOR) ? dim_num - 1 : 0;
+  const auto cell_order = array_schema_.cell_order();
+  const unsigned slab_dim =
+      (layout_ == Layout::ROW_MAJOR ||
+       (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR)) ?
+          dim_num - 1 :
+          0;
   const DimType slab_start = coords[slab_dim];
   const DimType slab_end = slab_start + length - 1;
 
