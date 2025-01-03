@@ -196,9 +196,10 @@ class GCS {
    * Check if a bucket exists.
    *
    * @param bucket The name of the bucket.
-   * @return `true` if `uri` is a bucket, `false` otherwise.
+   * @param is_bucket `true` if `uri` is a bucket, `false` otherwise.
+   * @return Status.
    */
-  bool is_bucket(const URI& uri) const;
+  Status is_bucket(const URI& uri, bool* is_bucket) const;
 
   /**
    * Check if 'is_object' is a object on GCS.
@@ -562,9 +563,12 @@ class GCS {
    * `*bucket_name == "my-bucket"` and `*object_path == "dir1/file1"`.
    *
    * @param uri The URI to parse.
-   * @return A tuple of the bucket name and object path.
+   * @param bucket_name Mutates to the bucket name.
+   * @param object_path Mutates to the object path.
+   * @return Status
    */
-  std::tuple<std::string, std::string> parse_gcs_uri(const URI& uri) const;
+  Status parse_gcs_uri(
+      const URI& uri, std::string* bucket_name, std::string* object_path) const;
 
   /**
    * Removes a leading slash from 'path' if it exists.
@@ -610,6 +614,15 @@ class GCS {
       const std::string& bucket_name,
       const std::string& object_path,
       bool* const is_object) const;
+
+  /**
+   * Check if 'bucket_name' is a bucket on GCS.
+   *
+   * @param bucket_name The bucket's name.
+   * @param is_bucket Mutates to the output.
+   * @return Status
+   */
+  Status is_bucket(const std::string& bucket_name, bool* const is_bucket) const;
 
   /**
    * Contains the implementation of ls_filtered.

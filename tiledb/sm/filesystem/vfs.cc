@@ -726,7 +726,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    *is_bucket = gcs().is_bucket(uri);
+    RETURN_NOT_OK(gcs().is_bucket(uri, is_bucket));
     return Status::Ok();
 #else
     *is_bucket = false;
