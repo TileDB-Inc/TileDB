@@ -119,7 +119,7 @@ const std::string Config::SM_QUERY_DENSE_QC_COORDS_MODE = "false";
 const std::string Config::SM_QUERY_DENSE_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE =
-    "0";
+    "128";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
