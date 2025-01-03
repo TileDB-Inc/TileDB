@@ -122,7 +122,7 @@ struct AsserterRapidcheck {};
     }                                                                     \
   } while (0)
 
-namespace tiledb::test::tdbrc {
+namespace rc {
 
 /**
  * Wrapper struct whose `Arbitrary` specialization returns
@@ -151,18 +151,12 @@ struct NonShrinking {
   }
 };
 
-}  // namespace tiledb::test::tdbrc
-
-namespace rc {
 template <typename T>
-struct Arbitrary<tiledb::test::tdbrc::NonShrinking<T>> {
-  static Gen<tiledb::test::tdbrc::NonShrinking<T>> arbitrary() {
+struct Arbitrary<NonShrinking<T>> {
+  static Gen<NonShrinking<T>> arbitrary() {
     auto inner = gen::noShrink(gen::arbitrary<T>());
     return gen::apply(
-        [](T inner) {
-          return tiledb::test::tdbrc::NonShrinking<T>(std::move(inner));
-        },
-        inner);
+        [](T inner) { return NonShrinking<T>(std::move(inner)); }, inner);
   }
 };
 }  // namespace rc
