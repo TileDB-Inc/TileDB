@@ -141,7 +141,8 @@ const PreprocessTileOrder SparseIndexReaderBase::preprocess_tile_order() const {
   return preprocess_tile_order_;
 }
 
-void SparseIndexReaderBase::set_preprocess_tile_order_cursor(uint64_t) {
+void SparseIndexReaderBase::set_preprocess_tile_order_cursor(
+    uint64_t, uint64_t) {
   throw SparseIndexReaderBaseException(
       "Internal error: set_preprocess_tile_order_cursor for unsupported sparse "
       "index reader");

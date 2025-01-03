@@ -709,6 +709,7 @@ struct ReadStateIndex {
 
 struct PreprocessTileOrder {
   cursor @0 :UInt64;
+  numTiles @1 :UInt64;
 }
 
 struct ReaderIndex {
