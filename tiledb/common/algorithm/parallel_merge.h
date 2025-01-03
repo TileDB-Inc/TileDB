@@ -28,9 +28,64 @@
  * @section DESCRIPTION
  *
  * This file defines an implementation of a parallel merge algorithm for
- * in-memory data.
+ * in-memory data.  A merge combines the data from one or more sorted streams
+ * and produces a single sorted stream.
  *
- * TODO: explain algorithm
+ * Let `K` be the number of input buffers, and `P` be the available parallelism.
+ *
+ * A K-way tournament merge does not present obvious parallelization
+ * opportunities. Each level of the tournament waits for its inputs to finish
+ * before yielding its own winner. Even if the only single-threaded critical
+ * path is the final level, each level feeding in can only leverage half of the
+ * available tasks relative to its input. And then each task is small: a single
+ * comparison.
+ *
+ * Another choice is to have a critical path as the *first* phase of the merge
+ * algorithm. Instead of parallelizing one merge, we can identify P
+ * non-overlapping merges from the input, and run each of the P merges fully in
+ * parallel. This is feasible if we can buffer a large enough amount of data
+ * from each stream.
+ *
+ * This implementation chooses the latter.
+ *
+ * The parallel merge algorithm runs in two phases:
+ * 1) identify merge units
+ * 2) run tournament merges
+ *
+ * We define a "merge unit" to be a set of bounds on each stream [L_k, U_k]
+ * such that all tuples inside the unit will occur contiguously in the output
+ * stream. Because the tuples inside the unit all occur contiguously, a merge
+ * unit can run and produce output without coordinating with other merge units.
+ *
+ * The "Identify Merge Units" phase is the sequential critical path.
+ * Given a total input size of N, we want to identify P merge units which each
+ * have approximately N/P tuples. We do this by reduction to
+ * "find a merge unit with N tuples which starts at position 0 in each input".
+ * Then, merge unit p is the difference between the bounds from that algorithm
+ * on (p * N/P) and ((p + 1) * N/P).
+ *
+ * How do we find a merge unit with N tuples which starts at position 0 in each
+ * input?  Choose the "split point" as the midpoint of a stream k.  Count the
+ * number of tuples in M each stream which are less than the split point.  If M
+ * == N, then we can infer bounds on each stream and are done.  If M < N, then
+ * we accumulate the bounds from each stream, advance the split point to stream
+ * k + 1, and try again with N - M tuples.  And if M > N, then we shrink the
+ * views on each stream and try again using stream k + 1 for the new split
+ * point.
+ *
+ * One nice feature of this reduction is that we can "yield" merge units as we
+ * identify them, and simultaneously spawn the tasks to run the tournament merge
+ * as well as identify the next merge unit.
+ *
+ * The "Run Tournament Merges" phases proceeds in one parallel task for each of
+ * the identified merge units.  Each task is a sequential merge of the data
+ * ranges specified by the merge unit bounds.  The current implementation is
+ * fairly naive, just using a priority queue, but we could imagine doing
+ * something more interesting here.
+ *
+ * Our implementation assumes a single contiguous output buffer.
+ * Each merge unit can use its bounds to determine which positions in the output
+ * buffer it is meant to write to.
  */
 
 #ifndef TILEDB_PARALLEL_MERGE_H
@@ -83,8 +138,8 @@ struct MergeUnit;
  * Provides methods for waiting on the incremental asynchronous output
  * of the merge operation.
  *
- * FIXME: need to move the comparator here somehow so that way
- * it doesn't have to have a longer lifetime from the caller
+ * The caller is responsible for ensuring that the input data, output data,
+ * and comparator all out-live the `ParallelMergeFuture`.
  */
 struct ParallelMergeFuture {
   ParallelMergeFuture(
@@ -164,6 +219,9 @@ struct MergeUnit {
       , ends(&resource) {
   }
 
+  /**
+   * @return the number of data items contained inside this merge unit
+   */
   uint64_t num_items() const {
     uint64_t total_items = 0;
     for (size_t i = 0; i < starts.size(); i++) {
@@ -172,6 +230,9 @@ struct MergeUnit {
     return total_items;
   }
 
+  /**
+   * @return the starting position in the output where this merge unit writes to
+   */
   uint64_t output_start() const {
     uint64_t total_bound = 0;
     for (size_t i = 0; i < ends.size(); i++) {
@@ -180,6 +241,10 @@ struct MergeUnit {
     return total_bound;
   }
 
+  /**
+   * @return the upper bound position in the output where this merge unit writes
+   * to
+   */
   uint64_t output_end() const {
     uint64_t total_bound = 0;
     for (size_t i = 0; i < ends.size(); i++) {
@@ -207,6 +272,10 @@ class ParallelMerge {
   typedef std::span<std::span<T>> Streams;
 
  private:
+  /**
+   * Comparator for std::span<T> which defers comparison to the first element of
+   * the span.
+   */
   struct span_greater {
     span_greater(Compare& cmp)
         : cmp_(cmp) {
@@ -219,6 +288,11 @@ class ParallelMerge {
     Compare cmp_;
   };
 
+  /**
+   * Runs a single-threaded tournament merge of the ranges of `streams`
+   * identified by `unit`.  Writes results to the positions of `output`
+   * identified by `unit`.
+   */
   static Status tournament_merge(
       Streams streams, Compare* cmp, const MergeUnit& unit, T* output) {
     std::vector<std::span<T>> container;
@@ -260,13 +334,21 @@ class ParallelMerge {
     }
   }
 
+  /**
+   * Identifies the upper bounds in each of `streams` where the items
+   * are less than the split point.
+   *
+   * `which` is the index of the stream we want to use for the split point.
+   */
   static MergeUnit split_point_stream_bounds(
       Streams streams,
       Compare& cmp,
       tdb::pmr::memory_resource& memory,
       uint64_t which,
       const MergeUnit& search_bounds) {
-    const T& split_point = streams[which][search_bounds.ends[which] - 1];
+    const auto split_point_idx =
+        (search_bounds.starts[which] + search_bounds.ends[which] + 1) / 2 - 1;
+    const T& split_point = streams[which][split_point_idx];
 
     MergeUnit output(memory);
     output.starts = search_bounds.starts;
@@ -275,7 +357,7 @@ class ParallelMerge {
     for (uint64_t i = 0; i < streams.size(); i++) {
       if (i == which) {
         output.starts[i] = search_bounds.starts[i];
-        output.ends.push_back(search_bounds.ends[i]);
+        output.ends.push_back(split_point_idx + 1);
       } else {
         std::span<T> substream(
             streams[i].begin() + search_bounds.starts[i],
@@ -294,6 +376,9 @@ class ParallelMerge {
 
   enum class SearchStep { Stalled, MadeProgress, Converged };
 
+  /**
+   * Holds state for searching for a merge unit of size `target_items`.
+   */
   struct SearchMergeBoundary {
     Streams streams_;
     Compare& cmp_;
@@ -337,23 +422,13 @@ class ParallelMerge {
 
       MergeUnit split_point_bounds(memory_);
       {
-        // temporarily shrink the split point stream bounds to indicate the
-        // split point
-        auto original_end = search_bounds_.ends[split_point_stream_];
         if (search_bounds_.starts[split_point_stream_] >=
             search_bounds_.ends[split_point_stream_]) {
           throw ParallelMergeException("Internal error: invalid split point");
         }
 
-        search_bounds_.ends[split_point_stream_] =
-            (search_bounds_.starts[split_point_stream_] +
-             search_bounds_.ends[split_point_stream_] + 1) /
-            2;
-
         split_point_bounds = split_point_stream_bounds(
             streams_, cmp_, memory_, split_point_stream_, search_bounds_);
-
-        search_bounds_.ends[split_point_stream_] = original_end;
       }
 
       const uint64_t num_split_point_items = split_point_bounds.num_items();
@@ -407,6 +482,10 @@ class ParallelMerge {
     }
   };
 
+  /**
+   * @return a MergeUnit of size `target_items` whose starting positions are
+   * zero for each stream
+   */
   static MergeUnit identify_merge_unit(
       Streams streams,
       Compare* cmp,
@@ -434,6 +513,11 @@ class ParallelMerge {
     }
   }
 
+  /**
+   * Identifies the next merge unit and then spawns tasks
+   * to begin the tournament merge of that unit, and also identify
+   * the next merge unit if there is another.
+   */
   static Status spawn_next_merge_unit(
       tiledb::common::ThreadPool* pool,
       Streams streams,
