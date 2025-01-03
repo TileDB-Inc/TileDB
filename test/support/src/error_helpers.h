@@ -35,6 +35,8 @@
 
 #include "tiledb.h"
 
+#include <test/support/assert_helpers.h>
+
 #include <stdexcept>
 #include <string>
 
@@ -52,10 +54,10 @@
 /**
  * Asserts that a C API call does not return error.
  */
-#define TRY(ctx, thing)                                         \
-  do {                                                          \
-    auto rc = (thing);                                          \
-    RCCATCH_REQUIRE("" == tiledb::test::error_if_any(ctx, rc)); \
+#define TRY(ctx, thing)                                  \
+  do {                                                   \
+    auto rc = (thing);                                   \
+    ASSERTER("" == tiledb::test::error_if_any(ctx, rc)); \
   } while (0)
 
 namespace tiledb::test {
