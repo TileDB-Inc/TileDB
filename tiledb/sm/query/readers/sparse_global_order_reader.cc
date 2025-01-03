@@ -31,8 +31,10 @@
  */
 
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
+#include "tiledb/common/algorithm/parallel_merge.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -60,6 +62,70 @@ class SparseGlobalOrderReaderException : public StatusException {
   }
 };
 
+class SparseGlobalOrderReaderInternalError
+    : public SparseGlobalOrderReaderException {
+ public:
+  explicit SparseGlobalOrderReaderInternalError(const std::string& message)
+      : SparseGlobalOrderReaderException("Internal error: " + message) {
+  }
+};
+
+/**
+ * Encapsulates the input to the preprocess tile merge, and the
+ * merge output future for polling.
+ */
+struct PreprocessTileMergeFuture {
+  using MemoryCounter = std::atomic<uint64_t>;
+
+  PreprocessTileMergeFuture(MemoryCounter& memory_used)
+      : memory_used_(memory_used) {
+  }
+
+  /** memory used for result tile IDs */
+  MemoryCounter& memory_used_;
+
+  /** merge configuration, looks unused but must out-live the merge future */
+  algorithm::ParallelMergeOptions merge_options_;
+
+  /** merge input, looks unused but must out-live the merge future */
+  std::vector<std::vector<ResultTileId>> fragment_result_tiles_;
+
+  std::vector<std::span<ResultTileId>> fragment_result_tile_spans_;
+
+  /** comparator, looks unused but must out-live the merge future */
+  std::shared_ptr<CellCmpBase> cmp_;
+
+  /** the merge future */
+  std::optional<tdb::pmr::unique_ptr<algorithm::ParallelMergeFuture>> merge_;
+
+ private:
+  void free_input() {
+    for (auto& fragment : fragment_result_tiles_) {
+      const auto num_tiles = fragment.size();
+      fragment.clear();
+      memory_used_ -= sizeof(ResultTileId) * num_tiles;
+    }
+    fragment_result_tiles_.clear();
+    fragment_result_tile_spans_.clear();
+  }
+
+ public:
+  std::optional<uint64_t> await() {
+    auto ret = merge_.value()->await();
+    if (merge_.value()->finished()) {
+      free_input();
+    }
+    return ret;
+  }
+
+  void block() {
+    if (merge_.has_value()) {
+      merge_.value()->block();
+      free_input();
+    }
+  }
+};
+
 /* ****************************** */
 /*          CONSTRUCTORS          */
 /* ****************************** */
@@ -77,12 +143,25 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
           params,
           true)
     , result_tiles_leftover_(array_->fragment_metadata().size())
-    , memory_used_for_coords_(array_->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
     , last_cells_(array_->fragment_metadata().size())
     , tile_offsets_loaded_(false) {
   // Initialize memory budget variables.
   refresh_config();
+
+  preprocess_tile_order_.enabled_ =
+      array_schema_.cell_order() != Layout::HILBERT &&
+      0 < config_
+              .get<uint64_t>(
+                  "sm.query.sparse_global_order.preprocess_tile_merge")
+              .value_or(0);
+  preprocess_tile_order_.cursor_ = 0;
+  preprocess_tile_order_.num_tiles_ = 0;  // will be adjusted later if needed
+
+  if (!preprocess_tile_order_.enabled_) {
+    all_fragment_tile_order_.memory_used_for_coords_.resize(
+        array_->fragment_metadata().size());
+  }
 }
 
 /* ****************************** */
@@ -91,8 +170,15 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
 
 template <class BitmapType>
 bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
-  return !read_state_.done_adding_result_tiles() ||
-         memory_used_for_coords_total_ != 0;
+  if (!read_state_.done_adding_result_tiles()) {
+    return true;
+  } else if (!preprocess_tile_order_.enabled_) {
+    return memory_used_for_coords_total_ != 0;
+  } else if (preprocess_tile_order_.has_more_tiles()) {
+    return false;
+  } else {
+    return memory_used_for_coords_total_ != 0;
+  }
 }
 
 template <class BitmapType>
@@ -109,6 +195,17 @@ SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
 template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::refresh_config() {
   memory_budget_.refresh_config(config_, "sparse_global_order");
+}
+
+template <class BitmapType>
+void SparseGlobalOrderReader<BitmapType>::set_preprocess_tile_order_cursor(
+    uint64_t cursor, uint64_t num_tiles) {
+  preprocess_tile_order_.enabled_ = true;
+  preprocess_tile_order_.cursor_ = cursor;
+  preprocess_tile_order_.num_tiles_ = num_tiles;
+
+  // The tile order itself will be recomputed if needed.
+  // We get smaller messages but at a higher CPU cost.
 }
 
 template <class BitmapType>
@@ -136,6 +233,18 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
   // Load initial data, if not loaded already.
   throw_if_not_ok(load_initial_data());
+
+  // Determine result tile order
+  // (this happens after load_initial_data which identifies which tiles pass
+  // subarray)
+  std::optional<PreprocessTileMergeFuture> preprocess_future;
+  if (preprocess_tile_order_.enabled_ &&
+      preprocess_tile_order_.has_more_tiles() &&
+      preprocess_tile_order_.tiles_.empty()) {
+    preprocess_future.emplace(memory_used_for_coords_total_);
+    preprocess_compute_result_tile_order(preprocess_future.value());
+  }
+
   purge_deletes_consolidation_ = !deletes_consolidation_no_purge_ &&
                                  consolidation_with_timestamps_ &&
                                  !delete_and_update_conditions_.empty();
@@ -143,6 +252,8 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       !array_schema_.allows_dups() && purge_deletes_consolidation_;
 
   // Load tile offsets, if required.
+  // TODO: this can be improved to load only the offsets from
+  // `preprocess_tile_orders_.tiles_`.
   load_all_tile_offsets();
 
   // Field names to process.
@@ -154,7 +265,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
     stats_->add_counter("internal_loop_num", 1);
 
     // Create the result tiles we are going to process.
-    auto created_tiles = create_result_tiles(result_tiles);
+    auto created_tiles = create_result_tiles(result_tiles, preprocess_future);
 
     if (created_tiles.size() > 0) {
       // Read and unfilter coords.
@@ -199,6 +310,12 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       result_cell_slabs = std::move(rcs);
     }
 
+    if (created_tiles.empty() && result_cell_slabs.empty() && incomplete()) {
+      throw SparseGlobalOrderReaderException(
+          "Cannot load enough tiles to emit results from all fragments in "
+          "global order");
+    }
+
     // No more tiles to process, done.
     if (!result_cell_slabs.empty()) {
       // Copy cell slabs.
@@ -225,6 +342,13 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   }
 
   stats_->add_counter("ignored_tiles", tmp_read_state_.num_ignored_tiles());
+
+  if (preprocess_future.has_value()) {
+    // wait for tile merge to complete so we don't have to keep this
+    // state around for the next iteration, and if this errors for
+    // some reason we should return that
+    preprocess_future->block();
+  }
 
   return Status::Ok();
 }
@@ -298,7 +422,6 @@ uint64_t SparseGlobalOrderReader<BitmapType>::get_coord_tiles_size(
 template <class BitmapType>
 bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
     const unsigned dim_num,
-    const uint64_t memory_budget_coords_tiles,
     const unsigned f,
     const uint64_t t,
     const FragmentMetadata& frag_md,
@@ -311,15 +434,25 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
   auto tiles_size = get_coord_tiles_size(dim_num, f, t);
 
   // Don't load more tiles than the memory budget.
-  if (memory_used_for_coords_[f] + tiles_size > memory_budget_coords_tiles) {
-    return true;
+  if (preprocess_tile_order_.enabled_) {
+    if (memory_used_for_coords_total_ + tiles_size >
+        memory_budget_.coordinates_budget()) {
+      return true;
+    }
+  } else {
+    if (all_fragment_tile_order_.memory_used_for_coords_[f] + tiles_size >
+        all_fragment_tile_order_.per_fragment_memory_) {
+      return true;
+    }
   }
 
   // Adjust total memory used.
   memory_used_for_coords_total_ += tiles_size;
 
-  // Adjust per fragment memory used.
-  memory_used_for_coords_[f] += tiles_size;
+  if (!preprocess_tile_order_.enabled_) {
+    // Adjust per fragment memory used.
+    all_fragment_tile_order_.memory_used_for_coords_[f] += tiles_size;
+  }
 
   // Add the tile.
   result_tiles[f].emplace_back(
@@ -333,136 +466,235 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
   return false;
 }
 
+/**
+ * @precondition the `TempReadState` is up to date with which tiles pass the
+ * subarray (e.g. by calling `load_initial_data`)
+ */
+template <class BitmapType>
+void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
+    PreprocessTileMergeFuture& future) {
+  const auto& relevant_fragments = subarray_.relevant_fragments();
+  const uint64_t num_relevant_fragments = relevant_fragments.size();
+
+  future.fragment_result_tiles_.resize(fragment_metadata_.size());
+
+  auto& fragment_result_tiles = future.fragment_result_tiles_;
+
+  // TODO: ideally this could be async or on demand for each tile
+  // so that we could be closer to a proper LIMIT
+  subarray_.load_relevant_fragment_rtrees(&resources_.compute_tp());
+
+  auto try_reserve = [&](unsigned f, size_t num_tiles) {
+    memory_used_for_coords_total_ += sizeof(ResultTileId) * num_tiles;
+
+    if (memory_used_for_coords_total_ > memory_budget_.coordinates_budget()) {
+      return Status_QueryError(
+          "Cannot allocate space for preprocess result tile ID list, "
+          "increase memory budget: total budget = " +
+          std::to_string(memory_budget_.coordinates_budget()) +
+          ", memory needed >= " +
+          std::to_string(memory_used_for_coords_total_));
+    }
+    fragment_result_tiles[f].reserve(num_tiles);
+    return Status::Ok();
+  };
+
+  // first apply subarray (in parallel)
+  if (!subarray_.is_set()) {
+    for (const auto& f : relevant_fragments) {
+      fragment_result_tiles[f].reserve(fragment_metadata_[f]->tile_num());
+    }
+    auto populate_fragment_relevant_tiles = parallel_for(
+        &resources_.compute_tp(), 0, num_relevant_fragments, [&](unsigned rf) {
+          const unsigned f = relevant_fragments[rf];
+          const unsigned num_tiles = fragment_metadata_[f]->tile_num();
+          RETURN_NOT_OK(try_reserve(f, num_tiles));
+
+          for (uint64_t t = 0; t < fragment_metadata_[f]->tile_num(); t++) {
+            fragment_result_tiles[f].push_back(
+                ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+          }
+          return Status::Ok();
+        });
+    throw_if_not_ok(populate_fragment_relevant_tiles);
+  } else {
+    /**
+     * Determines which tiles from a given fragment qualify for the subarray.
+     */
+    auto populate_relevant_tiles = [&](unsigned rf) {
+      const unsigned f = relevant_fragments[rf];
+
+      const auto& fragment_tile_ranges = tmp_read_state_.tile_ranges(f);
+
+      uint64_t num_qualifying_tiles = 0;
+      for (const auto& tile_range : fragment_tile_ranges) {
+        num_qualifying_tiles += 1 + tile_range.second - tile_range.first;
+      }
+
+      RETURN_NOT_OK(try_reserve(f, num_qualifying_tiles));
+
+      for (auto tile_range = fragment_tile_ranges.rbegin();
+           tile_range != fragment_tile_ranges.rend();
+           ++tile_range) {
+        for (uint64_t t = tile_range->first; t <= tile_range->second; t++) {
+          fragment_result_tiles[f].push_back(
+              ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+        }
+      }
+
+      return Status::Ok();
+    };
+
+    auto populate_fragment_relevant_tiles = parallel_for(
+        &resources_.compute_tp(),
+        0,
+        num_relevant_fragments,
+        populate_relevant_tiles);
+    throw_if_not_ok(populate_fragment_relevant_tiles);
+
+    tmp_read_state_.clear_tile_ranges();
+  }
+
+  size_t num_result_tiles = 0;
+  for (const auto& fragment : fragment_result_tiles) {
+    num_result_tiles += fragment.size();
+  }
+
+  memory_used_for_coords_total_ += sizeof(ResultTileId) * num_result_tiles;
+  if (memory_used_for_coords_total_ > memory_budget_.coordinates_budget()) {
+    throw SparseGlobalOrderReaderException(
+        "Cannot allocate space for preprocess result tile ID list, "
+        "increase memory budget: total budget = " +
+        std::to_string(memory_budget_.coordinates_budget()) +
+        ", memory needed = " + std::to_string(memory_used_for_coords_total_));
+  }
+
+  /* then do parallel merge */
+  auto& fragment_result_tile_spans = future.fragment_result_tile_spans_;
+  fragment_result_tile_spans.reserve(fragment_result_tiles.size());
+  for (auto& f : fragment_result_tiles) {
+    fragment_result_tile_spans.push_back(std::span(f));
+  }
+
+  preprocess_tile_order_.num_tiles_ = num_result_tiles;
+  preprocess_tile_order_.tiles_.resize(
+      num_result_tiles, ResultTileId{.fragment_idx_ = 0, .tile_idx_ = 0});
+
+  const auto min_merge_items =
+      config_
+          .get<uint64_t>("sm.query.sparse_global_order.preprocess_tile_merge")
+          .value();
+  future.merge_options_ = {
+      .parallel_factor = resources_.compute_tp().concurrency_level(),
+      .min_merge_items = min_merge_items};
+
+  algorithm::ParallelMergeMemoryResources merge_resources(
+      *query_memory_tracker_.get());
+
+  auto do_global_order_merge = [&]<Layout TILE_ORDER, Layout CELL_ORDER>() {
+    struct ResultTileCmp
+        : public GlobalCellCmpStaticDispatch<TILE_ORDER, CELL_ORDER> {
+      using Base = GlobalCellCmpStaticDispatch<TILE_ORDER, CELL_ORDER>;
+      using PerFragmentMetadata =
+          const std::vector<std::shared_ptr<FragmentMetadata>>;
+
+      ResultTileCmp(
+          const Domain& domain, const PerFragmentMetadata& fragment_metadata)
+          : Base(domain)
+          , fragment_metadata_(fragment_metadata) {
+      }
+
+      bool operator()(const ResultTileId& a, const ResultTileId& b) const {
+        // FIXME: this can potentially make a better global order if
+        // we clamp the MBR lower bounds using the subarray
+        const RangeLowerBound a_mbr = {
+            .mbr = fragment_metadata_[a.fragment_idx_]->mbr(a.tile_idx_)};
+        const RangeLowerBound b_mbr = {
+            .mbr = fragment_metadata_[b.fragment_idx_]->mbr(b.tile_idx_)};
+        return (*static_cast<const Base*>(this))(a_mbr, b_mbr);
+      }
+
+      const PerFragmentMetadata& fragment_metadata_;
+    };
+
+    {
+      std::shared_ptr<ResultTileCmp> cmp = tdb::make_shared<ResultTileCmp>(
+          "ResultTileCmp", array_schema_.domain(), fragment_metadata_);
+      future.cmp_ = std::static_pointer_cast<CellCmpBase>(cmp);
+    }
+
+    future.merge_ = algorithm::parallel_merge<ResultTileId, ResultTileCmp>(
+        resources_.compute_tp(),
+        merge_resources,
+        future.merge_options_,
+        fragment_result_tile_spans,
+        *static_cast<ResultTileCmp*>(future.cmp_.get()),
+        &preprocess_tile_order_.tiles_[0]);
+  };
+
+  switch (array_schema_.cell_order()) {
+    case Layout::ROW_MAJOR:
+      switch (array_schema_.tile_order()) {
+        case Layout::ROW_MAJOR: {
+          do_global_order_merge
+              .template operator()<Layout::ROW_MAJOR, Layout::ROW_MAJOR>();
+          break;
+        }
+        case Layout::COL_MAJOR: {
+          do_global_order_merge
+              .template operator()<Layout::ROW_MAJOR, Layout::COL_MAJOR>();
+          break;
+        }
+        default:
+          stdx::unreachable();
+      }
+      break;
+    case Layout::COL_MAJOR:
+      switch (array_schema_.tile_order()) {
+        case Layout::ROW_MAJOR: {
+          do_global_order_merge
+              .template operator()<Layout::COL_MAJOR, Layout::ROW_MAJOR>();
+          break;
+        }
+        case Layout::COL_MAJOR: {
+          do_global_order_merge
+              .template operator()<Layout::COL_MAJOR, Layout::COL_MAJOR>();
+          break;
+        }
+        default:
+          stdx::unreachable();
+      }
+      break;
+    case Layout::HILBERT:
+    default:
+      stdx::unreachable();
+  }
+}  // namespace tiledb::sm
+
 template <class BitmapType>
 std::vector<ResultTile*>
 SparseGlobalOrderReader<BitmapType>::create_result_tiles(
-    std::vector<ResultTilesList>& result_tiles) {
+    std::vector<ResultTilesList>& result_tiles,
+    std::optional<PreprocessTileMergeFuture>& maybe_preprocess_future) {
   auto timer_se = stats_->start_timer("create_result_tiles");
 
-  // For easy reference.
-  auto fragment_num = fragment_metadata_.size();
-  auto dim_num = array_schema_.dim_num();
-
-  // Get the number of fragments to process and compute per fragment memory.
-  uint64_t num_fragments_to_process =
-      tmp_read_state_.num_fragments_to_process();
-
-  // Save which result tile list is empty.
+  // Distinguish between leftover result tiles from the previous `submit`
+  // and result tiles which are being added now
   std::vector<uint64_t> rt_list_num_tiles(result_tiles.size());
   for (uint64_t i = 0; i < result_tiles.size(); i++) {
     rt_list_num_tiles[i] = result_tiles[i].size();
   }
 
-  if (num_fragments_to_process > 0) {
-    per_fragment_memory_ =
-        memory_budget_.coordinates_budget() / num_fragments_to_process;
-
-    // Create result tiles.
-    if (subarray_.is_set()) {
-      // Load as many tiles as the memory budget allows.
-      throw_if_not_ok(parallel_for(
-          &resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
-            uint64_t t = 0;
-            auto& tile_ranges = tmp_read_state_.tile_ranges(f);
-            while (!tile_ranges.empty()) {
-              auto& range = tile_ranges.back();
-              for (t = range.first; t <= range.second; t++) {
-                auto budget_exceeded = add_result_tile(
-                    dim_num,
-                    per_fragment_memory_,
-                    f,
-                    t,
-                    *fragment_metadata_[f],
-                    result_tiles);
-
-                if (budget_exceeded) {
-                  logger_->debug(
-                      "Budget exceeded adding result tiles, fragment {0}, tile "
-                      "{1}",
-                      f,
-                      t);
-
-                  if (result_tiles[f].empty()) {
-                    auto tiles_size = get_coord_tiles_size(dim_num, f, t);
-                    throw SparseGlobalOrderReaderException(
-                        "Cannot load a single tile for fragment, increase "
-                        "memory "
-                        "budget, tile size : " +
-                        std::to_string(tiles_size) + ", per fragment memory " +
-                        std::to_string(per_fragment_memory_) +
-                        ", total budget " +
-                        std::to_string(memory_budget_.total_budget()) +
-                        ", processing fragment " + std::to_string(f) +
-                        " out of " + std::to_string(num_fragments_to_process) +
-                        " total fragments");
-                  }
-                  return Status::Ok();
-                }
-
-                range.first++;
-              }
-
-              tmp_read_state_.remove_tile_range(f);
-            }
-
-            tmp_read_state_.set_all_tiles_loaded(f);
-
-            return Status::Ok();
-          }));
-    } else {
-      // Load as many tiles as the memory budget allows.
-      throw_if_not_ok(parallel_for(
-          &resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
-            uint64_t t = 0;
-            auto tile_num = fragment_metadata_[f]->tile_num();
-
-            // Figure out the start index.
-            auto start = read_state_.frag_idx()[f].tile_idx_;
-            if (!result_tiles[f].empty()) {
-              start = std::max(start, result_tiles[f].back().tile_idx() + 1);
-            }
-
-            for (t = start; t < tile_num; t++) {
-              auto budget_exceeded = add_result_tile(
-                  dim_num,
-                  per_fragment_memory_,
-                  f,
-                  t,
-                  *fragment_metadata_[f],
-                  result_tiles);
-
-              if (budget_exceeded) {
-                logger_->debug(
-                    "Budget exceeded adding result tiles, fragment {0}, tile "
-                    "{1}",
-                    f,
-                    t);
-
-                if (result_tiles[f].empty()) {
-                  auto tiles_size = get_coord_tiles_size(dim_num, f, t);
-                  return logger_->status(Status_SparseGlobalOrderReaderError(
-                      "Cannot load a single tile for fragment, increase memory "
-                      "budget, tile size : " +
-                      std::to_string(tiles_size) + ", per fragment memory " +
-                      std::to_string(per_fragment_memory_) + ", total budget " +
-                      std::to_string(memory_budget_.total_budget()) +
-                      ", num fragments to process " +
-                      std::to_string(num_fragments_to_process)));
-                }
-                return Status::Ok();
-              }
-            }
-
-            tmp_read_state_.set_all_tiles_loaded(f);
-
-            return Status::Ok();
-          }));
-    }
+  if (preprocess_tile_order_.enabled_) {
+    create_result_tiles_using_preprocess(result_tiles, maybe_preprocess_future);
+  } else {
+    create_result_tiles_all_fragments(result_tiles);
   }
 
+  const auto num_fragments = fragment_metadata_.size();
   bool done_adding_result_tiles = tmp_read_state_.done_adding_result_tiles();
   uint64_t num_rt = 0;
-  for (unsigned int f = 0; f < fragment_num; f++) {
+  for (unsigned int f = 0; f < num_fragments; f++) {
     num_rt += result_tiles[f].size();
   }
 
@@ -485,6 +717,227 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
   }
 
   return created_tiles;
+}
+
+template <class BitmapType>
+void SparseGlobalOrderReader<BitmapType>::create_result_tiles_all_fragments(
+    std::vector<ResultTilesList>& result_tiles) {
+  // For easy reference.
+  auto fragment_num = fragment_metadata_.size();
+  auto dim_num = array_schema_.dim_num();
+
+  // Get the number of fragments to process and compute per fragment memory.
+  uint64_t num_fragments_to_process =
+      tmp_read_state_.num_fragments_to_process();
+  all_fragment_tile_order_.per_fragment_memory_ =
+      memory_budget_.total_budget() * memory_budget_.ratio_coords() /
+      num_fragments_to_process;
+
+  // Save which result tile list is empty.
+  std::vector<uint64_t> rt_list_num_tiles(result_tiles.size());
+  for (uint64_t i = 0; i < result_tiles.size(); i++) {
+    rt_list_num_tiles[i] = result_tiles[i].size();
+  }
+
+  // Create result tiles.
+  if (subarray_.is_set()) {
+    // Load as many tiles as the memory budget allows.
+    throw_if_not_ok(parallel_for(
+        &resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
+          uint64_t t = 0;
+          auto& tile_ranges = tmp_read_state_.tile_ranges(f);
+          while (!tile_ranges.empty()) {
+            auto& range = tile_ranges.back();
+            for (t = range.first; t <= range.second; t++) {
+              auto budget_exceeded = add_result_tile(
+                  dim_num, f, t, *fragment_metadata_[f], result_tiles);
+
+              if (budget_exceeded) {
+                logger_->debug(
+                    "Budget exceeded adding result tiles, fragment {0}, tile "
+                    "{1}",
+                    f,
+                    t);
+
+                if (result_tiles[f].empty()) {
+                  auto tiles_size = get_coord_tiles_size(dim_num, f, t);
+                  throw SparseGlobalOrderReaderException(
+                      "Cannot load a single tile for fragment, increase "
+                      "memory "
+                      "budget, tile size : " +
+                      std::to_string(tiles_size) + ", per fragment memory " +
+                      std::to_string(
+                          all_fragment_tile_order_.per_fragment_memory_) +
+                      ", total budget " +
+                      std::to_string(memory_budget_.total_budget()) +
+                      ", num fragments to process " +
+                      std::to_string(num_fragments_to_process));
+                }
+                return Status::Ok();
+              }
+
+              range.first++;
+            }
+
+            tmp_read_state_.remove_tile_range(f);
+          }
+
+          tmp_read_state_.set_all_tiles_loaded(f);
+
+          return Status::Ok();
+        }));
+  } else {
+    // Load as many tiles as the memory budget allows.
+    throw_if_not_ok(parallel_for(
+        &resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
+          uint64_t t = 0;
+          auto tile_num = fragment_metadata_[f]->tile_num();
+
+          // Figure out the start index.
+          auto start = read_state_.frag_idx()[f].tile_idx_;
+          if (!result_tiles[f].empty()) {
+            start = std::max(start, result_tiles[f].back().tile_idx() + 1);
+          }
+
+          for (t = start; t < tile_num; t++) {
+            auto budget_exceeded = add_result_tile(
+                dim_num, f, t, *fragment_metadata_[f], result_tiles);
+
+            if (budget_exceeded) {
+              logger_->debug(
+                  "Budget exceeded adding result tiles, fragment {0}, tile "
+                  "{1}",
+                  f,
+                  t);
+
+              if (result_tiles[f].empty()) {
+                auto tiles_size = get_coord_tiles_size(dim_num, f, t);
+                return logger_->status(Status_SparseGlobalOrderReaderError(
+                    "Cannot load a single tile for fragment, increase memory "
+                    "budget, tile size : " +
+                    std::to_string(tiles_size) + ", per fragment memory " +
+                    std::to_string(
+                        all_fragment_tile_order_.per_fragment_memory_) +
+                    ", total budget " +
+                    std::to_string(memory_budget_.total_budget()) +
+                    ", num fragments to process " +
+                    std::to_string(num_fragments_to_process)));
+              }
+              return Status::Ok();
+            }
+          }
+
+          tmp_read_state_.set_all_tiles_loaded(f);
+
+          return Status::Ok();
+        }));
+  }
+}
+
+template <class BitmapType>
+void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
+    std::vector<ResultTilesList>& result_tiles,
+    std::optional<PreprocessTileMergeFuture>& merge_future) {
+  // For easy reference.
+  const auto num_fragments = fragment_metadata_.size();
+  const auto num_dims = array_schema_.dim_num();
+
+  if (preprocess_tile_order_.has_more_tiles()) {
+    size_t rt = preprocess_tile_order_.cursor_;
+    size_t rt_merge_bound =
+        (merge_future.has_value() ? rt : preprocess_tile_order_.tiles_.size());
+    while (rt < preprocess_tile_order_.tiles_.size()) {
+      if (rt == rt_merge_bound) {
+        auto merge_await = merge_future->await();
+        if (merge_await.has_value()) {
+          rt_merge_bound = merge_await.value();
+        } else if ((merge_await =
+                        merge_future->merge_.value()->valid_output_bound())
+                       .has_value()) {
+          rt_merge_bound = merge_await.value();
+        } else {
+          throw SparseGlobalOrderReaderInternalError(
+              "Unexpected preprocess tile merge state: expected new merge "
+              "bound but found none");
+        }
+        if (merge_await.value() <= rt) {
+          throw SparseGlobalOrderReaderInternalError(
+              "Unexpected preprocess tile merge state: out of order merge "
+              "bound");
+        }
+      }
+
+      const auto f = preprocess_tile_order_.tiles_[rt].fragment_idx_;
+      const auto t = preprocess_tile_order_.tiles_[rt].tile_idx_;
+
+      auto budget_exceeded =
+          add_result_tile(num_dims, f, t, *fragment_metadata_[f], result_tiles);
+
+      if (budget_exceeded) {
+        logger_->debug(
+            "Budget exceeded adding result tiles, fragment {0}, tile "
+            "{1}",
+            f,
+            t);
+
+        bool canProgress = false;
+        for (const auto& rts : result_tiles) {
+          if (!rts.empty()) {
+            canProgress = true;
+            break;
+          }
+        }
+
+        if (!canProgress) {
+          // first try to free some memory by waiting for merge if it is ongoing
+          if (merge_future.has_value()) {
+            merge_future->block();
+            merge_future.reset();
+            rt_merge_bound = preprocess_tile_order_.tiles_.size();
+            continue;
+          }
+
+          // this means we cannot safely produce any results
+          const auto tiles_size = get_coord_tiles_size(num_dims, f, t);
+          throw SparseGlobalOrderReaderException(
+              "Cannot load a single tile, increase memory budget: "
+              "current coords tile size = " +
+              std::to_string(memory_used_for_coords_total_) +
+              ", next coords tile size = " + std::to_string(tiles_size) +
+              ", coords tile budget = " +
+              std::to_string(memory_budget_.coordinates_budget()) +
+              ", total_budget = " +
+              std::to_string(memory_budget_.total_budget()));
+        } else {
+          // this tile has the lowest MBR lower bound of the remaining tiles,
+          // we cannot safely emit cells exceeding its lower bound later
+          break;
+        }
+      }
+      rt++;
+    }
+
+    // update position for next iteration
+    preprocess_tile_order_.cursor_ = rt;
+
+    if (!preprocess_tile_order_.has_more_tiles()) {
+      // TODO: original version sets a flag in tmp_read_state_ on a per-fragment
+      // basis, does that have any effect other than computing this?
+      read_state_.set_done_adding_result_tiles(true);
+
+      // TODO: would we gain anything from being more precise by checking
+      // which fragments have nothing remaining in the preprocess list
+      // in the general case?
+      for (unsigned f = 0; f < num_fragments; f++) {
+        tmp_read_state_.set_all_tiles_loaded(f);
+      }
+
+      // NB: merge must have completed for this condition to be satisfied
+      const auto num_tiles = preprocess_tile_order_.tiles_.size();
+      preprocess_tile_order_.tiles_.clear();
+      memory_used_for_coords_total_ -= sizeof(ResultTileId) * num_tiles;
+    }
+  }
 }
 
 template <class BitmapType>
@@ -750,7 +1203,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
 
 template <class BitmapType>
 template <class CompType>
-bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
+AddNextCellResult SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     GlobalOrderResultCoords<BitmapType>& rc,
     std::vector<TileListIt>& result_tiles_it,
     const std::vector<ResultTilesList>& result_tiles,
@@ -763,7 +1216,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
   // This would be because a cell after this one in the fragment was added to
   // the queue as it had the same coordinates as this one.
   if (!rc.has_next_) {
-    return false;
+    return AddNextCellResult::Done;
   }
 
   // Try the next cell in the same tile.
@@ -798,11 +1251,11 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
       // This fragment has more tiles potentially.
       if (!tmp_read_state_.all_tiles_loaded(frag_idx)) {
         // Return we need more tiles.
-        return true;
+        return AddNextCellResult::NeedMoreTiles;
       }
 
       // All tiles processed, done.
-      return false;
+      return AddNextCellResult::Done;
     }
   }
 
@@ -812,8 +1265,36 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     //  with timestamps if not all tiles are loaded.
     if (!dups && last_in_memory_cell_of_consolidated_fragment(
                      frag_idx, rc, result_tiles)) {
-      return true;
+      return AddNextCellResult::NeedMoreTiles;
     }
+
+    // If the cell value exceeds the lower bound of the un-populated result
+    // tiles then it is not correct to emit it; hopefully we cleared out
+    // a tile somewhere and trying again will make progress
+    if (preprocess_tile_order_.has_more_tiles()) {
+      const auto& next_global_order_tile =
+          preprocess_tile_order_.tiles_[preprocess_tile_order_.cursor_];
+      const auto& emit_bound =
+          fragment_metadata_[next_global_order_tile.fragment_idx_]->mbr(
+              next_global_order_tile.tile_idx_);
+
+      // Skip comparison if the next one is the same fragment,
+      // in that case we know the cells are ordered correctly
+      if (frag_idx != next_global_order_tile.fragment_idx_) {
+        // FIXME: this can potentially make better slabs if we clamp
+        // the MBR lower bound using the subarray and/or bitmap
+        RangeLowerBound target = {.mbr = emit_bound};
+
+        GlobalCellCmp cmp(array_schema_.domain());
+
+        if (cmp(target, rc)) {
+          // more tiles needed, out-of-order tiles is a possibility if we
+          // continue
+          return AddNextCellResult::MergeBound;
+        }
+      }
+    }
+
     std::unique_lock<std::mutex> ul(tile_queue_mutex_);
 
     // Add all the cells in this tile with the same coordinates as this cell
@@ -822,14 +1303,14 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
         fragment_metadata_[frag_idx]->has_timestamps()) {
       if (add_all_dups_to_queue(
               rc, result_tiles_it, result_tiles, tile_queue, to_delete)) {
-        return true;
+        return AddNextCellResult::NeedMoreTiles;
       }
     }
     tile_queue.emplace(std::move(rc));
   }
 
   // We don't need more tiles as a tile was found.
-  return false;
+  return AddNextCellResult::FoundCell;
 }
 
 template <class BitmapType>
@@ -919,7 +1400,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
   TileMinHeap<CompType> tile_queue(cmp, std::move(container));
 
   // If any fragments needs to load more tiles.
-  bool need_more_tiles = false;
+  AddNextCellResult add_next_cell_result;
 
   // Tile iterators, per fragments.
   std::vector<TileListIt> rt_it(result_tiles.size());
@@ -938,11 +1419,13 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
                   read_state_.frag_idx()[f].cell_idx_ :
                   0;
           GlobalOrderResultCoords rc(&*(rt_it[f]), cell_idx);
-          bool res = add_next_cell_to_queue(
+          auto res = add_next_cell_to_queue(
               rc, rt_it, result_tiles, tile_queue, to_delete);
           {
             std::unique_lock<std::mutex> ul(tile_queue_mutex_);
-            need_more_tiles |= res;
+            if (res == AddNextCellResult::NeedMoreTiles) {
+              add_next_cell_result = res;
+            }
           }
         }
 
@@ -953,7 +1436,9 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
   // Process all elements.
   bool user_buffers_full = false;
-  while (!tile_queue.empty() && !need_more_tiles && num_cells > 0) {
+  while (!tile_queue.empty() &&
+         add_next_cell_result != AddNextCellResult::NeedMoreTiles &&
+         num_cells > 0) {
     auto to_process = tile_queue.top();
     auto tile = to_process.tile_;
     tile_queue.pop();
@@ -1013,13 +1498,13 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
         tile_queue.pop();
 
         // Put the next cell from the processed tile in the queue.
-        need_more_tiles = add_next_cell_to_queue(
+        add_next_cell_result = add_next_cell_to_queue(
             to_remove, rt_it, result_tiles, tile_queue, to_delete);
       } else {
         update_frag_idx(tile, to_process.pos_ + 1);
 
         // Put the next cell from the processed tile in the queue.
-        need_more_tiles = add_next_cell_to_queue(
+        add_next_cell_result = add_next_cell_to_queue(
             to_process, rt_it, result_tiles, tile_queue, to_delete);
 
         to_process = tile_queue.top();
@@ -1050,11 +1535,31 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       // Compute the length of the cell slab.
       uint64_t length = 1;
       if (to_process.has_next_ || single_cell_only) {
-        if (tile_queue.empty()) {
-          length = to_process.max_slab_length();
+        if (preprocess_tile_order_.has_more_tiles()) {
+          // the cell slab may overlap the lower bound of tiles which aren't in
+          // the queue yet
+          const auto& next_global_order_tile =
+              preprocess_tile_order_.tiles_[preprocess_tile_order_.cursor_];
+          const auto& emit_bound =
+              fragment_metadata_[next_global_order_tile.fragment_idx_]->mbr(
+                  next_global_order_tile.tile_idx_);
+          RangeLowerBound global_order_lower_bound = {.mbr = emit_bound};
+          stdx::reverse_comparator<stdx::or_equal<GlobalCellCmp>> cmp(
+              stdx::or_equal<GlobalCellCmp>(array_schema_.domain()));
+          if (tile_queue.empty()) {
+            length = to_process.max_slab_length(global_order_lower_bound, cmp);
+          } else if (cmp(tile_queue.top(), global_order_lower_bound)) {
+            length = to_process.max_slab_length(global_order_lower_bound, cmp);
+          } else {
+            length = to_process.max_slab_length(tile_queue.top(), cmp);
+          }
         } else {
-          length =
-              to_process.max_slab_length(tile_queue.top(), cmp_max_slab_length);
+          if (tile_queue.empty()) {
+            length = to_process.max_slab_length();
+          } else {
+            length = to_process.max_slab_length(
+                tile_queue.top(), cmp_max_slab_length);
+          }
         }
       }
 
@@ -1105,7 +1610,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
     }
 
     // Put the next cell in the queue.
-    need_more_tiles = add_next_cell_to_queue(
+    add_next_cell_result = add_next_cell_to_queue(
         to_process, rt_it, result_tiles, tile_queue, to_delete);
   }
 
@@ -2181,8 +2686,9 @@ void SparseGlobalOrderReader<BitmapType>::remove_result_tile(
   auto tiles_size =
       get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
 
-  // Adjust per fragment memory usage.
-  memory_used_for_coords_[frag_idx] -= tiles_size;
+  if (!preprocess_tile_order_.enabled_) {
+    all_fragment_tile_order_.memory_used_for_coords_[frag_idx] -= tiles_size;
+  }
 
   // Adjust total memory usage.
   memory_used_for_coords_total_ -= tiles_size;

@@ -65,7 +65,8 @@
                 {
                     "name": "libfaketime",
                     "platform": "!windows"
-                }
+                },
+                "rapidcheck"
             ]
         },
         "tools": {

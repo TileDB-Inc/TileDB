@@ -707,6 +707,11 @@ struct ReadStateIndex {
   # Is the reader done adding result tiles.
 }
 
+struct PreprocessTileOrder {
+  cursor @0 :UInt64;
+  numTiles @1 :UInt64;
+}
+
 struct ReaderIndex {
   # Reader struct for indexed readers.
 
@@ -724,6 +729,8 @@ struct ReaderIndex {
 
   stats @4 :Stats;
   # Stats object
+
+  preprocess @5 :PreprocessTileOrder;
 }
 
 struct Query {

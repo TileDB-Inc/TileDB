@@ -429,6 +429,15 @@ class Config {
    *    Which reader to use for sparse global order queries. "refactored"
    *    or "legacy".<br>
    *    **Default**: refactored
+   * - `sm.query.sparse_global_order.preprocess_tile_merge` <br>
+   *    Performance configuration for sparse global order read queries.
+   *    If nonzero, prior to loading the first tiles, the reader will run
+   *    a preprocessing step to arrange tiles from all fragments in a single
+   *    globally ordered list. This is expected to improve performance when
+   *    there are many fragments or when the distribution in space of the
+   *    tiles amongst the fragments is skewed. The value of the parameter
+   *    specifies the amount of work per parallel task.
+   *    **Default**: "128"
    * - `sm.query.sparse_unordered_with_dups.reader` <br>
    *    Which reader to use for sparse unordered with dups queries.
    *    "refactored" or "legacy".<br>

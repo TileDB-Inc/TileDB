@@ -34,6 +34,7 @@
 #define TILEDB_APPLY_WITH_TYPE_H
 
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/type/datatype_traits.h"
 
 using tiledb::sm::Datatype;
 
@@ -56,64 +57,44 @@ concept TileDBNumeric = TileDBIntegral<T> || std::floating_point<T>;
  */
 template <class Fn, class... Args>
 inline auto apply_with_type(Fn&& f, Datatype type, Args&&... args) {
+#define CASE(type) \
+  case (type):     \
+    return f(datatype_traits<(type)>::value_type{}, std::forward<Args>(args)...)
+
   switch (type) {
-    case Datatype::INT32: {
-      return f(int32_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::INT64: {
-      return f(int64_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::INT8: {
-      return f(int8_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::UINT8: {
-      return f(uint8_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::INT16: {
-      return f(int16_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::UINT16: {
-      return f(uint16_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::UINT32: {
-      return f(uint32_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::UINT64: {
-      return f(uint64_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::FLOAT32: {
-      return f(float{}, std::forward<Args>(args)...);
-    }
-    case Datatype::FLOAT64: {
-      return f(double{}, std::forward<Args>(args)...);
-    }
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS: {
-      return f(int64_t{}, std::forward<Args>(args)...);
-    }
-    case Datatype::STRING_ASCII: {
-      return f(char{}, std::forward<Args>(args)...);
-    }
+    CASE(Datatype::INT32);
+    CASE(Datatype::INT64);
+    CASE(Datatype::INT8);
+    CASE(Datatype::UINT8);
+    CASE(Datatype::INT16);
+    CASE(Datatype::UINT16);
+    CASE(Datatype::UINT32);
+    CASE(Datatype::UINT64);
+    CASE(Datatype::FLOAT32);
+    CASE(Datatype::FLOAT64);
+    CASE(Datatype::DATETIME_YEAR);
+    CASE(Datatype::DATETIME_MONTH);
+    CASE(Datatype::DATETIME_WEEK);
+    CASE(Datatype::DATETIME_DAY);
+    CASE(Datatype::DATETIME_HR);
+    CASE(Datatype::DATETIME_MIN);
+    CASE(Datatype::DATETIME_SEC);
+    CASE(Datatype::DATETIME_MS);
+    CASE(Datatype::DATETIME_US);
+    CASE(Datatype::DATETIME_NS);
+    CASE(Datatype::DATETIME_PS);
+    CASE(Datatype::DATETIME_FS);
+    CASE(Datatype::DATETIME_AS);
+    CASE(Datatype::TIME_HR);
+    CASE(Datatype::TIME_MIN);
+    CASE(Datatype::TIME_SEC);
+    CASE(Datatype::TIME_MS);
+    CASE(Datatype::TIME_US);
+    CASE(Datatype::TIME_NS);
+    CASE(Datatype::TIME_PS);
+    CASE(Datatype::TIME_FS);
+    CASE(Datatype::TIME_AS);
+    CASE(Datatype::STRING_ASCII);
     default: {
       throw std::logic_error(
           "Datatype::" + datatype_str(type) + " is not a supported Datatype");
