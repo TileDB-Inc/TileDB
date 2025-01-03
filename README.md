@@ -1,6 +1,6 @@
 <a href="https://tiledb.com"><img src="https://github.com/TileDB-Inc/TileDB/raw/main/doc/source/_static/tiledb-logo_color_no_margin_@4x.png" alt="TileDB logo" width="400"></a>
 
-[![Full CI](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml/badge.svg?branch=main)](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml) [![Azure Pipelines](https://main.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=main)](https://main.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=main) [![](doc/anaconda.svg)![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
+[![Full CI](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml/badge.svg?branch=main)](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml) [![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=main)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=main) [![](doc/anaconda.svg)![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
 
 # The Universal Storage Engine
 
