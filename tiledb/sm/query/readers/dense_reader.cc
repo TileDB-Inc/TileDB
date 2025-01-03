@@ -40,7 +40,6 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -453,6 +452,9 @@ Status DenseReader::dense_read() {
     // processing.
     if (qc_coords_mode_) {
       t_start = t_end;
+      if (compute_task.valid()) {
+        throw_if_not_ok(compute_task.wait());
+      }
       continue;
     }
 
@@ -460,7 +462,6 @@ Status DenseReader::dense_read() {
     // clear the memory. Also, a name in names might not be in the user buffers
     // so we might skip the copy but still clear the memory.
     for (auto& name : names) {
-      shared_ptr<std::list<FilteredData>> filtered_data;
       std::vector<ResultTile*> result_tiles;
       bool validity_only = null_count_aggregate_only(name);
       bool dense_dim = name == constants::coords || array_schema_.is_dim(name);
@@ -484,8 +485,7 @@ Status DenseReader::dense_read() {
         // Read and unfilter tiles.
         std::vector<ReaderBase::NameToLoad> to_load;
         to_load.emplace_back(name, validity_only);
-        filtered_data = make_shared<std::list<FilteredData>>(
-            read_attribute_tiles(to_load, result_tiles));
+        read_attribute_tiles(to_load, result_tiles);
       }
 
       if (compute_task.valid()) {
@@ -497,7 +497,6 @@ Status DenseReader::dense_read() {
 
       compute_task = resources_.compute_tp().execute([&,
                                                       iteration_tile_data,
-                                                      filtered_data,
                                                       dense_dim,
                                                       name,
                                                       validity_only,
@@ -508,9 +507,6 @@ Status DenseReader::dense_read() {
         if (!dense_dim) {
           // Unfilter tiles.
           RETURN_NOT_OK(unfilter_tiles(name, validity_only, result_tiles));
-
-          // The filtered data is no longer required, release it.
-          filtered_data.reset();
 
           // Only copy names that are present in the user buffers.
           if (buffers_.count(name) != 0) {
@@ -769,8 +765,8 @@ DenseReader::compute_result_space_tiles(
   const auto fragment_num = (unsigned)frag_tile_domains.size();
   const auto& tile_coords = subarray.tile_coords();
 
-  // Keep track of the required memory to load the result space tiles. Split up
-  // filtered versus unfiltered. The memory budget is combined for all
+  // Keep track of the required memory to load the result space tiles. Split
+  // up filtered versus unfiltered. The memory budget is combined for all
   // query condition attributes.
   uint64_t required_memory_query_condition_unfiltered = 0;
   std::vector<uint64_t> required_memory_unfiltered(
@@ -786,28 +782,28 @@ DenseReader::compute_result_space_tiles(
     aggregate_only_field[n - condition_names.size()] = aggregate_only(name);
   }
 
-  // Here we estimate the size of the tile structures. First, we have to account
-  // the size of the space tile structure. We could go deeper in the class to
-  // account for other things but for now we keep it simpler. Second, we try to
-  // account for the tile subarray (DenseTileSubarray). This class will have a
-  // vector of ranges per dimensions, so 1 + dim_num * sizeof(vector). Here we
-  // choose 32 for the size of the vector to anticipate the conversion to a PMR
-  // vector. We also add dim_num * 2 * sizeof(DimType) to account for at least
-  // one range per dimension (this should be improved by accounting for the
-  // exact number of ranges). Finally for the original range index member, we
-  // have to add 1 + dim_num * sizeof(vector) as well and one uint64_t per
-  // dimension (this can also be improved by accounting for the
-  // exact number of ranges).
+  // Here we estimate the size of the tile structures. First, we have to
+  // account the size of the space tile structure. We could go deeper in the
+  // class to account for other things but for now we keep it simpler. Second,
+  // we try to account for the tile subarray (DenseTileSubarray). This class
+  // will have a vector of ranges per dimensions, so 1 + dim_num *
+  // sizeof(vector). Here we choose 32 for the size of the vector to
+  // anticipate the conversion to a PMR vector. We also add dim_num * 2 *
+  // sizeof(DimType) to account for at least one range per dimension (this
+  // should be improved by accounting for the exact number of ranges). Finally
+  // for the original range index member, we have to add 1 + dim_num *
+  // sizeof(vector) as well and one uint64_t per dimension (this can also be
+  // improved by accounting for the exact number of ranges).
   uint64_t est_tile_structs_size =
       sizeof(ResultSpaceTile<DimType>) + (1 + dim_num) * 2 * 32 +
       dim_num * (2 * sizeof(DimType) + sizeof(uint64_t));
 
   // Create the vector of result tiles to operate on. We stop once we reach
-  // the end or the memory budget. We either reach the tile upper memory limit,
-  // which is only for unfiltered data, or the limit of the available budget,
-  // which is for filtered data, unfiltered data and the tile structs. We try to
-  // process two tile batches at a time so the available memory is half of what
-  // we have available.
+  // the end or the memory budget. We either reach the tile upper memory
+  // limit, which is only for unfiltered data, or the limit of the available
+  // budget, which is for filtered data, unfiltered data and the tile structs.
+  // We try to process two tile batches at a time so the available memory is
+  // half of what we have available.
   uint64_t t_end = t_start;
   bool wait_compute_task_before_read = false;
   bool done = false;
@@ -895,8 +891,8 @@ DenseReader::compute_result_space_tiles(
       uint64_t tile_memory_filtered = 0;
       uint64_t r_idx = n - condition_names.size();
 
-      // We might not need to load this tile into memory at all for aggregation
-      // only.
+      // We might not need to load this tile into memory at all for
+      // aggregation only.
       if (aggregate_only_field[r_idx] &&
           can_aggregate_tile_with_frag_md(
               names[n], result_space_tile, tiles_cell_num[t_end])) {
@@ -953,13 +949,14 @@ DenseReader::compute_result_space_tiles(
                               required_memory_unfiltered[r_idx] +
                               est_tile_structs_size;
 
-      // Disable the multiple iterations if the tiles don't fit in the iteration
-      // budget.
+      // Disable the multiple iterations if the tiles don't fit in the
+      // iteration budget.
       if (total_memory > available_memory_iteration) {
         wait_compute_task_before_read = true;
       }
 
-      // If a single tile doesn't fit in the available memory, we can't proceed.
+      // If a single tile doesn't fit in the available memory, we can't
+      // proceed.
       if (total_memory > available_memory) {
         throw DenseReaderException(
             "Cannot process a single tile requiring " +
@@ -1003,7 +1000,8 @@ std::vector<ResultTile*> DenseReader::result_tiles_to_load(
   const auto& tile_coords = subarray.tile_coords();
   const bool agg_only = name.has_value() && aggregate_only(name.value());
 
-  // If the result is already loaded in query condition, return the empty list;
+  // If the result is already loaded in query condition, return the empty
+  // list;
   std::vector<ResultTile*> ret;
   if (name.has_value() && condition_names.count(name.value()) != 0) {
     return ret;
@@ -1033,8 +1031,8 @@ std::vector<ResultTile*> DenseReader::result_tiles_to_load(
 
 /**
  * Apply the query condition. The computation will be pushed on the compute
- * thread pool in `compute_task`. Callers should wait on this task before using
- * the results of the query condition.
+ * thread pool in `compute_task`. Callers should wait on this task before
+ * using the results of the query condition.
  */
 template <class DimType, class OffType>
 Status DenseReader::apply_query_condition(
@@ -1070,16 +1068,13 @@ Status DenseReader::apply_query_condition(
         tiles_cell_num);
 
     // Read and unfilter query condition attributes.
-    shared_ptr<std::list<FilteredData>> filtered_data =
-        make_shared<std::list<FilteredData>>(read_attribute_tiles(
-            NameToLoad::from_string_vec(qc_names), result_tiles));
+    read_attribute_tiles(NameToLoad::from_string_vec(qc_names), result_tiles);
 
     if (compute_task.valid()) {
       throw_if_not_ok(compute_task.wait());
     }
 
     compute_task = resources_.compute_tp().execute([&,
-                                                    filtered_data,
                                                     iteration_tile_data,
                                                     qc_names,
                                                     num_range_threads,
@@ -1095,9 +1090,6 @@ Status DenseReader::apply_query_condition(
       for (auto& name : qc_names) {
         RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
       }
-
-      // The filtered data is no longer required, release it.
-      filtered_data.reset();
 
       if (stride == UINT64_MAX) {
         stride = 1;

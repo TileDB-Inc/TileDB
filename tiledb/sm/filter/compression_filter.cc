@@ -636,7 +636,7 @@ Status CompressionFilter::decompress_var_string_coords(
   auto output_view = span<std::byte>(
       reinterpret_cast<std::byte*>(output_buffer->data()), uncompressed_size);
   auto offsets_view = span<uint64_t>(
-      offsets_tile->data_as<offsets_t>(), uncompressed_offsets_size);
+      offsets_tile->data_as_unsafe<offsets_t>(), uncompressed_offsets_size);
 
   if (compressor_ == Compressor::RLE) {
     uint8_t rle_len_bytesize, string_len_bytesize;
