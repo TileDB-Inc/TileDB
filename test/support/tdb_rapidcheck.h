@@ -28,7 +28,9 @@
  * @section DESCRIPTION
  *
  * This file wraps <rapidcheck.h> and <rapidcheck/catch.h> for convenience
- * (and compatibility due to a snag with <rapidcheck/catch.h>).
+ * (and compatibility due to a snag with <rapidcheck/catch.h>)
+ * and contains other definitions which may be useful for writing
+ * rapidcheck properties.
  */
 
 #ifndef TILEDB_MISC_TDB_RAPIDCHECK_H
@@ -45,82 +47,6 @@
 #include <rapidcheck/catch.h>
 
 #include <type_traits>
-
-namespace tiledb::test {
-
-/**
- * Marker that a template is instantiated by top-level CATCH code
- */
-struct AsserterCatch {};
-
-/**
- * Marker that a template is instantiated by a rapidcheck property
- */
-struct AsserterRapidcheck {};
-
-}  // namespace tiledb::test
-
-/**
- * Helper macro for running an assert in a context
- * where it could be either in a top-level catch test,
- * or in a rapidcheck property
- * (e.g. a function which could be called from either)
- *
- * Expects a type named `Asserter` to be either `AsserterCatch` or
- * `AsserterRapidcheck`.
- *
- * This expands to REQUIRE for `AsserterCatch` and RC_ASSERT for
- * `AsserterRapidcheck`. For both type markers this will throw an exception.
- */
-#define RCCATCH_REQUIRE(...)                                              \
-  do {                                                                    \
-    static_assert(                                                        \
-        std::is_same<Asserter, tiledb::test::AsserterCatch>::value ||     \
-        std::is_same<Asserter, tiledb::test::AsserterRapidcheck>::value); \
-    if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {     \
-      REQUIRE(__VA_ARGS__);                                               \
-    } else {                                                              \
-      RC_ASSERT(__VA_ARGS__);                                             \
-    }                                                                     \
-  } while (0)
-
-/**
- * Helper macro for running an assert in a context
- * where it could be either in a top-level catch test,
- * or in a rapidcheck property
- * (e.g. a function which could be called from either)
- *
- * Expects a type named `Asserter` to be either `AsserterCatch` or
- * `AsserterRapidcheck`.
- *
- * This expands to CHECK for `AsserterCatch` and RC_ASSERT for
- * `AsserterRapidcheck`. For `AsserterCatch`, this will not throw an exception -
- * the test will continue. For `AsserterRapidcheck` this will throw an
- * exception.
- */
-#define RCCATCH_CHECK(...)                                                \
-  do {                                                                    \
-    static_assert(                                                        \
-        std::is_same<Asserter, tiledb::test::AsserterCatch>::value ||     \
-        std::is_same<Asserter, tiledb::test::AsserterRapidcheck>::value); \
-    if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {     \
-      CHECK(__VA_ARGS__);                                                 \
-    } else {                                                              \
-      RC_ASSERT(__VA_ARGS__);                                             \
-    }                                                                     \
-  } while (0)
-
-#define RCCATCH_THROWS(...)                                               \
-  do {                                                                    \
-    static_assert(                                                        \
-        std::is_same<Asserter, tiledb::test::AsserterCatch>::value ||     \
-        std::is_same<Asserter, tiledb::test::AsserterRapidcheck>::value); \
-    if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {     \
-      REQUIRE_THROWS(__VA_ARGS__);                                        \
-    } else {                                                              \
-      RC_ASSERT_THROWS(__VA_ARGS__);                                      \
-    }                                                                     \
-  } while (0)
 
 namespace rc {
 

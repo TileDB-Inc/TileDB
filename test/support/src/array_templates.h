@@ -34,8 +34,12 @@
 #ifndef TILEDB_ARRAY_TEMPLATES_H
 #define TILEDB_ARRAY_TEMPLATES_H
 
+#include "tiledb.h"
 #include "tiledb/type/datatype_traits.h"
 #include "tiledb/type/range/range.h"
+
+#include <test/support/assert_helpers.h>
+#include <test/support/src/error_helpers.h>
 
 #include <algorithm>
 #include <concepts>
@@ -242,6 +246,101 @@ struct Fragment2D {
           return std::tuple<std::vector<Att>&...>(attribute...);
         },
         atts_);
+  }
+};
+
+/**
+ * Binds variadic field data to a tiledb query
+ */
+template <typename Asserter, typename... Ts>
+struct query_applicator {
+  /**
+   * @return a tuple containing the size of each input field
+   */
+  static auto make_field_sizes(
+      const std::tuple<Ts&...> fields,
+      uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+    std::optional<uint64_t> num_cells;
+    auto make_field_size = [&]<typename T>(const std::vector<T>& field) {
+      const uint64_t field_cells = std::min(cell_limit, field.size());
+      const uint64_t field_size = field_cells * sizeof(T);
+      if (num_cells.has_value()) {
+        // precondition: each field must have the same number of cells
+        ASSERTER(field_cells == num_cells.value());
+      } else {
+        num_cells.emplace(field_cells);
+      }
+      return field_size;
+    };
+
+    return std::apply(
+        [make_field_size](const auto&... field) {
+          return std::make_tuple(make_field_size(field)...);
+        },
+        fields);
+  }
+
+  /**
+   * Sets buffers on `query` for the variadic `fields` and `fields_sizes`
+   */
+  static void set(
+      tiledb_ctx_t* ctx,
+      tiledb_query_t* query,
+      auto& field_sizes,
+      std::tuple<Ts&...> fields,
+      const char* basename,
+      uint64_t cell_offset = 0) {
+    auto set_data_buffer =
+        [&](const std::string& name, auto& field, uint64_t& field_size) {
+          auto ptr = const_cast<void*>(
+              static_cast<const void*>(&field.data()[cell_offset]));
+          auto rc = tiledb_query_set_data_buffer(
+              ctx, query, name.c_str(), ptr, &field_size);
+          ASSERTER("" == error_if_any(ctx, rc));
+        };
+
+    uint64_t d = 1;
+    std::apply(
+        [&](const auto&... field) {
+          std::apply(
+              [&]<typename... Us>(Us&... field_size) {
+                (set_data_buffer(
+                     basename + std::to_string(d++), field, field_size),
+                 ...);
+              },
+              field_sizes);
+        },
+        fields);
+  }
+
+  /**
+   * @return the number of cells written into `fields` by a read query
+   */
+  static uint64_t num_cells(const auto& fields, const auto& field_sizes) {
+    std::optional<uint64_t> num_cells;
+
+    auto check_field = [&]<typename T>(
+                           const std::vector<T>& field, uint64_t field_size) {
+      ASSERTER(field_size % sizeof(T) == 0);
+      ASSERTER(field_size <= field.size() * sizeof(T));
+      if (num_cells.has_value()) {
+        ASSERTER(num_cells.value() == field_size / sizeof(T));
+      } else {
+        num_cells.emplace(field_size / sizeof(T));
+      }
+    };
+
+    std::apply(
+        [&](const auto&... field) {
+          std::apply(
+              [&]<typename... Us>(const auto&... field_size) {
+                (check_field(field, field_size), ...);
+              },
+              field_sizes);
+        },
+        fields);
+
+    return num_cells.value();
   }
 };
 
