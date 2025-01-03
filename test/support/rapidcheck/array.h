@@ -38,8 +38,8 @@
 #include "tiledb/type/datatype_traits.h"
 #include "tiledb/type/range/range.h"
 
+#include <test/support/stdx/tuple.h>
 #include <test/support/tdb_rapidcheck.h>
-#include <test/support/tuple.h>
 
 #include <algorithm>
 #include <concepts>
