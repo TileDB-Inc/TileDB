@@ -31,6 +31,7 @@
  */
 
 #include "test/support/rapidcheck/array_templates.h"
+#include "test/support/src/array_helpers.h"
 #include "test/support/src/array_templates.h"
 #include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
@@ -372,57 +373,6 @@ struct FxRun2D {
 
   std::tuple<Datatype> attributes() const {
     return std::make_tuple(Datatype::INT32);
-  }
-};
-
-/**
- * RAII to make sure we close our arrays so that keeping the same array URI
- * open from one test to the next doesn't muck things up
- * (this is especially important for rapidcheck)
- */
-struct CApiArray {
-  tiledb_ctx_t* ctx_;
-  tiledb_array_t* array_;
-
-  CApiArray()
-      : ctx_(nullptr)
-      , array_(nullptr) {
-  }
-
-  CApiArray(tiledb_ctx_t* ctx, const char* uri, tiledb_query_type_t mode)
-      : ctx_(ctx)
-      , array_(nullptr) {
-    auto rc = tiledb_array_alloc(ctx, uri, &array_);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_open(ctx, array_, mode);
-    REQUIRE(rc == TILEDB_OK);
-  }
-
-  CApiArray(CApiArray&& from)
-      : ctx_(from.ctx_)
-      , array_(from.movefrom()) {
-  }
-
-  ~CApiArray() {
-    if (array_) {
-      auto rc = tiledb_array_close(ctx_, array_);
-      REQUIRE(rc == TILEDB_OK);
-      tiledb_array_free(&array_);
-    }
-  }
-
-  tiledb_array_t* movefrom() {
-    auto array = array_;
-    array_ = nullptr;
-    return array;
-  }
-
-  operator tiledb_array_t*() const {
-    return array_;
-  }
-
-  tiledb_array_t* operator->() const {
-    return array_;
   }
 };
 
