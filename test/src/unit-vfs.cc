@@ -822,7 +822,6 @@ TEST_CASE(
     "[gcs][credentials][impersonation]") {
   ThreadPool thread_pool(2);
   Config cfg = set_config_params(true);
-  GCS gcs;
   std::string impersonate_service_account, target_service_account;
   std::vector<std::string> delegates;
 
@@ -847,9 +846,7 @@ TEST_CASE(
 
   require_tiledb_ok(cfg.set(
       "vfs.gcs.impersonate_service_account", impersonate_service_account));
-
-  require_tiledb_ok(gcs.init(cfg, &thread_pool));
-
+  GCS gcs(&thread_pool, cfg);
   auto credentials = gcs.make_credentials({});
 
   // We are using an internal class only for inspection purposes.
@@ -869,16 +866,13 @@ TEST_CASE(
     "[gcs][credentials][service-account]") {
   ThreadPool thread_pool(2);
   Config cfg = set_config_params(true);
-  GCS gcs;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string service_account_key = "{\"foo\": \"bar\"}";
 
   require_tiledb_ok(
       cfg.set("vfs.gcs.service_account_key", service_account_key));
-
-  require_tiledb_ok(gcs.init(cfg, &thread_pool));
-
+  GCS gcs(&thread_pool, cfg);
   auto credentials = gcs.make_credentials({});
 
   // We are using an internal class only for inspection purposes.
@@ -895,7 +889,6 @@ TEST_CASE(
     "[gcs][credentials][service-account-and-impersonation]") {
   ThreadPool thread_pool(2);
   Config cfg = set_config_params(true);
-  GCS gcs;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string service_account_key = "{\"foo\": \"bar\"}";
@@ -905,9 +898,7 @@ TEST_CASE(
       cfg.set("vfs.gcs.service_account_key", service_account_key));
   require_tiledb_ok(cfg.set(
       "vfs.gcs.impersonate_service_account", impersonate_service_account));
-
-  require_tiledb_ok(gcs.init(cfg, &thread_pool));
-
+  GCS gcs(&thread_pool, cfg);
   auto credentials = gcs.make_credentials({});
 
   // We are using an internal class only for inspection purposes.
@@ -933,17 +924,13 @@ TEST_CASE(
     "[gcs][credentials][external-account]") {
   ThreadPool thread_pool(2);
   Config cfg = set_config_params(true);
-  GCS gcs;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
   std::string workload_identity_configuration = "{\"foo\": \"bar\"}";
-
   require_tiledb_ok(cfg.set(
       "vfs.gcs.workload_identity_configuration",
       workload_identity_configuration));
-
-  require_tiledb_ok(gcs.init(cfg, &thread_pool));
-
+  GCS gcs(&thread_pool, cfg);
   auto credentials = gcs.make_credentials({});
 
   // We are using an internal class only for inspection purposes.

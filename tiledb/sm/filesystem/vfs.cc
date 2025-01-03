@@ -65,6 +65,7 @@ VFS::VFS(
     const Config& config)
     : VFSBase(parent_stats)
     , Azure_within_VFS(io_tp, config)
+    , GCS_within_VFS(io_tp, config)
     , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
     , logger_(logger)
@@ -98,10 +99,6 @@ VFS::VFS(
 
 #ifdef HAVE_GCS
   supported_fs_.insert(Filesystem::GCS);
-  st = gcs_.init(config_, io_tp_);
-  if (!st.ok()) {
-    throw VFSException("Failed to initialize GCS backend.");
-  }
 #endif
 
 #ifdef _WIN32
@@ -269,7 +266,8 @@ Status VFS::touch(const URI& uri) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.touch(uri);
+    gcs().touch(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -305,7 +303,8 @@ Status VFS::create_bucket(const URI& uri) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.create_bucket(uri);
+    gcs().create_bucket(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -332,7 +331,8 @@ Status VFS::remove_bucket(const URI& uri) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.remove_bucket(uri);
+    gcs().remove_bucket(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -360,7 +360,8 @@ Status VFS::empty_bucket(const URI& uri) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.empty_bucket(uri);
+    gcs().empty_bucket(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -389,7 +390,8 @@ Status VFS::is_empty_bucket(
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.is_empty_bucket(uri, is_empty);
+    *is_empty = gcs().is_empty_bucket(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -425,7 +427,7 @@ Status VFS::remove_dir(const URI& uri) const {
 #endif
   } else if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.remove_dir(uri);
+    gcs().remove_dir(uri);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -494,7 +496,8 @@ Status VFS::remove_file(const URI& uri) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.remove_object(uri);
+    gcs().remove_object(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -586,7 +589,8 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.object_size(uri, size);
+    *size = gcs().object_size(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -634,7 +638,8 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.is_dir(uri, is_dir);
+    *is_dir = gcs().is_dir(uri);
+    return Status::Ok();
 #else
     *is_dir = false;
     throw BuiltWithout("GCS");
@@ -686,7 +691,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.is_object(uri, is_file);
+    return gcs().is_object(uri, is_file);
 #else
     *is_file = false;
     throw BuiltWithout("GCS");
@@ -721,7 +726,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    RETURN_NOT_OK(gcs_.is_bucket(uri, is_bucket));
+    RETURN_NOT_OK(gcs().is_bucket(uri, is_bucket));
     return Status::Ok();
 #else
     *is_bucket = false;
@@ -777,7 +782,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 #endif
   } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
-    entries = gcs_.ls_with_sizes(parent);
+    entries = gcs().ls_with_sizes(parent);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -864,7 +869,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
 #ifdef HAVE_GCS
-      return gcs_.move_object(old_uri, new_uri);
+      gcs().move_object(old_uri, new_uri);
+    return Status::Ok();
 #else
       throw BuiltWithout("GCS");
 #endif
@@ -938,7 +944,8 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
 #ifdef HAVE_GCS
-      return gcs_.move_dir(old_uri, new_uri);
+      gcs().move_dir(old_uri, new_uri);
+    return Status::Ok();
 #else
       throw BuiltWithout("GCS");
 #endif
@@ -1228,7 +1235,7 @@ Status VFS::read_impl(
 #ifdef HAVE_GCS
     const auto read_fn = std::bind(
         &GCS::read,
-        &gcs_,
+        &gcs(),
         std::placeholders::_1,
         std::placeholders::_2,
         std::placeholders::_3,
@@ -1454,7 +1461,8 @@ Status VFS::close_file(const URI& uri) {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.flush_object(uri);
+    gcs().flush_object(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -1519,7 +1527,8 @@ Status VFS::write(
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.write(uri, buffer, buffer_size);
+    gcs().write(uri, buffer, buffer_size);
+    return Status::Ok();
 #else
     throw BuiltWithout("GCS");
 #endif
