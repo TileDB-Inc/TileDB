@@ -3171,7 +3171,7 @@ struct TimeKeeper {
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: benchmark compare",
-    "[sparse-global-order]") {
+    "[sparse-global-order][.]") {
   using Asserter = tiledb::test::AsserterCatch;
 
   const char* array_uri =
