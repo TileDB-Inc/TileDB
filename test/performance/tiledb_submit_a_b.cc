@@ -8,6 +8,8 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/stats/duration_instrument.h"
 
+#include "external/include/nlohmann/json.hpp"
+
 #include <fstream>
 #include <span>
 
@@ -15,6 +17,8 @@ using namespace tiledb::test;
 using namespace tiledb::test::templates;
 
 using Asserter = AsserterRuntimeException;
+
+using json = nlohmann::json;
 
 /**
  * Records durations as reported by `tiledb::sm::stats::DurationInstrument`.
@@ -194,6 +198,20 @@ static void run(
 
 using Fragment = Fragment2D<int64_t, int64_t, float>;
 
+capi_return_t json2config(tiledb_config_t** config, const json& j) {
+  tiledb_error_t* error;
+  RETURN_IF_ERR(tiledb_config_alloc(config, &error));
+  const json jconf = j["config"];
+  for (auto it = jconf.begin(); it != jconf.end(); ++it) {
+    const auto key = it.key();
+    const auto value = nlohmann::to_string(it.value());
+    RETURN_IF_ERR(
+        tiledb_config_set(*config, key.c_str(), value.c_str(), &error));
+  }
+
+  return TILEDB_OK;
+}
+
 /**
  * Runs sparse global order reader on a 2D array
  * with two `int64_t` dimensions and a `float` attribute.
@@ -205,28 +223,26 @@ using Fragment = Fragment2D<int64_t, int64_t, float>;
  * when the test is completed.
  */
 int main(int argc, char** argv) {
-  tiledb_error_t* error;
+  json config;
+  {
+    std::ifstream configfile(argv[1]);
+    if (configfile.fail()) {
+      std::cerr << "Error opening config file: " << argv[1] << std::endl;
+      return -1;
+    }
+    config = json::parse(
+        std::istreambuf_iterator<char>(configfile),
+        std::istreambuf_iterator<char>());
+  }
 
-  tiledb_config_t* a_conf;
-  RETURN_IF_ERR(tiledb_config_alloc(&a_conf, &error));
-  RETURN_IF_ERR(tiledb_config_set(
-      a_conf,
-      "sm.query.sparse_global_order.preprocess_tile_merge",
-      "0",
-      &error));
-
-  tiledb_config_t* b_conf;
-  RETURN_IF_ERR(tiledb_config_alloc(&b_conf, &error));
-  RETURN_IF_ERR(tiledb_config_set(
-      b_conf,
-      "sm.query.sparse_global_order.preprocess_tile_merge",
-      "128",
-      &error));
+  tiledb_config_t *a_conf, *b_conf;
+  RETURN_IF_ERR(json2config(&a_conf, config["a"]));
+  RETURN_IF_ERR(json2config(&b_conf, config["b"]));
 
   TimeKeeper time_keeper;
 
   std::span<const char* const> array_uris(
-      static_cast<const char* const*>(&argv[1]), argc - 1);
+      static_cast<const char* const*>(&argv[2]), argc - 2);
 
   for (const auto& array_uri : array_uris) {
     run<Fragment>(time_keeper, array_uri, a_conf, b_conf);
