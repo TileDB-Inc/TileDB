@@ -372,7 +372,7 @@ struct Arbitrary<VerifySplitPointStream<T>> {
                 }
               }
             }
-            return VerifySplitPointStream{
+            return VerifySplitPointStream<T>{
                 .memory = memory_tracker,
                 .streams = streams,
                 .which = which,
@@ -399,7 +399,7 @@ struct Arbitrary<VerifyIdentifyMergeUnit<T>> {
               gen::just(streams), gen::inRange<uint64_t>(1, total_items + 1));
         });
     return gen::map(fields, [](std::pair<Streams<T>, uint64_t> fields) {
-      return VerifyIdentifyMergeUnit{
+      return VerifyIdentifyMergeUnit<T>{
           .streams = fields.first, .target_items = fields.second};
     });
   }
@@ -431,7 +431,7 @@ struct Arbitrary<VerifyParallelMerge<T>> {
         [](Streams<T> streams,
            ParallelMergeOptions options,
            size_t pool_concurrency) {
-          return VerifyParallelMerge{
+          return VerifyParallelMerge<T>{
               .streams = streams,
               .options = options,
               .pool_concurrency = pool_concurrency};

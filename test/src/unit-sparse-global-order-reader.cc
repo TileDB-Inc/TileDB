@@ -57,6 +57,7 @@
 
 #include <test/support/assert_helpers.h>
 
+#include <algorithm>
 #include <fstream>
 #include <numeric>
 
@@ -1314,7 +1315,7 @@ TEST_CASE_METHOD(
     fragment0.dim_.resize(fragment_size);
     fragment0.dim_[0] = 1;
     for (size_t i = 1; i < fragment0.dim_.size(); i++) {
-      fragment0.dim_[i] = 1 + 2 * ((i + 1) / 2);
+      fragment0.dim_[i] = static_cast<int>(1 + 2 * ((i + 1) / 2));
     }
 
     // Write a fragment F1 with tiles [2,4][4,6][6,8][8,10]...
