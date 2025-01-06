@@ -2942,4 +2942,3 @@ TEST_CASE_METHOD(
           "Multi-range reads are not supported on a global order query") !=
       std::string::npos);
 }
-
