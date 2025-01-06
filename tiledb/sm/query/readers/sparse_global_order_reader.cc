@@ -156,7 +156,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
                   "sm.query.sparse_global_order.preprocess_tile_merge")
               .value_or(0);
   preprocess_tile_order_.cursor_ = 0;
-  preprocess_tile_order_.num_tiles_ = 0;  // will be adjusted later if needed
+  preprocess_tile_order_.num_tiles_ = 1;  // will be adjusted later if needed
 
   if (!preprocess_tile_order_.enabled_) {
     all_fragment_tile_order_.memory_used_for_coords_.resize(
@@ -238,8 +238,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   // (this happens after load_initial_data which identifies which tiles pass
   // subarray)
   std::optional<PreprocessTileMergeFuture> preprocess_future;
-  if (preprocess_tile_order_.enabled_ &&
-      preprocess_tile_order_.has_more_tiles() &&
+  if (preprocess_tile_order_.has_more_tiles() &&
       preprocess_tile_order_.tiles_.empty()) {
     preprocess_future.emplace(memory_used_for_coords_total_);
     preprocess_compute_result_tile_order(preprocess_future.value());
