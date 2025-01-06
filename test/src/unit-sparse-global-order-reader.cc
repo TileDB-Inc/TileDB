@@ -870,11 +870,6 @@ static bool can_complete_in_memory_budget(
 
   const auto& fragment_metadata = array->array()->fragment_metadata();
 
-  uint64_t num_tiles = 0;
-  for (const auto& fragment : fragment_metadata) {
-    num_tiles += fragment->tile_num();
-  }
-
   for (const auto& fragment : fragment_metadata) {
     const_cast<sm::FragmentMetadata*>(fragment.get())
         ->loaded_metadata()
@@ -959,6 +954,7 @@ static bool can_complete_in_memory_budget(
    * Iterate through the tiles in the same order that the sparse
    * reader would process them in, tracking memory usage as we go.
    */
+  const uint64_t num_tiles = mbr_lower_bound.size();
   uint64_t active_tile_size = sizeof(RT) * num_tiles;
   uint64_t next_tile_size = 0;
   while (active_tile_size + next_tile_size < coords_budget &&
