@@ -97,6 +97,7 @@
 #include "tiledb/common/thread_pool/producer_consumer_queue.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 
+#include <algorithm>
 #include <memory>
 #include <queue>
 
