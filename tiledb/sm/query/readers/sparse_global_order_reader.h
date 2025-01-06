@@ -99,7 +99,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return Status.
    */
-  Status finalize() {
+  Status finalize() override {
     return Status::Ok();
   }
 
@@ -108,32 +108,32 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return The query status.
    */
-  bool incomplete() const;
+  bool incomplete() const override;
 
   /**
    * Returns `true` if the query was incomplete.
    *
    * @return The query status.
    */
-  QueryStatusDetailsReason status_incomplete_reason() const;
+  QueryStatusDetailsReason status_incomplete_reason() const override;
 
   /**
    * Initialize the memory budget variables.
    */
-  void refresh_config();
+  void refresh_config() override;
 
   /**
    * Performs a read query using its set members.
    *
    * @return Status.
    */
-  Status dowork();
+  Status dowork() override;
 
   /** Resets the reader object. */
-  void reset();
+  void reset() override;
 
   /** Returns the name of the strategy */
-  std::string name();
+  std::string name() override;
 
   /** Used in deserialization */
   virtual void set_preprocess_tile_order_cursor(
