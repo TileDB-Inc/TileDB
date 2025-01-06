@@ -67,6 +67,24 @@ struct Arbitrary<Domain<D>> {
   }
 };
 
+/**
+ * @return `a - b` if it does not overflow, `std::nullopt` if it does
+ */
+template <std::integral T>
+std::optional<T> checked_sub(T a, T b) {
+  if (!std::is_signed<T>::value) {
+    return (b > a ? std::nullopt : std::optional(a - b));
+  } else if (b < 0) {
+    return (
+        std::numeric_limits<T>::max() + b < a ? std::nullopt :
+                                                std::optional(a - b));
+  } else {
+    return (
+        std::numeric_limits<T>::min() - b > a ? std::nullopt :
+                                                std::optional(a - b));
+  }
+}
+
 template <DimensionType D>
 Gen<D> make_extent(const Domain<D>& domain) {
   // upper bound on all possible extents to avoid unreasonably
@@ -85,12 +103,15 @@ Gen<D> make_extent(const Domain<D>& domain) {
 
   D extent_lower_bound = 1;
   D extent_upper_bound;
-  if (domain.lower_bound + domain.upper_bound + 1 < domain.lower_bound) {
-    // overflow
-    extent_upper_bound = extent_limit;
-  } else {
+
+  const auto bound_distance =
+      checked_sub(domain.upper_bound, domain.lower_bound);
+  if (bound_distance.has_value()) {
     extent_upper_bound =
-        std::min(extent_limit, domain.lower_bound + domain.upper_bound + 1);
+        (bound_distance.value() < extent_limit ? bound_distance.value() + 1 :
+                                                 extent_limit);
+  } else {
+    extent_upper_bound = extent_limit;
   }
 
   return gen::inRange(extent_lower_bound, extent_upper_bound + 1);
@@ -118,14 +139,14 @@ Gen<D> make_coordinate(const Domain<D>& domain) {
   // As a result some contortion is required to deal
   // with numeric_limits.
   if (std::is_signed<D>::value) {
-    if (domain.upper_bound < std::numeric_limits<int64_t>::max()) {
+    if (int64_t(domain.upper_bound) < std::numeric_limits<int64_t>::max()) {
       return gen::cast<D>(gen::inRange(
           int64_t(domain.lower_bound), int64_t(domain.upper_bound + 1)));
     } else {
       return gen::inRange(domain.lower_bound, domain.upper_bound);
     }
   } else {
-    if (domain.upper_bound < std::numeric_limits<uint64_t>::max()) {
+    if (uint64_t(domain.upper_bound) < std::numeric_limits<uint64_t>::max()) {
       return gen::cast<D>(gen::inRange(
           uint64_t(domain.lower_bound), uint64_t(domain.upper_bound + 1)));
     } else {
