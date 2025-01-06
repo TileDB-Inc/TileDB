@@ -60,17 +60,63 @@ struct TimeKeeper {
   }
 };
 
+capi_return_t json2query(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_query_t* query,
+    const json& jq) {
+  if (jq.find("subarray") != jq.end()) {
+    tiledb_subarray_t* subarray;
+    RETURN_IF_ERR(tiledb_subarray_alloc(ctx, array, &subarray));
+
+    tiledb_array_schema_t* schema;
+    RETURN_IF_ERR(tiledb_array_get_schema(ctx, array, &schema));
+
+    tiledb_domain_t* domain;
+    RETURN_IF_ERR(tiledb_array_schema_get_domain(ctx, schema, &domain));
+
+    int d = 0;
+    const auto& jsub = jq["subarray"];
+    for (const auto& jdim : jsub) {
+      if (jdim.find("%") != jdim.end()) {
+        const int percent = jdim["%"].get<int>();
+
+        // FIXME: make generic
+        int is_empty;
+        int64_t domain[2];
+        RETURN_IF_ERR(tiledb_array_get_non_empty_domain_from_index(
+            ctx, array, d, &domain[0], &is_empty));
+        if (is_empty) {
+          continue;
+        }
+
+        const auto span = (domain[1] - domain[0] + 1);
+        domain[0] += ((span * (100 - percent)) / 100) / 2;
+        domain[1] -= ((span * (100 - percent)) / 100) / 2;
+
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx, subarray, d, &domain[0], &domain[1], 0));
+      }
+    }
+
+    tiledb_query_set_subarray_t(ctx, query, subarray);
+  }
+
+  return TILEDB_OK;
+}
+
 template <FragmentType Fragment>
 static void run(
     TimeKeeper& time_keeper,
     const char* array_uri,
+    const json& query_config,
     tiledb_config_t* a_config,
     tiledb_config_t* b_config) {
   tiledb::test::SparseGlobalOrderReaderMemoryBudget memory;
   memory.total_budget_ = std::to_string(1024 * 1024 * 1024);
   memory.ratio_tile_ranges_ = "0.01";
 
-  const uint64_t num_user_cells = 1024 * 1024;
+  const uint64_t num_user_cells = 1024 * 1024 * 128;
 
   Fragment a;
   Fragment b;
@@ -111,12 +157,14 @@ static void run(
   TRY(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &a_query));
   TRY(ctx, tiledb_query_set_layout(ctx, a_query, TILEDB_GLOBAL_ORDER));
   TRY(ctx, tiledb_query_set_config(ctx, a_query, a_config));
+  json2query(ctx, array, a_query, query_config);
 
   // Create query which DOES do merge
   tiledb_query_t* b_query;
   TRY(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &b_query));
   TRY(ctx, tiledb_query_set_layout(ctx, b_query, TILEDB_GLOBAL_ORDER));
   TRY(ctx, tiledb_query_set_config(ctx, b_query, b_config));
+  json2query(ctx, array, b_query, query_config);
 
   // helper to do basic checks on both
   auto do_submit = [&](auto& key, auto& query, auto& outdata) -> uint64_t {
@@ -196,7 +244,7 @@ static void run(
   }
 }
 
-using Fragment = Fragment2D<int64_t, int64_t, float>;
+using Fragment = Fragment2D<int64_t, int64_t, int64_t>;
 
 capi_return_t json2config(tiledb_config_t** config, const json& j) {
   tiledb_error_t* error;
@@ -245,7 +293,7 @@ int main(int argc, char** argv) {
       static_cast<const char* const*>(&argv[2]), argc - 2);
 
   for (const auto& array_uri : array_uris) {
-    run<Fragment>(time_keeper, array_uri, a_conf, b_conf);
+    run<Fragment>(time_keeper, array_uri, config["query"], a_conf, b_conf);
   }
 
   tiledb_config_free(&b_conf);
