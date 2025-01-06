@@ -605,7 +605,7 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   [&]<typename... Ds>(std::tuple<Ds...> dims) {
     query_applicator<Asserter, Ds...>::set(
         ctx_, query, dimension_sizes, dims, [](unsigned d) {
-          return "d" + std::to_string(d);
+          return "d" + std::to_string(d + 1);
         });
   }(dimensions);
 
@@ -613,7 +613,7 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   [&]<typename... As>(std::tuple<As...> atts) {
     query_applicator<Asserter, As...>::set(
         ctx_, query, attribute_sizes, atts, [](unsigned a) {
-          return "a" + std::to_string(a);
+          return "a" + std::to_string(a + 1);
         });
   }(attributes);
 
@@ -2494,7 +2494,7 @@ void CSparseGlobalOrderFx::run(Instance instance) {
           query,
           dimension_sizes,
           dims,
-          [](unsigned d) { return "d" + std::to_string(d); },
+          [](unsigned d) { return "d" + std::to_string(d + 1); },
           outcursor);
     }(outdims);
     [&]<typename... As>(std::tuple<As...> atts) {
@@ -2503,7 +2503,7 @@ void CSparseGlobalOrderFx::run(Instance instance) {
           query,
           attribute_sizes,
           atts,
-          [](unsigned a) { return "a" + std::to_string(a); },
+          [](unsigned a) { return "a" + std::to_string(a + 1); },
           outcursor);
     }(outatts);
 

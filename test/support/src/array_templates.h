@@ -299,7 +299,7 @@ struct query_applicator {
           ASSERTER("" == error_if_any(ctx, rc));
         };
 
-    uint64_t d = 1;
+    unsigned d = 0;
     std::apply(
         [&](const auto&... field) {
           std::apply(
