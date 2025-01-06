@@ -82,22 +82,22 @@ Gen<std::vector<templates::Domain<int>>> make_subarray_1d(
  * Options for configuring the CSparseGlobalFx default 1D array
  */
 struct DefaultArray1DConfig {
-  uint64_t capacity;
-  bool allow_dups;
+  uint64_t capacity_;
+  bool allow_dups_;
 
-  templates::Dimension<Datatype::INT32> dimension;
+  templates::Dimension<Datatype::INT32> dimension_;
 
   DefaultArray1DConfig()
-      : capacity(2)
-      , allow_dups(false) {
-    dimension.domain.lower_bound = 1;
-    dimension.domain.upper_bound = 200;
-    dimension.extent = 2;
+      : capacity_(2)
+      , allow_dups_(false) {
+    dimension_.domain.lower_bound = 1;
+    dimension_.domain.upper_bound = 200;
+    dimension_.extent = 2;
   }
 
   DefaultArray1DConfig with_allow_dups(bool allow_dups) const {
     auto copy = *this;
-    copy.allow_dups = allow_dups;
+    copy.allow_dups_ = allow_dups;
     return copy;
   }
 };
@@ -119,11 +119,11 @@ struct FxRun1D {
   SparseGlobalOrderReaderMemoryBudget memory;
 
   uint64_t tile_capacity() const {
-    return array.capacity;
+    return array.capacity_;
   }
 
   bool allow_duplicates() const {
-    return array.allow_dups;
+    return array.allow_dups_;
   }
 
   /**
@@ -190,7 +190,7 @@ struct FxRun1D {
 
   std::tuple<const templates::Dimension<Datatype::INT32>&> dimensions() const {
     return std::tuple<const templates::Dimension<Datatype::INT32>&>(
-        array.dimension);
+        array.dimension_);
   }
 
   std::tuple<Datatype> attributes() const {
@@ -516,16 +516,16 @@ void CSparseGlobalOrderFx::create_default_array_1d(
       TILEDB_SPARSE,
       {"d"},
       {TILEDB_INT32},
-      std::vector<void*>{(void*)(&config.dimension.domain.lower_bound)},
-      std::vector<void*>{(void*)(&config.dimension.extent)},
+      std::vector<void*>{(void*)(&config.dimension_.domain.lower_bound)},
+      std::vector<void*>{(void*)(&config.dimension_.extent)},
       {"a"},
       {TILEDB_INT32},
       {1},
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      config.capacity,
-      config.allow_dups);
+      config.capacity_,
+      config.allow_dups_);
 }
 
 void CSparseGlobalOrderFx::create_default_array_1d_strings(bool allow_dups) {
@@ -1242,7 +1242,7 @@ TEST_CASE_METHOD(
     fragment1.dim_.resize(fragment0.dim_.size());
     for (size_t i = 0; i < fragment1.dim_.size(); i++) {
       fragment1.dim_[i] =
-          static_cast<int>(i / 10) + (fragment0.dim_.size() / 2);
+          static_cast<int>((i / 10) + (fragment0.dim_.size() / 2));
     }
 
     // atts are whatever
@@ -1259,8 +1259,8 @@ TEST_CASE_METHOD(
     instance.fragments.push_back(fragment1);
     instance.num_user_cells = num_user_cells;
 
-    instance.array.dimension.extent = extent;
-    instance.array.allow_dups = true;
+    instance.array.dimension_.extent = extent;
+    instance.array.allow_dups_ = true;
 
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
@@ -1339,7 +1339,7 @@ TEST_CASE_METHOD(
     instance.subarray = subarray;
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
-    instance.array.allow_dups = true;
+    instance.array.allow_dups_ = true;
 
     run<Asserter, FxRun1D>(instance);
   };
@@ -1402,9 +1402,9 @@ TEST_CASE_METHOD(
     const double ratio_coords = 0.2;
 
     FxRun1D instance;
-    instance.array.capacity = num_fragments * 2;
-    instance.array.dimension.extent = num_fragments * 2;
-    instance.array.allow_dups = true;
+    instance.array.capacity_ = num_fragments * 2;
+    instance.array.dimension_.extent = num_fragments * 2;
+    instance.array.allow_dups_ = true;
     instance.subarray = subarray;
 
     instance.memory.total_budget_ = std::to_string(total_budget);
@@ -1417,7 +1417,7 @@ TEST_CASE_METHOD(
       std::iota(
           fragment.dim_.begin(),
           fragment.dim_.end(),
-          instance.array.dimension.domain.lower_bound + f);
+          instance.array.dimension_.domain.lower_bound + f);
 
       auto& atts = std::get<0>(fragment.atts_);
       atts.resize(fragment_size);
@@ -2659,11 +2659,12 @@ struct Arbitrary<FxRun1D> {
            int num_user_cells) {
           FxRun1D instance;
           std::tie(
-              instance.array.dimension, instance.subarray, instance.fragments) =
-              fragments;
+              instance.array.dimension_,
+              instance.subarray,
+              instance.fragments) = fragments;
 
           instance.num_user_cells = num_user_cells;
-          instance.array.allow_dups = true;
+          instance.array.allow_dups_ = true;
 
           return instance;
         },
@@ -2779,11 +2780,11 @@ void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
   os << "\t]," << std::endl;
   os << "\t\"num_user_cells\": " << instance.num_user_cells << std::endl;
   os << "\t\"array\": {" << std::endl;
-  os << "\t\t\"allow_dups\": " << instance.array.allow_dups << std::endl;
-  os << "\t\t\"domain\": [" << instance.array.dimension.domain.lower_bound
-     << ", " << instance.array.dimension.domain.upper_bound << "],"
+  os << "\t\t\"allow_dups\": " << instance.array.allow_dups_ << std::endl;
+  os << "\t\t\"domain\": [" << instance.array.dimension_.domain.lower_bound
+     << ", " << instance.array.dimension_.domain.upper_bound << "],"
      << std::endl;
-  os << "\t\t\"extent\": " << instance.array.dimension.extent << std::endl;
+  os << "\t\t\"extent\": " << instance.array.dimension_.extent << std::endl;
   os << "\t}," << std::endl;
   os << "\t\"memory\": {" << std::endl;
   os << "\t\t\"total_budget\": " << instance.memory.total_budget_ << ", "
