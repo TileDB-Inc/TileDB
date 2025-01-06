@@ -43,6 +43,8 @@
 #include <test/support/tdb_catch.h>
 #include <test/support/tdb_rapidcheck.h>
 
+#include <stdexcept>
+
 namespace tiledb::test {
 
 /**
@@ -55,7 +57,15 @@ struct AsserterCatch {};
  */
 struct AsserterRapidcheck {};
 
+/**
+ * Marker that a template is instantiated by application code
+ */
+struct AsserterRuntimeException {};
+
 }  // namespace tiledb::test
+
+#define __STR_(x) #x
+#define __STR_VA_(...) __STR_(__VA_ARGS__)
 
 /**
  * Helper macro for running an assert in a context
@@ -72,16 +82,25 @@ struct AsserterRapidcheck {};
  * This expands to REQUIRE for `AsserterCatch` and RC_ASSERT for
  * `AsserterRapidcheck`. For both type markers this will throw an exception.
  */
-#define ASSERTER(...)                                                     \
-  do {                                                                    \
-    static_assert(                                                        \
-        std::is_same<Asserter, tiledb::test::AsserterCatch>::value ||     \
-        std::is_same<Asserter, tiledb::test::AsserterRapidcheck>::value); \
-    if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {     \
-      REQUIRE(__VA_ARGS__);                                               \
-    } else {                                                              \
-      RC_ASSERT(__VA_ARGS__);                                             \
-    }                                                                     \
+#define ASSERTER(...)                                                      \
+  do {                                                                     \
+    static_assert(                                                         \
+        std::is_same<Asserter, tiledb::test::AsserterCatch>::value ||      \
+        std::is_same<Asserter, tiledb::test::AsserterRapidcheck>::value || \
+        std::is_same<Asserter, tiledb::test::AsserterRuntimeException>::   \
+            value);                                                        \
+    if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {      \
+      REQUIRE(__VA_ARGS__);                                                \
+    } else if (std::is_same<Asserter, tiledb::test::AsserterRapidcheck>::  \
+                   value) {                                                \
+      RC_ASSERT(__VA_ARGS__);                                              \
+    } else {                                                               \
+      if (!(__VA_ARGS__)) {                                                \
+        throw std::runtime_error(                                          \
+            std::string("Assertion failed: ") +                            \
+            std::string(__STR_VA_(__VA_ARGS__)));                          \
+      }                                                                    \
+    }                                                                      \
   } while (0)
 
 /**
