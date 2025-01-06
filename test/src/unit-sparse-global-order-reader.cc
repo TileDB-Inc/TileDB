@@ -1439,7 +1439,6 @@ TEST_CASE_METHOD(
     rc::prop("rapidcheck many overlapping fragments", [doit]() {
       const size_t num_fragments = *rc::gen::inRange(10, 24);
       const size_t fragment_size = *rc::gen::inRange(2, 200 - 64);
-      // const size_t num_user_cells = *rc::gen::inRange(1, 1024 * 1024);
       const size_t num_user_cells = 1024;
       const auto subarray =
           *rc::make_subarray_1d(templates::Domain<int>(1, 200));
