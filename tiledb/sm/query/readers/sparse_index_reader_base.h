@@ -310,7 +310,7 @@ struct PreprocessTileOrder {
   size_t num_tiles_;
 
   bool has_more_tiles() const {
-    return cursor_ < num_tiles_;
+    return enabled_ && cursor_ < num_tiles_;
   }
 };
 
