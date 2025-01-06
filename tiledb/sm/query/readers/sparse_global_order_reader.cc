@@ -90,8 +90,6 @@ struct PreprocessTileMergeFuture {
   /** merge input, looks unused but must out-live the merge future */
   std::vector<std::vector<ResultTileId>> fragment_result_tiles_;
 
-  std::vector<std::span<ResultTileId>> fragment_result_tile_spans_;
-
   /** comparator, looks unused but must out-live the merge future */
   std::shared_ptr<CellCmpBase> cmp_;
 
@@ -106,7 +104,6 @@ struct PreprocessTileMergeFuture {
       memory_used_ -= sizeof(ResultTileId) * num_tiles;
     }
     fragment_result_tiles_.clear();
-    fragment_result_tile_spans_.clear();
   }
 
  public:
@@ -569,12 +566,6 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
   }
 
   /* then do parallel merge */
-  auto& fragment_result_tile_spans = future.fragment_result_tile_spans_;
-  fragment_result_tile_spans.reserve(fragment_result_tiles.size());
-  for (auto& f : fragment_result_tiles) {
-    fragment_result_tile_spans.push_back(std::span(f));
-  }
-
   preprocess_tile_order_.num_tiles_ = num_result_tiles;
   preprocess_tile_order_.tiles_.resize(
       num_result_tiles, ResultTileId{.fragment_idx_ = 0, .tile_idx_ = 0});
@@ -622,11 +613,11 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
       future.cmp_ = std::static_pointer_cast<CellCmpBase>(cmp);
     }
 
-    future.merge_ = algorithm::parallel_merge<ResultTileId, ResultTileCmp>(
+    future.merge_ = algorithm::parallel_merge(
         resources_.compute_tp(),
         merge_resources,
         future.merge_options_,
-        fragment_result_tile_spans,
+        future.fragment_result_tiles_,
         *static_cast<ResultTileCmp*>(future.cmp_.get()),
         &preprocess_tile_order_.tiles_[0]);
   };

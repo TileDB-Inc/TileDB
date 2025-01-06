@@ -100,6 +100,7 @@
 #include <algorithm>
 #include <memory>
 #include <queue>
+#include <type_traits>
 
 namespace tiledb::algorithm {
 
@@ -108,6 +109,20 @@ class ParallelMergeException : public tiledb::common::StatusException {
   explicit ParallelMergeException(const std::string& detail)
       : tiledb::common::StatusException("ParallelMerge", detail) {
   }
+};
+
+/**
+ * Description of data which can be parallel-merged,
+ * which is any random-access collection of contiguous items
+ * (e.g. `std::vector<std::vector<T>>` for some `T`).
+ */
+template <typename I>
+concept ParallelMergeable = requires(const I& spans, size_t idx) {
+  typename I::value_type::value_type;
+  { spans.size() } -> std::convertible_to<size_t>;
+  {
+    spans[idx]
+  } -> std::convertible_to<std::span<const typename I::value_type::value_type>>;
 };
 
 /**
@@ -194,16 +209,18 @@ struct ParallelMergeFuture {
   // index of the next expected item in `merge_bounds_`
   uint64_t merge_cursor_;
 
-  template <typename T, typename Cmp>
+  template <ParallelMergeable I, typename Cmp>
   friend class ParallelMerge;
 };
 
-template <typename T, class Compare = std::less<T>>
+template <
+    ParallelMergeable I,
+    class Compare = std::less<typename I::value_type::value_type>>
 tdb::pmr::unique_ptr<ParallelMergeFuture> parallel_merge(
     tiledb::common::ThreadPool& pool,
     const ParallelMergeOptions& options,
-    std::span<std::span<T>> streams,
-    T* output);
+    const I& streams,
+    std::remove_cv_t<typename I::value_type::value_type>* output);
 
 /**
  * Represents one sequential unit of the parallel merge.
@@ -267,22 +284,25 @@ struct VerifyIdentifyMergeUnit;
 template <typename T>
 struct VerifyTournamentMerge;
 
-template <typename T, class Compare = std::less<T>>
+template <
+    ParallelMergeable I,
+    class Compare = std::less<typename I::value_type::value_type>>
 class ParallelMerge {
  public:
-  typedef std::span<std::span<T>> Streams;
+  using T = typename I::value_type::value_type;
 
  private:
   /**
-   * Comparator for std::span<T> which defers comparison to the first element of
-   * the span.
+   * Comparator for std::span<const T> which defers comparison to the first
+   * element of the span.
    */
   struct span_greater {
     span_greater(Compare& cmp)
         : cmp_(cmp) {
     }
 
-    bool operator()(const std::span<T> l, const std::span<T> r) const {
+    bool operator()(
+        const std::span<const T> l, const std::span<const T> r) const {
       return !(cmp_(l.front(), r.front()));
     }
 
@@ -295,20 +315,27 @@ class ParallelMerge {
    * identified by `unit`.
    */
   static Status tournament_merge(
-      Streams streams, Compare* cmp, const MergeUnit& unit, T* output) {
-    std::vector<std::span<T>> container;
+      const I& streams,
+      Compare* cmp,
+      const MergeUnit& unit,
+      std::remove_cv_t<typename I::value_type::value_type>* output) {
+    std::vector<std::span<const T>> container;
     container.reserve(streams.size());
 
     // NB: we can definitely make a more optimized implementation
     // which does a bunch of buffering for each battle in the tournament
     // but this is straightforward
-    std::priority_queue<std::span<T>, std::vector<std::span<T>>, span_greater>
+    std::priority_queue<
+        std::span<const T>,
+        std::vector<std::span<const T>>,
+        span_greater>
         tournament(span_greater(*cmp), container);
 
     for (size_t i = 0; i < streams.size(); i++) {
       if (unit.starts[i] != unit.ends[i]) {
         tournament.push(
-            streams[i].subspan(unit.starts[i], unit.ends[i] - unit.starts[i]));
+            std::span<const T>(streams[i])
+                .subspan(unit.starts[i], unit.ends[i] - unit.starts[i]));
       }
     }
 
@@ -342,7 +369,7 @@ class ParallelMerge {
    * `which` is the index of the stream we want to use for the split point.
    */
   static MergeUnit split_point_stream_bounds(
-      Streams streams,
+      const I& streams,
       Compare& cmp,
       tdb::pmr::memory_resource& memory,
       uint64_t which,
@@ -360,7 +387,7 @@ class ParallelMerge {
         output.starts[i] = search_bounds.starts[i];
         output.ends.push_back(split_point_idx + 1);
       } else {
-        std::span<T> substream(
+        std::span<const T> substream(
             streams[i].begin() + search_bounds.starts[i],
             streams[i].begin() + search_bounds.ends[i]);
 
@@ -381,7 +408,7 @@ class ParallelMerge {
    * Holds state for searching for a merge unit of size `target_items`.
    */
   struct SearchMergeBoundary {
-    Streams streams_;
+    const I& streams_;
     Compare& cmp_;
     tdb::pmr::memory_resource& memory_;
     uint64_t split_point_stream_;
@@ -389,7 +416,7 @@ class ParallelMerge {
     MergeUnit search_bounds_;
 
     SearchMergeBoundary(
-        Streams streams,
+        const I& streams,
         Compare& cmp,
         tdb::pmr::memory_resource& memory,
         uint64_t target_items)
@@ -488,7 +515,7 @@ class ParallelMerge {
    * zero for each stream
    */
   static MergeUnit identify_merge_unit(
-      Streams streams,
+      const I& streams,
       Compare* cmp,
       tdb::pmr::memory_resource& memory,
       uint64_t target_items) {
@@ -521,13 +548,13 @@ class ParallelMerge {
    */
   static Status spawn_next_merge_unit(
       tiledb::common::ThreadPool* pool,
-      Streams streams,
+      const I& streams,
       Compare* cmp,
       uint64_t parallel_factor,
       uint64_t total_items,
       uint64_t target_unit_size,
       uint64_t p,
-      T* output,
+      std::remove_cv_t<typename I::value_type::value_type>* output,
       ParallelMergeFuture* future) {
     const uint64_t output_end =
         std::min(total_items, (p + 1) * target_unit_size);
@@ -572,9 +599,9 @@ class ParallelMerge {
       tiledb::common::ThreadPool& pool,
       size_t parallel_factor,
       uint64_t total_items,
-      Streams streams,
+      const I& streams,
       Compare& cmp,
-      T* output,
+      std::remove_cv_t<typename I::value_type::value_type>* output,
       ParallelMergeFuture& future) {
     // NB: round up, if there is a shorter merge unit it will be the last one.
     const uint64_t target_unit_size =
@@ -603,9 +630,9 @@ class ParallelMerge {
       tiledb::common::ThreadPool& pool,
       ParallelMergeMemoryResources& memory,
       const ParallelMergeOptions& options,
-      Streams streams,
+      const I& streams,
       Compare& cmp,
-      T* output) {
+      std::remove_cv_t<typename I::value_type::value_type>* output) {
     uint64_t total_items = 0;
     for (const auto& stream : streams) {
       total_items += stream.size();
@@ -625,15 +652,15 @@ class ParallelMerge {
   }
 };
 
-template <typename T, class Compare>
+template <ParallelMergeable I, class Compare>
 tdb::pmr::unique_ptr<ParallelMergeFuture> parallel_merge(
     tiledb::common::ThreadPool& pool,
     ParallelMergeMemoryResources& memory,
     const ParallelMergeOptions& options,
-    std::span<std::span<T>> streams,
+    const I& streams,
     Compare& cmp,
-    T* output) {
-  return ParallelMerge<T, Compare>::start(
+    std::remove_cv_t<typename I::value_type::value_type>* output) {
+  return ParallelMerge<I, Compare>::start(
       pool, memory, options, streams, cmp, output);
 }
 

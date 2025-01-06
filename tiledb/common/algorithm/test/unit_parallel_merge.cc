@@ -44,6 +44,19 @@ namespace tiledb::algorithm {
 template <typename T>
 using Streams = std::vector<std::vector<T>>;
 
+const Streams<uint64_t> EXAMPLE_STREAMS = {
+    {123, 456, 789, 890, 901},
+    {135, 357, 579, 791, 913},
+    {24, 246, 468, 680, 802},
+    {100, 200, 300, 400, 500}};
+
+const std::vector<std::span<const uint64_t>> EXAMPLE_SPANS = {
+    std::span(EXAMPLE_STREAMS[0]),
+    std::span(EXAMPLE_STREAMS[1]),
+    std::span(EXAMPLE_STREAMS[2]),
+    std::span(EXAMPLE_STREAMS[3]),
+};
+
 /**
  * An instance of an input to the `split_point_stream_bounds`
  * function.
@@ -71,7 +84,7 @@ struct VerifySplitPointStream {
     }
 
     auto cmp = std::less<T>{};
-    auto result = ParallelMerge<T>::split_point_stream_bounds(
+    auto result = ParallelMerge<decltype(spans)>::split_point_stream_bounds(
         spans,
         cmp,
         *memory->get_resource(MemoryType::PARALLEL_MERGE_CONTROL),
@@ -109,7 +122,7 @@ struct VerifyIdentifyMergeUnit {
         *memory_tracker->get_resource(MemoryType::PARALLEL_MERGE_CONTROL);
 
     auto cmp = std::less<T>{};
-    auto result = ParallelMerge<T>::identify_merge_unit(
+    auto result = ParallelMerge<decltype(spans)>::identify_merge_unit(
         spans, &cmp, memory, target_items);
     RC_ASSERT(target_items == result.num_items());
 
@@ -166,8 +179,8 @@ struct VerifyTournamentMerge {
       spans.push_back(std::span(stream));
     }
 
-    auto result =
-        ParallelMerge<T>::tournament_merge(spans, &cmp, unit, output_ptr);
+    auto result = ParallelMerge<decltype(spans)>::tournament_merge(
+        spans, &cmp, unit, output_ptr);
     RC_ASSERT(result.ok());
 
     // compare against a naive and slow merge
@@ -220,8 +233,8 @@ struct VerifyParallelMerge {
     ParallelMergeMemoryResources resources(*memory_tracker.get());
 
     ThreadPool pool(pool_concurrency);
-    auto future = parallel_merge<T, decltype(cmp)>(
-        pool, resources, options, spans, cmp, &output[0]);
+    auto future =
+        parallel_merge(pool, resources, options, spans, cmp, &output[0]);
 
     std::optional<uint64_t> prev_bound;
     std::optional<uint64_t> bound;
@@ -618,23 +631,12 @@ TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
   SECTION("less") {
     auto cmp = std::less<uint64_t>{};
 
-    std::vector<std::vector<uint64_t>> streambufs = {
-        {123, 456, 789, 890, 901},
-        {135, 357, 579, 791, 913},
-        {24, 246, 468, 680, 802},
-        {100, 200, 300, 400, 500}};
     const std::vector<uint64_t> expect = {24,  100, 123, 135, 200, 246, 300,
                                           357, 400, 456, 468, 500, 579, 680,
                                           789, 791, 802, 890, 901, 913};
-    std::vector<std::span<uint64_t>> streams = {
-        std::span(streambufs[0]),
-        std::span(streambufs[1]),
-        std::span(streambufs[2]),
-        std::span(streambufs[3]),
-    };
 
-    auto future = parallel_merge<uint64_t, decltype(cmp)>(
-        pool, resources, options, streams, cmp, &output[0]);
+    auto future = parallel_merge(
+        pool, resources, options, EXAMPLE_SPANS, cmp, &output[0]);
 
     future->block();
 
@@ -645,23 +647,17 @@ TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
   SECTION("greater") {
     auto cmp = std::greater<uint64_t>{};
 
-    std::vector<std::vector<uint64_t>> streambufs = {
-        {901, 890, 789, 456, 123},
-        {913, 791, 579, 357, 135},
-        {802, 680, 468, 246, 24},
-        {500, 400, 300, 200, 100}};
+    auto descending = EXAMPLE_STREAMS;
+    for (auto& stream : descending) {
+      std::sort(stream.begin(), stream.end(), std::greater<>());
+    }
+
     const std::vector<uint64_t> expect = {913, 901, 890, 802, 791, 789, 680,
                                           579, 500, 468, 456, 400, 357, 300,
                                           246, 200, 135, 123, 100, 24};
-    std::vector<std::span<uint64_t>> streams = {
-        std::span(streambufs[0]),
-        std::span(streambufs[1]),
-        std::span(streambufs[2]),
-        std::span(streambufs[3]),
-    };
 
-    auto future = parallel_merge<uint64_t, decltype(cmp)>(
-        pool, resources, options, streams, cmp, &output[0]);
+    auto future =
+        parallel_merge(pool, resources, options, descending, cmp, &output[0]);
 
     future->block();
 
