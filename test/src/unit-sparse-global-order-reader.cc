@@ -1418,11 +1418,14 @@ TEST_CASE_METHOD(
       std::iota(
           fragment.dim_.begin(),
           fragment.dim_.end(),
-          instance.array.dimension_.domain.lower_bound + f);
+          instance.array.dimension_.domain.lower_bound + static_cast<int>(f));
 
       auto& atts = std::get<0>(fragment.atts_);
       atts.resize(fragment_size);
-      std::iota(atts.begin(), atts.end(), fragment_size * num_fragments);
+      std::iota(
+          atts.begin(),
+          atts.end(),
+          static_cast<int>(fragment_size * num_fragments));
 
       instance.fragments.push_back(fragment);
     }
@@ -2465,7 +2468,7 @@ void CSparseGlobalOrderFx::run(Instance instance) {
   auto outatts = out.attributes();
   std::apply(
       [&](auto&... field) {
-        (field.resize(std::max(1UL, expect.size()), 0), ...);
+        (field.resize(std::max(static_cast<size_t>(1), expect.size()), 0), ...);
       },
       std::tuple_cat(outdims, outatts));
 
@@ -2632,13 +2635,13 @@ Gen<std::vector<templates::Domain<int>>> make_subarray_1d(
 template <>
 struct Arbitrary<FxRun1D> {
   static Gen<FxRun1D> arbitrary() {
-    constexpr Datatype DimensionType = Datatype::INT32;
-    using CoordType = tiledb::type::datatype_traits<DimensionType>::value_type;
+    constexpr Datatype DIMENSION_TYPE = Datatype::INT32;
+    using CoordType = tiledb::type::datatype_traits<DIMENSION_TYPE>::value_type;
 
-    auto dimension = gen::arbitrary<templates::Dimension<DimensionType>>();
+    auto dimension = gen::arbitrary<templates::Dimension<DIMENSION_TYPE>>();
 
     auto fragments = gen::mapcat(
-        dimension, [](templates::Dimension<DimensionType> dimension) {
+        dimension, [](templates::Dimension<DIMENSION_TYPE> dimension) {
           auto fragment =
               rc::make_fragment_1d<CoordType, int>(dimension.domain);
 
@@ -2654,7 +2657,7 @@ struct Arbitrary<FxRun1D> {
 
     return gen::apply(
         [](std::tuple<
-               templates::Dimension<DimensionType>,
+               templates::Dimension<DIMENSION_TYPE>,
                std::vector<templates::Domain<CoordType>>,
                std::vector<templates::Fragment1D<int, int>>> fragments,
            int num_user_cells) {

@@ -262,7 +262,8 @@ struct query_applicator {
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
     std::optional<uint64_t> num_cells;
     auto make_field_size = [&]<typename T>(const std::vector<T>& field) {
-      const uint64_t field_cells = std::min(cell_limit, field.size());
+      const uint64_t field_cells =
+          std::min(cell_limit, static_cast<uint64_t>(field.size()));
       const uint64_t field_size = field_cells * sizeof(T);
       if (num_cells.has_value()) {
         // precondition: each field must have the same number of cells
