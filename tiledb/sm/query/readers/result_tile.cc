@@ -95,9 +95,13 @@ ResultTile::~ResultTile() {
   try {
     // Wait for all tasks to be done
     wait_all_attrs();
+  } catch (...) {
+  }
+
+  try {
+    // Wait for all tasks to be done
     wait_all_coords();
   } catch (...) {
-    return;
   }
 }
 

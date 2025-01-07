@@ -747,7 +747,7 @@ void ReaderBase::read_tiles(
       // 'TileData' objects should be returned by this function and passed into
       // 'unfilter_tiles' so that the filter pipeline can stop using the
       // 'ResultTile' object to get access to the filtered data.
-      std::tuple<void*, ThreadPool::SharedTask> n = {
+      std::pair<void*, ThreadPool::SharedTask> n = {
           nullptr, ThreadPool::SharedTask()};
       ResultTile::TileData tile_data{
           val_only ? n :
@@ -929,9 +929,6 @@ Status ReaderBase::unfilter_tiles(
 
   for (size_t i = 0; i < num_tiles; i++) {
     auto result_tile = result_tiles[i];
-    // if (skip_field(result_tile->frag_idx(), name)) {
-    //   continue;
-    // }
     ThreadPool::SharedTask task =
         resources_.compute_tp().execute([name,
                                          validity_only,

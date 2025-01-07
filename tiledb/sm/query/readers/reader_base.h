@@ -543,7 +543,8 @@ class ReaderBase : public StrategyBase {
 
   /**
    * Concurrently executes across each name in `names` and each result tile
-   * in 'result_tiles'.
+   * in 'result_tiles'. Attaches a future to each result_tile that is signaling
+   * when reading the corresponding data from disk is done.
    *
    * This must be the entry point for reading attribute tiles because it
    * generates stats for reading attributes.
@@ -551,7 +552,6 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @return Filtered data blocks.
    */
   void read_attribute_tiles(
       const std::vector<NameToLoad>& names,
@@ -559,7 +559,8 @@ class ReaderBase : public StrategyBase {
 
   /**
    * Concurrently executes across each name in `names` and each result tile
-   * in 'result_tiles'.
+   * in 'result_tiles'. Attaches a future to each result_tile that is signaling
+   * when reading the corresponding data from disk is done.
    *
    * This must be the entry point for reading coordinate tiles because it
    * generates stats for reading coordinates.
@@ -567,7 +568,6 @@ class ReaderBase : public StrategyBase {
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @return Filtered data blocks.
    */
   void read_coordinate_tiles(
       const std::vector<std::string>& names,
@@ -578,13 +578,13 @@ class ReaderBase : public StrategyBase {
    * in the appropriate result tile.
    *
    * Concurrently executes across each name in `names` and each result tile
-   * in 'result_tiles'.
+   * in 'result_tiles'. Attaches a future to each result_tile that is signaling
+   * when reading the corresponding data from disk is done.
    *
    * @param names The field names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
    * @param validity_only Is the field read for validity only.
-   * @return Filtered data blocks.
    */
   void read_tiles(
       const std::vector<NameToLoad>& names,

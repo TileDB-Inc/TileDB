@@ -214,16 +214,16 @@ class ResultTile {
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
     TileData(
-        std::tuple<void*, ThreadPool::SharedTask> fixed_filtered_data,
-        std::tuple<void*, ThreadPool::SharedTask> var_filtered_data,
-        std::tuple<void*, ThreadPool::SharedTask> validity_filtered_data,
+        std::pair<void*, ThreadPool::SharedTask> fixed_filtered_data,
+        std::pair<void*, ThreadPool::SharedTask> var_filtered_data,
+        std::pair<void*, ThreadPool::SharedTask> validity_filtered_data,
         shared_ptr<FilteredData> filtered_data)
-        : fixed_filtered_data_(std::get<0>(fixed_filtered_data))
-        , var_filtered_data_(std::get<0>(var_filtered_data))
-        , validity_filtered_data_(std::get<0>(validity_filtered_data))
-        , fixed_filtered_data_task_(std::get<1>(fixed_filtered_data))
-        , var_filtered_data_task_(std::get<1>(var_filtered_data))
-        , validity_filtered_data_task_(std::get<1>(validity_filtered_data))
+        : fixed_filtered_data_(fixed_filtered_data.first)
+        , var_filtered_data_(var_filtered_data.first)
+        , validity_filtered_data_(validity_filtered_data.first)
+        , fixed_filtered_data_task_(fixed_filtered_data.second)
+        , var_filtered_data_task_(var_filtered_data.second)
+        , validity_filtered_data_task_(validity_filtered_data.second)
         , filtered_data_(std::move(filtered_data)) {
     }
 
@@ -232,16 +232,21 @@ class ResultTile {
         if (fixed_filtered_data_task_.valid()) {
           auto st = fixed_filtered_data_task_.wait();
         }
+      } catch (...) {
+      }
 
+      try {
         if (var_filtered_data_task_.valid()) {
           auto st = var_filtered_data_task_.wait();
         }
+      } catch (...) {
+      }
 
+      try {
         if (validity_filtered_data_task_.valid()) {
           auto st = validity_filtered_data_task_.wait();
         }
       } catch (...) {
-        return;
       }
     }
 
@@ -285,7 +290,7 @@ class ResultTile {
     }
 
     /** Clear the held filtered data. */
-    inline void clear_filtered_data() {
+    inline void release_filtered_data() {
       filtered_data_ = nullptr;
     }
 
