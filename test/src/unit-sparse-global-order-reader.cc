@@ -2468,7 +2468,7 @@ void CSparseGlobalOrderFx::run(Instance instance) {
   auto outatts = out.attributes();
   std::apply(
       [&](auto&... field) {
-        (field.resize(std::max(static_cast<size_t>(1), expect.size()), 0), ...);
+        (field.resize(std::max<uint64_t>(1, expect.size()), 0), ...);
       },
       std::tuple_cat(outdims, outatts));
 

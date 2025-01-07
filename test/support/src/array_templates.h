@@ -258,7 +258,7 @@ struct query_applicator {
    * @return a tuple containing the size of each input field
    */
   static auto make_field_sizes(
-      const std::tuple<Ts&...> fields,
+      const std::tuple<std::decay_t<Ts>&...> fields,
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
     std::optional<uint64_t> num_cells;
     auto make_field_size = [&]<typename T>(const std::vector<T>& field) {
@@ -288,7 +288,7 @@ struct query_applicator {
       tiledb_ctx_t* ctx,
       tiledb_query_t* query,
       auto& field_sizes,
-      std::tuple<Ts&...> fields,
+      std::tuple<std::decay_t<Ts>&...> fields,
       std::function<std::string(unsigned)> fieldname,
       uint64_t cell_offset = 0) {
     auto set_data_buffer =
