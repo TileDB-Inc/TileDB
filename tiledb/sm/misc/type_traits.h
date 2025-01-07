@@ -56,7 +56,7 @@ concept CellComparable =
  */
 template <typename T>
 concept GlobalCellComparable =
-    CellComparable<T> and
+    CellComparable<T> &&
     requires(const T& a, const Dimension& dim, unsigned d) {
       { a.coord(d) } -> std::convertible_to<const void*>;
     };
