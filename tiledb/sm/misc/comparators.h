@@ -93,7 +93,7 @@ namespace tiledb::sm {
 using namespace tiledb::common;
 
 namespace cell_compare {
-template <CellCmpable RCTypeL, CellCmpable RCTypeR>
+template <CellComparable RCTypeL, CellComparable RCTypeR>
 int compare(
     const Domain& domain, unsigned int d, const RCTypeL& a, const RCTypeR& b) {
   const auto& dim{*(domain.dimension_ptr(d))};
@@ -117,7 +117,7 @@ class CellCmpBase {
       , dim_num_(domain.dim_num()) {
   }
 
-  template <CellCmpable RCTypeL, CellCmpable RCTypeR>
+  template <CellComparable RCTypeL, CellComparable RCTypeR>
   [[nodiscard]] int cell_order_cmp_RC(
       unsigned int d, const RCTypeL& a, const RCTypeR& b) const {
     return cell_compare::compare(domain_, d, a, b);
@@ -378,7 +378,7 @@ class HilbertCmpRCI : protected CellCmpBase {
 
 template <Layout TILE_ORDER, Layout CELL_ORDER>
 struct global_order_compare {
-  template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
+  template <GlobalCellComparable GlobalCmpL, GlobalCellComparable GlobalCmpR>
   static int compare(
       const Domain& domain, const GlobalCmpL& a, const GlobalCmpR& b) {
     const auto num_dims = domain.dim_num();
@@ -427,7 +427,7 @@ class GlobalCellCmpStaticDispatch : public CellCmpBase {
         CELL_ORDER == Layout::ROW_MAJOR || CELL_ORDER == Layout::COL_MAJOR);
   }
 
-  template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
+  template <GlobalCellComparable GlobalCmpL, GlobalCellComparable GlobalCmpR>
   bool operator()(const GlobalCmpL& a, const GlobalCmpR& b) const {
     return global_order_compare<TILE_ORDER, CELL_ORDER>::compare(
                domain_, a, b) < 0;
@@ -442,7 +442,7 @@ class GlobalCellCmp : public CellCmpBase {
       , cell_order_(domain.cell_order()) {
   }
 
-  template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
+  template <GlobalCellComparable GlobalCmpL, GlobalCellComparable GlobalCmpR>
   int compare(const GlobalCmpL& a, const GlobalCmpR& b) const {
     if (tile_order_ == Layout::ROW_MAJOR) {
       if (cell_order_ == Layout::ROW_MAJOR) {
@@ -463,7 +463,7 @@ class GlobalCellCmp : public CellCmpBase {
     }
   }
 
-  template <GlobalCellCmpable GlobalCmpL, GlobalCellCmpable GlobalCmpR>
+  template <GlobalCellComparable GlobalCmpL, GlobalCellComparable GlobalCmpR>
   bool operator()(const GlobalCmpL& a, const GlobalCmpR& b) const {
     return compare(a, b) < 0;
   }
@@ -476,8 +476,8 @@ class GlobalCellCmp : public CellCmpBase {
 };
 
 template <typename T>
-concept GlobalTileCmpable =
-    GlobalCellCmpable<T> and requires(const T& a, uint64_t pos) {
+concept GlobalTileComparable =
+    GlobalCellComparable<T> and requires(const T& a, uint64_t pos) {
       { a.fragment_idx() } -> std::convertible_to<unsigned>;
       { a.tile_idx() } -> std::convertible_to<uint64_t>;
       { a.tile_->timestamp(pos) } -> std::same_as<uint64_t>;
@@ -508,13 +508,13 @@ class GlobalCmp : public ResultTileCmpBase {
   }
 
   /**
-   * Comparison operator for a vector of `GlobalTileCmpable`.
+   * Comparison operator for a vector of `GlobalTileComparable`.
    *
    * @param a The first coordinate.
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  template <GlobalTileCmpable GlobalCmpL, GlobalTileCmpable GlobalCmpR>
+  template <GlobalTileComparable GlobalCmpL, GlobalTileComparable GlobalCmpR>
   bool operator()(const GlobalCmpL& a, const GlobalCmpR& b) const {
     const int cellcmp = cellcmp_.compare(a, b);
     if (cellcmp < 0) {
@@ -575,7 +575,7 @@ class GlobalCmpReverse {
    * @param b The second coordinate.
    * @return `true` if `a` precedes `b` and `false` otherwise.
    */
-  template <GlobalTileCmpable GlobalCmpL, GlobalTileCmpable GlobalCmpR>
+  template <GlobalTileComparable GlobalCmpL, GlobalTileComparable GlobalCmpR>
   bool operator()(const GlobalCmpL& a, const GlobalCmpR& b) const {
     return !cmp_.operator()(a, b);
   }

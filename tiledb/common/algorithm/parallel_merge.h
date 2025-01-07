@@ -311,7 +311,8 @@ class ParallelMerge {
 
     bool operator()(
         const std::span<const T> l, const std::span<const T> r) const {
-      // note that this flips the comparison as it is used in a max heap but we want min
+      // note that this flips the comparison as it is used in a max heap but we
+      // want min
       return cmp_(r.front(), l.front());
     }
 

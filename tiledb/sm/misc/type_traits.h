@@ -45,7 +45,7 @@ namespace tiledb::sm {
  * (see `tiledb/sm/misc/comparators.h`)
  */
 template <typename T>
-concept CellCmpable =
+concept CellComparable =
     requires(const T& a, const Dimension& dim, unsigned dim_idx) {
       { a.dimension_datum(dim, dim_idx) } -> std::same_as<UntypedDatumView>;
     };
@@ -55,8 +55,9 @@ concept CellCmpable =
  * (see `tiledb/sm/misc/comparators.h`)
  */
 template <typename T>
-concept GlobalCellCmpable =
-    CellCmpable<T> and requires(const T& a, const Dimension& dim, unsigned d) {
+concept GlobalCellComparable =
+    CellComparable<T> and
+    requires(const T& a, const Dimension& dim, unsigned d) {
       { a.coord(d) } -> std::convertible_to<const void*>;
     };
 
