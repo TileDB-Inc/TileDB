@@ -40,11 +40,12 @@
 
 namespace rc {
 
+using namespace tiledb::test;
 using namespace tiledb::test::templates;
 
 template <DimensionType D>
-struct Arbitrary<Domain<D>> {
-  static Gen<Domain<D>> arbitrary() {
+struct Arbitrary<templates::Domain<D>> {
+  static Gen<templates::Domain<D>> arbitrary() {
     // NB: `gen::inRange` is exclusive at the upper end but tiledb domain is
     // inclusive. So we have to use `int64_t` to avoid overflow.
     auto bounds = gen::mapcat(gen::arbitrary<D>(), [](D lb) {
@@ -62,7 +63,7 @@ struct Arbitrary<Domain<D>> {
     });
 
     return gen::map(bounds, [](std::pair<D, D> bounds) {
-      return Domain<D>(bounds.first, bounds.second);
+      return templates::Domain<D>(bounds.first, bounds.second);
     });
   }
 };
@@ -86,7 +87,7 @@ std::optional<T> checked_sub(T a, T b) {
 }
 
 template <DimensionType D>
-Gen<D> make_extent(const Domain<D>& domain) {
+Gen<D> make_extent(const templates::Domain<D>& domain) {
   // upper bound on all possible extents to avoid unreasonably
   // huge tile sizes
   static constexpr D extent_limit = static_cast<D>(
@@ -118,22 +119,22 @@ Gen<D> make_extent(const Domain<D>& domain) {
 }
 
 template <tiledb::sm::Datatype D>
-struct Arbitrary<Dimension<D>> {
-  static Gen<Dimension<D>> arbitrary() {
-    using CoordType = Dimension<D>::value_type;
+struct Arbitrary<templates::Dimension<D>> {
+  static Gen<templates::Dimension<D>> arbitrary() {
+    using CoordType = templates::Dimension<D>::value_type;
     auto tup = gen::mapcat(
         gen::arbitrary<Domain<CoordType>>(), [](Domain<CoordType> domain) {
           return gen::pair(gen::just(domain), make_extent(domain));
         });
 
     return gen::map(tup, [](std::pair<Domain<CoordType>, CoordType> tup) {
-      return Dimension<D>{.domain = tup.first, .extent = tup.second};
+      return templates::Dimension<D>{.domain = tup.first, .extent = tup.second};
     });
   }
 };
 
 template <DimensionType D>
-Gen<D> make_coordinate(const Domain<D>& domain) {
+Gen<D> make_coordinate(const templates::Domain<D>& domain) {
   // `gen::inRange` does an exclusive upper bound,
   // whereas the domain upper bound is inclusive.
   // As a result some contortion is required to deal
@@ -156,9 +157,9 @@ Gen<D> make_coordinate(const Domain<D>& domain) {
 }
 
 template <DimensionType D>
-Gen<Domain<D>> make_range(const Domain<D>& domain) {
+Gen<templates::Domain<D>> make_range(const templates::Domain<D>& domain) {
   return gen::apply(
-      [](D p1, D p2) { return Domain<D>(p1, p2); },
+      [](D p1, D p2) { return templates::Domain<D>(p1, p2); },
       make_coordinate<D>(domain),
       make_coordinate<D>(domain));
 }
@@ -190,7 +191,7 @@ Gen<Fragment1D<D, Att...>> make_fragment_1d(const Domain<D>& d) {
 
 template <DimensionType D1, DimensionType D2, AttributeType... Att>
 Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
-    const Domain<D1>& d1, const Domain<D2>& d2) {
+    const Domain<D1>& d1, const templates::Domain<D2>& d2) {
   auto coord_d1 = make_coordinate(d1);
   auto coord_d2 = make_coordinate(d2);
 
@@ -219,7 +220,7 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
 }
 
 template <>
-void show<Domain<int>>(const Domain<int>& domain, std::ostream& os) {
+void show<Domain<int>>(const templates::Domain<int>& domain, std::ostream& os) {
   os << "[" << domain.lower_bound << ", " << domain.upper_bound << "]";
 }
 

@@ -1253,7 +1253,7 @@ TEST_CASE_METHOD(
 
     auto& f1atts = std::get<0>(fragment1.atts_);
     f1atts.resize(fragment1.dim_.size());
-    std::iota(f1atts.begin(), f1atts.end(), fragment0.dim_.size());
+    std::iota(f1atts.begin(), f1atts.end(), int(fragment0.dim_.size()));
 
     struct FxRun1D instance;
     instance.fragments.push_back(fragment0);
@@ -1331,7 +1331,7 @@ TEST_CASE_METHOD(
 
     auto& f1atts = std::get<0>(fragment1.atts_);
     f1atts.resize(fragment1.dim_.size());
-    std::iota(f1atts.begin(), f1atts.end(), f0atts.size());
+    std::iota(f1atts.begin(), f1atts.end(), int(f0atts.size()));
 
     struct FxRun1D instance;
     instance.fragments.push_back(fragment0);
@@ -1404,7 +1404,7 @@ TEST_CASE_METHOD(
 
     FxRun1D instance;
     instance.array.capacity_ = num_fragments * 2;
-    instance.array.dimension_.extent = num_fragments * 2;
+    instance.array.dimension_.extent = int(num_fragments) * 2;
     instance.array.allow_dups_ = true;
     instance.subarray = subarray;
 
