@@ -210,12 +210,6 @@ if (NOT MSVC)
   add_compile_options(-Wno-deprecated-declarations)
 endif()
 
-find_library(
-  LIBRAPIDCHECK
-  NAMES rapidcheck
-  REQUIRED
-)
-
 # unit test executable
 add_executable(
   tiledb_unit EXCLUDE_FROM_ALL
@@ -239,7 +233,7 @@ target_link_libraries(tiledb_unit
     Catch2::Catch2
     tiledb_test_support_lib
     configuration_definitions
-    ${LIBRAPIDCHECK}
+    rapidcheck
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
