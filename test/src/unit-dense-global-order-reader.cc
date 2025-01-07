@@ -1,11 +1,11 @@
 /**
- * @file   sc-60301.cc
+ * @file   unit-dense-global-order-reader.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,22 +27,28 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include <tiledb/tiledb>
+#include "test/support/src/vfs_helpers.h"
+#include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
 
 static void create_array(Context& ctx, const std::string& array_uri);
-static void write_array(Context& ctx, const std::string& array_uri);
+static void write_array(
+    Context& ctx, const std::string& array_uri, tiledb_layout_t layout);
 
 TEST_CASE(
     "SC-60301: Read data with global cell order returns fill values",
     "[dense-reader][bug][global-cell-order][fixed][sc60301]") {
-  Context ctx;
-  std::string array_uri = "dense_global_cell_order";
+  test::VFSTestSetup vfs_test_setup;
+  const std::string array_uri =
+      vfs_test_setup.array_uri("dense_global_cell_order");
+  Context ctx{vfs_test_setup.ctx()};
 
   // Test setup
   create_array(ctx, array_uri);
-  write_array(ctx, array_uri);
+  auto write_layout =
+      GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR, TILEDB_GLOBAL_ORDER);
+  write_array(ctx, array_uri, write_layout);
 
   Array array(ctx, array_uri, TILEDB_READ);
   Subarray subarray(ctx, array);
@@ -56,10 +62,17 @@ TEST_CASE(
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
-  REQUIRE(a_read[0] == 1);
-  REQUIRE(a_read[1] == 3);
-  REQUIRE(a_read[2] == 2);
-  REQUIRE(a_read[3] == 4);
+  if (write_layout == TILEDB_ROW_MAJOR) {
+    REQUIRE(a_read[0] == 1);
+    REQUIRE(a_read[1] == 3);
+    REQUIRE(a_read[2] == 2);
+    REQUIRE(a_read[3] == 4);
+  } else {
+    REQUIRE(a_read[0] == 1);
+    REQUIRE(a_read[1] == 2);
+    REQUIRE(a_read[2] == 3);
+    REQUIRE(a_read[3] == 4);
+  }
 
   array.close();
 }
@@ -82,11 +95,13 @@ void create_array(Context& ctx, const std::string& array_uri) {
   Array::create(ctx, array_uri, schema);
 }
 
-void write_array(Context& ctx, const std::string& array_uri) {
+void write_array(
+    Context& ctx, const std::string& array_uri, tiledb_layout_t layout) {
   std::vector<int> data = {1, 2, 3, 4};
   Array array(ctx, array_uri, TILEDB_WRITE);
   Query query(ctx, array);
-  query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
+  query.set_layout(layout).set_data_buffer("a", data);
   REQUIRE(query.submit() == Query::Status::COMPLETE);
+  query.finalize();
   array.close();
 }
