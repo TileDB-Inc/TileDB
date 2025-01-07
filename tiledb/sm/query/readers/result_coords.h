@@ -275,7 +275,7 @@ struct GlobalOrderResultCoords
    *
    * @return Max slab length that can be merged for this tile.
    */
-  template <GlobalCellCmpable GlobalOrderLowerBound, class CompType>
+  template <GlobalCellComparable GlobalOrderLowerBound, class CompType>
   uint64_t max_slab_length(
       const GlobalOrderLowerBound& next, const CompType& cmp) {
     uint64_t cell_num = base::tile_->cell_num();
