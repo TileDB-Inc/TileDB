@@ -26,15 +26,9 @@
 
 include(unit_test)
 
-find_library(
-  LIBRAPIDCHECK
-  NAMES rapidcheck
-  REQUIRED
-)
-
 commence(unit_test algorithm)
     this_target_object_libraries(algorithm)
     this_target_sources(main.cc unit_parallel_merge.cc)
     this_target_link_libraries(tiledb_test_support_lib)
-    this_target_link_libraries(${LIBRAPIDCHECK})
+    this_target_link_libraries(rapidcheck)
 conclude(unit_test)
