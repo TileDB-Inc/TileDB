@@ -234,7 +234,8 @@ struct VerifyTournamentMerge {
 
     // SAFETY: the merge unit will begin writing at index
     // `unit.output_start()`
-    T* output_ptr = &output[-unit.output_start()];
+    T* output_buffer = output.data();
+    T* output_ptr = output_buffer - unit.output_start();
 
     std::vector<std::span<T>> spans;
     for (size_t s = 0; s < streams.size(); s++) {
@@ -297,7 +298,7 @@ struct VerifyParallelMerge {
 
     ThreadPool pool(pool_concurrency);
     auto future =
-        parallel_merge(pool, resources, options, spans, cmp, &output[0]);
+        parallel_merge(pool, resources, options, spans, cmp, &output.data()[0]);
 
     std::optional<uint64_t> prev_bound;
     std::optional<uint64_t> bound;
