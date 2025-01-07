@@ -50,12 +50,74 @@ const Streams<uint64_t> EXAMPLE_STREAMS = {
     {24, 246, 468, 680, 802},
     {100, 200, 300, 400, 500}};
 
-const std::vector<std::span<const uint64_t>> EXAMPLE_SPANS = {
-    std::span(EXAMPLE_STREAMS[0]),
-    std::span(EXAMPLE_STREAMS[1]),
-    std::span(EXAMPLE_STREAMS[2]),
-    std::span(EXAMPLE_STREAMS[3]),
+template <
+    ParallelMergeable I,
+    class Compare = std::less<typename I::value_type::value_type>>
+struct ParallelMergePublic : public ParallelMerge<I, Compare> {
+  using ParallelMerge<I, Compare>::split_point_stream_bounds;
 };
+
+/**
+ * Illustrates the steps of the split point algorithm
+ */
+TEST_CASE(
+    "parallel merge split point stream bounds example",
+    "[algorithm][parallel_merge]") {
+  using PM = ParallelMergePublic<decltype(EXAMPLE_STREAMS)>;
+
+  auto cmp =
+      std::less<typename decltype(EXAMPLE_STREAMS)::value_type::value_type>{};
+
+  auto memory_tracker = get_test_memory_tracker();
+  auto& resource =
+      *memory_tracker->get_resource(MemoryType::PARALLEL_MERGE_CONTROL);
+
+  // below illustrates the steps the algorithm takes to identify
+  // 10 tuples from `EXAMPLE_STREAMS` which comprise a merge unit
+
+  // first step, choose stream 0 as the split point stream, 789 is the split
+  // point
+  const MergeUnit search_0(resource, {0, 0, 0, 0}, {5, 5, 5, 5});
+  const MergeUnit expect_0(resource, {0, 0, 0, 0}, {3, 3, 4, 5});
+  const MergeUnit result_0 = PM::split_point_stream_bounds(
+      EXAMPLE_STREAMS, cmp, resource, 0, search_0);
+  REQUIRE(expect_0 == result_0);
+
+  // we found 15 tuples less than 789, discard positions and try again
+  // using stream 1 midpoint 357 as the split point
+  const MergeUnit search_1(resource, {0, 0, 0, 0}, {3, 3, 4, 5});
+  const MergeUnit expect_1(resource, {0, 0, 0, 0}, {1, 2, 2, 3});
+  const MergeUnit result_1 = PM::split_point_stream_bounds(
+      EXAMPLE_STREAMS, cmp, resource, 1, search_1);
+  REQUIRE(expect_1 == result_1);
+
+  // we found 8 tuples, add positions to result and then continue
+  // using stream 2 midpoint 468 as the next split point
+  const MergeUnit search_2(resource, {1, 2, 2, 3}, {3, 3, 4, 5});
+  const MergeUnit expect_2(resource, {1, 2, 2, 3}, {2, 2, 3, 4});
+  const MergeUnit result_2 = PM::split_point_stream_bounds(
+      EXAMPLE_STREAMS, cmp, resource, 2, search_2);
+  REQUIRE(expect_2 == result_2);
+
+  // that found 3 more tuples which is too many, discard above bounds
+  // and advance to stream 4 midpoint 400 as split point
+  const MergeUnit search_3(resource, {1, 2, 2, 3}, {2, 2, 3, 4});
+  const MergeUnit expect_3(resource, {1, 2, 2, 3}, {1, 2, 2, 4});
+  const MergeUnit result_3 = PM::split_point_stream_bounds(
+      EXAMPLE_STREAMS, cmp, resource, 3, search_3);
+  REQUIRE(expect_3 == result_3);
+
+  // that only found itself, add to bounds and then wrap around
+  // to stream 0 for the next split point 456
+  const MergeUnit search_4(resource, {1, 2, 2, 4}, {2, 2, 3, 4});
+  const MergeUnit expect_4(resource, {1, 2, 2, 4}, {2, 2, 2, 4});
+  const MergeUnit result_4 = PM::split_point_stream_bounds(
+      EXAMPLE_STREAMS, cmp, resource, 0, search_4);
+  REQUIRE(expect_4 == result_4);
+
+  // now the algorithm can yield {{0, 0, 0, 0}, {2, 2, 2, 4}} which is exactly
+  // 10 tuples
+}
 
 /**
  * An instance of an input to the `split_point_stream_bounds`
@@ -170,7 +232,8 @@ struct VerifyTournamentMerge {
 
     std::vector<T> output(unit.num_items());
 
-    // SAFETY: the merge unit will begin writing at index `unit.output_start()`
+    // SAFETY: the merge unit will begin writing at index
+    // `unit.output_start()`
     T* output_ptr = &output[-unit.output_start()];
 
     std::vector<std::span<T>> spans;
@@ -636,7 +699,7 @@ TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
                                           789, 791, 802, 890, 901, 913};
 
     auto future = parallel_merge(
-        pool, resources, options, EXAMPLE_SPANS, cmp, &output[0]);
+        pool, resources, options, EXAMPLE_STREAMS, cmp, &output[0]);
 
     future->block();
 

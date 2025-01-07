@@ -237,6 +237,14 @@ struct MergeUnit {
       , ends(&resource) {
   }
 
+  MergeUnit(
+      tdb::pmr::memory_resource& resource,
+      std::initializer_list<uint64_t> starts,
+      std::initializer_list<uint64_t> ends)
+      : starts(starts, &resource)
+      , ends(ends, &resource) {
+  }
+
   /**
    * @return the number of data items contained inside this merge unit
    */
@@ -291,7 +299,7 @@ class ParallelMerge {
  public:
   using T = typename I::value_type::value_type;
 
- private:
+ protected:
   /**
    * Comparator for std::span<const T> which defers comparison to the first
    * element of the span.
