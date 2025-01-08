@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - dev
+      - main
       - 'release-*'
     tags:
       - '*'
@@ -45,7 +45,7 @@ jobs:
       matrix:
         include:
           - platform: windows-x86_64
-            os: windows-2019
+            os: windows-2022
             triplet: x64-windows-release
           - platform: linux-x86_64
             os: ubuntu-20.04

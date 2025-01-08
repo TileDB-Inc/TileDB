@@ -112,6 +112,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ctx.cc
   src/unit-current-domain-rest.cc
   src/unit-dense-reader.cc
+  src/unit-dense-global-order-reader.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
   src/unit-duplicates.cc
