@@ -2920,28 +2920,48 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: multi-range subarray signal",
     "[sparse-global-order]") {
-  templates::Fragment1D<int, int> fragment0;
-  fragment0.dim_.push_back(1);
-  std::get<0>(fragment0.atts_).push_back(1);
+  using Asserter = AsserterCatch;
 
-  FxRun1D instance;
-  instance.fragments.push_back(fragment0);
-  instance.subarray.push_back({1, 1});
-  instance.subarray.push_back({3, 3});
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
 
-  // NB: `Rapidcheck` just throws a normal exception,
-  // we are not actually in a rapidcheck context.
-  REQUIRE_THROWS(run<tiledb::test::AsserterRapidcheck, FxRun1D>(instance));
+  int coords[5];
+  uint64_t coords_size = sizeof(coords);
 
-  tiledb_error_t* error = NULL;
-  auto rc = tiledb_ctx_get_last_error(ctx_, &error);
+  // Open array
+  CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
+
+  // Create query.
+  tiledb_query_t* query;
+  TRY(ctx_, tiledb_query_alloc(ctx_, array, TILEDB_READ, &query));
+  TRY(ctx_, tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER));
+  TRY(ctx_,
+      tiledb_query_set_data_buffer(ctx_, query, "d", &coords[0], &coords_size));
+
+  // Apply subarray
+  const int lower_1 = 4, upper_1 = 8;
+  const int lower_2 = 16, upper_2 = 32;
+  tiledb_subarray_t* sub;
+  TRY(ctx_, tiledb_subarray_alloc(ctx_, array, &sub));
+  TRY(ctx_,
+      tiledb_subarray_add_range(ctx_, sub, 0, &lower_1, &upper_1, nullptr));
+  TRY(ctx_,
+      tiledb_subarray_add_range(ctx_, sub, 0, &lower_2, &upper_2, nullptr));
+  TRY(ctx_, tiledb_query_set_subarray_t(ctx_, query, sub));
+  tiledb_subarray_free(&sub);
+
+  auto rc = tiledb_query_submit(ctx_, query);
+  tiledb_query_free(&query);
+  REQUIRE(rc == TILEDB_ERR);
+
+  tiledb_error_t* error = nullptr;
+  rc = tiledb_ctx_get_last_error(ctx_, &error);
   REQUIRE(rc == TILEDB_OK);
-  REQUIRE(error != nullptr);
 
   const char* msg;
   rc = tiledb_error_message(error, &msg);
   REQUIRE(rc == TILEDB_OK);
-
   REQUIRE(
       std::string(msg).find(
           "Multi-range reads are not supported on a global order query") !=
