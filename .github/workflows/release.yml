@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-arm64, macos-x86_64, windows-x86_64] # Removed linux-x86_64, linux-x86_64-noavx2
+        platform: [macos-arm64, macos-x86_64, windows-x86_64] # Removed linux-x86_64, linux-x86_64-noavx2 for 2.26.3 -- any future full releases will require updating manylinux
         include:
           - platform: windows-x86_64
             os: windows-2019
