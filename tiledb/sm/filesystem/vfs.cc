@@ -583,7 +583,11 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().object_size(uri, size);
+    try {
+      return gcs().object_size(uri, size);
+    } catch (std::exception& e) {
+      return Status_Error(e.what());
+    }
 #else
     throw BuiltWithout("GCS");
 #endif
