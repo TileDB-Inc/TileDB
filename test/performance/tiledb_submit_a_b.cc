@@ -97,6 +97,7 @@
 #include "external/include/nlohmann/json.hpp"
 
 #include <fstream>
+#include <iostream>
 #include <span>
 
 using namespace tiledb::test;
@@ -386,7 +387,12 @@ int main(int argc, char** argv) {
       static_cast<const char* const*>(&argv[2]), argc - 2);
 
   for (const auto& array_uri : array_uris) {
-    run<Fragment>(time_keeper, array_uri, config["query"], a_conf, b_conf);
+    try {
+      run<Fragment>(time_keeper, array_uri, config["query"], a_conf, b_conf);
+    } catch (const std::exception& e) {
+      std::cerr << "Error on array \"" << array_uri << "\": " << e.what()
+                << std::endl;
+    }
   }
 
   tiledb_config_free(&b_conf);
