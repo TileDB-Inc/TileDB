@@ -62,13 +62,11 @@ GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
 }  // namespace storage
 }  // namespace google::cloud
 
-namespace tiledb {
-
-namespace common::filesystem {
+namespace tiledb::common::filesystem {
 class directory_entry;
-}
+}  // namespace tiledb::common::filesystem
 
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for GCS status exceptions. */
 class GCSException : public StatusException {
@@ -78,30 +76,103 @@ class GCSException : public StatusException {
   }
 };
 
+/**
+ * The GCS-specific configuration parameters.
+ *
+ * @note The member variables' default declarations have not yet been moved
+ * from the Config declaration into this struct.
+ */
+struct GCSParameters {
+  GCSParameters() = delete;
+
+  GCSParameters(const Config& config);
+
+  ~GCSParameters() = default;
+
+  /** The GCS endpoint.  */
+  std::string endpoint_;
+
+  /** The project ID to create new buckets on using the VFS. */
+  std::string project_id_;
+
+  /**
+   * The GCS service account credentials JSON string.
+   *
+   * Set the JSON string with GCS service account key. Takes precedence
+   * over `vfs.gcs.workload_identity_configuration` if both are specified. If
+   * neither is specified, Application Default Credentials will be used.
+   *
+   * @note Experimental
+   */
+  std::string service_account_key_;
+
+  /**
+   * The GCS external account credentials JSON string.
+   *
+   * Set the JSON string with Workload Identity Federation configuration.
+   * `vfs.gcs.service_account_key` takes precedence over this if both are
+   * specified. If neither is specified, Application Default Credentials will
+   * be used.
+   *
+   * @note Experimental
+   */
+  std::string workload_identity_configuration_;
+
+  /**
+   * A comma-separated list with the GCS service accounts to impersonate.
+   *
+   * Set the GCS service account to impersonate. A chain of impersonated
+   * accounts can be formed by specifying many service accounts, separated by a
+   * comma.
+   *
+   * @note Experimental
+   */
+  std::string impersonate_service_account_;
+
+  /**
+   * The part size (in bytes) used in multi part writes.
+   *
+   * @note `vfs.gcs.multi_part_size` * `vfs.gcs.max_parallel_ops` bytes will
+   * be buffered before issuing part uploads in parallel.
+   */
+  uint64_t multi_part_size_;
+
+  /** The maximum number of parallel operations issued. */
+  uint64_t max_parallel_ops_;
+
+  /** Whether or not to use chunked part uploads. */
+  bool use_multi_part_upload_;
+
+  /** The maximum amount of time to retry network requests. */
+  uint64_t request_timeout_ms_;
+
+  /**
+   * The maximum size in bytes of a direct upload to GCS.
+   * Ignored if `vfs.gcs.use_multi_part_upload` is set to true.
+   */
+  uint64_t max_direct_upload_size_;
+};
+
 class GCS {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  GCS();
+  /**
+   * Constructor.
+   *
+   * @param thread_pool The parent VFS thread pool.
+   * @param config Configuration parameters.
+   */
+  GCS(ThreadPool* thread_pool, const Config& config);
 
-  /** Destructor. */
+  /** Destructor. Must be explicitly defined. */
   ~GCS();
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
-
-  /**
-   * Initializes and connects a GCS client.
-   *
-   * @param config Configuration parameters.
-   * @param thread_pool The parent VFS thread pool.
-   * @return Status
-   */
-  Status init(const Config& config, ThreadPool* thread_pool);
 
   /**
    * Creates a bucket.
@@ -449,6 +520,9 @@ class GCS {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The GCS configuration parameters. */
+  GCSParameters gcs_params_;
+
   /**
    * A libcurl initializer instance. This should remain
    * the first member variable to ensure that libcurl is
@@ -471,21 +545,6 @@ class GCS {
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
 
-  // The GCS endpoint.
-  std::string endpoint_;
-
-  // The GCS project id.
-  std::string project_id_;
-
-  // The GCS service account credentials JSON string.
-  std::string service_account_key_;
-
-  // The GCS external account credentials JSON string.
-  std::string workload_identity_configuration_;
-
-  // A comma-separated list with the GCS service accounts to impersonate.
-  std::string impersonate_service_account_;
-
   // The GCS REST client.
   mutable tdb_unique_ptr<google::cloud::storage::Client> client_;
 
@@ -497,18 +556,6 @@ class GCS {
 
   /**  The maximum size of each value-element in 'write_cache_map_'. */
   uint64_t write_cache_max_size_;
-
-  /**  The maximum number of parallel requests. */
-  uint64_t max_parallel_ops_;
-
-  /**  The target part size in a part list upload */
-  uint64_t multi_part_part_size_;
-
-  /** Whether or not to use part list upload. */
-  bool use_multi_part_upload_;
-
-  /** The timeout for network requests. */
-  uint64_t request_timeout_ms_;
 
   /** Maps a object URI to its part list upload state. */
   std::unordered_map<std::string, MultiPartUploadState>
@@ -763,8 +810,7 @@ class GCS {
   Status flush_object_direct(const URI& uri);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // HAVE_GCS
 #endif  // TILEDB_GCS_H
