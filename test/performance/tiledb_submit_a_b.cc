@@ -266,7 +266,8 @@ static void run(
   construct_query(ctx, array, b_query, query_config);
 
   // helper to do basic checks on both
-  auto do_submit = [&](auto& key, auto& query, auto& outdata) -> uint64_t {
+  auto do_submit = [&](auto& key, auto& query, auto& outdata)
+      -> std::pair<tiledb_query_status_t, uint64_t> {
     // make field size locations
     auto dimension_sizes = []<typename... Ds>(std::tuple<Ds...> dimensions) {
       return query_applicator<Asserter, Ds...>::make_field_sizes(dimensions);
@@ -306,26 +307,30 @@ static void run(
     ASSERTER(dim_num_cells == att_num_cells);
 
     if (dim_num_cells < outdata.size()) {
+      // since the user buffer did not fill up the query must be complete
       ASSERTER(status == TILEDB_COMPLETED);
     }
 
-    return dim_num_cells;
+    return std::make_pair(status, dim_num_cells);
   };
 
   const std::string a_key = std::string(array_uri) + ".a";
   const std::string b_key = std::string(array_uri) + ".b";
 
   while (true) {
-    const uint64_t a_num_cells = do_submit(a_key, a_query, a);
-    const uint64_t on_num_cells = do_submit(b_key, b_query, b);
+    tiledb_query_status_t a_status, b_status;
+    uint64_t a_num_cells, b_num_cells;
 
-    ASSERTER(a_num_cells == on_num_cells);
+    std::tie(a_status, a_num_cells) = do_submit(a_key, a_query, a);
+    std::tie(b_status, b_num_cells) = do_submit(b_key, b_query, b);
+
+    ASSERTER(a_num_cells == b_num_cells);
 
     std::apply(
         [&](auto&... outfield) { (outfield.resize(a_num_cells), ...); },
         std::tuple_cat(a.dimensions(), a.attributes()));
     std::apply(
-        [&](auto&... outfield) { (outfield.resize(on_num_cells), ...); },
+        [&](auto&... outfield) { (outfield.resize(b_num_cells), ...); },
         std::tuple_cat(b.dimensions(), b.attributes()));
 
     ASSERTER(a.dimensions() == b.dimensions());
@@ -337,7 +342,8 @@ static void run(
     reset(a);
     reset(b);
 
-    if (a_num_cells < num_user_cells) {
+    ASSERTER(a_status == b_status);
+    if (a_status == TILEDB_COMPLETED) {
       break;
     }
   }
