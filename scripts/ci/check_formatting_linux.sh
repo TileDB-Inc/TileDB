@@ -30,9 +30,10 @@ set -e pipefail
 
 # Install clang-format
 ls -la
-sudo ./scripts/install-clangformat.sh
 
 src=$(dirname $0)/../..
 cd $src
 
-$src/scripts/run-clang-format.sh $src clang-format-17 0
+sudo ./scripts/install-clangformat.sh
+
+./scripts/run-clang-format.sh $src clang-format-17 0
