@@ -2309,7 +2309,7 @@ template <typename Asserter, InstanceType Instance>
 void CSparseGlobalOrderFx::create_array(const Instance& instance) {
   tiledb_object_t type;
   auto rc = tiledb_object_type(ctx_, array_name_.c_str(), &type);
-  ASSERTER(rc == TILEDB_OK);
+  ASSERTER("" == error_if_any(rc));
   if (type == TILEDB_ARRAY) {
     rc = tiledb_array_delete(ctx_, array_name_.c_str());
     ASSERTER("" == error_if_any(rc));
