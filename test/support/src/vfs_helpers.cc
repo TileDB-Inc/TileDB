@@ -66,9 +66,6 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
       &supports_gcs,
       &supports_rest_s3);
 
-  // some codes uses fs_vec[0] as the default, default to native filesystem
-  fs_vec.emplace_back(std::make_unique<SupportedFsLocal>());
-
   if (supports_s3) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
   }
@@ -94,6 +91,7 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
     }
   }
 
+  fs_vec.emplace_back(std::make_unique<SupportedFsLocal>());
   fs_vec.emplace_back(std::make_unique<SupportedFsMem>());
 
   return fs_vec;
