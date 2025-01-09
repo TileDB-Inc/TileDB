@@ -30,10 +30,16 @@ set -e pipefail
 
 # Install clang-format
 ls -la
-
-src=$(dirname $0)/../..
-cd $src
-
 sudo ./scripts/install-clangformat.sh
 
-./scripts/run-clang-format.sh $src clang-format-17 0
+src=$GITHUB_WORKSPACE
+if [ -z "$src" ]; then
+  # Interactive
+  src=$(pwd)
+  # Note we could use $(dirname $0)/../.. -- but that doesn't deliver
+  # the script basename when we're invoked using `source` or `.`.
+fi
+
+cd $src
+
+$src/scripts/run-clang-format.sh $src clang-format-17 0
