@@ -28,6 +28,9 @@
  * @section DESCRIPTION
  *
  * This file implements class Query.
+ *
+ * I am debugging a mysterious CI fail on
+ * https://github.com/TileDB-Inc/TileDB/pull/5421
  */
 
 #include "tiledb/sm/query/query.h"

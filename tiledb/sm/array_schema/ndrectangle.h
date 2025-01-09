@@ -28,6 +28,9 @@
  * @section DESCRIPTION
  *
  * This file defines class NDRectangle.
+ *
+ * I am debugging a mysterious CI fail on
+ * https://github.com/TileDB-Inc/TileDB/pull/5421
  */
 
 #ifndef TILEDB_NDRECTANGLE_H
