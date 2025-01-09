@@ -32,6 +32,11 @@ set -e pipefail
 ls -la
 sudo ./scripts/install-clangformat.sh
 
+if [ -z "$GITHUB_WORKSPACE" ]; then
+  # Interactive, non-CI use
+  GITHUB_WORKSPACE=$(dirname $0)/../..
+fi
+
 src=$GITHUB_WORKSPACE
 cd $src
 
