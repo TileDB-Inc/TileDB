@@ -408,6 +408,16 @@ void CurrentDomain::expand_to_tiles(
   }
 }
 
+std::string CurrentDomain::as_string() const {
+  if (type_ == CurrentDomainType::NDRECTANGLE) {
+    return ndrectangle_->as_string();
+  } else {
+    // As of 2025-01-09 there is no other such type. When/if we do make such a
+    // type, we'd need to configure it to return a description of itself.
+    return "CurrentDomain of non-NDRectangle type";
+  }
+}
+
 }  // namespace tiledb::sm
 
 std::ostream& operator<<(

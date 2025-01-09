@@ -860,7 +860,10 @@ Status Query::process() {
           for (auto& range : subarray_.ranges_for_dim(d)) {
             if (!cd->includes(d, range)) {
               throw QueryException(
-                  "A range was set outside of the current domain.");
+                std::format("A range {} on dimension '{}' was set outside of the current domain {}.",
+                  range_str(range, array_schema_->domain().dimension_ptr(d)->type()),
+                  array_schema_->domain().dimension_ptr(d)->name(),
+                  cd->as_string()));
             }
           }
         } else if (!all_ned_contained_in_current_domain) {
