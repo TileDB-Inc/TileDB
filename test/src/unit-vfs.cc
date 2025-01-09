@@ -786,9 +786,8 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
     // perform any requests) to prevent Entra ID from being chosen.
     require_tiledb_ok(config.set("vfs.azure.storage_account_key", "foobar"));
   }
-  tiledb::sm::Azure azure;
   ThreadPool thread_pool(1);
-  require_tiledb_ok(azure.init(config, &thread_pool));
+  tiledb::sm::Azure azure(&thread_pool, config);
   REQUIRE(azure.client().GetUrl() == expected_endpoint);
 }
 #endif

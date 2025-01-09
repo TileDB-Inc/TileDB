@@ -39,6 +39,25 @@ using namespace tiledb;
 // Name of array.
 std::string array_name("stats_array");
 
+/**
+ * Enables tiledb statistics gathering within a block.
+ */
+class ScopedStats {
+ public:
+  ScopedStats()
+      : enabled_(Stats::is_enabled()) {
+    Stats::enable();
+  }
+  ~ScopedStats() {
+    if (!enabled_) {
+      Stats::disable();
+    }
+  }
+
+ private:
+  bool enabled_;
+};
+
 void create_array(uint32_t row_tile_extent, uint32_t col_tile_extent) {
   Context ctx;
   VFS vfs(ctx);
@@ -86,10 +105,11 @@ void read_array() {
   query.set_subarray(subarray).set_data_buffer("a", values);
 
   // Enable the stats for the read query, and print the report.
-  Stats::enable();
-  query.submit();
+  {
+    ScopedStats stats;
+    query.submit();
+  }
   Stats::dump(stdout);
-  Stats::disable();
 }
 
 int main() {

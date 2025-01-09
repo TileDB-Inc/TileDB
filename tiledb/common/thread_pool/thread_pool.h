@@ -47,7 +47,175 @@ namespace tiledb::common {
 
 class ThreadPool {
  public:
-  using Task = std::future<Status>;
+  /**
+   * @brief Abstract base class for tasks that can run in this threadpool.
+   */
+  class ThreadPoolTask {
+   public:
+    ThreadPoolTask() = default;
+    ThreadPoolTask(ThreadPool* tp)
+        : tp_(tp){};
+
+    virtual ~ThreadPoolTask(){};
+
+   protected:
+    friend class ThreadPool;
+
+    /* C.67 A polymorphic class should suppress public copy/move to prevent
+     * slicing */
+    ThreadPoolTask(const ThreadPoolTask&) = default;
+    ThreadPoolTask& operator=(const ThreadPoolTask&) = default;
+    ThreadPoolTask(ThreadPoolTask&&) = default;
+    ThreadPoolTask& operator=(ThreadPoolTask&&) = default;
+
+    /**
+     * Pure virtual functions that tasks need to implement so that they can be
+     * run in the threadpool wait loop
+     */
+    virtual std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const = 0;
+    virtual bool valid() const noexcept = 0;
+    virtual Status get() = 0;
+
+    ThreadPool* tp_{nullptr};
+  };
+
+  /**
+   * @brief Task class encapsulating std::future. Like std::future it's shared
+   * state can only be get once and thus only one thread. It can only be moved
+   * and not copied.
+   */
+  class Task : public ThreadPoolTask {
+   public:
+    /**
+     * Default constructor
+     * @brief Default constructed SharedTask is possible but not valid().
+     */
+    Task() = default;
+
+    /**
+     * Constructor from std::future
+     */
+    Task(std::future<Status>&& f, ThreadPool* tp)
+        : ThreadPoolTask(tp)
+        , f_(std::move(f)){};
+
+    /**
+     * Wait in the threadpool for this task to be ready.
+     */
+    Status wait() {
+      if (tp_ == nullptr) {
+        throw std::runtime_error("Cannot wait, threadpool is not initialized.");
+      } else if (!f_.valid()) {
+        throw std::runtime_error("Cannot wait, task is invalid.");
+      } else {
+        return tp_->wait(*this);
+      }
+    }
+
+    /**
+     * Is this task valid. Wait can only be called on vaid tasks.
+     */
+    bool valid() const noexcept {
+      return f_.valid();
+    }
+
+   private:
+    friend class ThreadPool;
+
+    /**
+     * Wait for input milliseconds for this task to be ready.
+     */
+    std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const {
+      return f_.wait_for(timeout_duration);
+    }
+
+    /**
+     * Get the result of that task. Can only be used once. Only accessible from
+     * within the threadpool `wait` loop.
+     */
+    Status get() {
+      return f_.get();
+    }
+
+    /**
+     * The encapsulated std::shared_future
+     */
+    std::future<Status> f_;
+  };
+
+  /**
+   * @brief SharedTask class encapsulating std::shared_future. Like
+   * std::shared_future multiple threads can wait/get on the shared state
+   * multiple times. It can be both moved and copied.
+   */
+  class SharedTask : public ThreadPoolTask {
+   public:
+    /**
+     * Default constructor
+     * @brief Default constructed SharedTask is possible but not valid().
+     */
+    SharedTask() = default;
+
+    /**
+     * Constructor from std::future or std::shared_future
+     */
+    SharedTask(auto&& f, ThreadPool* tp)
+        : ThreadPoolTask(tp)
+        , f_(std::forward<decltype(f)>(f)){};
+
+    /**
+     * Move constructor from a Task
+     */
+    SharedTask(Task&& t) noexcept
+        : ThreadPoolTask(t.tp_)
+        , f_(std::move(t.f_)){};
+
+    /**
+     * Wait in the threadpool for this task to be ready.
+     */
+    Status wait() {
+      if (tp_ == nullptr) {
+        throw std::runtime_error("Cannot wait, threadpool is not initialized.");
+      } else if (!f_.valid()) {
+        throw std::runtime_error("Cannot wait, shared task is invalid.");
+      } else {
+        return tp_->wait(*this);
+      }
+    }
+
+    /**
+     * Is this task valid. Wait can only be called on vaid tasks.
+     */
+    bool valid() const noexcept {
+      return f_.valid();
+    }
+
+   private:
+    friend class ThreadPool;
+
+    /**
+     * Wait for input milliseconds for this task to be ready.
+     */
+    std::future_status wait_for(
+        const std::chrono::milliseconds timeout_duration) const {
+      return f_.wait_for(timeout_duration);
+    }
+
+    /**
+     * Get the result of that task. Can be called multiple times from multiple
+     * threads. Only accessible from within the threadpool `wait` loop.
+     */
+    Status get() {
+      return f_.get();
+    }
+
+    /**
+     * The encapsulated std::shared_future
+     */
+    std::shared_future<Status> f_;
+  };
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -108,7 +276,7 @@ class ThreadPool {
           return std::apply(std::move(f), std::move(args));
         });
 
-    std::future<R> future = task->get_future();
+    Task future(task->get_future(), this);
 
     task_queue_.push(task);
 
@@ -127,6 +295,19 @@ class ThreadPool {
     return async(std::forward<Fn>(f), std::forward<Args>(args)...);
   }
 
+  /* Helper functions for lists that consists purely of Tasks */
+  Status wait_all(std::vector<Task>& tasks);
+  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
+
+  /* Helper functions for lists that consists purely of SharedTasks */
+  Status wait_all(std::vector<SharedTask>& tasks);
+  std::vector<Status> wait_all_status(std::vector<SharedTask>& tasks);
+
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+ private:
   /**
    * Wait on all the given tasks to complete. This function is safe to call
    * recursively and may execute pending tasks on the calling thread while
@@ -136,7 +317,7 @@ class ThreadPool {
    * @return Status::Ok if all tasks returned Status::Ok, otherwise the first
    * error status is returned
    */
-  Status wait_all(std::vector<Task>& tasks);
+  Status wait_all(std::vector<ThreadPoolTask*>& tasks);
 
   /**
    * Wait on all the given tasks to complete, returning a vector of their return
@@ -151,7 +332,7 @@ class ThreadPool {
    * @param tasks Task list to wait on
    * @return Vector of each task's Status.
    */
-  std::vector<Status> wait_all_status(std::vector<Task>& tasks);
+  std::vector<Status> wait_all_status(std::vector<ThreadPoolTask*>& tasks);
 
   /**
    * Wait on a single tasks to complete. This function is safe to call
@@ -162,13 +343,8 @@ class ThreadPool {
    * @return Status::Ok if the task returned Status::Ok, otherwise the error
    * status is returned
    */
-  Status wait(Task& task);
+  Status wait(ThreadPoolTask& task);
 
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
- private:
   /** The worker thread routine */
   void worker();
 

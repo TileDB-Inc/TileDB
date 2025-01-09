@@ -72,19 +72,24 @@ class AzureException : public StatusException {
   }
 };
 
+/** Helper function to retrieve the given parameter from the config or env. */
+std::string get_config_with_env_fallback(
+    const Config& config, const std::string& key, const char* env_name);
+
+/** Helper function to retrieve the blob endpoint from the config or env. */
+std::string get_blob_endpoint(
+    const Config& config, const std::string& account_name);
+
 /**
  * The Azure-specific configuration parameters.
+ *
+ * @note The member variables' default declarations have not yet been moved
+ * from the Config declaration into this struct.
  */
 struct AzureParameters {
   AzureParameters() = delete;
 
-  /**
-   * Creates an AzureParameters object.
-   *
-   * @return AzureParameters or nullopt if config does not have
-   * a storage account or blob endpoint set.
-   */
-  static std::optional<AzureParameters> create(const Config& config);
+  AzureParameters(const Config& config);
 
   /**  The maximum number of parallel requests. */
   uint64_t max_parallel_ops_;
@@ -121,12 +126,6 @@ struct AzureParameters {
 
   /** Whether the config specifies a SAS token. */
   bool has_sas_token_;
-
- private:
-  AzureParameters(
-      const Config& config,
-      const std::string& account_name,
-      const std::string& blob_endpoint);
 };
 
 class Azure;
@@ -267,10 +266,21 @@ class Azure {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Azure();
+  /**
+   * Constructor.
+   *
+   * @param thread_pool The parent VFS thread pool.
+   * @param config Configuration parameters.
+   */
+  Azure(ThreadPool* thread_pool, const Config& config);
 
-  /** Destructor. */
+  /**
+   * Destructor.
+   *
+   * @note The default destructor may cause undefined behavior with
+   * `Azure::Storage::Blobs::BlobServiceClient`, so this destructor must be
+   * explicitly defined.
+   */
   ~Azure();
 
   /* ********************************* */
@@ -278,50 +288,37 @@ class Azure {
   /* ********************************* */
 
   /**
-   * Initializes and connects an Azure client.
-   *
-   * @param config Configuration parameters.
-   * @param thread_pool The parent VFS thread pool.
-   * @return Status
-   */
-  Status init(const Config& config, ThreadPool* thread_pool);
-
-  /**
    * Creates a container.
    *
    * @param container The name of the container to be created.
-   * @return Status
    */
-  Status create_container(const URI& container) const;
+  void create_container(const URI& container) const;
 
   /** Removes the contents of an Azure container. */
-  Status empty_container(const URI& container) const;
+  void empty_container(const URI& container) const;
 
   /**
    * Flushes an blob to Azure, finalizing the upload.
    *
    * @param uri The URI of the blob to be flushed.
-   * @return Status
    */
-  Status flush_blob(const URI& uri);
+  void flush_blob(const URI& uri);
 
   /**
    * Check if a container is empty.
    *
    * @param container The name of the container.
-   * @param is_empty Mutates to `true` if the container is empty.
-   * @return Status
+   * @return `true` if the container is empty, `false` otherwise.
    */
-  Status is_empty_container(const URI& uri, bool* is_empty) const;
+  bool is_empty_container(const URI& uri) const;
 
   /**
    * Check if a container exists.
    *
    * @param container The name of the container.
-   * @param is_container Mutates to `true` if `uri` is a container.
-   * @return Status
+   * @return `true` if `uri` is a container, `false` otherwise.
    */
-  Status is_container(const URI& uri, bool* is_container) const;
+  bool is_container(const URI& uri) const;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -338,19 +335,17 @@ class Azure {
    * prefix `azure://some_container/foo2/` (in this case there is not).
    *
    * @param uri The URI to check.
-   * @param exists Sets it to `true` if the above mentioned condition holds.
-   * @return Status
+   * @return `true` if the above mentioned condition holds, `false` otherwise.
    */
-  Status is_dir(const URI& uri, bool* exists) const;
+  bool is_dir(const URI& uri) const;
 
   /**
    * Checks if the given URI is an existing Azure blob.
    *
    * @param uri The URI of the object to be checked.
-   * @param is_blob Mutates to `true` if `uri` is an existing blob, and `false`
-   * otherwise.
+   * @return `true` if `uri` is an existing blob, `false` otherwise.
    */
-  Status is_blob(const URI& uri, bool* is_blob) const;
+  bool is_blob(const URI& uri) const;
 
   /**
    * Lists the objects that start with `uri`. Full URI paths are
@@ -369,15 +364,13 @@ class Azure {
    * - `foo/bar`
    *
    * @param uri The prefix URI.
-   * @param paths Pointer of a vector of URIs to store the retrieved paths.
    * @param delimiter The delimiter that will
    * @param max_paths The maximum number of paths to be retrieved. The default
    *     `-1` indicates that no upper bound is specified.
-   * @return Status
+   * @return The retrieved paths.
    */
-  Status ls(
+  std::vector<std::string> ls(
       const URI& uri,
-      std::vector<std::string>* paths,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
 
@@ -449,9 +442,8 @@ class Azure {
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status move_object(const URI& old_uri, const URI& new_uri);
+  void move_object(const URI& old_uri, const URI& new_uri);
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -461,18 +453,16 @@ class Azure {
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
+  void move_dir(const URI& old_uri, const URI& new_uri);
 
   /**
    * Returns the size of the input blob with a given URI in bytes.
    *
    * @param uri The URI of the blob.
-   * @param nbytes Pointer to `uint64_t` bytes to return.
-   * @return Status
+   * @return The size of the input blob, in bytes
    */
-  Status blob_size(const URI& uri, uint64_t* nbytes) const;
+  uint64_t blob_size(const URI& uri) const;
 
   /**
    * Reads data from an object into a buffer.
@@ -497,17 +487,15 @@ class Azure {
    * Deletes a container.
    *
    * @param uri The URI of the container to be deleted.
-   * @return Status
    */
-  Status remove_container(const URI& uri) const;
+  void remove_container(const URI& uri) const;
 
   /**
    * Deletes an blob with a given URI.
    *
    * @param uri The URI of the blob to be deleted.
-   * @return Status
    */
-  Status remove_blob(const URI& uri) const;
+  void remove_blob(const URI& uri) const;
 
   /**
    * Deletes all objects with prefix `uri/` (if the ending `/` does not
@@ -532,17 +520,15 @@ class Azure {
    * this example.
    *
    * @param uri The prefix uri of the objects to be deleted.
-   * @return Status
    */
-  Status remove_dir(const URI& uri) const;
+  void remove_dir(const URI& uri) const;
 
   /**
    * Creates an empty blob.
    *
    * @param uri The URI of the blob to be created.
-   * @return Status
    */
-  Status touch(const URI& uri) const;
+  void touch(const URI& uri) const;
 
   /**
    * Writes the input buffer to an Azure object. Note that this is essentially
@@ -551,9 +537,8 @@ class Azure {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
-   * @return Status
    */
-  Status write(const URI& uri, const void* buffer, uint64_t length);
+  void write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
    * Initializes the Azure blob service client and returns a reference to it.
@@ -562,22 +547,13 @@ class Azure {
    * use of the BlobServiceClient.
    */
   const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
-    // This branch can be entered in two circumstances:
-    // 1. The init method has not been called yet.
-    // 2. The init method has been called, but the config (or environment
-    //    variables) do not contain enough information to get the Azure
-    //    endpoint.
-    // We don't distinguish between the two, because only the latter can
-    // happen under normal circumstances, and the former is a C.41 issue
-    // that will go away once the class is C.41 compliant.
-    if (!azure_params_) {
-      throw StatusException(Status_AzureError(
+    if (azure_params_.blob_endpoint_.empty()) {
+      throw AzureException(
           "Azure VFS is not configured. Please set the "
           "'vfs.azure.storage_account_name' and/or "
-          "'vfs.azure.blob_endpoint' configuration options."));
+          "'vfs.azure.blob_endpoint' configuration options.");
     }
-
-    return client_singleton_.get(*azure_params_);
+    return client_singleton_.get(azure_params_);
   }
 
  private:
@@ -655,6 +631,9 @@ class Azure {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The Azure configuration parameters. */
+  AzureParameters azure_params_;
+
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
 
@@ -666,12 +645,6 @@ class Azure {
 
   /** Protects 'write_cache_map_'. */
   std::mutex write_cache_map_lock_;
-
-  /**
-   * Contains options to configure connection to Azure.
-   * After the class becomes C.41 compliant, remove the std::optional.
-   */
-  std::optional<AzureParameters> azure_params_;
 
   /** Maps a blob URI to its block list upload state. */
   std::unordered_map<std::string, BlockListUploadState>
@@ -702,9 +675,8 @@ class Azure {
    * @param buffer The source binary buffer to fill the data from.
    * @param length The length of `buffer`.
    * @param nbytes_filled The number of bytes filled into `write_cache_buffer`.
-   * @return Status
    */
-  Status fill_write_cache(
+  void fill_write_cache(
       Buffer* write_cache_buffer,
       const void* buffer,
       const uint64_t length,
@@ -719,9 +691,8 @@ class Azure {
    * @param write_cache_buffer The input buffer to flush.
    * @param last_block Should be true only when the flush corresponds to the
    * last block(s) of a block list upload.
-   * @return Status
    */
-  Status flush_write_cache(
+  void flush_write_cache(
       const URI& uri, Buffer* write_cache_buffer, bool last_block);
 
   /**
@@ -732,9 +703,8 @@ class Azure {
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
    * @param last_part Should be true only when this is the last block of a blob.
-   * @return Status
    */
-  Status write_blocks(
+  void write_blocks(
       const URI& uri, const void* buffer, uint64_t length, bool last_block);
 
   /**
@@ -763,7 +733,7 @@ class Azure {
    * Uploads the write cache buffer associated with 'uri' as an entire
    * blob.
    */
-  Status flush_blob_direct(const URI& uri);
+  void flush_blob_direct(const URI& uri);
 
   /**
    * Performs an Azure ListBlobs operation.
@@ -799,44 +769,17 @@ class Azure {
    * `*container_name == "my-container"` and `*blob_path == "dir1/file1"`.
    *
    * @param uri The URI to parse.
-   * @param container_name Mutates to the container name.
-   * @param blob_path Mutates to the blob path.
-   * @return Status
+   * @return A tuple of the container name and blob path.
    */
-  static Status parse_azure_uri(
-      const URI& uri, std::string* container_name, std::string* blob_path);
+  static std::tuple<std::string, std::string> parse_azure_uri(const URI& uri);
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.
    *
    * @param old_uri The blob's current URI.
    * @param new_uri The blob's URI to move to.
-   * @return Status
    */
-  Status copy_blob(const URI& old_uri, const URI& new_uri);
-
-  /**
-   * Check if 'container_name' is a container on Azure.
-   *
-   * @param container_name The container's name.
-   * @param is_container Mutates to the output.
-   * @return Status
-   */
-  Status is_container(
-      const std::string& container_name, bool* const is_container) const;
-
-  /**
-   * Check if 'is_blob' is a blob on Azure.
-   *
-   * @param container_name The blob's container name.
-   * @param blob_path The blob's path.
-   * @param is_blob Mutates to the output.
-   * @return Status
-   */
-  Status is_blob(
-      const std::string& container_name,
-      const std::string& blob_path,
-      bool* const is_blob) const;
+  void copy_blob(const URI& old_uri, const URI& new_uri);
 
   /**
    * Removes a leading slash from 'path' if it exists.
@@ -876,8 +819,10 @@ AzureScanner<F, D>::AzureScanner(
     throw AzureException("URI is not an Azure URI: " + prefix.to_string());
   }
 
-  throw_if_not_ok(Azure::parse_azure_uri(
-      prefix.add_trailing_slash(), &container_name_, &blob_path_));
+  auto [container_name, blob_path] =
+      Azure::parse_azure_uri(prefix.add_trailing_slash());
+  container_name_ = container_name;
+  blob_path_ = blob_path;
   fetch_results();
   next(begin_);
 }

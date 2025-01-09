@@ -1,11 +1,11 @@
-/*
- * @file   version.h
+/**
+ * @file   stats.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,8 +24,26 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file declares some helpers for tests which use stats gathering.
  */
 
-#define TILEDB_VERSION_MAJOR 2
-#define TILEDB_VERSION_MINOR 28
-#define TILEDB_VERSION_PATCH 0
+#ifndef TILEDB_TEST_STATS_HELPERS_H
+#define TILEDB_TEST_STATS_HELPERS_H
+
+namespace tiledb::test {
+
+class ScopedStats {
+ public:
+  ScopedStats();
+  ~ScopedStats();
+
+ private:
+  bool enabled_;
+};
+
+}  // namespace tiledb::test
+
+#endif

@@ -98,6 +98,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-sparse_neg_2.cc
   src/unit-capi-sparse_real.cc
   src/unit-capi-sparse_real_2.cc
+  src/unit-capi-stats.cc
   src/unit-capi-string.cc
   src/unit-capi-string_dims.cc
   src/unit-capi-update-queries.cc
@@ -111,6 +112,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-ctx.cc
   src/unit-current-domain-rest.cc
   src/unit-dense-reader.cc
+  src/unit-dense-global-order-reader.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
   src/unit-duplicates.cc
@@ -179,6 +181,7 @@ if (TILEDB_CPP_API)
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-schema-evolution.cc
+    src/unit-cppapi-stats.cc
     src/unit-cppapi-string-dims.cc
     src/unit-cppapi-subarray.cc
     src/unit-cppapi-type.cc

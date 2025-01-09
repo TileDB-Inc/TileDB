@@ -310,10 +310,6 @@ inline Status Status_UtilsError(const std::string& msg) {
 inline Status Status_S3Error(const std::string& msg) {
   return {"[TileDB::S3] Error", msg};
 }
-/** Return a FS_AZURE error class Status with a given message **/
-inline Status Status_AzureError(const std::string& msg) {
-  return {"[TileDB::Azure] Error", msg};
-}
 /** Return a FS_GCS error class Status with a given message **/
 inline Status Status_GCSError(const std::string& msg) {
   return {"[TileDB::GCS] Error", msg};

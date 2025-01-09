@@ -201,7 +201,7 @@ else()
     endif()
   endif()
 
-  if (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "16")
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "16")
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fexperimental-library>)
   endif()
 endif()
