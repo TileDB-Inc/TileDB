@@ -59,6 +59,7 @@
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
 #include <cassert>
+#include <format>
 #include <iostream>
 #include <sstream>
 
