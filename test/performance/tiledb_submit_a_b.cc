@@ -1,3 +1,89 @@
+/**
+ * @file test/performance/tiledb_submit_a_b.cc
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2025 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file is an executable whose purpose is to compare the performance
+ * of a tiledb query running with two different configurations.
+ *
+ * Usage: $0 <config.json> <array URI 1> [additional array URIs...]
+ *
+ * For each array in the argument list, two queries are created:
+ * one with configuration "A" and one with configuration "B".
+ * The `run()` function alternates taking a step (`tiledb_query_submit`)
+ * with the "A" query and the "B" query, checking that both have the
+ * same results and recording the time spent calling `tiledb_query_submit`.
+ *
+ * After executing upon all of the arrays, the timing information is
+ * dumped to `/tmp/time_keeper.out`.
+ *
+ * The arrays must have the same schema, whose physical type is reflected
+ * by the `using Fragment = <FragmentType>` declaration in the middle of
+ * this file. The `using Fragment` declaration sets the types of the buffers
+ * which are used to read the array.
+ *
+ * The nature of the "A" and "B" configurations are specified via the required
+ * argument `config.json`. The following example illustrates the currently
+ * supported keys:
+ *
+ * ```
+ * {
+ *   "a": {
+ *     "config": {
+ *       "sm.query.sparse_global_order.preprocess_tile_merge=0"
+ *     }
+ *   },
+ *   "b": {
+ *     "config": {
+ *       "sm.query.sparse_global_order.preprocess_tile_merge=128"
+ *     }
+ *   },
+ *   "query": {
+ *     "layout": "global_order",
+ *     "subarray": [
+ *       {
+ *         "%": 30
+ *       }
+ *     ]
+ *   }
+ * }
+ * ```
+ *
+ * The paths "a.config" and "b.config" are sets of key-value pairs
+ * which are used to configure the "A" and "B" queries respectively.
+ *
+ * The "query.layout" path is required and sets the results order.
+ *
+ * The "query.subarray" path is an optional list of range specifications on
+ * each dimension. Currently the only supported specification is
+ * an object with a field "%" which adds a subarray range whose
+ * bounds cover the specified percent of the non-empty domain
+ * for that dimension.
+ */
 #include <test/support/src/array_helpers.h>
 #include <test/support/src/array_templates.h>
 #include <test/support/src/error_helpers.h>
@@ -60,11 +146,25 @@ struct TimeKeeper {
   }
 };
 
-capi_return_t json2query(
+/**
+ * Constructs the query using the configuration's common "query" options.
+ */
+capi_return_t construct_query(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_t* query,
     const json& jq) {
+  const auto layout = jq["layout"].get<std::string>();
+  if (layout == "global_order") {
+    TRY(ctx, tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER));
+  } else if (layout == "row_major") {
+    TRY(ctx, tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
+  } else if (layout == "col_major") {
+    TRY(ctx, tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR));
+  } else {
+    throw std::runtime_error("Invalid 'layout' for query: " + layout);
+  }
+
   if (jq.find("subarray") != jq.end()) {
     tiledb_subarray_t* subarray;
     RETURN_IF_ERR(tiledb_subarray_alloc(ctx, array, &subarray));
@@ -155,16 +255,14 @@ static void run(
   // Create query which does NOT do merge
   tiledb_query_t* a_query;
   TRY(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &a_query));
-  TRY(ctx, tiledb_query_set_layout(ctx, a_query, TILEDB_GLOBAL_ORDER));
   TRY(ctx, tiledb_query_set_config(ctx, a_query, a_config));
-  json2query(ctx, array, a_query, query_config);
+  construct_query(ctx, array, a_query, query_config);
 
   // Create query which DOES do merge
   tiledb_query_t* b_query;
   TRY(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &b_query));
-  TRY(ctx, tiledb_query_set_layout(ctx, b_query, TILEDB_GLOBAL_ORDER));
   TRY(ctx, tiledb_query_set_config(ctx, b_query, b_config));
-  json2query(ctx, array, b_query, query_config);
+  construct_query(ctx, array, b_query, query_config);
 
   // helper to do basic checks on both
   auto do_submit = [&](auto& key, auto& query, auto& outdata) -> uint64_t {
@@ -244,8 +342,13 @@ static void run(
   }
 }
 
+// change this to match the schema of the target arrays
 using Fragment = Fragment2D<int64_t, int64_t, int64_t>;
 
+/**
+ * Reads key-value pairs from a JSON object to construct and return a
+ * `tiledb_config_t`.
+ */
 capi_return_t json2config(tiledb_config_t** config, const json& j) {
   tiledb_error_t* error;
   RETURN_IF_ERR(tiledb_config_alloc(config, &error));
@@ -260,16 +363,6 @@ capi_return_t json2config(tiledb_config_t** config, const json& j) {
   return TILEDB_OK;
 }
 
-/**
- * Runs sparse global order reader on a 2D array
- * with two `int64_t` dimensions and a `float` attribute.
- * This schema is common in SOMA, comparing the results
- * from "preprocess merge off" and "preprocess merge on".
- *
- * The time of each `tiledb_query_submit` is recorded
- * for both variations, and then dumped to `/tmp/time_keeper.out`
- * when the test is completed.
- */
 int main(int argc, char** argv) {
   json config;
   {
