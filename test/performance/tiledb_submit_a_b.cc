@@ -54,12 +54,12 @@
  * {
  *   "a": {
  *     "config": {
- *       "sm.query.sparse_global_order.preprocess_tile_merge=0"
+ *       "sm.query.sparse_global_order.preprocess_tile_merge": 0
  *     }
  *   },
  *   "b": {
  *     "config": {
- *       "sm.query.sparse_global_order.preprocess_tile_merge=128"
+ *       "sm.query.sparse_global_order.preprocess_tile_merge": 128
  *     }
  *   },
  *   "query": {
