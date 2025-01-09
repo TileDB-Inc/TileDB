@@ -859,9 +859,11 @@ Status Query::process() {
           // Make sure all ranges are contained in the current domain.
           for (auto& range : subarray_.ranges_for_dim(d)) {
             if (!cd->includes(d, range)) {
-              throw QueryException(
-                std::format("A range {} on dimension '{}' was set outside of the current domain {}.",
-                  range_str(range, array_schema_->domain().dimension_ptr(d)->type()),
+              throw QueryException(std::format(
+                  "A range {} on dimension '{}' was set outside of the current "
+                  "domain {}.",
+                  range_str(
+                      range, array_schema_->domain().dimension_ptr(d)->type()),
                   array_schema_->domain().dimension_ptr(d)->name(),
                   cd->as_string()));
             }
