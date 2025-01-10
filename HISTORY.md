@@ -1,3 +1,10 @@
+# TileDB v2.26.3 Release Notes
+
+This release is a build system-only update release to resolve conda feedstock build issues for the 2.26 release branch, which are blocking other ecosystem updates.
+
+* [Backport release-2.26] Fix rtools40 build (#5326) in [#5328](https://github.com/TileDB-Inc/TileDB/pull/5328)
+* Update the libmagic vcpkg port overlay to version 5.45. (#5332) in [#5418](https://github.com/TileDB-Inc/TileDB/pull/5418)
+
 # TileDB v2.26.2 Release Notes
 
 ## Defects removed
