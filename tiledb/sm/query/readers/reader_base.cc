@@ -929,6 +929,11 @@ Status ReaderBase::unfilter_tiles(
 
   for (size_t i = 0; i < num_tiles; i++) {
     auto result_tile = result_tiles[i];
+
+    if (skip_field(result_tile->frag_idx(), name)) {
+      continue;
+    }
+
     ThreadPool::SharedTask task =
         resources_.compute_tp().execute([name,
                                          validity_only,
@@ -992,11 +997,6 @@ Status ReaderBase::unfilter_tiles(
           return post_process_unfiltered_tile(
               name, validity_only, result_tile, var_size, nullable);
         });
-
-    if (skip_field(result_tile->frag_idx(), name)) {
-      RETURN_NOT_OK(task.wait());
-      continue;
-    }
 
     // Unfiltering tasks have been launched, set the tasks to wait for in the
     // corresponding tiles. When those tasks(futures) will be ready the tile
