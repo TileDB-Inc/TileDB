@@ -92,6 +92,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/stats/duration_instrument.h"
 
 #include "external/include/nlohmann/json.hpp"
@@ -317,6 +318,9 @@ static void run(
   const std::string a_key = std::string(array_uri) + ".a";
   const std::string b_key = std::string(array_uri) + ".b";
 
+  tiledb::sm::GlobalCellCmp globalcmp(
+      array->array()->array_schema_latest().domain());
+
   while (true) {
     tiledb_query_status_t a_status, b_status;
     uint64_t a_num_cells, b_num_cells;
@@ -343,6 +347,23 @@ static void run(
     reset(b);
 
     ASSERTER(a_status == b_status);
+
+    // assert that the results arrive in global order
+    for (size_t i = 1; i < a.size(); i++) {
+      const auto prevtuple = std::apply(
+          [&]<typename... Ts>(const std::vector<Ts>&... dims) {
+            return global_cell_cmp_std_tuple(std::make_tuple(dims[i - 1]...));
+          },
+          a.dimensions());
+      const auto nexttuple = std::apply(
+          [&]<typename... Ts>(const std::vector<Ts>&... dims) {
+            return global_cell_cmp_std_tuple(std::make_tuple(dims[i]...));
+          },
+          a.dimensions());
+
+      ASSERTER(!globalcmp(nexttuple, prevtuple));
+    }
+
     if (a_status == TILEDB_COMPLETED) {
       break;
     }
