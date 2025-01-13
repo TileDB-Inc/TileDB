@@ -45,6 +45,11 @@ class UntypedDatumView {
       : datum_content_(content)
       , datum_size_(size) {
   }
+  UntypedDatumView(std::string_view ss)
+      : datum_content_(ss.data())
+      , datum_size_(ss.size()) {
+  }
+
   [[nodiscard]] inline const void* content() const {
     return datum_content_;
   }
