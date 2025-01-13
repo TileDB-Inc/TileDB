@@ -564,7 +564,7 @@ TEST_CASE_METHOD(
 
   // Specific relationship for failure not known, but these values
   // will result in failure with data being written.
-  total_budget_ = "30000";
+  total_budget_ = "10000";
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
@@ -653,7 +653,7 @@ TEST_CASE_METHOD(
 
   // specific relationship for failure not known, but these values
   // will result in failure with data being written.
-  total_budget_ = "40000";
+  total_budget_ = "15000";
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
@@ -789,9 +789,9 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tiles (2 * (~4500 + 8) will be bigger than the per fragment
-  // budget (3905).
-  total_budget_ = "82000";
+  // Two result tiles (2 * (3216 + 8) will be bigger than the per fragment
+  // budget (3300).
+  total_budget_ = "60000";
   ratio_coords_ = "0.11";
   update_config();
 
@@ -1312,9 +1312,9 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * (~4500 + 8) will be bigger than the per fragment
-  // budget (1000).
-  total_budget_ = "45000";
+  // Two result tile (2 * (3216 + 8) will be bigger than the per fragment
+  // budget (4400).
+  total_budget_ = "40000";
   ratio_coords_ = "0.22";
   update_config();
 
