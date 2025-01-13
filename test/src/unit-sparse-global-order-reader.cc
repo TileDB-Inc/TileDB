@@ -70,10 +70,18 @@ using tiledb::test::templates::DimensionType;
 using tiledb::test::templates::FragmentType;
 using tiledb::test::templates::query_applicator;
 
+template <typename D1, typename D2>
+using Subarray2DType = std::vector<std::pair<
+    std::optional<templates::Domain<D1>>,
+    std::optional<templates::Domain<D2>>>>;
+
 namespace rc {
 Gen<std::vector<templates::Domain<int>>> make_subarray_1d(
     const templates::Domain<int>& domain);
-}
+
+Gen<Subarray2DType<int, int>> make_subarray_2d(
+    const templates::Domain<int>& d1, const templates::Domain<int>& d2);
+}  // namespace rc
 
 /* ********************************* */
 /*         STRUCT DEFINITION         */
@@ -438,13 +446,18 @@ struct CSparseGlobalOrderFx {
   template <typename Asserter, InstanceType Instance>
   void create_array(const Instance& instance);
 
+  template <typename Asserter, InstanceType Instance>
+  void run_create(Instance& instance);
+  template <typename Asserter, InstanceType Instance>
+  void run_execute(Instance& instance);
+
   /**
    * Runs an input against a fresh array.
    * Inserts fragments one at a time, then reads them back in global order
    * and checks that what we read out matches what we put in.
    */
   template <typename Asserter, InstanceType Instance>
-  void run(Instance instance);
+  void run(Instance& instance);
 
   template <typename CAPIReturn>
   std::string error_if_any(CAPIReturn apirc) const;
@@ -1452,6 +1465,156 @@ TEST_CASE_METHOD(
   }
 }
 
+/**
+ * Tests that the reader will not yield out of order when
+ * the tile MBRs in a fragment are not in the global order.
+ *
+ * The coordinates in the fragment are in global order, but
+ * the tile MBRs may not be.  This is because the MBR uses
+ * the minimum coordinate value *in each dimension*, which
+ * for two dimensions and higher is not always the same as
+ * the minimum coordinate in the tile.
+ *
+ * In this test, we have tile extents of 4 in both dimensions.
+ * Let's say the attribute value is the index of the cell
+ * as enumerated in row-major order and we have a densely
+ * populated array.
+ *
+ *             c-T1            c-T2           c-T3
+ *      |                 |                 |                 |
+ *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
+ *      |   1   2   3   4 |   5   6   7   8 |  9   10  11  12 |
+ * r-T1 | 201 202 203 204 | 205 206 207 208 | 209 210 211 212 | ...
+ *      | 401 402 403 404 | 405 406 407 408 | 409 410 411 412 |
+ *      | 601 602 603 604 | 605 606 607 608 | 609 610 611 612 |
+ *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
+ *
+ * If the capacity is 17, then:
+ * Data tile 1 holds
+ * [1, 2, 3, 4, 201, 202, 203, 204, 401, 402, 403, 404, 601, 602, 603, 604, 5].
+ * Data tile 2 holds
+ * [6, 7, 8, 205, 206, 207, 208, 405, 406, 407, 408, 605, 606, 607, 608, 9, 10].
+ *
+ * Data tile 1 has a MBR of [(1, 1), (5, 4)].
+ * Data tile 2 has a MBR of [(5, 1), (10, 4)].
+ *
+ * The lower bound of data tile 2's MBR is less than the upper bound
+ * of data tile 1's MBR. Hence the coordinates of the tiles are in global
+ * order but the MBRs are not.
+ *
+ * In a non-dense setting, this happens if the data tile boundary
+ * happens in the middle of a space tile which has coordinates on both
+ * sides, AND the space tile after the boundary contains a coordinate
+ * which is lesser in the second dimension.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: out-of-order MBRs",
+    "[sparse-global-order][rest]") {
+  auto doit = [this]<typename Asserter>(
+                  size_t num_fragments,
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  size_t tile_capacity,
+                  bool allow_dups,
+                  const Subarray2DType<int, int>& subarray = {}) {
+    FxRun2D instance;
+    instance.num_user_cells = num_user_cells;
+    instance.capacity = tile_capacity;
+    instance.allow_dups = allow_dups;
+    instance.subarray = subarray;
+
+    auto row = [&](size_t f, size_t i) -> int {
+      return 1 +
+             static_cast<int>(
+                 ((num_fragments * i) + f) / instance.d1.domain.upper_bound);
+    };
+    auto col = [&](size_t f, size_t i) -> int {
+      return 1 +
+             static_cast<int>(
+                 ((num_fragments * i) + f) % instance.d1.domain.upper_bound);
+    };
+
+    for (size_t f = 0; f < num_fragments; f++) {
+      templates::Fragment2D<int, int, int> fdata;
+      fdata.d1_.reserve(fragment_size);
+      fdata.d2_.reserve(fragment_size);
+      std::get<0>(fdata.atts_).reserve(fragment_size);
+
+      for (size_t i = 0; i < fragment_size; i++) {
+        fdata.d1_.push_back(row(f, i));
+        fdata.d2_.push_back(col(f, i));
+        std::get<0>(fdata.atts_)
+            .push_back(static_cast<int>(f * fragment_size + i));
+      }
+
+      instance.fragments.push_back(fdata);
+    }
+
+    run_create<Asserter, FxRun2D>(instance);
+
+    // validate that we have set up the condition we claim,
+    // i.e. some fragment has out-of-order MBRs
+    {
+      CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
+
+      const auto& fragment_metadata = array->array()->fragment_metadata();
+      for (const auto& fragment : fragment_metadata) {
+        const_cast<sm::FragmentMetadata*>(fragment.get())
+            ->loaded_metadata()
+            ->load_rtree(array->array()->get_encryption_key());
+      }
+
+      sm::GlobalCellCmp globalcmp(
+          array->array()->array_schema_latest().domain());
+
+      if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {
+        bool any_out_of_order = false;
+        for (size_t f = 0; !any_out_of_order && f < fragment_metadata.size();
+             f++) {
+          for (size_t t = 1;
+               !any_out_of_order && t < fragment_metadata[f]->tile_num();
+               t++) {
+            const sm::RangeUpperBound lt = {
+                .mbr = fragment_metadata[f]->mbr(t - 1)};
+            const sm::RangeLowerBound rt = {
+                .mbr = fragment_metadata[f]->mbr(t)};
+            if (globalcmp(rt, lt)) {
+              any_out_of_order = true;
+            }
+          }
+        }
+        ASSERTER(any_out_of_order);
+      }
+    }
+
+    run_execute<Asserter, FxRun2D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(4, 100, 32, 6, false);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck out-of-order MBRs", [doit](bool allow_dups) {
+      const size_t num_fragments = *rc::gen::inRange(2, 8);
+      const size_t fragment_size = *rc::gen::inRange(32, 400);
+      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      const size_t tile_capacity = *rc::gen::inRange(4, 32);
+      const auto subarray = *rc::make_subarray_2d(
+          templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
+
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          num_fragments,
+          fragment_size,
+          num_user_cells,
+          tile_capacity,
+          allow_dups,
+          subarray);
+    });
+  }
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: tile offsets budget exceeded",
@@ -2377,7 +2540,14 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
  * expected result order computed from the input data.
  */
 template <typename Asserter, InstanceType Instance>
-void CSparseGlobalOrderFx::run(Instance instance) {
+void CSparseGlobalOrderFx::run(Instance& instance) {
+  reset_config();
+  run_create<Asserter, Instance>(instance);
+  run_execute<Asserter, Instance>(instance);
+}
+
+template <typename Asserter, InstanceType Instance>
+void CSparseGlobalOrderFx::run_create(Instance& instance) {
   ASSERTER(instance.num_user_cells > 0);
 
   reset_config();
@@ -2393,6 +2563,11 @@ void CSparseGlobalOrderFx::run(Instance instance) {
   for (auto& fragment : instance.fragments) {
     write_fragment<Asserter, decltype(fragment)>(fragment);
   }
+}
+
+template <typename Asserter, InstanceType Instance>
+void CSparseGlobalOrderFx::run_execute(Instance& instance) {
+  ASSERTER(instance.num_user_cells > 0);
 
   std::decay_t<decltype(instance.fragments[0])> expect;
   for (const auto& fragment : instance.fragments) {
@@ -2680,10 +2855,7 @@ struct Arbitrary<FxRun1D> {
 /**
  * @return a generator of valid subarrays within the domains `d1` and `d2`
  */
-Gen<std::vector<std::pair<
-    std::optional<templates::Domain<int>>,
-    std::optional<templates::Domain<int>>>>>
-make_subarray_2d(
+Gen<Subarray2DType<int, int>> make_subarray_2d(
     const templates::Domain<int>& d1, const templates::Domain<int>& d2) {
   // NB: multi-range subarray is not supported (yet?) for global order read
 
