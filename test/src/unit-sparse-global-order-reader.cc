@@ -68,7 +68,6 @@ using tiledb::sm::Datatype;
 using tiledb::test::templates::AttributeType;
 using tiledb::test::templates::DimensionType;
 using tiledb::test::templates::FragmentType;
-using tiledb::test::templates::query_applicator;
 
 template <typename D1, typename D2>
 using Subarray2DType = std::vector<std::pair<
@@ -600,12 +599,10 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   const auto attributes = fragment.attributes();
 
   // make field size locations
-  auto dimension_sizes = []<typename... Ds>(std::tuple<Ds...> dimensions) {
-    return query_applicator<Asserter, Ds...>::make_field_sizes(dimensions);
-  }(dimensions);
-  auto attribute_sizes = []<typename... As>(std::tuple<As...> attributes) {
-    return query_applicator<Asserter, As...>::make_field_sizes(attributes);
-  }(attributes);
+  auto dimension_sizes =
+      templates::query::make_field_sizes<Asserter>(dimensions);
+  auto attribute_sizes =
+      templates::query::make_field_sizes<Asserter>(attributes);
 
   // Create the query.
   tiledb_query_t* query;
@@ -615,20 +612,16 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   ASSERTER(rc == TILEDB_OK);
 
   // add dimensions to query
-  [&]<typename... Ds>(std::tuple<Ds...> dims) {
-    query_applicator<Asserter, Ds...>::set(
-        ctx_, query, dimension_sizes, dims, [](unsigned d) {
-          return "d" + std::to_string(d + 1);
-        });
-  }(dimensions);
+  templates::query::set_fields<Asserter>(
+      ctx_, query, dimension_sizes, dimensions, [](unsigned d) {
+        return "d" + std::to_string(d + 1);
+      });
 
   // add attributes to query
-  [&]<typename... As>(std::tuple<As...> atts) {
-    query_applicator<Asserter, As...>::set(
-        ctx_, query, attribute_sizes, atts, [](unsigned a) {
-          return "a" + std::to_string(a + 1);
-        });
-  }(attributes);
+  templates::query::set_fields<Asserter>(
+      ctx_, query, attribute_sizes, attributes, [](unsigned a) {
+        return "a" + std::to_string(a + 1);
+      });
 
   // Submit query.
   rc = tiledb_query_submit(ctx_, query);
@@ -636,12 +629,10 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
 
   // check that sizes match what we expect
   const uint64_t expect_num_cells = fragment.size();
-  const uint64_t dim_num_cells = [&]<typename... Ds>(auto dims) {
-    return query_applicator<Asserter, Ds...>::num_cells(dims, dimension_sizes);
-  }(dimensions);
-  const uint64_t att_num_cells = [&]<typename... As>(auto atts) {
-    return query_applicator<Asserter, As...>::num_cells(atts, attribute_sizes);
-  }(attributes);
+  const uint64_t dim_num_cells =
+      templates::query::num_cells<Asserter>(dimensions, dimension_sizes);
+  const uint64_t att_num_cells =
+      templates::query::num_cells<Asserter>(attributes, attribute_sizes);
 
   ASSERTER(dim_num_cells == expect_num_cells);
   ASSERTER(att_num_cells == expect_num_cells);
@@ -2651,34 +2642,26 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   uint64_t outcursor = 0;
   while (true) {
     // make field size locations
-    auto dimension_sizes = [&]<typename... Ds>(std::tuple<Ds...> outdims) {
-      return query_applicator<Asserter, Ds...>::make_field_sizes(
-          outdims, instance.num_user_cells);
-    }(outdims);
-    auto attribute_sizes = [&]<typename... As>(std::tuple<As...> outdims) {
-      return query_applicator<Asserter, As...>::make_field_sizes(
-          outdims, instance.num_user_cells);
-    }(outatts);
+    auto dimension_sizes = templates::query::make_field_sizes<Asserter>(
+        outdims, instance.num_user_cells);
+    auto attribute_sizes = templates::query::make_field_sizes<Asserter>(
+        outatts, instance.num_user_cells);
 
     // add fields to query
-    [&]<typename... Ds>(std::tuple<Ds...> dims) {
-      query_applicator<Asserter, Ds...>::set(
-          ctx_,
-          query,
-          dimension_sizes,
-          dims,
-          [](unsigned d) { return "d" + std::to_string(d + 1); },
-          outcursor);
-    }(outdims);
-    [&]<typename... As>(std::tuple<As...> atts) {
-      query_applicator<Asserter, As...>::set(
-          ctx_,
-          query,
-          attribute_sizes,
-          atts,
-          [](unsigned a) { return "a" + std::to_string(a + 1); },
-          outcursor);
-    }(outatts);
+    templates::query::set_fields<Asserter>(
+        ctx_,
+        query,
+        dimension_sizes,
+        outdims,
+        [](unsigned d) { return "d" + std::to_string(d + 1); },
+        outcursor);
+    templates::query::set_fields<Asserter>(
+        ctx_,
+        query,
+        attribute_sizes,
+        outatts,
+        [](unsigned a) { return "a" + std::to_string(a + 1); },
+        outcursor);
 
     rc = tiledb_query_submit(ctx_, query);
     {
@@ -2706,14 +2689,10 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
     rc = tiledb_query_get_status(ctx_, query, &status);
     ASSERTER(rc == TILEDB_OK);
 
-    const uint64_t dim_num_cells = [&]<typename... Ds>(auto dims) {
-      return query_applicator<Asserter, Ds...>::num_cells(
-          dims, dimension_sizes);
-    }(outdims);
-    const uint64_t att_num_cells = [&]<typename... As>(auto atts) {
-      return query_applicator<Asserter, As...>::num_cells(
-          atts, attribute_sizes);
-    }(outatts);
+    const uint64_t dim_num_cells =
+        templates::query::num_cells<Asserter>(outdims, dimension_sizes);
+    const uint64_t att_num_cells =
+        templates::query::num_cells<Asserter>(outatts, attribute_sizes);
 
     ASSERTER(dim_num_cells == att_num_cells);
 

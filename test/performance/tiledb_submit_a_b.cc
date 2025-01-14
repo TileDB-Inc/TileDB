@@ -270,22 +270,16 @@ static void run(
   auto do_submit = [&](auto& key, auto& query, auto& outdata)
       -> std::pair<tiledb_query_status_t, uint64_t> {
     // make field size locations
-    auto dimension_sizes = []<typename... Ds>(std::tuple<Ds...> dimensions) {
-      return query_applicator<Asserter, Ds...>::make_field_sizes(dimensions);
-    }(outdata.dimensions());
-    auto attribute_sizes = []<typename... As>(std::tuple<As...> attributes) {
-      return query_applicator<Asserter, As...>::make_field_sizes(attributes);
-    }(outdata.attributes());
+    auto dimension_sizes =
+        templates::query::make_field_sizes<Asserter>(outdata.dimensions());
+    auto attribute_sizes =
+        templates::query::make_field_sizes<Asserter>(outdata.attributes());
 
     // add fields to query
-    [&]<typename... Ds>(std::tuple<Ds...> dims) {
-      query_applicator<Asserter, Ds...>::set(
-          ctx, query, dimension_sizes, dims, dimension_name);
-    }(outdata.dimensions());
-    [&]<typename... As>(std::tuple<As...> atts) {
-      query_applicator<Asserter, As...>::set(
-          ctx, query, attribute_sizes, atts, attribute_name);
-    }(outdata.attributes());
+    templates::query::set_fields<Asserter>(
+        ctx, query, dimension_sizes, outdata.dimensions(), dimension_name);
+    templates::query::set_fields<Asserter>(
+        ctx, query, attribute_sizes, outdata.attributes(), attribute_name);
 
     {
       tiledb::sm::stats::DurationInstrument<TimeKeeper> qtimer =
@@ -296,14 +290,10 @@ static void run(
     tiledb_query_status_t status;
     TRY(ctx, tiledb_query_get_status(ctx, query, &status));
 
-    const uint64_t dim_num_cells = [&]<typename... Ds>(auto dims) {
-      return query_applicator<Asserter, Ds...>::num_cells(
-          dims, dimension_sizes);
-    }(outdata.dimensions());
-    const uint64_t att_num_cells = [&]<typename... As>(auto atts) {
-      return query_applicator<Asserter, As...>::num_cells(
-          atts, attribute_sizes);
-    }(outdata.attributes());
+    const uint64_t dim_num_cells = templates::query::num_cells<Asserter>(
+        outdata.dimensions(), dimension_sizes);
+    const uint64_t att_num_cells = templates::query::num_cells<Asserter>(
+        outdata.attributes(), attribute_sizes);
 
     ASSERTER(dim_num_cells == att_num_cells);
 

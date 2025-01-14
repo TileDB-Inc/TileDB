@@ -343,6 +343,55 @@ struct query_applicator {
   }
 };
 
+/**
+ * Helper namespace for actually using the `query_applicator`.
+ * Functions in this namespace help to deduce the template
+ * instantiation of `query_applicator`.
+ */
+namespace query {
+
+/**
+ * @return a tuple containing the size of each input field
+ */
+template <typename Asserter>
+auto make_field_sizes(
+    const auto& fields,
+    uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
+  return [cell_limit]<typename... Ts>(std::tuple<Ts...> fields) {
+    return query_applicator<Asserter, Ts...>::make_field_sizes(
+        fields, cell_limit);
+  }(fields);
+}
+
+/**
+ * Set buffers on `query` for the tuple of field columns
+ */
+template <typename Asserter>
+void set_fields(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    auto& field_sizes,
+    auto fields,
+    std::function<std::string(unsigned)> field_name,
+    uint64_t cell_offset = 0) {
+  [&]<typename... Ts>(std::tuple<Ts...> fields) {
+    query_applicator<Asserter, Ts...>::set(
+        ctx, query, field_sizes, fields, field_name, cell_offset);
+  }(fields);
+}
+
+/**
+ * @return the number of cells written into `fields` by a read query
+ */
+template <typename Asserter>
+uint64_t num_cells(const auto& fields, const auto& field_sizes) {
+  return [&]<typename... Ts>(auto fields) {
+    return query_applicator<Asserter, Ts...>::num_cells(fields, field_sizes);
+  }(fields);
+}
+
+}  // namespace query
+
 }  // namespace tiledb::test::templates
 
 #endif
