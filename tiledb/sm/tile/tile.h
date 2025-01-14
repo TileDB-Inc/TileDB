@@ -322,7 +322,7 @@ class Tile : public TileBase {
   }
 
   /** Returns the buffer that contains the filtered, on-disk format. */
-  inline char* filtered_data() {
+  inline char* filtered_data() const {
     // if an i/o task has been launched
     if (filtered_data_block_ != nullptr) {
       std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
