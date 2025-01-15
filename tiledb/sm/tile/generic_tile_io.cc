@@ -120,7 +120,9 @@ shared_ptr<Tile> GenericTileIO::read_generic(
       header.tile_size,
       filtered_data.data(),
       header.persisted_size,
-      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
+      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
+      ThreadPool::SharedTask(),
+      nullptr);
 
   // Read the tile.
   throw_if_not_ok(resources_.vfs().read(

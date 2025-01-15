@@ -461,7 +461,7 @@ Status FilterPipeline::run_reverse(
     // If the pipeline is empty, just copy input to output.
     if (filters_.empty()) {
       void* output_chunk_buffer =
-          tile->data_as<char>() + chunk_data.chunk_offsets_[i];
+          tile->data_as_unsafe<char>() + chunk_data.chunk_offsets_[i];
       RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
       continue;
     }
@@ -484,7 +484,7 @@ Status FilterPipeline::run_reverse(
       bool last_filter = filter_idx == 0;
       if (last_filter) {
         void* output_chunk_buffer =
-            tile->data_as<char>() + chunk_data.chunk_offsets_[i];
+            tile->data_as_unsafe<char>() + chunk_data.chunk_offsets_[i];
         RETURN_NOT_OK(output_data.set_fixed_allocation(
             output_chunk_buffer, chunk.unfiltered_data_size_));
         reader_stats->add_counter(

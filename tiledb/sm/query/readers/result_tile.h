@@ -64,6 +64,7 @@ class Domain;
 class FragmentMetadata;
 class QueryCondition;
 class Subarray;
+class FilteredData;
 
 /**
  * Utilitary function to sort result tiles by fragment first then tile index.
@@ -213,12 +214,40 @@ class ResultTile {
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
     TileData(
-        void* fixed_filtered_data,
-        void* var_filtered_data,
-        void* validity_filtered_data)
-        : fixed_filtered_data_(fixed_filtered_data)
-        , var_filtered_data_(var_filtered_data)
-        , validity_filtered_data_(validity_filtered_data) {
+        std::pair<void*, ThreadPool::SharedTask> fixed_filtered_data,
+        std::pair<void*, ThreadPool::SharedTask> var_filtered_data,
+        std::pair<void*, ThreadPool::SharedTask> validity_filtered_data,
+        shared_ptr<FilteredData> filtered_data)
+        : fixed_filtered_data_(fixed_filtered_data.first)
+        , var_filtered_data_(var_filtered_data.first)
+        , validity_filtered_data_(validity_filtered_data.first)
+        , fixed_filtered_data_task_(fixed_filtered_data.second)
+        , var_filtered_data_task_(var_filtered_data.second)
+        , validity_filtered_data_task_(validity_filtered_data.second)
+        , filtered_data_(std::move(filtered_data)) {
+    }
+
+    ~TileData() {
+      try {
+        if (fixed_filtered_data_task_.valid()) {
+          auto st = fixed_filtered_data_task_.wait();
+        }
+      } catch (...) {
+      }
+
+      try {
+        if (var_filtered_data_task_.valid()) {
+          auto st = var_filtered_data_task_.wait();
+        }
+      } catch (...) {
+      }
+
+      try {
+        if (validity_filtered_data_task_.valid()) {
+          auto st = validity_filtered_data_task_.wait();
+        }
+      } catch (...) {
+      }
     }
 
     /* ********************************* */
@@ -240,6 +269,31 @@ class ResultTile {
       return validity_filtered_data_;
     }
 
+    /** @return The fixed filtered data I/O task. */
+    inline ThreadPool::SharedTask fixed_filtered_data_task() const {
+      return fixed_filtered_data_task_;
+    }
+
+    /** @return The var filtered data I/O task. */
+    inline ThreadPool::SharedTask var_filtered_data_task() const {
+      return var_filtered_data_task_;
+    }
+
+    /** @return The validity filtered data I/O task. */
+    inline ThreadPool::SharedTask validity_filtered_data_task() const {
+      return validity_filtered_data_task_;
+    }
+
+    /** @return shared_ptr to FilteredData block used by this Tile. */
+    inline shared_ptr<FilteredData> filtered_data() const {
+      return filtered_data_;
+    }
+
+    /** Clear the held filtered data. */
+    inline void release_filtered_data() {
+      filtered_data_ = nullptr;
+    }
+
    private:
     /* ********************************* */
     /*        PRIVATE ATTRIBUTES         */
@@ -253,6 +307,18 @@ class ResultTile {
 
     /** Stores the validity filtered data pointer. */
     void* validity_filtered_data_;
+
+    /** Stores the fixed filtered data I/O task. */
+    ThreadPool::SharedTask fixed_filtered_data_task_;
+
+    /** Stores the var filtered data I/O task. */
+    ThreadPool::SharedTask var_filtered_data_task_;
+
+    /** Stores the validity filtered data I/O task. */
+    ThreadPool::SharedTask validity_filtered_data_task_;
+
+    /** Pointer to hold the filtered data block as long as needed. */
+    shared_ptr<FilteredData> filtered_data_;
   };
 
   /**
@@ -286,7 +352,9 @@ class ResultTile {
               tile_sizes.tile_size(),
               tile_data.fixed_filtered_data(),
               tile_sizes.tile_persisted_size(),
-              memory_tracker_) {
+              memory_tracker_,
+              tile_data.fixed_filtered_data_task(),
+              tile_data.filtered_data()) {
       if (tile_sizes.has_var_tile()) {
         auto type = array_schema.type(name);
         var_tile_.emplace(
@@ -297,7 +365,9 @@ class ResultTile {
             tile_sizes.tile_var_size(),
             tile_data.var_filtered_data(),
             tile_sizes.tile_var_persisted_size(),
-            memory_tracker_);
+            memory_tracker_,
+            tile_data.var_filtered_data_task(),
+            tile_data.filtered_data());
       }
 
       if (tile_sizes.has_validity_tile()) {
@@ -309,7 +379,9 @@ class ResultTile {
             tile_sizes.tile_validity_size(),
             tile_data.validity_filtered_data(),
             tile_sizes.tile_validity_persisted_size(),
-            memory_tracker_);
+            memory_tracker_,
+            tile_data.validity_filtered_data_task(),
+            tile_data.filtered_data());
       }
     }
 
@@ -330,6 +402,16 @@ class ResultTile {
     /** @returns Validity tile. */
     Tile& validity_tile() {
       return validity_tile_.value();
+    }
+
+    /** @returns Var tile. */
+    const std::optional<Tile>& var_tile_opt() const {
+      return var_tile_;
+    }
+
+    /** @returns Validity tile. */
+    const std::optional<Tile>& validity_tile_opt() const {
+      return validity_tile_;
     }
 
     /** @returns Fixed tile. */
@@ -392,8 +474,8 @@ class ResultTile {
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTile);
 
-  /** Default destructor. */
-  ~ResultTile() = default;
+  /** Destructor needs to be virtual, this is a base class. */
+  virtual ~ResultTile();
 
   /* ********************************* */
   /*                API                */
@@ -679,6 +761,12 @@ class ResultTile {
       const uint64_t min_cell,
       const uint64_t max_cell) const;
 
+  /* Waits for all coord tiles results to be available */
+  void wait_all_coords() const;
+
+  /* Waits for all attr tiles results to be available */
+  void wait_all_attrs() const;
+
  protected:
   /* ********************************* */
   /*        PROTECTED ATTRIBUTES       */
@@ -850,6 +938,9 @@ class ResultTileWithBitmap : public ResultTile {
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTileWithBitmap);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTileWithBitmap);
+
+  /** Default destructor needs to be virtual, this is a base class. */
+  virtual ~ResultTileWithBitmap() = default;
 
  public:
   /* ********************************* */

@@ -91,6 +91,20 @@ ResultTile::ResultTile(
   coord_func_ = &ResultTile::zipped_coord;
 }
 
+ResultTile::~ResultTile() {
+  try {
+    // Wait for all tasks to be done
+    wait_all_attrs();
+  } catch (...) {
+  }
+
+  try {
+    // Wait for all tasks to be done
+    wait_all_coords();
+  } catch (...) {
+  }
+}
+
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -130,7 +144,7 @@ void ResultTile::erase_tile(const std::string& name) {
 
   // Handle attribute tile
   for (auto& at : attr_tiles_) {
-    if (at.first == name) {
+    if (at.second.has_value() && at.first == name) {
       at.second.reset();
       return;
     }
@@ -261,6 +275,42 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   return nullptr;
 }
 
+void ResultTile::wait_all_coords() const {
+  for (auto& at : coord_tiles_) {
+    auto& tile_tuple = at.second;
+    if (tile_tuple.has_value()) {
+      tile_tuple.value().fixed_tile().filtered_data();
+      tile_tuple.value().fixed_tile().data();
+      if (tile_tuple.value().var_tile_opt().has_value()) {
+        tile_tuple.value().var_tile_opt().value().filtered_data();
+        tile_tuple.value().var_tile_opt().value().data();
+      }
+      if (tile_tuple.value().validity_tile_opt().has_value()) {
+        tile_tuple.value().validity_tile_opt().value().filtered_data();
+        tile_tuple.value().validity_tile_opt().value().data();
+      }
+    }
+  }
+}
+
+void ResultTile::wait_all_attrs() const {
+  for (auto& at : attr_tiles_) {
+    const auto& tile_tuple = at.second;
+    if (tile_tuple.has_value()) {
+      tile_tuple.value().fixed_tile().filtered_data();
+      tile_tuple.value().fixed_tile().data();
+      if (tile_tuple.value().var_tile_opt().has_value()) {
+        tile_tuple.value().var_tile_opt().value().filtered_data();
+        tile_tuple.value().var_tile_opt().value().data();
+      }
+      if (tile_tuple.value().validity_tile_opt().has_value()) {
+        tile_tuple.value().validity_tile_opt().value().filtered_data();
+        tile_tuple.value().validity_tile_opt().value().data();
+      }
+    }
+  }
+}
+
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile = coord_tiles_[dim_idx].second->fixed_tile();
   const uint64_t offset = pos * coord_tile.cell_size();
@@ -383,7 +433,11 @@ Status ResultTile::read(
   if ((!is_dim && name != constants::coords && !use_fragment_ts) ||
       (is_dim && !coord_tiles_[0].first.empty()) ||
       (name == constants::coords && coords_tile_.has_value())) {
-    const auto& tile = this->tile_tuple(name)->fixed_tile();
+    auto tile_tuple = this->tile_tuple(name);
+    if (tile_tuple == nullptr) {
+      return Status::Ok();
+    }
+    const auto& tile = tile_tuple->fixed_tile();
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;

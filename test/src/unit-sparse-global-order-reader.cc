@@ -789,9 +789,9 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * (~3000 + 8) will be bigger than the per fragment
-  // budget (1000).
-  total_budget_ = "35000";
+  // Two result tiles (2 * (3216 + 8) will be bigger than the per fragment
+  // budget (3300).
+  total_budget_ = "60000";
   ratio_coords_ = "0.11";
   update_config();
 
@@ -1312,8 +1312,8 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * (~4000 + 8) will be bigger than the per fragment
-  // budget (1000).
+  // Two result tile (2 * (3216 + 8) will be bigger than the per fragment
+  // budget (4400).
   total_budget_ = "40000";
   ratio_coords_ = "0.22";
   update_config();
