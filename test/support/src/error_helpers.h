@@ -72,8 +72,7 @@ namespace tiledb::test {
  * REQUIRE("" == error_if_any(rc));
  * ```
  */
-template <typename CAPIReturn>
-std::string error_if_any(tiledb_ctx_t* ctx, CAPIReturn apirc) {
+std::string error_if_any(tiledb_ctx_t* ctx, auto apirc) {
   if (apirc == TILEDB_OK) {
     return "";
   }
