@@ -56,6 +56,7 @@ jobs:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         shell: c:\rtools40\usr\bin\bash.exe --login {0}
       - name: Set variables
+        shell: bash
         id: get-values
         run: |
           release_hash=$( echo ${{ github.sha }} | cut -c-7 - )
