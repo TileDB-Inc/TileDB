@@ -52,6 +52,7 @@ namespace tiledb::sm {
 
 class Array;
 struct PreprocessTileMergeFuture;
+struct PreprocessTileMergeBound;
 
 enum class AddNextCellResult {
   // finished the current tile
@@ -373,6 +374,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param result_tiles Result tiles per fragment.
    * @param tile_queue Queue of one result coords, per fragment, sorted.
    * @param to_delete List of tiles to delete.
+   * @param merge_bound reference to the bound where results can be correctly
+   * put in the queue
    *
    * @return result of trying to add a cell
    */
@@ -382,7 +385,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       std::vector<TileListIt>& result_tiles_it,
       const std::vector<ResultTilesList>& result_tiles,
       TileMinHeap<CompType>& tile_queue,
-      std::vector<TileListIt>& to_delete);
+      std::vector<TileListIt>& to_delete,
+      const std::optional<PreprocessTileMergeBound>& merge_bound);
 
   /**
    * Computes a tile's Hilbert values for a tile.
