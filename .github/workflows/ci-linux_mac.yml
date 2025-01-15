@@ -247,7 +247,7 @@ jobs:
 
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           retention-days: 10
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
@@ -257,7 +257,7 @@ jobs:
 
       - name: 'Upload failure artifacts (macOS)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           retention-days: 10
           name: "${{ matrix.os }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
