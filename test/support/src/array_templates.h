@@ -83,7 +83,7 @@ struct global_cell_cmp_std_tuple {
         tup_);
   }
 
-  const StdTuple& tup_;
+  StdTuple tup_;
 };
 
 /**
