@@ -708,8 +708,13 @@ struct ReadStateIndex {
 }
 
 struct PreprocessTileOrder {
+# State of the sparse global order reader preprocess tile order.
+
   cursor @0 :UInt64;
+  # Position in the preprocess tile order list.
+
   numTiles @1 :UInt64;
+  # Number of total tiles in the preprocess tile order list.
 }
 
 struct ReaderIndex {

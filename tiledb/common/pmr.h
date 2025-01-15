@@ -98,6 +98,7 @@ class unique_ptr_deleter {
   }
 
   memory_resource* resource_;
+  /** number of members of the array */
   size_t nmemb_;
   size_t alignment_;
 };

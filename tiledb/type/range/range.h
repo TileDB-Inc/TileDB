@@ -171,6 +171,8 @@ class Range {
     set_str_range(s1, s2);
   }
 
+  /** Constructs a range and sets fixed data using values and size of an
+   * integral type. */
   template <std::integral T>
   Range(const T& start, const T& end, const allocator_type& alloc = {})
       : Range(
