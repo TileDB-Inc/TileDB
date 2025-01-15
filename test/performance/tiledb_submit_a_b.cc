@@ -165,6 +165,12 @@ capi_return_t construct_query(
     TRY(ctx, tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
   } else if (layout == "col_major") {
     TRY(ctx, tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR));
+  } else if (layout == "unordered") {
+    throw std::runtime_error(
+        "TILEDB_UNORDERED is not implemented; the unstable results order means "
+        "we cannot compare the coordinates from interleaved submits. This can "
+        "be implemented by buffering all of the query results and then sorting "
+        "on the coordinates");
   } else {
     throw std::runtime_error("Invalid 'layout' for query: " + layout);
   }
