@@ -89,6 +89,8 @@
 #include <test/support/src/error_helpers.h>
 
 #include "tiledb/api/c_api/array/array_api_internal.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -208,6 +210,37 @@ capi_return_t construct_query(
 }
 
 template <FragmentType Fragment>
+tiledb::common::Status assertGlobalOrder(
+    tiledb_array_t* array,
+    const Fragment& data,
+    size_t num_cells,
+    size_t start,
+    size_t end) {
+  tiledb::sm::GlobalCellCmp globalcmp(
+      array->array()->array_schema_latest().domain());
+
+  for (uint64_t i = start + 1; i < end; i++) {
+    const auto prevtuple = std::apply(
+        [&]<typename... Ts>(const std::vector<Ts>&... dims) {
+          return global_cell_cmp_std_tuple(std::make_tuple(dims[i - 1]...));
+        },
+        data.dimensions());
+    const auto nexttuple = std::apply(
+        [&]<typename... Ts>(const std::vector<Ts>&... dims) {
+          return global_cell_cmp_std_tuple(std::make_tuple(dims[i]...));
+        },
+        data.dimensions());
+
+    if (globalcmp(nexttuple, prevtuple)) {
+      return tiledb::common::Status_Error(
+          "Out of order: pos=" + std::to_string(i) +
+          ", num_cells=" + std::to_string(num_cells));
+    }
+  }
+  return tiledb::common::Status_Ok();
+}
+
+template <FragmentType Fragment>
 static void run(
     TimeKeeper& time_keeper,
     const char* array_uri,
@@ -220,16 +253,16 @@ static void run(
 
   const uint64_t num_user_cells = 1024 * 1024 * 128;
 
-  Fragment a;
-  Fragment b;
+  Fragment a_data;
+  Fragment b_data;
 
   auto reset = [num_user_cells](Fragment& buf) {
     std::apply(
         [&](auto&... outfield) { (outfield.resize(num_user_cells), ...); },
         std::tuple_cat(buf.dimensions(), buf.attributes()));
   };
-  reset(a);
-  reset(b);
+  reset(a_data);
+  reset(b_data);
 
   tiledb_config_t* config;
   {
@@ -308,50 +341,52 @@ static void run(
   const std::string a_key = std::string(array_uri) + ".a";
   const std::string b_key = std::string(array_uri) + ".b";
 
-  tiledb::sm::GlobalCellCmp globalcmp(
-      array->array()->array_schema_latest().domain());
-
   while (true) {
     tiledb_query_status_t a_status, b_status;
     uint64_t a_num_cells, b_num_cells;
 
-    std::tie(a_status, a_num_cells) = do_submit(a_key, a_query, a);
-    std::tie(b_status, b_num_cells) = do_submit(b_key, b_query, b);
+    std::tie(a_status, a_num_cells) = do_submit(a_key, a_query, a_data);
+    std::tie(b_status, b_num_cells) = do_submit(b_key, b_query, b_data);
 
     ASSERTER(a_num_cells == b_num_cells);
+    ASSERTER(a_num_cells <= num_user_cells);
 
     std::apply(
         [&](auto&... outfield) { (outfield.resize(a_num_cells), ...); },
-        std::tuple_cat(a.dimensions(), a.attributes()));
+        std::tuple_cat(a_data.dimensions(), a_data.attributes()));
     std::apply(
         [&](auto&... outfield) { (outfield.resize(b_num_cells), ...); },
-        std::tuple_cat(b.dimensions(), b.attributes()));
+        std::tuple_cat(b_data.dimensions(), b_data.attributes()));
 
-    ASSERTER(a.dimensions() == b.dimensions());
+    ASSERTER(a_data.dimensions() == b_data.dimensions());
 
     // NB: this is only correct if there are no duplicate coordinates,
     // in which case we need to adapt what CSparseGlobalOrderFx::run does
-    ASSERTER(a.attributes() == b.attributes());
+    ASSERTER(a_data.attributes() == b_data.attributes());
 
-    reset(a);
-    reset(b);
+    reset(a_data);
+    reset(b_data);
 
     ASSERTER(a_status == b_status);
 
-    // assert that the results arrive in global order
-    for (size_t i = 1; i < a.size(); i++) {
-      const auto prevtuple = std::apply(
-          [&]<typename... Ts>(const std::vector<Ts>&... dims) {
-            return global_cell_cmp_std_tuple(std::make_tuple(dims[i - 1]...));
-          },
-          a.dimensions());
-      const auto nexttuple = std::apply(
-          [&]<typename... Ts>(const std::vector<Ts>&... dims) {
-            return global_cell_cmp_std_tuple(std::make_tuple(dims[i]...));
-          },
-          a.dimensions());
-
-      ASSERTER(!globalcmp(nexttuple, prevtuple));
+    if (a_query->query_->layout() == tiledb::sm::Layout::GLOBAL_ORDER) {
+      // assert that the results arrive in global order
+      // do it in parallel, it is slow
+      auto* tp = ctx->context().compute_tp();
+      const size_t parallel_factor = std::max<uint64_t>(
+          1, std::min<uint64_t>(tp->concurrency_level(), a_num_cells / 1024));
+      const size_t items_per = a_num_cells / parallel_factor;
+      const auto isGlobalOrder = tiledb::sm::parallel_for(
+          ctx->context().compute_tp(), 0, parallel_factor, [&](uint64_t i) {
+            const uint64_t mystart = i * items_per;
+            const uint64_t myend =
+                std::min((i + 1) * items_per + 1, a_num_cells);
+            return assertGlobalOrder(
+                array, a_data, a_num_cells, mystart, myend);
+          });
+      if (!isGlobalOrder.ok()) {
+        throw std::runtime_error(isGlobalOrder.to_string());
+      }
     }
 
     if (a_status == TILEDB_COMPLETED) {
