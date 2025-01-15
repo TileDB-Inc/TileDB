@@ -2,7 +2,7 @@ name: build-docs
 on:
   push:
     branches:
-      - dev
+      - main
       - 'release-*'
     paths-ignore:
       - '.github/workflows/quarto-render.yml'

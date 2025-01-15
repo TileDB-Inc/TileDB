@@ -36,8 +36,5 @@ jobs:
           printenv
         shell: bash
 
-      - name: Check formatting (linux only)'
-        run: |
-          source $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
-        shell: bash
-        if: ${{ runner.os == 'Linux' }}
+      - name: Check formatting
+        run: $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh

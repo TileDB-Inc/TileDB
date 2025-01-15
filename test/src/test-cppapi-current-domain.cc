@@ -468,7 +468,7 @@ TEST_CASE_METHOD(
   CHECK_THROWS_WITH(
       query_read2.submit(),
       Catch::Matchers::ContainsSubstring(
-          "A range was set outside of the current domain."));
+          "was set outside of the current domain"));
 
   tiledb::Query query_read3(ctx_, array_read, TILEDB_READ);
   tiledb::Subarray subarray_read3(ctx_, array_read);
@@ -483,7 +483,7 @@ TEST_CASE_METHOD(
   CHECK_THROWS_WITH(
       query_read3.submit(),
       Catch::Matchers::ContainsSubstring(
-          "A range was set outside of the current domain."));
+          "was set outside of the current domain"));
 
   array_read.close();
 
@@ -588,7 +588,7 @@ TEST_CASE_METHOD(
       .set_data_buffer("a", a_with_cd2)
       .set_data_buffer("dim1", dim1_with_cd2);
   auto matcher = Catch::Matchers::ContainsSubstring(
-      "A range was set outside of the current domain.");
+      "was set outside of the current domain");
   REQUIRE_THROWS_WITH(query_for_cd2.submit(), matcher);
   array_with_cd2.close();
 

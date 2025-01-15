@@ -859,8 +859,18 @@ Status Query::process() {
           // Make sure all ranges are contained in the current domain.
           for (auto& range : subarray_.ranges_for_dim(d)) {
             if (!cd->includes(d, range)) {
-              throw QueryException(
-                  "A range was set outside of the current domain.");
+              // No std::format:
+              // https://github.com/TileDB-Inc/TileDB/pull/5421#discussion_r1909405876
+              std::stringstream ss;
+              ss << "A range ";
+              ss << range_str(
+                  range, array_schema_->domain().dimension_ptr(d)->type());
+              ss << " on dimension '";
+              ss << array_schema_->domain().dimension_ptr(d)->name();
+              ss << "' was set outside of the current domain ";
+              ss << cd->as_string();
+              ss << ".";
+              throw QueryException(ss.str());
             }
           }
         } else if (!all_ned_contained_in_current_domain) {

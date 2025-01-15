@@ -64,6 +64,8 @@ VFS::VFS(
     ThreadPool* const io_tp,
     const Config& config)
     : VFSBase(parent_stats)
+    , Azure_within_VFS(io_tp, config)
+    , GCS_within_VFS(io_tp, config)
     , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
     , logger_(logger)
@@ -93,18 +95,10 @@ VFS::VFS(
 
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
-  st = azure_.init(config_, io_tp_);
-  if (!st.ok()) {
-    throw VFSException("Failed to initialize Azure backend.");
-  }
 #endif
 
 #ifdef HAVE_GCS
   supported_fs_.insert(Filesystem::GCS);
-  st = gcs_.init(config_, io_tp_);
-  if (!st.ok()) {
-    throw VFSException("Failed to initialize GCS backend.");
-  }
 #endif
 
 #ifdef _WIN32
@@ -264,14 +258,15 @@ Status VFS::touch(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.touch(uri);
+    azure().touch(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.touch(uri);
+    return gcs().touch(uri);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -299,14 +294,15 @@ Status VFS::create_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.create_container(uri);
+    azure().create_container(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.create_bucket(uri);
+    return gcs().create_bucket(uri);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -325,14 +321,15 @@ Status VFS::remove_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.remove_container(uri);
+    azure().remove_container(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.remove_bucket(uri);
+    return gcs().remove_bucket(uri);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -352,14 +349,15 @@ Status VFS::empty_bucket(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.empty_container(uri);
+    azure().empty_container(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.empty_bucket(uri);
+    return gcs().empty_bucket(uri);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -380,14 +378,15 @@ Status VFS::is_empty_bucket(
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.is_empty_container(uri, is_empty);
+    *is_empty = azure().is_empty_container(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.is_empty_bucket(uri, is_empty);
+    return gcs().is_empty_bucket(uri, is_empty);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -417,13 +416,13 @@ Status VFS::remove_dir(const URI& uri) const {
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.remove_dir(uri);
+    azure().remove_dir(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
   } else if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.remove_dir(uri);
+    return gcs().remove_dir(uri);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -484,14 +483,15 @@ Status VFS::remove_file(const URI& uri) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.remove_blob(uri);
+    azure().remove_blob(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.remove_object(uri);
+    return gcs().remove_object(uri);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -571,14 +571,23 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.blob_size(uri, size);
+    try {
+      *size = azure().blob_size(uri);
+    } catch (std::exception& e) {
+      return Status_Error(e.what());
+    }
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.object_size(uri, size);
+    try {
+      return gcs().object_size(uri, size);
+    } catch (std::exception& e) {
+      return Status_Error(e.what());
+    }
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -617,7 +626,8 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.is_dir(uri, is_dir);
+    *is_dir = azure().is_dir(uri);
+    return Status::Ok();
 #else
     *is_dir = false;
     throw BuiltWithout("Azure");
@@ -625,7 +635,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.is_dir(uri, is_dir);
+    return gcs().is_dir(uri, is_dir);
 #else
     *is_dir = false;
     throw BuiltWithout("GCS");
@@ -668,7 +678,8 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.is_blob(uri, is_file);
+    *is_file = azure().is_blob(uri);
+    return Status::Ok();
 #else
     *is_file = false;
     throw BuiltWithout("Azure");
@@ -676,7 +687,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.is_object(uri, is_file);
+    return gcs().is_object(uri, is_file);
 #else
     *is_file = false;
     throw BuiltWithout("GCS");
@@ -702,7 +713,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    RETURN_NOT_OK(azure_.is_container(uri, is_bucket));
+    *is_bucket = azure().is_container(uri);
     return Status::Ok();
 #else
     *is_bucket = false;
@@ -711,7 +722,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    RETURN_NOT_OK(gcs_.is_bucket(uri, is_bucket));
+    RETURN_NOT_OK(gcs().is_bucket(uri, is_bucket));
     return Status::Ok();
 #else
     *is_bucket = false;
@@ -761,13 +772,13 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 #endif
   } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
-    entries = azure_.ls_with_sizes(parent);
+    entries = azure().ls_with_sizes(parent);
 #else
     throw BuiltWithout("Azure");
 #endif
   } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
-    entries = gcs_.ls_with_sizes(parent);
+    entries = gcs().ls_with_sizes(parent);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -842,7 +853,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_azure()) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
-      return azure_.move_object(old_uri, new_uri);
+      azure().move_object(old_uri, new_uri);
+    return Status::Ok();
 #else
       throw BuiltWithout("Azure");
 #endif
@@ -853,7 +865,7 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
 #ifdef HAVE_GCS
-      return gcs_.move_object(old_uri, new_uri);
+      return gcs().move_object(old_uri, new_uri);
 #else
       throw BuiltWithout("GCS");
 #endif
@@ -915,7 +927,8 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_azure()) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
-      return azure_.move_dir(old_uri, new_uri);
+      azure().move_dir(old_uri, new_uri);
+    return Status::Ok();
 #else
       throw BuiltWithout("Azure");
 #endif
@@ -926,7 +939,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
 #ifdef HAVE_GCS
-      return gcs_.move_dir(old_uri, new_uri);
+      return gcs().move_dir(old_uri, new_uri);
 #else
       throw BuiltWithout("GCS");
 #endif
@@ -1199,7 +1212,7 @@ Status VFS::read_impl(
 #ifdef HAVE_AZURE
     const auto read_fn = std::bind(
         &Azure::read,
-        &azure_,
+        &azure(),
         std::placeholders::_1,
         std::placeholders::_2,
         std::placeholders::_3,
@@ -1216,7 +1229,7 @@ Status VFS::read_impl(
 #ifdef HAVE_GCS
     const auto read_fn = std::bind(
         &GCS::read,
-        &gcs_,
+        &gcs(),
         std::placeholders::_1,
         std::placeholders::_2,
         std::placeholders::_3,
@@ -1434,14 +1447,15 @@ Status VFS::close_file(const URI& uri) {
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.flush_blob(uri);
+    azure().flush_blob(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.flush_object(uri);
+    return gcs().flush_object(uri);
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -1498,14 +1512,15 @@ Status VFS::write(
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    return azure_.write(uri, buffer, buffer_size);
+    azure().write(uri, buffer, buffer_size);
+    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs_.write(uri, buffer, buffer_size);
+    return gcs().write(uri, buffer, buffer_size);
 #else
     throw BuiltWithout("GCS");
 #endif

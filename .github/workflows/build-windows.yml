@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019, windows-2022]
+        os: [windows-2022]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
         environ: [azure, s3, gcs, serialization]
         include:

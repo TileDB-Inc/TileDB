@@ -198,6 +198,14 @@ class NDRectangle {
    */
   Datatype range_dtype_for_name(const std::string& name) const;
 
+  /**
+   * Returns a human-readable display of the NDRectangle. Nominal use is
+   * to improve readability / actionability of out-of-bounds error messages.
+   *
+   * @return A string.
+   */
+  std::string as_string() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

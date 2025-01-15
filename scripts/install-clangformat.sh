@@ -58,6 +58,10 @@ install_clang_format() {
 
 run() {
   install_clang_format
+
+  echo
+  echo "clang-format --version" $(clang-format --version)
+  echo
 }
 
 run

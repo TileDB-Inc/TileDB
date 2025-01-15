@@ -9,7 +9,7 @@ on:
         type: boolean
   push:
     branches:
-      - dev
+      - main
       - release-*
 
 env:

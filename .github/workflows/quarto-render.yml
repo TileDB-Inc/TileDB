@@ -4,7 +4,7 @@ name: Render and deploy Quarto files
 on:
   push:
     # publish on merge only
-    branches: dev
+    branches: main
     # when changes match any path below
     paths:
       - '.github/workflows/quarto-render.yml'

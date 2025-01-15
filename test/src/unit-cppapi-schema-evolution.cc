@@ -881,6 +881,13 @@ TEST_CASE(
       .set_offsets_buffer("a", offsets);
   query_r.submit();
   array_r.close();
+  CHECK(buffer.size() == 0);
+  CHECK_THAT(buffer, Catch::Matchers::Equals(std::string{""}));
+  CHECK(offsets.size() == 10);
+  CHECK_THAT(
+      offsets,
+      Catch::Matchers::Equals(
+          std::vector<uint64_t>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
 
   // Read the original array
   std::vector<int> a_data(10);

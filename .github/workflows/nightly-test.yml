@@ -20,7 +20,6 @@ jobs:
           - os: macos-latest
             experimental: ON
           - os: windows-latest
-          - os: windows-2019
           - os: windows-latest
             config: "Debug"
             # Insufficient space on default D:/ for debug build
@@ -83,7 +82,7 @@ jobs:
         include:
           - os: ubuntu-latest
             triplet: x64-linux
-          - os: windows-2019
+          - os: windows-2022
             triplet: x64-windows
           - os: macos-13
             triplet: x64-osx

@@ -32,7 +32,7 @@ set -e pipefail
 ls -la
 sudo ./scripts/install-clangformat.sh
 
-src=$GITHUB_WORKSPACE
+src=$(dirname $0)/../..
 cd $src
 
 $src/scripts/run-clang-format.sh $src clang-format-17 0

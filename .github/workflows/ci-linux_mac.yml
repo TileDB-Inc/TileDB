@@ -236,7 +236,13 @@ jobs:
         run: ./scripts/ci/posix/dump-core-stacks.sh
 
       - name: List files in build directory on failure
-        run: du --exclude _deps -h $GITHUB_WORKSPACE/build
+        run: |
+          if [ $(uname) = "Darwin" ] ; then
+            # MacOS du lacks --exclude
+            du -h $GITHUB_WORKSPACE/build
+          else
+            du --exclude _deps -h $GITHUB_WORKSPACE/build
+          fi
         if: ${{ failure() }}
 
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
