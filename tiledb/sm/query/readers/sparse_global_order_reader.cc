@@ -781,12 +781,6 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     // Try to find a new tile.
     if (result_tiles_it[frag_idx] != result_tiles[frag_idx].end()) {
       // Find a cell in the current result tile.
-
-      // This enforces all the coords unfiltering results to be available before
-      // taking the lock on tile_queue_mutex_. This is to avoid a deadlock where
-      // a lock is held forever while waiting for a result to be available,
-      // while the next scheduled task is deadlocking on that lock
-      rc.tile_->wait_all_coords();
       rc = GlobalOrderResultCoords(&*result_tiles_it[frag_idx], 0);
 
       // All tiles should at least have one cell available.
@@ -820,6 +814,12 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
                      frag_idx, rc, result_tiles)) {
       return true;
     }
+
+    // This enforces all the coords unfiltering results to be available before
+    // taking the lock on tile_queue_mutex_. This is to avoid a deadlock where a
+    // lock is held forever while waiting for a result to be available, while
+    // the next scheduled task is deadlocking on that lock
+    rc.tile_->wait_all_coords();
 
     std::unique_lock<std::mutex> ul(tile_queue_mutex_);
 
@@ -945,13 +945,6 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
                   read_state_.frag_idx()[f].cell_idx_ :
                   0;
           GlobalOrderResultCoords rc(&*(rt_it[f]), cell_idx);
-          // This enforces all the coords unfiltering results to be available
-          // before taking the lock on tile_queue_mutex_. This is to avoid a
-          // deadlock where a lock is held forever while waiting for a result to
-          // be available, while the next scheduled task is deadlocking on that
-          // lock
-          rc.tile_->wait_all_coords();
-
           bool res = add_next_cell_to_queue(
               rc, rt_it, result_tiles, tile_queue, to_delete);
           {
