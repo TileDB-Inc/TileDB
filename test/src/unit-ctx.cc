@@ -103,3 +103,18 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
     }
   }
 }
+
+TEST_CASE("C++ API: Test REST version endpoint", "[cppapi][rest][version]") {
+  // TODO: REST CI
+
+  tiledb::Config config;
+  config["rest.server_address"] = "http://127.0.0.1:8181";
+  config["rest.token"] = "your_token";
+  tiledb::Context ctx(config);
+
+  // Only run these tests if the rest client has been initialized
+  if (ctx.ptr().get()->has_rest_client()) {
+    auto& rest_client{ctx.ptr().get()->rest_client()};
+    REQUIRE(rest_client.get_rest_version() == "2.28.0");
+  }
+}

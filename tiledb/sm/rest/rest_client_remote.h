@@ -42,6 +42,7 @@
 // clang-format off
 #include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/consolidation.h"
@@ -53,6 +54,7 @@
 #include "tiledb/sm/serialization/query_plan.h"
 #include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #include "tiledb/sm/serialization/vacuum.h"
+#include "tiledb/sm/serialization/rest_version.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
 // clang-format on
 
@@ -73,7 +75,6 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb::common;
@@ -443,6 +444,11 @@ class RestClientRemote : public RestClient {
    */
   std::vector<std::vector<std::string>> post_consolidation_plan_from_rest(
       const URI& uri, const Config& config, uint64_t fragment_size) override;
+
+  /**
+   * Get TileDB core version from the REST server.
+   */
+  std::string get_rest_version() override;
 
  private:
   /* ********************************* */

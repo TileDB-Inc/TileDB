@@ -1391,3 +1391,7 @@ struct ObjectInfoResponse {
   objectType @0 :ObjectType;
   # The object's type (array or group).
 }
+
+struct RestVersion {
+    tiledbVersion @0 :Text;
+}
