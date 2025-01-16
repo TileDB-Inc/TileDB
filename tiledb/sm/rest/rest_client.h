@@ -258,6 +258,11 @@ class RestClient {
    */
   std::string rest_server_;
 
+  /**
+   * Version of TileDB currently in use by REST.
+   */
+  std::string rest_tiledb_version_;
+
  public:
   RestClient(const Config& config);
 
@@ -292,6 +297,10 @@ class RestClient {
    */
   inline std::string rest_server() const {
     return rest_server_;
+  }
+
+  inline std::string rest_version() const {
+    return rest_tiledb_version_;
   }
 
   //-------------------------------------------------------
@@ -471,6 +480,11 @@ class RestClient {
   /// Operation disabled in base class.
   inline virtual std::vector<std::vector<std::string>>
   post_consolidation_plan_from_rest(const URI&, const Config&, uint64_t) {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual std::string get_rest_version() {
     throw RestClientDisabledException();
   }
 };

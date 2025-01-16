@@ -101,6 +101,9 @@ RestClientRemote::RestClientRemote(
 
   auto ri = config.get<bool>("rest.resubmit_incomplete");
   resubmit_incomplete_ = ri.value_or(false);
+
+  // TODO: Do not call virtual method from constructor
+  rest_tiledb_version_ = get_rest_version();
 }
 
 bool RestClientRemote::use_refactored_query(const Config& config) {
@@ -1514,6 +1517,22 @@ RestClientRemote::post_consolidation_plan_from_rest(
 
   return serialization::deserialize_consolidation_plan_response(
       serialization_type_, returned_data);
+}
+
+std::string RestClientRemote::get_rest_version() {
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = rest_server_ + "/version";
+
+  Buffer data;
+  // TODO: cache_key without an asset URI? Or define get_data without the param
+  // TODO: If token or username / pass is not set we hit an error.
+  //    Add support for unauthenticated routes?
+  throw_if_not_ok(curlc.get_data(
+      stats_, url, serialization_type_, &data, "demo:tiledb://demo/array"));
+  return serialization::rest_version_deserialize(serialization_type_, data);
 }
 
 }  // namespace tiledb::sm
