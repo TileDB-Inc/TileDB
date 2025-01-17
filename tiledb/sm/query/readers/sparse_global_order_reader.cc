@@ -108,6 +108,9 @@ struct PreprocessTileMergeFuture {
 
  public:
   std::optional<uint64_t> await() {
+    if (!merge_.has_value()) {
+      return std::nullopt;
+    }
     auto ret = merge_.value()->await();
     if (merge_.value()->finished()) {
       free_input();
