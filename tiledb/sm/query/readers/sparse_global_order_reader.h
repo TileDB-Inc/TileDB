@@ -248,12 +248,28 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       std::vector<ResultTilesList>& result_tiles);
 
   /**
-   * Computes the single list of tiles across all fragments
+   * Kicks off computation of the single list of tiles across all fragments
    * arranged in the order they must be processed for this query.
    * See `preprocess_tile_order_`.
    *
-   * @param [out] merge_future where to put input for the merge and the merge
-   * future
+   * The `merge_future` in-out parameter provides memory locations for
+   * the parallel merge algorithm inputs - this includes the global order
+   * comparator as well as the fragment `ResultTileId` lists. This method sets
+   * the parallel merge algorithm future on `merge_future` as its postcondition.
+   *
+   * The merge output is written to `this->preprocess_tile_order_.tiles_`
+   * and the `merge_future` can be used to poll the state of this asynchronous
+   * operation.
+   *
+   * @param [in-out] merge_future where to put data for the merge and the merge
+   *
+   * @precondition `merge_future` is freshly constructed.
+   * @postcondition `merge_future.fragment_result_tiles_` is initialized with
+   * the lists of tiles from each fragment which qualify for the subarray.
+   * @postcondition `merge_future.cmp_` holds the memory for the comparator used
+   * in the asynchronous parallel merge.
+   * @postcondition `merge_future.merge_` is initialized and can be used to poll
+   * the results of the asynchronous parallel merge.
    */
   void preprocess_compute_result_tile_order(
       PreprocessTileMergeFuture& merge_future);
