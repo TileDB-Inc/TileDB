@@ -162,7 +162,7 @@ size_t write_header_callback(
   auto* const header_buffer = static_cast<char*>(res_data);
   auto* const pmHeader = static_cast<HeaderCbData*>(userdata);
 
-  if (pmHeader->uri->empty()) {
+  if (pmHeader->should_cache_redirect && pmHeader->uri->empty()) {
     LOG_ERROR("Rest components as array_ns and array_uri cannot be empty");
     return 0;
   }
@@ -960,6 +960,7 @@ Status Curl::get_data(
 
   CURLcode ret;
   headerData.uri = &res_ns_uri;
+  headerData.should_cache_redirect = res_ns_uri != "no-cache";
   auto st = make_curl_request(stats, url.c_str(), &ret, nullptr, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);

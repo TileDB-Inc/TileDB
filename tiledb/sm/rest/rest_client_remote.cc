@@ -1524,14 +1524,8 @@ std::string RestClientRemote::get_rest_version() {
   const std::string url = rest_server_ + "/version";
 
   Buffer data;
-  // TODO: cache_key without an asset URI? Or define get_data without the param
   throw_if_not_ok(curlc.get_data(
-      stats_,
-      url,
-      serialization_type_,
-      &data,
-      "demo:tiledb://demo/array",
-      false));
+      stats_, url, serialization_type_, &data, "no-cache", false));
   return serialization::rest_version_deserialize(serialization_type_, data);
 }
 
