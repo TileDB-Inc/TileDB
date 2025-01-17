@@ -134,6 +134,16 @@ struct FxRun1D {
     return array.allow_dups_;
   }
 
+  tiledb_layout_t tile_order() const {
+    // for 1D it is the same
+    return TILEDB_ROW_MAJOR;
+  }
+
+  tiledb_layout_t cell_order() const {
+    // for 1D it is the same
+    return TILEDB_ROW_MAJOR;
+  }
+
   /**
    * Add `subarray` to a read query
    */
@@ -221,15 +231,18 @@ struct FxRun2D {
 
   uint64_t capacity;
   bool allow_dups;
+  tiledb_layout_t tile_order_;
+  tiledb_layout_t cell_order_;
   templates::Dimension<Datatype::INT32> d1;
   templates::Dimension<Datatype::INT32> d2;
 
   SparseGlobalOrderReaderMemoryBudget memory;
 
   FxRun2D()
-      : num_user_cells(8)
-      , capacity(64)
-      , allow_dups(true) {
+      : capacity(64)
+      , allow_dups(true)
+      , tile_order_(TILEDB_ROW_MAJOR)
+      , cell_order_(TILEDB_COL_MAJOR) {
     d1.domain = templates::Domain<int>(1, 200);
     d1.extent = 8;
     d2.domain = templates::Domain<int>(1, 200);
@@ -242,6 +255,14 @@ struct FxRun2D {
 
   bool allow_duplicates() const {
     return allow_dups;
+  }
+
+  tiledb_layout_t tile_order() const {
+    return tile_order_;
+  }
+
+  tiledb_layout_t cell_order() const {
+    return cell_order_;
   }
 
   /**
@@ -1495,6 +1516,8 @@ TEST_CASE_METHOD(
     "Sparse global order reader: out-of-order MBRs",
     "[sparse-global-order][rest]") {
   auto doit = [this]<typename Asserter>(
+                  tiledb_layout_t tile_order,
+                  tiledb_layout_t cell_order,
                   size_t num_fragments,
                   size_t fragment_size,
                   size_t num_user_cells,
@@ -1505,6 +1528,8 @@ TEST_CASE_METHOD(
     instance.num_user_cells = num_user_cells;
     instance.capacity = tile_capacity;
     instance.allow_dups = allow_dups;
+    instance.tile_order_ = tile_order;
+    instance.cell_order_ = cell_order;
     instance.subarray = subarray;
 
     auto row = [&](size_t f, size_t i) -> int {
@@ -1575,11 +1600,16 @@ TEST_CASE_METHOD(
   };
 
   SECTION("Example") {
-    doit.operator()<tiledb::test::AsserterCatch>(4, 100, 32, 6, false);
+    doit.operator()<tiledb::test::AsserterCatch>(
+        TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 100, 32, 6, false);
   }
 
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck out-of-order MBRs", [doit](bool allow_dups) {
+      const auto tile_order =
+          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+      const auto cell_order =
+          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
       const size_t num_fragments = *rc::gen::inRange(2, 8);
       const size_t fragment_size = *rc::gen::inRange(32, 400);
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
@@ -1588,6 +1618,8 @@ TEST_CASE_METHOD(
           templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
 
       doit.operator()<tiledb::test::AsserterRapidcheck>(
+          tile_order,
+          cell_order,
           num_fragments,
           fragment_size,
           num_user_cells,
@@ -2501,8 +2533,8 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
       attribute_types,
       attribute_cell_val_nums,
       attribute_compressors,
-      TILEDB_ROW_MAJOR,
-      TILEDB_ROW_MAJOR,
+      instance.tile_order(),
+      instance.cell_order(),
       instance.tile_capacity(),
       instance.allow_duplicates());
 }
@@ -2874,9 +2906,14 @@ struct Arbitrary<FxRun2D> {
     });
 
     auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
+    auto tile_order = gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    auto cell_order = gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
 
     return gen::apply(
-        [](auto fragments, int num_user_cells) {
+        [](auto fragments,
+           int num_user_cells,
+           tiledb_layout_t tile_order,
+           tiledb_layout_t cell_order) {
           FxRun2D instance;
           std::tie(
               instance.d1, instance.d2, instance.subarray, instance.fragments) =
@@ -2885,11 +2922,15 @@ struct Arbitrary<FxRun2D> {
           // TODO: capacity, subarray
           instance.num_user_cells = num_user_cells;
           instance.allow_dups = true;
+          instance.tile_order_ = tile_order;
+          instance.cell_order_ = cell_order;
 
           return instance;
         },
         fragments,
-        num_user_cells);
+        num_user_cells,
+        tile_order,
+        cell_order);
   }
 };
 
