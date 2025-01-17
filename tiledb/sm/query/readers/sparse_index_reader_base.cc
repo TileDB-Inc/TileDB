@@ -137,7 +137,8 @@ void SparseIndexReaderBase::set_read_state(ReadState read_state) {
   read_state_ = std::move(read_state);
 }
 
-const PreprocessTileOrder SparseIndexReaderBase::preprocess_tile_order() const {
+const PreprocessTileOrder& SparseIndexReaderBase::preprocess_tile_order()
+    const {
   return preprocess_tile_order_;
 }
 
