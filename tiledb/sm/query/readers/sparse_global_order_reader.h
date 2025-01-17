@@ -278,14 +278,14 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * Create the result tiles.
    *
    * @param result_tiles Result tiles per fragment.
-   * @param maybe_preprocess_future future for polling the global order tile
+   * @param preprocess_future future for polling the global order tile
    * stream, if running in preprocess mode
    *
    * @return Newly created tiles.
    */
   std::vector<ResultTile*> create_result_tiles(
       std::vector<ResultTilesList>& result_tiles,
-      std::optional<PreprocessTileMergeFuture>& maybe_preprocess_future);
+      std::optional<PreprocessTileMergeFuture>& preprocess_future);
 
   /**
    * Create the result tiles naively, without coordinating

@@ -811,7 +811,7 @@ template <class BitmapType>
 std::vector<ResultTile*>
 SparseGlobalOrderReader<BitmapType>::create_result_tiles(
     std::vector<ResultTilesList>& result_tiles,
-    std::optional<PreprocessTileMergeFuture>& maybe_preprocess_future) {
+    std::optional<PreprocessTileMergeFuture>& preprocess_future) {
   auto timer_se = stats_->start_timer("create_result_tiles");
 
   // Distinguish between leftover result tiles from the previous `submit`
@@ -822,7 +822,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
   }
 
   if (preprocess_tile_order_.enabled_) {
-    create_result_tiles_using_preprocess(result_tiles, maybe_preprocess_future);
+    create_result_tiles_using_preprocess(result_tiles, preprocess_future);
   } else {
     create_result_tiles_all_fragments(result_tiles);
   }
