@@ -37,9 +37,6 @@
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 
-#include "tiledb/sm/array/array.h"
-#include "tiledb/sm/buffer/buffer.h"
-
 using namespace tiledb::common;
 
 namespace tiledb::sm {
@@ -51,13 +48,13 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-Status rest_version_to_capnp(
+void rest_version_to_capnp(
     Context* ctx, capnp::RestVersion::Builder* rest_version_builder);
 
 std::string rest_version_from_capnp(
     const capnp::RestVersion::Reader& rest_version_reader);
 
-Status rest_version_serialize(
+void rest_version_serialize(
     Context* ctx,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer);
@@ -67,17 +64,13 @@ std::string rest_version_deserialize(
 
 #else
 
-Status rest_version_to_capnp(
-    Context* ctx, capnp::RestVersion::Builder* rest_version_builder);
+void rest_version_to_capnp(Context*, capnp::RestVersion::Builder*);
 
-void rest_version_from_capnp(
-    const capnp::RestVersion::Reader& rest_version_reader);
+void rest_version_from_capnp(const capnp::RestVersion::Reader&);
 
-Status rest_version_serialize(
-    SerializationType serialize_type, SerializationBuffer& serialized_buffer);
+void rest_version_serialize(Context*, SerializationType, SerializationBuffer&);
 
-std::string rest_version_deserialize(
-    SerializationType serialization_type, span<const char> response);
+std::string rest_version_deserialize(SerializationType, span<const char>);
 
 #endif  // TILEDB_SERIALIZATION
 

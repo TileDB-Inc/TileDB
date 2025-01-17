@@ -258,11 +258,6 @@ class RestClient {
    */
   std::string rest_server_;
 
-  /**
-   * Version of TileDB currently in use by REST.
-   */
-  std::string rest_tiledb_version_;
-
  public:
   RestClient(const Config& config);
 
@@ -299,8 +294,8 @@ class RestClient {
     return rest_server_;
   }
 
-  inline std::string rest_version() const {
-    return rest_tiledb_version_;
+  inline virtual const std::string& rest_version() {
+    throw RestClientDisabledException();
   }
 
   //-------------------------------------------------------

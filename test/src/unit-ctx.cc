@@ -33,9 +33,11 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/rest/rest_client_remote.h"
 
 #include <cstring>
 #include <iostream>
@@ -105,16 +107,29 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
 }
 
 TEST_CASE("C++ API: Test REST version endpoint", "[cppapi][rest][version]") {
-  // TODO: REST CI
-
+  tiledb::test::VFSTestSetup vfs_test_setup;
   tiledb::Config config;
+  std::string serialization_format = GENERATE("JSON", "CAPNP");
+  config["rest.server_serialization_format"] = serialization_format;
   config["rest.server_address"] = "http://127.0.0.1:8181";
-  config["rest.token"] = "your_token";
-  tiledb::Context ctx(config);
 
   // Only run these tests if the rest client has been initialized
-  if (ctx.ptr().get()->has_rest_client()) {
-    auto& rest_client{ctx.ptr().get()->rest_client()};
-    REQUIRE(rest_client.get_rest_version() == "2.28.0");
+  if (vfs_test_setup.is_rest()) {
+    // Update the config in each section so that we always have a fresh Context.
+    // Otherwise, the JSON test will initialize rest_tiledb_version_ for CAPNP.
+    DYNAMIC_SECTION(
+        "GET request to retrieve REST tiledb version - "
+        << serialization_format) {
+      vfs_test_setup.update_config(config.ptr().get());
+      auto ctx = vfs_test_setup.ctx();
+      REQUIRE(ctx.ptr()->rest_client().get_rest_version() == "2.28.0");
+    }
+    DYNAMIC_SECTION(
+        "Initialization of rest_tiledb_version_ on first access - "
+        << serialization_format) {
+      vfs_test_setup.update_config(config.ptr().get());
+      auto ctx = vfs_test_setup.ctx();
+      REQUIRE(ctx.ptr()->rest_client().rest_version() == "2.28.0");
+    }
   }
 }

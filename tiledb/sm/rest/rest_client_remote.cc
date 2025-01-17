@@ -101,9 +101,6 @@ RestClientRemote::RestClientRemote(
 
   auto ri = config.get<bool>("rest.resubmit_incomplete");
   resubmit_incomplete_ = ri.value_or(false);
-
-  // TODO: Do not call virtual method from constructor
-  rest_tiledb_version_ = get_rest_version();
 }
 
 bool RestClientRemote::use_refactored_query(const Config& config) {

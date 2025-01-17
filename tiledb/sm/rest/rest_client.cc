@@ -91,8 +91,6 @@ RestClient::RestClient(const Config& config)
       !payer.empty()) {
     extra_headers_["X-Payer"] = std::move(payer);
   }
-  // Serialization is assumed to be disabled until RestClientRemote ctor is
-  // called.
 }
 
 void RestClient::add_header(const std::string& name, const std::string& value) {
