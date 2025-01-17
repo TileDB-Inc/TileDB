@@ -411,12 +411,15 @@ concept InstanceType = requires(const T& instance) {
 struct CSparseGlobalOrderFx {
   VFSTestSetup vfs_test_setup_;
 
-  tiledb_ctx_t* ctx_ = nullptr;
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_global_order";
   tiledb_array_t* array_ = nullptr;
 
   SparseGlobalOrderReaderMemoryBudget memory_;
+
+  tiledb_ctx_t* context() const {
+    return vfs_test_setup_.ctx_c;
+  }
 
   template <typename Asserter = tiledb::test::AsserterCatch>
   void create_default_array_1d(
@@ -488,7 +491,7 @@ struct CSparseGlobalOrderFx {
 
 template <typename CAPIReturn>
 std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
-  return tiledb::test::error_if_any(ctx_, apirc);
+  return tiledb::test::error_if_any(context(), apirc);
 }
 
 CSparseGlobalOrderFx::CSparseGlobalOrderFx() {
@@ -501,7 +504,6 @@ CSparseGlobalOrderFx::~CSparseGlobalOrderFx() {
   if (array_) {
     tiledb_array_free(&array_);
   }
-  tiledb_ctx_free(&ctx_);
 }
 
 void CSparseGlobalOrderFx::reset_config() {
@@ -510,9 +512,6 @@ void CSparseGlobalOrderFx::reset_config() {
 }
 
 void CSparseGlobalOrderFx::update_config() {
-  if (ctx_ != nullptr)
-    tiledb_ctx_free(&ctx_);
-
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
@@ -528,16 +527,14 @@ void CSparseGlobalOrderFx::update_config() {
 
   REQUIRE(memory_.apply(config) == nullptr);
 
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  tiledb_config_free(&config);
+  vfs_test_setup_.update_config(config);
 }
 
 template <typename Asserter>
 void CSparseGlobalOrderFx::create_default_array_1d(
     const DefaultArray1DConfig& config) {
   tiledb::test::create_array(
-      ctx_,
+      context(),
       array_name_,
       TILEDB_SPARSE,
       {"d"},
@@ -558,7 +555,7 @@ void CSparseGlobalOrderFx::create_default_array_1d_strings(bool allow_dups) {
   int domain[] = {1, 200};
   int tile_extent = 2;
   tiledb::test::create_array(
-      ctx_,
+      context(),
       array_name_,
       TILEDB_SPARSE,
       {"d"},
@@ -579,21 +576,21 @@ template <typename Asserter>
 void CSparseGlobalOrderFx::write_1d_fragment(
     int* coords, uint64_t* coords_size, int* data, uint64_t* data_size) {
   // Open array for writing.
-  CApiArray array(ctx_, array_name_.c_str(), TILEDB_WRITE);
+  CApiArray array(context(), array_name_.c_str(), TILEDB_WRITE);
 
   // Create the query.
   tiledb_query_t* query;
-  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  auto rc = tiledb_query_alloc(context(), array, TILEDB_WRITE, &query);
   ASSERTER(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_UNORDERED);
   ASSERTER(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
   ASSERTER(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
   ASSERTER(rc == TILEDB_OK);
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit(context(), query);
   ASSERTER("" == error_if_any(rc));
 
   // Clean up.
@@ -606,7 +603,7 @@ void CSparseGlobalOrderFx::write_1d_fragment(
 template <typename Asserter, FragmentType Fragment>
 void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
   // Open array for writing.
-  CApiArray array(ctx_, array_name_.c_str(), TILEDB_WRITE);
+  CApiArray array(context(), array_name_.c_str(), TILEDB_WRITE);
 
   const auto dimensions = fragment.dimensions();
   const auto attributes = fragment.attributes();
@@ -619,25 +616,25 @@ void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
 
   // Create the query.
   tiledb_query_t* query;
-  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  auto rc = tiledb_query_alloc(context(), array, TILEDB_WRITE, &query);
   ASSERTER(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_UNORDERED);
   ASSERTER(rc == TILEDB_OK);
 
   // add dimensions to query
   templates::query::set_fields<Asserter>(
-      ctx_, query, dimension_sizes, dimensions, [](unsigned d) {
+      context(), query, dimension_sizes, dimensions, [](unsigned d) {
         return "d" + std::to_string(d + 1);
       });
 
   // add attributes to query
   templates::query::set_fields<Asserter>(
-      ctx_, query, attribute_sizes, attributes, [](unsigned a) {
+      context(), query, attribute_sizes, attributes, [](unsigned a) {
         return "a" + std::to_string(a + 1);
       });
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit(context(), query);
   ASSERTER("" == error_if_any(rc));
 
   // check that sizes match what we expect
@@ -663,30 +660,31 @@ void CSparseGlobalOrderFx::write_1d_fragment_strings(
     uint64_t* offsets_size) {
   // Open array for writing.
   tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  auto rc = tiledb_array_alloc(context(), array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  rc = tiledb_array_open(context(), array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create the query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(context(), array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a", offsets, offsets_size);
+  rc = tiledb_query_set_offsets_buffer(
+      context(), query, "a", offsets, offsets_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit(context(), query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array.
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(context(), array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up.
@@ -698,32 +696,32 @@ void CSparseGlobalOrderFx::write_delete_condition(
     char* value_to_delete, uint64_t value_size) {
   // Open array for delete.
   tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  auto rc = tiledb_array_alloc(context(), array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_DELETE);
+  rc = tiledb_array_open(context(), array, TILEDB_DELETE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create the query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_DELETE, &query);
+  rc = tiledb_query_alloc(context(), array, TILEDB_DELETE, &query);
   REQUIRE(rc == TILEDB_OK);
 
   // Add condition.
   tiledb_query_condition_t* qc;
-  rc = tiledb_query_condition_alloc(ctx_, &qc);
+  rc = tiledb_query_condition_alloc(context(), &qc);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_condition_init(
-      ctx_, qc, "a", value_to_delete, value_size, TILEDB_EQ);
+      context(), qc, "a", value_to_delete, value_size, TILEDB_EQ);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_condition(ctx_, query, qc);
+  rc = tiledb_query_set_condition(context(), query, qc);
   CHECK(rc == TILEDB_OK);
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit(context(), query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array.
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(context(), array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up.
@@ -743,65 +741,65 @@ int32_t CSparseGlobalOrderFx::read(
     CApiArray* array_ret,
     std::vector<int> subarray) {
   // Open array for reading.
-  CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
+  CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
   // Create query.
   tiledb_query_t* query;
-  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  auto rc = tiledb_query_alloc(context(), array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
   if (set_subarray) {
     // Set subarray.
     tiledb_subarray_t* sub;
-    rc = tiledb_subarray_alloc(ctx_, array, &sub);
+    rc = tiledb_subarray_alloc(context(), array, &sub);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    rc = tiledb_subarray_set_subarray(context(), sub, subarray.data());
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    rc = tiledb_query_set_subarray_t(context(), query, sub);
     CHECK(rc == TILEDB_OK);
     tiledb_subarray_free(&sub);
   }
 
   if (qc_idx != 0) {
     tiledb_query_condition_t* query_condition = nullptr;
-    rc = tiledb_query_condition_alloc(ctx_, &query_condition);
+    rc = tiledb_query_condition_alloc(context(), &query_condition);
     CHECK(rc == TILEDB_OK);
 
     if (qc_idx == 1) {
       int32_t val = 11;
       rc = tiledb_query_condition_init(
-          ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
+          context(), query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
       CHECK(rc == TILEDB_OK);
     } else if (qc_idx == 2) {
       // Negated query condition should produce the same results.
       int32_t val = 11;
       tiledb_query_condition_t* qc;
-      rc = tiledb_query_condition_alloc(ctx_, &qc);
+      rc = tiledb_query_condition_alloc(context(), &qc);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_condition_init(
-          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_GE);
+          context(), qc, "a", &val, sizeof(int32_t), TILEDB_GE);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_condition_negate(ctx_, qc, &query_condition);
+      rc = tiledb_query_condition_negate(context(), qc, &query_condition);
       CHECK(rc == TILEDB_OK);
 
       tiledb_query_condition_free(&qc);
     }
 
-    rc = tiledb_query_set_condition(ctx_, query, query_condition);
+    rc = tiledb_query_set_condition(context(), query, query_condition);
     CHECK(rc == TILEDB_OK);
 
     tiledb_query_condition_free(&query_condition);
   }
 
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query.
-  auto ret = tiledb_query_submit(ctx_, query);
+  auto ret = tiledb_query_submit(context(), query);
   if (query_ret == nullptr || array_ret == nullptr) {
     // Clean up (RAII will do it for the array)
     tiledb_query_free(&query);
@@ -826,42 +824,43 @@ int32_t CSparseGlobalOrderFx::read_strings(
     std::vector<int> subarray) {
   // Open array for reading.
   tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  auto rc = tiledb_array_alloc(context(), array_name_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  rc = tiledb_array_open(context(), array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(context(), array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
   if (set_subarray) {
     // Set subarray.
     tiledb_subarray_t* sub;
-    rc = tiledb_subarray_alloc(ctx_, array, &sub);
+    rc = tiledb_subarray_alloc(context(), array, &sub);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    rc = tiledb_subarray_set_subarray(context(), sub, subarray.data());
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    rc = tiledb_query_set_subarray_t(context(), query, sub);
     CHECK(rc == TILEDB_OK);
     tiledb_subarray_free(&sub);
   }
 
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a", offsets, offsets_size);
+  rc = tiledb_query_set_offsets_buffer(
+      context(), query, "a", offsets, offsets_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query.
-  auto ret = tiledb_query_submit(ctx_, query);
+  auto ret = tiledb_query_submit(context(), query);
   if (query_ret == nullptr || array_ret == nullptr) {
     // Clean up.
-    rc = tiledb_array_close(ctx_, array);
+    rc = tiledb_array_close(context(), array);
     CHECK(rc == TILEDB_OK);
     tiledb_array_free(&array);
     tiledb_query_free(&query);
@@ -1046,7 +1045,7 @@ TEST_CASE_METHOD(
 
   // Check we hit the correct error.
   tiledb_error_t* error = NULL;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
+  rc = tiledb_ctx_get_last_error(context(), &error);
   CHECK(rc == TILEDB_OK);
 
   const char* msg;
@@ -1122,9 +1121,9 @@ TEST_CASE_METHOD(
     }
 
     // Check incomplete query status.
-    tiledb_query_get_status(ctx_, query, &status);
+    tiledb_query_get_status(context(), query, &status);
     if (status == TILEDB_INCOMPLETE) {
-      rc = tiledb_query_submit(ctx_, query);
+      rc = tiledb_query_submit(context(), query);
       CHECK(rc == TILEDB_OK);
     }
   } while (status == TILEDB_INCOMPLETE);
@@ -1211,9 +1210,9 @@ TEST_CASE_METHOD(
     }
 
     // Check incomplete query status.
-    tiledb_query_get_status(ctx_, query, &status);
+    tiledb_query_get_status(context(), query, &status);
     if (status == TILEDB_INCOMPLETE) {
-      rc = tiledb_query_submit(ctx_, query);
+      rc = tiledb_query_submit(context(), query);
       CHECK(rc == TILEDB_OK);
     }
   } while (status == TILEDB_INCOMPLETE);
@@ -1564,7 +1563,7 @@ TEST_CASE_METHOD(
     // validate that we have set up the condition we claim,
     // i.e. some fragment has out-of-order MBRs
     {
-      CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
+      CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
       const auto& fragment_metadata = array->array()->fragment_metadata();
       for (const auto& fragment : fragment_metadata) {
@@ -1665,7 +1664,7 @@ TEST_CASE_METHOD(
 
   // Check we hit the correct error.
   tiledb_error_t* error = NULL;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
+  rc = tiledb_ctx_get_last_error(context(), &error);
   CHECK(rc == TILEDB_OK);
 
   const char* msg;
@@ -1754,7 +1753,7 @@ TEST_CASE_METHOD(
 
   // Check incomplete query status.
   tiledb_query_status_t status;
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
   CHECK(40 == data_r_size);
@@ -1766,7 +1765,7 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(data_c, data_r, data_r_size));
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(context(), array);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
 }
@@ -1810,7 +1809,7 @@ TEST_CASE_METHOD(
 
   // Check we hit the correct error.
   tiledb_error_t* error = NULL;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
+  rc = tiledb_ctx_get_last_error(context(), &error);
   CHECK(rc == TILEDB_OK);
 
   const char* msg;
@@ -2265,7 +2264,7 @@ TEST_CASE_METHOD(
       &query,
       &array);
   CHECK(rc == TILEDB_OK);
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_INCOMPLETE);
 
   uint64_t loop_idx = 1;
@@ -2276,9 +2275,9 @@ TEST_CASE_METHOD(
   loop_idx++;
 
   while (status == TILEDB_INCOMPLETE) {
-    rc = tiledb_query_submit(ctx_, query);
+    rc = tiledb_query_submit(context(), query);
     CHECK("" == error_if_any(rc));
-    tiledb_query_get_status(ctx_, query, &status);
+    tiledb_query_get_status(context(), query, &status);
     CHECK(4 == data_r_size);
     CHECK(4 == coords_r_size);
     CHECK(!std::memcmp(&loop_idx, coords_r, coords_r_size));
@@ -2334,10 +2333,10 @@ TEST_CASE_METHOD(
 
     for (int i = 3; i <= 21; i++) {
       // Check incomplete query status.
-      tiledb_query_get_status(ctx_, query, &status);
+      tiledb_query_get_status(context(), query, &status);
       CHECK(status == TILEDB_INCOMPLETE);
 
-      rc = tiledb_query_submit(ctx_, query);
+      rc = tiledb_query_submit(context(), query);
       CHECK(rc == TILEDB_OK);
 
       CHECK(coords_r[0] == i / 2);
@@ -2348,10 +2347,10 @@ TEST_CASE_METHOD(
 
     for (int i = 2; i <= 10; i++) {
       // Check incomplete query status.
-      tiledb_query_get_status(ctx_, query, &status);
+      tiledb_query_get_status(context(), query, &status);
       CHECK(status == TILEDB_INCOMPLETE);
 
-      rc = tiledb_query_submit(ctx_, query);
+      rc = tiledb_query_submit(context(), query);
       CHECK(rc == TILEDB_OK);
 
       CHECK(coords_r[0] == i);
@@ -2360,7 +2359,7 @@ TEST_CASE_METHOD(
   }
 
   // Check completed query status.
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
   // Clean up.
@@ -2445,7 +2444,7 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(offsets_c, offsets_r, offsets_r_size));
 
   // Check completed query status.
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_INCOMPLETE);
 
   // Reset buffer sizes.
@@ -2454,7 +2453,7 @@ TEST_CASE_METHOD(
   offsets_r_size = sizeof(offsets_r);
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit(context(), query);
   REQUIRE(rc == TILEDB_OK);
 
   // Validate the second read.
@@ -2469,11 +2468,11 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(offsets_c2, offsets_r, offsets_r_size));
 
   // Check completed query status.
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(context(), array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -2522,7 +2521,7 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
       attributes);
 
   tiledb::test::create_array(
-      ctx_,
+      context(),
       array_name_,
       TILEDB_SPARSE,
       dimension_names,
@@ -2567,7 +2566,7 @@ DeleteArrayGuard CSparseGlobalOrderFx::run_create(Instance& instance) {
   // create_default_array_1d<Asserter>(instance.array);
   create_array<Asserter, decltype(instance)>(instance);
 
-  DeleteArrayGuard arrayguard(ctx_, array_name_.c_str());
+  DeleteArrayGuard arrayguard(context(), array_name_.c_str());
 
   // write all fragments
   for (auto& fragment : instance.fragments) {
@@ -2606,7 +2605,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   }
 
   // Open array for reading.
-  CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
+  CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
   // sort for naive comparison
   {
@@ -2635,16 +2634,17 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
   // Create query
   tiledb_query_t* query;
-  auto rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  auto rc = tiledb_query_alloc(context(), array, TILEDB_READ, &query);
   ASSERTER(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER);
   ASSERTER(rc == TILEDB_OK);
 
   if (!instance.subarray.empty()) {
     tiledb_subarray_t* subarray;
-    TRY(ctx_, tiledb_subarray_alloc(ctx_, array, &subarray));
-    TRY(ctx_, instance.template apply_subarray<Asserter>(ctx_, subarray));
-    TRY(ctx_, tiledb_query_set_subarray_t(ctx_, query, subarray));
+    TRY(context(), tiledb_subarray_alloc(context(), array, &subarray));
+    TRY(context(),
+        instance.template apply_subarray<Asserter>(context(), subarray));
+    TRY(context(), tiledb_query_set_subarray_t(context(), query, subarray));
     tiledb_subarray_free(&subarray);
   }
 
@@ -2670,21 +2670,21 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
     // add fields to query
     templates::query::set_fields<Asserter>(
-        ctx_,
+        context(),
         query,
         dimension_sizes,
         outdims,
         [](unsigned d) { return "d" + std::to_string(d + 1); },
         outcursor);
     templates::query::set_fields<Asserter>(
-        ctx_,
+        context(),
         query,
         attribute_sizes,
         outatts,
         [](unsigned a) { return "a" + std::to_string(a + 1); },
         outcursor);
 
-    rc = tiledb_query_submit(ctx_, query);
+    rc = tiledb_query_submit(context(), query);
     {
       const auto err = error_if_any(rc);
       if (err.find("Cannot load enough tiles to emit results from all "
@@ -2692,7 +2692,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
         if (!vfs_test_setup_.is_rest()) {
           // skip for REST since we will not have access to tile sizes
           ASSERTER(!can_complete_in_memory_budget(
-              ctx_, array_name_.c_str(), instance));
+              context(), array_name_.c_str(), instance));
         }
         tiledb_query_free(&query);
         return;
@@ -2707,7 +2707,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
     }
 
     tiledb_query_status_t status;
-    rc = tiledb_query_get_status(ctx_, query, &status);
+    rc = tiledb_query_get_status(context(), query, &status);
     ASSERTER(rc == TILEDB_OK);
 
     const uint64_t dim_num_cells =
@@ -2777,8 +2777,8 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   // lastly, check the correctness of our memory budgeting function
   // (skip for REST since we will not have access to tile sizes)
   if (!vfs_test_setup_.is_rest()) {
-    ASSERTER(
-        can_complete_in_memory_budget(ctx_, array_name_.c_str(), instance));
+    ASSERTER(can_complete_in_memory_budget(
+        context(), array_name_.c_str(), instance));
   }
 }
 
@@ -3111,33 +3111,37 @@ TEST_CASE_METHOD(
   uint64_t coords_size = sizeof(coords);
 
   // Open array
-  CApiArray array(ctx_, array_name_.c_str(), TILEDB_READ);
+  CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
   // Create query.
   tiledb_query_t* query;
-  TRY(ctx_, tiledb_query_alloc(ctx_, array, TILEDB_READ, &query));
-  TRY(ctx_, tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER));
-  TRY(ctx_,
-      tiledb_query_set_data_buffer(ctx_, query, "d", &coords[0], &coords_size));
+  TRY(context(), tiledb_query_alloc(context(), array, TILEDB_READ, &query));
+  TRY(context(),
+      tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER));
+  TRY(context(),
+      tiledb_query_set_data_buffer(
+          context(), query, "d", &coords[0], &coords_size));
 
   // Apply subarray
   const int lower_1 = 4, upper_1 = 8;
   const int lower_2 = 16, upper_2 = 32;
   tiledb_subarray_t* sub;
-  TRY(ctx_, tiledb_subarray_alloc(ctx_, array, &sub));
-  TRY(ctx_,
-      tiledb_subarray_add_range(ctx_, sub, 0, &lower_1, &upper_1, nullptr));
-  TRY(ctx_,
-      tiledb_subarray_add_range(ctx_, sub, 0, &lower_2, &upper_2, nullptr));
-  TRY(ctx_, tiledb_query_set_subarray_t(ctx_, query, sub));
+  TRY(context(), tiledb_subarray_alloc(context(), array, &sub));
+  TRY(context(),
+      tiledb_subarray_add_range(
+          context(), sub, 0, &lower_1, &upper_1, nullptr));
+  TRY(context(),
+      tiledb_subarray_add_range(
+          context(), sub, 0, &lower_2, &upper_2, nullptr));
+  TRY(context(), tiledb_query_set_subarray_t(context(), query, sub));
   tiledb_subarray_free(&sub);
 
-  auto rc = tiledb_query_submit(ctx_, query);
+  auto rc = tiledb_query_submit(context(), query);
   tiledb_query_free(&query);
   REQUIRE(rc == TILEDB_ERR);
 
   tiledb_error_t* error = nullptr;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
+  rc = tiledb_ctx_get_last_error(context(), &error);
   REQUIRE(rc == TILEDB_OK);
 
   const char* msg;
@@ -3148,3 +3152,4 @@ TEST_CASE_METHOD(
           "Multi-range reads are not supported on a global order query") !=
       std::string::npos);
 }
+
