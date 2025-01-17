@@ -37,21 +37,18 @@
 #include <capnp/compat/json.h>
 #include <capnp/message.h>
 #include <capnp/serialize.h>
-#include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 // clang-format on
 
-#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/rest/rest_client_remote.h"
 #include "tiledb/sm/serialization/rest_version.h"
 #include "tiledb/sm/storage_manager/context.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 class RestVersionSerializationException : public StatusException {
  public:
@@ -71,19 +68,18 @@ class RestVersionSerializationDisabledException
 
 #ifdef TILEDB_SERIALIZATION
 
-Status rest_version_to_capnp(
+void rest_version_to_capnp(
     Context* ctx, capnp::RestVersion::Builder* rest_version_builder) {
   if (ctx->has_rest_client()) {
     // The REST version is initialized in the RestClientRemote constructor.
-    rest_version_builder->setTiledbVersion(ctx->rest_client().rest_version());
+    rest_version_builder->setTiledbVersion(
+        static_cast<RestClientRemote&>(ctx->rest_client()).rest_version());
   } else {
     // We should not hit this case, if TILEDB_SERIALIZATION is enabled there
     // will be a rest client attached to ContextResources.
     throw RestVersionSerializationException(
         "Cannot serialize REST version with no initialized RESTClient.");
   }
-
-  return Status::Ok();
 }
 
 std::string rest_version_from_capnp(
@@ -95,7 +91,7 @@ std::string rest_version_from_capnp(
   return "2.X.0";
 }
 
-Status rest_version_serialize(
+void rest_version_serialize(
     Context* ctx,
     SerializationType serialize_type,
     SerializationBuffer& serialized_buffer) {
@@ -103,7 +99,7 @@ Status rest_version_serialize(
     ::capnp::MallocMessageBuilder message;
     capnp::RestVersion::Builder RestVersionBuilder =
         message.initRoot<capnp::RestVersion>();
-    RETURN_NOT_OK(rest_version_to_capnp(ctx, &RestVersionBuilder));
+    rest_version_to_capnp(ctx, &RestVersionBuilder);
 
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -132,8 +128,6 @@ Status rest_version_serialize(
     throw RestVersionSerializationException(
         "Error serializing REST version; exception " + std::string(e.what()));
   }
-
-  return Status::Ok();
 }
 
 std::string rest_version_deserialize(
@@ -179,28 +173,22 @@ std::string rest_version_deserialize(
 
 #else
 
-Status rest_version_to_capnp(
-    Context* ctx, capnp::RestVersion::Builder* rest_version_builder) {
+void rest_version_to_capnp(Context*, capnp::RestVersion::Builder*) {
   throw RestVersionSerializationDisabledException();
 }
 
-void rest_version_from_capnp(
-    const capnp::RestVersion::Reader& rest_version_reader) {
+void rest_version_from_capnp(const capnp::RestVersion::Reader&) {
   throw RestVersionSerializationDisabledException();
 }
 
-Status rest_version_serialize(
-    SerializationType serialize_type, SerializationBuffer& serialized_buffer) {
+void rest_version_serialize(Context*, SerializationType, SerializationBuffer&) {
   throw RestVersionSerializationDisabledException();
 }
 
-std::string rest_version_deserialize(
-    SerializationType serialization_type, span<const char> response) {
+std::string rest_version_deserialize(SerializationType, span<const char>) {
   throw RestVersionSerializationDisabledException();
 }
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

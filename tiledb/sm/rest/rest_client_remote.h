@@ -118,6 +118,13 @@ class RestClientRemote : public RestClient {
    * */
   static bool use_refactored_query(const Config& config);
 
+  inline const std::string& rest_version() override {
+    if (rest_tiledb_version_.empty()) {
+      rest_tiledb_version_ = get_rest_version();
+    }
+    return rest_tiledb_version_;
+  }
+
   /**
    * Check if an array exists by making a REST call. To start with this fetches
    * the schema but ignores the body returned if non-error
@@ -492,6 +499,11 @@ class RestClientRemote : public RestClient {
 
   /** The class MemoryTracker. */
   shared_ptr<MemoryTracker> memory_tracker_;
+
+  /**
+   * Version of TileDB currently in use by REST.
+   */
+  std::string rest_tiledb_version_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
