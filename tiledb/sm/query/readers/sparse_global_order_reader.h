@@ -155,17 +155,19 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   std::vector<ResultTilesList> result_tiles_leftover_;
 
   /**
-   * State for the default mode to evenly distribute memory
+   * State for the mode to evenly distribute memory
    * budget amongst the fragments and create a result
    * tile per fragment regardless of how their tiles
    * fit in the unified global order.
+   *
+   * Used only when preprocess tile order is not enabled.
    */
   struct {
     /** Memory used for coordinates tiles per fragment */
     std::vector<uint64_t> memory_used_for_coords_;
     /** Memory budget per fragment */
     double per_fragment_memory_;
-  } all_fragment_tile_order_;
+  } per_fragment_memory_state_;
 
   /** Enables consolidation with timestamps or not. */
   bool consolidation_with_timestamps_;

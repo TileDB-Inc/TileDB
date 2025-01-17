@@ -201,7 +201,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
   preprocess_tile_order_.num_tiles_ = 1;  // will be adjusted later if needed
 
   if (!preprocess_tile_order_.enabled_) {
-    all_fragment_tile_order_.memory_used_for_coords_.resize(
+    per_fragment_memory_state_.memory_used_for_coords_.resize(
         array_->fragment_metadata().size());
   }
 }
@@ -481,8 +481,8 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
       return true;
     }
   } else {
-    if (all_fragment_tile_order_.memory_used_for_coords_[f] + tiles_size >
-        all_fragment_tile_order_.per_fragment_memory_) {
+    if (per_fragment_memory_state_.memory_used_for_coords_[f] + tiles_size >
+        per_fragment_memory_state_.per_fragment_memory_) {
       return true;
     }
   }
@@ -492,7 +492,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
 
   if (!preprocess_tile_order_.enabled_) {
     // Adjust per fragment memory used.
-    all_fragment_tile_order_.memory_used_for_coords_[f] += tiles_size;
+    per_fragment_memory_state_.memory_used_for_coords_[f] += tiles_size;
   }
 
   // Add the tile.
@@ -865,7 +865,7 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_all_fragments(
   // Get the number of fragments to process and compute per fragment memory.
   uint64_t num_fragments_to_process =
       tmp_read_state_.num_fragments_to_process();
-  all_fragment_tile_order_.per_fragment_memory_ =
+  per_fragment_memory_state_.per_fragment_memory_ =
       memory_budget_.total_budget() * memory_budget_.ratio_coords() /
       num_fragments_to_process;
 
@@ -903,7 +903,7 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_all_fragments(
                       "budget, tile size : " +
                       std::to_string(tiles_size) + ", per fragment memory " +
                       std::to_string(
-                          all_fragment_tile_order_.per_fragment_memory_) +
+                          per_fragment_memory_state_.per_fragment_memory_) +
                       ", total budget " +
                       std::to_string(memory_budget_.total_budget()) +
                       ", num fragments to process " +
@@ -953,7 +953,7 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_all_fragments(
                     "budget, tile size : " +
                     std::to_string(tiles_size) + ", per fragment memory " +
                     std::to_string(
-                        all_fragment_tile_order_.per_fragment_memory_) +
+                        per_fragment_memory_state_.per_fragment_memory_) +
                     ", total budget " +
                     std::to_string(memory_budget_.total_budget()) +
                     ", num fragments to process " +
@@ -2835,7 +2835,7 @@ void SparseGlobalOrderReader<BitmapType>::remove_result_tile(
       get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
 
   if (!preprocess_tile_order_.enabled_) {
-    all_fragment_tile_order_.memory_used_for_coords_[frag_idx] -= tiles_size;
+    per_fragment_memory_state_.memory_used_for_coords_[frag_idx] -= tiles_size;
   }
 
   // Adjust total memory usage.
