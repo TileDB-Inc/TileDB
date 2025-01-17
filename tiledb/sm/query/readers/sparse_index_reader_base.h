@@ -621,10 +621,16 @@ class SparseIndexReaderBase : public ReaderBase {
    */
   void set_read_state(ReadState read_state);
 
-  const PreprocessTileOrder preprocess_tile_order() const;
+  /**
+   * Returns the preprocess tile order state.
+   * Used to assist the global order reader with deserialization.
+   *
+   * @return const reference to the preprocess tile order state
+   */
+  const PreprocessTileOrder& preprocess_tile_order() const;
 
   /**
-   * Sets the preprocess tile order cursor. Used only for deserialization
+   * Sets the preprocess tile order cursor. Used only for deserialization.
    *
    * @param cursor New cursor value.
    */
