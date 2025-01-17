@@ -41,6 +41,46 @@
 namespace tiledb::test {
 
 /**
+ * RAII to make sure an array is deleted before exiting a scope.
+ *
+ * This is useful within rapidcheck properties which may
+ * want to use the same temp directory and array name
+ * for each instance of a test.
+ */
+struct DeleteArrayGuard {
+  DeleteArrayGuard(tiledb_ctx_t* ctx, const char* array_uri)
+      : ctx_(ctx)
+      , array_uri_(array_uri) {
+  }
+
+  DeleteArrayGuard(DeleteArrayGuard&& movefrom)
+      : ctx_(movefrom.ctx_)
+      , array_uri_(movefrom.array_uri_) {
+    movefrom.release();
+  }
+
+  ~DeleteArrayGuard() {
+    del();
+  }
+
+  capi_return_t del() {
+    if (ctx_ && array_uri_) {
+      return tiledb_array_delete(ctx_, array_uri_);
+    } else {
+      return TILEDB_OK;
+    }
+  }
+
+  void release() {
+    ctx_ = nullptr;
+    array_uri_ = nullptr;
+  }
+
+  tiledb_ctx_t* ctx_;
+  const char* array_uri_;
+};
+
+/**
  * RAII to make sure we close our arrays so that keeping the same array URI
  * open from one test to the next doesn't muck things up
  * (this is especially important for rapidcheck)
