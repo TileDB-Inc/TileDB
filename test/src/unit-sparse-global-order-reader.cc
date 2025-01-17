@@ -446,7 +446,7 @@ struct CSparseGlobalOrderFx {
   void create_array(const Instance& instance);
 
   template <typename Asserter, InstanceType Instance>
-  void run_create(Instance& instance);
+  DeleteArrayGuard run_create(Instance& instance);
   template <typename Asserter, InstanceType Instance>
   void run_execute(Instance& instance);
 
@@ -515,14 +515,6 @@ void CSparseGlobalOrderFx::update_config() {
 template <typename Asserter>
 void CSparseGlobalOrderFx::create_default_array_1d(
     const DefaultArray1DConfig& config) {
-  tiledb_object_t type;
-  auto rc = tiledb_object_type(ctx_, array_name_.c_str(), &type);
-  ASSERTER(rc == TILEDB_OK);
-  if (type == TILEDB_ARRAY) {
-    rc = tiledb_array_delete(ctx_, array_name_.c_str());
-    ASSERTER("" == error_if_any(rc));
-  }
-
   tiledb::test::create_array(
       ctx_,
       array_name_,
@@ -2461,14 +2453,6 @@ TEST_CASE_METHOD(
  */
 template <typename Asserter, InstanceType Instance>
 void CSparseGlobalOrderFx::create_array(const Instance& instance) {
-  tiledb_object_t type;
-  auto rc = tiledb_object_type(ctx_, array_name_.c_str(), &type);
-  ASSERTER("" == error_if_any(rc));
-  if (type == TILEDB_ARRAY) {
-    rc = tiledb_array_delete(ctx_, array_name_.c_str());
-    ASSERTER("" == error_if_any(rc));
-  }
-
   const auto dimensions = instance.dimensions();
   const auto attributes = instance.attributes();
 
@@ -2533,12 +2517,13 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
 template <typename Asserter, InstanceType Instance>
 void CSparseGlobalOrderFx::run(Instance& instance) {
   reset_config();
-  run_create<Asserter, Instance>(instance);
+
+  auto tmparray = run_create<Asserter, Instance>(instance);
   run_execute<Asserter, Instance>(instance);
 }
 
 template <typename Asserter, InstanceType Instance>
-void CSparseGlobalOrderFx::run_create(Instance& instance) {
+DeleteArrayGuard CSparseGlobalOrderFx::run_create(Instance& instance) {
   ASSERTER(instance.num_user_cells > 0);
 
   reset_config();
@@ -2550,10 +2535,14 @@ void CSparseGlobalOrderFx::run_create(Instance& instance) {
   // create_default_array_1d<Asserter>(instance.array);
   create_array<Asserter, decltype(instance)>(instance);
 
+  DeleteArrayGuard arrayguard(ctx_, array_name_.c_str());
+
   // write all fragments
   for (auto& fragment : instance.fragments) {
     write_fragment<Asserter, decltype(fragment)>(fragment);
   }
+
+  return arrayguard;
 }
 
 template <typename Asserter, InstanceType Instance>
