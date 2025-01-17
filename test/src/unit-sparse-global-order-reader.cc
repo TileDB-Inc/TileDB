@@ -1534,7 +1534,7 @@ TEST_CASE_METHOD(
       instance.fragments.push_back(fdata);
     }
 
-    run_create<Asserter, FxRun2D>(instance);
+    auto guard = run_create<Asserter, FxRun2D>(instance);
 
     // validate that we have set up the condition we claim,
     // i.e. some fragment has out-of-order MBRs
