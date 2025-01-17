@@ -337,7 +337,8 @@ class Curl {
       const std::string& url,
       SerializationType serialization_type,
       Buffer* returned_data,
-      const std::string& res_ns_uri);
+      const std::string& res_ns_uri,
+      bool use_auth = true);
 
   /**
    * Simple wrapper for sending delete requests to server
@@ -428,9 +429,11 @@ class Curl {
    * and any extra headers.
    *
    * @param headers Headers list (will be modified)
+   * @param use_auth If true, set headers for HTTP authentication.
+   *    If false, the request will not use authentication.
    * @return Status
    */
-  Status set_headers(struct curl_slist** headers) const;
+  Status set_headers(struct curl_slist** headers, bool use_auth = true) const;
 
   /**
    * Sets the appropriate Content-Type header for the given serialization type.
