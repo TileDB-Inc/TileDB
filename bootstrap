@@ -205,17 +205,7 @@ if [[ x"${CXX}" = x"" ]]; then
     CXX=g++
 fi
 
-c_compiler=`which ${CC}`
-cxx_compiler=`which ${CXX}`
 cmake=`which cmake`
-
-if [[ ! -x ${c_compiler} ]]; then
-    die "cannot find c compiler"
-fi
-
-if [[ ! -x ${cxx_compiler} ]]; then
-    die "cannot find cplusplus compiler"
-fi
 
 if [[ ! -x ${cmake} ]]; then
     die "cannot find cmake"
@@ -224,8 +214,8 @@ fi
 # Configure
 ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_INSTALL_PREFIX="${prefix_dirs}" \
-    -DCMAKE_C_COMPILER="${c_compiler}" \
-    -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
+    -DCMAKE_C_COMPILER="${CC}" \
+    -DCMAKE_CXX_COMPILER="${CXX}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
     -DBUILD_SHARED_LIBS=${build_shared_libs} \
     -DTILEDB_ASSERTIONS=${tiledb_assertions} \
