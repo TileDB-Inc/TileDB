@@ -233,6 +233,9 @@ class Config {
   /** Which reader to use for sparse global order queries. */
   static const std::string SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
 
+  /** If `true`, run preprocessing merge step in sparse global order reader */
+  static const std::string SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE;
+
   /** Which reader to use for sparse unordered with dups queries. */
   static const std::string SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
 

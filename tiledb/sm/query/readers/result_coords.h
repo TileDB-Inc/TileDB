@@ -38,6 +38,7 @@
 
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/misc/type_traits.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 
 using namespace tiledb::common;
@@ -75,6 +76,14 @@ struct ResultCoordsBase {
   ResultCoordsBase(ResultTileType* tile, uint64_t pos)
       : tile_(tile)
       , pos_(pos) {
+  }
+
+  unsigned fragment_idx() const {
+    return tile_->frag_idx();
+  }
+
+  uint64_t tile_idx() const {
+    return tile_->tile_idx();
   }
 
   /**
@@ -266,9 +275,9 @@ struct GlobalOrderResultCoords
    *
    * @return Max slab length that can be merged for this tile.
    */
-  template <class CompType>
+  template <GlobalCellComparable GlobalOrderLowerBound, class CompType>
   uint64_t max_slab_length(
-      const GlobalOrderResultCoords& next, const CompType& cmp) {
+      const GlobalOrderLowerBound& next, const CompType& cmp) {
     uint64_t cell_num = base::tile_->cell_num();
 
     // Store the original position.

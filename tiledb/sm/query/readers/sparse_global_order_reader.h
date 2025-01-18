@@ -51,6 +51,20 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class Array;
+struct PreprocessTileMergeFuture;
+struct RangeLowerBound;
+
+enum class AddNextCellResult {
+  // finished the current tile
+  Done,
+  // successfully added a cell to the queue
+  FoundCell,
+  // more tiles from the same fragment are needed to continue
+  NeedMoreTiles,
+  // this tile cannot continue because it would be out of order with
+  // un-created result tiles
+  MergeBound
+};
 
 /** Processes sparse global order read queries. */
 
@@ -86,7 +100,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return Status.
    */
-  Status finalize() {
+  Status finalize() override {
     return Status::Ok();
   }
 
@@ -95,32 +109,36 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return The query status.
    */
-  bool incomplete() const;
+  bool incomplete() const override;
 
   /**
    * Returns `true` if the query was incomplete.
    *
    * @return The query status.
    */
-  QueryStatusDetailsReason status_incomplete_reason() const;
+  QueryStatusDetailsReason status_incomplete_reason() const override;
 
   /**
    * Initialize the memory budget variables.
    */
-  void refresh_config();
+  void refresh_config() override;
 
   /**
    * Performs a read query using its set members.
    *
    * @return Status.
    */
-  Status dowork();
+  Status dowork() override;
 
   /** Resets the reader object. */
-  void reset();
+  void reset() override;
 
   /** Returns the name of the strategy */
-  std::string name();
+  std::string name() override;
+
+  /** Used in deserialization */
+  virtual void set_preprocess_tile_order_cursor(
+      uint64_t cursor, uint64_t num_tiles) override;
 
  private:
   /* ********************************* */
@@ -136,11 +154,20 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    */
   std::vector<ResultTilesList> result_tiles_leftover_;
 
-  /** Memory used for coordinates tiles per fragment. */
-  std::vector<uint64_t> memory_used_for_coords_;
-
-  /** Memory budget per fragment. */
-  double per_fragment_memory_;
+  /**
+   * State for the mode to evenly distribute memory
+   * budget amongst the fragments and create a result
+   * tile per fragment regardless of how their tiles
+   * fit in the unified global order.
+   *
+   * Used only when preprocess tile order is not enabled.
+   */
+  struct {
+    /** Memory used for coordinates tiles per fragment */
+    std::vector<uint64_t> memory_used_for_coords_;
+    /** Memory budget per fragment */
+    double per_fragment_memory_;
+  } per_fragment_memory_state_;
 
   /** Enables consolidation with timestamps or not. */
   bool consolidation_with_timestamps_;
@@ -206,7 +233,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * Add a result tile to process, making sure maximum budget is respected.
    *
    * @param dim_num Number of dimensions.
-   * @param memory_budget_coords_tiles Memory budget for coordinate tiles.
    * @param f Fragment index.
    * @param t Tile index.
    * @param frag_md Fragment metadata.
@@ -216,20 +242,75 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    */
   bool add_result_tile(
       const unsigned dim_num,
-      const uint64_t memory_budget_coords_tiles,
       const unsigned f,
       const uint64_t t,
       const FragmentMetadata& frag_md,
       std::vector<ResultTilesList>& result_tiles);
 
   /**
+   * Kicks off computation of the single list of tiles across all fragments
+   * arranged in the order they must be processed for this query.
+   * See `preprocess_tile_order_`.
+   *
+   * The `merge_future` in-out parameter provides memory locations for
+   * the parallel merge algorithm inputs - this includes the global order
+   * comparator as well as the fragment `ResultTileId` lists. This method sets
+   * the parallel merge algorithm future on `merge_future` as its postcondition.
+   *
+   * The merge output is written to `this->preprocess_tile_order_.tiles_`
+   * and the `merge_future` can be used to poll the state of this asynchronous
+   * operation.
+   *
+   * @param [in-out] merge_future where to put data for the merge and the merge
+   *
+   * @precondition `merge_future` is freshly constructed.
+   * @postcondition `merge_future.fragment_result_tiles_` is initialized with
+   * the lists of tiles from each fragment which qualify for the subarray.
+   * @postcondition `merge_future.cmp_` holds the memory for the comparator used
+   * in the asynchronous parallel merge.
+   * @postcondition `merge_future.merge_` is initialized and can be used to poll
+   * the results of the asynchronous parallel merge.
+   */
+  void preprocess_compute_result_tile_order(
+      PreprocessTileMergeFuture& merge_future);
+
+  /**
    * Create the result tiles.
    *
    * @param result_tiles Result tiles per fragment.
+   * @param preprocess_future future for polling the global order tile
+   * stream, if running in preprocess mode
+   *
    * @return Newly created tiles.
    */
   std::vector<ResultTile*> create_result_tiles(
+      std::vector<ResultTilesList>& result_tiles,
+      std::optional<PreprocessTileMergeFuture>& preprocess_future);
+
+  /**
+   * Create the result tiles naively, without coordinating
+   * the ranges of tiles of each fragment. This uses a
+   * per-fragment memory budget, and (assuming enough memory)
+   * creates at least one result tile for each fragment.
+   *
+   * See `all_fragment_tile_order_`.
+   *
+   * @param result_tiles [in-out] Result tiles per fragment.
+   */
+  void create_result_tiles_all_fragments(
       std::vector<ResultTilesList>& result_tiles);
+
+  /**
+   * Create the result tiles using the pre-processed
+   * tile order. See `preprocess_tile_order_`.
+   *
+   * @param result_tiles [in-out] Result tiles per fragment.
+   * @param merge_future handle to polling the preprocess merge stream
+   *                     (if it has not completed yet)
+   */
+  void create_result_tiles_using_preprocess(
+      std::vector<ResultTilesList>& result_tiles,
+      std::optional<PreprocessTileMergeFuture>& merge_future);
 
   /**
    * Clean tiles that have 0 results from the tile lists.
@@ -311,16 +392,19 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param result_tiles Result tiles per fragment.
    * @param tile_queue Queue of one result coords, per fragment, sorted.
    * @param to_delete List of tiles to delete.
+   * @param merge_bound reference to the bound where results can be correctly
+   * put in the queue
    *
-   * @return If more tiles are needed.
+   * @return result of trying to add a cell
    */
   template <class CompType>
-  bool add_next_cell_to_queue(
+  AddNextCellResult add_next_cell_to_queue(
       GlobalOrderResultCoords<BitmapType>& rc,
       std::vector<TileListIt>& result_tiles_it,
       const std::vector<ResultTilesList>& result_tiles,
       TileMinHeap<CompType>& tile_queue,
-      std::vector<TileListIt>& to_delete);
+      std::vector<TileListIt>& to_delete,
+      const std::optional<RangeLowerBound>& merge_bound);
 
   /**
    * Computes a tile's Hilbert values for a tile.

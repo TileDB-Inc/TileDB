@@ -70,6 +70,11 @@ class Subarray;
  */
 bool result_tile_cmp(const ResultTile* a, const ResultTile* b);
 
+struct ResultTileId {
+  unsigned fragment_idx_;
+  uint64_t tile_idx_;
+};
+
 /**
  * Stores information about a logical dense or sparse result tile. Note that it
  * may store the physical tiles across more than one attributes for the same

@@ -1,11 +1,11 @@
 /**
- * @file untyped_datum.h
+ * @file compile_algorithm_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,40 +26,9 @@
  * THE SOFTWARE.
  */
 
-#ifndef TILEDB_COMMON_UNTYPED_DATUM_H
-#define TILEDB_COMMON_UNTYPED_DATUM_H
+#include "../parallel_merge.h"
 
-#include <ostream>
-
-namespace tiledb::common {
-
-/**
- * A non-owning view of a datum of any type.
- */
-class UntypedDatumView {
-  const void* datum_content_;
-  size_t datum_size_;
-
- public:
-  UntypedDatumView(const void* content, size_t size)
-      : datum_content_(content)
-      , datum_size_(size) {
-  }
-  UntypedDatumView(std::string_view ss)
-      : datum_content_(ss.data())
-      , datum_size_(ss.size()) {
-  }
-
-  [[nodiscard]] inline const void* content() const {
-    return datum_content_;
-  }
-  [[nodiscard]] inline size_t size() const {
-    return datum_size_;
-  }
-  template <class T>
-  [[nodiscard]] inline const T& value_as() const {
-    return *static_cast<const T*>(datum_content_);
-  }
-};
-}  // namespace tiledb::common
-#endif  // TILEDB_COMMON_UNTYPED_DATUM_H
+int main() {
+  (void)sizeof(tiledb::algorithm::ParallelMergeOptions);
+  return 0;
+}
