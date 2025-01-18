@@ -242,7 +242,7 @@ struct FxRun2D {
       : capacity(64)
       , allow_dups(true)
       , tile_order_(TILEDB_ROW_MAJOR)
-      , cell_order_(TILEDB_COL_MAJOR) {
+      , cell_order_(TILEDB_ROW_MAJOR) {
     d1.domain = templates::Domain<int>(1, 200);
     d1.extent = 8;
     d2.domain = templates::Domain<int>(1, 200);
@@ -396,6 +396,7 @@ template <typename T>
 concept InstanceType = requires(const T& instance) {
   { instance.tile_capacity() } -> std::convertible_to<uint64_t>;
   { instance.allow_duplicates() } -> std::same_as<bool>;
+  { instance.tile_order() } -> std::same_as<tiledb_layout_t>;
 
   { instance.num_user_cells } -> std::convertible_to<size_t>;
 
@@ -873,16 +874,26 @@ int32_t CSparseGlobalOrderFx::read_strings(
 }
 
 /**
- * @return true if the array fragments are "too wide" to merge with the given
- * memory budget. "too wide" means that there are overlapping tiles from
+ * Determines whether the array fragments are "too wide" to merge with the given
+ * memory budget. "Too wide" means that there are overlapping tiles from
  * different fragments to fit in memory, so the merge cannot progress without
  * producing out-of-order data*.
  *
  * *there are ways to get around this but they are not implemented.
+ *
+ * An answer cannot be determined if the tile MBR lower bounds within a fragment
+ * are not in order. This is common for 2+ dimensions, so this won't even try.
+ *
+ * @return std::nullopt if an answer cannot be determined, true/false if it can
  */
-template <InstanceType Instance>
-static bool can_complete_in_memory_budget(
+template <typename Asserter, InstanceType Instance>
+static std::optional<bool> can_complete_in_memory_budget(
     tiledb_ctx_t* ctx, const char* array_uri, const Instance& instance) {
+  if (std::tuple_size_v<decltype(instance.dimensions())> > 1) {
+    // don't even bother
+    return std::nullopt;
+  }
+
   CApiArray array(ctx, array_uri, TILEDB_READ);
 
   const auto& fragment_metadata = array->array()->fragment_metadata();
@@ -912,7 +923,8 @@ static bool can_complete_in_memory_budget(
     return data_size + rt_size + subarray_size;
   };
 
-  sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
+  const auto& domain = array->array()->array_schema_latest().domain();
+  sm::GlobalCellCmp globalcmp(domain);
   stdx::reverse_comparator<sm::GlobalCellCmp> reverseglobalcmp(globalcmp);
 
   using RT = sm::ResultTileId;
@@ -1483,7 +1495,7 @@ TEST_CASE_METHOD(
  * as enumerated in row-major order and we have a densely
  * populated array.
  *
- *             c-T1            c-T2           c-T3
+ *             c-T1              c-T2              c-T3
  *      |                 |                 |                 |
  *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
  *      |   1   2   3   4 |   5   6   7   8 |  9   10  11  12 |
@@ -1622,6 +1634,145 @@ TEST_CASE_METHOD(
           num_fragments,
           fragment_size,
           num_user_cells,
+          tile_capacity,
+          allow_dups,
+          subarray);
+    });
+  }
+}
+
+/**
+ * Similar to the "fragment skew" test, but in two dimensions.
+ * In 2+ dimensions the lower bounds of the tile MBRs are not
+ * necessarily in order for each fragment.
+ *
+ * This test verifies the need to set the merge bound to
+ * the MBR lower bound of fragments which haven't had any tiles loaded.
+ *
+ * Let's use an example with dimension extents and tile capacities of 4.
+ *
+ *             c-T1              c-T2              c-T3
+ *      |                 |                 |                 |
+ *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
+ *      | 1    1   1   1  | 1               | 1               |
+ * r-T1 | 1    1   1   1  |                 |                 |
+ *      | 1    1   1   1  |                 |                 |
+ *      | 1    1          |      2   1   1  |                 |
+ *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
+ *
+ * Fragment 1 MBR lower bounds: [(1, 1), (2, 1), (3, 1), (1, 5), (1, 7)]
+ * Fragment 2 MBR lower bounds: [(4, 6)]
+ *
+ * What if the memory budget here permits loading just four tiles?
+ *
+ * The un-loaded tiles have bounds (1, 7) and (4, 6), but the
+ * coordinate from (4, 6) has a lesser value. The merge bound
+ * is necessary to ensure we don't emit out-of-order coordinates.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment skew 2d merge bound",
+    "[sparse-global-order]") {
+  auto doit = [this]<typename Asserter>(
+                  tiledb_layout_t tile_order,
+                  tiledb_layout_t cell_order,
+                  size_t approximate_memory_tiles,
+                  size_t num_user_cells,
+                  size_t num_fragments,
+                  size_t tile_capacity,
+                  bool allow_dups,
+                  const Subarray2DType<int, int>& subarray = {}) {
+    FxRun2D instance;
+    instance.tile_order_ = tile_order;
+    instance.cell_order_ = cell_order;
+    instance.d1.extent = 4;
+    instance.d2.extent = 4;
+    instance.capacity = tile_capacity;
+    instance.allow_dups = allow_dups;
+    instance.num_user_cells = num_user_cells;
+    instance.subarray = subarray;
+
+    const size_t tile_size_estimate = (1600 + instance.capacity * sizeof(int));
+    const double coords_ratio =
+        (1.02 / (std::stold(instance.memory.total_budget_) /
+                 tile_size_estimate / approximate_memory_tiles));
+    instance.memory.ratio_coords_ = std::to_string(coords_ratio);
+
+    int att = 0;
+
+    // for each fragment, make one fragment which is just a point
+    // so that its MBR is equal to its coordinate (and thus more likely
+    // to be out of order with respect to the MBRs of tiles from other
+    // fragments)
+    for (size_t f = 0; f < num_fragments; f++) {
+      FxRun2D::FragmentType fdata;
+      // make one mostly dense space tile
+      const int trow = instance.d1.domain.lower_bound +
+                       static_cast<int>(f * instance.d1.extent);
+      const int tcol = instance.d2.domain.lower_bound +
+                       static_cast<int>(f * instance.d2.extent);
+      for (int i = 0; i < instance.d1.extent * instance.d2.extent - 2; i++) {
+        fdata.d1_.push_back(trow + i / instance.d1.extent);
+        fdata.d2_.push_back(tcol + i % instance.d1.extent);
+        std::get<0>(fdata.atts_).push_back(att++);
+      }
+
+      // then some sparse coords in the next space tile,
+      // fill the data tile (if the capacity is 4), we'll call it T
+      fdata.d1_.push_back(trow);
+      fdata.d2_.push_back(tcol + instance.d2.extent);
+      std::get<0>(fdata.atts_).push_back(att++);
+      fdata.d1_.push_back(trow + instance.d1.extent - 1);
+      fdata.d2_.push_back(tcol + instance.d2.extent + 2);
+      std::get<0>(fdata.atts_).push_back(att++);
+
+      // then begin a new data tile "Tnext" which straddles the bounds of that
+      // space tile. this will have a low MBR.
+      fdata.d1_.push_back(trow + instance.d1.extent - 1);
+      fdata.d2_.push_back(tcol + instance.d2.extent + 3);
+      std::get<0>(fdata.atts_).push_back(att++);
+      fdata.d1_.push_back(trow);
+      fdata.d2_.push_back(tcol + 2 * instance.d2.extent);
+      std::get<0>(fdata.atts_).push_back(att++);
+
+      // then add a point P which is less than the lower bound of Tnext's MBR,
+      // and also between the last two coordinates of T
+      FxRun2D::FragmentType fpoint;
+      fpoint.d1_.push_back(trow + instance.d1.extent - 1);
+      fpoint.d2_.push_back(tcol + instance.d1.extent + 1);
+      std::get<0>(fpoint.atts_).push_back(att++);
+
+      instance.fragments.push_back(fdata);
+      instance.fragments.push_back(fpoint);
+    }
+
+    run<AsserterCatch, FxRun2D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 1024, 1, 4, false);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck fragment skew", [doit]() {
+      const auto tile_order =
+          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+      const auto cell_order =
+          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+      const size_t approximate_memory_tiles = *rc::gen::inRange(2, 64);
+      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      const size_t num_fragments = *rc::gen::inRange(1, 8);
+      const size_t tile_capacity = *rc::gen::inRange(1, 16);
+      const bool allow_dups = *rc::gen::arbitrary<bool>();
+      const auto subarray = *rc::make_subarray_2d(
+          templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          tile_order,
+          cell_order,
+          approximate_memory_tiles,
+          num_user_cells,
+          num_fragments,
           tile_capacity,
           allow_dups,
           subarray);
@@ -2691,8 +2842,12 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
                    "fragments in global order") != std::string::npos) {
         if (!vfs_test_setup_.is_rest()) {
           // skip for REST since we will not have access to tile sizes
-          ASSERTER(!can_complete_in_memory_budget(
-              context(), array_name_.c_str(), instance));
+          const auto can_complete =
+              can_complete_in_memory_budget<Asserter, Instance>(
+                  context(), array_name_.c_str(), instance);
+          if (can_complete.has_value()) {
+            ASSERTER(!can_complete.value());
+          }
         }
         tiledb_query_free(&query);
         return;
@@ -2777,8 +2932,11 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   // lastly, check the correctness of our memory budgeting function
   // (skip for REST since we will not have access to tile sizes)
   if (!vfs_test_setup_.is_rest()) {
-    ASSERTER(can_complete_in_memory_budget(
-        context(), array_name_.c_str(), instance));
+    const auto can_complete = can_complete_in_memory_budget<Asserter, Instance>(
+        context(), array_name_.c_str(), instance);
+    if (can_complete.has_value()) {
+      ASSERTER(can_complete.has_value());
+    }
   }
 }
 
