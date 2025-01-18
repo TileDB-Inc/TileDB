@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -676,6 +676,9 @@ class Config {
   /*                API                */
   /* ********************************* */
 
+  /** Log in to TileDB Cloud, saving profile info to the config. */
+  void login();
+
   /** Loads the config parameters from a configuration (local) file. */
   Status load_from_file(const std::string& filename);
 
@@ -833,6 +836,16 @@ class Config {
 
   /** Returns the param -> value map. */
   const std::map<std::string, std::string>& param_values() const;
+
+  /**
+   * Internally sets the given config parameter.
+   *
+   * @note For internal use only; This API does not update the user-set params.
+   *
+   * @param param The config parameter to set.
+   * @param value The value of the parameter.
+   */
+  void set_internal(const std::string& param, const std::string& value);
 };
 
 /**
