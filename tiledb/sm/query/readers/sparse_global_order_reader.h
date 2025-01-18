@@ -52,7 +52,7 @@ namespace tiledb::sm {
 
 class Array;
 struct PreprocessTileMergeFuture;
-struct PreprocessTileMergeBound;
+struct RangeLowerBound;
 
 enum class AddNextCellResult {
   // finished the current tile
@@ -404,7 +404,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const std::vector<ResultTilesList>& result_tiles,
       TileMinHeap<CompType>& tile_queue,
       std::vector<TileListIt>& to_delete,
-      const std::optional<PreprocessTileMergeBound>& merge_bound);
+      const std::optional<RangeLowerBound>& merge_bound);
 
   /**
    * Computes a tile's Hilbert values for a tile.
