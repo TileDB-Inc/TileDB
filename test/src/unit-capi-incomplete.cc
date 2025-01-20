@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -41,6 +42,8 @@
 #include <iostream>
 
 using namespace tiledb::test;
+
+using Asserter = tiledb::test::AsserterCatch;
 
 /**
  * Tests cases where a read query is incomplete or leads to a buffer
@@ -238,8 +241,7 @@ void IncompleteFx::create_sparse_array() {
   CHECK(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create(ctx_, sparse_array_uri_.c_str(), array_schema);
-  CHECK(rc == TILEDB_OK);
+  TRY(ctx_, tiledb_array_create(ctx_, sparse_array_uri_.c_str(), array_schema));
 
   // Clean up
   tiledb_attribute_free(&a1);
