@@ -1029,34 +1029,30 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
     // update position for next iteration
     preprocess_tile_order_.cursor_ = rt;
 
-    // update which fragments are done
-    for (const auto& f : subarray_.relevant_fragments()) {
-      if (!tmp_read_state_.all_tiles_loaded(f)) {
-        bool all_tiles_loaded = true;
-        for (uint64_t ri = rt;
-             all_tiles_loaded && ri < preprocess_tile_order_.num_tiles_;
-             ri++) {
-          const auto& tile = preprocess_tile_order_.tiles_[ri];
-          if (tile.fragment_idx_ == f) {
-            all_tiles_loaded = false;
-            break;
-          }
-        }
-        if (all_tiles_loaded) {
-          tmp_read_state_.set_all_tiles_loaded(f);
-        }
-      }
-    }
-
     if (!preprocess_tile_order_.has_more_tiles()) {
-      // TODO: original version sets a flag in tmp_read_state_ on a per-fragment
-      // basis, does that have any effect other than computing this?
-      read_state_.set_done_adding_result_tiles(true);
-
       // NB: merge must have completed for this condition to be satisfied
       const auto num_tiles = preprocess_tile_order_.tiles_.size();
       preprocess_tile_order_.tiles_.clear();
       memory_used_for_coords_total_ -= sizeof(ResultTileId) * num_tiles;
+    }
+  }
+
+  // update which fragments are done
+  for (const auto& f : subarray_.relevant_fragments()) {
+    if (!tmp_read_state_.all_tiles_loaded(f)) {
+      bool all_tiles_loaded = true;
+      for (uint64_t ri = preprocess_tile_order_.cursor_;
+           all_tiles_loaded && ri < preprocess_tile_order_.num_tiles_;
+           ri++) {
+        const auto& tile = preprocess_tile_order_.tiles_[ri];
+        if (tile.fragment_idx_ == f) {
+          all_tiles_loaded = false;
+          break;
+        }
+      }
+      if (all_tiles_loaded) {
+        tmp_read_state_.set_all_tiles_loaded(f);
+      }
     }
   }
 }
