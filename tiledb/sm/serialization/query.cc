@@ -1587,6 +1587,16 @@ Status query_from_capnp(
         "Cannot deserialize; array pointer is null."));
   }
 
+  // Deserialize Config
+  if (query_reader.hasConfig()) {
+    tdb_unique_ptr<Config> decoded_config = nullptr;
+    auto config_reader = query_reader.getConfig();
+    RETURN_NOT_OK(config_from_capnp(config_reader, &decoded_config));
+    if (decoded_config != nullptr) {
+      query->unsafe_set_config(*decoded_config);
+    }
+  }
+
   // Deserialize query type (sanity check).
   auto type = query->type();
   QueryType query_type = QueryType::READ;
@@ -1630,16 +1640,6 @@ Status query_from_capnp(
   // must "reset" the status here to bypass future checks on a
   // fully-initialized Query until the final QueryStatus is deserialized.
   query->set_status(QueryStatus::UNINITIALIZED);
-
-  // Deserialize Config
-  if (query_reader.hasConfig()) {
-    tdb_unique_ptr<Config> decoded_config = nullptr;
-    auto config_reader = query_reader.getConfig();
-    RETURN_NOT_OK(config_from_capnp(config_reader, &decoded_config));
-    if (decoded_config != nullptr) {
-      query->unsafe_set_config(*decoded_config);
-    }
-  }
 
   // It's important that deserialization of query channels/aggregates happens
   // before deserializing buffers. set_data_buffer won't know whether a buffer
