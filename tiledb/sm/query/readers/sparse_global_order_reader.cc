@@ -149,12 +149,11 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
   // Initialize memory budget variables.
   refresh_config();
 
+  const auto preprocess_tile_merge_min_items = config_.get<uint64_t>(
+      "sm.query.sparse_global_order.preprocess_tile_merge");
   preprocess_tile_order_.enabled_ =
       array_schema_.cell_order() != Layout::HILBERT &&
-      0 < config_
-              .get<uint64_t>(
-                  "sm.query.sparse_global_order.preprocess_tile_merge")
-              .value_or(0);
+      0 < preprocess_tile_merge_min_items.value_or(0);
   preprocess_tile_order_.cursor_ = 0;
   preprocess_tile_order_.num_tiles_ = 1;  // will be adjusted later if needed
 
