@@ -889,7 +889,7 @@ int32_t CSparseGlobalOrderFx::read_strings(
 template <typename Asserter, InstanceType Instance>
 static std::optional<bool> can_complete_in_memory_budget(
     tiledb_ctx_t* ctx, const char* array_uri, const Instance& instance) {
-  if (std::tuple_size_v<decltype(instance.dimensions())> > 1) {
+  if constexpr (std::tuple_size_v<decltype(instance.dimensions())> > 1) {
     // don't even bother
     return std::nullopt;
   }
