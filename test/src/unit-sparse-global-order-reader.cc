@@ -2879,10 +2879,12 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
     ASSERTER(dim_num_cells == att_num_cells);
 
-    if (dim_num_cells < instance.num_user_cells) {
+    const size_t num_cells_bound =
+        std::min(instance.num_user_cells, expect.size());
+    if (dim_num_cells < num_cells_bound) {
       ASSERTER(status == TILEDB_COMPLETED);
     } else {
-      ASSERTER(dim_num_cells == instance.num_user_cells);
+      ASSERTER(dim_num_cells == num_cells_bound);
     }
 
     outcursor += dim_num_cells;
