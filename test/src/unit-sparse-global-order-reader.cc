@@ -2879,7 +2879,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
     }
 
     outcursor += dim_num_cells;
-    REQUIRE(outcursor <= expect.size());
+    ASSERTER(outcursor <= expect.size());
 
     if (status == TILEDB_COMPLETED) {
       break;
