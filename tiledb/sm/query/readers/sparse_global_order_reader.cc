@@ -118,6 +118,30 @@ struct PreprocessTileMergeFuture {
     return ret;
   }
 
+  /**
+   * Waits for the merge to have completed up to the requested `cursor`.
+   *
+   * @return true if the requested cursor is available, false otherwise
+   */
+  bool wait_for(uint64_t cursor) {
+    if (!merge_.has_value()) {
+      return true;
+    }
+
+    std::optional<uint64_t> bound = merge_.value()->valid_output_bound();
+    if (bound.has_value() && bound.value() >= cursor) {
+      return true;
+    }
+
+    while ((bound = merge_.value()->await()).has_value()) {
+      if (bound.value() >= cursor) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   void block() {
     if (merge_.has_value()) {
       merge_.value()->block();
@@ -237,8 +261,14 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   // (this happens after load_initial_data which identifies which tiles pass
   // subarray)
   std::optional<PreprocessTileMergeFuture> preprocess_future;
-  if (preprocess_tile_order_.has_more_tiles() &&
+  if (preprocess_tile_order_.enabled_ &&
       preprocess_tile_order_.tiles_.empty()) {
+    // For native, this only happens in the first dowork(), then the merged
+    // tile list remains in memory.
+    // For REST, this happens in each submit() call. We assume that the merge
+    // is cheaper than serializing the list. This is necessary even if
+    // `preprocess_tile_order_.cursor_ == preprocess_tile_order_num_tiles_`
+    // because we need to keep track of partially-used result tiles.
     preprocess_future.emplace(memory_used_for_coords_total_);
     preprocess_compute_result_tile_order(preprocess_future.value());
   }
@@ -950,6 +980,73 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
   // For easy reference.
   const auto num_dims = array_schema_.dim_num();
 
+  if (preprocess_tile_order_.cursor_ > 0 &&
+      std::all_of(result_tiles.begin(), result_tiles.end(), [](const auto& r) {
+        return r.empty();
+      })) {
+    // When a result tile is created for a ResultTileId, the preprocess merge
+    // cursor advances. Then the result tile tracks how much data has been
+    // emitted from that tile.
+    //
+    // When running natively, if an iteration does not exhaust that result tile
+    // remains in the result tile list and its cursor remains in memory for
+    // use in the next iteration.
+    //
+    // When running against the REST server, if an iteration does not exhaust a
+    // result tile, then its cursor must be serialized/deserialized.  That state
+    // lives in `read_state_.frag_idx()`.
+    //
+    // Hence if we have no result tiles, and a preprocess cursor, then we must
+    // check if we have any un-exhausted result tiles.
+    const auto& rtcursors = read_state_.frag_idx();
+
+    for (const auto& f : subarray_.relevant_fragments()) {
+      if (merge_future.has_value()) {
+        const bool wait_ok =
+            merge_future->wait_for(preprocess_tile_order_.cursor_);
+        assert(wait_ok);
+      }
+
+      // identify the tiles in reverse global order
+      std::vector<size_t> rts;
+      for (size_t rti = preprocess_tile_order_.cursor_; rti > 0; --rti) {
+        const auto& rt = preprocess_tile_order_.tiles_[rti - 1];
+        if (rt.fragment_idx_ != f) {
+          continue;
+        } else if (rtcursors[f].tile_idx_ > rt.tile_idx_) {
+          // all of the tiles for this fragment up to this are done
+          break;
+        }
+
+        rts.push_back(rti - 1);
+      }
+
+      // and then re-create them
+      for (auto rti = rts.rbegin(); rti != rts.rend(); ++rti) {
+        const auto& rt = preprocess_tile_order_.tiles_[*rti];
+
+        // this is a tile which qualified for the subarray and was
+        // a created result tile, we must continue processing it
+        const auto budget_exceeded = add_result_tile(
+            num_dims, f, rt.tile_idx_, *fragment_metadata_[f], result_tiles);
+
+        // all these tiles were created in a previous iteration, so we *had*
+        // the memory budget - and must not any more.  Can a user change
+        // configuration between rounds of `tiledb_query_submit`? If
+        // not then this represents internal error; if so then this
+        // represents user error. Since we have lost the ordering of tiles,
+        // we have to fall back to "per fragment" mode which is achievable
+        // but too complicated for this author to want to bother.
+        if (budget_exceeded) {
+          throw SparseGlobalOrderReaderException(
+              "Cannot load result tiles from previous submit: this likely "
+              "indicates a reduction in memory budget. Increase memory "
+              "budget.");
+        }
+      }
+    }
+  }
+
   if (preprocess_tile_order_.has_more_tiles()) {
     size_t rt = preprocess_tile_order_.cursor_;
     size_t rt_merge_bound =
@@ -1028,13 +1125,6 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
 
     // update position for next iteration
     preprocess_tile_order_.cursor_ = rt;
-
-    if (!preprocess_tile_order_.has_more_tiles()) {
-      // NB: merge must have completed for this condition to be satisfied
-      const auto num_tiles = preprocess_tile_order_.tiles_.size();
-      preprocess_tile_order_.tiles_.clear();
-      memory_used_for_coords_total_ -= sizeof(ResultTileId) * num_tiles;
-    }
   }
 
   // update which fragments are done
@@ -1054,6 +1144,13 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
         tmp_read_state_.set_all_tiles_loaded(f);
       }
     }
+  }
+
+  if (!preprocess_tile_order_.has_more_tiles()) {
+    // NB: merge must have completed for this condition to be satisfied
+    const auto num_tiles = preprocess_tile_order_.tiles_.size();
+    preprocess_tile_order_.tiles_.clear();
+    memory_used_for_coords_total_ -= sizeof(ResultTileId) * num_tiles;
   }
 }
 
