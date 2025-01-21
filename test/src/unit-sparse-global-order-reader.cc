@@ -1303,6 +1303,13 @@ TEST_CASE_METHOD(
     doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
   }
 
+  SECTION("Shrink") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        2, 1, 1, {templates::Domain<int>(1, 1)});
+    doit.operator()<tiledb::test::AsserterCatch>(
+        2, 1, 1, {templates::Domain<int>(1, 2)});
+  }
+
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck fragment skew", [doit]() {
       const size_t fragment_size = *rc::gen::inRange(2, 200);
