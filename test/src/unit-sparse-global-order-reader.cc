@@ -1753,7 +1753,7 @@ TEST_CASE_METHOD(
       instance.fragments.push_back(fpoint);
     }
 
-    run<AsserterCatch, FxRun2D>(instance);
+    run<Asserter, FxRun2D>(instance);
   };
 
   SECTION("Example") {
