@@ -143,7 +143,7 @@ const PreprocessTileOrder& SparseIndexReaderBase::preprocess_tile_order()
 }
 
 void SparseIndexReaderBase::set_preprocess_tile_order_cursor(
-    uint64_t, uint64_t) {
+    uint64_t, std::vector<ResultTileId>) {
   throw SparseIndexReaderBaseException(
       "Internal error: set_preprocess_tile_order_cursor for unsupported sparse "
       "index reader");

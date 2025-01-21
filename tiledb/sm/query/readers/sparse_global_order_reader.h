@@ -138,7 +138,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /** Used in deserialization */
   virtual void set_preprocess_tile_order_cursor(
-      uint64_t cursor, uint64_t num_tiles) override;
+      uint64_t cursor, std::vector<ResultTileId> tiles) override;
 
  private:
   /* ********************************* */

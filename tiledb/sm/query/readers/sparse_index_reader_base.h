@@ -303,14 +303,8 @@ struct PreprocessTileOrder {
   size_t cursor_;
   std::vector<ResultTileId> tiles_;
 
-  // NB: looks redundant with tiles_.size() but
-  // we need to mark completeness without using tiles_ because:
-  // 1) for REST tiles_ is not serialized
-  // 2) tiles_ is cleared to release memory once it is done
-  size_t num_tiles_;
-
   bool has_more_tiles() const {
-    return enabled_ && cursor_ < num_tiles_;
+    return enabled_ && cursor_ < tiles_.size();
   }
 };
 
@@ -635,7 +629,7 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param cursor New cursor value.
    */
   virtual void set_preprocess_tile_order_cursor(
-      uint64_t cursor, uint64_t num_tiles);
+      uint64_t cursor, std::vector<ResultTileId> tiles);
 
  protected:
   /* ********************************* */
