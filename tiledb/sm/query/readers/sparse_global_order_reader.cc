@@ -179,7 +179,6 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
       array_schema_.cell_order() != Layout::HILBERT &&
       0 < preprocess_tile_merge_min_items.value_or(0);
   preprocess_tile_order_.cursor_ = 0;
-  preprocess_tile_order_.num_tiles_ = 1;  // will be adjusted later if needed
 
   if (!preprocess_tile_order_.enabled_) {
     per_fragment_memory_state_.memory_used_for_coords_.resize(
@@ -200,7 +199,10 @@ bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
   } else if (preprocess_tile_order_.has_more_tiles()) {
     return false;
   } else {
-    return memory_used_for_coords_total_ != 0;
+    [[maybe_unused]] const size_t mem_for_tile_order =
+        sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
+    assert(memory_used_for_coords_total_ >= mem_for_tile_order);
+    return memory_used_for_coords_total_ > mem_for_tile_order;
   }
 }
 
@@ -222,13 +224,13 @@ void SparseGlobalOrderReader<BitmapType>::refresh_config() {
 
 template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::set_preprocess_tile_order_cursor(
-    uint64_t cursor, uint64_t num_tiles) {
+    uint64_t cursor, std::vector<ResultTileId> tiles) {
   preprocess_tile_order_.enabled_ = true;
   preprocess_tile_order_.cursor_ = cursor;
-  preprocess_tile_order_.num_tiles_ = num_tiles;
+  preprocess_tile_order_.tiles_ = tiles;
 
-  // The tile order itself will be recomputed if needed.
-  // We get smaller messages but at a higher CPU cost.
+  memory_used_for_coords_total_ +=
+      sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
 }
 
 template <class BitmapType>
@@ -263,14 +265,18 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   std::optional<PreprocessTileMergeFuture> preprocess_future;
   if (preprocess_tile_order_.enabled_ &&
       preprocess_tile_order_.tiles_.empty()) {
-    // For native, this only happens in the first dowork(), then the merged
-    // tile list remains in memory.
-    // For REST, this happens in each submit() call. We assume that the merge
-    // is cheaper than serializing the list. This is necessary even if
-    // `preprocess_tile_order_.cursor_ == preprocess_tile_order_num_tiles_`
-    // because we need to keep track of partially-used result tiles.
+    // For native, this should only happen in the first `tiledb_query_submit`,
+    // then the merged list remains in memory until the end is reached.
+    // For REST, this happens in the first `submit` call; then the tiles
+    // are serialized back and forth; and then this happens again once the
+    // end of the list is reached (at which point it is cleared), if more
+    // iterations are needed.
     preprocess_future.emplace(memory_used_for_coords_total_);
     preprocess_compute_result_tile_order(preprocess_future.value());
+  } else if (preprocess_tile_order_.enabled_) {
+    // NB: we could have avoided loading these in the first place
+    // since we already have determined which tiles qualify, and their order
+    tmp_read_state_.clear_tile_ranges();
   }
 
   purge_deletes_consolidation_ = !deletes_consolidation_no_purge_ &&
@@ -713,7 +719,6 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
   }
 
   /* then do parallel merge */
-  preprocess_tile_order_.num_tiles_ = num_result_tiles;
   preprocess_tile_order_.tiles_.resize(
       num_result_tiles, ResultTileId{.fragment_idx_ = 0, .tile_idx_ = 0});
 
@@ -1000,13 +1005,16 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
     // check if we have any un-exhausted result tiles.
     const auto& rtcursors = read_state_.frag_idx();
 
-    for (const auto& f : subarray_.relevant_fragments()) {
-      if (merge_future.has_value()) {
-        const bool wait_ok =
-            merge_future->wait_for(preprocess_tile_order_.cursor_);
-        assert(wait_ok);
+    if (merge_future.has_value()) {
+      const bool wait_ok =
+          merge_future->wait_for(preprocess_tile_order_.cursor_);
+      if (!wait_ok) {
+        throw SparseGlobalOrderReaderInternalError(
+            "Waiting for preprocess tile merge results failed");
       }
+    }
 
+    for (const auto& f : subarray_.relevant_fragments()) {
       // identify the tiles in reverse global order
       std::vector<size_t> rts;
       for (size_t rti = preprocess_tile_order_.cursor_; rti > 0; --rti) {
@@ -1132,7 +1140,7 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
     if (!tmp_read_state_.all_tiles_loaded(f)) {
       bool all_tiles_loaded = true;
       for (uint64_t ri = preprocess_tile_order_.cursor_;
-           all_tiles_loaded && ri < preprocess_tile_order_.num_tiles_;
+           all_tiles_loaded && ri < preprocess_tile_order_.tiles_.size();
            ri++) {
         const auto& tile = preprocess_tile_order_.tiles_[ri];
         if (tile.fragment_idx_ == f) {
@@ -1144,13 +1152,6 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
         tmp_read_state_.set_all_tiles_loaded(f);
       }
     }
-  }
-
-  if (!preprocess_tile_order_.has_more_tiles()) {
-    // NB: merge must have completed for this condition to be satisfied
-    const auto num_tiles = preprocess_tile_order_.tiles_.size();
-    preprocess_tile_order_.tiles_.clear();
-    memory_used_for_coords_total_ -= sizeof(ResultTileId) * num_tiles;
   }
 }
 
@@ -1626,7 +1627,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
     if (any_pending_fragments) {
       for (uint64_t rt = preprocess_tile_order_.cursor_;
-           rt < preprocess_tile_order_.num_tiles_;
+           rt < preprocess_tile_order_.tiles_.size();
            rt++) {
         const auto frt = preprocess_tile_order_.tiles_[rt].fragment_idx_;
         if (has_pending_tiles(frt)) {
@@ -2965,7 +2966,13 @@ void SparseGlobalOrderReader<BitmapType>::end_iteration(
       }));
 
   if (!incomplete()) {
-    assert(memory_used_for_coords_total_ == 0);
+    if (preprocess_tile_order_.enabled_) {
+      [[maybe_unused]] const size_t mem_for_tile_order =
+          sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
+      assert(memory_used_for_coords_total_ == mem_for_tile_order);
+    } else {
+      assert(memory_used_for_coords_total_ == 0);
+    }
     assert(tmp_read_state_.memory_used_tile_ranges() == 0);
   }
 

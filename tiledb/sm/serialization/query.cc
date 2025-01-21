@@ -935,9 +935,16 @@ Status index_reader_to_capnp(
 
   // Tile order
   if (reader.preprocess_tile_order().enabled_) {
+    const auto& pstate = reader.preprocess_tile_order();
+
     auto preprocess = reader_builder->initPreprocess();
     preprocess.setCursor(reader.preprocess_tile_order().cursor_);
-    preprocess.setNumTiles(reader.preprocess_tile_order().num_tiles_);
+
+    auto tiles = preprocess.initTiles(pstate.tiles_.size());
+    for (size_t t = 0; t < pstate.tiles_.size(); t++) {
+      tiles[t].setFragIdx(pstate.tiles_[t].fragment_idx_);
+      tiles[t].setTileIdx(pstate.tiles_[t].tile_idx_);
+    }
   }
 
   return Status::Ok();
@@ -1174,9 +1181,15 @@ Status index_reader_from_capnp(
   }
 
   if (reader_reader.hasPreprocess()) {
-    reader->set_preprocess_tile_order_cursor(
-        reader_reader.getPreprocess().getCursor(),
-        reader_reader.getPreprocess().getNumTiles());
+    const auto& preproc = reader_reader.getPreprocess();
+    std::vector<ResultTileId> tiles(preproc.getTiles().size());
+    for (size_t t = 0; t < preproc.getTiles().size(); t++) {
+      tiles[t] = ResultTileId{
+          .fragment_idx_ = preproc.getTiles()[t].getFragIdx(),
+          .tile_idx_ = preproc.getTiles()[t].getTileIdx(),
+      };
+    }
+    reader->set_preprocess_tile_order_cursor(preproc.getCursor(), tiles);
   }
 
   return Status::Ok();

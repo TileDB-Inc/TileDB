@@ -670,6 +670,16 @@ struct Delete {
   # Stats object
 }
 
+struct ResultTileId {
+# Identifies a tile
+
+  fragIdx @0 :UInt32;
+  # Fragment index
+
+  tileIdx @1 :UInt64;
+  # Tile index
+}
+
 struct ResultCellSlab {
 # Result cell slab
 
@@ -713,8 +723,8 @@ struct PreprocessTileOrder {
   cursor @0 :UInt64;
   # Position in the preprocess tile order list.
 
-  numTiles @1 :UInt64;
-  # Number of total tiles in the preprocess tile order list.
+  tiles @1 :List(ResultTileId);
+  # List of tiles arranged in the order they must be opened
 }
 
 struct ReaderIndex {
