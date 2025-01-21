@@ -1181,7 +1181,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     IncompleteFx,
-    "C API: Test incomplete read queries, sparse",
+    "C API: Test incomplete read queries, sparse force retry",
     "[capi][incomplete][sparse][retries][sc-49128][rest]") {
   // This test is testing CURL logic and only makes sense on REST-CI
   if (!vfs_test_setup_.is_rest()) {
