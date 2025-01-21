@@ -41,7 +41,24 @@
  * `CATCH_TEST_MACROS_HPP_INCLUDED`
  * which is the bridge between v2 and v3 compatibility for <rapidcheck/catch.h>
  */
+#include <test/support/stdx/optional.h>
 #include <test/support/tdb_catch.h>
+
+// forward declarations of `showValue` overloads
+// (these must be declared prior to including `rapidcheck/Show.hpp` for some
+// reason)
+namespace rc {
+namespace detail {
+
+/**
+ * Specializes `show` for `std::optional<T>` to print the final test case after
+ * shrinking
+ */
+template <stdx::is_optional_v T>
+void showValue(const T& value, std::ostream& os);
+
+}  // namespace detail
+}  // namespace rc
 
 #include <rapidcheck.h>
 #include <rapidcheck/catch.h>
@@ -85,6 +102,22 @@ struct Arbitrary<NonShrinking<T>> {
         [](T inner) { return NonShrinking<T>(std::move(inner)); }, inner);
   }
 };
+
+namespace detail {
+
+template <stdx::is_optional_v T>
+void showValue(const T& value, std::ostream& os) {
+  if (value.has_value()) {
+    os << "Some(";
+    show<typename T::value_type>(value.value(), os);
+    os << ")";
+  } else {
+    os << "None";
+  }
+}
+
+}  // namespace detail
+
 }  // namespace rc
 
 #endif  // TILEDB_MISC_TDB_RAPIDCHECK_H
