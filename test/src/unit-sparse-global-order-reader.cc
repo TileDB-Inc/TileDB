@@ -1303,7 +1303,7 @@ TEST_CASE_METHOD(
     doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
   }
 
-  SECTION("Shrink") {
+  SECTION("Shrink", "Some examples found by rapidcheck") {
     doit.operator()<tiledb::test::AsserterCatch>(
         2, 1, 1, {templates::Domain<int>(1, 1)});
     doit.operator()<tiledb::test::AsserterCatch>(
@@ -1759,6 +1759,18 @@ TEST_CASE_METHOD(
   SECTION("Example") {
     doit.operator()<tiledb::test::AsserterCatch>(
         TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 1024, 1, 4, false);
+  }
+
+  SECTION("Shrink", "Some examples found by rapidcheck") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        2,
+        9,
+        1,
+        2,
+        false,
+        {std::make_pair(templates::Domain<int>(2, 2), std::nullopt)});
   }
 
   SECTION("Rapidcheck") {
