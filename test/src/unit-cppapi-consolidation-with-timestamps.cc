@@ -636,7 +636,7 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "65000");
+  cfg.set("sm.mem.total_budget", "50000");
   cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.15");
   ctx_ = Context(cfg);
 

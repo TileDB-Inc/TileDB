@@ -329,13 +329,14 @@ class FilteredData {
   /* ********************************* */
 
   /**
-   * Get the fixed filtered data for the result tile.
+   * Get a pointer to the fixed filtered data for the result tile and a future
+   * which signals when the data is valid.
    *
    * @param fragment Fragment metadata for the tile.
    * @param rt Result tile.
    * @return Fixed filtered data pointer.
    */
-  inline std::tuple<void*, ThreadPool::SharedTask> fixed_filtered_data(
+  inline std::pair<void*, ThreadPool::SharedTask> fixed_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     auto offset{
         fragment->loaded_metadata()->file_offset(name_, rt->tile_idx())};
@@ -346,13 +347,13 @@ class FilteredData {
   }
 
   /**
-   * Get the var filtered data for the result tile.
-   *
+   * Get a pointer to the var filtered data for the result tile and a future
+   * which signals when the data is valid.   *
    * @param fragment Fragment metadata for the tile.
    * @param rt Result tile.
    * @return Var filtered data pointer.
    */
-  inline std::tuple<void*, ThreadPool::SharedTask> var_filtered_data(
+  inline std::pair<void*, ThreadPool::SharedTask> var_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!var_sized_) {
       return {nullptr, ThreadPool::SharedTask()};
@@ -367,13 +368,14 @@ class FilteredData {
   }
 
   /**
-   * Get the nullable filtered data for the result tile.
+   * Get a pointer to the nullable filtered data for the result tile and a
+   * future which signals when the data is valid.
    *
    * @param fragment Fragment metadata for the tile.
    * @param rt Result tile.
    * @return Nullable filtered data pointer.
    */
-  inline std::tuple<void*, ThreadPool::SharedTask> nullable_filtered_data(
+  inline std::pair<void*, ThreadPool::SharedTask> nullable_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!nullable_) {
       return {nullptr, ThreadPool::SharedTask()};

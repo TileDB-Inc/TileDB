@@ -71,8 +71,7 @@ shared_ptr<Tile> Tile::from_generic(
       nullptr,
       0,
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
-      ThreadPool::SharedTask(),
-      nullptr);
+      ThreadPool::SharedTask());
 }
 
 shared_ptr<WriterTile> WriterTile::from_generic(
@@ -110,15 +109,13 @@ TileBase::TileBase(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    tdb::pmr::memory_resource* resource,
-    const bool skip_waiting_on_io_task)
+    tdb::pmr::memory_resource* resource)
     : resource_(resource)
     , data_(tdb::pmr::make_unique<std::byte>(resource_, size))
     , size_(size)
     , cell_size_(cell_size)
     , format_version_(format_version)
-    , type_(type)
-    , skip_waiting_on_io_task_(skip_waiting_on_io_task) {
+    , type_(type) {
   /*
    * We can check for a bad allocation after initialization without risk
    * because none of the other member variables use its value for their own
@@ -139,7 +136,7 @@ Tile::Tile(
     uint64_t filtered_size,
     shared_ptr<MemoryTracker> memory_tracker,
     ThreadPool::SharedTask data_io_task,
-    shared_ptr<FilteredData> filtered_data_block)
+    const bool skip_waiting_on_io_task)
     : Tile(
           format_version,
           type,
@@ -150,7 +147,7 @@ Tile::Tile(
           filtered_size,
           memory_tracker->get_resource(MemoryType::TILE_DATA),
           std::move(data_io_task),
-          std::move(filtered_data_block)) {
+          skip_waiting_on_io_task) {
 }
 
 Tile::Tile(
@@ -163,19 +160,13 @@ Tile::Tile(
     uint64_t filtered_size,
     tdb::pmr::memory_resource* resource,
     ThreadPool::SharedTask filtered_data_io_task,
-    shared_ptr<FilteredData> filtered_data_block)
-    : TileBase(
-          format_version,
-          type,
-          cell_size,
-          size,
-          resource,
-          filtered_data_block == nullptr)
+    const bool skip_waiting_on_io_task)
+    : TileBase(format_version, type, cell_size, size, resource)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
     , filtered_size_(filtered_size)
     , filtered_data_io_task_(std::move(filtered_data_io_task))
-    , filtered_data_block_(std::move(filtered_data_block)) {
+    , skip_waiting_on_io_task_(skip_waiting_on_io_task) {
 }
 
 WriterTile::WriterTile(
@@ -189,8 +180,7 @@ WriterTile::WriterTile(
           type,
           cell_size,
           size,
-          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA),
-          true)
+          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
     , filtered_buffer_(0) {
 }
 
@@ -200,7 +190,7 @@ WriterTile::WriterTile(
     const uint64_t cell_size,
     const uint64_t size,
     tdb::pmr::memory_resource* resource)
-    : TileBase(format_version, type, cell_size, size, resource, true)
+    : TileBase(format_version, type, cell_size, size, resource)
     , filtered_buffer_(0) {
 }
 
@@ -210,14 +200,6 @@ WriterTile::WriterTile(
 
 void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
-  if (!skip_waiting_on_io_task_) {
-    if (unfilter_data_compute_task_.valid()) {
-      throw_if_not_ok(unfilter_data_compute_task_.wait());
-    } else {
-      throw std::future_error(std::future_errc::no_state);
-    }
-  }
-
   if (nbytes > size_ - offset) {
     throw TileException("Read tile overflow; may not read beyond buffer size");
   }
@@ -279,11 +261,6 @@ void WriterTile::clear_data() {
   size_ = 0;
 }
 
-void Tile::set_unfilter_data_compute_task(
-    ThreadPool::SharedTask unfilter_data_compute_task) {
-  unfilter_data_compute_task_ = std::move(unfilter_data_compute_task);
-}
-
 void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
   if (size_ - offset < nbytes) {
     auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
@@ -311,8 +288,16 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
 
 uint64_t Tile::load_chunk_data(
     ChunkData& unfiltered_tile, uint64_t expected_original_size) {
-  std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
   assert(filtered());
+
+  if (!skip_waiting_on_io_task_) {
+    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+    if (filtered_data_io_task_.valid()) {
+      throw_if_not_ok(filtered_data_io_task_.wait());
+    } else {
+      throw std::future_error(std::future_errc::no_state);
+    }
+  }
 
   Deserializer deserializer(filtered_data(), filtered_size());
 

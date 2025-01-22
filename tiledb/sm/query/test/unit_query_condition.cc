@@ -1631,8 +1631,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -1694,8 +1693,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -1814,8 +1812,7 @@ TEST_CASE(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2360,8 +2357,7 @@ void test_apply_dense<char*>(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2423,8 +2419,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2542,8 +2537,7 @@ TEST_CASE(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -3081,8 +3075,7 @@ void test_apply_sparse<char*>(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -3144,8 +3137,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -3927,8 +3919,7 @@ TEST_CASE(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4223,8 +4214,7 @@ TEST_CASE(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4645,8 +4635,7 @@ TEST_CASE(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4914,8 +4903,7 @@ TEST_CASE(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -5024,8 +5012,7 @@ TEST_CASE(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
