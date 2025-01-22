@@ -62,30 +62,18 @@ class TileBase {
    * @param cell_size The cell size.
    * @param size The size of the tile.
    * @param resource The memory resource to use.
-   * @param skip_waiting_on_io_task whether to skip waiting on I/O tasks and
-   * directly access data() or block. By default is false, so by default we
-   * block waiting. Used when we create generic tiles or in testing.
    */
   TileBase(
       const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      tdb::pmr::memory_resource* resource,
-      const bool skip_waiting_on_io_task = false);
+      tdb::pmr::memory_resource* resource);
 
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
 
-  virtual ~TileBase() {
-    if (unfilter_data_compute_task_.valid()) {
-      try {
-        auto st = unfilter_data_compute_task_.wait();
-      } catch (...) {
-        return;
-      }
-    }
-  }
+  virtual ~TileBase() = default;
 
   /* ********************************* */
   /*                API                */
@@ -125,14 +113,6 @@ class TileBase {
 
   /** Returns the internal buffer. */
   inline void* data() const {
-    if (!skip_waiting_on_io_task_) {
-      if (unfilter_data_compute_task_.valid()) {
-        throw_if_not_ok(unfilter_data_compute_task_.wait());
-      } else {
-        throw std::future_error(std::future_errc::no_state);
-      }
-    }
-
     return data_.get();
   }
 
@@ -201,14 +181,6 @@ class TileBase {
 
   /** The tile data type. */
   Datatype type_;
-
-  /**
-   * Whether to block waiting for io data to be ready before accessing data()
-   */
-  const bool skip_waiting_on_io_task_;
-
-  /** Compute task to check and block on if unfiltered data is ready. */
-  mutable ThreadPool::SharedTask unfilter_data_compute_task_;
 };
 
 /**
@@ -242,8 +214,9 @@ class Tile : public TileBase {
    * @param filtered_size The filtered size to allocate.
    * @param memory_tracker The memory resource to use.
    * @param filtered_data_io_task The I/O task to wait on for data to be valid.
-   * @param filtered_data_block The FilteredData block class which backs the
-   * memory for this filtered tile.
+   * @param skip_waiting_on_io_task whether to skip waiting on I/O tasks and
+   * directly access data() or block. By default is false, so by default we
+   * block waiting. Used when we create generic tiles or in testing.
    */
   Tile(
       const format_version_t format_version,
@@ -255,7 +228,7 @@ class Tile : public TileBase {
       uint64_t filtered_size,
       shared_ptr<MemoryTracker> memory_tracker,
       ThreadPool::SharedTask filtered_data_io_task,
-      shared_ptr<FilteredData> filtered_data_block);
+      const bool skip_waiting_on_io_task = false);
 
   /**
    * Constructor.
@@ -270,8 +243,9 @@ class Tile : public TileBase {
    * @param filtered_size The filtered size to allocate.
    * @param resource The memory resource to use.
    * @param filtered_data_io_task The I/O task to wait on for data to be valid.
-   * @param filtered_data_block The FilteredData block class which backs the
-   * memory for this filtered tile.
+   * @param skip_waiting_on_io_task whether to skip waiting on I/O tasks and
+   * directly access data() or block. By default is false, so by default we
+   * block waiting. Used when we create generic tiles or in testing.
    */
   Tile(
       const format_version_t format_version,
@@ -283,20 +257,12 @@ class Tile : public TileBase {
       uint64_t filtered_size,
       tdb::pmr::memory_resource* resource,
       ThreadPool::SharedTask filtered_data_io_task,
-      shared_ptr<FilteredData> filtered_data_block);
+      const bool skip_waiting_on_io_task = false);
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
 
-  ~Tile() {
-    if (unfilter_data_compute_task_.valid()) {
-      try {
-        auto st = unfilter_data_compute_task_.wait();
-      } catch (...) {
-        return;
-      }
-    }
-  }
+  ~Tile() = default;
 
   /* ********************************* */
   /*                API                */
@@ -323,8 +289,7 @@ class Tile : public TileBase {
 
   /** Returns the buffer that contains the filtered, on-disk format. */
   inline char* filtered_data() {
-    // if an i/o task has been launched
-    if (filtered_data_block_ != nullptr) {
+    if (!skip_waiting_on_io_task_) {
       std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
       if (filtered_data_io_task_.valid()) {
         throw_if_not_ok(filtered_data_io_task_.wait());
@@ -332,21 +297,17 @@ class Tile : public TileBase {
         throw std::future_error(std::future_errc::no_state);
       }
     }
-
     return static_cast<char*>(filtered_data_);
   }
 
   /** Returns the data casted as a type. */
   template <class T>
   inline T* filtered_data_as() {
-    // if an i/o task has been launched
-    if (filtered_data_block_ != nullptr) {
-      std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-      if (filtered_data_io_task_.valid()) {
-        throw_if_not_ok(filtered_data_io_task_.wait());
-      } else {
-        throw std::future_error(std::future_errc::no_state);
-      }
+    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+    if (filtered_data_io_task_.valid()) {
+      throw_if_not_ok(filtered_data_io_task_.wait());
+    } else {
+      throw std::future_error(std::future_errc::no_state);
     }
 
     return static_cast<T*>(filtered_data_);
@@ -354,7 +315,7 @@ class Tile : public TileBase {
 
   /** Clears the filtered buffer. */
   void clear_filtered_buffer() {
-    if (filtered_data_block_ != nullptr) {
+    if (!skip_waiting_on_io_task_) {
       std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
       if (filtered_data_io_task_.valid()) {
         throw_if_not_ok(filtered_data_io_task_.wait());
@@ -365,7 +326,6 @@ class Tile : public TileBase {
 
     filtered_data_ = nullptr;
     filtered_size_ = 0;
-    filtered_data_block_ = nullptr;
   }
 
   /**
@@ -401,14 +361,6 @@ class Tile : public TileBase {
    * @return Original size.
    */
   uint64_t load_offsets_chunk_data(ChunkData& chunk_data);
-
-  /**
-   * Set task for filter pipeline unfiltering to allow async monitoring
-   *
-   * @param unfilter_data_compute_task task for unfiltering
-   */
-  void set_unfilter_data_compute_task(
-      ThreadPool::SharedTask unfilter_data_compute_task);
 
  private:
   /* ********************************* */
@@ -478,10 +430,9 @@ class Tile : public TileBase {
   mutable std::recursive_mutex filtered_data_io_task_mtx_;
 
   /**
-   * shared_ptr to the FilteredData class that backs this tile. We keep a shared
-   * pointer to maintain the lifetime.
+   * Whether to block waiting for io data to be ready before accessing data()
    */
-  shared_ptr<FilteredData> filtered_data_block_;
+  const bool skip_waiting_on_io_task_;
 };
 
 /**

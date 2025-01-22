@@ -216,8 +216,7 @@ TEST_CASE_METHOD(
     ResultTile::TileData tile_data{
         {nullptr, ThreadPool::SharedTask()},
         {nullptr, ThreadPool::SharedTask()},
-        {nullptr, ThreadPool::SharedTask()},
-        nullptr};
+        {nullptr, ThreadPool::SharedTask()}};
     rt.init_coord_tile(
         constants::format_version,
         array_schema,
@@ -237,8 +236,7 @@ TEST_CASE_METHOD(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   rt.init_coord_tile(
       constants::format_version,
       array_schema,
@@ -337,8 +335,7 @@ TEST_CASE_METHOD(
     ResultTile::TileData tile_data{
         {nullptr, ThreadPool::SharedTask()},
         {nullptr, ThreadPool::SharedTask()},
-        {nullptr, ThreadPool::SharedTask()},
-        nullptr};
+        {nullptr, ThreadPool::SharedTask()}};
     rt.init_coord_tile(
         constants::format_version,
         array_schema,
@@ -358,8 +355,7 @@ TEST_CASE_METHOD(
   ResultTile::TileData tile_data{
       {nullptr, ThreadPool::SharedTask()},
       {nullptr, ThreadPool::SharedTask()},
-      {nullptr, ThreadPool::SharedTask()},
-      nullptr};
+      {nullptr, ThreadPool::SharedTask()}};
   rt.init_coord_tile(
       constants::format_version,
       array_schema,
