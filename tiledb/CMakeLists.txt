@@ -279,6 +279,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/writer_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query_plan/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_capabilities.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_directory.cc

@@ -106,30 +106,36 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
   }
 }
 
-TEST_CASE("C++ API: Test REST version endpoint", "[cppapi][rest][version]") {
+TEST_CASE("REST version endpoint", "[rest][version]") {
   tiledb::test::VFSTestSetup vfs_test_setup;
   tiledb::Config config;
   std::string serialization_format = GENERATE("JSON", "CAPNP");
   config["rest.server_serialization_format"] = serialization_format;
-  config["rest.server_address"] = "http://127.0.0.1:8181";
 
+  tiledb::sm::RestClient::TileDBVersion expected_version(tiledb::version());
   // Only run these tests if the rest client has been initialized
   if (vfs_test_setup.is_rest()) {
-    // Update the config in each section so that we always have a fresh Context.
-    // Otherwise, the JSON test will initialize rest_tiledb_version_ for CAPNP.
     DYNAMIC_SECTION(
         "GET request to retrieve REST tiledb version - "
         << serialization_format) {
       vfs_test_setup.update_config(config.ptr().get());
       auto ctx = vfs_test_setup.ctx();
-      REQUIRE(ctx.ptr()->rest_client().get_rest_version() == "2.28.0");
+      tiledb::sm::RestCapabilities expected_capabilities(
+          expected_version,
+          {expected_version.major_ - 1,
+           expected_version.minor_,
+           expected_version.patch_});
+      auto actual_capabilities =
+          ctx.ptr()->rest_client().get_capabilities_from_rest();
+      REQUIRE(expected_capabilities == actual_capabilities);
     }
     DYNAMIC_SECTION(
         "Initialization of rest_tiledb_version_ on first access - "
         << serialization_format) {
       vfs_test_setup.update_config(config.ptr().get());
       auto ctx = vfs_test_setup.ctx();
-      REQUIRE(ctx.ptr()->rest_client().rest_version() == "2.28.0");
+
+      REQUIRE(ctx.ptr()->rest_client().rest_version() == expected_version);
     }
   }
 }

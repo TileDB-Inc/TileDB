@@ -41,6 +41,7 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class RestCapabilities;
 class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
@@ -48,29 +49,19 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-void rest_version_to_capnp(
-    Context* ctx, capnp::RestVersion::Builder* rest_version_builder);
-
-std::string rest_version_from_capnp(
-    const capnp::RestVersion::Reader& rest_version_reader);
-
-void rest_version_serialize(
-    Context* ctx,
-    SerializationType serialize_type,
-    SerializationBuffer& serialized_buffer);
-
-std::string rest_version_deserialize(
+RestCapabilities rest_version_deserialize(
     SerializationType serialization_type, span<const char> serialized_response);
+
+RestCapabilities rest_version_from_capnp(
+    const capnp::RestVersion::Reader& rest_version_reader);
 
 #else
 
-void rest_version_to_capnp(Context*, capnp::RestVersion::Builder*);
+RestCapabilities rest_version_deserialize(
+    SerializationType serialization_type, span<const char> serialized_response);
 
-void rest_version_from_capnp(const capnp::RestVersion::Reader&);
-
-void rest_version_serialize(Context*, SerializationType, SerializationBuffer&);
-
-std::string rest_version_deserialize(SerializationType, span<const char>);
+RestCapabilities rest_version_from_capnp(
+    const capnp::RestVersion::Reader& rest_version_reader);
 
 #endif  // TILEDB_SERIALIZATION
 

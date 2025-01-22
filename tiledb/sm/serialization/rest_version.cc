@@ -68,69 +68,7 @@ class RestVersionSerializationDisabledException
 
 #ifdef TILEDB_SERIALIZATION
 
-void rest_version_to_capnp(
-    Context* ctx, capnp::RestVersion::Builder* rest_version_builder) {
-  if (ctx->has_rest_client()) {
-    // The REST version is initialized in the RestClientRemote constructor.
-    rest_version_builder->setTiledbVersion(
-        static_cast<RestClientRemote&>(ctx->rest_client()).rest_version());
-  } else {
-    // We should not hit this case, if TILEDB_SERIALIZATION is enabled there
-    // will be a rest client attached to ContextResources.
-    throw RestVersionSerializationException(
-        "Cannot serialize REST version with no initialized RESTClient.");
-  }
-}
-
-std::string rest_version_from_capnp(
-    const capnp::RestVersion::Reader& rest_version_reader) {
-  if (rest_version_reader.hasTiledbVersion()) {
-    return rest_version_reader.getTiledbVersion();
-  }
-  // TODO: What is best to return here?
-  return "2.X.0";
-}
-
-void rest_version_serialize(
-    Context* ctx,
-    SerializationType serialize_type,
-    SerializationBuffer& serialized_buffer) {
-  try {
-    ::capnp::MallocMessageBuilder message;
-    capnp::RestVersion::Builder RestVersionBuilder =
-        message.initRoot<capnp::RestVersion>();
-    rest_version_to_capnp(ctx, &RestVersionBuilder);
-
-    switch (serialize_type) {
-      case SerializationType::JSON: {
-        ::capnp::JsonCodec json;
-        kj::String capnp_json = json.encode(RestVersionBuilder);
-        serialized_buffer.assign(capnp_json);
-        break;
-      }
-      case SerializationType::CAPNP: {
-        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
-        serialized_buffer.assign(protomessage.asChars());
-        break;
-      }
-      default: {
-        throw RestVersionSerializationException(
-            "Error serializing REST version; Unknown serialization type "
-            "passed");
-      }
-    }
-
-  } catch (kj::Exception& e) {
-    throw RestVersionSerializationException(
-        "Error serializing REST version; kj::Exception: " +
-        std::string(e.getDescription().cStr()));
-  } catch (std::exception& e) {
-    throw RestVersionSerializationException(
-        "Error serializing REST version; exception " + std::string(e.what()));
-  }
-}
-
-std::string rest_version_deserialize(
+RestCapabilities rest_version_deserialize(
     SerializationType serialization_type,
     span<const char> serialized_response) {
   try {
@@ -171,21 +109,32 @@ std::string rest_version_deserialize(
   }
 }
 
+RestCapabilities rest_version_from_capnp(
+    const capnp::RestVersion::Reader& rest_version_reader) {
+  RestClient::TileDBVersion rest_version{}, rest_minimum_version{};
+  if (rest_version_reader.hasDeployedTileDBVersion()) {
+    auto version_reader = rest_version_reader.getDeployedTileDBVersion();
+    rest_version.major_ = version_reader.getMajor();
+    rest_version.minor_ = version_reader.getMinor();
+    rest_version.patch_ = version_reader.getPatch();
+  }
+  if (rest_version_reader.hasMinimumSupportedTileDBVersion()) {
+    auto version_reader =
+        rest_version_reader.getMinimumSupportedTileDBVersion();
+    rest_minimum_version.major_ = version_reader.getMajor();
+    rest_minimum_version.minor_ = version_reader.getMinor();
+    rest_minimum_version.patch_ = version_reader.getPatch();
+  }
+  return {rest_version, rest_minimum_version};
+}
+
 #else
 
-void rest_version_to_capnp(Context*, capnp::RestVersion::Builder*) {
+RestCapabilities rest_version_deserialize(SerializationType, span<const char>) {
   throw RestVersionSerializationDisabledException();
 }
 
-void rest_version_from_capnp(const capnp::RestVersion::Reader&) {
-  throw RestVersionSerializationDisabledException();
-}
-
-void rest_version_serialize(Context*, SerializationType, SerializationBuffer&) {
-  throw RestVersionSerializationDisabledException();
-}
-
-std::string rest_version_deserialize(SerializationType, span<const char>) {
+RestCapabilities rest_version_from_capnp(const capnp::RestVersion::Reader&) {
   throw RestVersionSerializationDisabledException();
 }
 

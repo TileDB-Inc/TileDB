@@ -74,6 +74,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
+#include "tiledb/sm/rest/rest_capabilities.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/type/apply_with_type.h"
 
@@ -118,11 +119,18 @@ class RestClientRemote : public RestClient {
    * */
   static bool use_refactored_query(const Config& config);
 
-  inline const std::string& rest_version() override {
-    if (rest_tiledb_version_.empty()) {
-      rest_tiledb_version_ = get_rest_version();
-    }
-    return rest_tiledb_version_;
+  /**
+   * @return TileDB core version currently deployed to the REST server.
+   */
+  inline const TileDBVersion& rest_version() override {
+    return get_capabilities_from_rest().rest_tiledb_version_;
+  }
+
+  /**
+   * @return Minimum TileDB core version currently supported by the REST server.
+   */
+  inline const TileDBVersion& rest_minimum_supported_version() override {
+    return get_capabilities_from_rest().rest_minimum_supported_version_;
   }
 
   /**
@@ -455,7 +463,7 @@ class RestClientRemote : public RestClient {
   /**
    * Get TileDB core version from the REST server.
    */
-  std::string get_rest_version() override;
+  const RestCapabilities& get_capabilities_from_rest() override;
 
  private:
   /* ********************************* */
@@ -500,10 +508,8 @@ class RestClientRemote : public RestClient {
   /** The class MemoryTracker. */
   shared_ptr<MemoryTracker> memory_tracker_;
 
-  /**
-   * Version of TileDB currently in use by REST.
-   */
-  std::string rest_tiledb_version_;
+  /** REST supported TileDB versions and capabilities. */
+  RestCapabilities rest_capabilities_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

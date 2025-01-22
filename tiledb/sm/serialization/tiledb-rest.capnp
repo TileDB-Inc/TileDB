@@ -1392,6 +1392,13 @@ struct ObjectInfoResponse {
   # The object's type (array or group).
 }
 
+struct TileDBVersion {
+    major @0 :UInt16;
+    minor @1 :UInt16;
+    patch @2 :UInt16;
+}
+
 struct RestVersion {
-    tiledbVersion @0 :Text;
+    deployedTileDBVersion @0 :TileDBVersion;
+    minimumSupportedTileDBVersion @1 :TileDBVersion;
 }

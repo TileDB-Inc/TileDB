@@ -213,6 +213,7 @@ class FragmentInfo;
 class MemoryTracker;
 class Query;
 class QueryPlan;
+class RestCapabilities;
 
 // Forward for friend declaration within `class RestClient`
 class RestClientFactory;
@@ -259,6 +260,33 @@ class RestClient {
   std::string rest_server_;
 
  public:
+  struct TileDBVersion {
+    TileDBVersion() = default;
+
+    TileDBVersion(std::tuple<int, int, int> version_tuple)
+        : major_(get<0>(version_tuple))
+        , minor_(get<1>(version_tuple))
+        , patch_(get<2>(version_tuple)) {
+    }
+
+    TileDBVersion(int major, int minor, int patch)
+        : major_(major)
+        , minor_(minor)
+        , patch_(patch) {
+    }
+
+    bool operator==(const TileDBVersion& rhs) const {
+      return major_ == rhs.major_ && minor_ == rhs.minor_ &&
+             patch_ == rhs.patch_;
+    }
+
+    bool operator!=(const TileDBVersion& rhs) const {
+      return !operator==(rhs);
+    }
+
+    uint16_t major_, minor_, patch_;
+  };
+
   RestClient(const Config& config);
 
   virtual ~RestClient() = default;
@@ -294,7 +322,13 @@ class RestClient {
     return rest_server_;
   }
 
-  inline virtual const std::string& rest_version() {
+  /// Operation disabled in base class.
+  inline virtual const TileDBVersion& rest_version() {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual const TileDBVersion& rest_minimum_supported_version() {
     throw RestClientDisabledException();
   }
 
@@ -479,7 +513,8 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
-  inline virtual std::string get_rest_version() {
+  inline virtual const tiledb::sm::RestCapabilities&
+  get_capabilities_from_rest() {
     throw RestClientDisabledException();
   }
 };
