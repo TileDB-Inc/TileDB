@@ -62,23 +62,27 @@
  *       "sm.query.sparse_global_order.preprocess_tile_merge": 128
  *     }
  *   },
- *   "query": {
- *     "layout": "global_order",
- *     "subarray": [
- *       {
- *         "%": 30
- *       }
- *     ]
- *   }
+ *   "queries": [
+ *     {
+ *       "layout": "global_order",
+ *       "subarray": [
+ *         {
+ *           "%": 30
+ *         }
+ *       ]
+ *     }
+ *   ]
  * }
  * ```
  *
  * The paths "a.config" and "b.config" are sets of key-value pairs
  * which are used to configure the "A" and "B" queries respectively.
  *
- * The "query.layout" path is required and sets the results order.
+ * Each item in "queries" specifies a query to run the comparison for.
  *
- * The "query.subarray" path is an optional list of range specifications on
+ * The "layout" field is required and sets the results order.
+ *
+ * The "subarray" path is an optional list of range specifications on
  * each dimension. Currently the only supported specification is
  * an object with a field "%" which adds a subarray range whose
  * bounds cover the specified percent of the non-empty domain
@@ -116,16 +120,33 @@ using json = nlohmann::json;
  * Records durations as reported by `tiledb::sm::stats::DurationInstrument`.
  */
 struct TimeKeeper {
-  std::map<std::string, std::vector<double>> durations;
+  struct StatKey {
+    std::string uri_;
+    std::string qlabel_;
+    bool is_a_;
+  };
 
-  tiledb::sm::stats::DurationInstrument<TimeKeeper> start_timer(
-      const std::string& stat) {
-    return tiledb::sm::stats::DurationInstrument<TimeKeeper>(*this, stat);
+  using Timer = tiledb::sm::stats::DurationInstrument<TimeKeeper, StatKey>;
+
+  std::map<
+      std::string,
+      std::
+          map<std::string, std::pair<std::vector<double>, std::vector<double>>>>
+      durations;
+
+  Timer start_timer(const StatKey& stat) {
+    return tiledb::sm::stats::DurationInstrument<TimeKeeper, StatKey>(
+        *this, stat);
   }
 
   void report_duration(
-      const std::string& stat, const std::chrono::duration<double> duration) {
-    durations[stat].push_back(duration.count());
+      const StatKey& stat, const std::chrono::duration<double> duration) {
+    auto& stats = durations[stat.uri_][stat.qlabel_];
+    if (stat.is_a_) {
+      stats.first.push_back(duration.count());
+    } else {
+      stats.second.push_back(duration.count());
+    }
   }
 
   /**
@@ -134,88 +155,140 @@ struct TimeKeeper {
   void dump_durations(const char* path) const {
     std::ofstream dump(path);
 
-    for (const auto& stat : durations) {
-      dump << stat.first << " = [";
+    json arrays;
 
-      bool is_first = true;
-      for (const auto& duration : stat.second) {
-        if (!is_first) {
-          dump << ", ";
-        } else {
-          is_first = false;
-        }
-        dump << duration;
+    for (const auto& uri : durations) {
+      json array;
+      array["uri"] = uri.first;
+
+      for (const auto& qlabel : uri.second) {
+        const auto& a_durations = qlabel.second.first;
+        const auto& b_durations = qlabel.second.second;
+        const double a_sum =
+            std::accumulate(a_durations.begin(), a_durations.end(), (double)0);
+        const double b_sum =
+            std::accumulate(b_durations.begin(), b_durations.end(), (double)0);
+
+        json a;
+        a["first"] = a_durations[0];
+        a["sum"] = a_sum;
+
+        json b;
+        b["first"] = b_durations[0];
+        b["sum"] = b_sum;
+
+        json run;
+        run["query"] = qlabel.first;
+        run["a"] = a;
+        run["b"] = b;
+
+        array["queries"].push_back(run);
       }
 
-      dump << "]" << std::endl << std::endl;
+      arrays.push_back(array);
     }
+
+    dump << std::setw(4) << arrays << std::endl;
   }
 };
 
-/**
- * Constructs the query using the configuration's common "query" options.
- */
-capi_return_t construct_query(
+capi_return_t shrink_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    tiledb_query_t* query,
-    const json& jq) {
-  const auto layout = jq["layout"].get<std::string>();
-  if (layout == "global_order") {
-    TRY(ctx, tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER));
-  } else if (layout == "row_major") {
-    TRY(ctx, tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
-  } else if (layout == "col_major") {
-    TRY(ctx, tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR));
-  } else if (layout == "unordered") {
-    throw std::runtime_error(
-        "TILEDB_UNORDERED is not implemented; the unstable results order means "
-        "we cannot compare the coordinates from interleaved submits. This can "
-        "be implemented by buffering all of the query results and then sorting "
-        "on the coordinates");
-  } else {
-    throw std::runtime_error("Invalid 'layout' for query: " + layout);
+    unsigned dim,
+    tiledb_subarray_t* subarray,
+    int percent) {
+  // FIXME: make generic
+  int is_empty;
+  int64_t domain[2];
+  RETURN_IF_ERR(tiledb_array_get_non_empty_domain_from_index(
+      ctx, array, dim, &domain[0], &is_empty));
+  if (is_empty) {
+    return TILEDB_OK;
   }
 
-  if (jq.find("subarray") != jq.end()) {
-    tiledb_subarray_t* subarray;
-    RETURN_IF_ERR(tiledb_subarray_alloc(ctx, array, &subarray));
+  const auto span = (domain[1] - domain[0] + 1);
+  domain[0] += ((span * (100 - percent)) / 100) / 2;
+  domain[1] -= ((span * (100 - percent)) / 100) / 2;
 
-    tiledb_array_schema_t* schema;
-    RETURN_IF_ERR(tiledb_array_get_schema(ctx, array, &schema));
+  return tiledb_subarray_add_range(
+      ctx, subarray, dim, &domain[0], &domain[1], 0);
+}
 
-    tiledb_domain_t* domain;
-    RETURN_IF_ERR(tiledb_array_schema_get_domain(ctx, schema, &domain));
+struct QueryConfig {
+  std::string label_;
+  tiledb_layout_t layout_;
+  std::vector<std::optional<int>> subarray_percent_;
 
-    int d = 0;
-    const auto& jsub = jq["subarray"];
-    for (const auto& jdim : jsub) {
-      if (jdim.find("%") != jdim.end()) {
-        const int percent = jdim["%"].get<int>();
+  static QueryConfig from_json(const json& jq) {
+    QueryConfig q;
+    q.label_ = jq["label"].get<std::string>();
 
-        // FIXME: make generic
-        int is_empty;
-        int64_t domain[2];
-        RETURN_IF_ERR(tiledb_array_get_non_empty_domain_from_index(
-            ctx, array, d, &domain[0], &is_empty));
-        if (is_empty) {
-          continue;
-        }
-
-        const auto span = (domain[1] - domain[0] + 1);
-        domain[0] += ((span * (100 - percent)) / 100) / 2;
-        domain[1] -= ((span * (100 - percent)) / 100) / 2;
-
-        RETURN_IF_ERR(tiledb_subarray_add_range(
-            ctx, subarray, d, &domain[0], &domain[1], 0));
-      }
+    const auto layout = jq["layout"].get<std::string>();
+    if (layout == "global_order") {
+      q.layout_ = TILEDB_GLOBAL_ORDER;
+    } else if (layout == "row_major") {
+      q.layout_ = TILEDB_ROW_MAJOR;
+    } else if (layout == "col_major") {
+      q.layout_ = TILEDB_COL_MAJOR;
+    } else if (layout == "unordered") {
+      throw std::runtime_error(
+          "TILEDB_UNORDERED is not implemented; the unstable results order "
+          "means "
+          "we cannot compare the coordinates from interleaved submits. This "
+          "can "
+          "be implemented by buffering all of the query results and then "
+          "sorting "
+          "on the coordinates");
+    } else {
+      throw std::runtime_error("Invalid 'layout' for query: " + layout);
     }
 
-    tiledb_query_set_subarray_t(ctx, query, subarray);
+    if (jq.find("subarray") != jq.end()) {
+      const auto& jsub = jq["subarray"];
+      for (const auto& jdim : jsub) {
+        if (jdim.find("%") != jdim.end()) {
+          const int percent = jdim["%"].get<int>();
+          q.subarray_percent_.push_back(percent);
+        } else {
+          q.subarray_percent_.push_back(std::nullopt);
+        }
+      }
+    }
+    return q;
   }
 
-  return TILEDB_OK;
-}
+  /**
+   * Applies this configuration to a query.
+   */
+  capi_return_t apply(
+      tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_t* query) const {
+    TRY(ctx, tiledb_query_set_layout(ctx, query, layout_));
+
+    if (!subarray_percent_.empty()) {
+      tiledb_subarray_t* subarray;
+      RETURN_IF_ERR(tiledb_subarray_alloc(ctx, array, &subarray));
+
+      tiledb_array_schema_t* schema;
+      RETURN_IF_ERR(tiledb_array_get_schema(ctx, array, &schema));
+
+      tiledb_domain_t* domain;
+      RETURN_IF_ERR(tiledb_array_schema_get_domain(ctx, schema, &domain));
+
+      for (unsigned d = 0; d < subarray_percent_.size(); d++) {
+        if (subarray_percent_[d].has_value()) {
+          TRY(ctx,
+              shrink_domain(
+                  ctx, array, d, subarray, subarray_percent_[d].value()));
+        }
+      }
+
+      TRY(ctx, tiledb_query_set_subarray_t(ctx, query, subarray));
+    }
+
+    return TILEDB_OK;
+  }
+};
 
 template <FragmentType Fragment>
 tiledb::common::Status assertGlobalOrder(
@@ -314,7 +387,7 @@ template <FragmentType Fragment>
 static void run(
     TimeKeeper& time_keeper,
     const char* array_uri,
-    const json& query_config,
+    const QueryConfig& query_config,
     tiledb_config_t* a_config,
     tiledb_config_t* b_config) {
   tiledb::test::SparseGlobalOrderReaderMemoryBudget memory;
@@ -362,13 +435,24 @@ static void run(
   tiledb_query_t* a_query;
   TRY(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &a_query));
   TRY(ctx, tiledb_query_set_config(ctx, a_query, a_config));
-  construct_query(ctx, array, a_query, query_config);
+  TRY(ctx, query_config.apply(ctx, array, a_query));
 
   // Create query which DOES do merge
   tiledb_query_t* b_query;
   TRY(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &b_query));
   TRY(ctx, tiledb_query_set_config(ctx, b_query, b_config));
-  construct_query(ctx, array, b_query, query_config);
+  TRY(ctx, query_config.apply(ctx, array, b_query));
+
+  const TimeKeeper::StatKey a_key = {
+      .uri_ = std::string(array_uri),
+      .qlabel_ = query_config.label_,
+      .is_a_ = true,
+  };
+  const TimeKeeper::StatKey b_key = {
+      .uri_ = std::string(array_uri),
+      .qlabel_ = query_config.label_,
+      .is_a_ = false,
+  };
 
   // helper to do basic checks on both
   auto do_submit = [&](auto& key, auto& query, auto& outdata)
@@ -386,8 +470,7 @@ static void run(
         ctx, query, attribute_sizes, outdata.attributes(), attribute_name);
 
     {
-      tiledb::sm::stats::DurationInstrument<TimeKeeper> qtimer =
-          time_keeper.start_timer(key);
+      TimeKeeper::Timer qtimer = time_keeper.start_timer(key);
       TRY(ctx, tiledb_query_submit(ctx, query));
     }
 
@@ -408,9 +491,6 @@ static void run(
 
     return std::make_pair(status, dim_num_cells);
   };
-
-  const std::string a_key = std::string(array_uri) + ".a";
-  const std::string b_key = std::string(array_uri) + ".b";
 
   while (true) {
     tiledb_query_status_t a_status, b_status;
@@ -509,12 +589,16 @@ int main(int argc, char** argv) {
   std::span<const char* const> array_uris(
       static_cast<const char* const*>(&argv[2]), argc - 2);
 
-  for (const auto& array_uri : array_uris) {
-    try {
-      run<Fragment>(time_keeper, array_uri, config["query"], a_conf, b_conf);
-    } catch (const std::exception& e) {
-      std::cerr << "Error on array \"" << array_uri << "\": " << e.what()
-                << std::endl;
+  for (const auto& query : config["queries"]) {
+    QueryConfig qq = QueryConfig::from_json(query);
+
+    for (const auto& array_uri : array_uris) {
+      try {
+        run<Fragment>(time_keeper, array_uri, qq, a_conf, b_conf);
+      } catch (const std::exception& e) {
+        std::cerr << "Error on array \"" << array_uri << "\": " << e.what()
+                  << std::endl;
+      }
     }
   }
 

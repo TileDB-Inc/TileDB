@@ -35,6 +35,13 @@
 
 namespace stdx {
 
+template <typename... Ts>
+constexpr auto decay_types(std::tuple<Ts...> const&)
+    -> std::tuple<std::decay_t<Ts>...>;
+
+template <typename Tuple>
+using decay_tuple = decltype(decay_types(std::declval<Tuple>()));
+
 /**
  * @return the transposition of row-oriented tuples into column-oriented tuples
  */
