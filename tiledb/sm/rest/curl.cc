@@ -338,7 +338,7 @@ std::string Curl::url_escape(const std::string& url) const {
   return escaped;
 }
 
-Status Curl::set_headers(struct curl_slist** headers, bool use_auth) const {
+Status Curl::set_headers(struct curl_slist** headers) const {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -347,13 +347,13 @@ Status Curl::set_headers(struct curl_slist** headers, bool use_auth) const {
   const char* token = nullptr;
   RETURN_NOT_OK(config_->get("rest.token", &token));
 
-  if (use_auth && token != nullptr) {
+  if (token != nullptr) {
     *headers = curl_slist_append(
         *headers, (std::string("X-TILEDB-REST-API-Key: ") + token).c_str());
     if (*headers == nullptr)
       return LOG_STATUS(Status_RestError(
           "Cannot set curl auth; curl_slist_append returned null."));
-  } else if (use_auth) {
+  } else {
     // Try username+password instead of token
     const char* username = nullptr;
     const char* password = nullptr;
@@ -369,8 +369,6 @@ Status Curl::set_headers(struct curl_slist** headers, bool use_auth) const {
     std::string basic_auth = username + std::string(":") + password;
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_USERPWD, basic_auth.c_str());
-  } else {
-    curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_NONE);
   }
 
   // Add any extra headers.
@@ -940,8 +938,7 @@ Status Curl::get_data(
     const std::string& url,
     SerializationType serialization_type,
     Buffer* returned_data,
-    const std::string& res_ns_uri,
-    bool use_auth) {
+    const std::string& res_ns_uri) {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return LOG_STATUS(
@@ -949,8 +946,7 @@ Status Curl::get_data(
 
   // Set auth and content-type for request
   struct curl_slist* headers = nullptr;
-  RETURN_NOT_OK_ELSE(
-      set_headers(&headers, use_auth), curl_slist_free_all(headers));
+  RETURN_NOT_OK_ELSE(set_headers(&headers), curl_slist_free_all(headers));
   RETURN_NOT_OK_ELSE(
       set_content_type(serialization_type, &headers),
       curl_slist_free_all(headers));
@@ -960,7 +956,6 @@ Status Curl::get_data(
 
   CURLcode ret;
   headerData.uri = &res_ns_uri;
-  headerData.should_cache_redirect = res_ns_uri != "no-cache";
   auto st = make_curl_request(stats, url.c_str(), &ret, nullptr, returned_data);
   curl_slist_free_all(headers);
   RETURN_NOT_OK(st);

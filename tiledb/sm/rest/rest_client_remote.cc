@@ -1524,13 +1524,12 @@ const RestCapabilities& RestClientRemote::get_capabilities_from_rest() {
 
   // Init curl and form the URL
   Curl curlc(logger_);
-  throw_if_not_ok(
-      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  throw_if_not_ok(curlc.init(
+      config_, extra_headers_, &redirect_meta_, &redirect_mtx_, false));
   const std::string url = rest_server_ + "/v4/version";
 
   Buffer data;
-  throw_if_not_ok(curlc.get_data(
-      stats_, url, serialization_type_, &data, "no-cache", false));
+  throw_if_not_ok(curlc.get_data(stats_, url, serialization_type_, &data, {}));
   rest_capabilities_ =
       serialization::rest_version_deserialize(serialization_type_, data);
   return rest_capabilities_;

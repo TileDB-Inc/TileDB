@@ -117,14 +117,24 @@ RestCapabilities rest_version_from_capnp(
     rest_version.major_ = version_reader.getMajor();
     rest_version.minor_ = version_reader.getMinor();
     rest_version.patch_ = version_reader.getPatch();
+  } else {
+    throw RestVersionSerializationException(
+        "Failed to deserialize REST capabilities with no deployed TileDB "
+        "version.");
   }
+
   if (rest_version_reader.hasMinimumSupportedTileDBVersion()) {
     auto version_reader =
         rest_version_reader.getMinimumSupportedTileDBVersion();
     rest_minimum_version.major_ = version_reader.getMajor();
     rest_minimum_version.minor_ = version_reader.getMinor();
     rest_minimum_version.patch_ = version_reader.getPatch();
+  } else {
+    throw RestVersionSerializationException(
+        "Failed to deserialize REST capabilities with no minimum supported "
+        "TileDB version.");
   }
+
   return {rest_version, rest_minimum_version};
 }
 
