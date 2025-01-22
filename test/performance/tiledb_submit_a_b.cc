@@ -87,6 +87,7 @@
 #include <test/support/src/array_helpers.h>
 #include <test/support/src/array_templates.h>
 #include <test/support/src/error_helpers.h>
+#include <test/support/stdx/tuple.h>
 
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
@@ -96,6 +97,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/stats/duration_instrument.h"
+#include "tiledb/type/apply_with_type.h"
 
 #include "external/include/nlohmann/json.hpp"
 
@@ -246,6 +248,68 @@ tiledb::common::Status assertGlobalOrder(
   return tiledb::common::Status_Ok();
 }
 
+template <typename T>
+struct require_type {
+  static void dimension(const tiledb::sm::Dimension& dim) {
+    const auto dt = dim.type();
+    const bool is_same = tiledb::type::apply_with_type(
+        [](auto arg) { return std::is_same_v<T, decltype(arg)>; }, dt);
+    if (!is_same) {
+      throw std::runtime_error(
+          "Incompatible template type for dimension '" + dim.name() +
+          "' of type " + datatype_str(dt));
+    }
+  }
+
+  static void attribute(const tiledb::sm::Attribute& att) {
+    const auto dt = att.type();
+    const bool is_same = tiledb::type::apply_with_type(
+        [](auto arg) { return std::is_same_v<T, decltype(arg)>; }, dt);
+    if (!is_same) {
+      throw std::runtime_error(
+          "Incompatible template type for attribute '" + att.name() +
+          "' of type " + datatype_str(dt));
+    }
+  }
+};
+
+template <FragmentType Fragment>
+static void check_compatibility(tiledb_array_t* array) {
+  using DimensionTuple = decltype(std::declval<Fragment>().dimensions());
+  using AttributeTuple = decltype(std::declval<Fragment>().attributes());
+
+  constexpr auto expect_num_dims = std::tuple_size_v<DimensionTuple>;
+  constexpr auto max_num_atts = std::tuple_size_v<AttributeTuple>;
+
+  const auto& schema = array->array()->array_schema_latest();
+
+  if (schema.domain().dim_num() != expect_num_dims) {
+    throw std::runtime_error(
+        "Expected " + std::to_string(expect_num_dims) + " dimensions, found " +
+        std::to_string(schema.domain().dim_num()));
+  }
+  if (schema.attribute_num() < max_num_atts) {
+    throw std::runtime_error(
+        "Expected " + std::to_string(max_num_atts) + " attributes, found " +
+        std::to_string(schema.attribute_num()));
+  }
+
+  unsigned d = 0;
+  std::apply(
+      [&]<typename... Ts>(std::vector<Ts>...) {
+        (require_type<Ts>::dimension(*schema.domain().shared_dimension(d++)),
+         ...);
+      },
+      stdx::decay_tuple<DimensionTuple>());
+
+  unsigned a = 0;
+  std::apply(
+      [&]<typename... Ts>(std::vector<Ts>...) {
+        (require_type<Ts>::attribute(*schema.attribute(a++)), ...);
+      },
+      stdx::decay_tuple<AttributeTuple>());
+}
+
 template <FragmentType Fragment>
 static void run(
     TimeKeeper& time_keeper,
@@ -284,6 +348,7 @@ static void run(
 
   // Open array for reading.
   CApiArray array(ctx, array_uri, TILEDB_READ);
+  check_compatibility<Fragment>(array);
 
   auto dimension_name = [&](unsigned d) -> std::string {
     return std::string(
