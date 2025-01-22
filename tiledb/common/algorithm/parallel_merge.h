@@ -202,9 +202,15 @@ struct ParallelMergeFuture {
  private:
   ParallelMergeMemoryResources memory_;
 
+  struct MergeUnitTask {
+    uint64_t p_;
+    tiledb::common::ThreadPool::Task task_;
+  };
+
   tdb::pmr::vector<MergeUnit> merge_bounds_;
-  tiledb::common::ProducerConsumerQueue<tiledb::common::ThreadPool::Task>
-      merge_tasks_;
+  tiledb::common::
+      ProducerConsumerQueue<MergeUnitTask, std::queue<MergeUnitTask>>
+          merge_tasks_;
 
   // index of the next expected item in `merge_bounds_`
   uint64_t merge_cursor_;
@@ -576,14 +582,17 @@ class ParallelMerge {
       future->merge_bounds_[p] = accumulated_stream_bounds;
       auto unit_future = pool->execute(
           tournament_merge, streams, cmp, future->merge_bounds_[p], output);
-      future->merge_tasks_.push(std::move(unit_future));
+
+      future->merge_tasks_.push(ParallelMergeFuture::MergeUnitTask{
+          .p_ = p, .task_ = std::move(unit_future)});
     } else {
       future->merge_bounds_[p].starts = future->merge_bounds_[p - 1].ends;
       future->merge_bounds_[p].ends = accumulated_stream_bounds.ends;
 
       auto unit_future = pool->execute(
           tournament_merge, streams, cmp, future->merge_bounds_[p], output);
-      future->merge_tasks_.push(std::move(unit_future));
+      future->merge_tasks_.push(ParallelMergeFuture::MergeUnitTask{
+          .p_ = p, .task_ = std::move(unit_future)});
     }
 
     if (p < parallel_factor - 1) {

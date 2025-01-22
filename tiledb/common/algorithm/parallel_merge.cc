@@ -99,7 +99,11 @@ std::optional<uint64_t> ParallelMergeFuture::await() {
   auto maybe_task = merge_tasks_.pop();
   if (maybe_task.has_value()) {
     const auto m = merge_cursor_++;
-    throw_if_not_ok(maybe_task->wait());
+
+    // we must have FIFO
+    assert(m == maybe_task->p_);
+
+    throw_if_not_ok(maybe_task->task_.wait());
     return merge_bounds_[m].output_end();
   } else {
     return std::nullopt;
