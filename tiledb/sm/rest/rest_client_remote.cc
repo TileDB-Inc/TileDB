@@ -1526,7 +1526,7 @@ const RestCapabilities& RestClientRemote::get_capabilities_from_rest() {
   Curl curlc(logger_);
   throw_if_not_ok(curlc.init(
       config_, extra_headers_, &redirect_meta_, &redirect_mtx_, false));
-  const std::string url = rest_server_ + "/v4/version";
+  const std::string url = rest_server_ + "/v4/capabilities";
 
   Buffer data;
   throw_if_not_ok(curlc.get_data(stats_, url, serialization_type_, &data, {}));
