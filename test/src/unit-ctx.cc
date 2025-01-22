@@ -108,13 +108,13 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
 
 TEST_CASE("REST version endpoint", "[rest][version]") {
   tiledb::test::VFSTestSetup vfs_test_setup;
-  tiledb::Config config;
-  std::string serialization_format = GENERATE("JSON", "CAPNP");
-  config["rest.server_serialization_format"] = serialization_format;
-
-  tiledb::sm::RestClient::TileDBVersion expected_version(tiledb::version());
-  // Only run these tests if the rest client has been initialized
   if (vfs_test_setup.is_rest()) {
+    tiledb::Config config;
+    std::string serialization_format = GENERATE("JSON", "CAPNP");
+    config["rest.server_serialization_format"] = serialization_format;
+
+    tiledb::sm::RestClient::TileDBVersion expected_version(tiledb::version());
+    // Only run these tests if the rest client has been initialized
     DYNAMIC_SECTION(
         "GET request to retrieve REST tiledb version - "
         << serialization_format) {
@@ -134,7 +134,6 @@ TEST_CASE("REST version endpoint", "[rest][version]") {
         << serialization_format) {
       vfs_test_setup.update_config(config.ptr().get());
       auto ctx = vfs_test_setup.ctx();
-
       REQUIRE(ctx.ptr()->rest_client().rest_version() == expected_version);
     }
   }
