@@ -32,10 +32,10 @@
 
 #ifndef _WIN32
 
+#include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
-#include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "uri.h"
