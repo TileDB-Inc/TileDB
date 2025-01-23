@@ -1594,7 +1594,11 @@ TEST_CASE_METHOD(
       sm::GlobalCellCmp globalcmp(
           array->array()->array_schema_latest().domain());
 
-      if (std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {
+      // check that we actually have out-of-order MBRs
+      // (disable on REST where we have no metadata)
+      // (disable with rapidcheck where this may not be guaranteed)
+      if (!vfs_test_setup_.is_rest() &&
+          std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {
         bool any_out_of_order = false;
         for (size_t f = 0; !any_out_of_order && f < fragment_metadata.size();
              f++) {
