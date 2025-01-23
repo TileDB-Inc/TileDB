@@ -47,7 +47,6 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <format>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -275,7 +274,7 @@ void Posix::read(
   uint64_t file_size;
   this->file_size(URI(path), &file_size);
   if (offset + nbytes > file_size) {
-    throw IOError(std::format(
+    throw IOError(fmt::format(
         "Cannot read from file; Read exceeds file size: offset {}, nbytes {}, "
         "file_size {}, URI {}",
         offset,

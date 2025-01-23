@@ -31,7 +31,6 @@
  */
 
 #include <algorithm>
-#include <format>
 #include <mutex>
 #include <sstream>
 #include <unordered_set>
@@ -184,7 +183,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     assert(buffer);
 
     if (offset + nbytes > size_)
-      return LOG_STATUS(Status_MemFSError(std::format(
+      return LOG_STATUS(Status_MemFSError(fmt::format(
           "Cannot read from file; Read exceeds file size: offset {} nbytes {} "
           "size_ {}",
           offset,
