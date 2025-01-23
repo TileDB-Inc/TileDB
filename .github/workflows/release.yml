@@ -216,4 +216,4 @@ jobs:
         with:
           name: Release failed
           label: release
-          assignee: teo-tsirpanis,davisp
+          assignee: davisp,dudoslav,ihnorton,teo-tsirpanis
