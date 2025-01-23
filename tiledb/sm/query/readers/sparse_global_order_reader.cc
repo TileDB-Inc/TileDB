@@ -360,6 +360,13 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       }
     }
 
+    if (preprocess_future.has_value() && !incomplete()) {
+      // clean up gracefully and let the merge finish, freeing input etc
+      // (this also helps simplify assertions about memory usage)
+      preprocess_future->block();
+      preprocess_future.reset();
+    }
+
     // End the iteration.
     end_iteration(result_tiles);
   } while (!user_buffers_full && incomplete());
