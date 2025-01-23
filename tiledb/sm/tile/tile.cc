@@ -109,13 +109,15 @@ TileBase::TileBase(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    tdb::pmr::memory_resource* resource)
+    tdb::pmr::memory_resource* resource,
+    const bool skip_waiting_on_io_task)
     : resource_(resource)
     , data_(tdb::pmr::make_unique<std::byte>(resource_, size))
     , size_(size)
     , cell_size_(cell_size)
     , format_version_(format_version)
-    , type_(type) {
+    , type_(type)
+    , skip_waiting_on_io_task_(skip_waiting_on_io_task) {
   /*
    * We can check for a bad allocation after initialization without risk
    * because none of the other member variables use its value for their own
@@ -161,12 +163,17 @@ Tile::Tile(
     tdb::pmr::memory_resource* resource,
     ThreadPool::SharedTask filtered_data_io_task,
     const bool skip_waiting_on_io_task)
-    : TileBase(format_version, type, cell_size, size, resource)
+    : TileBase(
+          format_version,
+          type,
+          cell_size,
+          size,
+          resource,
+          skip_waiting_on_io_task)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
     , filtered_size_(filtered_size)
-    , filtered_data_io_task_(std::move(filtered_data_io_task))
-    , skip_waiting_on_io_task_(skip_waiting_on_io_task) {
+    , filtered_data_io_task_(std::move(filtered_data_io_task)) {
 }
 
 WriterTile::WriterTile(
@@ -174,13 +181,15 @@ WriterTile::WriterTile(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    shared_ptr<MemoryTracker> memory_tracker)
+    shared_ptr<MemoryTracker> memory_tracker,
+    const bool skip_waiting_on_io_task)
     : TileBase(
           format_version,
           type,
           cell_size,
           size,
-          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
+          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA),
+          skip_waiting_on_io_task)
     , filtered_buffer_(0) {
 }
 
@@ -189,8 +198,15 @@ WriterTile::WriterTile(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    tdb::pmr::memory_resource* resource)
-    : TileBase(format_version, type, cell_size, size, resource)
+    tdb::pmr::memory_resource* resource,
+    const bool skip_waiting_on_io_task)
+    : TileBase(
+          format_version,
+          type,
+          cell_size,
+          size,
+          resource,
+          skip_waiting_on_io_task)
     , filtered_buffer_(0) {
 }
 

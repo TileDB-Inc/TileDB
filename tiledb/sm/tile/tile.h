@@ -68,7 +68,8 @@ class TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      tdb::pmr::memory_resource* resource);
+      tdb::pmr::memory_resource* resource,
+      const bool skip_waiting_on_io_task);
 
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
@@ -181,6 +182,11 @@ class TileBase {
 
   /** The tile data type. */
   Datatype type_;
+
+  /**
+   * Whether to block waiting for io data to be ready before accessing data()
+   */
+  const bool skip_waiting_on_io_task_;
 };
 
 /**
@@ -428,11 +434,6 @@ class Tile : public TileBase {
    * need a mutex since the tile will be accessed by multiple threads.
    */
   mutable std::recursive_mutex filtered_data_io_task_mtx_;
-
-  /**
-   * Whether to block waiting for io data to be ready before accessing data()
-   */
-  const bool skip_waiting_on_io_task_;
 };
 
 /**
@@ -483,7 +484,8 @@ class WriterTile : public TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      shared_ptr<MemoryTracker> memory_tracker);
+      shared_ptr<MemoryTracker> memory_tracker,
+      const bool skip_waiting_on_io_task = false);
 
   /**
    * Constructor.
@@ -499,7 +501,8 @@ class WriterTile : public TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      tdb::pmr::memory_resource* resource);
+      tdb::pmr::memory_resource* resource,
+      const bool skip_waiting_on_io_task = false);
 
   DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
   DISABLE_MOVE_AND_MOVE_ASSIGN(WriterTile);
