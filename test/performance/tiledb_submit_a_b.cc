@@ -39,7 +39,7 @@
  * same results and recording the time spent calling `tiledb_query_submit`.
  *
  * After executing upon all of the arrays, the timing information is
- * dumped to `/tmp/time_keeper.out`.
+ * dumped to `/tmp/tiledb_submit_a_b.json`.
  *
  * The arrays must have the same schema, whose physical type is reflected
  * by the `using Fragment = <FragmentType>` declaration in the middle of
@@ -116,36 +116,58 @@ using Asserter = AsserterRuntimeException;
 
 using json = nlohmann::json;
 
+template <typename T>
+json optional_json(std::optional<T> value) {
+  if (value.has_value()) {
+    return json(value.value());
+  } else {
+    return json();
+  }
+}
+
 /**
  * Records durations as reported by `tiledb::sm::stats::DurationInstrument`.
  */
-struct TimeKeeper {
+struct StatKeeper {
   struct StatKey {
     std::string uri_;
     std::string qlabel_;
     bool is_a_;
   };
 
-  using Timer = tiledb::sm::stats::DurationInstrument<TimeKeeper, StatKey>;
+  struct StatValue {
+    std::vector<double> durations;
+    std::map<std::string, json> metrics;
+  };
 
-  std::map<
-      std::string,
-      std::
-          map<std::string, std::pair<std::vector<double>, std::vector<double>>>>
-      durations;
+  using Timer = tiledb::sm::stats::DurationInstrument<StatKeeper, StatKey>;
+
+  /** records statistics of each submit call by "array.query" */
+  std::map<std::string, std::map<std::string, std::pair<StatValue, StatValue>>>
+      statistics;
 
   Timer start_timer(const StatKey& stat) {
-    return tiledb::sm::stats::DurationInstrument<TimeKeeper, StatKey>(
+    return tiledb::sm::stats::DurationInstrument<StatKeeper, StatKey>(
         *this, stat);
   }
 
   void report_duration(
       const StatKey& stat, const std::chrono::duration<double> duration) {
-    auto& stats = durations[stat.uri_][stat.qlabel_];
+    auto& stats = statistics[stat.uri_][stat.qlabel_];
     if (stat.is_a_) {
-      stats.first.push_back(duration.count());
+      stats.first.durations.push_back(duration.count());
     } else {
-      stats.second.push_back(duration.count());
+      stats.second.durations.push_back(duration.count());
+    }
+  }
+
+  void report_metric(
+      const StatKey& stat, const std::string& name, const json& value) {
+    auto& stats = statistics[stat.uri_][stat.qlabel_];
+    if (stat.is_a_) {
+      stats.first.metrics[name] = value;
+    } else {
+      stats.second.metrics[name] = value;
     }
   }
 
@@ -157,13 +179,13 @@ struct TimeKeeper {
 
     json arrays;
 
-    for (const auto& uri : durations) {
+    for (const auto& uri : statistics) {
       json array;
       array["uri"] = uri.first;
 
       for (const auto& qlabel : uri.second) {
-        const auto& a_durations = qlabel.second.first;
-        const auto& b_durations = qlabel.second.second;
+        const auto& a_durations = qlabel.second.first.durations;
+        const auto& b_durations = qlabel.second.second.durations;
         const double a_sum =
             std::accumulate(a_durations.begin(), a_durations.end(), (double)0);
         const double b_sum =
@@ -172,10 +194,16 @@ struct TimeKeeper {
         json a;
         a["first"] = a_durations[0];
         a["sum"] = a_sum;
+        for (const auto& metric : qlabel.second.first.metrics) {
+          a[metric.first] = metric.second;
+        }
 
         json b;
         b["first"] = b_durations[0];
         b["sum"] = b_sum;
+        for (const auto& metric : qlabel.second.second.metrics) {
+          b[metric.first] = metric.second;
+        }
 
         json run;
         run["query"] = qlabel.first;
@@ -386,7 +414,7 @@ static void check_compatibility(tiledb_array_t* array) {
 
 template <FragmentType Fragment>
 static void run(
-    TimeKeeper& time_keeper,
+    StatKeeper& stat_keeper,
     const char* array_uri,
     const QueryConfig& query_config,
     tiledb_config_t* a_config,
@@ -444,12 +472,12 @@ static void run(
   TRY(ctx, tiledb_query_set_config(ctx, b_query, b_config));
   TRY(ctx, query_config.apply(ctx, array, b_query));
 
-  const TimeKeeper::StatKey a_key = {
+  const StatKeeper::StatKey a_key = {
       .uri_ = std::string(array_uri),
       .qlabel_ = query_config.label_,
       .is_a_ = true,
   };
-  const TimeKeeper::StatKey b_key = {
+  const StatKeeper::StatKey b_key = {
       .uri_ = std::string(array_uri),
       .qlabel_ = query_config.label_,
       .is_a_ = false,
@@ -471,7 +499,7 @@ static void run(
         ctx, query, attribute_sizes, outdata.attributes(), attribute_name);
 
     {
-      TimeKeeper::Timer qtimer = time_keeper.start_timer(key);
+      StatKeeper::Timer qtimer = stat_keeper.start_timer(key);
       TRY(ctx, tiledb_query_submit(ctx, query));
     }
 
@@ -545,6 +573,25 @@ static void run(
       break;
     }
   }
+
+  // record additional stats
+  const tiledb::sm::Query& a_query_internal = *a_query->query_;
+  const tiledb::sm::Query& b_query_internal = *b_query->query_;
+  const auto& a_stats = *a_query_internal.stats();
+  const auto& b_stats = *b_query_internal.stats();
+
+  stat_keeper.report_metric(
+      a_key, "loop_num", optional_json(a_stats.find_counter("loop_num")));
+  stat_keeper.report_metric(
+      b_key, "loop_num", optional_json(b_stats.find_counter("loop_num")));
+  stat_keeper.report_metric(
+      a_key,
+      "internal_loop_num",
+      optional_json(a_stats.find_counter("internal_loop_num")));
+  stat_keeper.report_metric(
+      b_key,
+      "internal_loop_num",
+      optional_json(b_stats.find_counter("internal_loop_num")));
 }
 
 // change this to match the schema of the target arrays
@@ -585,7 +632,7 @@ int main(int argc, char** argv) {
   RETURN_IF_ERR(json2config(&a_conf, config["a"]));
   RETURN_IF_ERR(json2config(&b_conf, config["b"]));
 
-  TimeKeeper time_keeper;
+  StatKeeper stat_keeper;
 
   std::span<const char* const> array_uris(
       static_cast<const char* const*>(&argv[2]), argc - 2);
@@ -595,7 +642,7 @@ int main(int argc, char** argv) {
 
     for (const auto& array_uri : array_uris) {
       try {
-        run<Fragment>(time_keeper, array_uri, qq, a_conf, b_conf);
+        run<Fragment>(stat_keeper, array_uri, qq, a_conf, b_conf);
       } catch (const std::exception& e) {
         std::cerr << "Error on array \"" << array_uri << "\": " << e.what()
                   << std::endl;
@@ -608,7 +655,7 @@ int main(int argc, char** argv) {
   tiledb_config_free(&b_conf);
   tiledb_config_free(&a_conf);
 
-  time_keeper.dump_durations("/tmp/time_keeper.out");
+  stat_keeper.dump_durations("/tmp/tiledb_submit_a_b.json");
 
   return 0;
 }
