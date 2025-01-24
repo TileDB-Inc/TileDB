@@ -599,6 +599,8 @@ int main(int argc, char** argv) {
       } catch (const std::exception& e) {
         std::cerr << "Error on array \"" << array_uri << "\": " << e.what()
                   << std::endl;
+
+        return 1;
       }
     }
   }
