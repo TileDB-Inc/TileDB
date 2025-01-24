@@ -1,5 +1,5 @@
 /**
- * @file   rest_version.h
+ * @file   rest_capabilities.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file declares serialization functions for REST version information.
  */
 
-#ifndef TILEDB_SERIALIZATION_REST_VERSION_H
-#define TILEDB_SERIALIZATION_REST_VERSION_H
+#ifndef TILEDB_SERIALIZATION_REST_CAPABILITIES_H
+#define TILEDB_SERIALIZATION_REST_CAPABILITIES_H
 
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/capnp_utils.h"
@@ -42,30 +42,17 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class RestCapabilities;
-class SerializationBuffer;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
 
-#ifdef TILEDB_SERIALIZATION
-
 RestCapabilities rest_version_deserialize(
     SerializationType serialization_type, span<const char> serialized_response);
 
 RestCapabilities rest_version_from_capnp(
     const capnp::RestVersion::Reader& rest_version_reader);
-
-#else
-
-RestCapabilities rest_version_deserialize(
-    SerializationType serialization_type, span<const char> serialized_response);
-
-RestCapabilities rest_version_from_capnp(
-    const capnp::RestVersion::Reader& rest_version_reader);
-
-#endif  // TILEDB_SERIALIZATION
 
 }  // namespace serialization
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_SERIALIZATION_REST_VERSION_H
+#endif  // TILEDB_SERIALIZATION_REST_CAPABILITIES_H

@@ -1400,5 +1400,5 @@ struct TileDBVersion {
 
 struct RestVersion {
     deployedTileDBVersion @0 :TileDBVersion;
-    minimumSupportedTileDBVersion @1 :TileDBVersion;
+    minimumSupportedTileDBClientVersion @1 :TileDBVersion;
 }

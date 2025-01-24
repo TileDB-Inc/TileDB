@@ -106,15 +106,16 @@ TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
   }
 }
 
-TEST_CASE("REST version endpoint", "[rest][version]") {
+TEST_CASE("REST capabilities endpoint", "[rest][version]") {
   tiledb::test::VFSTestSetup vfs_test_setup;
   if (vfs_test_setup.is_rest()) {
     tiledb::Config config;
     std::string serialization_format = GENERATE("JSON", "CAPNP");
     config["rest.server_serialization_format"] = serialization_format;
 
-    tiledb::sm::RestClient::TileDBVersion expected_version(tiledb::version());
-    // Only run these tests if the rest client has been initialized
+    auto expected_version =
+        std::make_from_tuple<tiledb::sm::RestCapabilities::TileDBVersion>(
+            tiledb::version());
     DYNAMIC_SECTION(
         "GET request to retrieve REST tiledb version - "
         << serialization_format) {
@@ -122,8 +123,8 @@ TEST_CASE("REST version endpoint", "[rest][version]") {
       auto ctx = vfs_test_setup.ctx();
       tiledb::sm::RestCapabilities expected_capabilities(
           expected_version,
-          {expected_version.major_ - 1,
-           expected_version.minor_,
+          {expected_version.major_,
+           expected_version.minor_ - 1,
            expected_version.patch_});
       auto actual_capabilities =
           ctx.ptr()->rest_client().get_capabilities_from_rest();

@@ -30,17 +30,28 @@
  * Helper class to encapsulate REST supported versions and capabilities.
  */
 
-#include "tiledb/sm/rest/rest_client.h"
-
 namespace tiledb::sm {
 
 class RestClientRemote;
 
-class RestCapabilities {
+struct RestCapabilities {
   friend RestClientRemote;
-  using TileDBVersion = RestClient::TileDBVersion;
 
  public:
+  struct TileDBVersion {
+    TileDBVersion() = default;
+
+    TileDBVersion(int major, int minor, int patch)
+        : major_(major)
+        , minor_(minor)
+        , patch_(patch) {
+    }
+
+    bool operator==(const TileDBVersion& rhs) const = default;
+
+    uint16_t major_, minor_, patch_;
+  };
+
   /**
    * Default constructor allows the class to be constructed without submitting
    * a REST request to initialize member variables.
@@ -55,18 +66,13 @@ class RestCapabilities {
    * releases.
    */
   RestCapabilities(
-      TileDBVersion rest_version, TileDBVersion rest_minimum_version);
-
-  bool operator==(const RestCapabilities& rhs) const {
-    return detected_ == rhs.detected_ &&
-           rest_tiledb_version_ == rhs.rest_tiledb_version_ &&
-           rest_minimum_supported_version_ ==
-               rhs.rest_minimum_supported_version_;
+      TileDBVersion rest_version, TileDBVersion rest_minimum_version)
+      : detected_(true)
+      , rest_tiledb_version_(rest_version)
+      , rest_minimum_supported_version_(rest_minimum_version) {
   }
 
-  bool operator!=(const RestCapabilities& rhs) const {
-    return !operator==(rhs);
-  }
+  bool operator==(const RestCapabilities& rhs) const = default;
 
   /**
    * @return Current version of TileDB core deployed on the REST server.

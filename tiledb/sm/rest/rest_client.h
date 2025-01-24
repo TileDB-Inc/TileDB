@@ -175,6 +175,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/group/group.h"
+#include "tiledb/sm/rest/rest_capabilities.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -260,32 +261,7 @@ class RestClient {
   std::string rest_server_;
 
  public:
-  struct TileDBVersion {
-    TileDBVersion() = default;
-
-    TileDBVersion(std::tuple<int, int, int> version_tuple)
-        : major_(get<0>(version_tuple))
-        , minor_(get<1>(version_tuple))
-        , patch_(get<2>(version_tuple)) {
-    }
-
-    TileDBVersion(int major, int minor, int patch)
-        : major_(major)
-        , minor_(minor)
-        , patch_(patch) {
-    }
-
-    bool operator==(const TileDBVersion& rhs) const {
-      return major_ == rhs.major_ && minor_ == rhs.minor_ &&
-             patch_ == rhs.patch_;
-    }
-
-    bool operator!=(const TileDBVersion& rhs) const {
-      return !operator==(rhs);
-    }
-
-    uint16_t major_, minor_, patch_;
-  };
+  using TileDBVersion = RestCapabilities::TileDBVersion;
 
   RestClient(const Config& config);
 
@@ -323,12 +299,12 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
-  inline virtual const TileDBVersion& rest_version() {
+  inline virtual const TileDBVersion& rest_version() const {
     throw RestClientDisabledException();
   }
 
   /// Operation disabled in base class.
-  inline virtual const TileDBVersion& rest_minimum_supported_version() {
+  inline virtual const TileDBVersion& rest_minimum_supported_version() const {
     throw RestClientDisabledException();
   }
 
@@ -514,7 +490,7 @@ class RestClient {
 
   /// Operation disabled in base class.
   inline virtual const tiledb::sm::RestCapabilities&
-  get_capabilities_from_rest() {
+  get_capabilities_from_rest() const {
     throw RestClientDisabledException();
   }
 };

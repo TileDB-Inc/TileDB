@@ -54,7 +54,7 @@
 #include "tiledb/sm/serialization/query_plan.h"
 #include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #include "tiledb/sm/serialization/vacuum.h"
-#include "tiledb/sm/serialization/rest_version.h"
+#include "tiledb/sm/serialization/rest_capabilities.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
 // clang-format on
 
@@ -74,7 +74,6 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
-#include "tiledb/sm/rest/rest_capabilities.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/type/apply_with_type.h"
 
@@ -122,14 +121,14 @@ class RestClientRemote : public RestClient {
   /**
    * @return TileDB core version currently deployed to the REST server.
    */
-  inline const TileDBVersion& rest_version() override {
+  inline const TileDBVersion& rest_version() const override {
     return get_capabilities_from_rest().rest_tiledb_version_;
   }
 
   /**
    * @return Minimum TileDB core version currently supported by the REST server.
    */
-  inline const TileDBVersion& rest_minimum_supported_version() override {
+  inline const TileDBVersion& rest_minimum_supported_version() const override {
     return get_capabilities_from_rest().rest_minimum_supported_version_;
   }
 
@@ -463,7 +462,7 @@ class RestClientRemote : public RestClient {
   /**
    * Get TileDB core version from the REST server.
    */
-  const RestCapabilities& get_capabilities_from_rest() override;
+  const RestCapabilities& get_capabilities_from_rest() const override;
 
  private:
   /* ********************************* */
@@ -509,7 +508,7 @@ class RestClientRemote : public RestClient {
   shared_ptr<MemoryTracker> memory_tracker_;
 
   /** REST supported TileDB versions and capabilities. */
-  RestCapabilities rest_capabilities_;
+  mutable RestCapabilities rest_capabilities_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
