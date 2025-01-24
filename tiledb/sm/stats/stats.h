@@ -163,6 +163,8 @@ class Stats {
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);
 
+  uint64_t get_counter(const std::string& stat) const;
+
   /** Returns true if statistics are currently enabled. */
   bool enabled() const;
 
