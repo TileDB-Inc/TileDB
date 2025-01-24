@@ -427,12 +427,16 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @param num_cells Number of cells that can be copied in the user buffer.
    * @param result_tiles Result tiles per fragment.
+   * @param merge_future handle to polling the preprocess merge stream
+   *                     (if it has not completed yet).
    *
    * @return user_buffers_full, result_cell_slabs.
    */
   template <class CompType>
   tuple<bool, std::vector<ResultCellSlab>> merge_result_cell_slabs(
-      uint64_t num_cells, std::vector<ResultTilesList>& result_tiles);
+      uint64_t num_cells,
+      std::vector<ResultTilesList>& result_tiles,
+      std::optional<PreprocessTileMergeFuture>& merge_future);
 
   /**
    * Compute parallelization parameters for a tile copy operation.

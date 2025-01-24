@@ -96,6 +96,9 @@ struct PreprocessTileMergeFuture {
   /** the merge future */
   std::optional<tdb::pmr::unique_ptr<algorithm::ParallelMergeFuture>> merge_;
 
+  /** the known bound in the output up to which the merge has completed */
+  std::optional<uint64_t> safe_bound_;
+
  private:
   void free_input() {
     for (auto& fragment : fragment_result_tiles_) {
@@ -123,18 +126,36 @@ struct PreprocessTileMergeFuture {
    *
    * @return true if the requested cursor is available, false otherwise
    */
-  bool wait_for(uint64_t cursor) {
+  bool wait_for(uint64_t request_cursor) {
     if (!merge_.has_value()) {
       return true;
     }
 
-    std::optional<uint64_t> bound = merge_.value()->valid_output_bound();
-    if (bound.has_value() && bound.value() >= cursor) {
+    if (safe_bound_.has_value() && request_cursor < safe_bound_.value()) {
       return true;
     }
 
-    while ((bound = merge_.value()->await()).has_value()) {
-      if (bound.value() >= cursor) {
+    const auto prev_safe_bound_ = safe_bound_;
+
+    safe_bound_ = merge_.value()->valid_output_bound();
+    if (safe_bound_.has_value() && safe_bound_.value() > request_cursor) {
+      if (prev_safe_bound_.has_value() &&
+          prev_safe_bound_.value() > safe_bound_.value()) {
+        throw SparseGlobalOrderReaderInternalError(
+            "Unexpected preprocess tile merge state: out of order merge "
+            "bound");
+      }
+      return true;
+    }
+
+    while ((safe_bound_ = merge_.value()->await()).has_value()) {
+      if (prev_safe_bound_.has_value() &&
+          prev_safe_bound_.value() > safe_bound_.value()) {
+        throw SparseGlobalOrderReaderInternalError(
+            "Unexpected preprocess tile merge state: out of order merge "
+            "bound");
+      }
+      if (safe_bound_.value() > request_cursor) {
         return true;
       }
     }
@@ -334,12 +355,12 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
     if (array_schema_.cell_order() == Layout::HILBERT) {
       auto&& [user_buffs_full, rcs] =
           merge_result_cell_slabs<HilbertCmpReverse>(
-              max_num_cells_to_copy(), result_tiles);
+              max_num_cells_to_copy(), result_tiles, preprocess_future);
       user_buffers_full = user_buffs_full;
       result_cell_slabs = std::move(rcs);
     } else {
       auto&& [user_buffs_full, rcs] = merge_result_cell_slabs<GlobalCmpReverse>(
-          max_num_cells_to_copy(), result_tiles);
+          max_num_cells_to_copy(), result_tiles, preprocess_future);
       user_buffers_full = user_buffs_full;
       result_cell_slabs = std::move(rcs);
     }
@@ -820,7 +841,7 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
     default:
       stdx::unreachable();
   }
-}  // namespace tiledb::sm
+}
 
 template <class BitmapType>
 std::vector<ResultTile*>
@@ -1014,7 +1035,7 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
 
     if (merge_future.has_value()) {
       const bool wait_ok =
-          merge_future->wait_for(preprocess_tile_order_.cursor_);
+          merge_future->wait_for(preprocess_tile_order_.cursor_ - 1);
       if (!wait_ok) {
         throw SparseGlobalOrderReaderInternalError(
             "Waiting for preprocess tile merge results failed");
@@ -1063,27 +1084,15 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
   }
 
   if (preprocess_tile_order_.has_more_tiles()) {
-    size_t rt = preprocess_tile_order_.cursor_;
-    size_t rt_merge_bound =
-        (merge_future.has_value() ? rt : preprocess_tile_order_.tiles_.size());
-    while (rt < preprocess_tile_order_.tiles_.size()) {
-      if (rt == rt_merge_bound) {
-        auto merge_await = merge_future->await();
-        if (merge_await.has_value()) {
-          rt_merge_bound = merge_await.value();
-        } else if ((merge_await =
-                        merge_future->merge_.value()->valid_output_bound())
-                       .has_value()) {
-          rt_merge_bound = merge_await.value();
-        } else {
+    uint64_t rt;
+    for (rt = preprocess_tile_order_.cursor_;
+         rt < preprocess_tile_order_.tiles_.size();
+         rt++) {
+      if (merge_future.has_value()) {
+        if (!merge_future->wait_for(rt)) {
           throw SparseGlobalOrderReaderInternalError(
               "Unexpected preprocess tile merge state: expected new merge "
               "bound but found none");
-        }
-        if (merge_await.value() <= rt) {
-          throw SparseGlobalOrderReaderInternalError(
-              "Unexpected preprocess tile merge state: out of order merge "
-              "bound");
         }
       }
 
@@ -1113,7 +1122,6 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
           if (merge_future.has_value()) {
             merge_future->block();
             merge_future.reset();
-            rt_merge_bound = preprocess_tile_order_.tiles_.size();
             continue;
           }
 
@@ -1134,8 +1142,6 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
           break;
         }
       }
-
-      rt++;
     }
 
     // update position for next iteration
@@ -1149,6 +1155,13 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
       for (uint64_t ri = preprocess_tile_order_.cursor_;
            all_tiles_loaded && ri < preprocess_tile_order_.tiles_.size();
            ri++) {
+        if (merge_future.has_value()) {
+          if (!merge_future->wait_for(ri)) {
+            throw SparseGlobalOrderReaderInternalError(
+                "Waiting for preprocess tile merge results failed");
+          }
+        }
+
         const auto& tile = preprocess_tile_order_.tiles_[ri];
         if (tile.fragment_idx_ == f) {
           all_tiles_loaded = false;
@@ -1583,7 +1596,9 @@ template <class BitmapType>
 template <class CompType>
 tuple<bool, std::vector<ResultCellSlab>>
 SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
-    uint64_t num_cells, std::vector<ResultTilesList>& result_tiles) {
+    uint64_t num_cells,
+    std::vector<ResultTilesList>& result_tiles,
+    std::optional<PreprocessTileMergeFuture>& merge_future) {
   auto timer_se = stats_->start_timer("merge_result_cell_slabs");
 
   // User gave us some empty buffers, exit.
@@ -1636,6 +1651,13 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       for (uint64_t rt = preprocess_tile_order_.cursor_;
            rt < preprocess_tile_order_.tiles_.size();
            rt++) {
+        if (merge_future.has_value()) {
+          if (!merge_future->wait_for(rt)) {
+            throw SparseGlobalOrderReaderInternalError(
+                "Unexpected preprocess tile merge state: expected new merge "
+                "bound but found none");
+          }
+        }
         const auto frt = preprocess_tile_order_.tiles_[rt].fragment_idx_;
         if (has_pending_tiles(frt)) {
           merge_bound.emplace(RangeLowerBound{
