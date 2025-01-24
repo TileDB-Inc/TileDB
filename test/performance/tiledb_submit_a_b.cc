@@ -314,7 +314,8 @@ tiledb::common::Status assertGlobalOrder(
 
     if (globalcmp(nexttuple, prevtuple)) {
       return tiledb::common::Status_Error(
-          "Out of order: pos=" + std::to_string(i) +
+          "Out of order: start= " + std::to_string(start) +
+          ", pos=" + std::to_string(i) + ", end=" + std::to_string(end) +
           ", num_cells=" + std::to_string(num_cells));
     }
   }
