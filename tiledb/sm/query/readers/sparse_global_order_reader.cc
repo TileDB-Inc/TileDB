@@ -197,7 +197,7 @@ bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
   } else if (!preprocess_tile_order_.enabled_) {
     return memory_used_for_coords_total_ != 0;
   } else if (preprocess_tile_order_.has_more_tiles()) {
-    return false;
+    return true;
   } else {
     [[maybe_unused]] const size_t mem_for_tile_order =
         sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
