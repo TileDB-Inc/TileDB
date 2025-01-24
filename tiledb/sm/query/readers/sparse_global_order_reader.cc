@@ -148,7 +148,7 @@ struct PreprocessTileMergeFuture {
       return true;
     }
 
-    while ((safe_bound_ = merge_.value()->await()).has_value()) {
+    while ((safe_bound_ = await()).has_value()) {
       if (prev_safe_bound_.has_value() &&
           prev_safe_bound_.value() > safe_bound_.value()) {
         throw SparseGlobalOrderReaderInternalError(
