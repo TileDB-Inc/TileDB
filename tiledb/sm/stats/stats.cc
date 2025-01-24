@@ -189,6 +189,17 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   }
 }
 
+uint64_t Stats::get_counter(const std::string& stat) const {
+  const std::string new_stat = prefix_ + stat;
+  std::unique_lock<std::mutex> lck(mtx_);
+  auto maybe = counters_.find(new_stat);
+  if (maybe == counters_.end()) {
+    return 0;
+  } else {
+    return maybe->second;
+  }
+}
+
 DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
   return DurationInstrument<Stats>(*this, stat);
 }
