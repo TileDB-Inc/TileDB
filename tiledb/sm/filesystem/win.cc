@@ -58,6 +58,8 @@
 #include "uri.h"
 #include "win.h"
 
+#include <fmt/format.h>
+
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
@@ -467,14 +469,18 @@ Status Win::read(
       if (gle != 0) {
         err_msg = get_last_error_msg(gle, "ReadFile");
       } else {
-        err_msg = "num_bytes_read " + std::to_string(num_bytes_read) +
-                  " != nbytes " + std::to_string(nbytes)
+        err_msg = std::string("num_bytes_read ") +
+                  std::to_string(num_bytes_read) + " != nbytes " +
+                  std::to_string(nbytes);
       }
 
-      return LOG_STATUS(Status_IOError(
-          "Cannot read from file '" + path + "'; File read error '" + err_msg +
-          "' offset " + std::string(offset) + " nbytes " +
-          std::string(nbytes)));
+      return LOG_STATUS(Status_IOError(fmt::format(
+          "Cannot read from file '{}'; File read error '{}' offset {} nbytes "
+          "{}",
+          path,
+          err_msg,
+          offset,
+          nbytes)));
     }
     byte_buffer += num_bytes_read;
     offset += num_bytes_read;
@@ -556,9 +562,8 @@ Status Win::write(
   uint64_t file_offset = file_size_lg_int.QuadPart;
   if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
     CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot write to file '") + path + "'" + " file_offset " +
-        std::string(file_offset) + " buffer_size " + std::string(buffer_size)));
+    return LOG_STATUS(
+        Status_IOError(std::string("Cannot write to file '") + path));
   }
   // Always close the handle.
   if (CloseHandle(file_h) == 0) {
@@ -597,11 +602,9 @@ Status Win::write_at(
             bytes_to_write,
             &bytes_written,
             &ov) == 0) {
-      // There's no guarantee that the bytes_written outarg was updated, when
-      // the write failed -- so let's not log it.
       return LOG_STATUS(Status_IOError(std::string(
-          get_last_error_msg("WriteFile") + " bytes_to_write " +
-          std::string(bytes_to_write))));
+          "Cannot write to file; File writing error: " +
+          get_last_error_msg("WriteFile"))));
     }
     remaining_bytes_to_write -= bytes_written;
     byte_idx += bytes_written;
