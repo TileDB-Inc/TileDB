@@ -123,9 +123,9 @@ RestCapabilities rest_version_from_capnp(
         "version.");
   }
 
-  if (rest_version_reader.hasMinimumSupportedTileDBVersion()) {
+  if (rest_version_reader.hasMinimumSupportedTileDBClientVersion()) {
     auto version_reader =
-        rest_version_reader.getMinimumSupportedTileDBVersion();
+        rest_version_reader.getMinimumSupportedTileDBClientVersion();
     rest_minimum_version.major_ = version_reader.getMajor();
     rest_minimum_version.minor_ = version_reader.getMinor();
     rest_minimum_version.patch_ = version_reader.getPatch();

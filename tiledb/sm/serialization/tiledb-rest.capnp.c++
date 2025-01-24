@@ -10723,7 +10723,7 @@ const ::capnp::_::RawSchema s_ff44627d34d063ab = {
   0, 3, i_ff44627d34d063ab, nullptr, nullptr, { &s_ff44627d34d063ab, nullptr, nullptr, 0, 0, nullptr }, false
 };
 #endif  // !CAPNP_LITE
-static const ::capnp::_::AlignedData<53> b_bc91e24e30f1c5ca = {
+static const ::capnp::_::AlignedData<54> b_bc91e24e30f1c5ca = {
   {   0,   0,   0,   0,   5,   0,   6,   0,
     202, 197, 241,  48,  78, 226, 145, 188,
      18,   0,   0,   0,   1,   0,   0,   0,
@@ -10752,10 +10752,10 @@ static const ::capnp::_::AlignedData<53> b_bc91e24e30f1c5ca = {
       1,   0,   0,   0,   1,   0,   0,   0,
       0,   0,   1,   0,   1,   0,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
-     53,   0,   0,   0, 242,   0,   0,   0,
+     53,   0,   0,   0,  34,   1,   0,   0,
       0,   0,   0,   0,   0,   0,   0,   0,
-     60,   0,   0,   0,   3,   0,   1,   0,
-     72,   0,   0,   0,   2,   0,   1,   0,
+     64,   0,   0,   0,   3,   0,   1,   0,
+     76,   0,   0,   0,   2,   0,   1,   0,
     100, 101, 112, 108, 111, 121, 101, 100,
      84, 105, 108, 101,  68,  66,  86, 101,
     114, 115, 105, 111, 110,   0,   0,   0,
@@ -10768,8 +10768,9 @@ static const ::capnp::_::AlignedData<53> b_bc91e24e30f1c5ca = {
       0,   0,   0,   0,   0,   0,   0,   0,
     109, 105, 110, 105, 109, 117, 109,  83,
     117, 112, 112, 111, 114, 116, 101, 100,
-     84, 105, 108, 101,  68,  66,  86, 101,
-    114, 115, 105, 111, 110,   0,   0,   0,
+     84, 105, 108, 101,  68,  66,  67, 108,
+    105, 101, 110, 116,  86, 101, 114, 115,
+    105, 111, 110,   0,   0,   0,   0,   0,
      16,   0,   0,   0,   0,   0,   0,   0,
     171,  99, 208,  52, 125,  98,  68, 255,
       0,   0,   0,   0,   0,   0,   0,   0,
@@ -10786,7 +10787,7 @@ static const ::capnp::_::RawSchema* const d_bc91e24e30f1c5ca[] = {
 static const uint16_t m_bc91e24e30f1c5ca[] = {0, 1};
 static const uint16_t i_bc91e24e30f1c5ca[] = {0, 1};
 const ::capnp::_::RawSchema s_bc91e24e30f1c5ca = {
-  0xbc91e24e30f1c5ca, b_bc91e24e30f1c5ca.words, 53, d_bc91e24e30f1c5ca, m_bc91e24e30f1c5ca,
+  0xbc91e24e30f1c5ca, b_bc91e24e30f1c5ca.words, 54, d_bc91e24e30f1c5ca, m_bc91e24e30f1c5ca,
   1, 2, i_bc91e24e30f1c5ca, nullptr, nullptr, { &s_bc91e24e30f1c5ca, nullptr, nullptr, 0, 0, nullptr }, false
 };
 #endif  // !CAPNP_LITE
