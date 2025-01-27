@@ -83,10 +83,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
         "Cannot initialize reader; Buffers not set");
   }
 
-  // Clear preprocess tile order
-  preprocess_tile_order_.enabled_ = false;
-  preprocess_tile_order_.cursor_ = 0;
-
   // Check subarray
   check_subarray();
 
@@ -135,18 +131,6 @@ SparseIndexReaderBase::read_state() const {
 
 void SparseIndexReaderBase::set_read_state(ReadState read_state) {
   read_state_ = std::move(read_state);
-}
-
-const PreprocessTileOrder& SparseIndexReaderBase::preprocess_tile_order()
-    const {
-  return preprocess_tile_order_;
-}
-
-void SparseIndexReaderBase::set_preprocess_tile_order_cursor(
-    uint64_t, std::vector<ResultTileId>) {
-  throw SparseIndexReaderBaseException(
-      "Internal error: set_preprocess_tile_order_cursor for unsupported sparse "
-      "index reader");
 }
 
 uint64_t SparseIndexReaderBase::available_memory() {

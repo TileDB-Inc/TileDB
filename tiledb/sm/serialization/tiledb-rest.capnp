@@ -717,16 +717,6 @@ struct ReadStateIndex {
   # Is the reader done adding result tiles.
 }
 
-struct PreprocessTileOrder {
-# State of the sparse global order reader preprocess tile order.
-
-  cursor @0 :UInt64;
-  # Position in the preprocess tile order list.
-
-  tiles @1 :List(ResultTileId);
-  # List of tiles arranged in the order they must be opened
-}
-
 struct ReaderIndex {
   # Reader struct for indexed readers.
 
@@ -744,8 +734,6 @@ struct ReaderIndex {
 
   stats @4 :Stats;
   # Stats object
-
-  preprocess @5 :PreprocessTileOrder;
 }
 
 struct Query {

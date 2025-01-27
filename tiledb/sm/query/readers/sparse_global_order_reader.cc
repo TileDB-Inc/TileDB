@@ -194,6 +194,10 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
   // Initialize memory budget variables.
   refresh_config();
 
+  // Clear preprocess tile order
+  preprocess_tile_order_.enabled_ = false;
+  preprocess_tile_order_.cursor_ = 0;
+
   const auto preprocess_tile_merge_min_items = config_.get<uint64_t>(
       "sm.query.sparse_global_order.preprocess_tile_merge");
   preprocess_tile_order_.enabled_ =
@@ -244,17 +248,6 @@ void SparseGlobalOrderReader<BitmapType>::refresh_config() {
 }
 
 template <class BitmapType>
-void SparseGlobalOrderReader<BitmapType>::set_preprocess_tile_order_cursor(
-    uint64_t cursor, std::vector<ResultTileId> tiles) {
-  preprocess_tile_order_.enabled_ = true;
-  preprocess_tile_order_.cursor_ = cursor;
-  preprocess_tile_order_.tiles_ = tiles;
-
-  memory_used_for_coords_total_ +=
-      sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
-}
-
-template <class BitmapType>
 Status SparseGlobalOrderReader<BitmapType>::dowork() {
   auto timer_se = stats_->start_timer("dowork");
   stats_->add_counter("loop_num", 1);
@@ -294,6 +287,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
     // iterations are needed.
     preprocess_future.emplace(memory_used_for_coords_total_);
     preprocess_compute_result_tile_order(preprocess_future.value());
+    preprocess_set_cursor_from_read_state(preprocess_future.value());
   } else if (preprocess_tile_order_.enabled_) {
     // NB: we could have avoided loading these in the first place
     // since we already have determined which tiles qualify, and their order
@@ -841,6 +835,40 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
     default:
       stdx::unreachable();
   }
+}
+
+template <class BitmapType>
+void SparseGlobalOrderReader<BitmapType>::preprocess_set_cursor_from_read_state(
+    PreprocessTileMergeFuture& merge_future) {
+  const auto& state = read_state_.frag_idx();
+  const auto& tiles = preprocess_tile_order_.tiles_;
+  // Find the lower bound cursor whose tile is greater than all of
+  // the read state tiles.  See `create_result_tiles_using_preprocess`.
+  // If the cursor is nonzero then we will create result tiles
+  // between the read state and the cursor.
+  uint64_t bound = 0;
+  for (size_t f = 0; f < state.size(); f++) {
+    for (; bound < tiles.size(); bound++) {
+      if (state[f].tile_idx_ == 0 && state[f].cell_idx_ == 0) {
+        // initial state (even if tile 0 is filtered by the subarray)
+        break;
+      }
+
+      merge_future.wait_for(bound);
+
+      if (tiles[bound].fragment_idx_ != f) {
+        continue;
+      } else if (state[f].cell_idx_ == 0) {
+        if (state[f].tile_idx_ <= tiles[bound].tile_idx_) {
+          break;
+        }
+      } else if (state[f].tile_idx_ < tiles[bound].tile_idx_) {
+        break;
+      }
+    }
+  }
+
+  preprocess_tile_order_.cursor_ = bound;
 }
 
 template <class BitmapType>
