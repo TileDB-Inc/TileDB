@@ -146,4 +146,4 @@ jobs:
         with:
           name: nightly GitHub Actions build
           label: nightly
-          assignee: KiterLuc,teo-tsirpanis,davisp
+          assignee: davisp,dudoslav,ihnorton,teo-tsirpanis

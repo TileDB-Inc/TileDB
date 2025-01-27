@@ -183,8 +183,12 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     assert(buffer);
 
     if (offset + nbytes > size_)
-      return LOG_STATUS(
-          Status_MemFSError("Cannot read from file; Read exceeds file size"));
+      return LOG_STATUS(Status_MemFSError(fmt::format(
+          "Cannot read from file; Read exceeds file size: offset {} nbytes {} "
+          "size_ {}",
+          offset,
+          nbytes,
+          size_)));
 
     memcpy(buffer, (char*)data_ + offset, nbytes);
     return Status::Ok();

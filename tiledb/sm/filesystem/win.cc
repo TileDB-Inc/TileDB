@@ -58,6 +58,8 @@
 #include "uri.h"
 #include "win.h"
 
+#include <fmt/format.h>
+
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
@@ -462,11 +464,23 @@ Status Win::read(
         0) {
       auto gle = GetLastError();
       CloseHandle(file_h);
-      return LOG_STATUS(Status_IOError(
-          "Cannot read from file '" + path + "'; File read error " +
-          (gle != 0 ? get_last_error_msg(gle, "ReadFile") :
-                      "num_bytes_read " + std::to_string(num_bytes_read) +
-                          " != nbyes " + std::to_string(nbytes))));
+
+      std::string err_msg;
+      if (gle != 0) {
+        err_msg = get_last_error_msg(gle, "ReadFile");
+      } else {
+        err_msg = std::string("num_bytes_read ") +
+                  std::to_string(num_bytes_read) + " != nbytes " +
+                  std::to_string(nbytes);
+      }
+
+      return LOG_STATUS(Status_IOError(fmt::format(
+          "Cannot read from file '{}'; File read error '{}' offset {} nbytes "
+          "{}",
+          path,
+          err_msg,
+          offset,
+          nbytes)));
     }
     byte_buffer += num_bytes_read;
     offset += num_bytes_read;
