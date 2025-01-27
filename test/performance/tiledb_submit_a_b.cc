@@ -174,9 +174,7 @@ struct StatKeeper {
   /**
    * Write durations to a file for analysis.
    */
-  void dump_durations(const char* path) const {
-    std::ofstream dump(path);
-
+  void dump_durations(std::ostream& dump) const {
     json arrays;
 
     for (const auto& uri : statistics) {
@@ -655,7 +653,8 @@ int main(int argc, char** argv) {
   tiledb_config_free(&b_conf);
   tiledb_config_free(&a_conf);
 
-  stat_keeper.dump_durations("/tmp/tiledb_submit_a_b.json");
+  std::ofstream out("/tmp/tiledb_submit_a_b.json");
+  stat_keeper.dump_durations(out);
 
   return 0;
 }
