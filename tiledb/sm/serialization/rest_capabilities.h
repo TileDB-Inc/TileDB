@@ -41,7 +41,7 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class RestCapabilities;
+struct RestCapabilities;
 enum class SerializationType : uint8_t;
 
 namespace serialization {

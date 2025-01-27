@@ -121,15 +121,27 @@ class RestClientRemote : public RestClient {
   /**
    * @return TileDB core version currently deployed to the REST server.
    */
-  inline const TileDBVersion& rest_version() const override {
+  inline const TileDBVersion& rest_tiledb_version() const override {
     return get_capabilities_from_rest().rest_tiledb_version_;
   }
 
   /**
    * @return Minimum TileDB core version currently supported by the REST server.
    */
-  inline const TileDBVersion& rest_minimum_supported_version() const override {
+  inline const TileDBVersion& rest_minimum_supported_tiledb_version()
+      const override {
     return get_capabilities_from_rest().rest_minimum_supported_version_;
+  }
+
+  /**
+   * Check if REST capabilities are currently known to the RestClient. This
+   * will not attempt to initialize them if they are currently unknown.
+   *
+   * @return True if RestCapabilities member has been initialized by a previous
+   * REST capabilities endpoint request, else False.
+   */
+  inline bool rest_capabilities_detected() const override {
+    return rest_capabilities_.detected_;
   }
 
   /**

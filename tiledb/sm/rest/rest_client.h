@@ -214,7 +214,7 @@ class FragmentInfo;
 class MemoryTracker;
 class Query;
 class QueryPlan;
-class RestCapabilities;
+struct RestCapabilities;
 
 // Forward for friend declaration within `class RestClient`
 class RestClientFactory;
@@ -299,12 +299,18 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
-  inline virtual const TileDBVersion& rest_version() const {
+  inline virtual const TileDBVersion& rest_tiledb_version() const {
     throw RestClientDisabledException();
   }
 
   /// Operation disabled in base class.
-  inline virtual const TileDBVersion& rest_minimum_supported_version() const {
+  inline virtual const TileDBVersion& rest_minimum_supported_tiledb_version()
+      const {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual bool rest_capabilities_detected() const {
     throw RestClientDisabledException();
   }
 
