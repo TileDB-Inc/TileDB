@@ -147,7 +147,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: release-*
+          pattern: "*"
           merge-multiple: true
           path: dist
       - name: Test names of release artifacts
@@ -168,8 +168,8 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
+          name: "*"
           merge-multiple: true
-          name: release-*
           path: dist
       - name: DEBUG
         run: |
