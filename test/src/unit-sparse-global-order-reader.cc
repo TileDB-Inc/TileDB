@@ -1308,6 +1308,8 @@ TEST_CASE_METHOD(
         2, 1, 1, {templates::Domain<int>(1, 1)});
     doit.operator()<tiledb::test::AsserterCatch>(
         2, 1, 1, {templates::Domain<int>(1, 2)});
+    doit.operator()<tiledb::test::AsserterCatch>(
+        39, 1, 1, {templates::Domain<int>(20, 21)});
   }
 
   SECTION("Rapidcheck") {
