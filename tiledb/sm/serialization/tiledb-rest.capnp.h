@@ -70,7 +70,6 @@ CAPNP_DECLARE_SCHEMA(afcbef694e73edb8);
 CAPNP_DECLARE_SCHEMA(def87cead82188e7);
 CAPNP_DECLARE_SCHEMA(c1a2d010de779de5);
 CAPNP_DECLARE_SCHEMA(c86c77b5f6a2bf0f);
-CAPNP_DECLARE_SCHEMA(818a8600b3452aa4);
 CAPNP_DECLARE_SCHEMA(9b9a5fc7713a8692);
 CAPNP_DECLARE_SCHEMA(96ba49d0f8b23ccc);
 CAPNP_DECLARE_SCHEMA(9df6f2a42c4e5f0b);
@@ -1049,23 +1048,6 @@ struct ReadStateIndex {
   };
 };
 
-struct PreprocessTileOrder {
-  PreprocessTileOrder() = delete;
-
-  class Reader;
-  class Builder;
-  class Pipeline;
-
-  struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(818a8600b3452aa4, 1, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
-      return &schema->defaultBrand;
-    }
-#endif  // !CAPNP_LITE
-  };
-};
-
 struct ReaderIndex {
   ReaderIndex() = delete;
 
@@ -1074,7 +1056,7 @@ struct ReaderIndex {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9b9a5fc7713a8692, 0, 6)
+    CAPNP_DECLARE_STRUCT_HEADER(9b9a5fc7713a8692, 0, 5)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -9292,124 +9274,6 @@ class ReadStateIndex::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-class PreprocessTileOrder::Reader {
- public:
-  typedef PreprocessTileOrder Reads;
-
-  Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base)
-      : _reader(base) {
-  }
-
-  inline ::capnp::MessageSize totalSize() const {
-    return _reader.totalSize().asPublic();
-  }
-
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
-  }
-#endif  // !CAPNP_LITE
-
-  inline ::uint64_t getCursor() const;
-
-  inline bool hasTiles() const;
-  inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>::Reader
-  getTiles() const;
-
- private:
-  ::capnp::_::StructReader _reader;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::List;
-  friend class ::capnp::MessageBuilder;
-  friend class ::capnp::Orphanage;
-};
-
-class PreprocessTileOrder::Builder {
- public:
-  typedef PreprocessTileOrder Builds;
-
-  Builder() = delete;  // Deleted to discourage incorrect usage.
-                       // You can explicitly initialize to nullptr instead.
-  inline Builder(decltype(nullptr)) {
-  }
-  inline explicit Builder(::capnp::_::StructBuilder base)
-      : _builder(base) {
-  }
-  inline operator Reader() const {
-    return Reader(_builder.asReader());
-  }
-  inline Reader asReader() const {
-    return *this;
-  }
-
-  inline ::capnp::MessageSize totalSize() const {
-    return asReader().totalSize();
-  }
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return asReader().toString();
-  }
-#endif  // !CAPNP_LITE
-
-  inline ::uint64_t getCursor();
-  inline void setCursor(::uint64_t value);
-
-  inline bool hasTiles();
-  inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>::Builder
-  getTiles();
-  inline void setTiles(::capnp::List<
-                       ::tiledb::sm::serialization::capnp::ResultTileId,
-                       ::capnp::Kind::STRUCT>::Reader value);
-  inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>::Builder
-  initTiles(unsigned int size);
-  inline void adoptTiles(::capnp::Orphan<::capnp::List<
-                             ::tiledb::sm::serialization::capnp::ResultTileId,
-                             ::capnp::Kind::STRUCT>>&& value);
-  inline ::capnp::Orphan<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>>
-  disownTiles();
-
- private:
-  ::capnp::_::StructBuilder _builder;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  friend class ::capnp::Orphanage;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-};
-
-#if !CAPNP_LITE
-class PreprocessTileOrder::Pipeline {
- public:
-  typedef PreprocessTileOrder Pipelines;
-
-  inline Pipeline(decltype(nullptr))
-      : _typeless(nullptr) {
-  }
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
-      : _typeless(kj::mv(typeless)) {
-  }
-
- private:
-  ::capnp::AnyPointer::Pipeline _typeless;
-  friend class ::capnp::PipelineHook;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-};
-#endif  // !CAPNP_LITE
-
 class ReaderIndex::Reader {
  public:
   typedef ReaderIndex Reads;
@@ -9446,10 +9310,6 @@ class ReaderIndex::Reader {
 
   inline bool hasStats() const;
   inline ::tiledb::sm::serialization::capnp::Stats::Reader getStats() const;
-
-  inline bool hasPreprocess() const;
-  inline ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Reader
-  getPreprocess() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -9539,20 +9399,6 @@ class ReaderIndex::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>
   disownStats();
 
-  inline bool hasPreprocess();
-  inline ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Builder
-  getPreprocess();
-  inline void setPreprocess(
-      ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Reader value);
-  inline ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Builder
-  initPreprocess();
-  inline void adoptPreprocess(
-      ::capnp::Orphan<::tiledb::sm::serialization::capnp::PreprocessTileOrder>&&
-          value);
-  inline ::capnp::Orphan<
-      ::tiledb::sm::serialization::capnp::PreprocessTileOrder>
-  disownPreprocess();
-
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -9579,8 +9425,6 @@ class ReaderIndex::Pipeline {
   getReadState();
   inline ::tiledb::sm::serialization::capnp::Condition::Pipeline getCondition();
   inline ::tiledb::sm::serialization::capnp::Stats::Pipeline getStats();
-  inline ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Pipeline
-  getPreprocess();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -25947,94 +25791,6 @@ inline void ReadStateIndex::Builder::setDoneAddingResultTiles(bool value) {
   _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t PreprocessTileOrder::Reader::getCursor() const {
-  return _reader.getDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-
-inline ::uint64_t PreprocessTileOrder::Builder::getCursor() {
-  return _builder.getDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-inline void PreprocessTileOrder::Builder::setCursor(::uint64_t value) {
-  _builder.setDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
-}
-
-inline bool PreprocessTileOrder::Reader::hasTiles() const {
-  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool PreprocessTileOrder::Builder::hasTiles() {
-  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::ResultTileId,
-    ::capnp::Kind::STRUCT>::Reader
-PreprocessTileOrder::Reader::getTiles() const {
-  return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>>::get(_reader
-                                       .getPointerField(
-                                           ::capnp::bounded<0>() *
-                                           ::capnp::POINTERS));
-}
-inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::ResultTileId,
-    ::capnp::Kind::STRUCT>::Builder
-PreprocessTileOrder::Builder::getTiles() {
-  return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>>::get(_builder
-                                       .getPointerField(
-                                           ::capnp::bounded<0>() *
-                                           ::capnp::POINTERS));
-}
-inline void PreprocessTileOrder::Builder::setTiles(
-    ::capnp::List<
-        ::tiledb::sm::serialization::capnp::ResultTileId,
-        ::capnp::Kind::STRUCT>::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>>::
-      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-          value);
-}
-inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::ResultTileId,
-    ::capnp::Kind::STRUCT>::Builder
-PreprocessTileOrder::Builder::initTiles(unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>>::
-      init(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-          size);
-}
-inline void PreprocessTileOrder::Builder::adoptTiles(
-    ::capnp::Orphan<::capnp::List<
-        ::tiledb::sm::serialization::capnp::ResultTileId,
-        ::capnp::Kind::STRUCT>>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>>::
-      adopt(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-          kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::List<
-    ::tiledb::sm::serialization::capnp::ResultTileId,
-    ::capnp::Kind::STRUCT>>
-PreprocessTileOrder::Builder::disownTiles() {
-  return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::ResultTileId,
-      ::capnp::Kind::STRUCT>>::disown(_builder
-                                          .getPointerField(
-                                              ::capnp::bounded<0>() *
-                                              ::capnp::POINTERS));
-}
-
 inline bool ReaderIndex::Reader::hasLayout() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -26282,63 +26038,6 @@ ReaderIndex::Builder::disownStats() {
   return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Stats>::
       disown(
           _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
-}
-
-inline bool ReaderIndex::Reader::hasPreprocess() const {
-  return !_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool ReaderIndex::Builder::hasPreprocess() {
-  return !_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Reader
-ReaderIndex::Reader::getPreprocess() const {
-  return ::capnp::_::PointerHelpers<
-      ::tiledb::sm::serialization::capnp::PreprocessTileOrder>::
-      get(_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
-}
-inline ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Builder
-ReaderIndex::Builder::getPreprocess() {
-  return ::capnp::_::PointerHelpers<
-      ::tiledb::sm::serialization::capnp::PreprocessTileOrder>::
-      get(_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
-}
-#if !CAPNP_LITE
-inline ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Pipeline
-ReaderIndex::Pipeline::getPreprocess() {
-  return ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Pipeline(
-      _typeless.getPointerField(5));
-}
-#endif  // !CAPNP_LITE
-inline void ReaderIndex::Builder::setPreprocess(
-    ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Reader value) {
-  ::capnp::_::PointerHelpers<
-      ::tiledb::sm::serialization::capnp::PreprocessTileOrder>::
-      set(_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
-          value);
-}
-inline ::tiledb::sm::serialization::capnp::PreprocessTileOrder::Builder
-ReaderIndex::Builder::initPreprocess() {
-  return ::capnp::_::PointerHelpers<
-      ::tiledb::sm::serialization::capnp::PreprocessTileOrder>::
-      init(_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
-}
-inline void ReaderIndex::Builder::adoptPreprocess(
-    ::capnp::Orphan<::tiledb::sm::serialization::capnp::PreprocessTileOrder>&&
-        value) {
-  ::capnp::_::PointerHelpers<
-      ::tiledb::sm::serialization::capnp::PreprocessTileOrder>::
-      adopt(
-          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
-          kj::mv(value));
-}
-inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::PreprocessTileOrder>
-ReaderIndex::Builder::disownPreprocess() {
-  return ::capnp::_::PointerHelpers<
-      ::tiledb::sm::serialization::capnp::PreprocessTileOrder>::
-      disown(
-          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
 }
 
 inline bool Query::Reader::hasAttributeBufferHeaders() const {

@@ -66,6 +66,20 @@ enum class AddNextCellResult {
   MergeBound
 };
 
+/**
+ * Identifies an order in which to load result tiles.
+ * See `preprocess_tile_order_`.
+ */
+struct PreprocessTileOrder {
+  bool enabled_;
+  size_t cursor_;
+  std::vector<ResultTileId> tiles_;
+
+  bool has_more_tiles() const {
+    return enabled_ && cursor_ < tiles_.size();
+  }
+};
+
 /** Processes sparse global order read queries. */
 
 template <class BitmapType>
@@ -136,10 +150,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Returns the name of the strategy */
   std::string name() override;
 
-  /** Used in deserialization */
-  virtual void set_preprocess_tile_order_cursor(
-      uint64_t cursor, std::vector<ResultTileId> tiles) override;
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -147,6 +157,18 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /**
+   * State for the optional mode to preprocess the tiles across
+   * all fragments and merge them into a single list which identifies
+   * the order they should be read in.
+   *
+   * This is used to merge the tiles
+   * into a single globally-ordered list prior to loading.
+   * Tile identifiers in this list are sorted using their starting ranges
+   * and have already had the subarray (if any) applied.
+   */
+  PreprocessTileOrder preprocess_tile_order_;
 
   /**
    * Result tiles currently for which we loaded coordinates but couldn't
@@ -272,6 +294,28 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * the results of the asynchronous parallel merge.
    */
   void preprocess_compute_result_tile_order(
+      PreprocessTileMergeFuture& merge_future);
+
+  /**
+   * Identifies the current position in the preprocess tile stream using
+   * the read state, and updates the cursor to that position.
+   * This is called after starting the result tile order.
+   *
+   * When running libtiledb natively, this is only called in the
+   * first instance of `tiledb_query_submit` and sets the cursor
+   * to that position.
+   *
+   * When running libtiledb against the REST server, this is called
+   * on the REST server for each `tiledb_query_submit`.
+   * We assume that recomputing the tile order for each message
+   * is cheaper than serializing the tile order after computing it once.
+   * However, as the read state progresses over the subarray,
+   * the tiles which qualify as input to the tile merge change.
+   * This causes the tile list to vary from submit to submit.
+   * Hence instead of serializing the position in the list we must
+   * recompute it.
+   */
+  void preprocess_set_cursor_from_read_state(
       PreprocessTileMergeFuture& merge_future);
 
   /**
