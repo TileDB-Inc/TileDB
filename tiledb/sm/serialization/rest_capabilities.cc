@@ -43,7 +43,6 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/rest_capabilities.h"
-#include "tiledb/sm/storage_manager/context.h"
 
 using namespace tiledb::common;
 
@@ -140,10 +139,6 @@ RestCapabilities rest_version_from_capnp(
 #else
 
 RestCapabilities rest_version_deserialize(SerializationType, span<const char>) {
-  throw RestVersionSerializationDisabledException();
-}
-
-RestCapabilities rest_version_from_capnp(const capnp::RestVersion::Reader&) {
   throw RestVersionSerializationDisabledException();
 }
 

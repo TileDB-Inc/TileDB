@@ -49,8 +49,12 @@ namespace serialization {
 RestCapabilities rest_version_deserialize(
     SerializationType serialization_type, span<const char> serialized_response);
 
+#ifdef TILEDB_SERIALIZATION
+
 RestCapabilities rest_version_from_capnp(
     const capnp::RestVersion::Reader& rest_version_reader);
+
+#endif
 
 }  // namespace serialization
 }  // namespace tiledb::sm
