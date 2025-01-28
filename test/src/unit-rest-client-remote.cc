@@ -37,62 +37,62 @@
 #include "tiledb/sm/rest/rest_client_remote.h"
 
 TEST_CASE("REST capabilities endpoint", "[rest][version]") {
- tiledb::test::VFSTestSetup vfs_test_setup;
- if (vfs_test_setup.is_rest()) {
-   tiledb::Config config;
-   std::string serialization_format = GENERATE("JSON", "CAPNP");
-   config["rest.server_serialization_format"] = serialization_format;
+  tiledb::test::VFSTestSetup vfs_test_setup;
+  if (vfs_test_setup.is_rest()) {
+    tiledb::Config config;
+    std::string serialization_format = GENERATE("JSON", "CAPNP");
+    config["rest.server_serialization_format"] = serialization_format;
 
-   auto expected_version =
-       std::make_from_tuple<tiledb::sm::RestCapabilities::TileDBVersion>(
-           tiledb::version());
-   tiledb::common::ThreadPool tp(1);
-   DYNAMIC_SECTION(
-       "GET request to retrieve REST tiledb version - "
-       << serialization_format) {
-     auto rest_client = tiledb::sm::RestClientRemote(
-         tiledb::test::g_helper_stats,
-         config.ptr()->config(),
-         tp,
-         *tiledb::test::g_helper_logger(),
-         tiledb::test::get_test_memory_tracker());
-     tiledb::sm::RestCapabilities expected_capabilities(
-         expected_version,
-         {expected_version.major_,
-          expected_version.minor_ - 1,
-          expected_version.patch_});
-     // Check on construction the capabilities are not initialized.
-     REQUIRE(!rest_client.rest_capabilities_detected());
-     auto actual_capabilities = rest_client.get_capabilities_from_rest();
-     // GET request above initializes RestCapabilities and contents are valid.
-     REQUIRE(expected_capabilities == actual_capabilities);
-     REQUIRE(rest_client.rest_capabilities_detected());
-   }
-   DYNAMIC_SECTION(
-       "Initialization of rest_tiledb_version_ on first access - "
-       << serialization_format) {
-     // Construct enabled Stats for this test to verify http request count.
-     auto stats = tiledb::sm::stats::Stats("capabilities_stats");
-     auto rest_client = tiledb::sm::RestClientRemote(
-         stats,
-         config.ptr()->config(),
-         tp,
-         *tiledb::test::g_helper_logger(),
-         tiledb::test::get_test_memory_tracker());
-     // Here we don't call `get_capabilities_from_rest`, but instead attempt to
-     // first access RestCapabilities directly. The RestClient should submit
-     // the GET request and initialize RestCapabilities, returning the result.
-     REQUIRE(!rest_client.rest_capabilities_detected());
-     REQUIRE(rest_client.rest_tiledb_version() == expected_version);
-     auto match_request_count = Catch::Matchers::ContainsSubstring(
-         "\"capabilities_stats.RestClient.rest_http_requests\": 1");
-     REQUIRE_THAT(stats.dump(0, 0), match_request_count);
+    auto expected_version =
+        std::make_from_tuple<tiledb::sm::RestCapabilities::TileDBVersion>(
+            tiledb::version());
+    tiledb::common::ThreadPool tp(1);
+    DYNAMIC_SECTION(
+        "GET request to retrieve REST tiledb version - "
+        << serialization_format) {
+      auto rest_client = tiledb::sm::RestClientRemote(
+          tiledb::test::g_helper_stats,
+          config.ptr()->config(),
+          tp,
+          *tiledb::test::g_helper_logger(),
+          tiledb::test::get_test_memory_tracker());
+      tiledb::sm::RestCapabilities expected_capabilities(
+          expected_version,
+          {expected_version.major_,
+           expected_version.minor_ - 1,
+           expected_version.patch_});
+      // Check on construction the capabilities are not initialized.
+      REQUIRE(!rest_client.rest_capabilities_detected());
+      auto actual_capabilities = rest_client.get_capabilities_from_rest();
+      // GET request above initializes RestCapabilities and contents are valid.
+      REQUIRE(expected_capabilities == actual_capabilities);
+      REQUIRE(rest_client.rest_capabilities_detected());
+    }
+    DYNAMIC_SECTION(
+        "Initialization of rest_tiledb_version_ on first access - "
+        << serialization_format) {
+      // Construct enabled Stats for this test to verify http request count.
+      auto stats = tiledb::sm::stats::Stats("capabilities_stats");
+      auto rest_client = tiledb::sm::RestClientRemote(
+          stats,
+          config.ptr()->config(),
+          tp,
+          *tiledb::test::g_helper_logger(),
+          tiledb::test::get_test_memory_tracker());
+      // Here we don't call `get_capabilities_from_rest`, but instead attempt to
+      // first access RestCapabilities directly. The RestClient should submit
+      // the GET request and initialize RestCapabilities, returning the result.
+      REQUIRE(!rest_client.rest_capabilities_detected());
+      REQUIRE(rest_client.rest_tiledb_version() == expected_version);
+      auto match_request_count = Catch::Matchers::ContainsSubstring(
+          "\"capabilities_stats.RestClient.rest_http_requests\": 1");
+      REQUIRE_THAT(stats.dump(0, 0), match_request_count);
 
-     // After the access above, RestCapabilities has been initialized.
-     // Subsequent access attempts should not submit any additional requests.
-     REQUIRE(rest_client.rest_capabilities_detected());
-     REQUIRE(rest_client.rest_tiledb_version() == expected_version);
-     REQUIRE_THAT(stats.dump(0, 0), match_request_count);
-   }
- }
+      // After the access above, RestCapabilities has been initialized.
+      // Subsequent access attempts should not submit any additional requests.
+      REQUIRE(rest_client.rest_capabilities_detected());
+      REQUIRE(rest_client.rest_tiledb_version() == expected_version);
+      REQUIRE_THAT(stats.dump(0, 0), match_request_count);
+    }
+  }
 }
