@@ -171,6 +171,16 @@ struct StatKeeper {
     }
   }
 
+  void report_timer(
+      const StatKey& stat, const std::string& name, const json& value) {
+    auto& stats = statistics[stat.uri_][stat.qlabel_];
+    if (stat.is_a_) {
+      stats.first.metrics[name] = value;
+    } else {
+      stats.second.metrics[name] = value;
+    }
+  }
+
   /**
    * Write durations to a file for analysis.
    */
@@ -590,6 +600,28 @@ static void run(
       b_key,
       "internal_loop_num",
       optional_json(b_stats.find_counter("internal_loop_num")));
+
+  // record parallel merge timers
+  stat_keeper.report_timer(
+      a_key,
+      "preprocess_result_tile_order_compute",
+      optional_json(
+          a_stats.find_timer("preprocess_result_tile_order_compute.sum")));
+  stat_keeper.report_timer(
+      a_key,
+      "preprocess_result_tile_order_await",
+      optional_json(
+          a_stats.find_timer("preprocess_result_tile_order_await.sum")));
+  stat_keeper.report_timer(
+      b_key,
+      "preprocess_result_tile_order_compute",
+      optional_json(
+          b_stats.find_timer("preprocess_result_tile_order_compute.sum")));
+  stat_keeper.report_timer(
+      b_key,
+      "preprocess_result_tile_order_await",
+      optional_json(
+          b_stats.find_timer("preprocess_result_tile_order_await.sum")));
 }
 
 // change this to match the schema of the target arrays
