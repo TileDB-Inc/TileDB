@@ -472,7 +472,9 @@ class RestClientRemote : public RestClient {
       const URI& uri, const Config& config, uint64_t fragment_size) override;
 
   /**
-   * Get TileDB core version from the REST server.
+   * Get REST capabilities from the REST server.
+   *
+   * @return RestCapabilities object initialized with context from REST server.
    */
   const RestCapabilities& get_capabilities_from_rest() const override;
 

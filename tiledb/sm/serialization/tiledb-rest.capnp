@@ -1398,7 +1398,7 @@ struct TileDBVersion {
     patch @2 :UInt16;
 }
 
-struct RestVersion {
+struct RestCapabilities {
     deployedTileDBVersion @0 :TileDBVersion;
     minimumSupportedTileDBClientVersion @1 :TileDBVersion;
 }

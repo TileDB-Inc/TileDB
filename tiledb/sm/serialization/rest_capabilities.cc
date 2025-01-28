@@ -48,37 +48,38 @@ using namespace tiledb::common;
 
 namespace tiledb::sm::serialization {
 
-class RestVersionSerializationException : public StatusException {
+class RestCapabilitiesSerializationException : public StatusException {
  public:
-  explicit RestVersionSerializationException(const std::string& message)
-      : StatusException("[TileDB::Serialization][RestVersion]", message) {
+  explicit RestCapabilitiesSerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][RestCapabilities]", message) {
   }
 };
 
-class RestVersionSerializationDisabledException
-    : public RestVersionSerializationException {
+class RestCapabilitiesSerializationDisabledException
+    : public RestCapabilitiesSerializationException {
  public:
-  explicit RestVersionSerializationDisabledException()
-      : RestVersionSerializationException(
+  explicit RestCapabilitiesSerializationDisabledException()
+      : RestCapabilitiesSerializationException(
             "Cannot (de)serialize; serialization not enabled.") {
   }
 };
 
 #ifdef TILEDB_SERIALIZATION
 
-RestCapabilities rest_version_deserialize(
+RestCapabilities rest_capabilities_deserialize(
     SerializationType serialization_type,
     span<const char> serialized_response) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
         ::capnp::MallocMessageBuilder message_builder;
-        capnp::RestVersion::Builder rest_version_builder =
-            message_builder.initRoot<capnp::RestVersion>();
-        utils::decode_json_message(serialized_response, rest_version_builder);
-        capnp::RestVersion::Reader rest_version_reader =
-            rest_version_builder.asReader();
-        return rest_version_from_capnp(rest_version_reader);
+        capnp::RestCapabilities::Builder rest_capabilities_builder =
+            message_builder.initRoot<capnp::RestCapabilities>();
+        utils::decode_json_message(
+            serialized_response, rest_capabilities_builder);
+        capnp::RestCapabilities::Reader rest_capabilities_reader =
+            rest_capabilities_builder.asReader();
+        return rest_capabilities_from_capnp(rest_capabilities_reader);
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -86,49 +87,49 @@ RestCapabilities rest_version_deserialize(
         ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_response.size() / sizeof(::capnp::word)));
-        capnp::RestVersion::Reader rest_version_reader =
-            reader.getRoot<capnp::RestVersion>();
-        return rest_version_from_capnp(rest_version_reader);
+        capnp::RestCapabilities::Reader rest_capabilities_reader =
+            reader.getRoot<capnp::RestCapabilities>();
+        return rest_capabilities_from_capnp(rest_capabilities_reader);
       }
       default: {
-        throw RestVersionSerializationException(
+        throw RestCapabilitiesSerializationException(
             "Error deserializing REST version; Unknown serialization type "
             "passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw RestVersionSerializationException(
+    throw RestCapabilitiesSerializationException(
         "Error deserializing REST version; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw RestVersionSerializationException(
+    throw RestCapabilitiesSerializationException(
         "Error deserializing REST version; exception " + std::string(e.what()));
   }
 }
 
-RestCapabilities rest_version_from_capnp(
-    const capnp::RestVersion::Reader& rest_version_reader) {
+RestCapabilities rest_capabilities_from_capnp(
+    const capnp::RestCapabilities::Reader& rest_capabilities_reader) {
   RestClient::TileDBVersion rest_version{}, rest_minimum_version{};
-  if (rest_version_reader.hasDeployedTileDBVersion()) {
-    auto version_reader = rest_version_reader.getDeployedTileDBVersion();
+  if (rest_capabilities_reader.hasDeployedTileDBVersion()) {
+    auto version_reader = rest_capabilities_reader.getDeployedTileDBVersion();
     rest_version.major_ = version_reader.getMajor();
     rest_version.minor_ = version_reader.getMinor();
     rest_version.patch_ = version_reader.getPatch();
   } else {
-    throw RestVersionSerializationException(
+    throw RestCapabilitiesSerializationException(
         "Failed to deserialize REST capabilities with no deployed TileDB "
         "version.");
   }
 
-  if (rest_version_reader.hasMinimumSupportedTileDBClientVersion()) {
+  if (rest_capabilities_reader.hasMinimumSupportedTileDBClientVersion()) {
     auto version_reader =
-        rest_version_reader.getMinimumSupportedTileDBClientVersion();
+        rest_capabilities_reader.getMinimumSupportedTileDBClientVersion();
     rest_minimum_version.major_ = version_reader.getMajor();
     rest_minimum_version.minor_ = version_reader.getMinor();
     rest_minimum_version.patch_ = version_reader.getPatch();
   } else {
-    throw RestVersionSerializationException(
+    throw RestCapabilitiesSerializationException(
         "Failed to deserialize REST capabilities with no minimum supported "
         "TileDB version.");
   }
@@ -138,8 +139,9 @@ RestCapabilities rest_version_from_capnp(
 
 #else
 
-RestCapabilities rest_version_deserialize(SerializationType, span<const char>) {
-  throw RestVersionSerializationDisabledException();
+RestCapabilities rest_capabilities_deserialize(
+    SerializationType, span<const char>) {
+  throw RestCapabilitiesSerializationDisabledException();
 }
 
 #endif  // TILEDB_SERIALIZATION

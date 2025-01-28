@@ -125,7 +125,7 @@ enum class ObjectType_f3bb391da5271019 : uint16_t {
 CAPNP_DECLARE_ENUM(ObjectType, f3bb391da5271019);
 CAPNP_DECLARE_SCHEMA(87f0466598bb29be);
 CAPNP_DECLARE_SCHEMA(ff44627d34d063ab);
-CAPNP_DECLARE_SCHEMA(bc91e24e30f1c5ca);
+CAPNP_DECLARE_SCHEMA(8de04c65deeb1510);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -1897,15 +1897,15 @@ struct TileDBVersion {
   };
 };
 
-struct RestVersion {
-  RestVersion() = delete;
+struct RestCapabilities {
+  RestCapabilities() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(bc91e24e30f1c5ca, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(8de04c65deeb1510, 0, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -16538,9 +16538,9 @@ class TileDBVersion::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-class RestVersion::Reader {
+class RestCapabilities::Reader {
  public:
-  typedef RestVersion Reads;
+  typedef RestCapabilities Reads;
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base)
@@ -16577,9 +16577,9 @@ class RestVersion::Reader {
   friend class ::capnp::Orphanage;
 };
 
-class RestVersion::Builder {
+class RestCapabilities::Builder {
  public:
-  typedef RestVersion Builds;
+  typedef RestCapabilities Builds;
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -16640,9 +16640,9 @@ class RestVersion::Builder {
 };
 
 #if !CAPNP_LITE
-class RestVersion::Pipeline {
+class RestCapabilities::Pipeline {
  public:
-  typedef RestVersion Pipelines;
+  typedef RestCapabilities Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -34988,34 +34988,34 @@ inline void TileDBVersion::Builder::setPatch(::uint16_t value) {
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool RestVersion::Reader::hasDeployedTileDBVersion() const {
+inline bool RestCapabilities::Reader::hasDeployedTileDBVersion() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool RestVersion::Builder::hasDeployedTileDBVersion() {
+inline bool RestCapabilities::Builder::hasDeployedTileDBVersion() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::tiledb::sm::serialization::capnp::TileDBVersion::Reader
-RestVersion::Reader::getDeployedTileDBVersion() const {
+RestCapabilities::Reader::getDeployedTileDBVersion() const {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::get(
           _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
-RestVersion::Builder::getDeployedTileDBVersion() {
+RestCapabilities::Builder::getDeployedTileDBVersion() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::get(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 #if !CAPNP_LITE
 inline ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline
-RestVersion::Pipeline::getDeployedTileDBVersion() {
+RestCapabilities::Pipeline::getDeployedTileDBVersion() {
   return ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline(
       _typeless.getPointerField(0));
 }
 #endif  // !CAPNP_LITE
-inline void RestVersion::Builder::setDeployedTileDBVersion(
+inline void RestCapabilities::Builder::setDeployedTileDBVersion(
     ::tiledb::sm::serialization::capnp::TileDBVersion::Reader value) {
   ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::set(
@@ -35023,12 +35023,12 @@ inline void RestVersion::Builder::setDeployedTileDBVersion(
           value);
 }
 inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
-RestVersion::Builder::initDeployedTileDBVersion() {
+RestCapabilities::Builder::initDeployedTileDBVersion() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::init(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void RestVersion::Builder::adoptDeployedTileDBVersion(
+inline void RestCapabilities::Builder::adoptDeployedTileDBVersion(
     ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>&&
         value) {
   ::capnp::_::
@@ -35037,41 +35037,42 @@ inline void RestVersion::Builder::adoptDeployedTileDBVersion(
           kj::mv(value));
 }
 inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>
-RestVersion::Builder::disownDeployedTileDBVersion() {
+RestCapabilities::Builder::disownDeployedTileDBVersion() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline bool RestVersion::Reader::hasMinimumSupportedTileDBClientVersion()
+inline bool RestCapabilities::Reader::hasMinimumSupportedTileDBClientVersion()
     const {
   return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool RestVersion::Builder::hasMinimumSupportedTileDBClientVersion() {
+inline bool
+RestCapabilities::Builder::hasMinimumSupportedTileDBClientVersion() {
   return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::tiledb::sm::serialization::capnp::TileDBVersion::Reader
-RestVersion::Reader::getMinimumSupportedTileDBClientVersion() const {
+RestCapabilities::Reader::getMinimumSupportedTileDBClientVersion() const {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::get(
           _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
-RestVersion::Builder::getMinimumSupportedTileDBClientVersion() {
+RestCapabilities::Builder::getMinimumSupportedTileDBClientVersion() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::get(
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 #if !CAPNP_LITE
 inline ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline
-RestVersion::Pipeline::getMinimumSupportedTileDBClientVersion() {
+RestCapabilities::Pipeline::getMinimumSupportedTileDBClientVersion() {
   return ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline(
       _typeless.getPointerField(1));
 }
 #endif  // !CAPNP_LITE
-inline void RestVersion::Builder::setMinimumSupportedTileDBClientVersion(
+inline void RestCapabilities::Builder::setMinimumSupportedTileDBClientVersion(
     ::tiledb::sm::serialization::capnp::TileDBVersion::Reader value) {
   ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::set(
@@ -35079,12 +35080,12 @@ inline void RestVersion::Builder::setMinimumSupportedTileDBClientVersion(
           value);
 }
 inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
-RestVersion::Builder::initMinimumSupportedTileDBClientVersion() {
+RestCapabilities::Builder::initMinimumSupportedTileDBClientVersion() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::init(
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
-inline void RestVersion::Builder::adoptMinimumSupportedTileDBClientVersion(
+inline void RestCapabilities::Builder::adoptMinimumSupportedTileDBClientVersion(
     ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>&&
         value) {
   ::capnp::_::
@@ -35093,7 +35094,7 @@ inline void RestVersion::Builder::adoptMinimumSupportedTileDBClientVersion(
           kj::mv(value));
 }
 inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>
-RestVersion::Builder::disownMinimumSupportedTileDBClientVersion() {
+RestCapabilities::Builder::disownMinimumSupportedTileDBClientVersion() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::disown(
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));

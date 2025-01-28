@@ -1532,7 +1532,7 @@ const RestCapabilities& RestClientRemote::get_capabilities_from_rest() const {
   Buffer data;
   throw_if_not_ok(curlc.get_data(stats_, url, serialization_type_, &data, {}));
   rest_capabilities_ =
-      serialization::rest_version_deserialize(serialization_type_, data);
+      serialization::rest_capabilities_deserialize(serialization_type_, data);
   return rest_capabilities_;
 }
 

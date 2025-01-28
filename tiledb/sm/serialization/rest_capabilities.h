@@ -46,13 +46,13 @@ enum class SerializationType : uint8_t;
 
 namespace serialization {
 
-RestCapabilities rest_version_deserialize(
+RestCapabilities rest_capabilities_deserialize(
     SerializationType serialization_type, span<const char> serialized_response);
 
 #ifdef TILEDB_SERIALIZATION
 
-RestCapabilities rest_version_from_capnp(
-    const capnp::RestVersion::Reader& rest_version_reader);
+RestCapabilities rest_capabilities_from_capnp(
+    const capnp::RestCapabilities::Reader& rest_version_reader);
 
 #endif
 

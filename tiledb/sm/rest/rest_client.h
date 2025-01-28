@@ -214,7 +214,6 @@ class FragmentInfo;
 class MemoryTracker;
 class Query;
 class QueryPlan;
-struct RestCapabilities;
 
 // Forward for friend declaration within `class RestClient`
 class RestClientFactory;
