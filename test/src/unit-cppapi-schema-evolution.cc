@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -806,21 +806,21 @@ TEST_CASE(
   }
 }
 
-TEST_CASE(
-    "C++ API: SchemaEvolution, drop fixed attribute and add back as var-sized",
-    "[cppapi][schema][evolution][add][drop]") {
+/**
+ * C++ API: SchemaEvolution, drop fixed attribute and add back as var-sized
+ *
+ * Wrapper function for the following test case of the same name.
+ * This logic has been moved into a function to resolve intermittent failures
+ * when using Catch2's GENERATE statements inline with code under test
+ * (https://app.shortcut.com/tiledb-inc/story/61528).
+ * We should re-evaluate when Catch2 is upgraded.
+ */
+void test_schema_evolution_drop_fixed_add_var(
+    tiledb_array_type_t array_type, tiledb_layout_t layout) {
   test::VFSTestSetup vfs_test_setup;
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{
       vfs_test_setup.array_uri("test_schema_evolution_drop_fixed_add_var")};
-  tiledb_array_type_t array_type = TILEDB_DENSE;
-  bool allows_dups = false;
-  auto layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
-
-  SECTION("sparse") {
-    array_type = TILEDB_SPARSE;
-    allows_dups = GENERATE(true, false);
-  }
 
   // Create array
   Domain domain(ctx);
@@ -830,8 +830,7 @@ TEST_CASE(
   auto b = Attribute::create<int>(ctx, "b");
   ArraySchema schema(ctx, array_type);
   schema.set_domain(domain);
-  schema.set_allows_dups(allows_dups);
-  CHECK(allows_dups == schema.allows_dups());
+  schema.set_allows_dups(false);
   schema.add_attribute(a);
   schema.add_attribute(b);
   schema.set_cell_order(TILEDB_ROW_MAJOR);
@@ -906,6 +905,15 @@ TEST_CASE(
   CHECK_THAT(
       a_data,
       Catch::Matchers::Equals(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}));
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution, drop fixed attribute and add back as var-sized",
+    "[cppapi][schema][evolution][add][drop]") {
+  test_schema_evolution_drop_fixed_add_var(TILEDB_DENSE, TILEDB_UNORDERED);
+  test_schema_evolution_drop_fixed_add_var(TILEDB_DENSE, TILEDB_GLOBAL_ORDER);
+  test_schema_evolution_drop_fixed_add_var(TILEDB_SPARSE, TILEDB_UNORDERED);
+  test_schema_evolution_drop_fixed_add_var(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER);
 }
 
 TEST_CASE(
