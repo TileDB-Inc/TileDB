@@ -170,6 +170,13 @@ class Stats {
    * and returns its value */
   std::optional<uint64_t> find_counter(const std::string& stat) const;
 
+  /** Returns the value of the timer for `stat`, if any */
+  std::optional<double> get_timer(const std::string& stat) const;
+
+  /** Searches through the child stats to find a timer with the given name,
+   * and returns its value */
+  std::optional<double> find_timer(const std::string& stat) const;
+
   /** Returns true if statistics are currently enabled. */
   bool enabled() const;
 
