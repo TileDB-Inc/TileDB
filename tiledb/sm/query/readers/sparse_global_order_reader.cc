@@ -77,9 +77,13 @@ class SparseGlobalOrderReaderInternalError
 struct PreprocessTileMergeFuture {
   using MemoryCounter = std::atomic<uint64_t>;
 
-  PreprocessTileMergeFuture(MemoryCounter& memory_used)
-      : memory_used_(memory_used) {
+  PreprocessTileMergeFuture(Stats& stats, MemoryCounter& memory_used)
+      : stats_(stats)
+      , memory_used_(memory_used) {
   }
+
+  /** Query timers and metrics */
+  Stats& stats_;
 
   /** memory used for result tile IDs */
   MemoryCounter& memory_used_;
@@ -114,7 +118,12 @@ struct PreprocessTileMergeFuture {
     if (!merge_.has_value()) {
       return std::nullopt;
     }
-    auto ret = merge_.value()->await();
+    std::optional<uint64_t> ret;
+    {
+      auto timer_await =
+          stats_.start_timer("preprocess_result_tile_order_await");
+      ret = merge_.value()->await();
+    }
     if (merge_.value()->finished()) {
       free_input();
     }
@@ -285,7 +294,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
     // are serialized back and forth; and then this happens again once the
     // end of the list is reached (at which point it is cleared), if more
     // iterations are needed.
-    preprocess_future.emplace(memory_used_for_coords_total_);
+    preprocess_future.emplace(*stats_, memory_used_for_coords_total_);
     preprocess_compute_result_tile_order(preprocess_future.value());
     preprocess_set_cursor_from_read_state(preprocess_future.value());
   } else if (preprocess_tile_order_.enabled_) {
@@ -640,6 +649,9 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
 template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
     PreprocessTileMergeFuture& future) {
+  auto timer_start_tile_order =
+      stats_->start_timer("preprocess_result_tile_order_compute");
+
   const auto& relevant_fragments = subarray_.relevant_fragments();
   const uint64_t num_relevant_fragments = relevant_fragments.size();
 
