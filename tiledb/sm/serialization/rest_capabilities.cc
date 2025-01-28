@@ -42,7 +42,6 @@
 
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/rest/rest_client_remote.h"
 #include "tiledb/sm/serialization/rest_capabilities.h"
 #include "tiledb/sm/storage_manager/context.h"
 
