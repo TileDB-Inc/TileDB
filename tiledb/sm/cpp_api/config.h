@@ -437,7 +437,7 @@ class Config {
    *    there are many fragments or when the distribution in space of the
    *    tiles amongst the fragments is skewed. The value of the parameter
    *    specifies the amount of work per parallel task.
-   *    **Default**: "128"
+   *    **Default**: "32768"
    * - `sm.query.sparse_unordered_with_dups.reader` <br>
    *    Which reader to use for sparse unordered with dups queries.
    *    "refactored" or "legacy".<br>
