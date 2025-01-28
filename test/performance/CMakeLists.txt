@@ -106,8 +106,6 @@ add_executable(
   "tiledb_submit_a_b.cc"
 )
 
-add_dependencies(tiledb_submit_a_b tiledb_test_support_lib)
-
 target_include_directories(
   tiledb_submit_a_b BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
