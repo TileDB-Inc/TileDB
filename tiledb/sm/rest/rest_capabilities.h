@@ -27,17 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * Helper class to encapsulate REST supported versions and capabilities.
+ * Helper struct to encapsulate REST supported versions and capabilities.
  */
 
 namespace tiledb::sm {
 
-class RestClientRemote;
-
 struct RestCapabilities {
-  friend RestClientRemote;
-
- public:
   struct TileDBVersion {
     TileDBVersion() = default;
 
@@ -74,31 +69,6 @@ struct RestCapabilities {
 
   bool operator==(const RestCapabilities& rhs) const = default;
 
-  /**
-   * @return Current version of TileDB core deployed on the REST server.
-   */
-  [[nodiscard]] inline const TileDBVersion& tiledb_version() const {
-    return rest_tiledb_version_;
-  }
-
-  /**
-   * @return Minimum version of TileDB core supported by the REST server.
-   */
-  [[nodiscard]] inline const TileDBVersion& minimum_supported_tiledb_version()
-      const {
-    return rest_tiledb_version_;
-  }
-
-  /**
-   * Determine if we have detected the REST server capabailities.
-   *
-   * @return True if the REST server has known capabilities, else False.
-   */
-  [[nodiscard]] inline const bool& detected() const {
-    return detected_;
-  }
-
- private:
   /// Whether or not the REST capabilities have been initialized.
   bool detected_ = false;
 
