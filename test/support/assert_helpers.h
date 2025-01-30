@@ -95,11 +95,7 @@ struct AsserterRuntimeException {};
                    value) {                                                \
       RC_ASSERT(__VA_ARGS__);                                              \
     } else {                                                               \
-      if (!(__VA_ARGS__)) {                                                \
-        throw std::runtime_error(                                          \
-            std::string("Assertion failed: ") +                            \
-            std::string(__STR_VA_(__VA_ARGS__)));                          \
-      }                                                                    \
+      RT_ASSERT(__VA_ARGS__);                                              \
     }                                                                      \
   } while (0)
 
@@ -127,6 +123,16 @@ struct AsserterRuntimeException {};
     } else {                                                              \
       RC_ASSERT_THROWS(__VA_ARGS__);                                      \
     }                                                                     \
+  } while (0)
+
+/** Assert which throws a runtime exception upon failure */
+#define RT_ASSERT(...)                          \
+  do {                                          \
+    if (!(__VA_ARGS__)) {                       \
+      throw std::runtime_error(                 \
+          std::string("Assertion failed: ") +   \
+          std::string(__STR_VA_(__VA_ARGS__))); \
+    }                                           \
   } while (0)
 
 #endif
