@@ -32,11 +32,12 @@
  *
  * Usage: $0 <config.json> <array URI 1> [additional array URIs...]
  *
- * For each array in the argument list, two queries are created:
- * one with configuration "A" and one with configuration "B".
+ * For each array in the argument list, a query is created for each
+ * of the configurations in "configurations".
  * The `run()` function alternates taking a step (`tiledb_query_submit`)
- * with the "A" query and the "B" query, checking that both have the
- * same results and recording the time spent calling `tiledb_query_submit`.
+ * with a query of each of those configurations, checking that they all
+ * have the same results, and recording various metrics from each
+ * (most notably, the time spent calling `tiledb_query_submit`)
  *
  * After executing upon all of the arrays, the timing information is
  * dumped to `/tmp/tiledb_submit_a_b.json`.
@@ -46,22 +47,28 @@
  * this file. The `using Fragment` declaration sets the types of the buffers
  * which are used to read the array.
  *
- * The nature of the "A" and "B" configurations are specified via the required
+ * The nature of different configurations are specified via the required
  * argument `config.json`. The following example illustrates the currently
  * supported keys:
  *
  * ```
  * {
- *   "a": {
- *     "config": {
- *       "sm.query.sparse_global_order.preprocess_tile_merge": 0
- *     }
- *   },
- *   "b": {
- *     "config": {
- *       "sm.query.sparse_global_order.preprocess_tile_merge": 128
- *     }
- *   },
+ *   "configurations": [
+ *     {
+ *       "name": "a",
+ *       "num_user_cells": 16777216,
+ *       "config": {
+ *         "sm.query.sparse_global_order.preprocess_tile_merge": 0
+ *       }
+ *     },
+ *     {
+ *       "name": "b",
+ *       "num_user_cells: 16777216
+ *       "config": {
+ *         "sm.query.sparse_global_order.preprocess_tile_merge": 128
+ *       }
+ *     },
+ *   ],
  *   "queries": [
  *     {
  *       "layout": "global_order",
@@ -75,8 +82,10 @@
  * }
  * ```
  *
- * The paths "a.config" and "b.config" are sets of key-value pairs
- * which are used to configure the "A" and "B" queries respectively.
+ * The "config" field of each configuration object is a set of key-value
+ * pairs which are set on a `tileb::Config` object for instances
+ * of each query.  The "name" field identifies the configuration;
+ * and the "num_user_cells" field sets the size of the user buffer.
  *
  * Each item in "queries" specifies a query to run the comparison for.
  *
@@ -99,6 +108,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/stats/duration_instrument.h"
 #include "tiledb/type/apply_with_type.h"
@@ -125,6 +135,12 @@ json optional_json(std::optional<T> value) {
   }
 }
 
+struct Configuration {
+  std::string name_;
+  std::optional<uint64_t> num_user_cells_;
+  tiledb::Config qconf_;
+};
+
 /**
  * Records durations as reported by `tiledb::sm::stats::DurationInstrument`.
  */
@@ -132,7 +148,7 @@ struct StatKeeper {
   struct StatKey {
     std::string uri_;
     std::string qlabel_;
-    bool is_a_;
+    std::string configname_;
   };
 
   struct StatValue {
@@ -143,7 +159,7 @@ struct StatKeeper {
   using Timer = tiledb::sm::stats::DurationInstrument<StatKeeper, StatKey>;
 
   /** records statistics of each submit call by "array.query" */
-  std::map<std::string, std::map<std::string, std::pair<StatValue, StatValue>>>
+  std::map<std::string, std::map<std::string, std::map<std::string, StatValue>>>
       statistics;
 
   Timer start_timer(const StatKey& stat) {
@@ -153,32 +169,20 @@ struct StatKeeper {
 
   void report_duration(
       const StatKey& stat, const std::chrono::duration<double> duration) {
-    auto& stats = statistics[stat.uri_][stat.qlabel_];
-    if (stat.is_a_) {
-      stats.first.durations.push_back(duration.count());
-    } else {
-      stats.second.durations.push_back(duration.count());
-    }
+    auto& stats = statistics[stat.uri_][stat.qlabel_][stat.configname_];
+    stats.durations.push_back(duration.count());
   }
 
   void report_metric(
       const StatKey& stat, const std::string& name, const json& value) {
-    auto& stats = statistics[stat.uri_][stat.qlabel_];
-    if (stat.is_a_) {
-      stats.first.metrics[name] = value;
-    } else {
-      stats.second.metrics[name] = value;
-    }
+    auto& stats = statistics[stat.uri_][stat.qlabel_][stat.configname_];
+    stats.metrics[name] = value;
   }
 
   void report_timer(
       const StatKey& stat, const std::string& name, const json& value) {
-    auto& stats = statistics[stat.uri_][stat.qlabel_];
-    if (stat.is_a_) {
-      stats.first.metrics[name] = value;
-    } else {
-      stats.second.metrics[name] = value;
-    }
+    auto& stats = statistics[stat.uri_][stat.qlabel_][stat.configname_];
+    stats.metrics[name] = value;
   }
 
   /**
@@ -192,31 +196,22 @@ struct StatKeeper {
       array["uri"] = uri.first;
 
       for (const auto& qlabel : uri.second) {
-        const auto& a_durations = qlabel.second.first.durations;
-        const auto& b_durations = qlabel.second.second.durations;
-        const double a_sum =
-            std::accumulate(a_durations.begin(), a_durations.end(), (double)0);
-        const double b_sum =
-            std::accumulate(b_durations.begin(), b_durations.end(), (double)0);
-
-        json a;
-        a["first"] = a_durations[0];
-        a["sum"] = a_sum;
-        for (const auto& metric : qlabel.second.first.metrics) {
-          a[metric.first] = metric.second;
-        }
-
-        json b;
-        b["first"] = b_durations[0];
-        b["sum"] = b_sum;
-        for (const auto& metric : qlabel.second.second.metrics) {
-          b[metric.first] = metric.second;
-        }
-
         json run;
         run["query"] = qlabel.first;
-        run["a"] = a;
-        run["b"] = b;
+        for (const auto& config : qlabel.second) {
+          json query;
+          query["first"] = config.second.durations[0];
+          query["sum"] = std::accumulate(
+              config.second.durations.begin(),
+              config.second.durations.end(),
+              (double)(0));
+
+          for (const auto& metric : config.second.metrics) {
+            query[metric.first] = metric.second;
+          }
+
+          run[config.first] = query;
+        }
 
         array["queries"].push_back(run);
       }
@@ -228,36 +223,29 @@ struct StatKeeper {
   }
 };
 
-capi_return_t shrink_domain(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
+void shrink_domain(
+    tiledb::Array& array,
     unsigned dim,
-    tiledb_subarray_t* subarray,
+    tiledb::Subarray& subarray,
     int percent) {
   // FIXME: make generic
-  int is_empty;
   int64_t domain[2];
-  RETURN_IF_ERR(tiledb_array_get_non_empty_domain_from_index(
-      ctx, array, dim, &domain[0], &is_empty));
-  if (is_empty) {
-    return TILEDB_OK;
-  }
+  std::tie(domain[0], domain[1]) = array.non_empty_domain<int64_t>(dim);
 
   const auto span = (domain[1] - domain[0] + 1);
   domain[0] += ((span * (100 - percent)) / 100) / 2;
   domain[1] -= ((span * (100 - percent)) / 100) / 2;
 
-  return tiledb_subarray_add_range(
-      ctx, subarray, dim, &domain[0], &domain[1], 0);
+  subarray.add_range(dim, domain[0], domain[1]);
 }
 
-struct QueryConfig {
+struct Query {
   std::string label_;
   tiledb_layout_t layout_;
   std::vector<std::optional<int>> subarray_percent_;
 
-  static QueryConfig from_json(const json& jq) {
-    QueryConfig q;
+  static Query from_json(const json& jq) {
+    Query q;
     q.label_ = jq["label"].get<std::string>();
 
     const auto layout = jq["layout"].get<std::string>();
@@ -297,44 +285,35 @@ struct QueryConfig {
   /**
    * Applies this configuration to a query.
    */
-  capi_return_t apply(
-      tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_t* query) const {
-    TRY(ctx, tiledb_query_set_layout(ctx, query, layout_));
+  void apply(
+      tiledb::Context& ctx, tiledb::Array& array, tiledb::Query& query) const {
+    query.set_layout(layout_);
 
     if (!subarray_percent_.empty()) {
-      tiledb_subarray_t* subarray;
-      RETURN_IF_ERR(tiledb_subarray_alloc(ctx, array, &subarray));
+      tiledb::Subarray subarray(ctx, array);
 
-      tiledb_array_schema_t* schema;
-      RETURN_IF_ERR(tiledb_array_get_schema(ctx, array, &schema));
-
-      tiledb_domain_t* domain;
-      RETURN_IF_ERR(tiledb_array_schema_get_domain(ctx, schema, &domain));
+      tiledb::ArraySchema schema = array.schema();
 
       for (unsigned d = 0; d < subarray_percent_.size(); d++) {
         if (subarray_percent_[d].has_value()) {
-          TRY(ctx,
-              shrink_domain(
-                  ctx, array, d, subarray, subarray_percent_[d].value()));
+          shrink_domain(array, d, subarray, subarray_percent_[d].value());
         }
       }
 
-      TRY(ctx, tiledb_query_set_subarray_t(ctx, query, subarray));
+      query.set_subarray(subarray);
     }
-
-    return TILEDB_OK;
   }
 };
 
 template <FragmentType Fragment>
 tiledb::common::Status assertGlobalOrder(
-    tiledb_array_t* array,
+    const tiledb::Array& array,
     const Fragment& data,
     size_t num_cells,
     size_t start,
     size_t end) {
   tiledb::sm::GlobalCellCmp globalcmp(
-      array->array()->array_schema_latest().domain());
+      array.ptr()->array()->array_schema_latest().domain());
 
   for (uint64_t i = start + 1; i < end; i++) {
     const auto prevtuple = std::apply(
@@ -384,14 +363,14 @@ struct require_type {
 };
 
 template <FragmentType Fragment>
-static void check_compatibility(tiledb_array_t* array) {
+static void check_compatibility(const tiledb::Array& array) {
   using DimensionTuple = decltype(std::declval<Fragment>().dimensions());
   using AttributeTuple = decltype(std::declval<Fragment>().attributes());
 
   constexpr auto expect_num_dims = std::tuple_size_v<DimensionTuple>;
   constexpr auto max_num_atts = std::tuple_size_v<AttributeTuple>;
 
-  const auto& schema = array->array()->array_schema_latest();
+  const auto& schema = array.ptr()->array()->array_schema_latest();
 
   if (schema.domain().dim_num() != expect_num_dims) {
     throw std::runtime_error(
@@ -424,76 +403,66 @@ template <FragmentType Fragment>
 static void run(
     StatKeeper& stat_keeper,
     const char* array_uri,
-    const QueryConfig& query_config,
-    tiledb_config_t* a_config,
-    tiledb_config_t* b_config) {
+    const Query& query_config,
+    const std::span<Configuration> configs) {
   tiledb::test::SparseGlobalOrderReaderMemoryBudget memory;
   memory.total_budget_ = std::to_string(1024 * 1024 * 1024);
   memory.ratio_tile_ranges_ = "0.01";
 
-  const uint64_t num_user_cells = 1024 * 1024 * 128;
-
-  Fragment a_data;
-  Fragment b_data;
-
-  auto reset = [num_user_cells](Fragment& buf) {
-    std::apply(
-        [&](auto&... outfield) { (outfield.resize(num_user_cells), ...); },
-        std::tuple_cat(buf.dimensions(), buf.attributes()));
-  };
-  reset(a_data);
-  reset(b_data);
-
-  tiledb_config_t* config;
-  {
-    tiledb_error_t* error = nullptr;
-    ASSERTER(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  std::vector<uint64_t> num_user_cells;
+  for (const auto& config : configs) {
+    num_user_cells.push_back(
+        config.num_user_cells_.value_or(1024 * 1024 * 128));
   }
-  memory.apply(config);
 
-  tiledb_ctx_t* ctx;
-  ASSERTER(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
+  std::vector<Fragment> qdata(configs.size());
 
-  tiledb_config_free(&config);
+  auto reset = [&](size_t q) {
+    std::apply(
+        [&](auto&... outfield) { (outfield.resize(num_user_cells[q]), ...); },
+        std::tuple_cat(qdata[q].dimensions(), qdata[q].attributes()));
+  };
+  for (size_t q = 0; q < qdata.size(); q++) {
+    reset(q);
+  }
+
+  tiledb::Config memconfig;
+  memory.apply(memconfig.ptr().get());
+
+  tiledb::Context ctx(memconfig);
 
   // Open array for reading.
-  CApiArray array(ctx, array_uri, TILEDB_READ);
+  tiledb::Array array(ctx, array_uri, TILEDB_READ);
   check_compatibility<Fragment>(array);
 
   auto dimension_name = [&](unsigned d) -> std::string {
     return std::string(
-        array->array_schema_latest().domain().dimension_ptr(d)->name());
+        array.ptr()->array_schema_latest().domain().dimension_ptr(d)->name());
   };
   auto attribute_name = [&](unsigned a) -> std::string {
-    return std::string(array->array_schema_latest().attribute(a)->name());
+    return std::string(array.ptr()->array_schema_latest().attribute(a)->name());
   };
 
-  // Create query which does NOT do merge
-  tiledb_query_t* a_query;
-  TRY(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &a_query));
-  TRY(ctx, tiledb_query_set_config(ctx, a_query, a_config));
-  TRY(ctx, query_config.apply(ctx, array, a_query));
+  std::vector<tiledb::Query> queries;
+  for (const auto& config : configs) {
+    tiledb::Query query(ctx, array, TILEDB_READ);
+    query.set_config(config.qconf_);
+    query_config.apply(ctx, array, query);
 
-  // Create query which DOES do merge
-  tiledb_query_t* b_query;
-  TRY(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &b_query));
-  TRY(ctx, tiledb_query_set_config(ctx, b_query, b_config));
-  TRY(ctx, query_config.apply(ctx, array, b_query));
+    queries.push_back(query);
+  }
 
-  const StatKeeper::StatKey a_key = {
-      .uri_ = std::string(array_uri),
-      .qlabel_ = query_config.label_,
-      .is_a_ = true,
-  };
-  const StatKeeper::StatKey b_key = {
-      .uri_ = std::string(array_uri),
-      .qlabel_ = query_config.label_,
-      .is_a_ = false,
-  };
+  std::vector<StatKeeper::StatKey> keys;
+  for (const auto& config : configs) {
+    keys.push_back(StatKeeper::StatKey{
+        .uri_ = std::string(array_uri),
+        .qlabel_ = query_config.label_,
+        .configname_ = config.name_});
+  }
 
   // helper to do basic checks on both
   auto do_submit = [&](auto& key, auto& query, auto& outdata)
-      -> std::pair<tiledb_query_status_t, uint64_t> {
+      -> std::pair<tiledb::Query::Status, uint64_t> {
     // make field size locations
     auto dimension_sizes =
         templates::query::make_field_sizes<Asserter>(outdata.dimensions());
@@ -502,17 +471,23 @@ static void run(
 
     // add fields to query
     templates::query::set_fields<Asserter>(
-        ctx, query, dimension_sizes, outdata.dimensions(), dimension_name);
+        ctx.ptr().get(),
+        query.ptr().get(),
+        dimension_sizes,
+        outdata.dimensions(),
+        dimension_name);
     templates::query::set_fields<Asserter>(
-        ctx, query, attribute_sizes, outdata.attributes(), attribute_name);
+        ctx.ptr().get(),
+        query.ptr().get(),
+        attribute_sizes,
+        outdata.attributes(),
+        attribute_name);
 
+    tiledb::Query::Status status;
     {
       StatKeeper::Timer qtimer = stat_keeper.start_timer(key);
-      TRY(ctx, tiledb_query_submit(ctx, query));
+      status = query.submit();
     }
-
-    tiledb_query_status_t status;
-    TRY(ctx, tiledb_query_get_status(ctx, query, &status));
 
     const uint64_t dim_num_cells = templates::query::num_cells<Asserter>(
         outdata.dimensions(), dimension_sizes);
@@ -523,105 +498,96 @@ static void run(
 
     if (dim_num_cells < outdata.size()) {
       // since the user buffer did not fill up the query must be complete
-      ASSERTER(status == TILEDB_COMPLETED);
+      ASSERTER(status == tiledb::Query::Status::COMPLETE);
     }
 
     return std::make_pair(status, dim_num_cells);
   };
 
   while (true) {
-    tiledb_query_status_t a_status, b_status;
-    uint64_t a_num_cells, b_num_cells;
+    std::vector<tiledb::Query::Status> status;
+    std::vector<uint64_t> num_cells;
 
-    std::tie(a_status, a_num_cells) = do_submit(a_key, a_query, a_data);
-    std::tie(b_status, b_num_cells) = do_submit(b_key, b_query, b_data);
+    for (size_t q = 0; q < queries.size(); q++) {
+      auto result = do_submit(keys[q], queries[q], qdata[q]);
+      status.push_back(result.first);
+      num_cells.push_back(result.second);
+    }
 
-    ASSERTER(a_num_cells == b_num_cells);
-    ASSERTER(a_num_cells <= num_user_cells);
+    for (size_t q = 0; q < queries.size(); q++) {
+      std::apply(
+          [&](auto&... outfield) { (outfield.resize(num_cells[0]), ...); },
+          std::tuple_cat(qdata[q].dimensions(), qdata[q].attributes()));
 
-    std::apply(
-        [&](auto&... outfield) { (outfield.resize(a_num_cells), ...); },
-        std::tuple_cat(a_data.dimensions(), a_data.attributes()));
-    std::apply(
-        [&](auto&... outfield) { (outfield.resize(b_num_cells), ...); },
-        std::tuple_cat(b_data.dimensions(), b_data.attributes()));
+      ASSERTER(num_cells[q] <= num_user_cells[q]);
 
-    ASSERTER(a_data.dimensions() == b_data.dimensions());
+      if (q > 0) {
+        ASSERTER(num_cells[q] == num_cells[0]);
+        ASSERTER(qdata[q].dimensions() == qdata[0].dimensions());
 
-    // NB: this is only correct if there are no duplicate coordinates,
-    // in which case we need to adapt what CSparseGlobalOrderFx::run does
-    ASSERTER(a_data.attributes() == b_data.attributes());
+        // NB: this is only correct if there are no duplicate coordinates,
+        // in which case we need to adapt what CSparseGlobalOrderFx::run does
+        ASSERTER(qdata[q].attributes() == qdata[0].attributes());
+      }
+    }
 
-    reset(a_data);
-    reset(b_data);
+    for (size_t q = 0; q < queries.size(); q++) {
+      reset(q);
+    }
 
-    ASSERTER(a_status == b_status);
+    for (size_t q = 1; q < queries.size(); q++) {
+      ASSERTER(status[q] == status[0]);
+    }
 
-    if (a_query->query_->layout() == tiledb::sm::Layout::GLOBAL_ORDER) {
+    if (queries[0].query_layout() == TILEDB_GLOBAL_ORDER) {
       // assert that the results arrive in global order
       // do it in parallel, it is slow
-      auto* tp = ctx->context().compute_tp();
+      auto* tp = ctx.ptr()->context().compute_tp();
       const size_t parallel_factor = std::max<uint64_t>(
-          1, std::min<uint64_t>(tp->concurrency_level(), a_num_cells / 1024));
-      const size_t items_per = a_num_cells / parallel_factor;
-      const auto isGlobalOrder = tiledb::sm::parallel_for(
-          ctx->context().compute_tp(), 0, parallel_factor, [&](uint64_t i) {
+          1, std::min<uint64_t>(tp->concurrency_level(), num_cells[0] / 1024));
+      const size_t items_per = num_cells[0] / parallel_factor;
+      const auto isGlobalOrder =
+          tiledb::sm::parallel_for(tp, 0, parallel_factor, [&](uint64_t i) {
             const uint64_t mystart = i * items_per;
             const uint64_t myend =
-                std::min((i + 1) * items_per + 1, a_num_cells);
+                std::min((i + 1) * items_per + 1, num_cells[0]);
             return assertGlobalOrder(
-                array, a_data, a_num_cells, mystart, myend);
+                array, qdata[0], num_cells[0], mystart, myend);
           });
       if (!isGlobalOrder.ok()) {
         throw std::runtime_error(isGlobalOrder.to_string());
       }
     }
 
-    if (a_status == TILEDB_COMPLETED) {
+    if (status[0] == tiledb::Query::Status::COMPLETE) {
       break;
     }
   }
 
   // record additional stats
-  const tiledb::sm::Query& a_query_internal = *a_query->query_;
-  const tiledb::sm::Query& b_query_internal = *b_query->query_;
-  const auto& a_stats = *a_query_internal.stats();
-  const auto& b_stats = *b_query_internal.stats();
+  for (size_t q = 0; q < queries.size(); q++) {
+    const tiledb::sm::Query& query_internal = *queries[q].ptr().get()->query_;
+    const auto& stats = *query_internal.stats();
 
-  stat_keeper.report_metric(
-      a_key, "loop_num", optional_json(a_stats.find_counter("loop_num")));
-  stat_keeper.report_metric(
-      b_key, "loop_num", optional_json(b_stats.find_counter("loop_num")));
-  stat_keeper.report_metric(
-      a_key,
-      "internal_loop_num",
-      optional_json(a_stats.find_counter("internal_loop_num")));
-  stat_keeper.report_metric(
-      b_key,
-      "internal_loop_num",
-      optional_json(b_stats.find_counter("internal_loop_num")));
+    stat_keeper.report_metric(
+        keys[q], "loop_num", optional_json(stats.find_counter("loop_num")));
+    stat_keeper.report_metric(
+        keys[q],
+        "internal_loop_num",
+        optional_json(stats.find_counter("internal_loop_num")));
 
-  // record parallel merge timers
-  stat_keeper.report_timer(
-      a_key,
-      "preprocess_result_tile_order_compute",
-      optional_json(
-          a_stats.find_timer("preprocess_result_tile_order_compute.sum")));
-  stat_keeper.report_timer(
-      a_key,
-      "preprocess_result_tile_order_await",
-      optional_json(
-          a_stats.find_timer("preprocess_result_tile_order_await.sum")));
-  stat_keeper.report_timer(
-      b_key,
-      "preprocess_result_tile_order_compute",
-      optional_json(
-          b_stats.find_timer("preprocess_result_tile_order_compute.sum")));
-  stat_keeper.report_timer(
-      b_key,
-      "preprocess_result_tile_order_await",
-      optional_json(
-          b_stats.find_timer("preprocess_result_tile_order_await.sum")));
+    // record parallel merge timers
+    stat_keeper.report_timer(
+        keys[q],
+        "preprocess_result_tile_order_compute",
+        optional_json(
+            stats.find_timer("preprocess_result_tile_order_compute.sum")));
+    stat_keeper.report_timer(
+        keys[q],
+        "preprocess_result_tile_order_await",
+        optional_json(
+            stats.find_timer("preprocess_result_tile_order_await.sum")));
+  }
 }
 
 // change this to match the schema of the target arrays
@@ -631,18 +597,16 @@ using Fragment = Fragment2D<int64_t, int64_t, int64_t>;
  * Reads key-value pairs from a JSON object to construct and return a
  * `tiledb_config_t`.
  */
-capi_return_t json2config(tiledb_config_t** config, const json& j) {
-  tiledb_error_t* error;
-  RETURN_IF_ERR(tiledb_config_alloc(config, &error));
+tiledb::Config json2config(const json& j) {
+  std::map<std::string, std::string> params;
   const json jconf = j["config"];
   for (auto it = jconf.begin(); it != jconf.end(); ++it) {
     const auto key = it.key();
     const auto value = nlohmann::to_string(it.value());
-    RETURN_IF_ERR(
-        tiledb_config_set(*config, key.c_str(), value.c_str(), &error));
+    params[key] = nlohmann::to_string(it.value());
   }
 
-  return TILEDB_OK;
+  return tiledb::Config(params);
 }
 
 int main(int argc, char** argv) {
@@ -658,9 +622,17 @@ int main(int argc, char** argv) {
         std::istreambuf_iterator<char>());
   }
 
-  tiledb_config_t *a_conf, *b_conf;
-  RETURN_IF_ERR(json2config(&a_conf, config["a"]));
-  RETURN_IF_ERR(json2config(&b_conf, config["b"]));
+  std::vector<Configuration> qconfs;
+  for (const auto& jsoncfg : config["configurations"]) {
+    qconfs.push_back(Configuration{
+        .name_ = jsoncfg["name"].get<std::string>(),
+        .num_user_cells_ = std::nullopt,
+        .qconf_ = json2config(jsoncfg)});
+    if (jsoncfg.find("num_user_cells") != jsoncfg.end()) {
+      qconfs.back().num_user_cells_.emplace(
+          jsoncfg["num_user_cells"].get<uint64_t>());
+    }
+  }
 
   StatKeeper stat_keeper;
 
@@ -668,11 +640,11 @@ int main(int argc, char** argv) {
       static_cast<const char* const*>(&argv[2]), argc - 2);
 
   for (const auto& query : config["queries"]) {
-    QueryConfig qq = QueryConfig::from_json(query);
+    Query qq = Query::from_json(query);
 
     for (const auto& array_uri : array_uris) {
       try {
-        run<Fragment>(stat_keeper, array_uri, qq, a_conf, b_conf);
+        run<Fragment>(stat_keeper, array_uri, qq, qconfs);
       } catch (const std::exception& e) {
         std::cerr << "Error on array \"" << array_uri << "\": " << e.what()
                   << std::endl;
@@ -681,9 +653,6 @@ int main(int argc, char** argv) {
       }
     }
   }
-
-  tiledb_config_free(&b_conf);
-  tiledb_config_free(&a_conf);
 
   std::ofstream out("/tmp/tiledb_submit_a_b.json");
   stat_keeper.dump_durations(out);
