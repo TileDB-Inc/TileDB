@@ -690,8 +690,7 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
           RETURN_NOT_OK(try_reserve(f, num_tiles));
 
           for (uint64_t t = 0; t < fragment_metadata_[f]->tile_num(); t++) {
-            fragment_result_tiles[f].push_back(
-                ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+            fragment_result_tiles[f].push_back(ResultTileId(f, t));
           }
           return Status::Ok();
         });
@@ -716,8 +715,7 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
            tile_range != fragment_tile_ranges.rend();
            ++tile_range) {
         for (uint64_t t = tile_range->first; t <= tile_range->second; t++) {
-          fragment_result_tiles[f].push_back(
-              ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+          fragment_result_tiles[f].push_back(ResultTileId(f, t));
         }
       }
 
@@ -753,8 +751,7 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
   }
 
   /* then do parallel merge */
-  preprocess_tile_order_.tiles_.resize(
-      num_result_tiles, ResultTileId{.fragment_idx_ = 0, .tile_idx_ = 0});
+  preprocess_tile_order_.tiles_.resize(num_result_tiles, ResultTileId(0, 0));
 
   const auto min_merge_items =
       config_

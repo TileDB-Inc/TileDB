@@ -73,6 +73,13 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b);
 struct ResultTileId {
   unsigned fragment_idx_;
   uint64_t tile_idx_;
+
+  ResultTileId() = default;
+
+  ResultTileId(unsigned fragment_idx, uint64_t tile_idx)
+      : fragment_idx_(fragment_idx)
+      , tile_idx_(tile_idx) {
+  }
 };
 
 /**

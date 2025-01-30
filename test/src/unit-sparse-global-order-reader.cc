@@ -965,8 +965,7 @@ static std::optional<bool> can_complete_in_memory_budget(
   for (unsigned f = 0; f < instance.fragments.size(); f++) {
     for (uint64_t t = 0; t < fragment_metadata[f]->tile_num(); t++) {
       if (instance.intersects(fragment_metadata[f]->mbr(t))) {
-        mbr_lower_bound.push(
-            sm::ResultTileId{.fragment_idx_ = f, .tile_idx_ = t});
+        mbr_lower_bound.push(sm::ResultTileId(f, t));
       }
     }
   }
