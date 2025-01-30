@@ -124,6 +124,8 @@ enum class ObjectType_f3bb391da5271019 : uint16_t {
 };
 CAPNP_DECLARE_ENUM(ObjectType, f3bb391da5271019);
 CAPNP_DECLARE_SCHEMA(87f0466598bb29be);
+CAPNP_DECLARE_SCHEMA(ff44627d34d063ab);
+CAPNP_DECLARE_SCHEMA(8de04c65deeb1510);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -1870,6 +1872,40 @@ struct ObjectInfoResponse {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(87f0466598bb29be, 1, 0)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct TileDBVersion {
+  TileDBVersion() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(ff44627d34d063ab, 1, 0)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct RestCapabilities {
+  RestCapabilities() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(8de04c65deeb1510, 0, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -16391,6 +16427,234 @@ class ObjectInfoResponse::Pipeline {
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {
   }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class TileDBVersion::Reader {
+ public:
+  typedef TileDBVersion Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint16_t getMajor() const;
+
+  inline ::uint16_t getMinor() const;
+
+  inline ::uint16_t getPatch() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class TileDBVersion::Builder {
+ public:
+  typedef TileDBVersion Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint16_t getMajor();
+  inline void setMajor(::uint16_t value);
+
+  inline ::uint16_t getMinor();
+  inline void setMinor(::uint16_t value);
+
+  inline ::uint16_t getPatch();
+  inline void setPatch(::uint16_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class TileDBVersion::Pipeline {
+ public:
+  typedef TileDBVersion Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class RestCapabilities::Reader {
+ public:
+  typedef RestCapabilities Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasDeployedTileDBVersion() const;
+  inline ::tiledb::sm::serialization::capnp::TileDBVersion::Reader
+  getDeployedTileDBVersion() const;
+
+  inline bool hasMinimumSupportedTileDBClientVersion() const;
+  inline ::tiledb::sm::serialization::capnp::TileDBVersion::Reader
+  getMinimumSupportedTileDBClientVersion() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class RestCapabilities::Builder {
+ public:
+  typedef RestCapabilities Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasDeployedTileDBVersion();
+  inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
+  getDeployedTileDBVersion();
+  inline void setDeployedTileDBVersion(
+      ::tiledb::sm::serialization::capnp::TileDBVersion::Reader value);
+  inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
+  initDeployedTileDBVersion();
+  inline void adoptDeployedTileDBVersion(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>
+  disownDeployedTileDBVersion();
+
+  inline bool hasMinimumSupportedTileDBClientVersion();
+  inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
+  getMinimumSupportedTileDBClientVersion();
+  inline void setMinimumSupportedTileDBClientVersion(
+      ::tiledb::sm::serialization::capnp::TileDBVersion::Reader value);
+  inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
+  initMinimumSupportedTileDBClientVersion();
+  inline void adoptMinimumSupportedTileDBClientVersion(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>
+  disownMinimumSupportedTileDBClientVersion();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class RestCapabilities::Pipeline {
+ public:
+  typedef RestCapabilities Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline
+  getDeployedTileDBVersion();
+  inline ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline
+  getMinimumSupportedTileDBClientVersion();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -34680,6 +34944,160 @@ inline void ObjectInfoResponse::Builder::setObjectType(
     ::tiledb::sm::serialization::capnp::ObjectType value) {
   _builder.setDataField<::tiledb::sm::serialization::capnp::ObjectType>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint16_t TileDBVersion::Reader::getMajor() const {
+  return _reader.getDataField<::uint16_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint16_t TileDBVersion::Builder::getMajor() {
+  return _builder.getDataField<::uint16_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void TileDBVersion::Builder::setMajor(::uint16_t value) {
+  _builder.setDataField<::uint16_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint16_t TileDBVersion::Reader::getMinor() const {
+  return _reader.getDataField<::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint16_t TileDBVersion::Builder::getMinor() {
+  return _builder.getDataField<::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void TileDBVersion::Builder::setMinor(::uint16_t value) {
+  _builder.setDataField<::uint16_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint16_t TileDBVersion::Reader::getPatch() const {
+  return _reader.getDataField<::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint16_t TileDBVersion::Builder::getPatch() {
+  return _builder.getDataField<::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void TileDBVersion::Builder::setPatch(::uint16_t value) {
+  _builder.setDataField<::uint16_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool RestCapabilities::Reader::hasDeployedTileDBVersion() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool RestCapabilities::Builder::hasDeployedTileDBVersion() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::TileDBVersion::Reader
+RestCapabilities::Reader::getDeployedTileDBVersion() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
+RestCapabilities::Builder::getDeployedTileDBVersion() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline
+RestCapabilities::Pipeline::getDeployedTileDBVersion() {
+  return ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void RestCapabilities::Builder::setDeployedTileDBVersion(
+    ::tiledb::sm::serialization::capnp::TileDBVersion::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::set(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
+RestCapabilities::Builder::initDeployedTileDBVersion() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void RestCapabilities::Builder::adoptDeployedTileDBVersion(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::adopt(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>
+RestCapabilities::Builder::disownDeployedTileDBVersion() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool RestCapabilities::Reader::hasMinimumSupportedTileDBClientVersion()
+    const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool
+RestCapabilities::Builder::hasMinimumSupportedTileDBClientVersion() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::TileDBVersion::Reader
+RestCapabilities::Reader::getMinimumSupportedTileDBClientVersion() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::get(
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
+RestCapabilities::Builder::getMinimumSupportedTileDBClientVersion() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::get(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline
+RestCapabilities::Pipeline::getMinimumSupportedTileDBClientVersion() {
+  return ::tiledb::sm::serialization::capnp::TileDBVersion::Pipeline(
+      _typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void RestCapabilities::Builder::setMinimumSupportedTileDBClientVersion(
+    ::tiledb::sm::serialization::capnp::TileDBVersion::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::TileDBVersion::Builder
+RestCapabilities::Builder::initMinimumSupportedTileDBClientVersion() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::init(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void RestCapabilities::Builder::adoptMinimumSupportedTileDBClientVersion(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::TileDBVersion>
+RestCapabilities::Builder::disownMinimumSupportedTileDBClientVersion() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::TileDBVersion>::disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 }  // namespace capnp

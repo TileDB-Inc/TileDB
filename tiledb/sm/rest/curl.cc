@@ -162,7 +162,9 @@ size_t write_header_callback(
   auto* const header_buffer = static_cast<char*>(res_data);
   auto* const pmHeader = static_cast<HeaderCbData*>(userdata);
 
-  if (pmHeader->uri->empty()) {
+  // If we have enabled caching of the redirect URI ensure it's not empty.
+  // If disabled for this request, do not treat an empty asset URI as an error.
+  if (pmHeader->should_cache_redirect && pmHeader->uri->empty()) {
     LOG_ERROR("Rest components as array_ns and array_uri cannot be empty");
     return 0;
   }
@@ -540,6 +542,7 @@ Status Curl::make_curl_request_common(
         data->get_offset();
   }
 
+  stats->add_counter("rest_http_requests", 1);
   // <= because the 0ths retry is actually the initial request
   for (uint8_t i = 0; i <= retry_count_; i++) {
     WriteCbState write_cb_state;

@@ -175,6 +175,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/group/group.h"
+#include "tiledb/sm/rest/rest_capabilities.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -259,6 +260,8 @@ class RestClient {
   std::string rest_server_;
 
  public:
+  using TileDBVersion = RestCapabilities::TileDBVersion;
+
   RestClient(const Config& config);
 
   virtual ~RestClient() = default;
@@ -292,6 +295,22 @@ class RestClient {
    */
   inline std::string rest_server() const {
     return rest_server_;
+  }
+
+  /// Operation disabled in base class.
+  inline virtual const TileDBVersion& rest_tiledb_version() const {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual const TileDBVersion& rest_minimum_supported_tiledb_version()
+      const {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual bool rest_capabilities_detected() const {
+    throw RestClientDisabledException();
   }
 
   //-------------------------------------------------------
@@ -471,6 +490,12 @@ class RestClient {
   /// Operation disabled in base class.
   inline virtual std::vector<std::vector<std::string>>
   post_consolidation_plan_from_rest(const URI&, const Config&, uint64_t) {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual const tiledb::sm::RestCapabilities&
+  get_capabilities_from_rest() const {
     throw RestClientDisabledException();
   }
 };

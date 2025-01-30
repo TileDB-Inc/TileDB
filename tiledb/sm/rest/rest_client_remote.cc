@@ -1516,4 +1516,24 @@ RestClientRemote::post_consolidation_plan_from_rest(
       serialization_type_, returned_data);
 }
 
+const RestCapabilities& RestClientRemote::get_capabilities_from_rest() const {
+  // Return early if already detected REST capabilities for this REST client.
+  if (rest_capabilities_.detected_) {
+    return rest_capabilities_;
+  }
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::unordered_map<std::string, std::string> redirect_meta;
+  throw_if_not_ok(curlc.init(
+      config_, extra_headers_, &redirect_meta, &redirect_mtx_, false));
+  const std::string url = rest_server_ + "/v4/capabilities";
+
+  Buffer data;
+  throw_if_not_ok(curlc.get_data(stats_, url, serialization_type_, &data, {}));
+  rest_capabilities_ =
+      serialization::rest_capabilities_deserialize(serialization_type_, data);
+  return rest_capabilities_;
+}
+
 }  // namespace tiledb::sm
