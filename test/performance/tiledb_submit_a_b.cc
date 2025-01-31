@@ -74,7 +74,12 @@
  *       "layout": "global_order",
  *       "subarray": [
  *         {
- *           "%": 30
+ *           "start": {
+ *             "%": 30
+ *           },
+ *           "end": {
+ *             "%": 50
+ *           }
  *         }
  *       ]
  *     }
@@ -223,26 +228,49 @@ struct StatKeeper {
   }
 };
 
-void shrink_domain(
-    tiledb::Array& array,
-    unsigned dim,
-    tiledb::Subarray& subarray,
-    int percent) {
-  // FIXME: make generic
-  int64_t domain[2];
-  std::tie(domain[0], domain[1]) = array.non_empty_domain<int64_t>(dim);
+struct SubarrayDimension {
+  std::optional<int> start_percent_;
+  std::optional<int> end_percent_;
 
-  const auto span = (domain[1] - domain[0] + 1);
-  domain[0] += ((span * (100 - percent)) / 100) / 2;
-  domain[1] -= ((span * (100 - percent)) / 100) / 2;
+  static SubarrayDimension from_json(const json& jdim) {
+    SubarrayDimension dim;
+    if (jdim.find("start") != jdim.end()) {
+      dim.start_percent_.emplace(jdim["start"]["%"].get<int>());
+    }
+    if (jdim.find("end") != jdim.end()) {
+      dim.end_percent_.emplace(jdim["end"]["%"].get<int>());
+    }
+    return dim;
+  }
 
-  subarray.add_range(dim, domain[0], domain[1]);
-}
+  void apply(
+      tiledb::Array& array, unsigned dim, tiledb::Subarray& subarray) const {
+    // FIXME: make generic domain type
+    int64_t non_empty_domain[2], subarray_domain[2];
+    std::tie(non_empty_domain[0], non_empty_domain[1]) =
+        array.non_empty_domain<int64_t>(dim);
+
+    subarray_domain[0] = non_empty_domain[0];
+    subarray_domain[1] = non_empty_domain[1];
+
+    const auto span = (non_empty_domain[1] - non_empty_domain[0] + 1);
+    if (start_percent_.has_value()) {
+      subarray_domain[0] =
+          non_empty_domain[0] + (span * start_percent_.value()) / 100;
+    }
+    if (end_percent_.has_value()) {
+      subarray_domain[1] =
+          non_empty_domain[0] + ((span * end_percent_.value()) / 100);
+    }
+
+    subarray.add_range(dim, subarray_domain[0], subarray_domain[1]);
+  }
+};
 
 struct Query {
   std::string label_;
   tiledb_layout_t layout_;
-  std::vector<std::optional<int>> subarray_percent_;
+  std::vector<std::optional<SubarrayDimension>> subarray_;
 
   static Query from_json(const json& jq) {
     Query q;
@@ -271,11 +299,10 @@ struct Query {
     if (jq.find("subarray") != jq.end()) {
       const auto& jsub = jq["subarray"];
       for (const auto& jdim : jsub) {
-        if (jdim.find("%") != jdim.end()) {
-          const int percent = jdim["%"].get<int>();
-          q.subarray_percent_.push_back(percent);
+        if (jdim.is_null()) {
+          q.subarray_.push_back(std::nullopt);
         } else {
-          q.subarray_percent_.push_back(std::nullopt);
+          q.subarray_.push_back(SubarrayDimension::from_json(jdim));
         }
       }
     }
@@ -289,14 +316,14 @@ struct Query {
       tiledb::Context& ctx, tiledb::Array& array, tiledb::Query& query) const {
     query.set_layout(layout_);
 
-    if (!subarray_percent_.empty()) {
+    if (!subarray_.empty()) {
       tiledb::Subarray subarray(ctx, array);
 
       tiledb::ArraySchema schema = array.schema();
 
-      for (unsigned d = 0; d < subarray_percent_.size(); d++) {
-        if (subarray_percent_[d].has_value()) {
-          shrink_domain(array, d, subarray, subarray_percent_[d].value());
+      for (unsigned d = 0; d < subarray_.size(); d++) {
+        if (subarray_[d].has_value()) {
+          subarray_[d].value().apply(array, d, subarray);
         }
       }
 
