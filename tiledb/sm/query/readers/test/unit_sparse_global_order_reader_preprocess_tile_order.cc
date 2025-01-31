@@ -78,17 +78,6 @@ struct VerifySetCursorFromReadState {
       , qualified_tiles_(qualified_tiles) {
   }
 
-  VerifySetCursorFromReadState(
-      std::vector<FragIdx>&& read_state,
-      std::vector<ResultTileId>&& qualified_tiles)
-      : qualified_tiles_(std::move(qualified_tiles)) {
-    for (unsigned f = 0; f < read_state.size(); f++) {
-      if (read_state[f].tile_idx_ != 0 || read_state[f].cell_idx_ != 0) {
-        read_state_[f] = read_state[f];
-      }
-    }
-  }
-
   RelevantFragments relevant_fragments() const {
     std::set<unsigned> distinct_fragments;
     for (const auto& rt : qualified_tiles_) {
@@ -292,13 +281,12 @@ TEST_CASE(
   using RT = ResultTileId;
 
   SECTION("Example") {
-    std::vector<FragIdx> read_state;
-    read_state.resize(10);
+    std::map<unsigned, FragIdx> read_state;
 
     // partially done fragment
-    read_state[4] = std::move(FragIdx(7, 32));
+    read_state[4] = FragIdx(7, 32);
     // done, no more tiles in this fragment
-    read_state[6] = std::move(FragIdx(15, 0));
+    read_state[6] = FragIdx(15, 0);
     // other fragments not started
 
     std::vector<ResultTileId> tiles = {
@@ -321,40 +309,37 @@ TEST_CASE(
         RT(8, 36)};
 
     const auto cursor =
-        VerifySetCursorFromReadState(std::move(read_state), std::move(tiles))
-            .verify<AsserterCatch>();
+        VerifySetCursorFromReadState(read_state, tiles).verify<AsserterCatch>();
     CHECK(cursor == 11);
   }
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
     SECTION("Example 1") {
-      std::vector<FragIdx> read_state;
-      read_state.emplace_back(0, 1);
+      std::map<unsigned, FragIdx> read_state;
+      read_state[0] = FragIdx(0, 1);
 
       auto tiles = std::vector<ResultTileId>{ResultTileId(0, 0)};
 
-      const auto cursor =
-          VerifySetCursorFromReadState(std::move(read_state), std::move(tiles))
-              .verify<AsserterCatch>();
+      const auto cursor = VerifySetCursorFromReadState(read_state, tiles)
+                              .verify<AsserterCatch>();
       CHECK(cursor == 1);
     }
     SECTION("Example 2") {
-      std::vector<FragIdx> read_state;
-      read_state.emplace_back(0, 1);
-      read_state.emplace_back(0, 0);
+      std::map<unsigned, FragIdx> read_state;
+      read_state[0] = FragIdx(0, 1);
+      read_state[1] = FragIdx(0, 0);
 
       auto tiles = std::vector<ResultTileId>{
           ResultTileId(0, 0), ResultTileId(1, 0), ResultTileId(0, 1)};
 
-      const auto cursor =
-          VerifySetCursorFromReadState(std::move(read_state), std::move(tiles))
-              .verify<AsserterCatch>();
+      const auto cursor = VerifySetCursorFromReadState(read_state, tiles)
+                              .verify<AsserterCatch>();
       CHECK(cursor == 1);
     }
     SECTION("Example 3") {
-      std::vector<FragIdx> read_state;
-      read_state.emplace_back(0, 0);
-      read_state.emplace_back(0, 1);
+      std::map<unsigned, FragIdx> read_state;
+      read_state[0] = FragIdx(0, 0);
+      read_state[1] = FragIdx(0, 1);
 
       auto tiles = std::vector<ResultTileId>{
           ResultTileId(0, 0),
@@ -363,16 +348,15 @@ TEST_CASE(
           ResultTileId(0, 2),
           ResultTileId(0, 3)};
 
-      const auto cursor =
-          VerifySetCursorFromReadState(std::move(read_state), std::move(tiles))
-              .verify<AsserterCatch>();
+      const auto cursor = VerifySetCursorFromReadState(read_state, tiles)
+                              .verify<AsserterCatch>();
       CHECK(cursor == 2);
     }
     SECTION("Example 4") {
-      std::vector<FragIdx> read_state;
-      read_state.emplace_back(0, 0);
-      read_state.emplace_back(0, 0);
-      read_state.emplace_back(0, 0);
+      std::map<unsigned, FragIdx> read_state;
+      read_state[0] = FragIdx(0, 0);
+      read_state[1] = FragIdx(0, 0);
+      read_state[2] = FragIdx(0, 0);
 
       std::vector<RT> tiles = {
           RT(2, 0),
@@ -384,17 +368,16 @@ TEST_CASE(
           RT(0, 5),
           RT(2, 1)};
 
-      const auto cursor =
-          VerifySetCursorFromReadState(std::move(read_state), std::move(tiles))
-              .verify<AsserterCatch>();
+      const auto cursor = VerifySetCursorFromReadState(read_state, tiles)
+                              .verify<AsserterCatch>();
       CHECK(cursor == 0);
     }
     SECTION(
         "Example 5", "Read state cell_idx=0 can be used as the bound tile") {
-      std::vector<FragIdx> read_state;
-      read_state.emplace_back(3, 0);
-      read_state.emplace_back(0, 0);
-      read_state.emplace_back(0, 0);
+      std::map<unsigned, FragIdx> read_state;
+      read_state[0] = FragIdx(3, 0);
+      read_state[1] = FragIdx(0, 0);
+      read_state[2] = FragIdx(0, 0);
 
       std::vector<RT> tiles = {
           RT(2, 0),
@@ -406,21 +389,19 @@ TEST_CASE(
           RT(0, 5),
           RT(2, 1)};
 
-      const auto cursor =
-          VerifySetCursorFromReadState(std::move(read_state), std::move(tiles))
-              .verify<AsserterCatch>();
+      const auto cursor = VerifySetCursorFromReadState(read_state, tiles)
+                              .verify<AsserterCatch>();
       CHECK(cursor == 4);
     }
     SECTION("Example 6") {
-      std::vector<FragIdx> read_state;
-      read_state.emplace_back(0, 0);
-      read_state.emplace_back(0, 1);
+      std::map<unsigned, FragIdx> read_state;
+      read_state[0] = FragIdx(0, 0);
+      read_state[1] = FragIdx(0, 1);
 
       std::vector<RT> tiles = {RT(0, 0), RT(0, 1), RT(1, 0), RT(0, 2)};
 
-      const auto cursor =
-          VerifySetCursorFromReadState(std::move(read_state), std::move(tiles))
-              .verify<AsserterCatch>();
+      const auto cursor = VerifySetCursorFromReadState(read_state, tiles)
+                              .verify<AsserterCatch>();
       CHECK(cursor == 3);
     }
   }
