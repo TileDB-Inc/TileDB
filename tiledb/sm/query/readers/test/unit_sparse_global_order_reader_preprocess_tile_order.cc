@@ -67,30 +67,14 @@ struct NotAsync {
 
 NotAsync NotAsync::INSTANCE = NotAsync();
 
-/*
-static bool has_not_started_yet(
-    const FragIdx& fragment_read_state, uint64_t tile) {
-  if (fragment_read_state.tile_idx_ == tile) {
-    return fragment_read_state.cell_idx_ == 0;
-  } else {
-    return fragment_read_state.tile_idx_ < tile;
-  }
-}
-
-static bool has_not_started_yet(
-    const FragIdx& fragment_read_state, const ResultTileId& tile) {
-  return has_not_started_yet(fragment_read_state, tile.tile_idx_);
-}
-*/
-
 struct VerifySetCursorFromReadState {
   std::map<unsigned, FragIdx> read_state_;
   std::vector<ResultTileId> qualified_tiles_;
 
   VerifySetCursorFromReadState(
-      std::map<unsigned, FragIdx>&& read_state,
-      std::vector<ResultTileId>&& qualified_tiles)
-      : read_state_(std::move(read_state))
+      std::map<unsigned, FragIdx> read_state,
+      std::vector<ResultTileId> qualified_tiles)
+      : read_state_(read_state)
       , qualified_tiles_(qualified_tiles) {
   }
 
@@ -100,7 +84,7 @@ struct VerifySetCursorFromReadState {
       : qualified_tiles_(std::move(qualified_tiles)) {
     for (unsigned f = 0; f < read_state.size(); f++) {
       if (read_state[f].tile_idx_ != 0 || read_state[f].cell_idx_ != 0) {
-        read_state_[f].swap(read_state[f]);
+        read_state_[f] = read_state[f];
       }
     }
   }
@@ -170,8 +154,8 @@ struct VerifySetCursorFromReadState {
                   ->fragment_idx_);
     }
     for (const auto& fragment : read_state_) {
-      read_state[fragment.first] = std::move(
-          FragIdx(fragment.second.tile_idx_, fragment.second.cell_idx_));
+      read_state[fragment.first] =
+          FragIdx(fragment.second.tile_idx_, fragment.second.cell_idx_);
     }
 
     const uint64_t cursor = PreprocessTileOrder::compute_cursor_from_read_state(
@@ -290,11 +274,10 @@ struct Arbitrary<VerifySetCursorFromReadState> {
           std::map<unsigned, FragIdx> read_state;
 
           for (auto& state : arg.second) {
-            read_state[state.first].swap(state.second);
+            read_state[state.first] = state.second;
           }
 
-          return VerifySetCursorFromReadState(
-              std::move(read_state), std::move(tiles));
+          return VerifySetCursorFromReadState(read_state, tiles);
         },
         gen_read_states);
   }
