@@ -1071,8 +1071,20 @@ void SparseGlobalOrderReader<BitmapType>::create_result_tiles_using_preprocess(
 
         // this is a tile which qualified for the subarray and was
         // a created result tile, we must continue processing it
-        const auto budget_exceeded = add_result_tile(
-            num_dims, f, rt.tile_idx_, *fragment_metadata_[f], result_tiles);
+        bool budget_exceeded;
+        while ((budget_exceeded = add_result_tile(
+                    num_dims,
+                    f,
+                    rt.tile_idx_,
+                    *fragment_metadata_[f],
+                    result_tiles)) &&
+               merge_future.has_value()) {
+          // try to free some memory by waiting for merge if it is ongoing
+          if (merge_future.has_value()) {
+            merge_future->block();
+            merge_future.reset();
+          }
+        }
 
         // all these tiles were created in a previous iteration, so we *had*
         // the memory budget - and must not any more.  Can a user change
