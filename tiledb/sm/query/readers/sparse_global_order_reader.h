@@ -78,6 +78,85 @@ struct PreprocessTileOrder {
   bool has_more_tiles() const {
     return enabled_ && cursor_ < tiles_.size();
   }
+
+  /**
+   * Identifies the current position in the preprocess tile stream using
+   * the read state, and updates the cursor to that position.
+   * This is called after starting the result tile order.
+   *
+   * When running libtiledb natively, this is only called in the
+   * first instance of `tiledb_query_submit` and sets the cursor
+   * to that position.
+   *
+   * When running libtiledb against the REST server, this is called
+   * on the REST server for each `tiledb_query_submit`.
+   * We assume that recomputing the tile order for each message
+   * is cheaper than serializing the tile order after computing it once.
+   * However, as the read state progresses over the subarray,
+   * the tiles which qualify as input to the tile merge change.
+   * This causes the tile list to vary from submit to submit.
+   * Hence instead of serializing the position in the list we must
+   * recompute it.
+   */
+  template <typename MergeFuture>
+  static uint64_t compute_cursor_from_read_state(
+      const RelevantFragments& relevant_fragments,
+      const std::span<const FragIdx>& read_state,
+      const std::span<const ResultTileId>& tiles,
+      MergeFuture& merge_future) {
+    // The current position is that of the first tile in the list
+    // which comes after the last tile in the list from which
+    // data was emitted.
+    //
+    // Data was emitted from a tile if its `cell_idx_` is nonzero.
+    //
+    // In a synchronous world we can identify that tile trivially by
+    // walking backwards from the end of the list and finding
+    // the first nonzero `cell_idx_`.
+    //
+    // In an async world we want to walk forwards, so that we
+    // don't have to wait for the whole merge to finish.
+
+    size_t bound = 0;
+    for (const auto f : relevant_fragments) {
+      std::optional<uint64_t> f_bound;
+      for (uint64_t t = 0; t < tiles.size(); t++) {
+        merge_future.wait_for(t);
+
+        if (tiles[t].fragment_idx_ != f) {
+          continue;
+        }
+        if (tiles[t].tile_idx_ < read_state[f].tile_idx_) {
+          f_bound.emplace(t + 1);
+        } else if (tiles[t].tile_idx_ == read_state[f].tile_idx_) {
+          if (read_state[f].cell_idx_ > 0) {
+            // this is the current tile, we have emitted some cells already
+            f_bound.emplace(t + 1);
+          } else if (f_bound.has_value()) {
+            // we exhausted the previous tile but did not emit anything from
+            // this one
+          } else {
+            // this is the first tile from the fragment, with no data emitted
+          }
+          break;
+        } else {
+          // this means we never saw the `==` tile, it did not qualify
+          // (is this even reachable except for the end of the fragment?)
+          // but the read state had advanced beyond the previous, so that's the
+          // bound
+          if (f_bound.has_value()) {
+            f_bound.emplace(f_bound.value() + 1);
+          }
+          break;
+        }
+      }
+      if (f_bound.has_value() && f_bound.value() > bound) {
+        bound = f_bound.value();
+      }
+    }
+
+    return bound;
+  }
 };
 
 /** Processes sparse global order read queries. */
@@ -294,28 +373,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * the results of the asynchronous parallel merge.
    */
   void preprocess_compute_result_tile_order(
-      PreprocessTileMergeFuture& merge_future);
-
-  /**
-   * Identifies the current position in the preprocess tile stream using
-   * the read state, and updates the cursor to that position.
-   * This is called after starting the result tile order.
-   *
-   * When running libtiledb natively, this is only called in the
-   * first instance of `tiledb_query_submit` and sets the cursor
-   * to that position.
-   *
-   * When running libtiledb against the REST server, this is called
-   * on the REST server for each `tiledb_query_submit`.
-   * We assume that recomputing the tile order for each message
-   * is cheaper than serializing the tile order after computing it once.
-   * However, as the read state progresses over the subarray,
-   * the tiles which qualify as input to the tile merge change.
-   * This causes the tile list to vary from submit to submit.
-   * Hence instead of serializing the position in the list we must
-   * recompute it.
-   */
-  void preprocess_set_cursor_from_read_state(
       PreprocessTileMergeFuture& merge_future);
 
   /**
