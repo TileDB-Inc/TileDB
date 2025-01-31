@@ -167,6 +167,10 @@ struct StatKeeper {
   std::map<std::string, std::map<std::string, std::map<std::string, StatValue>>>
       statistics;
 
+  StatValue& get(const StatKey& stat) {
+    return statistics[stat.uri_][stat.qlabel_][stat.configname_];
+  }
+
   Timer start_timer(const StatKey& stat) {
     return tiledb::sm::stats::DurationInstrument<StatKeeper, StatKey>(
         *this, stat);
@@ -174,20 +178,17 @@ struct StatKeeper {
 
   void report_duration(
       const StatKey& stat, const std::chrono::duration<double> duration) {
-    auto& stats = statistics[stat.uri_][stat.qlabel_][stat.configname_];
-    stats.durations.push_back(duration.count());
+    get(stat).durations.push_back(duration.count());
   }
 
   void report_metric(
       const StatKey& stat, const std::string& name, const json& value) {
-    auto& stats = statistics[stat.uri_][stat.qlabel_][stat.configname_];
-    stats.metrics[name] = value;
+    get(stat).metrics[name] = value;
   }
 
   void report_timer(
       const StatKey& stat, const std::string& name, const json& value) {
-    auto& stats = statistics[stat.uri_][stat.qlabel_][stat.configname_];
-    stats.metrics[name] = value;
+    get(stat).metrics[name] = value;
   }
 
   /**
