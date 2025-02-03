@@ -181,6 +181,20 @@ Datatype NDRectangle::range_dtype_for_name(const std::string& name) const {
   return range_dtype(idx);
 }
 
+std::string NDRectangle::as_string() const {
+  std::stringstream ss;
+  ss << "[";
+  for (uint32_t i = 0; i < get_ndranges().size(); ++i) {
+    if (i > 0) {
+      ss << ",";
+    }
+    auto dtype = domain()->dimension_ptr(i)->type();
+    ss << range_str(get_range(i), dtype);
+  }
+  ss << "]";
+  return ss.str();
+}
+
 }  // namespace tiledb::sm
 
 std::ostream& operator<<(std::ostream& os, const tiledb::sm::NDRectangle& ndr) {

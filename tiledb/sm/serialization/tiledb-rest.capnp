@@ -1401,3 +1401,14 @@ struct ObjectInfoResponse {
   objectType @0 :ObjectType;
   # The object's type (array or group).
 }
+
+struct TileDBVersion {
+    major @0 :UInt16;
+    minor @1 :UInt16;
+    patch @2 :UInt16;
+}
+
+struct RestCapabilities {
+    deployedTileDBVersion @0 :TileDBVersion;
+    minimumSupportedTileDBClientVersion @1 :TileDBVersion;
+}

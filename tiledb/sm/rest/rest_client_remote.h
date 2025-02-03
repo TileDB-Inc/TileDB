@@ -42,6 +42,7 @@
 // clang-format off
 #include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/consolidation.h"
@@ -53,6 +54,7 @@
 #include "tiledb/sm/serialization/query_plan.h"
 #include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #include "tiledb/sm/serialization/vacuum.h"
+#include "tiledb/sm/serialization/rest_capabilities.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
 // clang-format on
 
@@ -73,7 +75,6 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb::common;
@@ -116,6 +117,32 @@ class RestClientRemote : public RestClient {
    *
    * */
   static bool use_refactored_query(const Config& config);
+
+  /**
+   * @return TileDB core version currently deployed to the REST server.
+   */
+  inline const TileDBVersion& rest_tiledb_version() const override {
+    return get_capabilities_from_rest().rest_tiledb_version_;
+  }
+
+  /**
+   * @return Minimum TileDB core version currently supported by the REST server.
+   */
+  inline const TileDBVersion& rest_minimum_supported_tiledb_version()
+      const override {
+    return get_capabilities_from_rest().rest_minimum_supported_version_;
+  }
+
+  /**
+   * Check if REST capabilities are currently known to the RestClient. This
+   * will not attempt to initialize them if they are currently unknown.
+   *
+   * @return True if RestCapabilities member has been initialized by a previous
+   * REST capabilities endpoint request, else False.
+   */
+  inline bool rest_capabilities_detected() const override {
+    return rest_capabilities_.detected_;
+  }
 
   /**
    * Check if an array exists by making a REST call. To start with this fetches
@@ -444,6 +471,13 @@ class RestClientRemote : public RestClient {
   std::vector<std::vector<std::string>> post_consolidation_plan_from_rest(
       const URI& uri, const Config& config, uint64_t fragment_size) override;
 
+  /**
+   * Get REST capabilities from the REST server.
+   *
+   * @return RestCapabilities object initialized with context from REST server.
+   */
+  const RestCapabilities& get_capabilities_from_rest() const override;
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -486,6 +520,9 @@ class RestClientRemote : public RestClient {
 
   /** The class MemoryTracker. */
   shared_ptr<MemoryTracker> memory_tracker_;
+
+  /** REST supported TileDB versions and capabilities. */
+  mutable RestCapabilities rest_capabilities_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

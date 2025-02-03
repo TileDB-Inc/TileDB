@@ -266,6 +266,37 @@ class Azure_within_VFS {
 };
 #endif
 
+/** The GCS filesystem. */
+#ifdef HAVE_GCS
+class GCS_within_VFS {
+  /** Private member variable */
+  GCS gcs_;
+
+ protected:
+  template <typename... Args>
+  GCS_within_VFS(Args&&... args)
+      : gcs_(std::forward<Args>(args)...) {
+  }
+
+  /** Protected accessor for the GCS object. */
+  inline GCS& gcs() {
+    return gcs_;
+  }
+
+  /** Protected accessor for the const GCS object. */
+  inline const GCS& gcs() const {
+    return gcs_;
+  }
+};
+#else
+class GCS_within_VFS {
+ protected:
+  template <typename... Args>
+  GCS_within_VFS(Args&&...) {
+  }  // empty constructor
+};
+#endif
+
 /** The S3 filesystem. */
 #ifdef HAVE_S3
 class S3_within_VFS {
@@ -301,7 +332,10 @@ class S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase, protected Azure_within_VFS, S3_within_VFS {
+class VFS : private VFSBase,
+            protected Azure_within_VFS,
+            GCS_within_VFS,
+            S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -597,7 +631,7 @@ class VFS : private VFSBase, protected Azure_within_VFS, S3_within_VFS {
 #endif
       } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
-        results = gcs_.ls_filtered(parent, f, d, recursive);
+        results = gcs().ls_filtered(parent, f, d, recursive);
 #else
         throw filesystem::VFSException("TileDB was built without GCS support");
 #endif
@@ -969,10 +1003,6 @@ class VFS : private VFSBase, protected Azure_within_VFS, S3_within_VFS {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-#ifdef HAVE_GCS
-  GCS gcs_;
-#endif
 
 #ifdef _WIN32
   Win win_;

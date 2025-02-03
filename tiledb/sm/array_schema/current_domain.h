@@ -219,6 +219,14 @@ class CurrentDomain {
    */
   void expand_to_tiles(const Domain& domain, NDRange& query_ndrange) const;
 
+  /**
+   * Returns a human-readable display of the current domain. Nominal use is
+   * to improve readability / actionability of out-of-bounds error messages.
+   *
+   * @return A string.
+   */
+  std::string as_string() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
