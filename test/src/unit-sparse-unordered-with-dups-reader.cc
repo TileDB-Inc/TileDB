@@ -1066,10 +1066,9 @@ TEST_CASE_METHOD(
       CHECK(1 == loop_num->second);
     }
     /**
-     * FIXME: The loop_num appears to be different on different
-     * architectures/build modes. SC-61065 to investigate why. } else { CHECK(20
-     * == loop_num->second);
-     * }
+     * We can't do a similar check for multiple fragments as it is architecture
+     * dependent how many tiles fit in the memory budget. And thus also
+     * architecture dependent as to how many internal loops we have.
      */
 
     // Try to read multiple frags without partial tile offset reading. Should

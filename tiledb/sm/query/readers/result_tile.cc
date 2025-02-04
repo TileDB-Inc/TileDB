@@ -93,14 +93,14 @@ ResultTile::ResultTile(
 
 ResultTile::~ResultTile() {
   try {
-    // Wait for all tasks to be done
-    wait_all_attrs();
+    // Wait for all attribute tasks to be done
+    wait_all_tiles(attr_tiles_);
   } catch (...) {
   }
 
   try {
-    // Wait for all tasks to be done
-    wait_all_coords();
+    // Wait for all coordinates tasks to be done
+    wait_all_tiles(coord_tiles_);
   } catch (...) {
   }
 }
@@ -275,23 +275,10 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   return nullptr;
 }
 
-void ResultTile::wait_all_coords() const {
-  for (auto& at : coord_tiles_) {
-    auto& tile_tuple = at.second;
-    if (tile_tuple.has_value()) {
-      tile_tuple.value().fixed_tile().data();
-      if (tile_tuple.value().var_tile_opt().has_value()) {
-        tile_tuple.value().var_tile_opt().value().data();
-      }
-      if (tile_tuple.value().validity_tile_opt().has_value()) {
-        tile_tuple.value().validity_tile_opt().value().data();
-      }
-    }
-  }
-}
-
-void ResultTile::wait_all_attrs() const {
-  for (auto& at : attr_tiles_) {
+void ResultTile::wait_all_tiles(
+    const std::vector<std::pair<std::string, optional<TileTuple>>>& tiles)
+    const {
+  for (auto& at : tiles) {
     const auto& tile_tuple = at.second;
     if (tile_tuple.has_value()) {
       tile_tuple.value().fixed_tile().data();
