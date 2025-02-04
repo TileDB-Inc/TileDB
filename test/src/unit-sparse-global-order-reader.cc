@@ -1993,9 +1993,10 @@ TEST_CASE_METHOD(
   }
 
   // FIXME: there is no per fragment budget anymore
-  // Two result tiles (2 * (~3500 + 8) will be bigger than the per fragment
-  // budget (1000).
-  memory_.total_budget_ = "60000";
+  // Two result tiles (2 * (2736 + 8)) = 5488 will be bigger than the per
+  // fragment budget (50000 * 0.11 / 2 fragments = 2750), so only one result
+  // tile will be loaded each time.
+  memory_.total_budget_ = "50000";
   memory_.ratio_coords_ = "0.11";
   update_config();
 
@@ -2518,8 +2519,9 @@ TEST_CASE_METHOD(
   }
 
   // FIXME: there is no per fragment budget anymore
-  // Two result tile (2 * (~4500 + 8) will be bigger than the per fragment
-  // budget (1000).
+  // Two result tiles (2 * (2736 + 8)) = 5488 will be bigger than the per
+  // fragment budget (40000 * 0.22 /2 frag = 4400), so only one will be loaded
+  // each time.
   memory_.total_budget_ = "40000";
   memory_.ratio_coords_ = "0.22";
   update_config();

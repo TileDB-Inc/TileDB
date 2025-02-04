@@ -754,11 +754,10 @@ class ResultTile {
       const uint64_t min_cell,
       const uint64_t max_cell) const;
 
-  /* Waits for all coord tiles results to be available */
-  void wait_all_coords() const;
-
-  /* Waits for all attr tiles results to be available */
-  void wait_all_attrs() const;
+  /* Waits for all tiles results to be available */
+  void wait_all_tiles(
+      const std::vector<std::pair<std::string, optional<TileTuple>>>& tiles)
+      const;
 
  protected:
   /* ********************************* */
