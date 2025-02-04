@@ -32,7 +32,7 @@ jobs:
           TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
         run: cd build && cpack --config CPackSourceConfig.cmake
       - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release
           path: |
@@ -150,9 +150,9 @@ jobs:
           TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
         run: cmake --build build -j4 --config Release --target package
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: release
+          name: release-${{ matrix.platform }}
           path: |
             build/tiledb-*.tar.gz*
             build/tiledb-*.zip*
@@ -168,9 +168,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: release
+          pattern: release-*
+          merge-multiple: true
           path: dist
       - name: Test names of release artifacts
         run: |
@@ -187,9 +188,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: release
+          name: release-*
+          merge-multiple: true
           path: dist
       - name: Publish release artifacts
         uses: actions/github-script@v6
@@ -240,4 +242,4 @@ jobs:
         with:
           name: Release failed
           label: release
-          assignee: KiterLuc,teo-tsirpanis,davisp
+          assignee: davisp,dudoslav,ihnorton,teo-tsirpanis
