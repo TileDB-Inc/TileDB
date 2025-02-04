@@ -57,6 +57,9 @@
  *     {
  *       "name": "a",
  *       "num_user_cells": 16777216,
+ *       "memory_budget": {
+ *         "total": "1073741824"
+ *       },
  *       "config": {
  *         "sm.query.sparse_global_order.preprocess_tile_merge": 0
  *       }
@@ -64,6 +67,9 @@
  *     {
  *       "name": "b",
  *       "num_user_cells: 16777216
+ *       "memory_budget": {
+ *         "total": "1073741824"
+ *       },
  *       "config": {
  *         "sm.query.sparse_global_order.preprocess_tile_merge": 128
  *       }
@@ -89,8 +95,12 @@
  *
  * The "config" field of each configuration object is a set of key-value
  * pairs which are set on a `tileb::Config` object for instances
- * of each query.  The "name" field identifies the configuration;
- * and the "num_user_cells" field sets the size of the user buffer.
+ * of each query.
+ * - The "name" field identifies the configuration.
+ * - The "num_user_cells" field sets the size of the user buffer.
+ * - The "memory_budget" field sets the query memory budget.
+ * - The "config" field is a list of key-value pairs which are
+ *   passed to the query configuration options.
  *
  * Each item in "queries" specifies a query to run the comparison for.
  *
@@ -144,6 +154,21 @@ struct Configuration {
   std::string name_;
   std::optional<uint64_t> num_user_cells_;
   tiledb::Config qconf_;
+
+  tiledb::test::SparseGlobalOrderReaderMemoryBudget memory_;
+
+  Configuration() {
+    memory_.total_budget_ = std::to_string(1024 * 1024 * 1024);
+    memory_.ratio_tile_ranges_ = "0.01";
+  }
+
+  void memory_budget_from_json(const json& jmem) {
+    if (jmem.find("total") != jmem.end()) {
+      memory_.total_budget_ = jmem["total"].get<std::string>();
+    }
+    // TODO: other fields as needed
+    memory_.apply(qconf_.ptr().get());
+  }
 };
 
 /**
@@ -433,10 +458,6 @@ static void run(
     const char* array_uri,
     const Query& query_config,
     const std::span<Configuration> configs) {
-  tiledb::test::SparseGlobalOrderReaderMemoryBudget memory;
-  memory.total_budget_ = std::to_string(1024 * 1024 * 1024);
-  memory.ratio_tile_ranges_ = "0.01";
-
   std::vector<uint64_t> num_user_cells;
   for (const auto& config : configs) {
     num_user_cells.push_back(
@@ -454,10 +475,7 @@ static void run(
     reset(q);
   }
 
-  tiledb::Config memconfig;
-  memory.apply(memconfig.ptr().get());
-
-  tiledb::Context ctx(memconfig);
+  tiledb::Context ctx;
 
   // Open array for reading.
   tiledb::Array array(ctx, array_uri, TILEDB_READ);
@@ -652,14 +670,16 @@ int main(int argc, char** argv) {
 
   std::vector<Configuration> qconfs;
   for (const auto& jsoncfg : config["configurations"]) {
-    qconfs.push_back(Configuration{
-        .name_ = jsoncfg["name"].get<std::string>(),
-        .num_user_cells_ = std::nullopt,
-        .qconf_ = json2config(jsoncfg)});
+    Configuration cfg;
+    cfg.name_ = jsoncfg["name"].get<std::string>();
+    cfg.qconf_ = json2config(jsoncfg);
     if (jsoncfg.find("num_user_cells") != jsoncfg.end()) {
-      qconfs.back().num_user_cells_.emplace(
-          jsoncfg["num_user_cells"].get<uint64_t>());
+      cfg.num_user_cells_.emplace(jsoncfg["num_user_cells"].get<uint64_t>());
     }
+    if (jsoncfg.find("memory_budget") != jsoncfg.end()) {
+      cfg.memory_budget_from_json(jsoncfg["memory_budget"]);
+    }
+    qconfs.push_back(cfg);
   }
 
   StatKeeper stat_keeper;
