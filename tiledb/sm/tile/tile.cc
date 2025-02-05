@@ -71,7 +71,7 @@ shared_ptr<Tile> Tile::from_generic(
       nullptr,
       0,
       memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO),
-      ThreadPool::SharedTask());
+      std::nullopt);
 }
 
 shared_ptr<WriterTile> WriterTile::from_generic(
@@ -109,15 +109,13 @@ TileBase::TileBase(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    tdb::pmr::memory_resource* resource,
-    const bool skip_waiting_on_io_task)
+    tdb::pmr::memory_resource* resource)
     : resource_(resource)
     , data_(tdb::pmr::make_unique<std::byte>(resource_, size))
     , size_(size)
     , cell_size_(cell_size)
     , format_version_(format_version)
-    , type_(type)
-    , skip_waiting_on_io_task_(skip_waiting_on_io_task) {
+    , type_(type) {
   /*
    * We can check for a bad allocation after initialization without risk
    * because none of the other member variables use its value for their own
@@ -137,8 +135,7 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     shared_ptr<MemoryTracker> memory_tracker,
-    ThreadPool::SharedTask data_io_task,
-    const bool skip_waiting_on_io_task)
+    std::optional<ThreadPool::SharedTask> data_io_task)
     : Tile(
           format_version,
           type,
@@ -148,8 +145,7 @@ Tile::Tile(
           filtered_data,
           filtered_size,
           memory_tracker->get_resource(MemoryType::TILE_DATA),
-          std::move(data_io_task),
-          skip_waiting_on_io_task) {
+          std::move(data_io_task)) {
 }
 
 Tile::Tile(
@@ -161,15 +157,8 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size,
     tdb::pmr::memory_resource* resource,
-    ThreadPool::SharedTask filtered_data_io_task,
-    const bool skip_waiting_on_io_task)
-    : TileBase(
-          format_version,
-          type,
-          cell_size,
-          size,
-          resource,
-          skip_waiting_on_io_task)
+    std::optional<ThreadPool::SharedTask> filtered_data_io_task)
+    : TileBase(format_version, type, cell_size, size, resource)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
     , filtered_size_(filtered_size)
@@ -181,15 +170,13 @@ WriterTile::WriterTile(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    shared_ptr<MemoryTracker> memory_tracker,
-    const bool skip_waiting_on_io_task)
+    shared_ptr<MemoryTracker> memory_tracker)
     : TileBase(
           format_version,
           type,
           cell_size,
           size,
-          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA),
-          skip_waiting_on_io_task)
+          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
     , filtered_buffer_(0) {
 }
 
@@ -198,15 +185,8 @@ WriterTile::WriterTile(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    tdb::pmr::memory_resource* resource,
-    const bool skip_waiting_on_io_task)
-    : TileBase(
-          format_version,
-          type,
-          cell_size,
-          size,
-          resource,
-          skip_waiting_on_io_task)
+    tdb::pmr::memory_resource* resource)
+    : TileBase(format_version, type, cell_size, size, resource)
     , filtered_buffer_(0) {
 }
 
@@ -306,10 +286,10 @@ uint64_t Tile::load_chunk_data(
     ChunkData& unfiltered_tile, uint64_t expected_original_size) {
   assert(filtered());
 
-  if (!skip_waiting_on_io_task_) {
-    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-    if (filtered_data_io_task_.valid()) {
-      throw_if_not_ok(filtered_data_io_task_.wait());
+  std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+  if (filtered_data_io_task_.has_value()) {
+    if (filtered_data_io_task_.value().valid()) {
+      throw_if_not_ok(filtered_data_io_task_.value().wait());
     } else {
       throw std::future_error(std::future_errc::no_state);
     }
