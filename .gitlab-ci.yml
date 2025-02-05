@@ -18,4 +18,5 @@ trigger_pipeline:
     TILEDB_REF: ${CI_COMMIT_REF_NAME}
   trigger:
     project: tiledb-inc/tiledb-internal
-    strategy: depend    
+    strategy: depend
+    branch: rr/sc-60366-separate-rapidcheck-job
