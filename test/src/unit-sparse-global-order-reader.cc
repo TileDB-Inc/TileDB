@@ -1252,7 +1252,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew",
-    "[sparse-global-order][rest]") {
+    "[sparse-global-order][rest][rapidcheck]") {
   auto doit = [this]<typename Asserter>(
                   size_t fragment_size,
                   size_t num_user_cells,
@@ -1338,7 +1338,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment interleave",
-    "[sparse-global-order][rest]") {
+    "[sparse-global-order][rest][rapidcheck]") {
   // NB: the tile extent is 2
   auto doit = [this]<typename Asserter>(
                   size_t fragment_size,
@@ -1428,7 +1428,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment wide overlap",
-    "[sparse-global-order][rest]") {
+    "[sparse-global-order][rest][rapidcheck]") {
   auto doit = [this]<typename Asserter>(
                   size_t num_fragments,
                   size_t fragment_size,
@@ -1533,7 +1533,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: out-of-order MBRs",
-    "[sparse-global-order][rest]") {
+    "[sparse-global-order][rest][rapidcheck]") {
   auto doit = [this]<typename Asserter>(
                   tiledb_layout_t tile_order,
                   tiledb_layout_t cell_order,
@@ -1684,7 +1684,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew 2d merge bound",
-    "[sparse-global-order]") {
+    "[sparse-global-order][rest][rapidcheck]") {
   auto doit = [this]<typename Asserter>(
                   tiledb_layout_t tile_order,
                   tiledb_layout_t cell_order,
@@ -3244,7 +3244,7 @@ void show<FxRun2D>(const FxRun2D& instance, std::ostream& os) {
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 1d",
-    "[sparse-global-order][rapidcheck]") {
+    "[sparse-global-order][rest][rapidcheck]") {
   SECTION("Rapidcheck") {
     rc::prop(
         "rapidcheck arbitrary 1d", [this](rc::NonShrinking<FxRun1D> instance) {
@@ -3266,7 +3266,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: rapidcheck 2d",
-    "[sparse-global-order][rapidcheck]") {
+    "[sparse-global-order][rest][rapidcheck]") {
   SECTION("rapidcheck") {
     rc::prop(
         "rapidcheck arbitrary 2d", [this](rc::NonShrinking<FxRun2D> instance) {
