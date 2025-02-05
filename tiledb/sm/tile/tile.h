@@ -68,8 +68,7 @@ class TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      tdb::pmr::memory_resource* resource,
-      const bool skip_waiting_on_io_task);
+      tdb::pmr::memory_resource* resource);
 
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
@@ -182,11 +181,6 @@ class TileBase {
 
   /** The tile data type. */
   Datatype type_;
-
-  /**
-   * Whether to block waiting for io data to be ready before accessing data()
-   */
-  const bool skip_waiting_on_io_task_;
 };
 
 /**
@@ -220,9 +214,6 @@ class Tile : public TileBase {
    * @param filtered_size The filtered size to allocate.
    * @param memory_tracker The memory resource to use.
    * @param filtered_data_io_task The I/O task to wait on for data to be valid.
-   * @param skip_waiting_on_io_task whether to skip waiting on I/O tasks and
-   * directly access data() or block. By default is false, so by default we
-   * block waiting. Used when we create generic tiles or in testing.
    */
   Tile(
       const format_version_t format_version,
@@ -233,8 +224,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       shared_ptr<MemoryTracker> memory_tracker,
-      ThreadPool::SharedTask filtered_data_io_task,
-      const bool skip_waiting_on_io_task = false);
+      std::optional<ThreadPool::SharedTask> filtered_data_io_task);
 
   /**
    * Constructor.
@@ -249,9 +239,6 @@ class Tile : public TileBase {
    * @param filtered_size The filtered size to allocate.
    * @param resource The memory resource to use.
    * @param filtered_data_io_task The I/O task to wait on for data to be valid.
-   * @param skip_waiting_on_io_task whether to skip waiting on I/O tasks and
-   * directly access data() or block. By default is false, so by default we
-   * block waiting. Used when we create generic tiles or in testing.
    */
   Tile(
       const format_version_t format_version,
@@ -262,8 +249,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size,
       tdb::pmr::memory_resource* resource,
-      ThreadPool::SharedTask filtered_data_io_task,
-      const bool skip_waiting_on_io_task = false);
+      std::optional<ThreadPool::SharedTask> filtered_data_io_task);
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
@@ -295,10 +281,10 @@ class Tile : public TileBase {
 
   /** Returns the buffer that contains the filtered, on-disk format. */
   inline char* filtered_data() {
-    if (!skip_waiting_on_io_task_) {
-      std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-      if (filtered_data_io_task_.valid()) {
-        throw_if_not_ok(filtered_data_io_task_.wait());
+    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+    if (filtered_data_io_task_.has_value()) {
+      if (filtered_data_io_task_.value().valid()) {
+        throw_if_not_ok(filtered_data_io_task_.value().wait());
       } else {
         throw std::future_error(std::future_errc::no_state);
       }
@@ -310,10 +296,12 @@ class Tile : public TileBase {
   template <class T>
   inline T* filtered_data_as() {
     std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-    if (filtered_data_io_task_.valid()) {
-      throw_if_not_ok(filtered_data_io_task_.wait());
-    } else {
-      throw std::future_error(std::future_errc::no_state);
+    if (filtered_data_io_task_.has_value()) {
+      if (filtered_data_io_task_.value().valid()) {
+        throw_if_not_ok(filtered_data_io_task_.value().wait());
+      } else {
+        throw std::future_error(std::future_errc::no_state);
+      }
     }
 
     return static_cast<T*>(filtered_data_);
@@ -321,10 +309,10 @@ class Tile : public TileBase {
 
   /** Clears the filtered buffer. */
   void clear_filtered_buffer() {
-    if (!skip_waiting_on_io_task_) {
-      std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-      if (filtered_data_io_task_.valid()) {
-        throw_if_not_ok(filtered_data_io_task_.wait());
+    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
+    if (filtered_data_io_task_.has_value()) {
+      if (filtered_data_io_task_.value().valid()) {
+        throw_if_not_ok(filtered_data_io_task_.value().wait());
       } else {
         throw std::future_error(std::future_errc::no_state);
       }
@@ -425,7 +413,7 @@ class Tile : public TileBase {
   uint64_t filtered_size_;
 
   /** I/O task to check and block on if filtered data is ready. */
-  mutable ThreadPool::SharedTask filtered_data_io_task_;
+  mutable std::optional<ThreadPool::SharedTask> filtered_data_io_task_;
 
   /**
    * Lock for checking task, since this tile can be used by multiple threads.
@@ -484,8 +472,7 @@ class WriterTile : public TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      shared_ptr<MemoryTracker> memory_tracker,
-      const bool skip_waiting_on_io_task = false);
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor.
@@ -501,8 +488,7 @@ class WriterTile : public TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      tdb::pmr::memory_resource* resource,
-      const bool skip_waiting_on_io_task = false);
+      tdb::pmr::memory_resource* resource);
 
   DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
   DISABLE_MOVE_AND_MOVE_ASSIGN(WriterTile);
