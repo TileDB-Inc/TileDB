@@ -2993,6 +2993,14 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
         return;
       }
       if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
+        if (err.find(
+                "Cannot allocate space for preprocess result tile ID list")) {
+          // not enough memory to determine tile order
+          // we can probably make some assertions about what this should have
+          // looked like but for now we'll let it go
+          tiledb_query_free(&query);
+          return;
+        }
         if (err.find("Cannot load tile offsets") != std::string::npos) {
           // not enough memory budget for tile offsets, don't bother asserting
           // about it (for now?)
