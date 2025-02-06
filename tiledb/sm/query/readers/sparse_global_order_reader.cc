@@ -1530,15 +1530,19 @@ AddNextCellResult SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     // tiles then it is not correct to emit it; hopefully we clear out
     // a tile somewhere and trying again will make progress.
     //
-    // We can skip the comparison if the merge bound fragment is the same
-    // as the current fragment because that is enough to tell us that
-    // the coordinates are in order.
+    // If the next cell is equal to the merge bound, then it is only
+    // correct to add it if duplicates are allowed.
     if (merge_bound.has_value()) {
       GlobalCellCmp cmp(array_schema_.domain());
-      if (cmp(*merge_bound, rc)) {
-        // more tiles needed, out-of-order tiles is a possibility if we
-        // continue
-        return AddNextCellResult::MergeBound;
+      if (array_schema_.allows_dups()) {
+        if (cmp(*merge_bound, rc)) {
+          return AddNextCellResult::MergeBound;
+        }
+      } else {
+        // `!(rc < *merge_bound)`, i.e. `*merge_bound <= rc`
+        if (!cmp(rc, *merge_bound)) {
+          return AddNextCellResult::MergeBound;
+        }
       }
     }
 
