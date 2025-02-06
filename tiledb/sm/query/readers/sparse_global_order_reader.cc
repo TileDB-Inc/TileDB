@@ -1484,6 +1484,8 @@ AddNextCellResult SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     // Remove the tile from result tiles if it wasn't used at all.
     if (!rc.tile_->used()) {
       tmp_read_state_.add_ignored_tile(*to_delete_it);
+
+      std::unique_lock<std::mutex> ul(tile_queue_mutex_);
       to_delete.push_back(to_delete_it);
     }
 
