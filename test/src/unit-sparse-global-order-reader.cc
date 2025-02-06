@@ -2875,7 +2875,9 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
         }
         tiledb_query_free(&query);
         return;
-      } else if (err.find("Cannot load tile offsets") != std::string::npos) {
+      } else if (
+          std::is_same_v<Asserter, AsserterRapidcheck> &&
+          err.find("Cannot load tile offsets") != std::string::npos) {
         // not enough memory budget for tile offsets, don't bother asserting
         // about it (for now?)
         tiledb_query_free(&query);
