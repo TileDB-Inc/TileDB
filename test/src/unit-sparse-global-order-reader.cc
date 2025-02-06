@@ -69,6 +69,9 @@ using tiledb::test::templates::AttributeType;
 using tiledb::test::templates::DimensionType;
 using tiledb::test::templates::FragmentType;
 
+template <typename D>
+using Subarray1DType = std::vector<templates::Domain<D>>;
+
 template <typename D1, typename D2>
 using Subarray2DType = std::vector<std::pair<
     std::optional<templates::Domain<D1>>,
@@ -1489,6 +1492,86 @@ TEST_CASE_METHOD(
 }
 
 /**
+ * Tests that the reader will not yield duplicate coordinates if
+ * coordinates in loaded tiles are equal to the merge bound,
+ * and the merge bound is an actual datum in yet-to-be-loaded tiles.
+ *
+ * Example:
+ * many fragments which overlap at the ends
+ * [0, 1000], [1000, 2000], [2000, 3000]
+ * If we can load the tiles of the first two fragments but not
+ * the third, then the merge bound will be 2000. But it is only
+ * correct to emit the 2000 from the second fragment if
+ * duplicates are allowed.
+ *
+ * This test illustrates that the merge bound must not be an
+ * inclusive bound (unless duplicates are allowed).
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: merge bound duplication",
+    "[sparse-global-order][rest][rapidcheck]") {
+  auto doit = [this]<typename Asserter>(
+                  size_t num_fragments,
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  size_t tile_capacity,
+                  bool allow_dups,
+                  const Subarray1DType<int>& subarray = {}) {
+    FxRun1D instance;
+    instance.num_user_cells = num_user_cells;
+    instance.subarray = subarray;
+    instance.memory.total_budget_ = "50000";
+    instance.memory.ratio_array_data_ = "0.5";
+    instance.array.capacity_ = tile_capacity;
+    instance.array.allow_dups_ = allow_dups;
+    instance.array.dimension_.domain.lower_bound = 0;
+    instance.array.dimension_.domain.upper_bound =
+        static_cast<int>(num_fragments * fragment_size);
+
+    for (size_t f = 0; f < num_fragments; f++) {
+      templates::Fragment1D<int, int> fragment;
+      fragment.dim_.resize(fragment_size);
+      std::iota(
+          fragment.dim_.begin(), fragment.dim_.end(), f * (fragment_size - 1));
+
+      auto& atts = std::get<0>(fragment.atts_);
+      atts = fragment.dim_;  // we just want to avoid the complexity of which
+                             // fragment wins the dedup
+
+      instance.fragments.push_back(fragment);
+    }
+
+    instance.num_user_cells = num_user_cells;
+
+    run<Asserter, FxRun1D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(16, 16, 1024, 16, false);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck merge bound duplication", [doit]() {
+      const size_t num_fragments = *rc::gen::inRange(4, 32);
+      const size_t fragment_size = *rc::gen::inRange(2, 256);
+      const size_t num_user_cells = 1024;
+      const size_t tile_capacity = *rc::gen::inRange<size_t>(1, fragment_size);
+      const bool allow_dups = *rc::gen::arbitrary<bool>();
+      const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(
+          0, static_cast<int>(num_fragments * fragment_size)));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          num_fragments,
+          fragment_size,
+          num_user_cells,
+          tile_capacity,
+          allow_dups,
+          subarray);
+    });
+  }
+}
+
+/**
  * Tests that the reader will not yield out of order when
  * the tile MBRs in a fragment are not in the global order.
  *
@@ -2789,7 +2872,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
     sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
 
-    std::sort(idxs.begin(), idxs.end(), [&](uint64_t ia, uint64_t ib) -> bool {
+    auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
       return std::apply(
           [&globalcmp, ia, ib]<typename... Ts>(const std::vector<Ts>&... dims) {
             const auto l = std::make_tuple(dims[ia]...);
@@ -2799,7 +2882,19 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
                 templates::global_cell_cmp_std_tuple<decltype(r)>(r));
           },
           expect.dimensions());
-    });
+    };
+
+    std::sort(idxs.begin(), idxs.end(), icmp);
+
+    if (!instance.allow_duplicates()) {
+      std::set<uint64_t, decltype(icmp)> dedup(icmp);
+      for (const auto& idx : idxs) {
+        dedup.insert(idx);
+      }
+
+      idxs.clear();
+      idxs.insert(idxs.end(), dedup.begin(), dedup.end());
+    }
 
     expect.dimensions() = stdx::select(
         stdx::reference_tuple(expect.dimensions()), std::span(idxs));
