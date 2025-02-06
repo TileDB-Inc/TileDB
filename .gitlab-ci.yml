@@ -19,4 +19,3 @@ trigger_pipeline:
   trigger:
     project: tiledb-inc/tiledb-internal
     strategy: depend
-    branch: rr/sc-60366-separate-rapidcheck-job
