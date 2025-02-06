@@ -1545,7 +1545,6 @@ AddNextCellResult SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
         }
       }
     }
-    
     std::unique_lock<std::mutex> ul(tile_queue_mutex_);
 
     // Add all the cells in this tile with the same coordinates as this cell
