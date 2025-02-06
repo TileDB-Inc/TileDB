@@ -258,6 +258,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    or "legacy".<br>
  *    **Default**: refactored
  * - `sm.query.sparse_global_order.preprocess_tile_merge` <br>
+ *    **Experimental for testing purposes, do not use.**<br>
  *    Performance configuration for sparse global order read queries.
  *    If nonzero, prior to loading the first tiles, the reader will run
  *    a preprocessing step to arrange tiles from all fragments in a single
