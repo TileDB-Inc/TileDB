@@ -159,8 +159,7 @@ shared_ptr<WriterTile> make_increasing_tile(
       Datatype::UINT64,
       cell_size,
       tile_size,
-      tracker,
-      true);
+      tracker);
   for (uint64_t i = 0; i < nelts; i++) {
     CHECK_NOTHROW(tile->write(&i, i * sizeof(uint64_t), sizeof(uint64_t)));
   }
@@ -179,8 +178,7 @@ shared_ptr<WriterTile> make_offsets_tile(
       Datatype::UINT64,
       constants::cell_var_offset_size,
       offsets_tile_size,
-      tracker,
-      true);
+      tracker);
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -206,8 +204,7 @@ Tile create_tile_for_unfiltering(
       tile->filtered_buffer().data(),
       tile->filtered_buffer().size(),
       tracker,
-      ThreadPool::SharedTask(),
-      true};
+      std::nullopt};
 }
 
 void run_reverse(

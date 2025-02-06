@@ -68,8 +68,7 @@ class TileDataGenerator {
         datatype(),
         cell_size(),
         original_tile_size(),
-        memory_tracker,
-        true);
+        memory_tracker);
   }
 
   /**
@@ -101,8 +100,7 @@ class TileDataGenerator {
         filtered_buffer.data(),
         filtered_buffer.size(),
         memory_tracker,
-        ThreadPool::SharedTask(),
-        true);
+        std::nullopt);
   }
 
   /** Returns the size of the original unfiltered data. */
@@ -190,8 +188,7 @@ class IncrementTileDataGenerator : public TileDataGenerator {
         Datatype::UINT64,
         constants::cell_var_offset_size,
         offsets.size() * constants::cell_var_offset_size,
-        memory_tracker,
-        true);
+        memory_tracker);
     for (uint64_t index = 0; index < offsets.size(); ++index) {
       CHECK_NOTHROW(offsets_tile->write(
           &offsets[index],
