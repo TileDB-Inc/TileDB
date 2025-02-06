@@ -3142,9 +3142,22 @@ struct Arbitrary<FxRun1D> {
     auto dimension = gen::arbitrary<templates::Dimension<DIMENSION_TYPE>>();
     auto allow_dups = gen::arbitrary<bool>();
 
+    auto domain =
+        gen::suchThat(gen::pair(allow_dups, dimension), [](const auto& domain) {
+          bool allow_dups;
+          templates::Dimension<DIMENSION_TYPE> dimension;
+          std::tie(allow_dups, dimension) = domain;
+          if (allow_dups) {
+            return true;
+          } else {
+            // need to ensure that rapidcheck uniqueness can generate enough
+            // cases
+            return dimension.domain.num_cells() >= 256;
+          }
+        });
+
     auto fragments = gen::mapcat(
-        gen::pair(allow_dups, dimension),
-        [](std::pair<bool, templates::Dimension<DIMENSION_TYPE>> arg) {
+        domain, [](std::pair<bool, templates::Dimension<DIMENSION_TYPE>> arg) {
           bool allow_dups;
           templates::Dimension<DIMENSION_TYPE> dimension;
           std::tie(allow_dups, dimension) = arg;
