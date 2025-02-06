@@ -66,7 +66,6 @@ CAPNP_DECLARE_SCHEMA(afc739d5c01e6496);
 CAPNP_DECLARE_SCHEMA(eaf57cb9871fc06f);
 CAPNP_DECLARE_SCHEMA(e19754f813ccf79c);
 CAPNP_DECLARE_SCHEMA(d74f5fed155d316c);
-CAPNP_DECLARE_SCHEMA(afcbef694e73edb8);
 CAPNP_DECLARE_SCHEMA(def87cead82188e7);
 CAPNP_DECLARE_SCHEMA(c1a2d010de779de5);
 CAPNP_DECLARE_SCHEMA(c86c77b5f6a2bf0f);
@@ -972,23 +971,6 @@ struct Delete {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(d74f5fed155d316c, 0, 2)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
-      return &schema->defaultBrand;
-    }
-#endif  // !CAPNP_LITE
-  };
-};
-
-struct ResultTileId {
-  ResultTileId() = delete;
-
-  class Reader;
-  class Builder;
-  class Pipeline;
-
-  struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(afcbef694e73edb8, 2, 0)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -8817,103 +8799,6 @@ class Delete::Pipeline {
 
   inline ::tiledb::sm::serialization::capnp::Condition::Pipeline getCondition();
   inline ::tiledb::sm::serialization::capnp::Stats::Pipeline getStats();
-
- private:
-  ::capnp::AnyPointer::Pipeline _typeless;
-  friend class ::capnp::PipelineHook;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-};
-#endif  // !CAPNP_LITE
-
-class ResultTileId::Reader {
- public:
-  typedef ResultTileId Reads;
-
-  Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base)
-      : _reader(base) {
-  }
-
-  inline ::capnp::MessageSize totalSize() const {
-    return _reader.totalSize().asPublic();
-  }
-
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
-  }
-#endif  // !CAPNP_LITE
-
-  inline ::uint32_t getFragIdx() const;
-
-  inline ::uint64_t getTileIdx() const;
-
- private:
-  ::capnp::_::StructReader _reader;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::List;
-  friend class ::capnp::MessageBuilder;
-  friend class ::capnp::Orphanage;
-};
-
-class ResultTileId::Builder {
- public:
-  typedef ResultTileId Builds;
-
-  Builder() = delete;  // Deleted to discourage incorrect usage.
-                       // You can explicitly initialize to nullptr instead.
-  inline Builder(decltype(nullptr)) {
-  }
-  inline explicit Builder(::capnp::_::StructBuilder base)
-      : _builder(base) {
-  }
-  inline operator Reader() const {
-    return Reader(_builder.asReader());
-  }
-  inline Reader asReader() const {
-    return *this;
-  }
-
-  inline ::capnp::MessageSize totalSize() const {
-    return asReader().totalSize();
-  }
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return asReader().toString();
-  }
-#endif  // !CAPNP_LITE
-
-  inline ::uint32_t getFragIdx();
-  inline void setFragIdx(::uint32_t value);
-
-  inline ::uint64_t getTileIdx();
-  inline void setTileIdx(::uint64_t value);
-
- private:
-  ::capnp::_::StructBuilder _builder;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  friend class ::capnp::Orphanage;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-};
-
-#if !CAPNP_LITE
-class ResultTileId::Pipeline {
- public:
-  typedef ResultTileId Pipelines;
-
-  inline Pipeline(decltype(nullptr))
-      : _typeless(nullptr) {
-  }
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
-      : _typeless(kj::mv(typeless)) {
-  }
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -25518,34 +25403,6 @@ Delete::Builder::disownStats() {
   return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Stats>::
       disown(
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-
-inline ::uint32_t ResultTileId::Reader::getFragIdx() const {
-  return _reader.getDataField<::uint32_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-
-inline ::uint32_t ResultTileId::Builder::getFragIdx() {
-  return _builder.getDataField<::uint32_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-inline void ResultTileId::Builder::setFragIdx(::uint32_t value) {
-  _builder.setDataField<::uint32_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
-}
-
-inline ::uint64_t ResultTileId::Reader::getTileIdx() const {
-  return _reader.getDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-
-inline ::uint64_t ResultTileId::Builder::getTileIdx() {
-  return _builder.getDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-inline void ResultTileId::Builder::setTileIdx(::uint64_t value) {
-  _builder.setDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline ::uint32_t ResultCellSlab::Reader::getFragIdx() const {

@@ -670,16 +670,6 @@ struct Delete {
   # Stats object
 }
 
-struct ResultTileId {
-# Identifies a tile
-
-  fragIdx @0 :UInt32;
-  # Fragment index
-
-  tileIdx @1 :UInt64;
-  # Tile index
-}
-
 struct ResultCellSlab {
 # Result cell slab
 
