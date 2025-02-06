@@ -97,17 +97,6 @@ void extend(
       dest);
 }
 
-template <typename T>
-std::vector<T> select(
-    std::span<const T> records, std::span<const uint64_t> idxs) {
-  std::vector<T> dest;
-  dest.reserve(idxs.size());
-  for (auto i : idxs) {
-    dest.push_back(records[i]);
-  }
-  return dest;
-}
-
 /**
  * Selects the positions given by `idx` from each field of `records` to
  * construct a new tuple.
@@ -118,11 +107,27 @@ template <typename... Ts>
 std::tuple<std::vector<Ts>...> select(
     std::tuple<const std::vector<Ts>&...> records,
     std::span<const uint64_t> idxs) {
-  return std::apply(
-      [&](const std::vector<Ts>&... col) {
-        return std::make_tuple(select<Ts>(col, idxs)...);
+  std::tuple<std::vector<Ts>...> selected;
+
+  auto select_into = [&idxs]<typename T>(
+                         std::vector<T>& dest, std::span<const T> src) {
+    dest.reserve(idxs.size());
+    for (auto i : idxs) {
+      dest.push_back(src[i]);
+    }
+  };
+
+  std::apply(
+      [&](std::vector<Ts>&... sel) {
+        std::apply(
+            [&](const std::vector<Ts>&... col) {
+              (select_into.template operator()<Ts>(sel, std::span(col)), ...);
+            },
+            records);
       },
-      records);
+      selected);
+
+  return selected;
 }
 
 }  // namespace stdx
