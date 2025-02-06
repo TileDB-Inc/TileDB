@@ -41,9 +41,9 @@ if (!$RunTestbench) {
         Write-Host "Installing Google Cloud Storage Testbench..."
         git clone --branch $version --depth 1 https://github.com/googleapis/storage-testbench.git $testbenchPath
         Write-Host "Setting up Python virtual environment..."
-        py -m venv $venvPath
+        python -m venv $venvPath
         & $venvPath\Scripts\activate
-        py -m pip install -e $testbenchPath
+        python -m pip install -e $testbenchPath
     }
 }
 
@@ -53,7 +53,7 @@ $env:CLOUD_STORAGE_EMULATOR_ENDPOINT = "http://localhost:9000"
 # Run the testbench
 & $venvPath\Scripts\activate
 # $testbenchCmd = "start `"Google Cloud Storage Testbench`" py testbench_run.py localhost 9000 10"
-$testbenchCmd = "start `"Google Cloud Storage Testbench`" /D `"$testbenchPath`" py testbench_run.py localhost 9000 10"
+$testbenchCmd = "start `"Google Cloud Storage Testbench`" /D `"$testbenchPath`" python testbench_run.py localhost 9000 10"
 cmd /c $testbenchCmd
 
 # Wait for the testbench to be prepared. This was added to fix failures in the windows-2019-gcs job.
