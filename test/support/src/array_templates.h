@@ -142,6 +142,17 @@ struct Domain {
       , upper_bound(std::max(d1, d2)) {
   }
 
+  uint64_t num_cells() const {
+    // FIXME: this is incorrect for 64-bit domains which need to check overflow
+    if (std::is_signed<D>::value) {
+      return static_cast<int64_t>(upper_bound) -
+             static_cast<int64_t>(lower_bound) + 1;
+    } else {
+      return static_cast<uint64_t>(upper_bound) -
+             static_cast<uint64_t>(lower_bound) + 1;
+    }
+  }
+
   bool contains(D point) const {
     return lower_bound <= point && point <= upper_bound;
   }

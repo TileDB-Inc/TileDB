@@ -3169,8 +3169,7 @@ struct Arbitrary<FxRun1D> {
                templates::Dimension<DIMENSION_TYPE>,
                std::vector<templates::Domain<CoordType>>,
                std::vector<templates::Fragment1D<int, int>>> fragments,
-           int num_user_cells,
-           bool allow_dups) {
+           int num_user_cells) {
           FxRun1D instance;
           std::tie(
               instance.array.allow_dups_,
@@ -3179,13 +3178,11 @@ struct Arbitrary<FxRun1D> {
               instance.fragments) = fragments;
 
           instance.num_user_cells = num_user_cells;
-          instance.array.allow_dups_ = allow_dups;
 
           return instance;
         },
         fragments,
-        num_user_cells,
-        gen::arbitrary<bool>());
+        num_user_cells);
   }
 };
 
@@ -3232,7 +3229,22 @@ struct Arbitrary<FxRun2D> {
     auto d0 = gen::arbitrary<templates::Dimension<Dim0Type>>();
     auto d1 = gen::arbitrary<templates::Dimension<Dim1Type>>();
 
-    auto fragments = gen::mapcat(gen::tuple(allow_dups, d0, d1), [](auto arg) {
+    auto domain =
+        gen::suchThat(gen::tuple(allow_dups, d0, d1), [](const auto& arg) {
+          bool allow_dups;
+          templates::Dimension<Dim0Type> d0;
+          templates::Dimension<Dim1Type> d1;
+          std::tie(allow_dups, d0, d1) = arg;
+          if (allow_dups) {
+            return true;
+          } else {
+            // need to ensure that rapidcheck uniqueness can generate enough
+            // cases
+            return (d0.domain.num_cells() + d1.domain.num_cells()) >= 12;
+          }
+        });
+
+    auto fragments = gen::mapcat(domain, [](auto arg) {
       bool allow_dups;
       templates::Dimension<Dim0Type> d0;
       templates::Dimension<Dim1Type> d1;
