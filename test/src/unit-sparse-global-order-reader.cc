@@ -948,10 +948,12 @@ static std::optional<bool> can_complete_in_memory_budget(
   };
 
   /**
+   * Simulates comparison of a loaded tile to the merge bound.
+   *
    * @return true if `rtl.upper < rtr.lower`, i.e. we can process
    * the entirety of `rtl` before any of `rtr`
    */
-  auto cmp_upper_to_lower = [&](const RT& rtl, const RT& rtr) {
+  auto cmp_merge_bound = [&](const RT& rtl, const RT& rtr) {
     const auto rtl_mbr_clamped = instance.clamp(
         fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_));
     const sm::RangeUpperBound l_mbr = {.mbr = rtl_mbr_clamped};
@@ -959,7 +961,11 @@ static std::optional<bool> can_complete_in_memory_budget(
         .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
 
     const int cmp = globalcmp.compare(l_mbr, r_mbr);
-    return cmp <= 0;
+    if (instance.allow_duplicates()) {
+      return cmp <= 0;
+    } else {
+      return cmp < 0;
+    }
   };
 
   // order all tiles on their lower bound
@@ -1013,7 +1019,7 @@ static std::optional<bool> can_complete_in_memory_budget(
     // emit from created result tiles, removing any which are exhausted
     next_rt = mbr_lower_bound.top();
     while (!mbr_upper_bound.empty() &&
-           cmp_upper_to_lower(mbr_upper_bound.top(), next_rt)) {
+           cmp_merge_bound(mbr_upper_bound.top(), next_rt)) {
       auto finish_rt = mbr_upper_bound.top();
       mbr_upper_bound.pop();
       active_tile_size -=
@@ -1436,6 +1442,7 @@ TEST_CASE_METHOD(
                   size_t num_fragments,
                   size_t fragment_size,
                   size_t num_user_cells,
+                  bool allow_dups,
                   const std::vector<templates::Domain<int>>& subarray =
                       std::vector<templates::Domain<int>>()) {
     const uint64_t total_budget = 100000;
@@ -1444,7 +1451,7 @@ TEST_CASE_METHOD(
     FxRun1D instance;
     instance.array.capacity_ = num_fragments * 2;
     instance.array.dimension_.extent = int(num_fragments) * 2;
-    instance.array.allow_dups_ = true;
+    instance.array.allow_dups_ = allow_dups;
     instance.subarray = subarray;
 
     instance.memory.total_budget_ = std::to_string(total_budget);
@@ -1475,18 +1482,30 @@ TEST_CASE_METHOD(
   };
 
   SECTION("Example") {
-    doit.operator()<tiledb::test::AsserterCatch>(16, 100, 64);
+    doit.operator()<tiledb::test::AsserterCatch>(16, 100, 64, true);
+  }
+
+  SECTION("Shrink", "Some examples found by rapidcheck") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        10, 2, 64, false, Subarray1DType<int>{templates::Domain<int>(1, 3)});
+    doit.operator()<tiledb::test::AsserterCatch>(
+        12,
+        15,
+        1024,
+        false,
+        Subarray1DType<int>{templates::Domain<int>(1, 12)});
   }
 
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck many overlapping fragments", [doit]() {
+    rc::prop("rapidcheck fragment wide overlap", [doit]() {
       const size_t num_fragments = *rc::gen::inRange(10, 24);
       const size_t fragment_size = *rc::gen::inRange(2, 200 - 64);
       const size_t num_user_cells = 1024;
+      const bool allow_dups = *rc::gen::arbitrary<bool>();
       const auto subarray =
           *rc::make_subarray_1d(templates::Domain<int>(1, 200));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
-          num_fragments, fragment_size, num_user_cells, subarray);
+          num_fragments, fragment_size, num_user_cells, allow_dups, subarray);
     });
   }
 }
@@ -1536,8 +1555,8 @@ TEST_CASE_METHOD(
           fragment.dim_.begin(), fragment.dim_.end(), f * (fragment_size - 1));
 
       auto& atts = std::get<0>(fragment.atts_);
-      atts = fragment.dim_;  // we just want to avoid the complexity of which
-                             // fragment wins the dedup
+      atts.resize(fragment_size);
+      std::iota(atts.begin(), atts.end(), f * fragment_size);
 
       instance.fragments.push_back(fragment);
     }
@@ -3018,11 +3037,19 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
   ASSERTER(expect.dimensions() == outdims);
 
-  // Checking attributes is more complicated because equal coords
-  // can manifest their attributes in any order.
+  // Checking attributes is more complicated because:
+  // 1) when dups are off, equal coords will choose the attribute from one
+  // fragment. 2) when dups are on, the attributes may manifest in any order.
   // Identify the runs of equal coords and then compare using those
   size_t attcursor = 0;
   size_t runlength = 1;
+
+  auto viewtuple = [&](const auto& atttuple, size_t i) {
+    return std::apply(
+        [&](const auto&... att) { return std::make_tuple(att[i]...); },
+        atttuple);
+  };
+
   for (size_t i = 1; i < out.size(); i++) {
     if (std::apply(
             [&](const auto&... outdim) {
@@ -3030,13 +3057,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
             },
             outdims)) {
       runlength++;
-    } else {
-      auto viewtuple = [&](const auto& atttuple, size_t i) {
-        return std::apply(
-            [&](const auto&... att) { return std::make_tuple(att[i]...); },
-            atttuple);
-      };
-
+    } else if (instance.allow_duplicates()) {
       std::set<decltype(viewtuple(outatts, 0))> outattsrun;
       std::set<decltype(viewtuple(outatts, 0))> expectattsrun;
 
@@ -3046,6 +3067,30 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
       }
 
       ASSERTER(outattsrun == expectattsrun);
+
+      attcursor += runlength;
+      runlength = 1;
+    } else {
+      REQUIRE(runlength == 1);
+
+      const auto out = viewtuple(expect.attributes(), i);
+
+      // at least all the attributes will come from the same fragment
+      if (out != viewtuple(expect.attributes(), i)) {
+        // the found attribute values should match at least one of the fragments
+        bool matched = false;
+        for (size_t f = 0; !matched && f < instance.fragments.size(); f++) {
+          for (size_t ic = 0; !matched && ic < instance.fragments[f].size();
+               ic++) {
+            if (viewtuple(instance.fragments[f].dimensions(), ic) ==
+                viewtuple(expect.dimensions(), ic)) {
+              matched =
+                  (viewtuple(instance.fragments[f].attributes(), ic) == out);
+            }
+          }
+        }
+        ASSERTER(matched);
+      }
 
       attcursor += runlength;
       runlength = 1;
@@ -3095,13 +3140,20 @@ struct Arbitrary<FxRun1D> {
     using CoordType = tiledb::type::datatype_traits<DIMENSION_TYPE>::value_type;
 
     auto dimension = gen::arbitrary<templates::Dimension<DIMENSION_TYPE>>();
+    auto allow_dups = gen::arbitrary<bool>();
 
     auto fragments = gen::mapcat(
-        dimension, [](templates::Dimension<DIMENSION_TYPE> dimension) {
-          auto fragment =
-              rc::make_fragment_1d<CoordType, int>(dimension.domain);
+        gen::pair(allow_dups, dimension),
+        [](std::pair<bool, templates::Dimension<DIMENSION_TYPE>> arg) {
+          bool allow_dups;
+          templates::Dimension<DIMENSION_TYPE> dimension;
+          std::tie(allow_dups, dimension) = arg;
+
+          auto fragment = rc::make_fragment_1d<CoordType, int>(
+              allow_dups, dimension.domain);
 
           return gen::tuple(
+              gen::just(allow_dups),
               gen::just(dimension),
               make_subarray_1d(dimension.domain),
               gen::nonEmpty(
@@ -3113,23 +3165,27 @@ struct Arbitrary<FxRun1D> {
 
     return gen::apply(
         [](std::tuple<
+               bool,
                templates::Dimension<DIMENSION_TYPE>,
                std::vector<templates::Domain<CoordType>>,
                std::vector<templates::Fragment1D<int, int>>> fragments,
-           int num_user_cells) {
+           int num_user_cells,
+           bool allow_dups) {
           FxRun1D instance;
           std::tie(
+              instance.array.allow_dups_,
               instance.array.dimension_,
               instance.subarray,
               instance.fragments) = fragments;
 
           instance.num_user_cells = num_user_cells;
-          instance.array.allow_dups_ = true;
+          instance.array.allow_dups_ = allow_dups;
 
           return instance;
         },
         fragments,
-        num_user_cells);
+        num_user_cells,
+        gen::arbitrary<bool>());
   }
 };
 
@@ -3172,16 +3228,23 @@ struct Arbitrary<FxRun2D> {
                   tiledb::type::datatype_traits<Dim1Type>::value_type,
                   Coord1Type>);
 
+    auto allow_dups = gen::arbitrary<bool>();
     auto d0 = gen::arbitrary<templates::Dimension<Dim0Type>>();
     auto d1 = gen::arbitrary<templates::Dimension<Dim1Type>>();
 
-    auto fragments = gen::mapcat(gen::pair(d0, d1), [](auto dimensions) {
+    auto fragments = gen::mapcat(gen::tuple(allow_dups, d0, d1), [](auto arg) {
+      bool allow_dups;
+      templates::Dimension<Dim0Type> d0;
+      templates::Dimension<Dim1Type> d1;
+      std::tie(allow_dups, d0, d1) = arg;
+
       auto fragment = rc::make_fragment_2d<Coord0Type, Coord1Type, int>(
-          dimensions.first.domain, dimensions.second.domain);
+          allow_dups, d0.domain, d1.domain);
       return gen::tuple(
-          gen::just(dimensions.first),
-          gen::just(dimensions.second),
-          make_subarray_2d(dimensions.first.domain, dimensions.second.domain),
+          gen::just(allow_dups),
+          gen::just(d0),
+          gen::just(d1),
+          make_subarray_2d(d0.domain, d1.domain),
           gen::nonEmpty(
               gen::container<std::vector<FxRun2D::FragmentType>>(fragment)));
     });
@@ -3197,12 +3260,14 @@ struct Arbitrary<FxRun2D> {
            tiledb_layout_t cell_order) {
           FxRun2D instance;
           std::tie(
-              instance.d1, instance.d2, instance.subarray, instance.fragments) =
-              fragments;
+              instance.allow_dups,
+              instance.d1,
+              instance.d2,
+              instance.subarray,
+              instance.fragments) = fragments;
 
-          // TODO: capacity, subarray
+          // TODO: capacity
           instance.num_user_cells = num_user_cells;
-          instance.allow_dups = true;
           instance.tile_order_ = tile_order;
           instance.cell_order_ = cell_order;
 

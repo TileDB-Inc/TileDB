@@ -165,14 +165,17 @@ Gen<templates::Domain<D>> make_range(const templates::Domain<D>& domain) {
 }
 
 template <DimensionType D, AttributeType... Att>
-Gen<Fragment1D<D, Att...>> make_fragment_1d(const Domain<D>& d) {
+Gen<Fragment1D<D, Att...>> make_fragment_1d(
+    bool allow_duplicates, const Domain<D>& d) {
   auto coord = make_coordinate(d);
 
   auto cell = gen::tuple(coord, gen::arbitrary<Att>()...);
 
   using Cell = std::tuple<D, Att...>;
 
-  auto cells = gen::nonEmpty(gen::container<std::vector<Cell>>(cell));
+  auto cells = gen::nonEmpty(
+      allow_duplicates ? gen::container<std::vector<Cell>>(cell) :
+                         gen::unique<std::vector<Cell>>(cell));
 
   return gen::map(cells, [](std::vector<Cell> cells) {
     std::vector<D> coords;
@@ -191,7 +194,9 @@ Gen<Fragment1D<D, Att...>> make_fragment_1d(const Domain<D>& d) {
 
 template <DimensionType D1, DimensionType D2, AttributeType... Att>
 Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
-    const Domain<D1>& d1, const templates::Domain<D2>& d2) {
+    bool allow_duplicates,
+    const Domain<D1>& d1,
+    const templates::Domain<D2>& d2) {
   auto coord_d1 = make_coordinate(d1);
   auto coord_d2 = make_coordinate(d2);
 
@@ -199,7 +204,9 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
 
   auto cell = gen::tuple(coord_d1, coord_d2, gen::arbitrary<Att>()...);
 
-  auto cells = gen::nonEmpty(gen::container<std::vector<Cell>>(cell));
+  auto cells = gen::nonEmpty(
+      allow_duplicates ? gen::container<std::vector<Cell>>(cell) :
+                         gen::unique<std::vector<Cell>>(cell));
 
   return gen::map(cells, [](std::vector<Cell> cells) {
     std::vector<D1> coords_d1;
