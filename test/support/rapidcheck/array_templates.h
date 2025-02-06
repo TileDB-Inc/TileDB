@@ -173,9 +173,11 @@ Gen<Fragment1D<D, Att...>> make_fragment_1d(
 
   using Cell = std::tuple<D, Att...>;
 
+  auto uniqueCoords = [](const Cell& cell) { return std::get<0>(cell); };
+
   auto cells = gen::nonEmpty(
       allow_duplicates ? gen::container<std::vector<Cell>>(cell) :
-                         gen::unique<std::vector<Cell>>(cell));
+                         gen::uniqueBy<std::vector<Cell>>(cell, uniqueCoords));
 
   return gen::map(cells, [](std::vector<Cell> cells) {
     std::vector<D> coords;
@@ -204,9 +206,13 @@ Gen<Fragment2D<D1, D2, Att...>> make_fragment_2d(
 
   auto cell = gen::tuple(coord_d1, coord_d2, gen::arbitrary<Att>()...);
 
+  auto uniqueCoords = [](const Cell& cell) {
+    return std::make_pair(std::get<0>(cell), std::get<1>(cell));
+  };
+
   auto cells = gen::nonEmpty(
       allow_duplicates ? gen::container<std::vector<Cell>>(cell) :
-                         gen::unique<std::vector<Cell>>(cell));
+                         gen::uniqueBy<std::vector<Cell>>(cell, uniqueCoords));
 
   return gen::map(cells, [](std::vector<Cell> cells) {
     std::vector<D1> coords_d1;
