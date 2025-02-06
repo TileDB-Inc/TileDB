@@ -1552,11 +1552,13 @@ TEST_CASE_METHOD(
       templates::Fragment1D<int, int> fragment;
       fragment.dim_.resize(fragment_size);
       std::iota(
-          fragment.dim_.begin(), fragment.dim_.end(), f * (fragment_size - 1));
+          fragment.dim_.begin(),
+          fragment.dim_.end(),
+          static_cast<int>(f * (fragment_size - 1)));
 
       auto& atts = std::get<0>(fragment.atts_);
       atts.resize(fragment_size);
-      std::iota(atts.begin(), atts.end(), f * fragment_size);
+      std::iota(atts.begin(), atts.end(), static_cast<int>(f * fragment_size));
 
       instance.fragments.push_back(fragment);
     }
@@ -2989,16 +2991,16 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
         }
         tiledb_query_free(&query);
         return;
-      } else if (
-          std::is_same_v<Asserter, AsserterRapidcheck> &&
-          err.find("Cannot load tile offsets") != std::string::npos) {
-        // not enough memory budget for tile offsets, don't bother asserting
-        // about it (for now?)
-        tiledb_query_free(&query);
-        return;
-      } else {
-        ASSERTER("" == err);
       }
+      if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
+        if (err.find("Cannot load tile offsets") != std::string::npos) {
+          // not enough memory budget for tile offsets, don't bother asserting
+          // about it (for now?)
+          tiledb_query_free(&query);
+          return;
+        }
+      }
+      ASSERTER("" == err);
     }
 
     tiledb_query_status_t status;
