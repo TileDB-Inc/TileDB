@@ -1,11 +1,11 @@
 /**
- * @file untyped_datum.h
+ * @file   type_traits.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,42 +24,42 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * Provides type traits (concepts) which contain the interface requirements
+ * for various templates.
  */
 
-#ifndef TILEDB_COMMON_UNTYPED_DATUM_H
-#define TILEDB_COMMON_UNTYPED_DATUM_H
+#ifndef TILEDB_COMPARE_TRAITS_H
+#define TILEDB_COMPARE_TRAITS_H
 
-#include <ostream>
+#include "tiledb/common/types/untyped_datum.h"
+#include "tiledb/sm/array_schema/dimension.h"
 
-namespace tiledb::common {
+namespace tiledb::sm {
 
 /**
- * A non-owning view of a datum of any type.
+ * Concept describing types which can be ordered using `CellCmpBase`
+ * (see `tiledb/sm/misc/comparators.h`)
  */
-class UntypedDatumView {
-  const void* datum_content_;
-  size_t datum_size_;
+template <typename T>
+concept CellComparable =
+    requires(const T& a, const Dimension& dim, unsigned dim_idx) {
+      { a.dimension_datum(dim, dim_idx) } -> std::same_as<UntypedDatumView>;
+    };
 
- public:
-  UntypedDatumView(const void* content, size_t size)
-      : datum_content_(content)
-      , datum_size_(size) {
-  }
-  UntypedDatumView(std::string_view ss)
-      : datum_content_(ss.data())
-      , datum_size_(ss.size()) {
-  }
+/**
+ * Concept describing types which can be ordered using `GlobalCellCmp`.
+ * (see `tiledb/sm/misc/comparators.h`)
+ */
+template <typename T>
+concept GlobalCellComparable =
+    CellComparable<T> &&
+    requires(const T& a, const Dimension& dim, unsigned d) {
+      { a.coord(d) } -> std::convertible_to<const void*>;
+    };
 
-  [[nodiscard]] inline const void* content() const {
-    return datum_content_;
-  }
-  [[nodiscard]] inline size_t size() const {
-    return datum_size_;
-  }
-  template <class T>
-  [[nodiscard]] inline const T& value_as() const {
-    return *static_cast<const T*>(datum_content_);
-  }
-};
-}  // namespace tiledb::common
-#endif  // TILEDB_COMMON_UNTYPED_DATUM_H
+}  // namespace tiledb::sm
+
+#endif

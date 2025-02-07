@@ -189,6 +189,56 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   }
 }
 
+std::optional<uint64_t> Stats::get_counter(const std::string& stat) const {
+  const std::string new_stat = prefix_ + stat;
+  std::unique_lock<std::mutex> lck(mtx_);
+  auto maybe = counters_.find(new_stat);
+  if (maybe == counters_.end()) {
+    return std::nullopt;
+  } else {
+    return maybe->second;
+  }
+}
+
+std::optional<uint64_t> Stats::find_counter(const std::string& stat) const {
+  const auto mine = get_counter(stat);
+  if (mine.has_value()) {
+    return mine;
+  }
+  for (const auto& child : children_) {
+    const auto theirs = child.find_counter(stat);
+    if (theirs.has_value()) {
+      return theirs;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<double> Stats::get_timer(const std::string& stat) const {
+  const std::string new_stat = prefix_ + stat;
+  std::unique_lock<std::mutex> lck(mtx_);
+  auto maybe = timers_.find(new_stat);
+  if (maybe == timers_.end()) {
+    return std::nullopt;
+  } else {
+    return maybe->second;
+  }
+}
+
+std::optional<double> Stats::find_timer(const std::string& stat) const {
+  const auto mine = get_timer(stat);
+  if (mine.has_value()) {
+    return mine;
+  }
+  for (const auto& child : children_) {
+    const auto theirs = child.find_timer(stat);
+    if (theirs.has_value()) {
+      return theirs;
+    }
+  }
+  return std::nullopt;
+}
+
 DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
   return DurationInstrument<Stats>(*this, stat);
 }

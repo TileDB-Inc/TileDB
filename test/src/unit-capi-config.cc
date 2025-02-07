@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/config/config.h"
 
 #include <tiledb/sm/misc/constants.h>
 #include <cstring>
@@ -40,6 +41,8 @@
 #include <map>
 #include <sstream>
 #include <thread>
+
+using tiledb::sm::Config;
 
 void remove_file(const std::string& filename) {
   // Remove file
@@ -292,6 +295,8 @@ void check_save_to_file() {
   ss << "sm.partial_tile_offsets_loading false\n";
   ss << "sm.query.dense.qc_coords_mode false\n";
   ss << "sm.query.dense.reader refactored\n";
+  ss << "sm.query.sparse_global_order.preprocess_tile_merge "
+     << Config::SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE << "\n";
   ss << "sm.query.sparse_global_order.reader refactored\n";
   ss << "sm.query.sparse_unordered_with_dups.reader refactored\n";
   ss << "sm.read_range_oob warn\n";
@@ -641,6 +646,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.memory_budget_var"] = "10737418240";
   all_param_values["sm.query.dense.qc_coords_mode"] = "false";
   all_param_values["sm.query.dense.reader"] = "refactored";
+  all_param_values["sm.query.sparse_global_order.preprocess_tile_merge"] =
+      Config::SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE;
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
   all_param_values["sm.mem.consolidation.buffers_weight"] = "1";

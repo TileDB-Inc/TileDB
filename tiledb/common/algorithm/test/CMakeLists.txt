@@ -1,9 +1,9 @@
 #
-# tiledb/sm/query/readers/test/CMakeLists.txt
+# tiledb/common/algorithm/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,8 +26,9 @@
 
 include(unit_test)
 
-commence(unit_test readers)
-    this_target_sources(main.cc unit_reader_base.cc unit_sparse_global_order_reader_preprocess_tile_order.cc)
-    this_target_object_libraries(baseline)
+commence(unit_test algorithm)
+    this_target_object_libraries(algorithm)
+    this_target_sources(main.cc unit_parallel_merge.cc)
+    this_target_link_libraries(tiledb_test_support_lib)
     this_target_link_libraries(rapidcheck)
 conclude(unit_test)

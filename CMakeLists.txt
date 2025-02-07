@@ -447,6 +447,7 @@ target_include_directories(local_install INTERFACE ${CMAKE_SOURCE_DIR})
 enable_testing()
 
 if(TILEDB_TESTS)
+  find_package(rapidcheck CONFIG REQUIRED)
   # Add custom Catch2 entry point that suppresses message boxes on debug assertion
   # failures on Windows CI.
   find_package(Catch2 REQUIRED)

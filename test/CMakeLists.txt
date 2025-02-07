@@ -236,6 +236,7 @@ target_link_libraries(tiledb_unit
     Catch2::Catch2
     tiledb_test_support_lib
     configuration_definitions
+    rapidcheck
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
@@ -373,9 +374,7 @@ endif()
 
 # CI tests
 add_subdirectory(ci)
-if(WIN32)
   add_subdirectory(performance)
-endif()
 
 add_custom_target(
   check-package
