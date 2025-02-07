@@ -53,45 +53,12 @@ class Subarray;
  */
 class FragIdx {
  public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
   FragIdx() = default;
 
   FragIdx(uint64_t tile_idx, uint64_t cell_idx)
       : tile_idx_(tile_idx)
       , cell_idx_(cell_idx) {
   }
-
-  /** Move constructor. */
-  FragIdx(FragIdx&& other) noexcept {
-    // Swap with the argument
-    swap(other);
-  }
-
-  /** Move-assign operator. */
-  FragIdx& operator=(FragIdx&& other) {
-    // Swap with the argument
-    swap(other);
-
-    return *this;
-  }
-
-  DISABLE_COPY_AND_COPY_ASSIGN(FragIdx);
-
-  /* ********************************* */
-  /*          PUBLIC METHODS           */
-  /* ********************************* */
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(FragIdx& frag_tile_idx) {
-    std::swap(tile_idx_, frag_tile_idx.tile_idx_);
-    std::swap(cell_idx_, frag_tile_idx.cell_idx_);
-  }
-
-  /* ********************************* */
-  /*         PUBLIC ATTRIBUTES         */
-  /* ********************************* */
 
   /** Tile index. */
   uint64_t tile_idx_;

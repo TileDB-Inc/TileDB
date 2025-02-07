@@ -148,10 +148,10 @@ class ProducerConsumerQueue {
     if (closed_ && queue_.empty()) {
       return {};
     }
-    Item item = queue_.front();
+    Item item = std::move(queue_.front());
 
     if constexpr (std::is_same<Container, std::queue<Item>>::value) {
-      queue_.pop(item);
+      queue_.pop();
     } else if constexpr (std::is_same<Container, std::deque<Item>>::value) {
       queue_.pop_front();
     } else {
