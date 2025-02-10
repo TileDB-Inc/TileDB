@@ -121,6 +121,14 @@ class FilteredDataBlock {
            offset + size <= offset_ + size_;
   }
 
+  void set_io_task(ThreadPool::SharedTask task) {
+    io_task_ = std::move(task);
+  }
+
+  ThreadPool::SharedTask io_task() {
+    return io_task_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -139,6 +147,9 @@ class FilteredDataBlock {
 
   /** Data for the data block. */
   tdb::pmr::unique_ptr<std::byte> filtered_data_;
+
+  /** IO Task to block on for data access. */
+  ThreadPool::SharedTask io_task_;
 };
 
 /**
@@ -187,7 +198,6 @@ class FilteredData {
       const bool var_sized,
       const bool nullable,
       const bool validity_only,
-      std::vector<ThreadPool::Task>& read_tasks,
       shared_ptr<MemoryTracker> memory_tracker)
       : resources_(resources)
       , memory_tracker_(memory_tracker)
@@ -201,7 +211,7 @@ class FilteredData {
       , fragment_metadata_(fragment_metadata)
       , var_sized_(var_sized)
       , nullable_(nullable)
-      , read_tasks_(read_tasks) {
+      , stats_(reader.stats()->create_child("FilteredData")) {
     if (result_tiles.size() == 0) {
       return;
     }
@@ -319,56 +329,64 @@ class FilteredData {
   /* ********************************* */
 
   /**
-   * Get the fixed filtered data for the result tile.
+   * Get a pointer to the fixed filtered data for the result tile and a future
+   * which signals when the data is valid.
    *
    * @param fragment Fragment metadata for the tile.
    * @param rt Result tile.
    * @return Fixed filtered data pointer.
    */
-  inline void* fixed_filtered_data(
+  inline std::pair<void*, ThreadPool::SharedTask> fixed_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     auto offset{
         fragment->loaded_metadata()->file_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::FIXED, fragment, rt, offset);
-    return current_data_block(TileType::FIXED)->data_at(offset);
+    return {
+        current_data_block(TileType::FIXED)->data_at(offset),
+        current_data_block(TileType::FIXED)->io_task()};
   }
 
   /**
-   * Get the var filtered data for the result tile.
-   *
+   * Get a pointer to the var filtered data for the result tile and a future
+   * which signals when the data is valid.   *
    * @param fragment Fragment metadata for the tile.
    * @param rt Result tile.
    * @return Var filtered data pointer.
    */
-  inline void* var_filtered_data(
+  inline std::pair<void*, ThreadPool::SharedTask> var_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!var_sized_) {
-      return nullptr;
+      return {nullptr, ThreadPool::SharedTask()};
     }
 
     auto offset{
         fragment->loaded_metadata()->file_var_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::VAR, fragment, rt, offset);
-    return current_data_block(TileType::VAR)->data_at(offset);
+    return {
+        current_data_block(TileType::VAR)->data_at(offset),
+        current_data_block(TileType::VAR)->io_task()};
   }
 
   /**
-   * Get the nullable filtered data for the result tile.
+   * Get a pointer to the nullable filtered data for the result tile and a
+   * future which signals when the data is valid.
    *
    * @param fragment Fragment metadata for the tile.
    * @param rt Result tile.
    * @return Nullable filtered data pointer.
    */
-  inline void* nullable_filtered_data(
+  inline std::pair<void*, ThreadPool::SharedTask> nullable_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     if (!nullable_) {
-      return nullptr;
+      return {nullptr, ThreadPool::SharedTask()};
     }
 
     auto offset{fragment->loaded_metadata()->file_validity_offset(
         name_, rt->tile_idx())};
     ensure_data_block_current(TileType::NULLABLE, fragment, rt, offset);
-    return current_data_block(TileType::NULLABLE)->data_at(offset);
+    return {
+        current_data_block(TileType::NULLABLE)->data_at(offset),
+        current_data_block(TileType::NULLABLE)->io_task()};
   }
 
  private:
@@ -394,11 +412,13 @@ class FilteredData {
     auto data{block.data()};
     auto size{block.size()};
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
-    auto task = resources_.io_tp().execute([this, offset, data, size, uri]() {
-      throw_if_not_ok(resources_.vfs().read(uri, offset, data, size, false));
-      return Status::Ok();
-    });
-    read_tasks_.push_back(std::move(task));
+    ThreadPool::SharedTask task =
+        resources_.io_tp().execute([this, offset, data, size, uri]() {
+          auto timer_se = stats_->start_timer("read");
+          return resources_.vfs().read(uri, offset, data, size, false);
+        });
+    // This should be changed once we use taskgraphs for modeling the data flow
+    block.set_io_task(task);
   }
 
   /** @return Data blocks corresponding to the tile type. */
@@ -635,8 +655,8 @@ class FilteredData {
   /** Is the attribute nullable? */
   const bool nullable_;
 
-  /** Read tasks. */
-  std::vector<ThreadPool::Task>& read_tasks_;
+  /** Stats to track loading. */
+  stats::Stats* stats_;
 };
 
 }  // namespace tiledb::sm

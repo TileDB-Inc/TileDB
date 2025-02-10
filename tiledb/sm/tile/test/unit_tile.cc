@@ -57,7 +57,8 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
       tile_size,
       nullptr,
       0,
-      tracker);
+      tracker,
+      std::nullopt);
   CHECK(tile.size() == tile_size);
 
   // Create a buffer to write to the test Tile.

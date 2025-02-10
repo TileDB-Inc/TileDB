@@ -183,7 +183,10 @@ void set_result_tile_dim(
       std::nullopt,
       std::nullopt,
       std::nullopt);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  ResultTile::TileData tile_data{
+      {nullptr, ThreadPool::SharedTask()},
+      {nullptr, ThreadPool::SharedTask()},
+      {nullptr, ThreadPool::SharedTask()}};
   result_tile.init_coord_tile(
       constants::format_version,
       array_schema,

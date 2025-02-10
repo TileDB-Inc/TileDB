@@ -99,7 +99,8 @@ class TileDataGenerator {
         original_tile_size(),
         filtered_buffer.data(),
         filtered_buffer.size(),
-        memory_tracker);
+        memory_tracker,
+        std::nullopt);
   }
 
   /** Returns the size of the original unfiltered data. */
