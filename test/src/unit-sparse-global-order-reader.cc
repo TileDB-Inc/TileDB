@@ -436,7 +436,7 @@ struct CSparseGlobalOrderFx {
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
 
   template <typename Asserter, FragmentType Fragment>
-  void write_fragment(const Fragment& fragment);
+  void write_fragment(const Fragment& fragment, CApiArray* existing = nullptr);
 
   void write_1d_fragment_strings(
       int* coords,
@@ -605,9 +605,16 @@ void CSparseGlobalOrderFx::write_1d_fragment(
  * Writes a generic `FragmentType` into the array.
  */
 template <typename Asserter, FragmentType Fragment>
-void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
-  // Open array for writing.
-  CApiArray array(context(), array_name_.c_str(), TILEDB_WRITE);
+void CSparseGlobalOrderFx::write_fragment(
+    const Fragment& fragment, CApiArray* existing) {
+  std::optional<CApiArray> constructed;
+  if (!existing) {
+    // Open array for writing.
+    constructed.emplace(context(), array_name_.c_str(), TILEDB_WRITE);
+    existing = &constructed.value();
+  }
+
+  CApiArray& array = *existing;
 
   const auto dimensions = fragment.dimensions();
   const auto attributes = fragment.attributes();
@@ -747,6 +754,15 @@ int32_t CSparseGlobalOrderFx::read(
   // Open array for reading.
   CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
+  const char* dimname = array->array()
+                            ->array_schema_latest()
+                            .domain()
+                            .dimension_ptr(0)
+                            ->name()
+                            .c_str();
+  const char* attname =
+      array->array()->array_schema_latest().attribute(0)->name().c_str();
+
   // Create query.
   tiledb_query_t* query;
   auto rc = tiledb_query_alloc(context(), array, TILEDB_READ, &query);
@@ -772,7 +788,12 @@ int32_t CSparseGlobalOrderFx::read(
     if (qc_idx == 1) {
       int32_t val = 11;
       rc = tiledb_query_condition_init(
-          context(), query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
+          context(),
+          query_condition,
+          attname,
+          &val,
+          sizeof(int32_t),
+          TILEDB_LT);
       CHECK(rc == TILEDB_OK);
     } else if (qc_idx == 2) {
       // Negated query condition should produce the same results.
@@ -781,7 +802,7 @@ int32_t CSparseGlobalOrderFx::read(
       rc = tiledb_query_condition_alloc(context(), &qc);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_condition_init(
-          context(), qc, "a", &val, sizeof(int32_t), TILEDB_GE);
+          context(), qc, attname, &val, sizeof(int32_t), TILEDB_GE);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_condition_negate(context(), qc, &query_condition);
       CHECK(rc == TILEDB_OK);
@@ -797,9 +818,10 @@ int32_t CSparseGlobalOrderFx::read(
 
   rc = tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(context(), query, attname, data, data_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
+  rc = tiledb_query_set_data_buffer(
+      context(), query, dimname, coords, coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query.
@@ -2757,6 +2779,123 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: consistent read order for sub-millisecond "
+    "fragments",
+    "[sparse-global-order][sub-millisecond]") {
+  auto doit = [this]<typename Asserter>(
+                  const std::vector<uint64_t> fragment_same_timestamp_runs) {
+    uint64_t num_fragments = 0;
+    for (const auto same_timestamp_run : fragment_same_timestamp_runs) {
+      num_fragments += same_timestamp_run;
+    }
+
+    FxRun2D instance;
+    instance.allow_dups = false;
+
+    for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
+      for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++) {
+        FxRun2D::FragmentType fragment;
+        fragment.d1_ = {
+            1 + static_cast<int>(t), static_cast<int>(1 + num_fragments)};
+        fragment.d2_ = {
+            1 + static_cast<int>(f), static_cast<int>(1 + num_fragments)};
+        std::get<0>(fragment.atts_) = {
+            static_cast<int>(instance.fragments.size()),
+            static_cast<int>(instance.fragments.size())};
+
+        instance.fragments.push_back(fragment);
+      }
+    }
+
+    create_array<Asserter, decltype(instance)>(instance);
+
+    DeleteArrayGuard arrayguard(context(), array_name_.c_str());
+
+    for (uint64_t i = 0, t = 0; t < fragment_same_timestamp_runs.size(); t++) {
+      tiledb_array_t* raw_array;
+      TRY(context(),
+          tiledb_array_alloc(context(), array_name_.c_str(), &raw_array));
+      TRY(context(),
+          tiledb_array_set_open_timestamp_start(context(), raw_array, t));
+      TRY(context(),
+          tiledb_array_set_open_timestamp_end(context(), raw_array, t));
+
+      CApiArray array(context(), raw_array, TILEDB_WRITE);
+      for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, i++) {
+        write_fragment<Asserter, decltype(instance.fragments[i])>(
+            instance.fragments[i], &array);
+      }
+    }
+
+    CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
+
+    std::optional<int> attvalue;
+    for (uint64_t f = 0; f < num_fragments; f++) {
+      int dim1[instance.fragments.size() * 4] = {0};
+      int dim2[instance.fragments.size() * 4] = {0};
+      int atts[instance.fragments.size() * 4] = {0};
+      uint64_t dim1_size = sizeof(dim1);
+      uint64_t dim2_size = sizeof(dim2);
+      uint64_t atts_size = sizeof(atts);
+
+      tiledb_query_t* query;
+      TRY(context(), tiledb_query_alloc(context(), array, TILEDB_READ, &query));
+      TRY(context(),
+          tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER));
+      TRY(context(),
+          tiledb_query_set_data_buffer(
+              context(), query, "d1", dim1, &dim1_size));
+      TRY(context(),
+          tiledb_query_set_data_buffer(
+              context(), query, "d2", dim2, &dim2_size));
+      TRY(context(),
+          tiledb_query_set_data_buffer(
+              context(), query, "a1", atts, &atts_size));
+
+      tiledb_query_status_t status;
+      TRY(context(), tiledb_query_submit(context(), query));
+      TRY(context(), tiledb_query_get_status(context(), query, &status));
+      tiledb_query_free(&query);
+      ASSERTER(status == TILEDB_COMPLETED);
+
+      ASSERTER(dim1_size == (1 + num_fragments) * sizeof(int));
+      ASSERTER(dim2_size == (1 + num_fragments) * sizeof(int));
+      ASSERTER(atts_size == (1 + num_fragments) * sizeof(int));
+
+      uint64_t c = 0;
+      for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
+        for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, c++) {
+          ASSERTER(dim1[c] == 1 + static_cast<int>(t));
+          ASSERTER(dim2[c] == 1 + static_cast<int>(f));
+          ASSERTER(atts[c] == static_cast<int>(c));
+        }
+      }
+      ASSERTER(dim1[c] == static_cast<int>(1 + num_fragments));
+      ASSERTER(dim2[c] == static_cast<int>(1 + num_fragments));
+      if (attvalue.has_value()) {
+        ASSERTER(attvalue.value() == atts[c]);
+      } else {
+        attvalue.emplace(atts[c]);
+      }
+    }
+  };
+
+  SECTION("Example") {
+    doit.operator()<AsserterCatch>({10});
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck consistent read order for sub-millisecond", [doit]() {
+      const auto runs = *rc::gen::suchThat(
+          rc::gen::container<std::vector<uint64_t>>(rc::gen::inRange(1, 8)),
+          [](auto value) { return value.size() <= 6; });
+      doit.operator()<AsserterRapidcheck>(runs);
+    });
+  }
 }
 
 /**
