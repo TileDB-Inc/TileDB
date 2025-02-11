@@ -2799,10 +2799,8 @@ TEST_CASE_METHOD(
     for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
       for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++) {
         FxRun2D::FragmentType fragment;
-        fragment.d1_ = {
-            1 + static_cast<int>(t), static_cast<int>(1 + num_fragments)};
-        fragment.d2_ = {
-            1 + static_cast<int>(f), static_cast<int>(1 + num_fragments)};
+        fragment.d1_ = {1, 2 + static_cast<int>(t)};
+        fragment.d2_ = {1, 2 + static_cast<int>(f)};
         std::get<0>(fragment.atts_) = {
             static_cast<int>(instance.fragments.size()),
             static_cast<int>(instance.fragments.size())};
@@ -2820,9 +2818,9 @@ TEST_CASE_METHOD(
       TRY(context(),
           tiledb_array_alloc(context(), array_name_.c_str(), &raw_array));
       TRY(context(),
-          tiledb_array_set_open_timestamp_start(context(), raw_array, t));
+          tiledb_array_set_open_timestamp_start(context(), raw_array, t + 1));
       TRY(context(),
-          tiledb_array_set_open_timestamp_end(context(), raw_array, t));
+          tiledb_array_set_open_timestamp_end(context(), raw_array, t + 1));
 
       CApiArray array(context(), raw_array, TILEDB_WRITE);
       for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, i++) {
@@ -2866,20 +2864,21 @@ TEST_CASE_METHOD(
       ASSERTER(dim2_size == (1 + num_fragments) * sizeof(int));
       ASSERTER(atts_size == (1 + num_fragments) * sizeof(int));
 
-      uint64_t c = 0;
+      ASSERTER(dim1[0] == 1);
+      ASSERTER(dim2[0] == 1);
+      if (attvalue.has_value()) {
+        ASSERTER(attvalue.value() == atts[0]);
+      } else {
+        attvalue.emplace(atts[0]);
+      }
+
+      uint64_t c = 1;
       for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
         for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++, c++) {
-          ASSERTER(dim1[c] == 1 + static_cast<int>(t));
-          ASSERTER(dim2[c] == 1 + static_cast<int>(f));
-          ASSERTER(atts[c] == static_cast<int>(c));
+          ASSERTER(dim1[c] == 2 + static_cast<int>(t));
+          ASSERTER(dim2[c] == 2 + static_cast<int>(f));
+          ASSERTER(atts[c] == static_cast<int>(c - 1));
         }
-      }
-      ASSERTER(dim1[c] == static_cast<int>(1 + num_fragments));
-      ASSERTER(dim2[c] == static_cast<int>(1 + num_fragments));
-      if (attvalue.has_value()) {
-        ASSERTER(attvalue.value() == atts[c]);
-      } else {
-        attvalue.emplace(atts[c]);
       }
     }
   };
