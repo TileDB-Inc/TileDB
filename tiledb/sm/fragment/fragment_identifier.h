@@ -76,8 +76,6 @@ class FragmentID : private URI {
   std::string name_;
   /** The timestamp range. */
   timestamp_range_type timestamp_range_;
-  /** The UUID (view into `name`). */
-  std::string_view uuid_;
 
   /** The fragment name version. */
   FragmentNameVersion name_version_;
@@ -86,6 +84,10 @@ class FragmentID : private URI {
   format_version_t array_format_version_;
 
  public:
+  /** The version in which the first word of the UUID became an equal timestamp
+   * tie-breaker */
+  static constexpr format_version_t SUBMILLI_PREFIX_FORMAT_VERSION = 22;
+
   /** Constructor. */
   FragmentID(const URI& uri);
 

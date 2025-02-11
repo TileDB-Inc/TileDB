@@ -210,6 +210,8 @@ TEST_CASE("FragmentID: Valid uris", "[fragment_id][valid_uri]") {
       CHECK(f.timestamp_range() == success_case.timestamp_range);
       CHECK(f.name_version() == success_case.name_version);
       CHECK(f.array_format_version() == success_case.array_format_version);
+      CHECK(f.uuid() == success_case.uuid);
+      CHECK(f.submillisecond_counter() == success_case.submillisecond);
     }
   }
 }
