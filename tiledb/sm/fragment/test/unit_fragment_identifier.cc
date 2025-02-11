@@ -49,6 +49,8 @@ struct success_test_case {
   timestamp_range_type timestamp_range;
   int name_version;
   format_version_t array_format_version;
+  std::string uuid;
+  std::optional<std::string> submillisecond;
 };
 
 TEST_CASE("FragmentID: Constructor: empty uri", "[fragment_id][empty_uri]") {
@@ -148,32 +150,56 @@ TEST_CASE(
 
 // Should succeed and do
 TEST_CASE("FragmentID: Valid uris", "[fragment_id][valid_uri]") {
-  std::array<success_test_case, 5> success_cases{{
+  std::vector<success_test_case> success_cases{{
       {"file:///__0123456789ABCDEF0123456789ABCDEF_1",
        "__0123456789ABCDEF0123456789ABCDEF_1",
        std::pair{1, 1},
        1,
-       2},
+       2,
+       "0123456789ABCDEF0123456789ABCDEF",
+       std::nullopt},
       {"file:///__0123456789ABCDEF0123456789ABCDEF_1_2",
        "__0123456789ABCDEF0123456789ABCDEF_1_2",
        std::pair{2, 2},
        1,
-       2},
+       2,
+       "0123456789ABCDEF0123456789ABCDEF",
+       std::nullopt},
       {"file:///__0123456789ABCDEF0123456789ABCDEF_2_1",
        "__0123456789ABCDEF0123456789ABCDEF_2_1",
        std::pair{1, 1},
        1,
-       2},
+       2,
+       "0123456789ABCDEF0123456789ABCDEF",
+       std::nullopt},
       {"file:///__1_2_0123456789ABCDEF0123456789ABCDEF",
        "__1_2_0123456789ABCDEF0123456789ABCDEF",
        std::pair{1, 2},
        2,
-       4},
+       4,
+       "0123456789ABCDEF0123456789ABCDEF",
+       std::nullopt},
       {"file:///__1_2_0123456789ABCDEF0123456789ABCDEF_5",
        "__1_2_0123456789ABCDEF0123456789ABCDEF_5",
        std::pair{1, 2},
        3,
-       5},
+       5,
+       "0123456789ABCDEF0123456789ABCDEF",
+       std::nullopt},
+      {"file:///__1_2_123456789ABCDEF0123456789ABCDEF0_21",
+       "__1_2_123456789ABCDEF0123456789ABCDEF0_21",
+       std::pair{1, 2},
+       3,
+       21,
+       "123456789ABCDEF0123456789ABCDEF0",
+       std::nullopt},
+      {"file:///__1_2_23456789ABCDEF0123456789ABCDEF01_22",
+       "__1_2_23456789ABCDEF0123456789ABCDEF01_22",
+       std::pair{1, 2},
+       3,
+       22,
+       "23456789ABCDEF0123456789ABCDEF01",
+       "23456789"},
   }};
 
   for (auto success_case : success_cases) {

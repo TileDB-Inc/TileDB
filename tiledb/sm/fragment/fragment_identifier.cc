@@ -107,10 +107,35 @@ FragmentID::FragmentID(const URI& uri)
         "Failed to construct FragmentID; start timestamp cannot "
         "be after end timestamp");
   }
+
+  // Set UUID
+  constexpr size_t UUID_PRINT_LEN = 32;
+  if (name_version_ == FragmentNameVersion::ONE) {
+    uuid_ = std::string_view(
+        name_.begin() + strlen("__"),
+        name_.begin() + strlen("__") + UUID_PRINT_LEN);
+  } else if (name_version_ == FragmentNameVersion::TWO) {
+    uuid_ = std::string_view(name_.end() - UUID_PRINT_LEN, name_.end());
+  } else {
+    const size_t trailing = array_format_version_str.size() + 1;
+    uuid_ = std::string_view(
+        name_.end() - UUID_PRINT_LEN - trailing, name_.end() - trailing);
+  }
 }
 
 FragmentID::FragmentID(const std::string_view& path)
     : FragmentID(URI(path)) {
+}
+
+std::optional<std::string_view> FragmentID::submillisecond_counter() const {
+  // version was bumped to 21 in Nov 2023
+  // sub-millisecond was added in #4800 (8ea85dcfc), March 2024
+  // version was bumped to 22 in June 2024
+  if (array_format_version() < 22) {
+    return std::nullopt;
+  }
+
+  return std::string_view(uuid_.data(), 8);
 }
 
 }  // namespace tiledb::sm

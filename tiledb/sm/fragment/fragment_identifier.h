@@ -76,6 +76,8 @@ class FragmentID : private URI {
   std::string name_;
   /** The timestamp range. */
   timestamp_range_type timestamp_range_;
+  /** The UUID (view into `name`). */
+  std::string_view uuid_;
 
   /** The fragment name version. */
   FragmentNameVersion name_version_;
@@ -106,6 +108,19 @@ class FragmentID : private URI {
   inline timestamp_range_type timestamp_range() const {
     return timestamp_range_;
   }
+
+  /**
+   * Accessor to the fragment UUID.
+   */
+  std::string_view uuid() const;
+
+  /**
+   * Accessor to the "sub-millisecond counter" component of the fragment UUID.
+   *
+   * Returns `std::nullopt` if the array format version cannot guarantee
+   * that the submillisecond counter value is present.
+   */
+  std::optional<std::string_view> submillisecond_counter() const;
 
   /**
    * Accessor to the fragment name version.
