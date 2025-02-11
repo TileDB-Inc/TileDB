@@ -210,6 +210,44 @@ class ResultTileCmpBase : public CellCmpBase {
       , frag_md_(frag_md) {
   }
 
+  /**
+   * Compare timestamps of two result coordinates and return -1 if `a` is after
+   * `b`, 0 if they are equal, and 1 if `a` is before `b`.
+   *
+   * If the timestamps of `a` and `b` are equal, then the lexicographic order of
+   * the fragment UUIDs is used as a secondary sort key. Consequently this
+   * returns 0 only if `a` and `b` are from the same fragment.
+   */
+  template <class RCTypeL, class RCTypeR>
+  int compare_timestamps(const RCTypeL& a, const RCTypeR& b) const {
+    const auto ts_a = get_timestamp(a);
+    const auto ts_b = get_timestamp(b);
+    if (ts_a < ts_b) {
+      return 1;
+    } else if (ts_a > ts_b) {
+      return -1;
+    } else if (a.tile_->frag_idx() < b.tile_->frag_idx()) {
+      return 1;
+    } else if (a.tile_->frag_idx() > b.tile_->frag_idx()) {
+      return -1;
+    } else {
+      /*
+      const FragmentID id_a((*frag_md_)[a.tile_->frag_idx()]->fragment_uri());
+      const FragmentID id_b((*frag_md_)[b.tile_->frag_idx()]->fragment_uri());
+
+      if (id_a.name() < id_b.name()) {
+        return 1;
+      } else if (id_a.name() == id_b.name()) {
+        return 0;
+      } else {
+        return -1;
+      }
+      */
+      return 0;
+    }
+  }
+
+ private:
   template <class RCType>
   uint64_t get_timestamp(const RCType& rc) const {
     const auto f = rc.tile_->frag_idx();
@@ -267,7 +305,7 @@ class HilbertCmp : public ResultTileCmpBase {
     }
 
     if (use_timestamps_) {
-      return get_timestamp(a) > get_timestamp(b);
+      return compare_timestamps(a, b) < 0;
     } else if (strict_ordering_) {
       if (a.tile_->frag_idx() == b.tile_->frag_idx()) {
         if (a.tile_->tile_idx() == b.tile_->tile_idx()) {
@@ -525,7 +563,7 @@ class GlobalCmp : public ResultTileCmpBase {
 
     // Compare timestamps
     if (use_timestamps_) {
-      return get_timestamp(a) > get_timestamp(b);
+      return compare_timestamps(a, b) < 0;
     } else if (strict_ordering_) {
       if (a.fragment_idx() == b.fragment_idx()) {
         if (a.tile_idx() == b.tile_idx()) {
