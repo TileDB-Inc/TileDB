@@ -26,6 +26,8 @@
 # THE SOFTWARE.
 #
 
+if(WIN32)
+
 # These options not exposed in bootstrap script.
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
 
@@ -94,3 +96,24 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )
 endif()
+
+endif()
+
+
+add_executable(
+  tiledb_submit_a_b EXCLUDE_FROM_ALL
+  $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
+  "tiledb_submit_a_b.cc"
+)
+
+target_include_directories(
+  tiledb_submit_a_b BEFORE PRIVATE
+    ${TILEDB_CORE_INCLUDE_DIR}
+    ${TILEDB_EXPORT_HEADER_DIR}
+)
+
+target_link_libraries(tiledb_submit_a_b
+  PUBLIC
+    TILEDB_CORE_OBJECTS_ILIB
+    tiledb_test_support_lib
+)

@@ -233,6 +233,16 @@ class Config {
   /** Which reader to use for sparse global order queries. */
   static const std::string SM_QUERY_SPARSE_GLOBAL_ORDER_READER;
 
+  /**
+   * If nonzero, prior to loading the first tiles, the reader will run
+   * a preprocessing step to arrange tiles from all fragments in a single
+   * globally ordered list. This is expected to improve performance when
+   * there are many fragments or when the distribution in space of the
+   * tiles amongst the fragments is skewed. The value of the parameter
+   * specifies the amount of work per parallel task.
+   */
+  static const std::string SM_QUERY_SPARSE_GLOBAL_ORDER_PREPROCESS_TILE_MERGE;
+
   /** Which reader to use for sparse unordered with dups queries. */
   static const std::string SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
 

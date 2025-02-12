@@ -83,7 +83,7 @@ jobs:
         include:
           - os: ubuntu-latest
             triplet: x64-linux
-          - os: windows-2019
+          - os: windows-2022
             triplet: x64-windows
           - os: macos-13
             triplet: x64-osx

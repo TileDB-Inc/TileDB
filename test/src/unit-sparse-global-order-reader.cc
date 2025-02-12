@@ -30,11 +30,20 @@
  * Tests for the sparse global order reader.
  */
 
+#include "test/support/rapidcheck/array_templates.h"
+#include "test/support/src/array_helpers.h"
+#include "test/support/src/array_templates.h"
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/misc/comparators.h"
+#include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 
 #ifdef _WIN32
@@ -44,31 +53,391 @@
 #endif
 
 #include <test/support/tdb_catch.h>
+#include <test/support/tdb_rapidcheck.h>
+
+#include <test/support/assert_helpers.h>
+
+#include <algorithm>
+#include <fstream>
 #include <numeric>
 
 using namespace tiledb;
 using namespace tiledb::test;
 
+using tiledb::sm::Datatype;
+using tiledb::test::templates::AttributeType;
+using tiledb::test::templates::DimensionType;
+using tiledb::test::templates::FragmentType;
+
+template <typename D>
+using Subarray1DType = std::vector<templates::Domain<D>>;
+
+template <typename D1, typename D2>
+using Subarray2DType = std::vector<std::pair<
+    std::optional<templates::Domain<D1>>,
+    std::optional<templates::Domain<D2>>>>;
+
+namespace rc {
+Gen<std::vector<templates::Domain<int>>> make_subarray_1d(
+    const templates::Domain<int>& domain);
+
+Gen<Subarray2DType<int, int>> make_subarray_2d(
+    const templates::Domain<int>& d1, const templates::Domain<int>& d2);
+}  // namespace rc
+
 /* ********************************* */
 /*         STRUCT DEFINITION         */
 /* ********************************* */
 
+/**
+ * Options for configuring the CSparseGlobalFx default 1D array
+ */
+struct DefaultArray1DConfig {
+  uint64_t capacity_;
+  bool allow_dups_;
+
+  templates::Dimension<Datatype::INT32> dimension_;
+
+  DefaultArray1DConfig()
+      : capacity_(2)
+      , allow_dups_(false) {
+    dimension_.domain.lower_bound = 1;
+    dimension_.domain.upper_bound = 200;
+    dimension_.extent = 2;
+  }
+
+  DefaultArray1DConfig with_allow_dups(bool allow_dups) const {
+    auto copy = *this;
+    copy.allow_dups_ = allow_dups;
+    return copy;
+  }
+};
+
+/**
+ * An instance of one-dimension array input to `CSparseGlobalOrderFx::run`
+ */
+struct FxRun1D {
+  using FragmentType = templates::Fragment1D<int, int>;
+
+  uint64_t num_user_cells;
+  std::vector<FragmentType> fragments;
+
+  // NB: for now this always has length 1, global order query does not
+  // support multi-range subarray
+  std::vector<templates::Domain<int>> subarray;
+
+  DefaultArray1DConfig array;
+  SparseGlobalOrderReaderMemoryBudget memory;
+
+  uint64_t tile_capacity() const {
+    return array.capacity_;
+  }
+
+  bool allow_duplicates() const {
+    return array.allow_dups_;
+  }
+
+  tiledb_layout_t tile_order() const {
+    // for 1D it is the same
+    return TILEDB_ROW_MAJOR;
+  }
+
+  tiledb_layout_t cell_order() const {
+    // for 1D it is the same
+    return TILEDB_ROW_MAJOR;
+  }
+
+  /**
+   * Add `subarray` to a read query
+   */
+  template <typename Asserter>
+  capi_return_t apply_subarray(
+      tiledb_ctx_t* ctx, tiledb_subarray_t* subarray) const {
+    for (const auto& range : this->subarray) {
+      RETURN_IF_ERR(tiledb_subarray_add_range(
+          ctx, subarray, 0, &range.lower_bound, &range.upper_bound, nullptr));
+    }
+    return TILEDB_OK;
+  }
+
+  /**
+   * @return true if the cell at index `record` in `fragment` passes `subarray`
+   */
+  bool accept(const FragmentType& fragment, int record) const {
+    if (subarray.empty()) {
+      return true;
+    } else {
+      const int coord = fragment.dim_[record];
+      for (const auto& range : subarray) {
+        if (range.contains(coord)) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  /**
+   * @return true if `mbr` intersects with any of the ranges in `subarray`
+   */
+  bool intersects(const sm::NDRange& mbr) const {
+    auto accept = [&](const auto& range) {
+      const auto& untyped_mbr = mbr[0];
+      const templates::Domain<int> typed_mbr(
+          untyped_mbr.start_as<int>(), untyped_mbr.end_as<int>());
+      return range.intersects(typed_mbr);
+    };
+    return subarray.empty() ||
+           std::any_of(subarray.begin(), subarray.end(), accept);
+  }
+
+  /**
+   * @return a new range which is `mbr` with its upper bound "clamped" to that
+   * of `subarray`
+   */
+  sm::NDRange clamp(const sm::NDRange& mbr) const {
+    if (subarray.empty()) {
+      return mbr;
+    }
+    assert(subarray.size() == 1);
+    if (subarray[0].upper_bound < mbr[0].end_as<int>()) {
+      // in this case, the bitmap will filter out the other coords in the
+      // tile and it will be discarded
+      return std::vector<type::Range>{subarray[0].range()};
+    } else {
+      return mbr;
+    }
+  }
+
+  std::tuple<const templates::Dimension<Datatype::INT32>&> dimensions() const {
+    return std::tuple<const templates::Dimension<Datatype::INT32>&>(
+        array.dimension_);
+  }
+
+  std::tuple<Datatype> attributes() const {
+    return std::make_tuple(Datatype::INT32);
+  }
+};
+
+struct FxRun2D {
+  using Coord0Type = int;
+  using Coord1Type = int;
+  using FragmentType = templates::Fragment2D<Coord0Type, Coord1Type, int>;
+
+  std::vector<FragmentType> fragments;
+  std::vector<std::pair<
+      std::optional<templates::Domain<Coord0Type>>,
+      std::optional<templates::Domain<Coord1Type>>>>
+      subarray;
+
+  size_t num_user_cells;
+
+  uint64_t capacity;
+  bool allow_dups;
+  tiledb_layout_t tile_order_;
+  tiledb_layout_t cell_order_;
+  templates::Dimension<Datatype::INT32> d1;
+  templates::Dimension<Datatype::INT32> d2;
+
+  SparseGlobalOrderReaderMemoryBudget memory;
+
+  FxRun2D()
+      : capacity(64)
+      , allow_dups(true)
+      , tile_order_(TILEDB_ROW_MAJOR)
+      , cell_order_(TILEDB_ROW_MAJOR) {
+    d1.domain = templates::Domain<int>(1, 200);
+    d1.extent = 8;
+    d2.domain = templates::Domain<int>(1, 200);
+    d2.extent = 8;
+  }
+
+  uint64_t tile_capacity() const {
+    return capacity;
+  }
+
+  bool allow_duplicates() const {
+    return allow_dups;
+  }
+
+  tiledb_layout_t tile_order() const {
+    return tile_order_;
+  }
+
+  tiledb_layout_t cell_order() const {
+    return cell_order_;
+  }
+
+  /**
+   * Add `subarray` to a read query
+   */
+  template <typename Asserter>
+  capi_return_t apply_subarray(
+      tiledb_ctx_t* ctx, tiledb_subarray_t* subarray) const {
+    for (const auto& range : this->subarray) {
+      if (range.first.has_value()) {
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx,
+            subarray,
+            0,
+            &range.first->lower_bound,
+            &range.first->upper_bound,
+            nullptr));
+      } else {
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx,
+            subarray,
+            0,
+            &d1.domain.lower_bound,
+            &d1.domain.upper_bound,
+            nullptr));
+      }
+      if (range.second.has_value()) {
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx,
+            subarray,
+            1,
+            &range.second->lower_bound,
+            &range.second->upper_bound,
+            nullptr));
+      } else {
+        RETURN_IF_ERR(tiledb_subarray_add_range(
+            ctx,
+            subarray,
+            1,
+            &d2.domain.lower_bound,
+            &d2.domain.upper_bound,
+            nullptr));
+      }
+    }
+    return TILEDB_OK;
+  }
+
+  /**
+   * @return true if the cell at index `record` in `fragment` passes `subarray`
+   */
+  bool accept(const FragmentType& fragment, int record) const {
+    if (subarray.empty()) {
+      return true;
+    } else {
+      const int r = fragment.d1_[record], c = fragment.d2_[record];
+      for (const auto& range : subarray) {
+        if (range.first.has_value() && !range.first->contains(r)) {
+          continue;
+        } else if (range.second.has_value() && !range.second->contains(c)) {
+          continue;
+        } else {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  /**
+   * @return true if `mbr` intersects with any of the ranges in `subarray`
+   */
+  bool intersects(const sm::NDRange& mbr) const {
+    if (subarray.empty()) {
+      return true;
+    }
+
+    const templates::Domain<Coord0Type> typed_domain0(
+        mbr[0].start_as<Coord0Type>(), mbr[0].end_as<Coord0Type>());
+    const templates::Domain<Coord0Type> typed_domain1(
+        mbr[1].start_as<Coord1Type>(), mbr[1].end_as<Coord1Type>());
+
+    for (const auto& range : subarray) {
+      if (range.first.has_value() && !range.first->intersects(typed_domain0)) {
+        continue;
+      } else if (
+          range.second.has_value() &&
+          !range.second->intersects(typed_domain1)) {
+        continue;
+      } else {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @return a new range which is `mbr` with its upper bound "clamped" to that
+   * of `subarray`
+   */
+  sm::NDRange clamp(const sm::NDRange& mbr) const {
+    sm::NDRange clamped = mbr;
+    for (const auto& range : subarray) {
+      if (range.first.has_value() &&
+          range.first->upper_bound < clamped[0].end_as<Coord0Type>()) {
+        clamped[0].set_end_fixed(&range.first->upper_bound);
+      }
+      if (range.second.has_value() &&
+          range.second->upper_bound < clamped[1].end_as<Coord1Type>()) {
+        clamped[1].set_end_fixed(&range.second->upper_bound);
+      }
+    }
+    return clamped;
+  }
+
+  using CoordsRefType = std::tuple<
+      const templates::Dimension<Datatype::INT32>&,
+      const templates::Dimension<Datatype::INT32>&>;
+  CoordsRefType dimensions() const {
+    return CoordsRefType(d1, d2);
+  }
+
+  std::tuple<Datatype> attributes() const {
+    return std::make_tuple(Datatype::INT32);
+  }
+};
+
+/**
+ * Describes types which can be used with `CSparseGlobalOrderFx::run`.
+ */
+template <typename T>
+concept InstanceType = requires(const T& instance) {
+  { instance.tile_capacity() } -> std::convertible_to<uint64_t>;
+  { instance.allow_duplicates() } -> std::same_as<bool>;
+  { instance.tile_order() } -> std::same_as<tiledb_layout_t>;
+
+  { instance.num_user_cells } -> std::convertible_to<size_t>;
+
+  instance.fragments;
+  instance.memory;
+  instance.subarray;
+  instance.dimensions();
+  instance.attributes();
+
+  // also `accept(Self::FragmentType, int)`, unclear how to represent that
+};
+
 struct CSparseGlobalOrderFx {
-  tiledb_ctx_t* ctx_ = nullptr;
-  tiledb_vfs_t* vfs_ = nullptr;
-  std::string temp_dir_;
+  VFSTestSetup vfs_test_setup_;
+
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_global_order";
   tiledb_array_t* array_ = nullptr;
-  std::string total_budget_;
-  std::string ratio_tile_ranges_;
-  std::string ratio_array_data_;
-  std::string ratio_coords_;
 
-  void create_default_array_1d(bool allow_dups = false);
+  SparseGlobalOrderReaderMemoryBudget memory_;
+
+  tiledb_ctx_t* context() const {
+    return vfs_test_setup_.ctx_c;
+  }
+
+  template <typename Asserter = tiledb::test::AsserterCatch>
+  void create_default_array_1d(
+      const DefaultArray1DConfig& config = DefaultArray1DConfig());
+
   void create_default_array_1d_strings(bool allow_dups = false);
+
+  template <typename Asserter = tiledb::test::AsserterCatch>
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
+
+  template <typename Asserter, FragmentType Fragment>
+  void write_fragment(const Fragment& fragment);
+
   void write_1d_fragment_strings(
       int* coords,
       uint64_t* coords_size,
@@ -85,7 +454,7 @@ struct CSparseGlobalOrderFx {
       int* data,
       uint64_t* data_size,
       tiledb_query_t** query = nullptr,
-      tiledb_array_t** array_ret = nullptr,
+      CApiArray* array_ret = nullptr,
       std::vector<int> subarray = {1, 10});
   int32_t read_strings(
       bool set_subarray,
@@ -101,45 +470,52 @@ struct CSparseGlobalOrderFx {
   void reset_config();
   void update_config();
 
+  template <typename Asserter, InstanceType Instance>
+  void create_array(const Instance& instance);
+
+  template <typename Asserter, InstanceType Instance>
+  DeleteArrayGuard run_create(Instance& instance);
+  template <typename Asserter, InstanceType Instance>
+  void run_execute(Instance& instance);
+
+  /**
+   * Runs an input against a fresh array.
+   * Inserts fragments one at a time, then reads them back in global order
+   * and checks that what we read out matches what we put in.
+   */
+  template <typename Asserter, InstanceType Instance>
+  void run(Instance& instance);
+
+  template <typename CAPIReturn>
+  std::string error_if_any(CAPIReturn apirc) const;
+
   CSparseGlobalOrderFx();
   ~CSparseGlobalOrderFx();
 };
 
+template <typename CAPIReturn>
+std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
+  return tiledb::test::error_if_any(context(), apirc);
+}
+
 CSparseGlobalOrderFx::CSparseGlobalOrderFx() {
   reset_config();
 
-  // Create temporary directory based on the supported filesystem.
-#ifdef _WIN32
-  temp_dir_ = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  temp_dir_ = "file://" + tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
-  create_dir(temp_dir_, ctx_, vfs_);
-  array_name_ = temp_dir_ + ARRAY_NAME;
+  array_name_ = vfs_test_setup_.array_uri("tiledb_test");
 }
 
 CSparseGlobalOrderFx::~CSparseGlobalOrderFx() {
-  tiledb_array_free(&array_);
-  remove_dir(temp_dir_, ctx_, vfs_);
-  tiledb_ctx_free(&ctx_);
-  tiledb_vfs_free(&vfs_);
+  if (array_) {
+    tiledb_array_free(&array_);
+  }
 }
 
 void CSparseGlobalOrderFx::reset_config() {
-  total_budget_ = "1048576";
-  ratio_tile_ranges_ = "0.1";
-  ratio_array_data_ = "0.1";
-  ratio_coords_ = "0.5";
+  memory_ = SparseGlobalOrderReaderMemoryBudget();
   update_config();
 }
 
 void CSparseGlobalOrderFx::update_config() {
-  if (ctx_ != nullptr)
-    tiledb_ctx_free(&ctx_);
-
-  if (vfs_ != nullptr)
-    tiledb_vfs_free(&vfs_);
-
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
@@ -153,68 +529,37 @@ void CSparseGlobalOrderFx::update_config() {
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  REQUIRE(
-      tiledb_config_set(
-          config, "sm.mem.total_budget", total_budget_.c_str(), &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
+  REQUIRE(memory_.apply(config) == nullptr);
 
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.reader.sparse_global_order.ratio_tile_ranges",
-          ratio_tile_ranges_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.reader.sparse_global_order.ratio_array_data",
-          ratio_array_data_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.reader.sparse_global_order.ratio_coords",
-          ratio_coords_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
+  vfs_test_setup_.update_config(config);
 }
 
-void CSparseGlobalOrderFx::create_default_array_1d(bool allow_dups) {
-  int domain[] = {1, 200};
-  int tile_extent = 2;
-  create_array(
-      ctx_,
+template <typename Asserter>
+void CSparseGlobalOrderFx::create_default_array_1d(
+    const DefaultArray1DConfig& config) {
+  tiledb::test::create_array(
+      context(),
       array_name_,
       TILEDB_SPARSE,
       {"d"},
       {TILEDB_INT32},
-      {domain},
-      {&tile_extent},
+      std::vector<void*>{(void*)(&config.dimension_.domain.lower_bound)},
+      std::vector<void*>{(void*)(&config.dimension_.extent)},
       {"a"},
       {TILEDB_INT32},
       {1},
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      2,
-      allow_dups);
+      config.capacity_,
+      config.allow_dups_);
 }
 
 void CSparseGlobalOrderFx::create_default_array_1d_strings(bool allow_dups) {
   int domain[] = {1, 200};
   int tile_extent = 2;
-  create_array(
-      ctx_,
+  tiledb::test::create_array(
+      context(),
       array_name_,
       TILEDB_SPARSE,
       {"d"},
@@ -231,36 +576,82 @@ void CSparseGlobalOrderFx::create_default_array_1d_strings(bool allow_dups) {
       allow_dups);
 }
 
+template <typename Asserter>
 void CSparseGlobalOrderFx::write_1d_fragment(
     int* coords, uint64_t* coords_size, int* data, uint64_t* data_size) {
   // Open array for writing.
-  tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-  REQUIRE(rc == TILEDB_OK);
+  CApiArray array(context(), array_name_.c_str(), TILEDB_WRITE);
 
   // Create the query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
-  REQUIRE(rc == TILEDB_OK);
+  auto rc = tiledb_query_alloc(context(), array, TILEDB_WRITE, &query);
+  ASSERTER(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_UNORDERED);
+  ASSERTER(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
+  ASSERTER(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
+  ASSERTER(rc == TILEDB_OK);
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Close array.
-  rc = tiledb_array_close(ctx_, array);
-  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_submit(context(), query);
+  ASSERTER("" == error_if_any(rc));
 
   // Clean up.
-  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+/**
+ * Writes a generic `FragmentType` into the array.
+ */
+template <typename Asserter, FragmentType Fragment>
+void CSparseGlobalOrderFx::write_fragment(const Fragment& fragment) {
+  // Open array for writing.
+  CApiArray array(context(), array_name_.c_str(), TILEDB_WRITE);
+
+  const auto dimensions = fragment.dimensions();
+  const auto attributes = fragment.attributes();
+
+  // make field size locations
+  auto dimension_sizes =
+      templates::query::make_field_sizes<Asserter>(dimensions);
+  auto attribute_sizes =
+      templates::query::make_field_sizes<Asserter>(attributes);
+
+  // Create the query.
+  tiledb_query_t* query;
+  auto rc = tiledb_query_alloc(context(), array, TILEDB_WRITE, &query);
+  ASSERTER(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_UNORDERED);
+  ASSERTER(rc == TILEDB_OK);
+
+  // add dimensions to query
+  templates::query::set_fields<Asserter>(
+      context(), query, dimension_sizes, dimensions, [](unsigned d) {
+        return "d" + std::to_string(d + 1);
+      });
+
+  // add attributes to query
+  templates::query::set_fields<Asserter>(
+      context(), query, attribute_sizes, attributes, [](unsigned a) {
+        return "a" + std::to_string(a + 1);
+      });
+
+  // Submit query.
+  rc = tiledb_query_submit(context(), query);
+  ASSERTER("" == error_if_any(rc));
+
+  // check that sizes match what we expect
+  const uint64_t expect_num_cells = fragment.size();
+  const uint64_t dim_num_cells =
+      templates::query::num_cells<Asserter>(dimensions, dimension_sizes);
+  const uint64_t att_num_cells =
+      templates::query::num_cells<Asserter>(attributes, attribute_sizes);
+
+  ASSERTER(dim_num_cells == expect_num_cells);
+  ASSERTER(att_num_cells == expect_num_cells);
+
+  // Clean up.
   tiledb_query_free(&query);
 }
 
@@ -273,30 +664,31 @@ void CSparseGlobalOrderFx::write_1d_fragment_strings(
     uint64_t* offsets_size) {
   // Open array for writing.
   tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  auto rc = tiledb_array_alloc(context(), array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  rc = tiledb_array_open(context(), array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create the query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(context(), array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a", offsets, offsets_size);
+  rc = tiledb_query_set_offsets_buffer(
+      context(), query, "a", offsets, offsets_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit(context(), query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array.
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(context(), array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up.
@@ -308,32 +700,32 @@ void CSparseGlobalOrderFx::write_delete_condition(
     char* value_to_delete, uint64_t value_size) {
   // Open array for delete.
   tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  auto rc = tiledb_array_alloc(context(), array_name_.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_DELETE);
+  rc = tiledb_array_open(context(), array, TILEDB_DELETE);
   REQUIRE(rc == TILEDB_OK);
 
   // Create the query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_DELETE, &query);
+  rc = tiledb_query_alloc(context(), array, TILEDB_DELETE, &query);
   REQUIRE(rc == TILEDB_OK);
 
   // Add condition.
   tiledb_query_condition_t* qc;
-  rc = tiledb_query_condition_alloc(ctx_, &qc);
+  rc = tiledb_query_condition_alloc(context(), &qc);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_condition_init(
-      ctx_, qc, "a", value_to_delete, value_size, TILEDB_EQ);
+      context(), qc, "a", value_to_delete, value_size, TILEDB_EQ);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_condition(ctx_, query, qc);
+  rc = tiledb_query_set_condition(context(), query, qc);
   CHECK(rc == TILEDB_OK);
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit(context(), query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array.
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(context(), array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up.
@@ -350,81 +742,74 @@ int32_t CSparseGlobalOrderFx::read(
     int* data,
     uint64_t* data_size,
     tiledb_query_t** query_ret,
-    tiledb_array_t** array_ret,
+    CApiArray* array_ret,
     std::vector<int> subarray) {
   // Open array for reading.
-  tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
-  CHECK(rc == TILEDB_OK);
+  CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
   // Create query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  auto rc = tiledb_query_alloc(context(), array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
   if (set_subarray) {
     // Set subarray.
     tiledb_subarray_t* sub;
-    rc = tiledb_subarray_alloc(ctx_, array, &sub);
+    rc = tiledb_subarray_alloc(context(), array, &sub);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    rc = tiledb_subarray_set_subarray(context(), sub, subarray.data());
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    rc = tiledb_query_set_subarray_t(context(), query, sub);
     CHECK(rc == TILEDB_OK);
     tiledb_subarray_free(&sub);
   }
 
   if (qc_idx != 0) {
     tiledb_query_condition_t* query_condition = nullptr;
-    rc = tiledb_query_condition_alloc(ctx_, &query_condition);
+    rc = tiledb_query_condition_alloc(context(), &query_condition);
     CHECK(rc == TILEDB_OK);
 
     if (qc_idx == 1) {
       int32_t val = 11;
       rc = tiledb_query_condition_init(
-          ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
+          context(), query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
       CHECK(rc == TILEDB_OK);
     } else if (qc_idx == 2) {
       // Negated query condition should produce the same results.
       int32_t val = 11;
       tiledb_query_condition_t* qc;
-      rc = tiledb_query_condition_alloc(ctx_, &qc);
+      rc = tiledb_query_condition_alloc(context(), &qc);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_condition_init(
-          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_GE);
+          context(), qc, "a", &val, sizeof(int32_t), TILEDB_GE);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_condition_negate(ctx_, qc, &query_condition);
+      rc = tiledb_query_condition_negate(context(), qc, &query_condition);
       CHECK(rc == TILEDB_OK);
 
       tiledb_query_condition_free(&qc);
     }
 
-    rc = tiledb_query_set_condition(ctx_, query, query_condition);
+    rc = tiledb_query_set_condition(context(), query, query_condition);
     CHECK(rc == TILEDB_OK);
 
     tiledb_query_condition_free(&query_condition);
   }
 
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query.
-  auto ret = tiledb_query_submit(ctx_, query);
+  auto ret = tiledb_query_submit(context(), query);
   if (query_ret == nullptr || array_ret == nullptr) {
-    // Clean up.
-    rc = tiledb_array_close(ctx_, array);
-    CHECK(rc == TILEDB_OK);
-    tiledb_array_free(&array);
+    // Clean up (RAII will do it for the array)
     tiledb_query_free(&query);
   } else {
     *query_ret = query;
-    *array_ret = array;
+    new (array_ret) CApiArray(std::move(array));
   }
 
   return ret;
@@ -443,42 +828,43 @@ int32_t CSparseGlobalOrderFx::read_strings(
     std::vector<int> subarray) {
   // Open array for reading.
   tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  auto rc = tiledb_array_alloc(context(), array_name_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  rc = tiledb_array_open(context(), array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create query.
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(context(), array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
   if (set_subarray) {
     // Set subarray.
     tiledb_subarray_t* sub;
-    rc = tiledb_subarray_alloc(ctx_, array, &sub);
+    rc = tiledb_subarray_alloc(context(), array, &sub);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    rc = tiledb_subarray_set_subarray(context(), sub, subarray.data());
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    rc = tiledb_query_set_subarray_t(context(), query, sub);
     CHECK(rc == TILEDB_OK);
     tiledb_subarray_free(&sub);
   }
 
-  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "a", data, data_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a", offsets, offsets_size);
+  rc = tiledb_query_set_offsets_buffer(
+      context(), query, "a", offsets, offsets_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  rc = tiledb_query_set_data_buffer(context(), query, "d", coords, coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query.
-  auto ret = tiledb_query_submit(ctx_, query);
+  auto ret = tiledb_query_submit(context(), query);
   if (query_ret == nullptr || array_ret == nullptr) {
     // Clean up.
-    rc = tiledb_array_close(ctx_, array);
+    rc = tiledb_array_close(context(), array);
     CHECK(rc == TILEDB_OK);
     tiledb_array_free(&array);
     tiledb_query_free(&query);
@@ -488,6 +874,160 @@ int32_t CSparseGlobalOrderFx::read_strings(
   }
 
   return ret;
+}
+
+/**
+ * Determines whether the array fragments are "too wide" to merge with the given
+ * memory budget. "Too wide" means that there are overlapping tiles from
+ * different fragments to fit in memory, so the merge cannot progress without
+ * producing out-of-order data*.
+ *
+ * *there are ways to get around this but they are not implemented.
+ *
+ * An answer cannot be determined if the tile MBR lower bounds within a fragment
+ * are not in order. This is common for 2+ dimensions, so this won't even try.
+ *
+ * @return std::nullopt if an answer cannot be determined, true/false if it can
+ */
+template <typename Asserter, InstanceType Instance>
+static std::optional<bool> can_complete_in_memory_budget(
+    tiledb_ctx_t* ctx, const char* array_uri, const Instance& instance) {
+  if constexpr (std::tuple_size_v<decltype(instance.dimensions())> > 1) {
+    // don't even bother
+    return std::nullopt;
+  }
+
+  CApiArray array(ctx, array_uri, TILEDB_READ);
+
+  const auto& fragment_metadata = array->array()->fragment_metadata();
+
+  for (const auto& fragment : fragment_metadata) {
+    const_cast<sm::FragmentMetadata*>(fragment.get())
+        ->loaded_metadata()
+        ->load_rtree(array->array()->get_encryption_key());
+  }
+
+  auto tiles_size = [&](unsigned f, uint64_t t) {
+    using BitmapType = uint8_t;
+
+    size_t data_size = 0;
+    for (size_t d = 0;
+         d < std::tuple_size<decltype(instance.dimensions())>::value;
+         d++) {
+      data_size +=
+          fragment_metadata[f]->tile_size("d" + std::to_string(d + 1), t);
+    }
+
+    const size_t rt_size = sizeof(sm::GlobalOrderResultTile<BitmapType>);
+    const size_t subarray_size =
+        (instance.subarray.empty() ?
+             0 :
+             fragment_metadata[f]->cell_num(t) * sizeof(BitmapType));
+    return data_size + rt_size + subarray_size;
+  };
+
+  const auto& domain = array->array()->array_schema_latest().domain();
+  sm::GlobalCellCmp globalcmp(domain);
+  stdx::reverse_comparator<sm::GlobalCellCmp> reverseglobalcmp(globalcmp);
+
+  using RT = sm::ResultTileId;
+
+  auto cmp_pq_lower_bound = [&](const RT& rtl, const RT& rtr) {
+    const sm::RangeLowerBound l_mbr = {
+        .mbr = fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_)};
+    const sm::RangeLowerBound r_mbr = {
+        .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
+    return reverseglobalcmp(l_mbr, r_mbr);
+  };
+  auto cmp_pq_upper_bound = [&](const RT& rtl, const RT& rtr) {
+    const sm::RangeUpperBound l_mbr = {
+        .mbr = fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_)};
+    const sm::RangeUpperBound r_mbr = {
+        .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
+    return reverseglobalcmp(l_mbr, r_mbr);
+  };
+
+  /**
+   * Simulates comparison of a loaded tile to the merge bound.
+   *
+   * @return true if `rtl.upper < rtr.lower`, i.e. we can process
+   * the entirety of `rtl` before any of `rtr`
+   */
+  auto cmp_merge_bound = [&](const RT& rtl, const RT& rtr) {
+    const auto rtl_mbr_clamped = instance.clamp(
+        fragment_metadata[rtl.fragment_idx_]->mbr(rtl.tile_idx_));
+    const sm::RangeUpperBound l_mbr = {.mbr = rtl_mbr_clamped};
+    const sm::RangeLowerBound r_mbr = {
+        .mbr = fragment_metadata[rtr.fragment_idx_]->mbr(rtr.tile_idx_)};
+
+    const int cmp = globalcmp.compare(l_mbr, r_mbr);
+    if (instance.allow_duplicates()) {
+      return cmp <= 0;
+    } else {
+      return cmp < 0;
+    }
+  };
+
+  // order all tiles on their lower bound
+  std::priority_queue<RT, std::vector<RT>, decltype(cmp_pq_lower_bound)>
+      mbr_lower_bound(cmp_pq_lower_bound);
+  for (unsigned f = 0; f < instance.fragments.size(); f++) {
+    for (uint64_t t = 0; t < fragment_metadata[f]->tile_num(); t++) {
+      if (instance.intersects(fragment_metadata[f]->mbr(t))) {
+        mbr_lower_bound.push(sm::ResultTileId(f, t));
+      }
+    }
+  }
+
+  // and track tiles which are active using their upper bound
+  std::priority_queue<RT, std::vector<RT>, decltype(cmp_pq_upper_bound)>
+      mbr_upper_bound(cmp_pq_upper_bound);
+
+  // there must be some point where the tiles have overlapping MBRs
+  // and take more memory
+  const uint64_t coords_budget = std::stoi(instance.memory.total_budget_) *
+                                 std::stod(instance.memory.ratio_coords_);
+  /*
+   * Iterate through the tiles in the same order that the sparse
+   * reader would process them in, tracking memory usage as we go.
+   */
+  const uint64_t num_tiles = mbr_lower_bound.size();
+  uint64_t active_tile_size = sizeof(RT) * num_tiles;
+  uint64_t next_tile_size = 0;
+  while (active_tile_size + next_tile_size < coords_budget &&
+         !mbr_lower_bound.empty()) {
+    RT next_rt;
+
+    // add new result tiles
+    while (!mbr_lower_bound.empty()) {
+      next_rt = mbr_lower_bound.top();
+
+      next_tile_size = tiles_size(next_rt.fragment_idx_, next_rt.tile_idx_);
+      if (active_tile_size + next_tile_size <= coords_budget) {
+        mbr_lower_bound.pop();
+        active_tile_size += next_tile_size;
+        mbr_upper_bound.push(next_rt);
+      } else {
+        break;
+      }
+    }
+
+    if (mbr_lower_bound.empty()) {
+      break;
+    }
+
+    // emit from created result tiles, removing any which are exhausted
+    next_rt = mbr_lower_bound.top();
+    while (!mbr_upper_bound.empty() &&
+           cmp_merge_bound(mbr_upper_bound.top(), next_rt)) {
+      auto finish_rt = mbr_upper_bound.top();
+      mbr_upper_bound.pop();
+      active_tile_size -=
+          tiles_size(finish_rt.fragment_idx_, finish_rt.tile_idx_);
+    }
+  }
+
+  return mbr_lower_bound.empty();
 }
 
 /* ********************************* */
@@ -511,8 +1051,8 @@ TEST_CASE_METHOD(
 
   // We should have one tile range (size 16) which will be bigger than budget
   // (10).
-  total_budget_ = "1000";
-  ratio_tile_ranges_ = "0.01";
+  memory_.total_budget_ = "1000";
+  memory_.ratio_tile_ranges_ = "0.01";
   update_config();
 
   // Try to read.
@@ -525,7 +1065,7 @@ TEST_CASE_METHOD(
 
   // Check we hit the correct error.
   tiledb_error_t* error = NULL;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
+  rc = tiledb_ctx_get_last_error(context(), &error);
   CHECK(rc == TILEDB_OK);
 
   const char* msg;
@@ -564,11 +1104,11 @@ TEST_CASE_METHOD(
 
   // Specific relationship for failure not known, but these values
   // will result in failure with data being written.
-  total_budget_ = "10000";
+  memory_.total_budget_ = "10000";
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   // Try to read.
@@ -601,9 +1141,9 @@ TEST_CASE_METHOD(
     }
 
     // Check incomplete query status.
-    tiledb_query_get_status(ctx_, query, &status);
+    tiledb_query_get_status(context(), query, &status);
     if (status == TILEDB_INCOMPLETE) {
-      rc = tiledb_query_submit(ctx_, query);
+      rc = tiledb_query_submit(context(), query);
       CHECK(rc == TILEDB_OK);
     }
   } while (status == TILEDB_INCOMPLETE);
@@ -653,11 +1193,11 @@ TEST_CASE_METHOD(
 
   // specific relationship for failure not known, but these values
   // will result in failure with data being written.
-  total_budget_ = "15000";
+  memory_.total_budget_ = "15000";
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   // Try to read.
@@ -690,9 +1230,9 @@ TEST_CASE_METHOD(
     }
 
     // Check incomplete query status.
-    tiledb_query_get_status(ctx_, query, &status);
+    tiledb_query_get_status(context(), query, &status);
     if (status == TILEDB_INCOMPLETE) {
-      rc = tiledb_query_submit(ctx_, query);
+      rc = tiledb_query_submit(context(), query);
       CHECK(rc == TILEDB_OK);
     }
   } while (status == TILEDB_INCOMPLETE);
@@ -703,6 +1243,669 @@ TEST_CASE_METHOD(
   std::vector<int> observed_bad_data{55, 66, 88, 99, 1111};
   CHECK_FALSE(retrieved_data == observed_bad_data);
   CHECK(retrieved_data == expected_correct_data);
+}
+
+/**
+ * Tests that the reader will not yield results out of order across multiple
+ * iterations or `submit`s if the fragments are heavily skewed when the memory
+ * budget is heavily constrained.
+ *
+ * e.g. two fragments
+ * F0: 1-1000,1001-2000,2001-3000
+ * F1: 2001-3000
+ *
+ * If the memory budget allows only one tile per fragment at a time then there
+ * must be a mechanism for emitting (F0, T1) before (F1, T0) even though the
+ * the memory budget might not process them in the same loop.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment skew",
+    "[sparse-global-order][rest][rapidcheck]") {
+  auto doit = [this]<typename Asserter>(
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  int extent,
+                  const std::vector<templates::Domain<int>>& subarray =
+                      std::vector<templates::Domain<int>>()) {
+    // Write a fragment F0 with unique coordinates
+    templates::Fragment1D<int, int> fragment0;
+    fragment0.dim_.resize(fragment_size);
+    std::iota(fragment0.dim_.begin(), fragment0.dim_.end(), 1);
+
+    // Write a fragment F1 with lots of duplicates
+    // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
+    templates::Fragment1D<int, int> fragment1;
+    fragment1.dim_.resize(fragment0.dim_.size());
+    for (size_t i = 0; i < fragment1.dim_.size(); i++) {
+      fragment1.dim_[i] =
+          static_cast<int>((i / 10) + (fragment0.dim_.size() / 2));
+    }
+
+    // atts are whatever
+    auto& f0atts = std::get<0>(fragment0.atts_);
+    f0atts.resize(fragment0.dim_.size());
+    std::iota(f0atts.begin(), f0atts.end(), 0);
+
+    auto& f1atts = std::get<0>(fragment1.atts_);
+    f1atts.resize(fragment1.dim_.size());
+    std::iota(f1atts.begin(), f1atts.end(), int(fragment0.dim_.size()));
+
+    struct FxRun1D instance;
+    instance.fragments.push_back(fragment0);
+    instance.fragments.push_back(fragment1);
+    instance.num_user_cells = num_user_cells;
+
+    instance.array.dimension_.extent = extent;
+    instance.array.allow_dups_ = true;
+
+    instance.memory.total_budget_ = "20000";
+    instance.memory.ratio_array_data_ = "0.5";
+
+    instance.subarray = subarray;
+
+    run<Asserter, FxRun1D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
+  }
+
+  SECTION("Shrink", "Some examples found by rapidcheck") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        2, 1, 1, {templates::Domain<int>(1, 1)});
+    doit.operator()<tiledb::test::AsserterCatch>(
+        2, 1, 1, {templates::Domain<int>(1, 2)});
+    doit.operator()<tiledb::test::AsserterCatch>(
+        39, 1, 1, {templates::Domain<int>(20, 21)});
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck fragment skew", [doit]() {
+      const size_t fragment_size = *rc::gen::inRange(2, 200);
+      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      const int extent = *rc::gen::inRange(1, 200);
+      const auto subarray =
+          *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          fragment_size, num_user_cells, extent, subarray);
+    });
+  }
+}
+
+/**
+ * Tests that the reader will not yield results out of order across multiple
+ * iterations or `submit`s if the tile MBRs across different fragments are
+ * interleaved.
+ *
+ * The test sets up data with two fragments so that each tile overlaps with
+ * two tiles from the other fragment.  This way when the tiles are arranged
+ * in global order the only way to ensure that we don't emit out of order
+ * results with a naive implementation is to have *all* the tiles loaded
+ * in one pass, which is not practical.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment interleave",
+    "[sparse-global-order][rest][rapidcheck]") {
+  // NB: the tile extent is 2
+  auto doit = [this]<typename Asserter>(
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  const std::vector<templates::Domain<int>>& subarray = {}) {
+    templates::Fragment1D<int, int> fragment0;
+    templates::Fragment1D<int, int> fragment1;
+
+    // Write a fragment F0 with tiles [1,3][3,5][5,7][7,9]...
+    fragment0.dim_.resize(fragment_size);
+    fragment0.dim_[0] = 1;
+    for (size_t i = 1; i < fragment0.dim_.size(); i++) {
+      fragment0.dim_[i] = static_cast<int>(1 + 2 * ((i + 1) / 2));
+    }
+
+    // Write a fragment F1 with tiles [2,4][4,6][6,8][8,10]...
+    fragment1.dim_.resize(fragment0.dim_.size());
+    for (size_t i = 0; i < fragment1.dim_.size(); i++) {
+      fragment1.dim_[i] = fragment0.dim_[i] + 1;
+    }
+
+    // atts don't really matter
+    auto& f0atts = std::get<0>(fragment0.atts_);
+    f0atts.resize(fragment0.dim_.size());
+    std::iota(f0atts.begin(), f0atts.end(), 0);
+
+    auto& f1atts = std::get<0>(fragment1.atts_);
+    f1atts.resize(fragment1.dim_.size());
+    std::iota(f1atts.begin(), f1atts.end(), int(f0atts.size()));
+
+    struct FxRun1D instance;
+    instance.fragments.push_back(fragment0);
+    instance.fragments.push_back(fragment1);
+    instance.num_user_cells = num_user_cells;
+    instance.subarray = subarray;
+    instance.memory.total_budget_ = "20000";
+    instance.memory.ratio_array_data_ = "0.5";
+    instance.array.allow_dups_ = true;
+
+    run<Asserter, FxRun1D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(196, 8);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck fragment interleave", [doit]() {
+      const size_t fragment_size = *rc::gen::inRange(2, 196);
+      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      const auto subarray =
+          *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          fragment_size, num_user_cells, subarray);
+    });
+  }
+}
+
+/**
+ * Tests that the reader correctly returns an error if it cannot
+ * make progress due to being unable to make progress.
+ * The reader can stall if there is a point where F fragments
+ * fit in memory, but `F + 1` or more fragments overlap
+ *
+ * For example, suppose 2 tiles fit in memory. If the tiles are:
+ * [0, 1, 2, 3, 4]
+ * [1, 2, 3, 4, 5]
+ * [2, 3, 4, 5, 6]
+ *
+ * Then we will process the first two tiles first after ordering
+ * them on their lower bound.  We cannot emit anything past "2"
+ * because it would be out of order with the third tile.
+ *
+ * After the first iteration, the state is
+ * [_, _, _, 3, 4]
+ * [_, _, 3, 4, 5]
+ * [2, 3, 4, 5, 6]
+ *
+ * We could make progress by un-loading a tile and then loading
+ * the third tile, but instead we will just error out because
+ * that's complicated.
+ *
+ * The user's recourse to that is to either:
+ * 1) increase memory budget; or
+ * 2) consolidate some fragments.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment wide overlap",
+    "[sparse-global-order][rest][rapidcheck]") {
+  auto doit = [this]<typename Asserter>(
+                  size_t num_fragments,
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  bool allow_dups,
+                  const std::vector<templates::Domain<int>>& subarray =
+                      std::vector<templates::Domain<int>>()) {
+    const uint64_t total_budget = 100000;
+    const double ratio_coords = 0.2;
+
+    FxRun1D instance;
+    instance.array.capacity_ = num_fragments * 2;
+    instance.array.dimension_.extent = int(num_fragments) * 2;
+    instance.array.allow_dups_ = allow_dups;
+    instance.subarray = subarray;
+
+    instance.memory.total_budget_ = std::to_string(total_budget);
+    instance.memory.ratio_coords_ = std::to_string(ratio_coords);
+    instance.memory.ratio_array_data_ = "0.6";
+
+    for (size_t f = 0; f < num_fragments; f++) {
+      templates::Fragment1D<int, int> fragment;
+      fragment.dim_.resize(fragment_size);
+      std::iota(
+          fragment.dim_.begin(),
+          fragment.dim_.end(),
+          instance.array.dimension_.domain.lower_bound + static_cast<int>(f));
+
+      auto& atts = std::get<0>(fragment.atts_);
+      atts.resize(fragment_size);
+      std::iota(
+          atts.begin(),
+          atts.end(),
+          static_cast<int>(fragment_size * num_fragments));
+
+      instance.fragments.push_back(fragment);
+    }
+
+    instance.num_user_cells = num_user_cells;
+
+    run<Asserter, FxRun1D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(16, 100, 64, true);
+  }
+
+  SECTION("Shrink", "Some examples found by rapidcheck") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        10, 2, 64, false, Subarray1DType<int>{templates::Domain<int>(1, 3)});
+    doit.operator()<tiledb::test::AsserterCatch>(
+        12,
+        15,
+        1024,
+        false,
+        Subarray1DType<int>{templates::Domain<int>(1, 12)});
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck fragment wide overlap", [doit]() {
+      const size_t num_fragments = *rc::gen::inRange(10, 24);
+      const size_t fragment_size = *rc::gen::inRange(2, 200 - 64);
+      const size_t num_user_cells = 1024;
+      const bool allow_dups = *rc::gen::arbitrary<bool>();
+      const auto subarray =
+          *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          num_fragments, fragment_size, num_user_cells, allow_dups, subarray);
+    });
+  }
+}
+
+/**
+ * Tests that the reader will not yield duplicate coordinates if
+ * coordinates in loaded tiles are equal to the merge bound,
+ * and the merge bound is an actual datum in yet-to-be-loaded tiles.
+ *
+ * Example:
+ * many fragments which overlap at the ends
+ * [0, 1000], [1000, 2000], [2000, 3000]
+ * If we can load the tiles of the first two fragments but not
+ * the third, then the merge bound will be 2000. But it is only
+ * correct to emit the 2000 from the second fragment if
+ * duplicates are allowed.
+ *
+ * This test illustrates that the merge bound must not be an
+ * inclusive bound (unless duplicates are allowed).
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: merge bound duplication",
+    "[sparse-global-order][rest][rapidcheck]") {
+  auto doit = [this]<typename Asserter>(
+                  size_t num_fragments,
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  size_t tile_capacity,
+                  bool allow_dups,
+                  const Subarray1DType<int>& subarray = {}) {
+    FxRun1D instance;
+    instance.num_user_cells = num_user_cells;
+    instance.subarray = subarray;
+    instance.memory.total_budget_ = "50000";
+    instance.memory.ratio_array_data_ = "0.5";
+    instance.array.capacity_ = tile_capacity;
+    instance.array.allow_dups_ = allow_dups;
+    instance.array.dimension_.domain.lower_bound = 0;
+    instance.array.dimension_.domain.upper_bound =
+        static_cast<int>(num_fragments * fragment_size);
+
+    for (size_t f = 0; f < num_fragments; f++) {
+      templates::Fragment1D<int, int> fragment;
+      fragment.dim_.resize(fragment_size);
+      std::iota(
+          fragment.dim_.begin(),
+          fragment.dim_.end(),
+          static_cast<int>(f * (fragment_size - 1)));
+
+      auto& atts = std::get<0>(fragment.atts_);
+      atts.resize(fragment_size);
+      std::iota(atts.begin(), atts.end(), static_cast<int>(f * fragment_size));
+
+      instance.fragments.push_back(fragment);
+    }
+
+    instance.num_user_cells = num_user_cells;
+
+    run<Asserter, FxRun1D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(16, 16, 1024, 16, false);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck merge bound duplication", [doit]() {
+      const size_t num_fragments = *rc::gen::inRange(4, 32);
+      const size_t fragment_size = *rc::gen::inRange(2, 256);
+      const size_t num_user_cells = 1024;
+      const size_t tile_capacity = *rc::gen::inRange<size_t>(1, fragment_size);
+      const bool allow_dups = *rc::gen::arbitrary<bool>();
+      const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(
+          0, static_cast<int>(num_fragments * fragment_size)));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          num_fragments,
+          fragment_size,
+          num_user_cells,
+          tile_capacity,
+          allow_dups,
+          subarray);
+    });
+  }
+}
+
+/**
+ * Tests that the reader will not yield out of order when
+ * the tile MBRs in a fragment are not in the global order.
+ *
+ * The coordinates in the fragment are in global order, but
+ * the tile MBRs may not be.  This is because the MBR uses
+ * the minimum coordinate value *in each dimension*, which
+ * for two dimensions and higher is not always the same as
+ * the minimum coordinate in the tile.
+ *
+ * In this test, we have tile extents of 4 in both dimensions.
+ * Let's say the attribute value is the index of the cell
+ * as enumerated in row-major order and we have a densely
+ * populated array.
+ *
+ *             c-T1              c-T2              c-T3
+ *      |                 |                 |                 |
+ *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
+ *      |   1   2   3   4 |   5   6   7   8 |  9   10  11  12 |
+ * r-T1 | 201 202 203 204 | 205 206 207 208 | 209 210 211 212 | ...
+ *      | 401 402 403 404 | 405 406 407 408 | 409 410 411 412 |
+ *      | 601 602 603 604 | 605 606 607 608 | 609 610 611 612 |
+ *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
+ *
+ * If the capacity is 17, then:
+ * Data tile 1 holds
+ * [1, 2, 3, 4, 201, 202, 203, 204, 401, 402, 403, 404, 601, 602, 603, 604, 5].
+ * Data tile 2 holds
+ * [6, 7, 8, 205, 206, 207, 208, 405, 406, 407, 408, 605, 606, 607, 608, 9, 10].
+ *
+ * Data tile 1 has a MBR of [(1, 1), (5, 4)].
+ * Data tile 2 has a MBR of [(5, 1), (10, 4)].
+ *
+ * The lower bound of data tile 2's MBR is less than the upper bound
+ * of data tile 1's MBR. Hence the coordinates of the tiles are in global
+ * order but the MBRs are not.
+ *
+ * In a non-dense setting, this happens if the data tile boundary
+ * happens in the middle of a space tile which has coordinates on both
+ * sides, AND the space tile after the boundary contains a coordinate
+ * which is lesser in the second dimension.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: out-of-order MBRs",
+    "[sparse-global-order][rest][rapidcheck]") {
+  auto doit = [this]<typename Asserter>(
+                  tiledb_layout_t tile_order,
+                  tiledb_layout_t cell_order,
+                  size_t num_fragments,
+                  size_t fragment_size,
+                  size_t num_user_cells,
+                  size_t tile_capacity,
+                  bool allow_dups,
+                  const Subarray2DType<int, int>& subarray = {}) {
+    FxRun2D instance;
+    instance.num_user_cells = num_user_cells;
+    instance.capacity = tile_capacity;
+    instance.allow_dups = allow_dups;
+    instance.tile_order_ = tile_order;
+    instance.cell_order_ = cell_order;
+    instance.subarray = subarray;
+
+    auto row = [&](size_t f, size_t i) -> int {
+      return 1 +
+             static_cast<int>(
+                 ((num_fragments * i) + f) / instance.d1.domain.upper_bound);
+    };
+    auto col = [&](size_t f, size_t i) -> int {
+      return 1 +
+             static_cast<int>(
+                 ((num_fragments * i) + f) % instance.d1.domain.upper_bound);
+    };
+
+    for (size_t f = 0; f < num_fragments; f++) {
+      templates::Fragment2D<int, int, int> fdata;
+      fdata.d1_.reserve(fragment_size);
+      fdata.d2_.reserve(fragment_size);
+      std::get<0>(fdata.atts_).reserve(fragment_size);
+
+      for (size_t i = 0; i < fragment_size; i++) {
+        fdata.d1_.push_back(row(f, i));
+        fdata.d2_.push_back(col(f, i));
+        std::get<0>(fdata.atts_)
+            .push_back(static_cast<int>(f * fragment_size + i));
+      }
+
+      instance.fragments.push_back(fdata);
+    }
+
+    auto guard = run_create<Asserter, FxRun2D>(instance);
+
+    // validate that we have set up the condition we claim,
+    // i.e. some fragment has out-of-order MBRs
+    {
+      CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
+
+      const auto& fragment_metadata = array->array()->fragment_metadata();
+      for (const auto& fragment : fragment_metadata) {
+        const_cast<sm::FragmentMetadata*>(fragment.get())
+            ->loaded_metadata()
+            ->load_rtree(array->array()->get_encryption_key());
+      }
+
+      sm::GlobalCellCmp globalcmp(
+          array->array()->array_schema_latest().domain());
+
+      // check that we actually have out-of-order MBRs
+      // (disable on REST where we have no metadata)
+      // (disable with rapidcheck where this may not be guaranteed)
+      if (!vfs_test_setup_.is_rest() &&
+          std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {
+        bool any_out_of_order = false;
+        for (size_t f = 0; !any_out_of_order && f < fragment_metadata.size();
+             f++) {
+          for (size_t t = 1;
+               !any_out_of_order && t < fragment_metadata[f]->tile_num();
+               t++) {
+            const sm::RangeUpperBound lt = {
+                .mbr = fragment_metadata[f]->mbr(t - 1)};
+            const sm::RangeLowerBound rt = {
+                .mbr = fragment_metadata[f]->mbr(t)};
+            if (globalcmp(rt, lt)) {
+              any_out_of_order = true;
+            }
+          }
+        }
+        ASSERTER(any_out_of_order);
+      }
+    }
+
+    run_execute<Asserter, FxRun2D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 100, 32, 6, false);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck out-of-order MBRs", [doit](bool allow_dups) {
+      const auto tile_order =
+          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+      const auto cell_order =
+          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+      const size_t num_fragments = *rc::gen::inRange(2, 8);
+      const size_t fragment_size = *rc::gen::inRange(32, 400);
+      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      const size_t tile_capacity = *rc::gen::inRange(4, 32);
+      const auto subarray = *rc::make_subarray_2d(
+          templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
+
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          tile_order,
+          cell_order,
+          num_fragments,
+          fragment_size,
+          num_user_cells,
+          tile_capacity,
+          allow_dups,
+          subarray);
+    });
+  }
+}
+
+/**
+ * Similar to the "fragment skew" test, but in two dimensions.
+ * In 2+ dimensions the lower bounds of the tile MBRs are not
+ * necessarily in order for each fragment.
+ *
+ * This test verifies the need to set the merge bound to
+ * the MBR lower bound of fragments which haven't had any tiles loaded.
+ *
+ * Let's use an example with dimension extents and tile capacities of 4.
+ *
+ *             c-T1              c-T2              c-T3
+ *      |                 |                 |                 |
+ *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
+ *      | 1    1   1   1  | 1               | 1               |
+ * r-T1 | 1    1   1   1  |                 |                 |
+ *      | 1    1   1   1  |                 |                 |
+ *      | 1    1          |      2   1   1  |                 |
+ *   ---+----+---+---+----+----+---+---+----+----+---+---+----+---
+ *
+ * Fragment 1 MBR lower bounds: [(1, 1), (2, 1), (3, 1), (1, 5), (1, 7)]
+ * Fragment 2 MBR lower bounds: [(4, 6)]
+ *
+ * What if the memory budget here permits loading just four tiles?
+ *
+ * The un-loaded tiles have bounds (1, 7) and (4, 6), but the
+ * coordinate from (4, 6) has a lesser value. The merge bound
+ * is necessary to ensure we don't emit out-of-order coordinates.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment skew 2d merge bound",
+    "[sparse-global-order][rest][rapidcheck]") {
+  auto doit = [this]<typename Asserter>(
+                  tiledb_layout_t tile_order,
+                  tiledb_layout_t cell_order,
+                  size_t approximate_memory_tiles,
+                  size_t num_user_cells,
+                  size_t num_fragments,
+                  size_t tile_capacity,
+                  bool allow_dups,
+                  const Subarray2DType<int, int>& subarray = {}) {
+    FxRun2D instance;
+    instance.tile_order_ = tile_order;
+    instance.cell_order_ = cell_order;
+    instance.d1.extent = 4;
+    instance.d2.extent = 4;
+    instance.capacity = tile_capacity;
+    instance.allow_dups = allow_dups;
+    instance.num_user_cells = num_user_cells;
+    instance.subarray = subarray;
+
+    const size_t tile_size_estimate = (1600 + instance.capacity * sizeof(int));
+    const double coords_ratio =
+        (1.02 / (std::stold(instance.memory.total_budget_) /
+                 tile_size_estimate / approximate_memory_tiles));
+    instance.memory.ratio_coords_ = std::to_string(coords_ratio);
+
+    int att = 0;
+
+    // for each fragment, make one fragment which is just a point
+    // so that its MBR is equal to its coordinate (and thus more likely
+    // to be out of order with respect to the MBRs of tiles from other
+    // fragments)
+    for (size_t f = 0; f < num_fragments; f++) {
+      FxRun2D::FragmentType fdata;
+      // make one mostly dense space tile
+      const int trow = instance.d1.domain.lower_bound +
+                       static_cast<int>(f * instance.d1.extent);
+      const int tcol = instance.d2.domain.lower_bound +
+                       static_cast<int>(f * instance.d2.extent);
+      for (int i = 0; i < instance.d1.extent * instance.d2.extent - 2; i++) {
+        fdata.d1_.push_back(trow + i / instance.d1.extent);
+        fdata.d2_.push_back(tcol + i % instance.d1.extent);
+        std::get<0>(fdata.atts_).push_back(att++);
+      }
+
+      // then some sparse coords in the next space tile,
+      // fill the data tile (if the capacity is 4), we'll call it T
+      fdata.d1_.push_back(trow);
+      fdata.d2_.push_back(tcol + instance.d2.extent);
+      std::get<0>(fdata.atts_).push_back(att++);
+      fdata.d1_.push_back(trow + instance.d1.extent - 1);
+      fdata.d2_.push_back(tcol + instance.d2.extent + 2);
+      std::get<0>(fdata.atts_).push_back(att++);
+
+      // then begin a new data tile "Tnext" which straddles the bounds of that
+      // space tile. this will have a low MBR.
+      fdata.d1_.push_back(trow + instance.d1.extent - 1);
+      fdata.d2_.push_back(tcol + instance.d2.extent + 3);
+      std::get<0>(fdata.atts_).push_back(att++);
+      fdata.d1_.push_back(trow);
+      fdata.d2_.push_back(tcol + 2 * instance.d2.extent);
+      std::get<0>(fdata.atts_).push_back(att++);
+
+      // then add a point P which is less than the lower bound of Tnext's MBR,
+      // and also between the last two coordinates of T
+      FxRun2D::FragmentType fpoint;
+      fpoint.d1_.push_back(trow + instance.d1.extent - 1);
+      fpoint.d2_.push_back(tcol + instance.d1.extent + 1);
+      std::get<0>(fpoint.atts_).push_back(att++);
+
+      instance.fragments.push_back(fdata);
+      instance.fragments.push_back(fpoint);
+    }
+
+    run<Asserter, FxRun2D>(instance);
+  };
+
+  SECTION("Example") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 1024, 1, 4, false);
+  }
+
+  SECTION("Shrink", "Some examples found by rapidcheck") {
+    doit.operator()<tiledb::test::AsserterCatch>(
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        2,
+        9,
+        1,
+        2,
+        false,
+        {std::make_pair(templates::Domain<int>(2, 2), std::nullopt)});
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck fragment skew", [doit]() {
+      const auto tile_order =
+          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+      const auto cell_order =
+          *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+      const size_t approximate_memory_tiles = *rc::gen::inRange(2, 64);
+      const size_t num_user_cells = *rc::gen::inRange(1, 1024);
+      const size_t num_fragments = *rc::gen::inRange(1, 8);
+      const size_t tile_capacity = *rc::gen::inRange(1, 16);
+      const bool allow_dups = *rc::gen::arbitrary<bool>();
+      const auto subarray = *rc::make_subarray_2d(
+          templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
+      doit.operator()<tiledb::test::AsserterRapidcheck>(
+          tile_order,
+          cell_order,
+          approximate_memory_tiles,
+          num_user_cells,
+          num_fragments,
+          tile_capacity,
+          allow_dups,
+          subarray);
+    });
+  }
 }
 
 TEST_CASE_METHOD(
@@ -726,8 +1929,8 @@ TEST_CASE_METHOD(
 
   // We should have 100 tiles (tile offset size 800) which will be bigger than
   // leftover budget.
-  total_budget_ = "3000";
-  ratio_array_data_ = "0.5";
+  memory_.total_budget_ = "3000";
+  memory_.ratio_array_data_ = "0.5";
   update_config();
 
   // Try to read.
@@ -740,7 +1943,7 @@ TEST_CASE_METHOD(
 
   // Check we hit the correct error.
   tiledb_error_t* error = NULL;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
+  rc = tiledb_ctx_get_last_error(context(), &error);
   CHECK(rc == TILEDB_OK);
 
   const char* msg;
@@ -762,10 +1965,10 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   bool use_subarray = false;
-  SECTION("- No subarray") {
+  SECTION("No subarray") {
     use_subarray = false;
   }
-  SECTION("- Subarray") {
+  SECTION("Subarray") {
     use_subarray = true;
   }
 
@@ -789,13 +1992,14 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
+  // FIXME: there is no per fragment budget anymore
   // Two result tile (2 * (~3000 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "35000";
-  ratio_coords_ = "0.11";
+  memory_.total_budget_ = "35000";
+  memory_.ratio_coords_ = "0.11";
   update_config();
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   uint32_t rc;
@@ -828,7 +2032,7 @@ TEST_CASE_METHOD(
 
   // Check incomplete query status.
   tiledb_query_status_t status;
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
   CHECK(40 == data_r_size);
@@ -840,9 +2044,8 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(data_c, data_r, data_r_size));
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(context(), array);
   CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -870,8 +2073,8 @@ TEST_CASE_METHOD(
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
   // One result tile (8 + ~440) will be bigger than the budget (400).
-  total_budget_ = "19000";
-  ratio_coords_ = "0.04";
+  memory_.total_budget_ = "19000";
+  memory_.ratio_coords_ = "0.04";
   update_config();
 
   // Try to read.
@@ -885,7 +2088,7 @@ TEST_CASE_METHOD(
 
   // Check we hit the correct error.
   tiledb_error_t* error = NULL;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
+  rc = tiledb_ctx_get_last_error(context(), &error);
   CHECK(rc == TILEDB_OK);
 
   const char* msg;
@@ -907,27 +2110,27 @@ TEST_CASE_METHOD(
   bool use_subarray = false;
   int tile_idx = 0;
   int qc_idx = GENERATE(1, 2);
-  SECTION("- No subarray") {
+  SECTION("No subarray") {
     use_subarray = false;
-    SECTION("- First tile") {
+    SECTION("First tile") {
       tile_idx = 0;
     }
-    SECTION("- Second tile") {
+    SECTION("Second tile") {
       tile_idx = 1;
     }
-    SECTION("- Last tile") {
+    SECTION("Last tile") {
       tile_idx = 2;
     }
   }
-  SECTION("- Subarray") {
+  SECTION("Subarray") {
     use_subarray = true;
-    SECTION("- First tile") {
+    SECTION("First tile") {
       tile_idx = 0;
     }
-    SECTION("- Second tile") {
+    SECTION("Second tile") {
       tile_idx = 1;
     }
-    SECTION("- Last tile") {
+    SECTION("Last tile") {
       tile_idx = 2;
     }
   }
@@ -944,7 +2147,7 @@ TEST_CASE_METHOD(
   uint64_t coords_size = sizeof(coords_1);
   uint64_t data_size = sizeof(data_1);
 
-  // Create the aray so the removed tile is at the correct index.
+  // Create the array so the removed tile is at the correct index.
   switch (tile_idx) {
     case 0:
       write_1d_fragment(coords_3, &coords_size, data_3, &data_size);
@@ -998,7 +2201,7 @@ TEST_CASE_METHOD(
   bool extra_fragment = GENERATE(true, false);
   int qc_idx = GENERATE(1, 2);
 
-  create_default_array_1d(dups);
+  create_default_array_1d(DefaultArray1DConfig().with_allow_dups(dups));
 
   int coords_1[] = {1, 2, 3};
   int data_1[] = {2, 2, 2};
@@ -1095,7 +2298,7 @@ TEST_CASE_METHOD(
     "[sparse-global-order][merge][subarray][dups]") {
   // Create default array.
   reset_config();
-  create_default_array_1d(true);
+  create_default_array_1d(DefaultArray1DConfig().with_allow_dups(true));
 
   bool use_subarray = false;
   int qc_idx = GENERATE(1, 2);
@@ -1109,7 +2312,7 @@ TEST_CASE_METHOD(
   uint64_t coords_size = sizeof(coords_1);
   uint64_t data_size = sizeof(data_1);
 
-  // Create the aray.
+  // Create the array.
   write_1d_fragment(coords_1, &coords_size, data_1, &data_size);
   write_1d_fragment(coords_2, &coords_size, data_2, &data_size);
 
@@ -1133,12 +2336,13 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(data_c, data_r, data_r_size));
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
     "Sparse global order reader: user buffer cannot fit single cell",
     "[sparse-global-order][user-buffer][too-small][rest]") {
-  VFSTestSetup vfs_test_setup;
-  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
-  auto ctx = vfs_test_setup.ctx();
+  std::string array_name =
+      vfs_test_setup_.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup_.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -1203,14 +2407,15 @@ TEST_CASE(
   array2.close();
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
     "Sparse global order reader: attribute copy memory limit",
     "[sparse-global-order][attribute-copy][memory-limit][rest]") {
   Config config;
   config["sm.mem.total_budget"] = "20000";
-  VFSTestSetup vfs_test_setup(config.ptr().get());
-  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
-  auto ctx = vfs_test_setup.ctx();
+  std::string array_name =
+      vfs_test_setup_.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup_.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -1285,10 +2490,10 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   bool use_subarray = false;
-  SECTION("- No subarray") {
+  SECTION("No subarray") {
     use_subarray = false;
   }
-  SECTION("- Subarray") {
+  SECTION("Subarray") {
     use_subarray = true;
   }
 
@@ -1312,13 +2517,14 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
+  // FIXME: there is no per fragment budget anymore
   // Two result tile (2 * (~4000 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "40000";
-  ratio_coords_ = "0.22";
+  memory_.total_budget_ = "40000";
+  memory_.ratio_coords_ = "0.22";
   update_config();
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   // Try to read.
@@ -1337,7 +2543,7 @@ TEST_CASE_METHOD(
       &query,
       &array);
   CHECK(rc == TILEDB_OK);
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_INCOMPLETE);
 
   uint64_t loop_idx = 1;
@@ -1347,9 +2553,10 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(&loop_idx, data_r, data_r_size));
   loop_idx++;
 
-  while (status == TILEDB_INCOMPLETE && rc == TILEDB_OK) {
-    rc = tiledb_query_submit(ctx_, query);
-    tiledb_query_get_status(ctx_, query, &status);
+  while (status == TILEDB_INCOMPLETE) {
+    rc = tiledb_query_submit(context(), query);
+    CHECK("" == error_if_any(rc));
+    tiledb_query_get_status(context(), query, &status);
     CHECK(4 == data_r_size);
     CHECK(4 == coords_r_size);
     CHECK(!std::memcmp(&loop_idx, coords_r, coords_r_size));
@@ -1360,9 +2567,6 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -1371,7 +2575,7 @@ TEST_CASE_METHOD(
     "Sparse global order reader: correct read state on duplicates",
     "[sparse-global-order][no-dups][read-state]") {
   bool dups = GENERATE(false, true);
-  create_default_array_1d(dups);
+  create_default_array_1d(DefaultArray1DConfig().with_allow_dups(dups));
 
   // Write one fragment in coordinates 1-10 with data 1-10.
   int coords[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -1385,7 +2589,7 @@ TEST_CASE_METHOD(
   uint64_t data2_size = sizeof(data2);
   write_1d_fragment(coords, &coords_size, data2, &data2_size);
 
-  tiledb_array_t* array = nullptr;
+  CApiArray array;
   tiledb_query_t* query = nullptr;
 
   // Read with buffers that can only fit one cell.
@@ -1408,10 +2612,10 @@ TEST_CASE_METHOD(
 
     for (int i = 3; i <= 21; i++) {
       // Check incomplete query status.
-      tiledb_query_get_status(ctx_, query, &status);
+      tiledb_query_get_status(context(), query, &status);
       CHECK(status == TILEDB_INCOMPLETE);
 
-      rc = tiledb_query_submit(ctx_, query);
+      rc = tiledb_query_submit(context(), query);
       CHECK(rc == TILEDB_OK);
 
       CHECK(coords_r[0] == i / 2);
@@ -1422,10 +2626,10 @@ TEST_CASE_METHOD(
 
     for (int i = 2; i <= 10; i++) {
       // Check incomplete query status.
-      tiledb_query_get_status(ctx_, query, &status);
+      tiledb_query_get_status(context(), query, &status);
       CHECK(status == TILEDB_INCOMPLETE);
 
-      rc = tiledb_query_submit(ctx_, query);
+      rc = tiledb_query_submit(context(), query);
       CHECK(rc == TILEDB_OK);
 
       CHECK(coords_r[0] == i);
@@ -1434,13 +2638,10 @@ TEST_CASE_METHOD(
   }
 
   // Check completed query status.
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
 
@@ -1522,7 +2723,7 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(offsets_c, offsets_r, offsets_r_size));
 
   // Check completed query status.
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_INCOMPLETE);
 
   // Reset buffer sizes.
@@ -1531,7 +2732,7 @@ TEST_CASE_METHOD(
   offsets_r_size = sizeof(offsets_r);
 
   // Submit query.
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit(context(), query);
   REQUIRE(rc == TILEDB_OK);
 
   // Validate the second read.
@@ -1546,12 +2747,789 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(offsets_c2, offsets_r, offsets_r_size));
 
   // Check completed query status.
-  tiledb_query_get_status(ctx_, query, &status);
+  tiledb_query_get_status(context(), query, &status);
   CHECK(status == TILEDB_COMPLETED);
 
   // Clean up.
-  rc = tiledb_array_close(ctx_, array);
+  rc = tiledb_array_close(context(), array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+}
+
+/**
+ * Creates an array with a schema whose dimensions and attributes
+ * come from `Instance`.
+ */
+template <typename Asserter, InstanceType Instance>
+void CSparseGlobalOrderFx::create_array(const Instance& instance) {
+  const auto dimensions = instance.dimensions();
+  const auto attributes = instance.attributes();
+
+  std::vector<std::string> dimension_names;
+  std::vector<tiledb_datatype_t> dimension_types;
+  std::vector<void*> dimension_ranges;
+  std::vector<void*> dimension_extents;
+  auto add_dimension = [&]<Datatype D>(
+                           const templates::Dimension<D>& dimension) {
+    using CoordType = templates::Dimension<D>::value_type;
+    dimension_names.push_back("d" + std::to_string(dimension_names.size() + 1));
+    dimension_types.push_back(static_cast<tiledb_datatype_t>(D));
+    dimension_ranges.push_back(
+        const_cast<CoordType*>(&dimension.domain.lower_bound));
+    dimension_extents.push_back(const_cast<CoordType*>(&dimension.extent));
+  };
+  std::apply(
+      [&]<Datatype... Ds>(const templates::Dimension<Ds>&... dimension) {
+        (add_dimension(dimension), ...);
+      },
+      dimensions);
+
+  std::vector<std::string> attribute_names;
+  std::vector<tiledb_datatype_t> attribute_types;
+  std::vector<uint32_t> attribute_cell_val_nums;
+  std::vector<std::pair<tiledb_filter_type_t, int>> attribute_compressors;
+  auto add_attribute = [&](Datatype attribute) {
+    attribute_names.push_back("a" + std::to_string(attribute_names.size() + 1));
+    attribute_types.push_back(static_cast<tiledb_datatype_t>(attribute));
+    attribute_cell_val_nums.push_back(1);
+    attribute_compressors.push_back(std::make_pair(TILEDB_FILTER_NONE, -1));
+  };
+  std::apply(
+      [&]<typename... As>(As... attribute) { (add_attribute(attribute), ...); },
+      attributes);
+
+  tiledb::test::create_array(
+      context(),
+      array_name_,
+      TILEDB_SPARSE,
+      dimension_names,
+      dimension_types,
+      dimension_ranges,
+      dimension_extents,
+      attribute_names,
+      attribute_types,
+      attribute_cell_val_nums,
+      attribute_compressors,
+      instance.tile_order(),
+      instance.cell_order(),
+      instance.tile_capacity(),
+      instance.allow_duplicates());
+}
+
+/**
+ * Runs a correctness check upon `instance`.
+ *
+ * Inserts all of the fragments, then submits a global order read
+ * query and compares the results of the query against the
+ * expected result order computed from the input data.
+ */
+template <typename Asserter, InstanceType Instance>
+void CSparseGlobalOrderFx::run(Instance& instance) {
+  reset_config();
+
+  auto tmparray = run_create<Asserter, Instance>(instance);
+  run_execute<Asserter, Instance>(instance);
+}
+
+template <typename Asserter, InstanceType Instance>
+DeleteArrayGuard CSparseGlobalOrderFx::run_create(Instance& instance) {
+  ASSERTER(instance.num_user_cells > 0);
+
+  reset_config();
+
+  memory_ = instance.memory;
+  update_config();
+
+  // the tile extent is 2
+  // create_default_array_1d<Asserter>(instance.array);
+  create_array<Asserter, decltype(instance)>(instance);
+
+  DeleteArrayGuard arrayguard(context(), array_name_.c_str());
+
+  // write all fragments
+  for (auto& fragment : instance.fragments) {
+    write_fragment<Asserter, decltype(fragment)>(fragment);
+  }
+
+  return arrayguard;
+}
+
+template <typename Asserter, InstanceType Instance>
+void CSparseGlobalOrderFx::run_execute(Instance& instance) {
+  ASSERTER(instance.num_user_cells > 0);
+
+  std::decay_t<decltype(instance.fragments[0])> expect;
+  for (const auto& fragment : instance.fragments) {
+    auto expect_dimensions = expect.dimensions();
+    auto expect_attributes = expect.attributes();
+
+    if (instance.subarray.empty()) {
+      stdx::extend(expect_dimensions, fragment.dimensions());
+      stdx::extend(expect_attributes, fragment.attributes());
+    } else {
+      std::vector<uint64_t> accept;
+      for (uint64_t i = 0; i < fragment.size(); i++) {
+        if (instance.accept(fragment, i)) {
+          accept.push_back(i);
+        }
+      }
+      const auto fdimensions =
+          stdx::select(fragment.dimensions(), std::span(accept));
+      const auto fattributes =
+          stdx::select(fragment.attributes(), std::span(accept));
+      stdx::extend(expect_dimensions, stdx::reference_tuple(fdimensions));
+      stdx::extend(expect_attributes, stdx::reference_tuple(fattributes));
+    }
+  }
+
+  // Open array for reading.
+  CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
+
+  // sort for naive comparison
+  {
+    std::vector<uint64_t> idxs(expect.size());
+    std::iota(idxs.begin(), idxs.end(), 0);
+
+    sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
+
+    auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
+      return std::apply(
+          [&globalcmp, ia, ib]<typename... Ts>(const std::vector<Ts>&... dims) {
+            const auto l = std::make_tuple(dims[ia]...);
+            const auto r = std::make_tuple(dims[ib]...);
+            return globalcmp(
+                templates::global_cell_cmp_std_tuple<decltype(l)>(l),
+                templates::global_cell_cmp_std_tuple<decltype(r)>(r));
+          },
+          expect.dimensions());
+    };
+
+    std::sort(idxs.begin(), idxs.end(), icmp);
+
+    if (!instance.allow_duplicates()) {
+      std::set<uint64_t, decltype(icmp)> dedup(icmp);
+      for (const auto& idx : idxs) {
+        dedup.insert(idx);
+      }
+
+      idxs.clear();
+      idxs.insert(idxs.end(), dedup.begin(), dedup.end());
+    }
+
+    expect.dimensions() = stdx::select(
+        stdx::reference_tuple(expect.dimensions()), std::span(idxs));
+    expect.attributes() = stdx::select(
+        stdx::reference_tuple(expect.attributes()), std::span(idxs));
+  }
+
+  // Create query
+  tiledb_query_t* query;
+  auto rc = tiledb_query_alloc(context(), array, TILEDB_READ, &query);
+  ASSERTER(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER);
+  ASSERTER(rc == TILEDB_OK);
+
+  if (!instance.subarray.empty()) {
+    tiledb_subarray_t* subarray;
+    TRY(context(), tiledb_subarray_alloc(context(), array, &subarray));
+    TRY(context(),
+        instance.template apply_subarray<Asserter>(context(), subarray));
+    TRY(context(), tiledb_query_set_subarray_t(context(), query, subarray));
+    tiledb_subarray_free(&subarray);
+  }
+
+  // Prepare output buffer
+  std::decay_t<decltype(instance.fragments[0])> out;
+
+  auto outdims = out.dimensions();
+  auto outatts = out.attributes();
+  std::apply(
+      [&](auto&... field) {
+        (field.resize(std::max<uint64_t>(1, expect.size()), 0), ...);
+      },
+      std::tuple_cat(outdims, outatts));
+
+  // Query loop
+  uint64_t outcursor = 0;
+  while (true) {
+    // make field size locations
+    auto dimension_sizes = templates::query::make_field_sizes<Asserter>(
+        outdims, instance.num_user_cells);
+    auto attribute_sizes = templates::query::make_field_sizes<Asserter>(
+        outatts, instance.num_user_cells);
+
+    // add fields to query
+    templates::query::set_fields<Asserter>(
+        context(),
+        query,
+        dimension_sizes,
+        outdims,
+        [](unsigned d) { return "d" + std::to_string(d + 1); },
+        outcursor);
+    templates::query::set_fields<Asserter>(
+        context(),
+        query,
+        attribute_sizes,
+        outatts,
+        [](unsigned a) { return "a" + std::to_string(a + 1); },
+        outcursor);
+
+    rc = tiledb_query_submit(context(), query);
+    {
+      const auto err = error_if_any(rc);
+      if (err.find("Cannot load enough tiles to emit results from all "
+                   "fragments in global order") != std::string::npos) {
+        if (!vfs_test_setup_.is_rest()) {
+          // skip for REST since we will not have access to tile sizes
+          const auto can_complete =
+              can_complete_in_memory_budget<Asserter, Instance>(
+                  context(), array_name_.c_str(), instance);
+          if (can_complete.has_value()) {
+            ASSERTER(!can_complete.value());
+          }
+        }
+        tiledb_query_free(&query);
+        return;
+      }
+      if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
+        if (err.find(
+                "Cannot allocate space for preprocess result tile ID list")) {
+          // not enough memory to determine tile order
+          // we can probably make some assertions about what this should have
+          // looked like but for now we'll let it go
+          tiledb_query_free(&query);
+          return;
+        }
+        if (err.find("Cannot load tile offsets") != std::string::npos) {
+          // not enough memory budget for tile offsets, don't bother asserting
+          // about it (for now?)
+          tiledb_query_free(&query);
+          return;
+        }
+      }
+      ASSERTER("" == err);
+    }
+
+    tiledb_query_status_t status;
+    rc = tiledb_query_get_status(context(), query, &status);
+    ASSERTER(rc == TILEDB_OK);
+
+    const uint64_t dim_num_cells =
+        templates::query::num_cells<Asserter>(outdims, dimension_sizes);
+    const uint64_t att_num_cells =
+        templates::query::num_cells<Asserter>(outatts, attribute_sizes);
+
+    ASSERTER(dim_num_cells == att_num_cells);
+
+    const uint64_t num_cells_bound =
+        std::min<uint64_t>(instance.num_user_cells, expect.size());
+    if (dim_num_cells < num_cells_bound) {
+      ASSERTER(status == TILEDB_COMPLETED);
+    } else {
+      ASSERTER(dim_num_cells == num_cells_bound);
+    }
+
+    outcursor += dim_num_cells;
+    ASSERTER(outcursor <= expect.size());
+
+    if (status == TILEDB_COMPLETED) {
+      break;
+    }
+  }
+
+  // Clean up.
+  tiledb_query_free(&query);
+
+  std::apply(
+      [outcursor](auto&... outfield) { (outfield.resize(outcursor), ...); },
+      std::tuple_cat(outdims, outatts));
+
+  ASSERTER(expect.dimensions() == outdims);
+
+  // Checking attributes is more complicated because:
+  // 1) when dups are off, equal coords will choose the attribute from one
+  // fragment. 2) when dups are on, the attributes may manifest in any order.
+  // Identify the runs of equal coords and then compare using those
+  size_t attcursor = 0;
+  size_t runlength = 1;
+
+  auto viewtuple = [&](const auto& atttuple, size_t i) {
+    return std::apply(
+        [&](const auto&... att) { return std::make_tuple(att[i]...); },
+        atttuple);
+  };
+
+  for (size_t i = 1; i < out.size(); i++) {
+    if (std::apply(
+            [&](const auto&... outdim) {
+              return (... && (outdim[i] == outdim[i - 1]));
+            },
+            outdims)) {
+      runlength++;
+    } else if (instance.allow_duplicates()) {
+      std::set<decltype(viewtuple(outatts, 0))> outattsrun;
+      std::set<decltype(viewtuple(outatts, 0))> expectattsrun;
+
+      for (size_t j = attcursor; j < attcursor + runlength; j++) {
+        outattsrun.insert(viewtuple(outatts, j));
+        expectattsrun.insert(viewtuple(expect.attributes(), j));
+      }
+
+      ASSERTER(outattsrun == expectattsrun);
+
+      attcursor += runlength;
+      runlength = 1;
+    } else {
+      REQUIRE(runlength == 1);
+
+      const auto out = viewtuple(expect.attributes(), i);
+
+      // at least all the attributes will come from the same fragment
+      if (out != viewtuple(expect.attributes(), i)) {
+        // the found attribute values should match at least one of the fragments
+        bool matched = false;
+        for (size_t f = 0; !matched && f < instance.fragments.size(); f++) {
+          for (size_t ic = 0; !matched && ic < instance.fragments[f].size();
+               ic++) {
+            if (viewtuple(instance.fragments[f].dimensions(), ic) ==
+                viewtuple(expect.dimensions(), ic)) {
+              matched =
+                  (viewtuple(instance.fragments[f].attributes(), ic) == out);
+            }
+          }
+        }
+        ASSERTER(matched);
+      }
+
+      attcursor += runlength;
+      runlength = 1;
+    }
+  }
+
+  // lastly, check the correctness of our memory budgeting function
+  // (skip for REST since we will not have access to tile sizes)
+  if (!vfs_test_setup_.is_rest()) {
+    const auto can_complete = can_complete_in_memory_budget<Asserter, Instance>(
+        context(), array_name_.c_str(), instance);
+    if (can_complete.has_value()) {
+      ASSERTER(can_complete.has_value());
+    }
+  }
+}
+
+// rapidcheck generators and Arbitrary specializations
+namespace rc {
+
+/**
+ * @return a generator of valid subarrays within `domain`
+ */
+Gen<std::vector<templates::Domain<int>>> make_subarray_1d(
+    const templates::Domain<int>& domain) {
+  // NB: when (if) multi-range subarray is supported for global order
+  // (or if this is used for non-global order)
+  // change `num_ranges` to use the weighted element version
+  std::optional<Gen<int>> num_ranges;
+  if (true) {
+    num_ranges = gen::just<int>(1);
+  } else {
+    num_ranges = gen::weightedElement<int>(
+        {{50, 1}, {25, 2}, {13, 3}, {7, 4}, {4, 5}, {1, 6}});
+  }
+
+  return gen::mapcat(*num_ranges, [domain](int num_ranges) {
+    return gen::container<std::vector<templates::Domain<int>>>(
+        num_ranges, rc::make_range<int>(domain));
+  });
+}
+
+template <>
+struct Arbitrary<FxRun1D> {
+  static Gen<FxRun1D> arbitrary() {
+    constexpr Datatype DIMENSION_TYPE = Datatype::INT32;
+    using CoordType = tiledb::type::datatype_traits<DIMENSION_TYPE>::value_type;
+
+    auto dimension = gen::arbitrary<templates::Dimension<DIMENSION_TYPE>>();
+    auto allow_dups = gen::arbitrary<bool>();
+
+    auto domain =
+        gen::suchThat(gen::pair(allow_dups, dimension), [](const auto& domain) {
+          bool allow_dups;
+          templates::Dimension<DIMENSION_TYPE> dimension;
+          std::tie(allow_dups, dimension) = domain;
+          if (allow_dups) {
+            return true;
+          } else {
+            // need to ensure that rapidcheck uniqueness can generate enough
+            // cases
+            return dimension.domain.num_cells() >= 256;
+          }
+        });
+
+    auto fragments = gen::mapcat(
+        domain, [](std::pair<bool, templates::Dimension<DIMENSION_TYPE>> arg) {
+          bool allow_dups;
+          templates::Dimension<DIMENSION_TYPE> dimension;
+          std::tie(allow_dups, dimension) = arg;
+
+          auto fragment = rc::make_fragment_1d<CoordType, int>(
+              allow_dups, dimension.domain);
+
+          return gen::tuple(
+              gen::just(allow_dups),
+              gen::just(dimension),
+              make_subarray_1d(dimension.domain),
+              gen::nonEmpty(
+                  gen::container<std::vector<templates::Fragment1D<int, int>>>(
+                      fragment)));
+        });
+
+    auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
+
+    return gen::apply(
+        [](std::tuple<
+               bool,
+               templates::Dimension<DIMENSION_TYPE>,
+               std::vector<templates::Domain<CoordType>>,
+               std::vector<templates::Fragment1D<int, int>>> fragments,
+           int num_user_cells) {
+          FxRun1D instance;
+          std::tie(
+              instance.array.allow_dups_,
+              instance.array.dimension_,
+              instance.subarray,
+              instance.fragments) = fragments;
+
+          instance.num_user_cells = num_user_cells;
+
+          return instance;
+        },
+        fragments,
+        num_user_cells);
+  }
+};
+
+/**
+ * @return a generator of valid subarrays within the domains `d1` and `d2`
+ */
+Gen<Subarray2DType<int, int>> make_subarray_2d(
+    const templates::Domain<int>& d1, const templates::Domain<int>& d2) {
+  // NB: multi-range subarray is not supported (yet?) for global order read
+
+  return gen::apply(
+      [](auto d1, auto d2) {
+        std::optional<typename decltype(d1)::ValueType> d1opt;
+        std::optional<typename decltype(d2)::ValueType> d2opt;
+        if (d1) {
+          d1opt.emplace(*d1);
+        }
+        if (d2) {
+          d2opt.emplace(*d2);
+        }
+        return std::vector<std::pair<decltype(d1opt), decltype(d2opt)>>{
+            std::make_pair(d1opt, d2opt)};
+      },
+      gen::maybe(rc::make_range<int>(d1)),
+      gen::maybe(rc::make_range(d2)));
+}
+
+template <>
+struct Arbitrary<FxRun2D> {
+  static Gen<FxRun2D> arbitrary() {
+    constexpr Datatype Dim0Type = Datatype::INT32;
+    constexpr Datatype Dim1Type = Datatype::INT32;
+    using Coord0Type = FxRun2D::Coord0Type;
+    using Coord1Type = FxRun2D::Coord1Type;
+
+    static_assert(std::is_same_v<
+                  tiledb::type::datatype_traits<Dim0Type>::value_type,
+                  Coord0Type>);
+    static_assert(std::is_same_v<
+                  tiledb::type::datatype_traits<Dim1Type>::value_type,
+                  Coord1Type>);
+
+    auto allow_dups = gen::arbitrary<bool>();
+    auto d0 = gen::arbitrary<templates::Dimension<Dim0Type>>();
+    auto d1 = gen::arbitrary<templates::Dimension<Dim1Type>>();
+
+    auto domain =
+        gen::suchThat(gen::tuple(allow_dups, d0, d1), [](const auto& arg) {
+          bool allow_dups;
+          templates::Dimension<Dim0Type> d0;
+          templates::Dimension<Dim1Type> d1;
+          std::tie(allow_dups, d0, d1) = arg;
+          if (allow_dups) {
+            return true;
+          } else {
+            // need to ensure that rapidcheck uniqueness can generate enough
+            // cases
+            return (d0.domain.num_cells() + d1.domain.num_cells()) >= 12;
+          }
+        });
+
+    auto fragments = gen::mapcat(domain, [](auto arg) {
+      bool allow_dups;
+      templates::Dimension<Dim0Type> d0;
+      templates::Dimension<Dim1Type> d1;
+      std::tie(allow_dups, d0, d1) = arg;
+
+      auto fragment = rc::make_fragment_2d<Coord0Type, Coord1Type, int>(
+          allow_dups, d0.domain, d1.domain);
+      return gen::tuple(
+          gen::just(allow_dups),
+          gen::just(d0),
+          gen::just(d1),
+          make_subarray_2d(d0.domain, d1.domain),
+          gen::nonEmpty(
+              gen::container<std::vector<FxRun2D::FragmentType>>(fragment)));
+    });
+
+    auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
+    auto tile_order = gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    auto cell_order = gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+
+    return gen::apply(
+        [](auto fragments,
+           int num_user_cells,
+           tiledb_layout_t tile_order,
+           tiledb_layout_t cell_order) {
+          FxRun2D instance;
+          std::tie(
+              instance.allow_dups,
+              instance.d1,
+              instance.d2,
+              instance.subarray,
+              instance.fragments) = fragments;
+
+          // TODO: capacity
+          instance.num_user_cells = num_user_cells;
+          instance.tile_order_ = tile_order;
+          instance.cell_order_ = cell_order;
+
+          return instance;
+        },
+        fragments,
+        num_user_cells,
+        tile_order,
+        cell_order);
+  }
+};
+
+/**
+ * Specializes `show` to print the final test case after shrinking
+ */
+template <>
+void show<FxRun1D>(const FxRun1D& instance, std::ostream& os) {
+  size_t f = 0;
+
+  os << "{" << std::endl;
+  os << "\t\"fragments\": [" << std::endl;
+  for (const auto& fragment : instance.fragments) {
+    os << "\t\t{" << std::endl;
+    os << "\t\t\t\"coords\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(fragment.dim_, os);
+    os << std::endl;
+    os << "\t\t\t], " << std::endl;
+    os << "\t\t\t\"atts\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(std::get<0>(fragment.atts_), os);
+    os << std::endl;
+    os << "\t\t\t] " << std::endl;
+    os << "\t\t}";
+    if ((f++) + 1 < instance.fragments.size()) {
+      os << ", " << std::endl;
+    } else {
+      os << std::endl;
+    }
+  }
+  os << "\t]," << std::endl;
+  os << "\t\"num_user_cells\": " << instance.num_user_cells << std::endl;
+  os << "\t\"array\": {" << std::endl;
+  os << "\t\t\"allow_dups\": " << instance.array.allow_dups_ << std::endl;
+  os << "\t\t\"domain\": [" << instance.array.dimension_.domain.lower_bound
+     << ", " << instance.array.dimension_.domain.upper_bound << "],"
+     << std::endl;
+  os << "\t\t\"extent\": " << instance.array.dimension_.extent << std::endl;
+  os << "\t}," << std::endl;
+  os << "\t\"memory\": {" << std::endl;
+  os << "\t\t\"total_budget\": " << instance.memory.total_budget_ << ", "
+     << std::endl;
+  os << "\t\t\"ratio_tile_ranges\": " << instance.memory.ratio_tile_ranges_
+     << ", " << std::endl;
+  os << "\t\t\"ratio_array_data\": " << instance.memory.ratio_array_data_
+     << ", " << std::endl;
+  os << "\t\t\"ratio_coords\": " << instance.memory.ratio_coords_ << std::endl;
+  os << "\t}" << std::endl;
+  os << "}";
+}
+
+/**
+ * Specializes `show` to print the final test case after shrinking
+ */
+template <>
+void show<FxRun2D>(const FxRun2D& instance, std::ostream& os) {
+  size_t f = 0;
+
+  os << "{" << std::endl;
+  os << "\t\"fragments\": [" << std::endl;
+  for (const auto& fragment : instance.fragments) {
+    os << "\t\t{" << std::endl;
+    os << "\t\t\t\"d1\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(fragment.d1_, os);
+    os << std::endl;
+    os << "\t\t\t\"d2\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(fragment.d2_, os);
+    os << std::endl;
+    os << "\t\t\t], " << std::endl;
+    os << "\t\t\t\"atts\": [" << std::endl;
+    os << "\t\t\t\t";
+    show(std::get<0>(fragment.atts_), os);
+    os << std::endl;
+    os << "\t\t\t] " << std::endl;
+    os << "\t\t}";
+    if ((f++) + 1 < instance.fragments.size()) {
+      os << ", " << std::endl;
+    } else {
+      os << std::endl;
+    }
+  }
+  os << "\t]," << std::endl;
+  os << "\t\"num_user_cells\": " << instance.num_user_cells << std::endl;
+  os << "\t\"array\": {" << std::endl;
+  os << "\t\t\"allow_dups\": " << instance.allow_dups << std::endl;
+  os << "\t\t\"dimensions\": [" << std::endl;
+  os << "\t\t\t{" << std::endl;
+  os << "\t\t\t\t\"domain\": [" << instance.d1.domain.lower_bound << ", "
+     << instance.d1.domain.upper_bound << "]," << std::endl;
+  os << "\t\t\t\t\"extent\": " << instance.d1.extent << "," << std::endl;
+  os << "\t\t\t}," << std::endl;
+  os << "\t\t\t{" << std::endl;
+  os << "\t\t\t\t\"domain\": [" << instance.d2.domain.lower_bound << ", "
+     << instance.d2.domain.upper_bound << "]," << std::endl;
+  os << "\t\t\t\t\"extent\": " << instance.d2.extent << "," << std::endl;
+  os << "\t\t\t}" << std::endl;
+  os << "\t\t]" << std::endl;
+
+  os << "\t}," << std::endl;
+  os << "\t\"memory\": {" << std::endl;
+  os << "\t\t\"total_budget\": " << instance.memory.total_budget_ << ", "
+     << std::endl;
+  os << "\t\t\"ratio_tile_ranges\": " << instance.memory.ratio_tile_ranges_
+     << ", " << std::endl;
+  os << "\t\t\"ratio_array_data\": " << instance.memory.ratio_array_data_
+     << ", " << std::endl;
+  os << "\t\t\"ratio_coords\": " << instance.memory.ratio_coords_ << std::endl;
+  os << "\t}" << std::endl;
+  os << "}";
+}
+
+}  // namespace rc
+
+/**
+ * Applies `::run` to completely arbitrary 1D input.
+ *
+ * `NonShrinking` is used because the shrink space is very large,
+ * and rapidcheck does not appear to give up. Hence if an instance
+ * fails, it will shrink for an arbitrarily long time, which is
+ * not appropriate for CI. If this happens, copy the seed and open a story,
+ * and whoever investigates can remove the `NonShrinking` part and let
+ * it run for... well who knows how long, really.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: rapidcheck 1d",
+    "[sparse-global-order][rest][rapidcheck]") {
+  SECTION("Rapidcheck") {
+    rc::prop(
+        "rapidcheck arbitrary 1d", [this](rc::NonShrinking<FxRun1D> instance) {
+          run<tiledb::test::AsserterRapidcheck, FxRun1D>(instance);
+        });
+  }
+}
+
+/**
+ * Applies `::run` to completely arbitrary 2D input.
+ *
+ * `NonShrinking` is used because the shrink space is very large,
+ * and rapidcheck does not appear to give up. Hence if an instance
+ * fails, it will shrink for an arbitrarily long time, which is
+ * not appropriate for CI. If this happens, copy the seed and open a story,
+ * and whoever investigates can remove the `NonShrinking` part and let
+ * it run for... well who knows how long, really.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: rapidcheck 2d",
+    "[sparse-global-order][rest][rapidcheck]") {
+  SECTION("rapidcheck") {
+    rc::prop(
+        "rapidcheck arbitrary 2d", [this](rc::NonShrinking<FxRun2D> instance) {
+          run<tiledb::test::AsserterRapidcheck, FxRun2D>(instance);
+        });
+  }
+}
+
+/**
+ * This test will fail if multi-range subarrays become supported
+ * for global order.
+ * When that happens please update all the related `NB` comments
+ * (and also feel free to remove this at that time).
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: multi-range subarray signal",
+    "[sparse-global-order]") {
+  using Asserter = AsserterCatch;
+
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  int coords[5];
+  uint64_t coords_size = sizeof(coords);
+
+  // Open array
+  CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
+
+  // Create query.
+  tiledb_query_t* query;
+  TRY(context(), tiledb_query_alloc(context(), array, TILEDB_READ, &query));
+  TRY(context(),
+      tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER));
+  TRY(context(),
+      tiledb_query_set_data_buffer(
+          context(), query, "d", &coords[0], &coords_size));
+
+  // Apply subarray
+  const int lower_1 = 4, upper_1 = 8;
+  const int lower_2 = 16, upper_2 = 32;
+  tiledb_subarray_t* sub;
+  TRY(context(), tiledb_subarray_alloc(context(), array, &sub));
+  TRY(context(),
+      tiledb_subarray_add_range(
+          context(), sub, 0, &lower_1, &upper_1, nullptr));
+  TRY(context(),
+      tiledb_subarray_add_range(
+          context(), sub, 0, &lower_2, &upper_2, nullptr));
+  TRY(context(), tiledb_query_set_subarray_t(context(), query, sub));
+  tiledb_subarray_free(&sub);
+
+  auto rc = tiledb_query_submit(context(), query);
+  tiledb_query_free(&query);
+  REQUIRE(rc == TILEDB_ERR);
+
+  tiledb_error_t* error = nullptr;
+  rc = tiledb_ctx_get_last_error(context(), &error);
+  REQUIRE(rc == TILEDB_OK);
+
+  const char* msg;
+  rc = tiledb_error_message(error, &msg);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(
+      std::string(msg).find(
+          "Multi-range reads are not supported on a global order query") !=
+      std::string::npos);
 }

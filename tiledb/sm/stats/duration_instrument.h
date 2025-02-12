@@ -46,7 +46,7 @@ class Stats;
 /**
  * This class contains a simple duration instrument.
  */
-template <class ParentType>
+template <class ParentType, typename StatNameType = std::string>
 class DurationInstrument {
  public:
   /* ****************************** */
@@ -54,7 +54,7 @@ class DurationInstrument {
   /* ****************************** */
 
   /** Constructs a duration instrument object. */
-  DurationInstrument(ParentType& parent_stats, const std::string stat_name)
+  DurationInstrument(ParentType& parent_stats, const StatNameType stat_name)
       : parent_stats_(parent_stats)
       , stat_name_(stat_name)
       , start_time_(std::chrono::high_resolution_clock::now()) {
@@ -75,7 +75,7 @@ class DurationInstrument {
   ParentType& parent_stats_;
 
   /** Stat to report duration for. */
-  const std::string stat_name_;
+  const StatNameType stat_name_;
 
   /** Start time of the duration instrument. */
   std::chrono::high_resolution_clock::time_point start_time_;

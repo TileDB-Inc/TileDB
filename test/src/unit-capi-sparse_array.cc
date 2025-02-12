@@ -37,6 +37,7 @@
 #endif
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
@@ -60,6 +61,8 @@
 #include <thread>
 
 using namespace tiledb::test;
+
+using Asserter = tiledb::test::AsserterCatch;
 
 const uint64_t DIM_DOMAIN[4] = {1, 4, 1, 4};
 
@@ -3380,8 +3383,7 @@ TEST_CASE_METHOD(
     CHECK(coords_dim2[1] == 4);
   }
 
-  rc = tiledb_query_submit(ctx_, query);
-  CHECK(rc == TILEDB_OK);
+  TRY(ctx_, tiledb_query_submit(ctx_, query));
   rc = tiledb_query_get_status(ctx_, query, &status);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(status == TILEDB_COMPLETED);
