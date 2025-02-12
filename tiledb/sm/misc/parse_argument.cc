@@ -241,12 +241,12 @@ std::string to_str(const void* value, Datatype type) {
   std::stringstream ss;
   switch (type) {
     case Datatype::INT8:
-      // cast to int32_t to avoid char conversion to ASCII
-      ss << *(const int32_t*)value;
+      // cast to int32 to avoid char conversion to ASCII
+      ss << static_cast<int32_t>(*(const int8_t*)value);
       break;
     case Datatype::UINT8:
-      // cast to uint32_t to avoid char conversion to ASCII
-      ss << *(const uint32_t*)value;
+      // cast to uint32 to avoid char conversion to ASCII
+      ss << static_cast<uint32_t>(*(const uint8_t*)value);
       break;
     case Datatype::INT16:
       ss << *(const int16_t*)value;
