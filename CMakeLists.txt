@@ -147,8 +147,9 @@ if (MSVC)
   #   C4456: local variable hiding previous local variable
   #   C4457: local variable hiding function parameter
   #   C4702: unreachable code
+  #   C4706: assignment within conditional expression
   #   C4800: warning implicit cast int to bool
-  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
+  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4706 /wd4800)
   # Warnings as errors:
   if (TILEDB_WERROR)
     add_compile_options(/WX)
