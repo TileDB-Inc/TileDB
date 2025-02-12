@@ -36,10 +36,10 @@ find_package(lz4 CONFIG)
 # Once lz4 releases a new version with these PRs merged, and vcpkg and Conda update to
 # that version, and we update our vcpkg baseline to that version, we can simplify this logic.
 if (lz4_FOUND)
-  if(TARGET LZ4::lz4)
-    add_library(lz4::lz4 ALIAS LZ4::lz4)
+  if(TARGET lz4::lz4)
     return()
-  elseif(TARGET lz4::lz4)
+  elseif(TARGET LZ4::lz4)
+    add_library(lz4::lz4 ALIAS LZ4::lz4)
     return()
   endif()
 endif()
