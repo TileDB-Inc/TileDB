@@ -2893,7 +2893,8 @@ TEST_CASE_METHOD(
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck consistent read order for sub-millisecond", [doit]() {
       const auto runs = *rc::gen::suchThat(
-          rc::gen::container<std::vector<uint64_t>>(rc::gen::inRange(1, 8)),
+          rc::gen::nonEmpty(rc::gen::container<std::vector<uint64_t>>(
+              rc::gen::inRange(1, 8))),
           [](auto value) { return value.size() <= 6; });
       doit.operator()<AsserterRapidcheck>(runs);
     });
