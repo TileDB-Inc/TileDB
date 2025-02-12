@@ -658,6 +658,9 @@ void CSparseGlobalOrderFx::write_fragment(
   ASSERTER(dim_num_cells == expect_num_cells);
   ASSERTER(att_num_cells == expect_num_cells);
 
+  rc = tiledb_query_finalize(context(), query);
+  ASSERTER("" == error_if_any(rc));
+
   // Clean up.
   tiledb_query_free(&query);
 }
