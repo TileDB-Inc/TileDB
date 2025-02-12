@@ -280,7 +280,7 @@ class Tile : public TileBase {
   }
 
   /** Returns the buffer that contains the filtered, on-disk format. */
-  inline char* filtered_data() {
+  inline char* filtered_data() const {
     std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
     if (filtered_data_io_task_.has_value()) {
       if (filtered_data_io_task_.value().valid()) {
