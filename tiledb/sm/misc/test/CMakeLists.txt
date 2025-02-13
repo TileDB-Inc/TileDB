@@ -36,6 +36,7 @@ commence(unit_test misc)
         unit_hilbert.cc
         unit_integral_type_casts.cc
         unit_math.cc
+        unit_parse_argument.cc
     )
 conclude(unit_test)
 

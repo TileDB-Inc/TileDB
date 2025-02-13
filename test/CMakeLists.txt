@@ -121,7 +121,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-enum-helpers.cc
   src/unit-filter-buffer.cc
   src/unit-global-order.cc
-  src/unit-parse-argument.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
