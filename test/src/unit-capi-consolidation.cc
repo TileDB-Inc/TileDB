@@ -7895,3 +7895,48 @@ TEST_CASE_METHOD(
     remove_sparse_array();
   }
 }
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidating empty array metadata",
+    "[capi][consolidation][array-meta][empty][sc-62900][non-rest]") {
+  remove_dense_array();
+  create_dense_array();
+
+  SECTION("Consolidate empty array metadata") {
+    // Configuration for consolidating array metadata
+    tiledb_config_t* config = nullptr;
+    tiledb_error_t* error = nullptr;
+    REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    int rc = tiledb_config_set(
+        config, "sm.consolidation.mode", "array_meta", &error);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(error == nullptr);
+
+    // Consolidate without having added any array meta
+    rc = tiledb_array_consolidate(ctx_, dense_array_uri_.c_str(), config);
+    CHECK(rc == TILEDB_OK);
+
+    // We must have 0 vacuum files after consolidation.
+    std::vector<std::string> array_meta_vac_files;
+    get_array_meta_vac_files_dense(array_meta_vac_files);
+    CHECK(array_meta_vac_files.size() == 0);
+
+    tiledb_array_t* array;
+    rc = tiledb_array_alloc(ctx_, dense_array_uri_.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Open for Delete, so that array metadata are loaded from disk, and check
+    // there is no failure
+    rc = tiledb_array_open(ctx_, array, TILEDB_DELETE);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Vacuum consolidated array metadata (empty) and check there is no failure
+    rc = tiledb_config_set(config, "sm.vacuum.mode", "array_meta", &error);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(error == nullptr);
+    rc = tiledb_array_vacuum(ctx_, dense_array_uri_.c_str(), config);
+    CHECK(rc == TILEDB_OK);
+  }
+}

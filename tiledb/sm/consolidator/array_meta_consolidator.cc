@@ -80,6 +80,12 @@ Status ArrayMetaConsolidator::consolidate(
       encryption_key,
       key_length));
 
+  // Check if there's actually more than 1 file to consolidate
+  auto& metadata_r = array_for_reads.metadata();
+  if (metadata_r.loaded_metadata_uris().size() <= 1) {
+    return Status::Ok();
+  }
+
   // Open array for writing
   Array array_for_writes(resources_, array_uri);
   RETURN_NOT_OK_ELSE(
@@ -88,7 +94,6 @@ Status ArrayMetaConsolidator::consolidate(
       throw_if_not_ok(array_for_reads.close()));
 
   // Copy-assign the read metadata into the metadata of the array for writes
-  auto& metadata_r = array_for_reads.metadata();
   array_for_writes.opened_array()->metadata() = metadata_r;
   URI new_uri = metadata_r.get_uri(array_uri);
   const auto& to_vacuum = metadata_r.loaded_metadata_uris();
