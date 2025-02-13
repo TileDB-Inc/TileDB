@@ -196,26 +196,9 @@ if [ "${linkage}" = "shared" ] && [ "${enable_static_tiledb}" = "ON" ]; then
     die "cannot specify both --linkage=shared and --enable-static-tiledb"
 fi
 
-# Check clang compiler
-if [[ x"${CC}" = x"" ]]; then
-    CC=gcc
-fi
-
-if [[ x"${CXX}" = x"" ]]; then
-    CXX=g++
-fi
-
-cmake=`which cmake`
-
-if [[ ! -x ${cmake} ]]; then
-    die "cannot find cmake"
-fi
-
 # Configure
-${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
+cmake -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_INSTALL_PREFIX="${prefix_dirs}" \
-    -DCMAKE_C_COMPILER="${CC}" \
-    -DCMAKE_CXX_COMPILER="${CXX}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
     -DBUILD_SHARED_LIBS=${build_shared_libs} \
     -DTILEDB_ASSERTIONS=${tiledb_assertions} \
