@@ -30,13 +30,13 @@
  * This file contains the implementation of the HeapProfiler class.
  */
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 
 #include "tiledb/common/heap_profiler.h"
 
-namespace tiledb {
-namespace common {
+namespace tiledb::common {
 
 HeapProfiler heap_profiler;
 
@@ -332,5 +332,4 @@ void HeapProfiler::dump_internal() {
     file_stream.close();
 }
 
-}  // namespace common
-}  // namespace tiledb
+}  // namespace tiledb::common
