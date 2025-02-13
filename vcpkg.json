@@ -8,6 +8,7 @@
             "name": "openssl",
             "platform": "!windows"
         },
+        "reflectcpp",
         "spdlog",
         "zlib",
         "zstd"

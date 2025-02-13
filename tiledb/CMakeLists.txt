@@ -580,6 +580,7 @@ find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Zstd MODULE REQUIRED)
 find_package(LibMagic MODULE REQUIRED)
+find_package(reflectcpp REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
@@ -588,6 +589,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     ZLIB::ZLIB
     ${ZSTD_TARGET}
     libmagic
+    reflectcpp::reflectcpp
 )
 
 if(TILEDB_WEBP)
