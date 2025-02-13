@@ -281,12 +281,15 @@ void ResultTile::wait_all_tiles(
   for (auto& at : tiles) {
     const auto& tile_tuple = at.second;
     if (tile_tuple.has_value()) {
-      tile_tuple.value().fixed_tile().data();
+      // Wait for the fixed tile i/o to be done
+      tile_tuple.value().fixed_tile().filtered_data();
       if (tile_tuple.value().var_tile_opt().has_value()) {
-        tile_tuple.value().var_tile_opt().value().data();
+        // Wait for the var tile i/o to be done
+        tile_tuple.value().var_tile_opt().value().filtered_data();
       }
       if (tile_tuple.value().validity_tile_opt().has_value()) {
-        tile_tuple.value().validity_tile_opt().value().data();
+        // Wait for the validity tile i/o to be done
+        tile_tuple.value().validity_tile_opt().value().filtered_data();
       }
     }
   }
