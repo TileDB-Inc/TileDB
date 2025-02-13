@@ -66,7 +66,7 @@ class AttributeExperimental {
    * @return std::optional<std::string> The enumeration name if one exists.
    */
   static std::optional<std::string> get_enumeration_name(
-      const Context& ctx, Attribute& attribute) {
+      const Context& ctx, const Attribute& attribute) {
     // Get the enumeration name as a string handle
     tiledb_string_t* enmr_name;
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
