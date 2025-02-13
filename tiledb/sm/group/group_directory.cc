@@ -273,7 +273,7 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
     throw_if_not_ok(vfs_.file_size(vac_files[i], &size));
     std::string names;
     names.resize(size);
-    throw_if_not_ok(vfs_.read(vac_files[i], 0, &names[0], size));
+    throw_if_not_ok(vfs_.read(vac_files[i], 0, &names[0], size, false));
     std::stringstream ss(names);
     bool vacuum_vac_file = true;
     for (std::string uri_str; std::getline(ss, uri_str);) {
