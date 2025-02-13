@@ -273,15 +273,38 @@ struct GlobalOrderResultCoords
    * @param cmp The comparator class. Calling cmp(current, next) should tell us
    * if current is bigger or equal than next in the order of the comparator.
    *
+   * @postcondition this method has no side-effects if it is never called
+   * concurrently by multiple threads. If multiple threads call this method
+   * concurrently then results may be undefined.
+   *
    * @return Max slab length that can be merged for this tile.
    */
   template <GlobalCellComparable GlobalOrderLowerBound, class CompType>
   uint64_t max_slab_length(
-      const GlobalOrderLowerBound& next, const CompType& cmp) {
+      const GlobalOrderLowerBound& next, const CompType& cmp) const {
     uint64_t cell_num = base::tile_->cell_num();
 
-    // Store the original position.
-    uint64_t original_pos = base::pos_;
+    // The method is declared `const` to signal to the caller that it has
+    // no side effects. Internally we will modify `base::pos_` because
+    // the comparators need that to get the right coordinate.
+    // This is only a problem if this is called concurrently (and even then
+    // it would have been a problem anyway).
+    uint64_t* basepos = const_cast<uint64_t*>(&this->pos_);
+
+    // Store the original position and use RAII to ensure we restore it.
+    struct BasePosGuard {
+      uint64_t* basepos;
+      uint64_t original_pos;
+
+      BasePosGuard(uint64_t* basepos)
+          : basepos(basepos)
+          , original_pos(*basepos) {
+      }
+      ~BasePosGuard() {
+        *basepos = original_pos;
+      }
+    };
+    BasePosGuard savepos(basepos);
 
     // Max posssible position in the tile. Defaults to the last cell in the
     // tile, it might get updated if we have a bitmap below.
@@ -295,7 +318,7 @@ struct GlobalOrderResultCoords
     if (base::tile_->has_post_dedup_bmp()) {
       auto& bitmap = base::tile_->post_dedup_bitmap();
       // Current cell is not in the bitmap.
-      if (!bitmap[base::pos_]) {
+      if (!bitmap[*basepos]) {
         return 0;
       }
 
@@ -303,13 +326,13 @@ struct GlobalOrderResultCoords
       // return 1.
       const bool overlapping_ranges = std::is_same<BitmapType, uint64_t>::value;
       if constexpr (overlapping_ranges) {
-        if (bitmap[base::pos_] != 1) {
+        if (bitmap[*basepos] != 1) {
           return 1;
         }
       }
 
       // Compute max position.
-      max_pos = base::pos_;
+      max_pos = *basepos;
       while (max_pos < cell_num && bitmap[max_pos] == 1) {
         max_pos++;
       }
@@ -327,14 +350,13 @@ struct GlobalOrderResultCoords
     // ones. It will never take more comparisons that a linear search.
     uint64_t power_of_two = 1;
     bool return_max = true;
-    while (return_max && base::pos_ != max_pos) {
-      base::pos_ = std::min(original_pos + power_of_two, max_pos);
+    while (return_max && *basepos != max_pos) {
+      *basepos = std::min(savepos.original_pos + power_of_two, max_pos);
       if (cmp(*this, next)) {
         return_max = false;
 
         // If we exit on first comprarison, return 1.
         if (power_of_two == 1) {
-          base::pos_ = original_pos;
           return 1;
         }
       } else {
@@ -346,28 +368,26 @@ struct GlobalOrderResultCoords
     // cell until max_pos is smaller than next. So return the maximum cell
     // slab.
     if (return_max) {
-      base::pos_ = original_pos;
-      return max_pos - original_pos + 1;
+      return max_pos - savepos.original_pos + 1;
     }
 
     // We have an upper bound and a lower bound for our search with our power
     // of twos found above. Run a bisection search in between to find the exact
     // cell.
     uint64_t left = power_of_two / 2;
-    uint64_t right = base::pos_;
+    uint64_t right = *basepos;
     while (left != right - 1) {
       // Check against mid.
-      base::pos_ = left + (right - left) / 2;
+      *basepos = left + (right - left) / 2;
       if (!cmp(*this, next)) {
-        left = base::pos_;
+        left = *basepos;
       } else {
-        right = base::pos_;
+        right = *basepos;
       }
     }
 
     // Restore the original position and return.
-    base::pos_ = original_pos;
-    return left - original_pos + 1;
+    return left - savepos.original_pos + 1;
   }
 
  private:
