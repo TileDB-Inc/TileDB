@@ -227,7 +227,8 @@ struct GlobalOrderResultCoords
    *
    * @return Max slab length that can be merged for this tile.
    */
-  uint64_t max_slab_length() {
+  uint64_t max_slab_length(
+      uint64_t upper_bound = std::numeric_limits<uint64_t>::max()) const {
     uint64_t ret = 1;
     uint64_t cell_num = base::tile_->cell_num();
     uint64_t next_pos = base::pos_ + 1;
@@ -250,13 +251,14 @@ struct GlobalOrderResultCoords
 
       // With bitmap, find the longest contiguous set of bits in the bitmap
       // from the current position.
-      while (next_pos < cell_num && bitmap[next_pos] == 1) {
+      while (ret < upper_bound && next_pos < cell_num &&
+             bitmap[next_pos] == 1) {
         next_pos++;
         ret++;
       }
     } else {
       // No bitmap, add all cells from current position.
-      ret = cell_num - base::pos_;
+      ret = std::min(upper_bound, cell_num - base::pos_);
     }
 
     return ret;
