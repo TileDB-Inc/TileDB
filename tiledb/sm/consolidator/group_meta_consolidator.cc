@@ -83,8 +83,13 @@ Status GroupMetaConsolidator::consolidate(
     group_for_reads.close();
   }
 
-  // Copy-assign the read metadata into the metadata of the group for writes
+  // Check if there's actually more than 1 file to consolidate
   auto metadata_r = group_for_reads.metadata();
+  if (metadata_r->loaded_metadata_uris().size() <= 1) {
+    return Status::Ok();
+  }
+
+  // Copy-assign the read metadata into the metadata of the group for writes
   *(group_for_writes.metadata()) = *metadata_r;
   URI new_uri = metadata_r->get_uri(group_uri);
   const auto& to_vacuum = metadata_r->loaded_metadata_uris();

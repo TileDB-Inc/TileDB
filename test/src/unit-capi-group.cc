@@ -1083,6 +1083,19 @@ TEST_CASE_METHOD(
   tiledb::sm::URI group_uri(temp_dir + "group");
   REQUIRE(tiledb_group_create(ctx_, group_uri.c_str()) == TILEDB_OK);
 
+  // Consolidate empty metadata
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+  int rc = tiledb_group_consolidate_metadata(ctx_, group_uri.c_str(), cfg);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check no .vac file is created
+  std::vector<std::string> group_empty_meta_vac_files;
+  get_meta_vac_files(group_uri, group_empty_meta_vac_files);
+  CHECK(group_empty_meta_vac_files.size() == 0);
+  tiledb_config_free(&cfg);
+
   write_group_metadata(group_uri.c_str());
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
   auto start = tiledb::sm::utils::time::timestamp_now_ms();
@@ -1100,7 +1113,7 @@ TEST_CASE_METHOD(
   CHECK(group_meta_files.size() == 4);
 
   uint64_t file_size = 0;
-  int rc = tiledb_vfs_file_size(
+  rc = tiledb_vfs_file_size(
       ctx_, vfs_, group_meta_vac_files[0].c_str(), &file_size);
   REQUIRE(rc == TILEDB_OK);
 
