@@ -2860,12 +2860,12 @@ TEST_CASE_METHOD(
     std::optional<int> attvalue;
 
     for (uint64_t f = 0; f < num_fragments; f++) {
-      int dim1[instance.fragments.size() * 4] = {0};
-      int dim2[instance.fragments.size() * 4] = {0};
-      int atts[instance.fragments.size() * 4] = {0};
-      uint64_t dim1_size = sizeof(dim1);
-      uint64_t dim2_size = sizeof(dim2);
-      uint64_t atts_size = sizeof(atts);
+      std::vector<int> dim1(instance.fragments.size() * 4);
+      std::vector<int> dim2(instance.fragments.size() * 4);
+      std::vector<int> atts(instance.fragments.size() * 4);
+      uint64_t dim1_size = sizeof(int) * dim1.size();
+      uint64_t dim2_size = sizeof(int) * dim2.size();
+      uint64_t atts_size = sizeof(int) * atts.size();
 
       tiledb_query_t* query;
       TRY(context(), tiledb_query_alloc(context(), array, TILEDB_READ, &query));
@@ -2873,13 +2873,13 @@ TEST_CASE_METHOD(
           tiledb_query_set_layout(context(), query, TILEDB_GLOBAL_ORDER));
       TRY(context(),
           tiledb_query_set_data_buffer(
-              context(), query, "d1", dim1, &dim1_size));
+              context(), query, "d1", dim1.data(), &dim1_size));
       TRY(context(),
           tiledb_query_set_data_buffer(
-              context(), query, "d2", dim2, &dim2_size));
+              context(), query, "d2", dim2.data(), &dim2_size));
       TRY(context(),
           tiledb_query_set_data_buffer(
-              context(), query, "a1", atts, &atts_size));
+              context(), query, "a1", atts.data(), &atts_size));
 
       tiledb_query_status_t status;
       TRY(context(), tiledb_query_submit(context(), query));
