@@ -273,8 +273,15 @@ void Posix::read(
   auto path = uri.to_path();
   uint64_t file_size;
   this->file_size(URI(path), &file_size);
-  if (offset + nbytes > file_size)
-    throw IOError("Cannot read from file; Read exceeds file size");
+  if (offset + nbytes > file_size) {
+    throw IOError(fmt::format(
+        "Cannot read from file; Read exceeds file size: offset {}, nbytes {}, "
+        "file_size {}, URI {}",
+        offset,
+        nbytes,
+        file_size,
+        uri.to_path()));
+  }
 
   // Open file
   int fd = open(path.c_str(), O_RDONLY);
