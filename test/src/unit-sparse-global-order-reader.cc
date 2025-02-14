@@ -31,6 +31,7 @@
  */
 
 #include "test/support/rapidcheck/array_templates.h"
+#include "test/support/rapidcheck/query_condition.h"
 #include "test/support/src/array_helpers.h"
 #include "test/support/src/array_templates.h"
 #include "test/support/src/error_helpers.h"
@@ -43,6 +44,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 
@@ -126,6 +128,9 @@ struct FxRun1D {
   // support multi-range subarray
   std::vector<templates::Domain<int>> subarray;
 
+  // for evaluating
+  std::optional<tdb_unique_ptr<tiledb::sm::ASTNode>> condition;
+
   DefaultArray1DConfig array;
   SparseGlobalOrderReaderMemoryBudget memory;
 
@@ -163,7 +168,7 @@ struct FxRun1D {
   /**
    * @return true if the cell at index `record` in `fragment` passes `subarray`
    */
-  bool accept(const FragmentType& fragment, int record) const {
+  bool pass_subarray(const FragmentType& fragment, int record) const {
     if (subarray.empty()) {
       return true;
     } else {
@@ -229,6 +234,7 @@ struct FxRun2D {
       std::optional<templates::Domain<Coord0Type>>,
       std::optional<templates::Domain<Coord1Type>>>>
       subarray;
+  std::optional<tdb_unique_ptr<tiledb::sm::ASTNode>> condition;
 
   size_t num_user_cells;
 
@@ -316,8 +322,8 @@ struct FxRun2D {
   /**
    * @return true if the cell at index `record` in `fragment` passes `subarray`
    */
-  bool accept(const FragmentType& fragment, int record) const {
-    if (subarray.empty()) {
+  bool pass_subarray(const FragmentType& fragment, int record) const {
+    if (subarray.empty() && !condition.has_value()) {
       return true;
     } else {
       const int r = fragment.d1_[record], c = fragment.d2_[record];
@@ -406,10 +412,12 @@ concept InstanceType = requires(const T& instance) {
   instance.fragments;
   instance.memory;
   instance.subarray;
+  instance.condition;
   instance.dimensions();
   instance.attributes();
 
-  // also `accept(Self::FragmentType, int)`, unclear how to represent that
+  // also `pass_subarray(Self::FragmentType, int)`, unclear how to represent
+  // that
 };
 
 struct CSparseGlobalOrderFx {
@@ -1267,7 +1275,8 @@ TEST_CASE_METHOD(
                   size_t num_user_cells,
                   int extent,
                   const std::vector<templates::Domain<int>>& subarray =
-                      std::vector<templates::Domain<int>>()) {
+                      std::vector<templates::Domain<int>>(),
+                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
     // Write a fragment F0 with unique coordinates
     templates::Fragment1D<int, int> fragment0;
     fragment0.dim_.resize(fragment_size);
@@ -1303,12 +1312,22 @@ TEST_CASE_METHOD(
     instance.memory.ratio_array_data_ = "0.5";
 
     instance.subarray = subarray;
+    if (condition) {
+      instance.condition.emplace(std::move(condition));
+    }
 
     run<Asserter, FxRun1D>(instance);
   };
 
   SECTION("Example") {
     doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2);
+  }
+
+  SECTION("Condition") {
+    int value = 110;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::GE));
+    doit.operator()<tiledb::test::AsserterCatch>(200, 8, 2, {}, std::move(qc));
   }
 
   SECTION("Shrink", "Some examples found by rapidcheck") {
@@ -1327,8 +1346,13 @@ TEST_CASE_METHOD(
       const int extent = *rc::gen::inRange(1, 200);
       const auto subarray =
           *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+      auto condition = *rc::make_query_condition<FxRun1D::FragmentType>();
       doit.operator()<tiledb::test::AsserterRapidcheck>(
-          fragment_size, num_user_cells, extent, subarray);
+          fragment_size,
+          num_user_cells,
+          extent,
+          subarray,
+          std::move(condition));
     });
   }
 }
@@ -2866,15 +2890,26 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
     auto expect_dimensions = expect.dimensions();
     auto expect_attributes = expect.attributes();
 
-    if (instance.subarray.empty()) {
+    if (instance.subarray.empty() && !instance.condition.has_value()) {
       stdx::extend(expect_dimensions, fragment.dimensions());
       stdx::extend(expect_attributes, fragment.attributes());
     } else {
       std::vector<uint64_t> accept;
+      std::optional<
+          templates::QueryConditionEvalSchema<typename Instance::FragmentType>>
+          eval;
+      if (instance.condition.has_value()) {
+        eval.emplace();
+      }
       for (uint64_t i = 0; i < fragment.size(); i++) {
-        if (instance.accept(fragment, i)) {
-          accept.push_back(i);
+        if (!instance.pass_subarray(fragment, i)) {
+          continue;
         }
+        if (eval.has_value() &&
+            !eval->test(fragment, i, *instance.condition.value().get())) {
+          continue;
+        }
+        accept.push_back(i);
       }
       const auto fdimensions =
           stdx::select(fragment.dimensions(), std::span(accept));
@@ -2939,6 +2974,13 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
         instance.template apply_subarray<Asserter>(context(), subarray));
     TRY(context(), tiledb_query_set_subarray_t(context(), query, subarray));
     tiledb_subarray_free(&subarray);
+  }
+
+  if (instance.condition.has_value()) {
+    tiledb::sm::QueryCondition qc(instance.condition->get()->clone());
+    const auto rc =
+        query->query_->set_condition(qc);  // SAFETY: this performs a deep copy
+    ASSERTER(rc.to_string() == "Ok");
   }
 
   // Prepare output buffer
