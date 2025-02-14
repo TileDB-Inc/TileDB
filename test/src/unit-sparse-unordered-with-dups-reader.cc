@@ -1064,9 +1064,12 @@ TEST_CASE_METHOD(
 
     if (one_frag) {
       CHECK(1 == loop_num->second);
-    } else {
-      CHECK(9 == loop_num->second);
     }
+    /**
+     * We can't do a similar check for multiple fragments as it is architecture
+     * dependent how many tiles fit in the memory budget. And thus also
+     * architecture dependent as to how many internal loops we have.
+     */
 
     // Try to read multiple frags without partial tile offset reading. Should
     // fail
