@@ -80,7 +80,7 @@ namespace rc {
 template <typename T>
 struct NonShrinking {
   NonShrinking(T&& inner)
-      : inner_(inner) {
+      : inner_(std::move(inner)) {
   }
 
   T inner_;
