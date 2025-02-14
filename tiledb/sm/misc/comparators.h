@@ -231,18 +231,6 @@ class ResultTileCmpBase : public CellCmpBase {
     } else if (a.tile_->frag_idx() > b.tile_->frag_idx()) {
       return -1;
     } else {
-      /*
-      const FragmentID id_a((*frag_md_)[a.tile_->frag_idx()]->fragment_uri());
-      const FragmentID id_b((*frag_md_)[b.tile_->frag_idx()]->fragment_uri());
-
-      if (id_a.name() < id_b.name()) {
-        return 1;
-      } else if (id_a.name() == id_b.name()) {
-        return 0;
-      } else {
-        return -1;
-      }
-      */
       return 0;
     }
   }
