@@ -33,13 +33,13 @@
 #ifndef TILEDB_DURATION_INSTRUMENT_H
 #define TILEDB_DURATION_INSTRUMENT_H
 
+#include <chrono>
+
 #include "tiledb/common/common.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace stats {
+namespace tiledb::sm::stats {
 
 class Stats;
 
@@ -81,8 +81,6 @@ class DurationInstrument {
   std::chrono::high_resolution_clock::time_point start_time_;
 };
 
-}  // namespace stats
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::stats
 
 #endif  // TILEDB_DURATION_INSTRUMENT_H
