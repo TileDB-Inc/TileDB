@@ -114,7 +114,6 @@ FragmentID::FragmentID(const std::string_view& path)
 }
 
 std::string_view FragmentID::uuid() const {
-  // Set UUID
   constexpr size_t UUID_PRINT_LEN = 32;
   if (name_version_ == FragmentNameVersion::ONE) {
     return std::string_view(

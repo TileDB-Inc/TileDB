@@ -2784,11 +2784,16 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 }
 
+/**
+ * Test that we get "repeatable reads" when multiple fragments
+ * are written at the same timestamp.  That is, for a fixed array
+ * A, reading the contents of A should always produce the same results.
+ */
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
-    "Sparse global order reader: consistent read order for sub-millisecond "
+    "Sparse global order reader: repeatable reads for sub-millisecond "
     "fragments",
-    "[sparse-global-order][sub-millisecond]") {
+    "[sparse-global-order][sub-millisecond][rest][rapidcheck]") {
   auto doit = [this]<typename Asserter>(
                   const std::vector<uint64_t> fragment_same_timestamp_runs) {
     uint64_t num_fragments = 0;
@@ -2799,6 +2804,15 @@ TEST_CASE_METHOD(
     FxRun2D instance;
     instance.allow_dups = false;
 
+    /*
+     * Each fragment (T, F) writes its fragment index into both (1, 1)
+     * and (2 + T, 2 + F).
+     *
+     * (1, 1) is the coordinate where they must be de-duplicated.
+     * The other coordinate is useful for ensuring that all fragments
+     * are included in the result set, and for debugging by inspecting tile
+     * MBRs.
+     */
     for (uint64_t t = 0; t < fragment_same_timestamp_runs.size(); t++) {
       for (uint64_t f = 0; f < fragment_same_timestamp_runs[t]; f++) {
         FxRun2D::FragmentType fragment;
@@ -2816,6 +2830,11 @@ TEST_CASE_METHOD(
 
     DeleteArrayGuard arrayguard(context(), array_name_.c_str());
 
+    /*
+     * Write each fragment at a fixed timestamp.
+     * Opening for write at timestamp `t` causes all the fragments to have `t`
+     * as their start and end timestamps.
+     */
     for (uint64_t i = 0, t = 0; t < fragment_same_timestamp_runs.size(); t++) {
       tiledb_array_t* raw_array;
       TRY(context(),
@@ -2834,7 +2853,12 @@ TEST_CASE_METHOD(
 
     CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
+    // Value from (1, 1).
+    // Because all the writes are at the same timestamp we make no guarantee
+    // of ordering. `attvalue` may be the value from any of the fragments,
+    // but it must be the same value each time we read.
     std::optional<int> attvalue;
+
     for (uint64_t f = 0; f < num_fragments; f++) {
       int dim1[instance.fragments.size() * 4] = {0};
       int dim2[instance.fragments.size() * 4] = {0};
