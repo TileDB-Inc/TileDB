@@ -184,6 +184,12 @@ template <tiledb::sm::Datatype DATATYPE>
 struct Dimension {
   using value_type = tiledb::type::datatype_traits<DATATYPE>::value_type;
 
+  Dimension() = default;
+  Dimension(Domain<value_type> domain, value_type extent)
+      : domain(domain)
+      , extent(extent) {
+  }
+
   Domain<value_type> domain;
   value_type extent;
 };
@@ -283,6 +289,8 @@ struct QueryConditionEvalSchema {
  */
 template <DimensionType D, AttributeType... Att>
 struct Fragment1D {
+  using DimensionType = D;
+
   std::vector<D> dim_;
   std::tuple<std::vector<Att>...> atts_;
 

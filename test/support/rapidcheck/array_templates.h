@@ -128,7 +128,7 @@ struct Arbitrary<templates::Dimension<D>> {
         });
 
     return gen::map(tup, [](std::pair<Domain<CoordType>, CoordType> tup) {
-      return templates::Dimension<D>{.domain = tup.first, .extent = tup.second};
+      return templates::Dimension<D>(tup.first, tup.second);
     });
   }
 };
