@@ -1393,7 +1393,8 @@ TEST_CASE_METHOD(
   auto doit = [this]<typename Asserter>(
                   size_t fragment_size,
                   size_t num_user_cells,
-                  const std::vector<templates::Domain<int>>& subarray = {}) {
+                  const std::vector<templates::Domain<int>>& subarray = {},
+                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
     templates::Fragment1D<int, int> fragment0;
     templates::Fragment1D<int, int> fragment1;
 
@@ -1424,6 +1425,9 @@ TEST_CASE_METHOD(
     instance.fragments.push_back(fragment1);
     instance.num_user_cells = num_user_cells;
     instance.subarray = subarray;
+    if (condition) {
+      instance.condition.emplace(std::move(condition));
+    }
     instance.memory.total_budget_ = "20000";
     instance.memory.ratio_array_data_ = "0.5";
     instance.array.allow_dups_ = true;
@@ -1441,8 +1445,9 @@ TEST_CASE_METHOD(
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
       const auto subarray =
           *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+      auto condition = *rc::make_query_condition<FxRun1D<>::FragmentType>();
       doit.operator()<tiledb::test::AsserterRapidcheck>(
-          fragment_size, num_user_cells, subarray);
+          fragment_size, num_user_cells, subarray, std::move(condition));
     });
   }
 }
@@ -1485,7 +1490,8 @@ TEST_CASE_METHOD(
                   size_t num_user_cells,
                   bool allow_dups,
                   const std::vector<templates::Domain<int>>& subarray =
-                      std::vector<templates::Domain<int>>()) {
+                      std::vector<templates::Domain<int>>(),
+                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
     const uint64_t total_budget = 100000;
     const double ratio_coords = 0.2;
 
@@ -1494,6 +1500,9 @@ TEST_CASE_METHOD(
     instance.array.dimension_.extent = int(num_fragments) * 2;
     instance.array.allow_dups_ = allow_dups;
     instance.subarray = subarray;
+    if (condition) {
+      instance.condition.emplace(std::move(condition));
+    }
 
     instance.memory.total_budget_ = std::to_string(total_budget);
     instance.memory.ratio_coords_ = std::to_string(ratio_coords);
@@ -1545,8 +1554,14 @@ TEST_CASE_METHOD(
       const bool allow_dups = *rc::gen::arbitrary<bool>();
       const auto subarray =
           *rc::make_subarray_1d(templates::Domain<int>(1, 200));
+      auto condition = *rc::make_query_condition<FxRun1D<>::FragmentType>();
       doit.operator()<tiledb::test::AsserterRapidcheck>(
-          num_fragments, fragment_size, num_user_cells, allow_dups, subarray);
+          num_fragments,
+          fragment_size,
+          num_user_cells,
+          allow_dups,
+          subarray,
+          std::move(condition));
     });
   }
 }
@@ -1577,7 +1592,8 @@ TEST_CASE_METHOD(
                   size_t num_user_cells,
                   size_t tile_capacity,
                   bool allow_dups,
-                  const Subarray1DType<int>& subarray = {}) {
+                  const Subarray1DType<int>& subarray = {},
+                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
     FxRun1D instance;
     instance.num_user_cells = num_user_cells;
     instance.subarray = subarray;
@@ -1588,6 +1604,9 @@ TEST_CASE_METHOD(
     instance.array.dimension_.domain.lower_bound = 0;
     instance.array.dimension_.domain.upper_bound =
         static_cast<int>(num_fragments * fragment_size);
+    if (condition) {
+      instance.condition.emplace(std::move(condition));
+    }
 
     for (size_t f = 0; f < num_fragments; f++) {
       templates::Fragment1D<int, int> fragment;
@@ -1622,13 +1641,15 @@ TEST_CASE_METHOD(
       const bool allow_dups = *rc::gen::arbitrary<bool>();
       const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(
           0, static_cast<int>(num_fragments * fragment_size)));
+      auto condition = *rc::make_query_condition<FxRun1D<>::FragmentType>();
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           num_fragments,
           fragment_size,
           num_user_cells,
           tile_capacity,
           allow_dups,
-          subarray);
+          subarray,
+          std::move(condition));
     });
   }
 }
@@ -1687,7 +1708,8 @@ TEST_CASE_METHOD(
                   size_t num_user_cells,
                   size_t tile_capacity,
                   bool allow_dups,
-                  const Subarray2DType<int, int>& subarray = {}) {
+                  const Subarray2DType<int, int>& subarray = {},
+                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
     FxRun2D instance;
     instance.num_user_cells = num_user_cells;
     instance.capacity = tile_capacity;
@@ -1695,6 +1717,9 @@ TEST_CASE_METHOD(
     instance.tile_order_ = tile_order;
     instance.cell_order_ = cell_order;
     instance.subarray = subarray;
+    if (condition) {
+      instance.condition.emplace(std::move(condition));
+    }
 
     auto row = [&](size_t f, size_t i) -> int {
       return 1 +
@@ -1784,6 +1809,7 @@ TEST_CASE_METHOD(
       const size_t tile_capacity = *rc::gen::inRange(4, 32);
       const auto subarray = *rc::make_subarray_2d(
           templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
+      auto condition = *rc::make_query_condition<FxRun2D::FragmentType>();
 
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           tile_order,
@@ -1793,7 +1819,8 @@ TEST_CASE_METHOD(
           num_user_cells,
           tile_capacity,
           allow_dups,
-          subarray);
+          subarray,
+          std::move(condition));
     });
   }
 }
@@ -1838,7 +1865,8 @@ TEST_CASE_METHOD(
                   size_t num_fragments,
                   size_t tile_capacity,
                   bool allow_dups,
-                  const Subarray2DType<int, int>& subarray = {}) {
+                  const Subarray2DType<int, int>& subarray = {},
+                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
     FxRun2D instance;
     instance.tile_order_ = tile_order;
     instance.cell_order_ = cell_order;
@@ -1848,6 +1876,9 @@ TEST_CASE_METHOD(
     instance.allow_dups = allow_dups;
     instance.num_user_cells = num_user_cells;
     instance.subarray = subarray;
+    if (condition) {
+      instance.condition.emplace(std::move(condition));
+    }
 
     const size_t tile_size_estimate = (1600 + instance.capacity * sizeof(int));
     const double coords_ratio =
@@ -1936,6 +1967,7 @@ TEST_CASE_METHOD(
       const bool allow_dups = *rc::gen::arbitrary<bool>();
       const auto subarray = *rc::make_subarray_2d(
           templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
+      auto condition = *rc::make_query_condition<FxRun2D::FragmentType>();
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           tile_order,
           cell_order,
@@ -1944,7 +1976,8 @@ TEST_CASE_METHOD(
           num_fragments,
           tile_capacity,
           allow_dups,
-          subarray);
+          subarray,
+          std::move(condition));
     });
   }
 }
@@ -3268,10 +3301,15 @@ struct Arbitrary<FxRun1D<DIMENSION_TYPE, ATTR_TYPES...>> {
 
           instance.num_user_cells = num_user_cells;
 
+          if (condition) {
+            instance.condition.emplace(std::move(condition));
+          }
+
           return instance;
         },
         fragments,
-        num_user_cells);
+        num_user_cells,
+        condition);
   }
 };
 
@@ -3353,12 +3391,14 @@ struct Arbitrary<FxRun2D> {
     auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
     auto tile_order = gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     auto cell_order = gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+    auto condition = make_query_condition<FxRun2D::FragmentType>();
 
     return gen::apply(
         [](auto fragments,
            int num_user_cells,
            tiledb_layout_t tile_order,
-           tiledb_layout_t cell_order) {
+           tiledb_layout_t cell_order,
+           tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
           FxRun2D instance;
           std::tie(
               instance.allow_dups,
@@ -3372,12 +3412,17 @@ struct Arbitrary<FxRun2D> {
           instance.tile_order_ = tile_order;
           instance.cell_order_ = cell_order;
 
+          if (condition) {
+            instance.condition.emplace(std::move(condition));
+          }
+
           return instance;
         },
         fragments,
         num_user_cells,
         tile_order,
-        cell_order);
+        cell_order,
+        condition);
   }
 };
 
