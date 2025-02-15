@@ -1982,6 +1982,105 @@ TEST_CASE_METHOD(
   }
 }
 
+/**
+ * Test usage patterns where each fragment is kind of an entire data set,
+ * e.g. one fragment for observations from Monday, one for observations
+ * from Tuesday, one for observations from Wednesday, etc.
+ *
+ * This sort of usage is not really what fragments and time travel were
+ * originally built to support, but it is more flexible with respect
+ * to schema evolution than having time as another dimension would be,
+ * and as such at least one prominent customer is known to do this.
+ *
+ * What this looks like is each fragment covering essentially the entire
+ * domain of the array.  Queries which open the array at a specific
+ * timestamp are nice and easy; queries which do not open with a specific
+ * timestamp are sad because they do tons of work to de-duplicate.
+ */
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: fragment full copy 1d",
+    "[sparse-global-order][rest][rapidcheck]") {
+  using FxRunType = FxRun1D<Datatype::INT64, Datatype::INT64, Datatype::UINT8>;
+  auto doit = [this]<typename Asserter>(
+                  size_t num_fragments,
+                  templates::Dimension<Datatype::INT64> dimension,
+                  const Subarray1DType<int64_t>& subarray = {},
+                  tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
+    const size_t fragment_size =
+        std::min<size_t>(1024 * 32, dimension.domain.num_cells());
+
+    FxRunType instance;
+    instance.num_user_cells = 1024 * 1024;
+    instance.array.dimension_ = dimension;
+    instance.memory.total_budget_ = std::to_string(1024 * 1024 * 4);
+    instance.array.capacity_ = std::min<uint64_t>(
+        1024, std::max<uint64_t>(16, dimension.domain.num_cells() / 1024));
+    instance.array.allow_dups_ = false;
+    instance.subarray = subarray;
+    if (condition) {
+      instance.condition.emplace(std::move(condition));
+    }
+
+    for (size_t f = 0; f < num_fragments; f++) {
+      FxRunType::FragmentType fragment;
+
+      fragment.dim_.resize(fragment_size);
+      std::iota(
+          fragment.dim_.begin(),
+          fragment.dim_.end(),
+          dimension.domain.lower_bound);
+
+      std::get<0>(fragment.atts_).resize(fragment.dim_.size());
+      std::iota(
+          std::get<0>(fragment.atts_).begin(),
+          std::get<0>(fragment.atts_).end(),
+          0);
+
+      std::get<1>(fragment.atts_).resize(fragment.dim_.size());
+      std::iota(
+          std::get<1>(fragment.atts_).begin(),
+          std::get<1>(fragment.atts_).end(),
+          f * fragment.dim_.size());
+
+      instance.fragments.push_back(fragment);
+    }
+
+    run<Asserter>(instance);
+  };
+
+  SECTION("Example") {
+    templates::Domain<int64_t> domain(0, 262143);
+    doit.operator()<AsserterCatch>(
+        8, templates::Dimension<Datatype::INT64>(domain, 1024));
+  }
+
+  SECTION("Condition") {
+    int64_t value = 524288;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "a1", &value, sizeof(value), tiledb::sm::QueryConditionOp::GE));
+    templates::Domain<int64_t> domain(0, 262143);
+    doit.operator()<AsserterCatch>(
+        8,
+        templates::Dimension<Datatype::INT64>(domain, 1024),
+        {},
+        std::move(qc));
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("rapidcheck fragment full copy 1d", [doit]() {
+      const size_t num_fragments = *rc::gen::inRange(2, 16);
+      const auto dimension =
+          *rc::gen::arbitrary<templates::Dimension<FxRunType::DimensionType>>();
+      const auto subarray = *rc::make_subarray_1d(dimension.domain);
+      auto condition = *rc::make_query_condition<FxRunType::FragmentType>();
+
+      doit.operator()<AsserterRapidcheck>(
+          num_fragments, dimension, subarray, std::move(condition));
+    });
+  }
+}
+
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: tile offsets budget exceeded",
