@@ -1363,7 +1363,9 @@ TEST_CASE_METHOD(
       const int extent = *rc::gen::inRange(1, 200);
       const auto subarray =
           *rc::make_subarray_1d(templates::Domain<int>(1, 200));
-      auto condition = *rc::make_query_condition<FxRun1D<>::FragmentType>();
+      auto condition =
+          *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
+              templates::Domain<int>(1, 200), templates::Domain<int>(0, 400)));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           fragment_size,
           num_user_cells,
@@ -1445,7 +1447,9 @@ TEST_CASE_METHOD(
       const size_t num_user_cells = *rc::gen::inRange(1, 1024);
       const auto subarray =
           *rc::make_subarray_1d(templates::Domain<int>(1, 200));
-      auto condition = *rc::make_query_condition<FxRun1D<>::FragmentType>();
+      auto condition =
+          *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
+              templates::Domain<int>(1, 200), templates::Domain<int>(1, 200)));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           fragment_size, num_user_cells, subarray, std::move(condition));
     });
@@ -1554,7 +1558,10 @@ TEST_CASE_METHOD(
       const bool allow_dups = *rc::gen::arbitrary<bool>();
       const auto subarray =
           *rc::make_subarray_1d(templates::Domain<int>(1, 200));
-      auto condition = *rc::make_query_condition<FxRun1D<>::FragmentType>();
+      auto condition =
+          *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
+              templates::Domain<int>(1, 200),
+              templates::Domain<int>(0, num_fragments * fragment_size)));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           num_fragments,
           fragment_size,
@@ -1641,7 +1648,10 @@ TEST_CASE_METHOD(
       const bool allow_dups = *rc::gen::arbitrary<bool>();
       const auto subarray = *rc::make_subarray_1d(templates::Domain<int>(
           0, static_cast<int>(num_fragments * fragment_size)));
-      auto condition = *rc::make_query_condition<FxRun1D<>::FragmentType>();
+      auto condition =
+          *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
+              templates::Domain<int>(1, 200),
+              templates::Domain<int>(0, num_fragments * fragment_size)));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           num_fragments,
           fragment_size,
@@ -1809,7 +1819,11 @@ TEST_CASE_METHOD(
       const size_t tile_capacity = *rc::gen::inRange(4, 32);
       const auto subarray = *rc::make_subarray_2d(
           templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
-      auto condition = *rc::make_query_condition<FxRun2D::FragmentType>();
+      auto condition =
+          *rc::make_query_condition<FxRun2D::FragmentType>(std::make_tuple(
+              templates::Domain<int>(1, 200),
+              templates::Domain<int>(1, 200),
+              templates::Domain<int>(0, (num_fragments + 1) * fragment_size)));
 
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           tile_order,
@@ -1857,6 +1871,8 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew 2d merge bound",
     "[sparse-global-order][rest][rapidcheck]") {
+  constexpr size_t d1_extent = 4;
+  constexpr size_t d2_extent = 4;
   auto doit = [this]<typename Asserter>(
                   tiledb_layout_t tile_order,
                   tiledb_layout_t cell_order,
@@ -1870,8 +1886,8 @@ TEST_CASE_METHOD(
     FxRun2D instance;
     instance.tile_order_ = tile_order;
     instance.cell_order_ = cell_order;
-    instance.d1.extent = 4;
-    instance.d2.extent = 4;
+    instance.d1.extent = d1_extent;
+    instance.d2.extent = d2_extent;
     instance.capacity = tile_capacity;
     instance.allow_dups = allow_dups;
     instance.num_user_cells = num_user_cells;
@@ -1955,7 +1971,7 @@ TEST_CASE_METHOD(
   }
 
   SECTION("Rapidcheck") {
-    rc::prop("rapidcheck fragment skew", [doit]() {
+    rc::prop("rapidcheck fragment skew 2d merge bound", [doit]() {
       const auto tile_order =
           *rc::gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
       const auto cell_order =
@@ -1967,7 +1983,12 @@ TEST_CASE_METHOD(
       const bool allow_dups = *rc::gen::arbitrary<bool>();
       const auto subarray = *rc::make_subarray_2d(
           templates::Domain<int>(1, 200), templates::Domain<int>(1, 200));
-      auto condition = *rc::make_query_condition<FxRun2D::FragmentType>();
+      auto condition =
+          *rc::make_query_condition<FxRun2D::FragmentType>(std::make_tuple(
+              templates::Domain<int>(1, 200),
+              templates::Domain<int>(1, 200),
+              templates::Domain<int>(
+                  0, 2 * num_fragments * d1_extent * d2_extent)));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           tile_order,
           cell_order,
@@ -2073,7 +2094,17 @@ TEST_CASE_METHOD(
       const auto dimension =
           *rc::gen::arbitrary<templates::Dimension<FxRunType::DimensionType>>();
       const auto subarray = *rc::make_subarray_1d(dimension.domain);
-      auto condition = *rc::make_query_condition<FxRunType::FragmentType>();
+
+      const auto domains = std::make_tuple(
+          dimension.domain,
+          templates::Domain<int64_t>(0, dimension.domain.upper_bound),
+          templates::Domain<uint8_t>(
+              0,
+              static_cast<uint8_t>(std::min<int64_t>(
+                  std::numeric_limits<uint8_t>::max(),
+                  dimension.domain.upper_bound * num_fragments))));
+      auto condition =
+          *rc::make_query_condition<FxRunType::FragmentType>(domains);
 
       doit.operator()<AsserterRapidcheck>(
           num_fragments, dimension, subarray, std::move(condition));
@@ -3370,45 +3401,41 @@ struct Arbitrary<FxRun1D<DIMENSION_TYPE, ATTR_TYPES...>> {
               typename tiledb::type::datatype_traits<
                   ATTR_TYPES>::value_type...>(allow_dups, dimension.domain);
 
+          auto fragments = gen::nonEmpty(
+              gen::container<std::vector<typename value_type::FragmentType>>(
+                  fragment));
+
+          auto fragments_and_qc = gen::mapcat(fragments, [](auto fragments) {
+            auto condition =
+                make_query_condition<typename value_type::FragmentType>(
+                    field_domains(fragments));
+            return gen::pair(gen::just(fragments), condition);
+          });
+
           return gen::tuple(
               gen::just(allow_dups),
               gen::just(dimension),
               make_subarray_1d(dimension.domain),
-              gen::nonEmpty(gen::container<
-                            std::vector<typename value_type::FragmentType>>(
-                  fragment)));
+              fragments_and_qc);
         });
 
     auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
-    auto condition =
-        rc::make_query_condition<typename value_type::FragmentType>();
 
     return gen::apply(
-        [](std::tuple<
-               bool,
-               templates::Dimension<DIMENSION_TYPE>,
-               std::vector<templates::Domain<typename value_type::CoordType>>,
-               std::vector<typename value_type::FragmentType>> fragments,
-           int num_user_cells,
-           tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
+        [](auto fragments, int num_user_cells) {
           FxRun1D instance;
-          std::tie(
-              instance.array.allow_dups_,
-              instance.array.dimension_,
-              instance.subarray,
-              instance.fragments) = fragments;
+          instance.array.allow_dups_ = std::get<0>(fragments);
+          instance.array.dimension_ = std::get<1>(fragments);
+          instance.subarray = std::get<2>(fragments);
+          instance.fragments = std::move(std::get<3>(fragments).first);
+          instance.condition = std::move(std::get<3>(fragments).second);
 
           instance.num_user_cells = num_user_cells;
-
-          if (condition) {
-            instance.condition.emplace(std::move(condition));
-          }
 
           return instance;
         },
         fragments,
-        num_user_cells,
-        condition);
+        num_user_cells);
   }
 };
 
@@ -3478,50 +3505,52 @@ struct Arbitrary<FxRun2D> {
 
       auto fragment = rc::make_fragment_2d<Coord0Type, Coord1Type, int>(
           allow_dups, d0.domain, d1.domain);
+
+      auto fragments = gen::nonEmpty(
+          gen::container<std::vector<FxRun2D::FragmentType>>(fragment));
+
+      auto fragments_and_qc = gen::mapcat(fragments, [](auto fragments) {
+        auto condition = make_query_condition<FxRun2D::FragmentType>(
+            field_domains(fragments));
+        return gen::pair(gen::just(fragments), condition);
+      });
+
       return gen::tuple(
           gen::just(allow_dups),
           gen::just(d0),
           gen::just(d1),
           make_subarray_2d(d0.domain, d1.domain),
-          gen::nonEmpty(
-              gen::container<std::vector<FxRun2D::FragmentType>>(fragment)));
+          fragments_and_qc);
     });
 
     auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
     auto tile_order = gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
     auto cell_order = gen::element(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-    auto condition = make_query_condition<FxRun2D::FragmentType>();
 
     return gen::apply(
         [](auto fragments,
            int num_user_cells,
            tiledb_layout_t tile_order,
-           tiledb_layout_t cell_order,
-           tdb_unique_ptr<tiledb::sm::ASTNode> condition) {
+           tiledb_layout_t cell_order) {
           FxRun2D instance;
-          std::tie(
-              instance.allow_dups,
-              instance.d1,
-              instance.d2,
-              instance.subarray,
-              instance.fragments) = fragments;
+          instance.allow_dups = std::get<0>(fragments);
+          instance.d1 = std::get<1>(fragments);
+          instance.d2 = std::get<2>(fragments);
+          instance.subarray = std::get<3>(fragments);
+          instance.fragments = std::move(std::get<4>(fragments).first);
+          instance.condition = std::move(std::get<4>(fragments).second);
 
           // TODO: capacity
           instance.num_user_cells = num_user_cells;
           instance.tile_order_ = tile_order;
           instance.cell_order_ = cell_order;
 
-          if (condition) {
-            instance.condition.emplace(std::move(condition));
-          }
-
           return instance;
         },
         fragments,
         num_user_cells,
         tile_order,
-        cell_order,
-        condition);
+        cell_order);
   }
 };
 
