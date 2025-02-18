@@ -37,6 +37,59 @@
 
 using namespace tiledb::sm;
 
+namespace tiledb::sm {
+
+class WhiteboxFragmentID : public FragmentID {
+ public:
+  using FragmentID::FragmentID;
+
+  /** The version in which the first word of the UUID became an equal timestamp
+   * tie-breaker */
+  static constexpr format_version_t SUBMILLI_PREFIX_FORMAT_VERSION = 22;
+
+  /**
+   * Accessor to the fragment UUID.
+   */
+  std::string_view uuid() const;
+
+  /**
+   * Accessor to the "sub-millisecond counter" component of the fragment UUID.
+   *
+   * Returns `std::nullopt` if the array format version cannot guarantee
+   * that the submillisecond counter value is present.
+   */
+  std::optional<std::string_view> submillisecond_counter() const;
+};
+
+std::string_view WhiteboxFragmentID::uuid() const {
+  constexpr size_t UUID_PRINT_LEN = 32;
+  if (name_version_ == FragmentNameVersion::ONE) {
+    return std::string_view(
+        name_.begin() + strlen("__"),
+        name_.begin() + strlen("__") + UUID_PRINT_LEN);
+  } else if (name_version_ == FragmentNameVersion::TWO) {
+    return std::string_view(name_.end() - UUID_PRINT_LEN, name_.end());
+  } else {
+    const size_t trailing = name_.substr(name_.find_last_of('_')).size();
+    return std::string_view(
+        name_.end() - UUID_PRINT_LEN - trailing, name_.end() - trailing);
+  }
+}
+
+std::optional<std::string_view> WhiteboxFragmentID::submillisecond_counter()
+    const {
+  // version was bumped to 21 in Nov 2023
+  // sub-millisecond was added in #4800 (8ea85dcfc), March 2024
+  // version was bumped to 22 in June 2024
+  if (array_format_version() < SUBMILLI_PREFIX_FORMAT_VERSION) {
+    return std::nullopt;
+  }
+
+  return std::string_view(uuid().data(), 8);
+}
+
+}  // namespace tiledb::sm
+
 const std::string frag_dir{"file:///"};
 struct failure_test_case {
   std::string path;
@@ -205,7 +258,7 @@ TEST_CASE("FragmentID: Valid uris", "[fragment_id][valid_uri]") {
   for (auto success_case : success_cases) {
     auto uri = success_case.path;
     DYNAMIC_SECTION(uri) {
-      FragmentID f{uri};
+      WhiteboxFragmentID f{uri};
       CHECK(f.name() == success_case.name);
       CHECK(f.timestamp_range() == success_case.timestamp_range);
       CHECK(f.name_version() == success_case.name_version);

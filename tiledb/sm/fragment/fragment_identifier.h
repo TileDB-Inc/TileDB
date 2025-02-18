@@ -72,6 +72,12 @@ enum class FragmentNameVersion { ONE, TWO, THREE };
  */
 class FragmentID : private URI {
  private:
+  /**
+   * Whitebox testing class provides additional accessors to components of the
+   * fragment name.
+   */
+  friend class WhiteboxFragmentID;
+
   /** The fragment name. */
   std::string name_;
   /** The timestamp range. */
@@ -84,10 +90,6 @@ class FragmentID : private URI {
   format_version_t array_format_version_;
 
  public:
-  /** The version in which the first word of the UUID became an equal timestamp
-   * tie-breaker */
-  static constexpr format_version_t SUBMILLI_PREFIX_FORMAT_VERSION = 22;
-
   /** Constructor. */
   FragmentID(const URI& uri);
 
@@ -110,19 +112,6 @@ class FragmentID : private URI {
   inline timestamp_range_type timestamp_range() const {
     return timestamp_range_;
   }
-
-  /**
-   * Accessor to the fragment UUID.
-   */
-  std::string_view uuid() const;
-
-  /**
-   * Accessor to the "sub-millisecond counter" component of the fragment UUID.
-   *
-   * Returns `std::nullopt` if the array format version cannot guarantee
-   * that the submillisecond counter value is present.
-   */
-  std::optional<std::string_view> submillisecond_counter() const;
 
   /**
    * Accessor to the fragment name version.
