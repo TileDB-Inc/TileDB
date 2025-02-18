@@ -1561,7 +1561,8 @@ TEST_CASE_METHOD(
       auto condition =
           *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
               templates::Domain<int>(1, 200),
-              templates::Domain<int>(0, num_fragments * fragment_size)));
+              templates::Domain<int>(
+                  0, static_cast<int>(num_fragments * fragment_size))));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           num_fragments,
           fragment_size,
@@ -1651,7 +1652,8 @@ TEST_CASE_METHOD(
       auto condition =
           *rc::make_query_condition<FxRun1D<>::FragmentType>(std::make_tuple(
               templates::Domain<int>(1, 200),
-              templates::Domain<int>(0, num_fragments * fragment_size)));
+              templates::Domain<int>(
+                  0, static_cast<int>(num_fragments * fragment_size))));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           num_fragments,
           fragment_size,
@@ -1823,7 +1825,8 @@ TEST_CASE_METHOD(
           *rc::make_query_condition<FxRun2D::FragmentType>(std::make_tuple(
               templates::Domain<int>(1, 200),
               templates::Domain<int>(1, 200),
-              templates::Domain<int>(0, (num_fragments + 1) * fragment_size)));
+              templates::Domain<int>(
+                  0, static_cast<int>((num_fragments + 1) * fragment_size))));
 
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           tile_order,
@@ -1988,7 +1991,9 @@ TEST_CASE_METHOD(
               templates::Domain<int>(1, 200),
               templates::Domain<int>(1, 200),
               templates::Domain<int>(
-                  0, 2 * num_fragments * d1_extent * d2_extent)));
+                  0,
+                  static_cast<int>(
+                      2 * num_fragments * d1_extent * d2_extent))));
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           tile_order,
           cell_order,
