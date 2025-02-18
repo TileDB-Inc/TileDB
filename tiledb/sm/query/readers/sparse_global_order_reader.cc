@@ -1855,9 +1855,12 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
           }
         } else {
           if (add_next_cell_result == AddNextCellResult::NeedMoreTiles) {
-            // e.g. because we were hitting duplicate coords and reached
-            // the end of a tile while de-duplicating
-            length = 1;
+            // This happens while de-duplicating, so this `NeedMoreTiles`
+            // came from a different fragment. Emit this coordinate
+            // (if it qualifies) but not anything past it, since they might
+            // need to be de-duplicated with coordinates from the next round
+            // of tiles.
+            length = to_process.max_slab_length(1);
           } else if (tile_queue.empty()) {
             length = to_process.max_slab_length();
           } else {

@@ -35,11 +35,15 @@
 #define TILEDB_ARRAY_TEMPLATES_H
 
 #include "tiledb.h"
+#include "tiledb/common/unreachable.h"
+#include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/type/datatype_traits.h"
 #include "tiledb/type/range/range.h"
 
 #include <test/support/assert_helpers.h>
 #include <test/support/src/error_helpers.h>
+#include <test/support/stdx/fold.h>
+#include <test/support/stdx/tuple.h>
 
 #include <algorithm>
 #include <concepts>
@@ -180,8 +184,104 @@ template <tiledb::sm::Datatype DATATYPE>
 struct Dimension {
   using value_type = tiledb::type::datatype_traits<DATATYPE>::value_type;
 
+  Dimension() = default;
+  Dimension(Domain<value_type> domain, value_type extent)
+      : domain(domain)
+      , extent(extent) {
+  }
+
   Domain<value_type> domain;
   value_type extent;
+};
+
+/**
+ * Schema of named fields for simple evaluation of a query condition
+ */
+template <FragmentType Fragment>
+struct QueryConditionEvalSchema {
+  std::vector<std::string> field_names_;
+
+  QueryConditionEvalSchema() {
+    stdx::decay_tuple<decltype(std::declval<Fragment>().dimensions())> dims;
+    stdx::decay_tuple<decltype(std::declval<Fragment>().attributes())> atts;
+
+    auto add_dimension = [&](auto) {
+      field_names_.push_back("d" + std::to_string(field_names_.size() + 1));
+    };
+    auto add_attribute = [&](auto) {
+      field_names_.push_back(
+          "a" +
+          std::to_string(
+              field_names_.size() + 1 - std::tuple_size<decltype(dims)>()));
+    };
+
+    std::apply([&](const auto... dim) { (add_dimension(dim), ...); }, dims);
+    std::apply([&](const auto... att) { (add_attribute(att), ...); }, atts);
+  }
+
+  /**
+   * @return true if a value passes a simple condition
+   */
+  template <AttributeType T>
+  static bool test(const T& value, const tiledb::sm::ASTNode& condition) {
+    switch (condition.get_op()) {
+      case tiledb::sm::QueryConditionOp::LT:
+        return value < *static_cast<const T*>(condition.get_value_ptr());
+      case tiledb::sm::QueryConditionOp::LE:
+        return value <= *static_cast<const T*>(condition.get_value_ptr());
+      case tiledb::sm::QueryConditionOp::GT:
+        return value > *static_cast<const T*>(condition.get_value_ptr());
+      case tiledb::sm::QueryConditionOp::GE:
+        return value >= *static_cast<const T*>(condition.get_value_ptr());
+      case tiledb::sm::QueryConditionOp::EQ:
+        return value == *static_cast<const T*>(condition.get_value_ptr());
+      case tiledb::sm::QueryConditionOp::NE:
+        return value != *static_cast<const T*>(condition.get_value_ptr());
+      case tiledb::sm::QueryConditionOp::IN:
+      case tiledb::sm::QueryConditionOp::NOT_IN:
+      case tiledb::sm::QueryConditionOp::ALWAYS_TRUE:
+      case tiledb::sm::QueryConditionOp::ALWAYS_FALSE:
+      default:
+        // not implemented here, lazy
+        stdx::unreachable();
+    }
+  }
+
+  /**
+   * @return true if `record` passes a simple (i.e. non-combination) query
+   * condition
+   */
+  bool test(
+      const Fragment& fragment,
+      int record,
+      const tiledb::sm::ASTNode& condition) const {
+    using DimensionTuple = stdx::decay_tuple<decltype(fragment.dimensions())>;
+    using AttributeTuple = stdx::decay_tuple<decltype(fragment.attributes())>;
+
+    const auto dim_eval = stdx::fold_sequence(
+        std::make_index_sequence<std::tuple_size_v<DimensionTuple>>{},
+        [&](auto i) {
+          if (condition.get_field_name() == field_names_[i]) {
+            return test(std::get<i>(fragment.dimensions())[record], condition);
+          } else {
+            return false;
+          }
+        });
+    if (dim_eval) {
+      return dim_eval;
+    }
+
+    return stdx::fold_sequence(
+        std::make_index_sequence<std::tuple_size_v<AttributeTuple>>{},
+        [&](auto i) {
+          if (condition.get_field_name() ==
+              field_names_[i + std::tuple_size_v<DimensionTuple>]) {
+            return test(std::get<i>(fragment.attributes())[record], condition);
+          } else {
+            return false;
+          }
+        });
+  }
 };
 
 /**
@@ -189,6 +289,8 @@ struct Dimension {
  */
 template <DimensionType D, AttributeType... Att>
 struct Fragment1D {
+  using DimensionType = D;
+
   std::vector<D> dim_;
   std::tuple<std::vector<Att>...> atts_;
 

@@ -49,10 +49,10 @@ struct Arbitrary<templates::Domain<D>> {
     // NB: `gen::inRange` is exclusive at the upper end but tiledb domain is
     // inclusive. So we have to use `int64_t` to avoid overflow.
     auto bounds = gen::mapcat(gen::arbitrary<D>(), [](D lb) {
-      if (std::is_same<D, int64_t>::value) {
+      if constexpr (std::is_same<D, int64_t>::value) {
         return gen::pair(
             gen::just(lb), gen::inRange(lb, std::numeric_limits<D>::max()));
-      } else if (std::is_same<D, uint64_t>::value) {
+      } else if constexpr (std::is_same<D, uint64_t>::value) {
         return gen::pair(
             gen::just(lb), gen::inRange(lb, std::numeric_limits<D>::max()));
       } else {
@@ -128,7 +128,7 @@ struct Arbitrary<templates::Dimension<D>> {
         });
 
     return gen::map(tup, [](std::pair<Domain<CoordType>, CoordType> tup) {
-      return templates::Dimension<D>{.domain = tup.first, .extent = tup.second};
+      return templates::Dimension<D>(tup.first, tup.second);
     });
   }
 };
