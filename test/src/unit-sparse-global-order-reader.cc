@@ -2027,7 +2027,7 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment full copy 1d",
     "[sparse-global-order][rest][rapidcheck]") {
-  using FxRunType = FxRun1D<Datatype::INT64, Datatype::INT64, Datatype::UINT8>;
+  using FxRunType = FxRun1D<Datatype::INT64, Datatype::INT64, Datatype::UINT16>;
   auto doit = [this]<typename Asserter>(
                   size_t num_fragments,
                   templates::Dimension<Datatype::INT64> dimension,
@@ -2067,7 +2067,7 @@ TEST_CASE_METHOD(
       std::iota(
           std::get<1>(fragment.atts_).begin(),
           std::get<1>(fragment.atts_).end(),
-          f * fragment.dim_.size());
+          static_cast<uint16_t>(f * fragment.dim_.size()));
 
       instance.fragments.push_back(fragment);
     }
@@ -2103,10 +2103,10 @@ TEST_CASE_METHOD(
       const auto domains = std::make_tuple(
           dimension.domain,
           templates::Domain<int64_t>(0, dimension.domain.upper_bound),
-          templates::Domain<uint8_t>(
+          templates::Domain<uint16_t>(
               0,
-              static_cast<uint8_t>(std::min<int64_t>(
-                  std::numeric_limits<uint8_t>::max(),
+              static_cast<uint16_t>(std::min<int64_t>(
+                  std::numeric_limits<uint16_t>::max(),
                   dimension.domain.upper_bound * num_fragments))));
       auto condition =
           *rc::make_query_condition<FxRunType::FragmentType>(domains);
