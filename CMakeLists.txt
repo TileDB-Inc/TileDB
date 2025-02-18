@@ -169,12 +169,13 @@ if (MSVC)
   add_compile_definitions("$<IF:$<CONFIG:Debug>,DEBUG,NDEBUG>")
   add_compile_options(
     # /Od: Disable optimizations
-    # /bigobj: Increase number of sections in .obj file
-    "$<$<CONFIG:Debug>:/Od;/bigobj>"
+    "$<$<CONFIG:Debug>:/Od>"
     # /Ox: Enable most speed optimizations
     "$<$<CONFIG:Release,RelWithDebInfo>:/Ox>"
     # /Zi: Generate debug info in a separate .pdb file
     "$<$<CONFIG:Debug,RelWithDebInfo>:/Zi>")
+  # /bigobj: increase number of sections in .obj file
+  add_compile_options("/bigobj")
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
