@@ -79,8 +79,10 @@ namespace rc {
  */
 template <typename T>
 struct NonShrinking {
+  using value_type = T;
+
   NonShrinking(T&& inner)
-      : inner_(inner) {
+      : inner_(std::move(inner)) {
   }
 
   T inner_;

@@ -76,6 +76,19 @@ std::tuple<const std::decay_t<Ts>&...> reference_tuple(
       tuple);
 }
 
+// Helper function used for `value_type_tuple_t`.
+// This is not intended to be evaluated.
+template <typename... Ts>
+constexpr std::tuple<typename Ts::value_type...> value_type_tuple_f(
+    std::tuple<Ts...> tuple);
+
+/**
+ * Maps a tuple type `(T1, T2, ...)`,
+ * to a type `(T1::value_type, T2::value_type, ...)`.
+ */
+template <typename Tuple>
+using value_type_tuple_t = decltype(value_type_tuple_f(std::declval<Tuple>()));
+
 /**
  * Given two tuples of vectors, extends each of the fields of `dst`
  * with the corresponding field of `src`.
@@ -131,4 +144,5 @@ std::tuple<std::vector<Ts>...> select(
 }
 
 }  // namespace stdx
+
 #endif
