@@ -220,18 +220,14 @@ class ResultTileCmpBase : public CellCmpBase {
    */
   template <class RCTypeL, class RCTypeR>
   int compare_timestamps(const RCTypeL& a, const RCTypeR& b) const {
-    const auto ts_a = get_timestamp(a);
-    const auto ts_b = get_timestamp(b);
+    const auto ts_a = std::make_tuple(get_timestamp(a), a.tile_->frag_idx());
+    const auto ts_b = std::make_tuple(get_timestamp(b), b.tile_->frag_idx());
     if (ts_a < ts_b) {
       return 1;
-    } else if (ts_a > ts_b) {
-      return -1;
-    } else if (a.tile_->frag_idx() < b.tile_->frag_idx()) {
-      return 1;
-    } else if (a.tile_->frag_idx() > b.tile_->frag_idx()) {
-      return -1;
-    } else {
+    } else if (ts_a == ts_b) {
       return 0;
+    } else {
+      return -1;
     }
   }
 
