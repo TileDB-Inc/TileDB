@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2024 TileDB, Inc.
+# Copyright (c) 2017-2025 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -133,6 +133,7 @@ endif()
 set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/filesystem/home_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/platform/cert_file.cc
@@ -279,6 +280,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/writer_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query_plan/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_profile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_directory.cc
