@@ -215,6 +215,68 @@ class GlobalOrderWriter : public WriterBase {
    */
   uint64_t current_fragment_size_;
 
+  /**
+   * Counter for the number of rows written. This is used only when the
+   * consolidation produces more than one fragment in Dense arrays
+   */
+  uint64_t rows_written_;
+
+  /**
+   * Counter for the number of tiles in the current row written. This is used
+   * only when the consolidation produces more than one fragment in Dense arrays
+   */
+  uint64_t tiles_in_current_row_;
+
+  /**
+   * The total number of tiles written. It is only being used when consolidating
+   * Dense arrays where the result can not fit into one fragment only
+   */
+  uint64_t tiles_written_;
+
+  /**
+   * The number of tiles written since the last Dense domain split. It is only
+   * being used when consolidating Dense arrays where the result can not fit
+   * into one fragment only
+   */
+  uint64_t tiles_since_last_split_;
+
+  /**
+   * This is the unsigned start for the dim range in case we need to split in
+   * multiple fragments in Dense arrays
+   */
+  uint64_t u_start_;
+
+  /**
+   * This is the start for the dim range in case we need to split in multiple
+   * fragments in Dense arrays
+   */
+  int64_t start_;
+
+  /**
+   * This is the unsigned start for the dim range in case we need to split in
+   * multiple fragments in Dense arrays
+   */
+  uint64_t u_end_;
+
+  /**
+   * This is the start for the dim range in case we need to split in multiple
+   * fragments in Dense arrays
+   */
+  int64_t end_;
+
+  /**
+   * NDRange in case we have a dense consolidation with split
+   */
+  NDRange nd_if_dense_split_;
+
+  /**
+   * True if we have made at least one split in the Dense consolidation. By
+   * split we mean a fragment split so the result of the consolidation if we
+   * have n fragments is not n+1 but n+m where m is the number of fragments
+   * created after consolidation
+   */
+  bool dense_with_split_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -384,6 +446,27 @@ class GlobalOrderWriter : public WriterBase {
       uint64_t start,
       uint64_t tile_num,
       tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles);
+
+  /**
+   * Create new ndranges by splitting the first dimension based on the number of
+   * tiles we need to write
+   * @param num The number of tiles we need to write.
+   * @param reached_end_of_fragment True if we have reached the end of the
+   * current frag
+   *
+   */
+  NDRange ndranges_after_split(
+      uint64_t num, uint64_t tile_num, bool& is_last_range);
+
+  /**
+   * Return the number of tiles a single row can hold. More specifically, the
+   * number of tiles all dimensions except the first can hold.
+   *
+   * @param domain The domain
+   *
+   * @return Number of tiles.
+   */
+  uint64_t num_tiles_per_row(const Domain& domain);
 
   /**
    * Close the current fragment and start a new one. The closed fragment will
