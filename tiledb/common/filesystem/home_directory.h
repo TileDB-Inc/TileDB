@@ -38,7 +38,12 @@
 
 namespace tiledb::common::filesystem {
 
-/** Standalone function which returns the path to user's home directory. */
+/**
+ * Standalone function which returns the path to user's home directory.
+ *
+ * @invariant `sudo` does not always preserve the path to `$HOME`. Rather than
+ * throw if the path does not exist, this API will return `std::nullopt`.
+ */
 std::optional<std::string> home_directory();
 
 class HomeDirectory {
