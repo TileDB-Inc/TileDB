@@ -160,14 +160,10 @@ TEST_CASE_METHOD(
   REQUIRE(data == final_values);
 }
 
-static void breakme() {
-}
-
 TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration API - Extend Var Size",
     "[enumeration][extend][var-size]") {
-  breakme();
   std::vector<std::string> init_values = {"fred", "wilma"};
   std::vector<std::string> add_values = {"barney", "betty"};
   std::vector<std::string> final_values = {"fred", "wilma", "barney", "betty"};
@@ -184,7 +180,6 @@ TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration API - Extend Non-Empty With All-Empty",
     "[enumeration][extend][all-empty]") {
-  breakme();
   std::vector<std::string> init_values = {"fred", "wilma"};
   std::vector<std::string> add_values = {""};
   std::vector<std::string> final_values = {"fred", "wilma", ""};
@@ -201,7 +196,6 @@ TEST_CASE_METHOD(
     CPPEnumerationFx,
     "CPP: Enumeration API - Extend All-Empty With Non-Empty",
     "[enumeration][extend][all-empty]") {
-  breakme();
   std::vector<std::string> init_values = {""};
   std::vector<std::string> add_values = {"abc", "def"};
   std::vector<std::string> final_values = {"", "abc", "def"};
