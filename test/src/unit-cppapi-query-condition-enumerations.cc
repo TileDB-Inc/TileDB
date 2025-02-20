@@ -547,7 +547,7 @@ TEST_CASE_METHOD(
   auto qc =
       QueryCondition::create(ctx_, "cell_type", std::string("fish"), TILEDB_NE);
   auto core_qc = qc.ptr().get()->query_condition_;
-  core_qc->rewrite_enumeration_conditions(core_array->array_schema_latest());
+  core_qc->rewrite_for_schema(core_array->array_schema_latest());
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Invalid negation of rewritten query.");
@@ -570,7 +570,7 @@ TEST_CASE_METHOD(
   auto qc =
       QueryCondition::create(ctx_, "cell_type", std::string("fish"), TILEDB_EQ);
   auto core_qc = qc.ptr().get()->query_condition_;
-  core_qc->rewrite_enumeration_conditions(core_array->array_schema_latest());
+  core_qc->rewrite_for_schema(core_array->array_schema_latest());
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Invalid negation of rewritten query.");
@@ -1148,7 +1148,7 @@ void CPPQueryConditionEnumerationFx::validate_query_condition(
 
   auto qc = creator(ctx_);
   auto core_qc = qc.ptr().get()->query_condition_;
-  core_qc->rewrite_enumeration_conditions(core_array->array_schema_latest());
+  core_qc->rewrite_for_schema(core_array->array_schema_latest());
 
   REQUIRE(core_qc->check(core_array->array_schema_latest()).ok());
 }
