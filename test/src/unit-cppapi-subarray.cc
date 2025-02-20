@@ -714,6 +714,72 @@ TEST_CASE(
 }
 
 TEST_CASE(
+  "C++ API: Test Agis",
+  "[agis]") {
+
+  const std::string array_name = "agis";
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create
+  tiledb::Domain domain(ctx);
+  domain.add_dimension(tiledb::Dimension::create<int>(ctx, "dim", {{-1000, 1000}}, 1001));
+  tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain)
+      .set_order({{TILEDB_COL_MAJOR, TILEDB_COL_MAJOR}})
+      .set_capacity(10000);
+  schema.add_attribute(tiledb::Attribute::create<float>(ctx, "attr"));
+  tiledb::Array::create(array_name, schema);
+
+  // Write
+  std::vector<int>  dim_data_write;
+  std::vector<float>  attr_data_write;
+  for (int i = -1000; i <= 1000; i++) {
+    dim_data_write.push_back(i);
+    attr_data_write.push_back(i);
+  }
+
+  tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
+  tiledb::Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("dim", dim_data_write)
+      .set_data_buffer("attr", attr_data_write);
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
+
+  // Open array for reading
+  tiledb::Array array(ctx, array_name, TILEDB_READ);
+  tiledb::Query query(ctx, array);
+  query.set_layout(TILEDB_UNORDERED);
+
+  // Set up subarray for read
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, -100, 100);
+  subarray.add_range(0, -50, 100);
+  subarray.add_range(0, 0, 100);
+  subarray.add_range(0, -100, 50);
+  query.set_subarray(subarray);
+
+  // Allocate buffers large enough to hold 2 cells at a time.
+  std::vector<int> dim_data(2);
+  std::vector<float> attr_data(2);
+  query.set_data_buffer("dim", dim_data)
+      .set_data_buffer("attr", attr_data);
+  query.submit();
+
+  array.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE(
     "C++ API: Test subarray (incomplete) - Subarray-cppapi",
     "[cppapi][sparse][subarray][incomplete]") {
   bool serialize = false;
