@@ -1,3 +1,19 @@
+# TileDB v2.27.1 Release Notes
+
+## Improvements
+
+* Optimize sparse global order reader with improved tile read order. [#5448](https://github.com/TileDB-Inc/TileDB/pull/5448)
+* Show reasons a POSIX file cannot be read. [#5433](https://github.com/TileDB-Inc/TileDB/pull/5433)
+* Improve readers by parallelizing I/O and compute operations. [#5451](https://github.com/TileDB-Inc/TileDB/pull/5451)
+  * Result tile `wait_all` now blocks on the async i/o result. [#5458](https://github.com/TileDB-Inc/TileDB/pull/5458)
+* Do not create empty `.vac` files in metadata consolidation. [5453](https://github.com/TileDB-Inc/TileDB/pull/5453)
+* Do not use read-ahead cache in array/group directory. [5452](https://github.com/TileDB-Inc/TileDB/pull/5452)
+
+## Defects removed
+
+* Fix compile errors with Visual Studio 2022 17.13. [#5455](https://github.com/TileDB-Inc/TileDB/pull/5455)
+* Remove detection of compiler in `bootstrap` script. [5436](https://github.com/TileDB-Inc/TileDB/pull/5436)
+
 # TileDB v2.27.0 Release Notes
 
 ## Disk Format
