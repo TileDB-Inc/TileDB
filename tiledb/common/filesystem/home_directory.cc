@@ -30,13 +30,16 @@
  * This file implements class HomeDirectory and function home_directory().
  */
 
+#ifdef _WIN32
 #include <ShlObj.h>
 #include <Windows.h>
+
+#include <codecvt>
+#endif
 
 #include "home_directory.h"
 #include "tiledb/common/scoped_executor.h"
 
-#include <codecvt>
 #include <filesystem>
 #include <system_error>
 
