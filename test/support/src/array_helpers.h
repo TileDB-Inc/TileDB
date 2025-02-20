@@ -101,6 +101,12 @@ struct CApiArray {
     throw_if_error(ctx, tiledb_array_open(ctx, array_, mode));
   }
 
+  CApiArray(tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t mode)
+      : ctx_(ctx)
+      , array_(array) {
+    throw_if_error(ctx, tiledb_array_open(ctx, array_, mode));
+  }
+
   CApiArray(CApiArray&& from)
       : ctx_(from.ctx_)
       , array_(from.movefrom()) {

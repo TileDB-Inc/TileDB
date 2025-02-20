@@ -72,6 +72,12 @@ enum class FragmentNameVersion { ONE, TWO, THREE };
  */
 class FragmentID : private URI {
  private:
+  /**
+   * Whitebox testing class provides additional accessors to components of the
+   * fragment name.
+   */
+  friend class WhiteboxFragmentID;
+
   /** The fragment name. */
   std::string name_;
   /** The timestamp range. */
@@ -94,7 +100,7 @@ class FragmentID : private URI {
   ~FragmentID() = default;
 
   /** Accessor to the fragment name. */
-  inline const std::string& name() {
+  inline const std::string& name() const {
     return name_;
   }
 
@@ -103,7 +109,7 @@ class FragmentID : private URI {
    * For array format version <= 2, only the range start is valid
    * (the range end is ignored).
    */
-  inline timestamp_range_type timestamp_range() {
+  inline timestamp_range_type timestamp_range() const {
     return timestamp_range_;
   }
 
@@ -118,7 +124,7 @@ class FragmentID : private URI {
    * - Name version 3 corresponds to format version 5 or higher
    *      * __t1_t2_uuid_version
    */
-  inline int name_version() {
+  inline int name_version() const {
     if (name_version_ == FragmentNameVersion::ONE) {
       return 1;
     } else if (name_version_ == FragmentNameVersion::TWO) {
@@ -132,7 +138,7 @@ class FragmentID : private URI {
    * Accessor to the array format version.
    * Returns UINT32_MAX for name versions <= 2.
    */
-  inline format_version_t array_format_version() {
+  inline format_version_t array_format_version() const {
     return array_format_version_;
   }
 };
