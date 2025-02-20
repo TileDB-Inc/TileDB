@@ -398,6 +398,9 @@ class ASTNodeVal : public ASTNode {
    * method to replace the user provided value with the Enumeration's value
    * index.
    *
+   * This also updates null tests to ALWAYS_TRUE or ALWAYS_FALSE when
+   * appropriate.
+   *
    * @param array_schema The array schema with all relevant enumerations loaded.
    */
   void rewrite_for_schema(const ArraySchema& array_schema) override;

@@ -487,15 +487,15 @@ struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::NE> {
   }
 };
 
-/** Partial template specialization for `QueryConditionOp::LT`. */
+/** Partial template specialization for `QueryConditionOp::ALWAYS_TRUE`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::ALWAYS_TRUE> {
-  static inline bool cmp(const void* lhs, uint64_t, const void*, uint64_t) {
-    return lhs != nullptr;
+  static inline bool cmp(const void*, uint64_t, const void*, uint64_t) {
+    return true;
   }
 };
 
-/** Partial template specialization for `QueryConditionOp::LT`. */
+/** Partial template specialization for `QueryConditionOp::ALWAYS_FALSE`. */
 template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::ALWAYS_FALSE> {
   static inline bool cmp(const void*, uint64_t, const void*, uint64_t) {
