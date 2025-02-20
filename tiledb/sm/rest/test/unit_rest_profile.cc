@@ -100,19 +100,13 @@ struct RestProfileFx {
 
   /** Returns true iff the profile's parameter values match the expected. */
   bool is_valid(RestProfile p, expected_values_t e) {
-    if (p.name() != e.name)
-      return false;
-    if (p.get("rest.password") != e.password)
-      return false;
-    if (p.get("rest.payer_namespace") != e.payer_namespace)
-      return false;
-    if (p.get("rest.token") != e.token)
-      return false;
-    if (p.get("rest.server_address") != e.server_address)
-      return false;
-    if (p.get("rest.username") != e.username)
-      return false;
-    return true;
+    if (p.name() == e.name && p.get("rest.password") == e.password &&
+        p.get("rest.payer_namespace") == e.payer_namespace &&
+        p.get("rest.token") == e.token &&
+        p.get("rest.server_address") == e.server_address &&
+        p.get("rest.username") == e.username)
+      return true;
+    return false;
   }
 
   /**

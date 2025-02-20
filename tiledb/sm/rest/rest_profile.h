@@ -90,7 +90,7 @@ class RestProfile {
    *
    * @param name The name of the RestProfile. Defaulted to "default".
    */
-  RestProfile(std::string name = RestProfile::DEFAULT_NAME);
+  RestProfile(const std::string& name = RestProfile::DEFAULT_NAME);
 
   /** Destructor. */
   ~RestProfile() = default;
@@ -145,58 +145,14 @@ class RestProfile {
   /* ********************************* */
 
   /** Loads the profile parameters from the local json file, if present. */
-  inline void load_from_json_file(const std::string& filename) {
-    if (filename.empty() ||
-        (strcmp(filename.c_str(), filepath_.c_str()) != 0 &&
-         strcmp(filename.c_str(), old_filepath_.c_str()) != 0)) {
-      throw RestProfileException("Cannot load from file; invalid filename.");
-    }
-
-    if (!std::filesystem::exists(filename)) {
-      throw RestProfileException("Cannot load from file; file does not exist.");
-    }
-
-    // Load the file into a json object.
-    std::ifstream file(filename);
-    json data;
-    try {
-      file >> data;
-    } catch (...) {
-      throw RestProfileException("Error parsing json file.");
-    }
-
-    // If possible, load (overwrite) the parameters from the local file
-    if (strcmp(filename.c_str(), old_filepath_.c_str()) == 0) {
-      // Parse the old file and load the parameters
-      if (data.contains("api_key") &&
-          data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
-        param_values_["rest.token"] = data["api_key"]["X-TILEDB-REST-API-KEY"];
-      }
-      if (data.contains("host")) {
-        param_values_["rest.server_address"] = data["host"];
-      }
-      if (data.contains("password")) {
-        param_values_["rest.password"] = data["password"];
-      }
-      if (data.contains("username")) {
-        param_values_["rest.username"] = data["username"];
-      }
-    } else {
-      json profile = data[name_];
-      if (!profile.is_null()) {
-        for (auto it = profile.begin(); it != profile.end(); ++it) {
-          param_values_[it.key()] = profile[it.key()];
-        }
-      }
-    }
-  }
+  void load_from_json_file(const std::string& filename);
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
   /** The version of this class. */
-  int version_;
+  format_version_t version_;
 
   /** The name of this RestProfile. */
   std::string name_;

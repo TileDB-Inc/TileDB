@@ -64,23 +64,29 @@ const std::map<std::string, std::string> default_values = {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-RestProfile::RestProfile(std::string name)
-    : version_(1)
+RestProfile::RestProfile(const std::string& name)
+    : version_(constants::rest_profile_version)
     , name_(name)
     , homedir_(home_directory().has_value() ? home_directory().value() : "")
     , filepath_(homedir_ + "/.tiledb/profiles.json")
     , old_filepath_(homedir_ + "/.tiledb/cloud.json")
     , param_values_(default_values) {
-  // Ensure the user's $HOME is found
+  /**
+   * Ensure the user's $HOME is found.
+   * There's an edge case in which `sudo` does not always preserve the path to
+   * `$HOME`. In this case, the home_directory() API does not throw, but instead
+   * returns `std::nullopt`. As such, we can check for a value in the returned
+   * `std::optional` path of the home_directory and throw an error to the user
+   * accordingly, so they may decide the proper course of action: set the
+   * $HOME path, or perhaps stop using `sudo`.
+   */
   if (homedir_.empty()) {
     throw RestProfileException(
         "Failed to create RestProfile; $HOME is not set.");
   }
 
   // Fstream cannot create directories. If `homedir_/.tiledb/` DNE, create it.
-  if (!std::filesystem::exists(homedir_ + "/.tiledb")) {
-    std::filesystem::create_directory(homedir_ + "/.tiledb");
-  }
+  std::filesystem::create_directory(homedir_ + "/.tiledb");
 
   // If the local file exists, load the profile with the given name.
   if (std::filesystem::exists(filepath_)) {
@@ -123,17 +129,14 @@ std::string RestProfile::get(const std::string& param) const {
  */
 void RestProfile::save() {
   // Validate that the profile is complete (if username is set, so is password)
-  if ((param_values_["rest.username"] != RestProfile::DEFAULT_USERNAME &&
-       param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD) ||
-      (param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME &&
-       param_values_["rest.password"] != RestProfile::DEFAULT_PASSWORD)) {
+  if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
+      (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
     throw RestProfileException(
         "Failed to save RestProfile; invalid username/password pairing.");
   }
 
   // If the file already exists, load it into a json object.
   json data;
-  std::fstream file;
   std::string original_filepath = filepath_;
   if (std::filesystem::exists(filepath_)) {
     // Temporarily append filename with a random label to guarantee atomicity.
@@ -144,9 +147,10 @@ void RestProfile::save() {
     }
 
     // Read the file into the json object.
-    file.open(filepath_, std::ofstream::in);
-    file >> data;
-    file.close();
+    {
+      std::ifstream file(filepath_);
+      file >> data;
+    }
 
     // If the file is outdated, throw an error. This behavior will evolve.
     if (data["version"] < version_) {
@@ -167,12 +171,13 @@ void RestProfile::save() {
   data.push_back(json::object_t::value_type(name_, to_json()));
 
   // Write to the file, which will be created if it does not yet exist.
-  file.open(filepath_, std::ofstream::out);
-  file << std::setw(2) << data << std::endl;
-  file.close();
+  {
+    std::ofstream file(filepath_);
+    file << std::setw(2) << data << std::endl;
+  }
 
   // Remove the random label from the filename, if applicable.
-  if (strcmp(filepath_.c_str(), original_filepath.c_str()) != 0) {
+  if (filepath_ != original_filepath) {
     if (std::rename(filepath_.c_str(), original_filepath.c_str()) != 0) {
       throw RestProfileException(
           "Failed to save RestProfile due to an internal error.");
@@ -192,22 +197,23 @@ void RestProfile::remove() {
 
     // Read the file into a json object.
     json data;
-    std::fstream file;
-    file.open(filepath_, std::ofstream::in);
-    file >> data;
-    file.close();
+    {
+      std::ifstream file(filepath_);
+      file >> data;
+    }
 
     // If a profile of the given name exists, remove it.
     data.erase(data.find(name_));
 
     // Write the json back to the file.
-    file.open(filepath_, std::ofstream::out);
-    file << std::setw(2) << data << std::endl;
-    file.close();
+    {
+      std::ofstream file(filepath_);
+      file << std::setw(2) << data << std::endl;
+    }
   }
 
   // Remove the random label from the filename, if applicable.
-  if (strcmp(filepath_.c_str(), original_filepath.c_str()) != 0) {
+  if (filepath_ != original_filepath) {
     if (std::rename(filepath_.c_str(), original_filepath.c_str()) != 0) {
       throw RestProfileException(
           "Failed to remove RestProfile due to an internal error.");
@@ -225,6 +231,55 @@ json RestProfile::to_json() {
 
 std::string RestProfile::dump() {
   return json{{name_, to_json()}}.dump(2);
+}
+
+/* ****************************** */
+/*           PRIVATE API          */
+/* ****************************** */
+
+void RestProfile::load_from_json_file(const std::string& filename) {
+  if (filename.empty() ||
+      (filename != filepath_ && filename != old_filepath_)) {
+    throw RestProfileException("Cannot load from file; invalid filename.");
+  }
+
+  if (!std::filesystem::exists(filename)) {
+    throw RestProfileException("Cannot load from file; file does not exist.");
+  }
+
+  // Load the file into a json object.
+  std::ifstream file(filename);
+  json data;
+  try {
+    file >> data;
+  } catch (...) {
+    throw RestProfileException("Error parsing json file.");
+  }
+
+  // If possible, load (overwrite) the parameters from the local file
+  if (filename.c_str() == old_filepath_.c_str()) {
+    // Parse the old file and load the parameters
+    if (data.contains("api_key") &&
+        data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
+      param_values_["rest.token"] = data["api_key"]["X-TILEDB-REST-API-KEY"];
+    }
+    if (data.contains("host")) {
+      param_values_["rest.server_address"] = data["host"];
+    }
+    if (data.contains("password")) {
+      param_values_["rest.password"] = data["password"];
+    }
+    if (data.contains("username")) {
+      param_values_["rest.username"] = data["username"];
+    }
+  } else {
+    json profile = data[name_];
+    if (!profile.is_null()) {
+      for (auto it = profile.begin(); it != profile.end(); ++it) {
+        param_values_[it.key()] = profile[it.key()];
+      }
+    }
+  }
 }
 
 }  // namespace tiledb::sm
