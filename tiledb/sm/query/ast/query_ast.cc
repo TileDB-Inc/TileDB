@@ -148,8 +148,7 @@ bool ASTNodeVal::is_backwards_compatible() const {
   return true;
 }
 
-void ASTNodeVal::rewrite_enumeration_conditions(
-    const ArraySchema& array_schema) {
+void ASTNodeVal::rewrite_for_schema(const ArraySchema& array_schema) {
   // This is called by the Query class before applying a query condition. This
   // works by looking up each related enumeration and translating the
   // condition's value to reflect the underlying index value. I.e., if the
@@ -504,10 +503,9 @@ bool ASTNodeExpr::is_backwards_compatible() const {
   return true;
 }
 
-void ASTNodeExpr::rewrite_enumeration_conditions(
-    const ArraySchema& array_schema) {
+void ASTNodeExpr::rewrite_for_schema(const ArraySchema& array_schema) {
   for (auto& child : nodes_) {
-    child->rewrite_enumeration_conditions(array_schema);
+    child->rewrite_for_schema(array_schema);
   }
 }
 
