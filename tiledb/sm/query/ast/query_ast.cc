@@ -149,12 +149,23 @@ bool ASTNodeVal::is_backwards_compatible() const {
 }
 
 void ASTNodeVal::rewrite_for_schema(const ArraySchema& array_schema) {
-  // This is called by the Query class before applying a query condition. This
-  // works by looking up each related enumeration and translating the
-  // condition's value to reflect the underlying index value. I.e., if the
-  // query condition was created with `my_attr = "foo"`, and `my_attr` is an
-  // attribute with an enumeration, this will replace the condition's value
-  // with the index value returned by `Enumeration::index_of()`.
+  // This is called by the Query class before applying a query condition.
+
+  // First transform a null test if the target attribute is not nullable
+  if (is_null_ && !array_schema.is_nullable(field_name_)) {
+    if (op_ == QueryConditionOp::EQ) {
+      op_ = QueryConditionOp::ALWAYS_FALSE;
+    } else {
+      op_ = QueryConditionOp::ALWAYS_TRUE;
+    }
+  }
+
+  // Then update enumerations. This works by looking up each related enumeration
+  // and translating the condition's value to reflect the underlying index
+  // value. I.e., if the query condition was created with `my_attr = "foo"`, and
+  // `my_attr` is an attribute with an enumeration, this will replace the
+  // condition's value with the index value returned by
+  // `Enumeration::index_of()`.
 
   if (!use_enumeration_) {
     return;
@@ -270,14 +281,20 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that null value can only be used with equality operators.
   if (is_null_) {
-    if (op_ != QueryConditionOp::EQ && op_ != QueryConditionOp::NE) {
+    if (op_ != QueryConditionOp::EQ && op_ != QueryConditionOp::NE &&
+        op_ != QueryConditionOp::ALWAYS_FALSE &&
+        op_ != QueryConditionOp::ALWAYS_TRUE) {
       return Status_QueryConditionError(
           "Null value can only be used with equality operators");
     }
 
-    // Ensure that an attribute that is marked as nullable
-    // corresponds to a type that is nullable.
-    if ((!nullable) && !supported_string_type(type)) {
+    // If the target is not nullable, then we assume a null test
+    // is re-written to ALWAYS_TRUE or ALWAYS_FALSE by the time
+    // we get here. If this ever escapes then we need to update
+    // the condition evaluator.
+    if ((!nullable) && !supported_string_type(type) &&
+        op_ != QueryConditionOp::ALWAYS_TRUE &&
+        op_ != QueryConditionOp::ALWAYS_FALSE) {
       return Status_QueryConditionError(
           "Null value can only be used with nullable attributes");
     }
@@ -304,7 +321,9 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   // value size.
   if (cell_size != constants::var_size && cell_size != data_.size() &&
       !(nullable && is_null_) && !supported_string_type(type) && (!var_size) &&
-      !(op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN)) {
+      !(op_ == QueryConditionOp::ALWAYS_TRUE ||
+        op_ == QueryConditionOp::ALWAYS_FALSE || op_ == QueryConditionOp::IN ||
+        op_ == QueryConditionOp::NOT_IN)) {
     return Status_QueryConditionError(
         "Value node condition value size mismatch: " +
         std::to_string(cell_size) + " != " + std::to_string(data_.size()));
