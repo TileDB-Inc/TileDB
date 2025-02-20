@@ -30,8 +30,13 @@
  * This file implements class HomeDirectory and function home_directory().
  */
 
-#include "home_directory.h"
+#include <ShlObj.h>
+#include <Windows.h>
 
+#include "home_directory.h"
+#include "tiledb/common/scoped_executor.h"
+
+#include <codecvt>
 #include <filesystem>
 #include <system_error>
 
@@ -52,9 +57,13 @@ std::optional<std::string> home_directory() {
 HomeDirectory::HomeDirectory()
     : path_(std::nullopt) {
 #ifdef _WIN32
-  wchar_t home[MAX_PATH];
-  if (SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, home) == S_OK) {
-    path_ = home;
+  wchar_t* home;
+  auto _ = ScopedExecutor([&]() {
+    if (home)
+      CoTaskMemFree(home);
+  });
+  if (SHGetKnownFolderPath(FOLDERID_Profile, 0, NULL, &home) == S_OK) {
+    path_ = std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(home);
   }
 #else
   const char* home = std::getenv("HOME");
