@@ -91,10 +91,10 @@ struct VarSizeEnumeration {
   tiledb_enumeration_t* enumeration_;
 };
 
-struct EmptyStringEnumeration {
-  EmptyStringEnumeration() {
-    const char* values = "";
-    uint64_t offsets[5] = {0, 0, 0, 0, 0};
+struct NotAllEmptyStringEnumeration {
+  NotAllEmptyStringEnumeration() {
+    const char* values = "foobarbingobango";
+    uint64_t offsets[5] = {0, 3, 3, 6, 11};
     auto rc = tiledb_enumeration_alloc(
         ctx_.context,
         "an_enumeration",
@@ -109,7 +109,33 @@ struct EmptyStringEnumeration {
     REQUIRE(rc == TILEDB_OK);
   }
 
-  ~EmptyStringEnumeration() {
+  ~NotAllEmptyStringEnumeration() {
+    tiledb_enumeration_free(&enumeration_);
+  }
+
+  ordinary_context ctx_;
+  tiledb_enumeration_t* enumeration_;
+};
+
+struct AllEmptyStringEnumeration {
+  AllEmptyStringEnumeration() {
+    const char* values = "";
+    uint64_t offsets[1] = {0};
+    auto rc = tiledb_enumeration_alloc(
+        ctx_.context,
+        "an_enumeration",
+        TILEDB_STRING_UTF8,
+        TILEDB_VAR_NUM,
+        0,
+        values,
+        strlen(values),
+        offsets,
+        1 * sizeof(uint64_t),
+        &enumeration_);
+    REQUIRE(rc == TILEDB_OK);
+  }
+
+  ~AllEmptyStringEnumeration() {
     tiledb_enumeration_free(&enumeration_);
   }
 
@@ -299,7 +325,8 @@ TEST_CASE(
     "[capi][enumeration]") {
   FixedSizeEnumeration fe;
   VarSizeEnumeration ve;
-  EmptyStringEnumeration ee;
+  NotAllEmptyStringEnumeration ne;
+  AllEmptyStringEnumeration ae;
   tiledb_datatype_t dt;
 
   SECTION("success") {
@@ -312,7 +339,11 @@ TEST_CASE(
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(dt == TILEDB_STRING_UTF8);
 
-    rc = tiledb_enumeration_get_type(ee.ctx_.context, ee.enumeration_, &dt);
+    rc = tiledb_enumeration_get_type(ne.ctx_.context, ne.enumeration_, &dt);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(dt == TILEDB_STRING_UTF8);
+
+    rc = tiledb_enumeration_get_type(ae.ctx_.context, ae.enumeration_, &dt);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(dt == TILEDB_STRING_UTF8);
   }
@@ -339,7 +370,8 @@ TEST_CASE(
     "[capi][enumeration]") {
   FixedSizeEnumeration fe;
   VarSizeEnumeration ve;
-  EmptyStringEnumeration ee;
+  NotAllEmptyStringEnumeration ne;
+  AllEmptyStringEnumeration ae;
   uint32_t cvn;
 
   SECTION("success") {
@@ -354,7 +386,12 @@ TEST_CASE(
     REQUIRE(cvn == TILEDB_VAR_NUM);
 
     rc = tiledb_enumeration_get_cell_val_num(
-        ee.ctx_.context, ee.enumeration_, &cvn);
+        ne.ctx_.context, ne.enumeration_, &cvn);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(cvn == TILEDB_VAR_NUM);
+
+    rc = tiledb_enumeration_get_cell_val_num(
+        ae.ctx_.context, ae.enumeration_, &cvn);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(cvn == TILEDB_VAR_NUM);
   }
@@ -383,7 +420,8 @@ TEST_CASE(
     "[capi][enumeration]") {
   FixedSizeEnumeration fe;
   VarSizeEnumeration ve;
-  EmptyStringEnumeration ee;
+  NotAllEmptyStringEnumeration ne;
+  AllEmptyStringEnumeration ae;
   int o;
 
   SECTION("success") {
@@ -396,7 +434,11 @@ TEST_CASE(
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(!o);
 
-    rc = tiledb_enumeration_get_ordered(ee.ctx_.context, ee.enumeration_, &o);
+    rc = tiledb_enumeration_get_ordered(ne.ctx_.context, ne.enumeration_, &o);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(!o);
+
+    rc = tiledb_enumeration_get_ordered(ae.ctx_.context, ae.enumeration_, &o);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(!o);
   }
@@ -423,13 +465,15 @@ TEST_CASE(
     "[capi][enumeration]") {
   FixedSizeEnumeration fe;
   VarSizeEnumeration ve;
-  EmptyStringEnumeration ee;
+  NotAllEmptyStringEnumeration ne;
+  AllEmptyStringEnumeration ae;
   const void* d;
   uint64_t ds;
 
   uint32_t fixed_expect[5] = {1, 2, 3, 4, 5};
   const char* var_expect = "foobarbazbingobango";
-  const char* empty_expect = "";
+  const char* not_all_empty_expect = "foobarbingobango";
+  const char* all_empty_expect = "";
 
   SECTION("success") {
     auto rc =
@@ -443,10 +487,17 @@ TEST_CASE(
     REQUIRE(std::memcmp(var_expect, d, strlen(var_expect)) == 0);
     REQUIRE(ds == strlen(var_expect));
 
-    rc = tiledb_enumeration_get_data(ee.ctx_.context, ee.enumeration_, &d, &ds);
+    rc = tiledb_enumeration_get_data(ne.ctx_.context, ne.enumeration_, &d, &ds);
     REQUIRE(rc == TILEDB_OK);
-    REQUIRE(std::memcmp(empty_expect, d, strlen(empty_expect)) == 0);
-    REQUIRE(ds == strlen(empty_expect));
+    REQUIRE(
+        std::memcmp(not_all_empty_expect, d, strlen(not_all_empty_expect)) ==
+        0);
+    REQUIRE(ds == strlen(not_all_empty_expect));
+
+    rc = tiledb_enumeration_get_data(ae.ctx_.context, ae.enumeration_, &d, &ds);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(std::memcmp(all_empty_expect, d, strlen(all_empty_expect)) == 0);
+    REQUIRE(ds == strlen(all_empty_expect));
   }
 
   SECTION("failure - invalid context") {
@@ -477,12 +528,14 @@ TEST_CASE(
     "[capi][enumeration]") {
   FixedSizeEnumeration fe;
   VarSizeEnumeration ve;
-  EmptyStringEnumeration ee;
+  NotAllEmptyStringEnumeration ne;
+  AllEmptyStringEnumeration ae;
   const void* o;
   uint64_t os;
 
   uint64_t var_expect[5] = {0, 3, 6, 9, 14};
-  const char* empty_expect = "";
+  uint64_t ne_expect[5] = {0, 3, 3, 6, 11};
+  uint64_t ae_expect[5] = {0};
 
   SECTION("success") {
     auto rc = tiledb_enumeration_get_offsets(
@@ -498,10 +551,16 @@ TEST_CASE(
     REQUIRE(os == sizeof(uint64_t) * 5);
 
     rc = tiledb_enumeration_get_offsets(
-        ee.ctx_.context, ee.enumeration_, &o, &os);
+        ne.ctx_.context, ne.enumeration_, &o, &os);
     REQUIRE(rc == TILEDB_OK);
-    REQUIRE(std::memcmp(empty_expect, o, sizeof(uint64_t) * 5) == 0);
+    REQUIRE(std::memcmp(ne_expect, o, sizeof(uint64_t) * 5) == 0);
     REQUIRE(os == sizeof(uint64_t) * 5);
+
+    rc = tiledb_enumeration_get_offsets(
+        ae.ctx_.context, ae.enumeration_, &o, &os);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(std::memcmp(ae_expect, o, sizeof(uint64_t) * 1) == 0);
+    REQUIRE(os == sizeof(uint64_t) * 1);
   }
 
   SECTION("failure - invalid context") {
