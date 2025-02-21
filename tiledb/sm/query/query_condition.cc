@@ -53,6 +53,20 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+static bool is_null_test(const ASTNode& node) {
+  const ASTNodeVal* node_val = dynamic_cast<const ASTNodeVal*>(&node);
+  if (node_val) {
+    const auto op = node_val->get_op();
+    return (
+        node_val->get_value_ptr() == nullptr &&
+        (op == QueryConditionOp::EQ || op == QueryConditionOp::NE ||
+         op == QueryConditionOp::ALWAYS_TRUE ||
+         op == QueryConditionOp::ALWAYS_FALSE));
+  } else {
+    return false;
+  }
+}
+
 QueryCondition::QueryCondition() {
 }
 
@@ -1140,6 +1154,19 @@ void QueryCondition::apply_ast_node(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
+      if (is_null_test(*node)) {
+        apply_ast_node<void*, CombinationOp>(
+            node,
+            fragment_metadata,
+            stride,
+            var_size,
+            nullable,
+            fill_value,
+            result_cell_slabs,
+            combination_op,
+            result_cell_bitmap);
+        break;
+      }
       throw std::runtime_error(
           "QueryCondition::apply_ast_node: Cannot perform query comparison; "
           "Unsupported datatype " +
@@ -1935,6 +1962,21 @@ void QueryCondition::apply_ast_node_dense(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
+      if (is_null_test(*node)) {
+        apply_ast_node_dense<void*, CombinationOp>(
+            node,
+            array_schema,
+            result_tile,
+            start,
+            src_cell,
+            stride,
+            var_size,
+            nullable,
+            combination_op,
+            cell_slab_coords,
+            result_buffer);
+        break;
+      }
       throw std::runtime_error(
           "Cannot perform query comparison; Unsupported query conditional "
           "type " +
@@ -2748,6 +2790,16 @@ void QueryCondition::apply_ast_node_sparse(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     default:
+      if (is_null_test(*node)) {
+        apply_ast_node_sparse<void*, BitmapType, CombinationOp>(
+            node,
+            result_tile,
+            var_size,
+            nullable,
+            combination_op,
+            result_bitmap);
+        break;
+      }
       throw std::runtime_error(
           "Cannot perform query comparison; Unsupported query conditional "
           "type on " +

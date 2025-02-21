@@ -292,11 +292,10 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
     // is re-written to ALWAYS_TRUE or ALWAYS_FALSE by the time
     // we get here. If this ever escapes then we need to update
     // the condition evaluator.
-    if ((!nullable) && !supported_string_type(type) &&
-        op_ != QueryConditionOp::ALWAYS_TRUE &&
-        op_ != QueryConditionOp::ALWAYS_FALSE) {
-      return Status_QueryConditionError(
-          "Null value can only be used with nullable attributes");
+    if (!nullable) {
+      assert(
+          op_ == QueryConditionOp::ALWAYS_TRUE ||
+          op_ == QueryConditionOp::ALWAYS_FALSE);
     }
   }
 
@@ -310,7 +309,8 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   }
 
   // Ensure that non string fixed size attributes store only one value per cell.
-  if (cell_val_num != 1 && !supported_string_type(type) && !var_size) {
+  if (!is_null_ && cell_val_num != 1 && !supported_string_type(type) &&
+      !var_size) {
     return Status_QueryConditionError(
         "Value node attribute must have one value per cell for non-string "
         "fixed size attributes: " +
@@ -343,21 +343,23 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
     }
   }
 
-  // Ensure that the attribute type is valid.
-  switch (type) {
-    case Datatype::ANY:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::BLOB:
-    case Datatype::GEOM_WKB:
-    case Datatype::GEOM_WKT:
-      return Status_QueryConditionError(
-          "Unsupported value node attribute type " + datatype_str(type) +
-          " on field " + field_name_);
-    default:
-      break;
+  if (!is_null_) {
+    // Ensure that the attribute type is valid.
+    switch (type) {
+      case Datatype::ANY:
+      case Datatype::STRING_UTF16:
+      case Datatype::STRING_UTF32:
+      case Datatype::STRING_UCS2:
+      case Datatype::STRING_UCS4:
+      case Datatype::BLOB:
+      case Datatype::GEOM_WKB:
+      case Datatype::GEOM_WKT:
+        return Status_QueryConditionError(
+            "Unsupported value node attribute type " + datatype_str(type) +
+            " on field " + field_name_);
+      default:
+        break;
+    }
   }
 
   return Status::Ok();
