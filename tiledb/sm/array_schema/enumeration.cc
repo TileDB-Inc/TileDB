@@ -136,9 +136,17 @@ Enumeration::Enumeration(
       // non-zero data size that is greater than or equal to the last
       // offset provided.
       if (data == nullptr) {
-        throw EnumerationException(
-            "Invalid data input, nullptr provided when the provided offsets "
-            "require data.");
+        // Users need to be able to create an enumeration containing one value
+        // which is the empty string.
+        //
+        // The std::vector<uint8_t> foo(0, 0) constructor at our callsite
+        // results in a foo.data() which is nullptr and foo.size() which is
+        // zero. So if data is nullptr, we only fail if data_size is not zero.
+        if (data_size != 0) {
+          throw EnumerationException(
+              "Invalid data input, nullptr provided when the provided offsets "
+              "require data.");
+        }
       }
 
       if (data_size < offset_values[num_offsets - 1]) {
@@ -235,14 +243,24 @@ shared_ptr<const Enumeration> Enumeration::extend(
     uint64_t data_size,
     const void* offsets,
     uint64_t offsets_size) const {
-  if (data == nullptr) {
-    throw EnumerationException(
-        "Unable to extend an enumeration without a data buffer.");
-  }
+  if (data == nullptr && data_size == 0) {
+    // This is OK
+    //
+    // Users need to be able to create an enumeration containing
+    // one value which is the empty string.
+    //
+    // The std::vector<uint8_t> foo(0, 0) constructor at our callsite results
+    // in a foo.data() which is nullptr and foo.size() which is zero.
+  } else {
+    if (data == nullptr) {
+      throw EnumerationException(
+          "Unable to extend an enumeration without a data buffer.");
+    }
 
-  if (data_size == 0) {
-    throw EnumerationException(
-        "Unable to extend an enumeration with a zero sized data buffer.");
+    if (data_size == 0) {
+      throw EnumerationException(
+          "Unable to extend an enumeration with a zero sized data buffer.");
+    }
   }
 
   if (var_size()) {
@@ -274,7 +292,9 @@ shared_ptr<const Enumeration> Enumeration::extend(
 
   Buffer new_data(data_.size() + data_size);
   throw_if_not_ok(new_data.write(data_.data(), data_.size()));
-  throw_if_not_ok(new_data.write(data, data_size));
+  if (data_size > 0) {
+    throw_if_not_ok(new_data.write(data, data_size));
+  }
 
   const void* new_offsets_ptr = nullptr;
   uint64_t new_offsets_size = 0;
@@ -329,7 +349,8 @@ bool Enumeration::is_extension_of(shared_ptr<const Enumeration> other) const {
   }
 
   auto other_data = other->data();
-  if (data_.size() <= other_data.size()) {
+  // Not <=, since a single empty string can be added as an extension.
+  if (data_.size() < other_data.size()) {
     return false;
   }
 
