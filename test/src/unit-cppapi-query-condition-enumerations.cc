@@ -601,6 +601,22 @@ TEST_CASE(
   REQUIRE_THROWS_WITH(QueryCondition::create(ctx, "foo", 0, op), matcher);
 }
 
+TEST_CASE_METHOD(
+    CPPQueryConditionEnumerationFx,
+    "Nullable Enumeration Non-Equality",
+    "[query-condition][enumeration][logic]") {
+  auto type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
+  auto serialize = GENERATE_SERIALIZATION();
+  auto matcher = [](const EnmrQCCell& cell) { return cell.cycle_phase_valid; };
+
+  auto creator = [](Context& ctx) {
+    return QueryCondition::create(
+        ctx, "cycle_phase", std::string("fish"), TILEDB_NE);
+  };
+
+  run_test(type, serialize, matcher, creator);
+}
+
 /*
  * All code below here is test support implementation.
  */
