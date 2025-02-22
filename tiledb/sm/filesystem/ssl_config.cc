@@ -109,20 +109,4 @@ S3SSLConfig::S3SSLConfig(const Config& cfg)
   }
 }
 
-RestSSLConfig::RestSSLConfig(const Config& cfg)
-    : SSLConfig(cfg) {
-  // Only override what was found in `ssl.verify` if
-  // `rest.ignore_ssl_verification` is non-default (i.e., true, the naming here
-  // is backwards from all the other ssl verification key names)
-  auto skip_verify = cfg.get<bool>("rest.ignore_ssl_validation");
-  if (skip_verify.has_value() && skip_verify.value()) {
-    LOG_WARN(
-        "The 'rest.ignore_ssl_validation = false' configuration option "
-        "has been replaced with 'ssl.verify = true'. Make sure that you update "
-        "your configuration because 'rest.ignore_ssl_validation' will "
-        "eventually be removed.");
-    verify_ = false;
-  }
-}
-
 }  // namespace tiledb::sm
