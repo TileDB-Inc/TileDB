@@ -168,7 +168,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
-          name: "*"
+          pattern: release-*
           merge-multiple: true
           path: dist
       - name: DEBUG
