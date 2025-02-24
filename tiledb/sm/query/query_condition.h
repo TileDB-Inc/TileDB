@@ -178,7 +178,7 @@ class QueryCondition {
    * @param array_schema The current array schema with all required enumerations
    * loaded.
    */
-  void rewrite_enumeration_conditions(const ArraySchema& array_schema);
+  void rewrite_for_schema(const ArraySchema& array_schema);
 
   /**
    * Verifies that the current state contains supported comparison

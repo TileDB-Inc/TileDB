@@ -115,13 +115,12 @@ class ASTNode {
   virtual bool is_backwards_compatible() const = 0;
 
   /**
-   * @brief Update an node value condition values that refer to enumerated
-   * attributes.
+   * @brief Update an node value condition values using the query schema,
+   * such as updating nodes which refer to enumerated attributes.
    *
    * @param array_schema The array schema with all relevant enumerations loaded.
    */
-  virtual void rewrite_enumeration_conditions(
-      const ArraySchema& array_schema) = 0;
+  virtual void rewrite_for_schema(const ArraySchema& array_schema) = 0;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -399,9 +398,12 @@ class ASTNodeVal : public ASTNode {
    * method to replace the user provided value with the Enumeration's value
    * index.
    *
+   * This also updates null tests to ALWAYS_TRUE or ALWAYS_FALSE when
+   * appropriate.
+   *
    * @param array_schema The array schema with all relevant enumerations loaded.
    */
-  void rewrite_enumeration_conditions(const ArraySchema& array_schema) override;
+  void rewrite_for_schema(const ArraySchema& array_schema) override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -649,7 +651,7 @@ class ASTNodeExpr : public ASTNode {
    *
    * @param array_schema The array schema with all relevant enumerations loaded.
    */
-  void rewrite_enumeration_conditions(const ArraySchema& array_schema) override;
+  void rewrite_for_schema(const ArraySchema& array_schema) override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
