@@ -64,12 +64,11 @@ const std::map<std::string, std::string> default_values = {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-RestProfile::RestProfile(const std::string& name)
+RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     : version_(constants::rest_profile_version)
     , name_(name)
-    , homedir_(home_directory().has_value() ? home_directory().value() : "")
-    , filepath_(homedir_ + "/.tiledb/profiles.json")
-    , old_filepath_(homedir_ + "/.tiledb/cloud.json")
+    , filepath_(homedir + ".tiledb/profiles.json")
+    , old_filepath_(homedir + ".tiledb/cloud.json")
     , param_values_(default_values) {
   /**
    * Ensure the user's $HOME is found.
@@ -80,13 +79,13 @@ RestProfile::RestProfile(const std::string& name)
    * accordingly, so they may decide the proper course of action: set the
    * $HOME path, or perhaps stop using `sudo`.
    */
-  if (homedir_.empty()) {
+  if (homedir.empty()) {
     throw RestProfileException(
         "Failed to create RestProfile; $HOME is not set.");
   }
 
-  // Fstream cannot create directories. If `homedir_/.tiledb/` DNE, create it.
-  std::filesystem::create_directory(homedir_ + "/.tiledb");
+  // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
+  std::filesystem::create_directories(homedir + ".tiledb");
 
   // If the local file exists, load the profile with the given name.
   if (std::filesystem::exists(filepath_)) {
@@ -97,6 +96,11 @@ RestProfile::RestProfile(const std::string& name)
       load_from_json_file(old_filepath_);
     }
   }
+}
+
+RestProfile::RestProfile(const std::string& name)
+    : RestProfile(
+          name, home_directory().has_value() ? home_directory().value() : "") {
 }
 
 /* ****************************** */
