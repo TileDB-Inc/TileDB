@@ -74,10 +74,6 @@ HomeDirectory::HomeDirectory()
     path_ = home;
   }
 #endif
-  // Remove trailing slash, if exists.
-  if (path_.has_value() && path_.value().back() == '/') {
-    path_.value().pop_back();
-  }
 }
 
 std::optional<std::string> HomeDirectory::path() {

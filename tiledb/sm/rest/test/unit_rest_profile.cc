@@ -53,29 +53,16 @@ struct expected_values_t {
 
 struct RestProfileFx {
  public:
-  std::string homedir_;              // The user's $HOME directory.
-  TemporaryLocalDirectory tempdir_;  // A temporary working directory.
-  std::string cloudpath_;            // The in-test path to the cloud.json file.
+  std::string homedir_;    // The temporary in-test $HOME directory.
+  std::string cloudpath_;  // The in-test path to the cloud.json file.
 
-  /**
-   * Constructor which changes the user's `$HOME` to a `TemporaryLocalDirectory`
-   * for the duration of the test. This ensures that no in-test changes are
-   * made to the local, user-sensitive files `profiles.json` and `cloud.json`.
-   */
   RestProfileFx()
-      : homedir_(tiledb::common::filesystem::home_directory().value())
-      , tempdir_(TemporaryLocalDirectory("unit_rest_profile"))
-      , cloudpath_(tempdir_.path() + ".tiledb/cloud.json") {
-    if (setenv("HOME", tempdir_.path().c_str(), 1) != 0) {
-      std::cerr << "[ERROR] Failed to set HOME environment variable."
-                << std::endl;
-      return;
-    }
-
+      : homedir_(TemporaryLocalDirectory("unit_rest_profile").path())
+      , cloudpath_(homedir_ + ".tiledb/cloud.json") {
     // Fstream cannot create directories, only files, so create the .tiledb dir.
-    std::filesystem::create_directory(tempdir_.path() + ".tiledb");
+    std::filesystem::create_directories(homedir_ + ".tiledb");
 
-    // Write to the cloudpath_.
+    // Write to the cloud path.
     json j = {
         {"api_key",
          {json::object_t::value_type("X-TILEDB-REST-API-KEY", cloudtoken_)}},
@@ -83,20 +70,14 @@ struct RestProfileFx {
         {"username", RestProfile::DEFAULT_USERNAME},
         {"password", RestProfile::DEFAULT_PASSWORD},
         {"verify_ssl", "true"}};
-    std::ofstream file(cloudpath_);
-    file << std::setw(2) << j << std::endl;
-    file.close();
-  }
 
-  /** Destructor. */
-  ~RestProfileFx() {
-    // Reset $HOME env variable back to its original value
-    if (setenv("HOME", homedir_.c_str(), 1) != 0) {
-      std::cerr << "[ERROR] Failed to reset HOME environment variable."
-                << std::endl;
-      return;
+    {
+      std::ofstream file(cloudpath_);
+      file << std::setw(2) << j << std::endl;
     }
   }
+
+  ~RestProfileFx() = default;
 
   /** Returns true iff the profile's parameter values match the expected. */
   bool is_valid(RestProfile p, expected_values_t e) {
@@ -113,9 +94,8 @@ struct RestProfileFx {
    * Returns the RestProfile at the given name from the local file,
    * as a json object.
    */
-  json profile_from_file_to_json(std::string name) {
+  json profile_from_file_to_json(std::string filepath, std::string name) {
     json data;
-    std::string filepath = tempdir_.path() + ".tiledb/profiles.json";
     if (std::filesystem::exists(filepath)) {
       std::ifstream file(filepath);
       file >> data;
@@ -133,10 +113,11 @@ TEST_CASE_METHOD(
   std::filesystem::remove(cloudpath_);
 
   // Create and validate a default RestProfile.
-  RestProfile profile;
+  RestProfile profile(RestProfile::DEFAULT_NAME, homedir_);
   profile.save();
 
-  // Set the expected token value; expected_values_t uses cloudpath_ by default.
+  // Set the expected token value; expected_values_t uses cloudtoken_ by
+  // default.
   expected_values_t expected;
   expected.token = RestProfile::DEFAULT_TOKEN;
   CHECK(is_valid(profile, expected));
@@ -147,7 +128,7 @@ TEST_CASE_METHOD(
     "REST Profile: Default profile inherited from cloudpath",
     "[rest_profile][default][inherited]") {
   // Create and validate a default RestProfile.
-  RestProfile profile;
+  RestProfile profile(RestProfile::DEFAULT_NAME, homedir_);
   profile.save();
   expected_values_t expected;
   CHECK(is_valid(profile, expected));
@@ -158,18 +139,19 @@ TEST_CASE_METHOD(
     "REST Profile: Save/Remove",
     "[rest_profile][save][remove]") {
   // Create a default RestProfile.
-  RestProfile p;
-  CHECK(profile_from_file_to_json(p.name()).empty());
+  RestProfile p(RestProfile::DEFAULT_NAME, homedir_);
+  std::string filepath = homedir_ + ".tiledb/profiles.json";
+  CHECK(profile_from_file_to_json(filepath, p.name()).empty());
 
   // Save and validate.
   p.save();
   expected_values_t e;
   CHECK(is_valid(p, e));
-  CHECK(!profile_from_file_to_json(p.name()).empty());
+  CHECK(!profile_from_file_to_json(filepath, p.name()).empty());
 
   // Remove the profile and validate that the local json object is removed.
   p.remove();
-  CHECK(profile_from_file_to_json(p.name()).empty());
+  CHECK(profile_from_file_to_json(filepath, p.name()).empty());
 }
 
 TEST_CASE_METHOD(
@@ -185,7 +167,7 @@ TEST_CASE_METHOD(
       "username"};
 
   // Set and validate non-default parameters.
-  RestProfile p(e.name);
+  RestProfile p(e.name, homedir_);
   p.set("rest.password", e.password);
   p.set("rest.payer_namespace", e.payer_namespace);
   p.set("rest.token", e.token);
@@ -198,7 +180,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     RestProfileFx, "REST Profile: to_json", "[rest_profile][to_json]") {
   // Create a default RestProfile.
-  RestProfile p;
+  RestProfile p(RestProfile::DEFAULT_NAME, homedir_);
   p.save();
 
   // Validate.
@@ -215,7 +197,7 @@ TEST_CASE_METHOD(
     RestProfileFx,
     "REST Profile: Get/Set invalid parameters",
     "[rest_profile][get_set_invalid]") {
-  RestProfile p;
+  RestProfile p(RestProfile::DEFAULT_NAME, homedir_);
 
   // Try to get a parameter with an invalid name.
   REQUIRE_THROWS_WITH(
@@ -252,7 +234,7 @@ TEST_CASE_METHOD(
   std::string token = "token";
 
   // Create and validate a RestProfile with default name.
-  RestProfile p;
+  RestProfile p(RestProfile::DEFAULT_NAME, homedir_);
   p.set("rest.payer_namespace", payer_namespace);
   p.save();
   expected_values_t e;
@@ -260,7 +242,7 @@ TEST_CASE_METHOD(
   CHECK(is_valid(p, e));
 
   // Create a second profile, ensuring the payer_namespace is inherited.
-  RestProfile p2;
+  RestProfile p2(RestProfile::DEFAULT_NAME, homedir_);
   CHECK(p2.get("rest.payer_namespace") == payer_namespace);
 
   // Set a non-default token on the second profile.
@@ -281,7 +263,7 @@ TEST_CASE_METHOD(
   std::string payer_namespace = "payer_namespace";
 
   // Create and validate a RestProfile with default name.
-  RestProfile p;
+  RestProfile p(RestProfile::DEFAULT_NAME, homedir_);
   p.set("rest.payer_namespace", payer_namespace);
   p.save();
   expected_values_t e;
@@ -290,7 +272,7 @@ TEST_CASE_METHOD(
 
   // Create a second profile with non-default name and ensure the
   // payer_namespace and cloudtoken_ are NOT inherited.
-  RestProfile p2(name);
+  RestProfile p2(name, homedir_);
   CHECK(p2.get("rest.payer_namespace") != payer_namespace);
   p2.save();
   e.name = name;

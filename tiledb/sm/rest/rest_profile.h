@@ -92,6 +92,15 @@ class RestProfile {
    */
   RestProfile(const std::string& name = RestProfile::DEFAULT_NAME);
 
+  /**
+   * Constructor. Intended for testing purposes only, to preserve the user's
+   * $HOME path and their profiles from in-test changes.
+   *
+   * @param name The name of the RestProfile.
+   * @param homedir The user's $HOME directory, or desired in-test path.
+   */
+  RestProfile(const std::string& name, const std::string& homedir);
+
   /** Destructor. */
   ~RestProfile() = default;
 
@@ -156,9 +165,6 @@ class RestProfile {
 
   /** The name of this RestProfile. */
   std::string name_;
-
-  /** The path to the local $HOME directory. */
-  std::string homedir_;
 
   /** The path to the local file which stores all profiles. */
   std::string filepath_;
