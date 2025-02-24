@@ -114,6 +114,22 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
+    "CPP: Enumeration API - Create All-Empty-String",
+    "[enumeration][create][all-empty]") {
+  std::vector<std::string> values = {""};
+  auto enmr = Enumeration::create(ctx_, enmr_name, values);
+  REQUIRE(enmr.ptr() != nullptr);
+  REQUIRE(enmr.name() == enmr_name);
+  REQUIRE(enmr.type() == TILEDB_STRING_ASCII);
+  REQUIRE(enmr.cell_val_num() == TILEDB_VAR_NUM);
+  REQUIRE(enmr.ordered() == false);
+
+  auto data = enmr.as_vector<std::string>();
+  REQUIRE(data == values);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
     "CPP: Enumeration API - Create Ordered",
     "[enumeration][create][var-size]") {
   std::vector<int> values = {1, 2, 3, 4, 5};
@@ -151,6 +167,38 @@ TEST_CASE_METHOD(
   std::vector<std::string> init_values = {"fred", "wilma"};
   std::vector<std::string> add_values = {"barney", "betty"};
   std::vector<std::string> final_values = {"fred", "wilma", "barney", "betty"};
+  auto enmr1 = Enumeration::create(ctx_, enmr_name, init_values, true);
+  auto enmr2 = enmr1.extend(add_values);
+
+  REQUIRE(enmr2.ptr()->is_extension_of(enmr1.ptr().get()));
+
+  auto data = enmr2.as_vector<std::string>();
+  REQUIRE(data == final_values);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Extend Non-Empty With All-Empty",
+    "[enumeration][extend][all-empty]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  std::vector<std::string> add_values = {""};
+  std::vector<std::string> final_values = {"fred", "wilma", ""};
+  auto enmr1 = Enumeration::create(ctx_, enmr_name, init_values, true);
+  auto enmr2 = enmr1.extend(add_values);
+
+  REQUIRE(enmr2.ptr()->is_extension_of(enmr1.ptr().get()));
+
+  auto data = enmr2.as_vector<std::string>();
+  REQUIRE(data == final_values);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Extend All-Empty With Non-Empty",
+    "[enumeration][extend][all-empty]") {
+  std::vector<std::string> init_values = {""};
+  std::vector<std::string> add_values = {"abc", "def"};
+  std::vector<std::string> final_values = {"", "abc", "def"};
   auto enmr1 = Enumeration::create(ctx_, enmr_name, init_values, true);
   auto enmr2 = enmr1.extend(add_values);
 
