@@ -290,12 +290,12 @@ void Posix::read(
   }
   if (offset > static_cast<uint64_t>(std::numeric_limits<off_t>::max())) {
     throw IOError(
-        std::string("Cannot read from file ' ") + path.c_str() +
+        std::string("Cannot read from file '") + path.c_str() +
         "'; offset > typemax(off_t)");
   }
   if (nbytes > SSIZE_MAX) {
     throw IOError(
-        std::string("Cannot read from file ' ") + path +
+        std::string("Cannot read from file '") + path +
         "'; nbytes > SSIZE_MAX");
   }
   throw_if_not_ok(read_all(fd, buffer, nbytes, offset));
