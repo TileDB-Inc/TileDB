@@ -65,7 +65,7 @@ jobs:
       - name: "Upload binaries"
         uses: actions/upload-artifact@v4
         with:
-          name: tiledb-windows-x86_64-ucrt64-${{ steps.get-values.outputs.release_version }}
+          name: release-windows-x86_64-ucrt64-${{ steps.get-values.outputs.release_version }}
           path: .github/workflows/mingw-w64-tiledb/*.pkg.tar.*
       - name: "Print log files (failed build only)"
         shell: bash
