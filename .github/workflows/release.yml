@@ -34,7 +34,7 @@ jobs:
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release
+          name: release-source
           path: |
             build/tiledb-*.tar.gz*
 
