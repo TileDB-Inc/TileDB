@@ -38,7 +38,7 @@ jobs:
 
       - name: Render template
         run: |
-          PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?-(.+)\.(tar\.gz|zip)$"
+          PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2|-ucrt64)?-(.+)\.(tar\.gz|tar\.xz|zip)$"
           RELLIST="output/releases.csv"
           MODULE="output/DownloadPrebuiltTileDB.cmake"
           cp cmake/inputs/DownloadPrebuiltTileDB.cmake $MODULE
@@ -50,8 +50,8 @@ jobs:
                   then
                           OS=${BASH_REMATCH[1]^^}
                           ARCH=${BASH_REMATCH[2]^^}
-                          NOAVX2=${BASH_REMATCH[3]^^}
-                          PLATFORM=${OS}-${ARCH}${NOAVX2}
+                          OPTION=${BASH_REMATCH[3]^^}
+                          PLATFORM=${OS}-${ARCH}${OPTION}
           
                           if [[ $PLATFORM == *"SOURCE"* ]]; then
                             continue
