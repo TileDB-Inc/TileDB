@@ -778,6 +778,12 @@ const std::string rest_header_prefix = "rest.custom_headers.";
 /** The current RestProfile API version. */
 const format_version_t rest_profile_version = 1;
 
+/** Filepath for the special local cloud profile files used in TileDB. */
+const std::string cloud_profile_filepath = ".tiledb/cloud.json";
+
+/** Filepath for the special local RestProfile files used in TileDB. */
+const std::string rest_profile_filepath = ".tiledb/profiles.json";
+
 /** String describing MIME_AUTODETECT. */
 const std::string mime_autodetect_str = "AUTODETECT";
 

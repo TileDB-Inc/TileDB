@@ -42,48 +42,14 @@ using namespace tiledb::common::filesystem;
 namespace tiledb::sm {
 
 /* ****************************** */
-/*       PARAMETER DEFAULTS       */
-/* ****************************** */
-
-const std::string RestProfile::DEFAULT_NAME{"default"};
-const std::string RestProfile::DEFAULT_PASSWORD{""};
-const std::string RestProfile::DEFAULT_PAYER_NAMESPACE{""};
-const std::string RestProfile::DEFAULT_TOKEN{""};
-const std::string RestProfile::DEFAULT_SERVER_ADDRESS{"https://api.tiledb.com"};
-const std::string RestProfile::DEFAULT_USERNAME{""};
-
-const std::map<std::string, std::string> default_values = {
-    std::make_pair("rest.password", RestProfile::DEFAULT_PASSWORD),
-    std::make_pair(
-        "rest.payer_namespace", RestProfile::DEFAULT_PAYER_NAMESPACE),
-    std::make_pair("rest.token", RestProfile::DEFAULT_TOKEN),
-    std::make_pair("rest.server_address", RestProfile::DEFAULT_SERVER_ADDRESS),
-    std::make_pair("rest.username", RestProfile::DEFAULT_USERNAME)};
-
-/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
 RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     : version_(constants::rest_profile_version)
     , name_(name)
-    , filepath_(homedir + ".tiledb/profiles.json")
-    , old_filepath_(homedir + ".tiledb/cloud.json")
-    , param_values_(default_values) {
-  /**
-   * Ensure the user's $HOME is found.
-   * There's an edge case in which `sudo` does not always preserve the path to
-   * `$HOME`. In this case, the home_directory() API does not throw, but instead
-   * returns `std::nullopt`. As such, we can check for a value in the returned
-   * `std::optional` path of the home_directory and throw an error to the user
-   * accordingly, so they may decide the proper course of action: set the
-   * $HOME path, or perhaps stop using `sudo`.
-   */
-  if (homedir.empty()) {
-    throw RestProfileException(
-        "Failed to create RestProfile; $HOME is not set.");
-  }
-
+    , filepath_(homedir + constants::rest_profile_filepath)
+    , old_filepath_(homedir + constants::cloud_profile_filepath) {
   // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
   std::filesystem::create_directories(homedir + ".tiledb");
 
@@ -98,25 +64,40 @@ RestProfile::RestProfile(const std::string& name, const std::string& homedir)
   }
 }
 
-RestProfile::RestProfile(const std::string& name)
-    : RestProfile(
-          name, home_directory().has_value() ? home_directory().value() : "") {
+RestProfile::RestProfile(const std::string& name) {
+  /**
+   * Ensure the user's $HOME is found.
+   * There's an edge case in which `sudo` does not always preserve the path to
+   * `$HOME`. In this case, the home_directory() API does not throw, but instead
+   * returns `std::nullopt`. As such, we can check for a value in the returned
+   * `std::optional` path of the home_directory and throw an error to the user
+   * accordingly, so they may decide the proper course of action: set the
+   * $HOME path, or perhaps stop using `sudo`.
+   */
+  auto homedir = home_directory().has_value() ? home_directory().value() : "";
+  if (homedir.empty()) {
+    throw RestProfileException(
+        "Failed to create RestProfile; $HOME is not set.");
+  }
+
+  RestProfile(name, homedir);
 }
 
 /* ****************************** */
 /*              API               */
 /* ****************************** */
 
-void RestProfile::set(const std::string& param, const std::string& value) {
+void RestProfile::set_param(
+    const std::string& param, const std::string& value) {
   // Validate incoming parameter name
-  if (default_values.count(param) == 0) {
+  if (param_values_.count(param) == 0) {
     throw RestProfileException(
         "Failed to set parameter of invalid name \'" + param + "\'");
   }
   param_values_[param] = value;
 }
 
-std::string RestProfile::get(const std::string& param) const {
+std::string RestProfile::get_param(const std::string& param) const {
   auto it = param_values_.find(param);
   if (it == param_values_.end()) {
     throw RestProfileException(
@@ -131,7 +112,7 @@ std::string RestProfile::get(const std::string& param) const {
  * json object, but rather sorts its elements alphabetically.
  * See issue [#727](https://github.com/nlohmann/json/issues/727) for details.
  */
-void RestProfile::save() {
+void RestProfile::save_to_file() {
   // Validate that the profile is complete (if username is set, so is password)
   if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
       (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
@@ -189,7 +170,7 @@ void RestProfile::save() {
   }
 }
 
-void RestProfile::remove() {
+void RestProfile::remove_from_file() {
   std::string original_filepath = filepath_;
   if (std::filesystem::exists(filepath_)) {
     // Temporarily append filename with a random label to guarantee atomicity.
@@ -244,11 +225,13 @@ std::string RestProfile::dump() {
 void RestProfile::load_from_json_file(const std::string& filename) {
   if (filename.empty() ||
       (filename != filepath_ && filename != old_filepath_)) {
-    throw RestProfileException("Cannot load from file; invalid filename.");
+    throw RestProfileException(
+        "Cannot load from \'" + filename + "\'; invalid filename.");
   }
 
   if (!std::filesystem::exists(filename)) {
-    throw RestProfileException("Cannot load from file; file does not exist.");
+    throw RestProfileException(
+        "Cannot load from \'" + filename + "\'; file does not exist.");
   }
 
   // Load the file into a json object.
@@ -257,7 +240,7 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   try {
     file >> data;
   } catch (...) {
-    throw RestProfileException("Error parsing json file.");
+    throw RestProfileException("Error parsing json file \'" + filename + "\'.");
   }
 
   // If possible, load (overwrite) the parameters from the local file

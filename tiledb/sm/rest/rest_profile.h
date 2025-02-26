@@ -64,22 +64,22 @@ class RestProfile {
   /* ****************************** */
 
   /** The default name of a RestProfile. */
-  static const std::string DEFAULT_NAME;
+  static constexpr std::string DEFAULT_NAME{"default"};
 
   /** The user's REST password. */
-  static const std::string DEFAULT_PASSWORD;
+  static constexpr std::string DEFAULT_PASSWORD{""};
 
   /** The namespace that should be charged for the request. */
-  static const std::string DEFAULT_PAYER_NAMESPACE;
+  static constexpr std::string DEFAULT_PAYER_NAMESPACE{""};
 
   /** The user's REST token. */
-  static const std::string DEFAULT_TOKEN;
+  static constexpr std::string DEFAULT_TOKEN{""};
 
   /** The default address for REST server. */
-  static const std::string DEFAULT_SERVER_ADDRESS;
+  static constexpr std::string DEFAULT_SERVER_ADDRESS{"https://api.tiledb.com"};
 
   /** The user's REST username. */
-  static const std::string DEFAULT_USERNAME;
+  static constexpr std::string DEFAULT_USERNAME{""};
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -118,7 +118,7 @@ class RestProfile {
    * @param param The parameter to set.
    * @param value The value to set on the given parameter.
    */
-  void set(const std::string& param, const std::string& value);
+  void set_param(const std::string& param, const std::string& value);
 
   /**
    * Retrieves the value of the given parameter.
@@ -126,13 +126,13 @@ class RestProfile {
    * @param param The parameter to fetch.
    * @return The value of the given parameter.
    */
-  std::string get(const std::string& param) const;
+  std::string get_param(const std::string& param) const;
 
   /** Saves this profile to the local file. */
-  void save();
+  void save_to_file();
 
   /** Removes this profile from the local file. */
-  void remove();
+  void remove_from_file();
 
   /**
    * Exports this profile's parameters and their values to a json object.
@@ -173,7 +173,14 @@ class RestProfile {
   std::string old_filepath_;
 
   /** Stores a map of <param, value> for the set-parameters. */
-  std::map<std::string, std::string> param_values_;
+  std::map<std::string, std::string> param_values_ = {
+      std::make_pair("rest.password", RestProfile::DEFAULT_PASSWORD),
+      std::make_pair(
+          "rest.payer_namespace", RestProfile::DEFAULT_PAYER_NAMESPACE),
+      std::make_pair("rest.token", RestProfile::DEFAULT_TOKEN),
+      std::make_pair(
+          "rest.server_address", RestProfile::DEFAULT_SERVER_ADDRESS),
+      std::make_pair("rest.username", RestProfile::DEFAULT_USERNAME)};
 };
 
 }  // namespace tiledb::sm
