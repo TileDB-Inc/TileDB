@@ -53,6 +53,10 @@ jobs:
                           NOAVX2=${BASH_REMATCH[3]^^}
                           PLATFORM=${OS}-${ARCH}${NOAVX2}
           
+                          if [[ $PLATFORM == *"SOURCE"* ]]; then
+                            continue
+                          fi
+          
                           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$FILE"
                           HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
           

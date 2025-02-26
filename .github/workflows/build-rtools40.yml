@@ -62,11 +62,16 @@ jobs:
           release_hash=$( echo ${{ github.sha }} | cut -c-7 - )
           ref=${{ github.head_ref || github.ref_name }}
           echo "release_version=${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
+      - name: "Rename release artifact and create sha256 hash"
+        run: |
+          mkdir release
+          mv .github/workflows/mingw-w64-tiledb/*.pkg.tar.xz release/tiledb-windows-x86_64-ucrt64-${{ steps.get-values.outputs.release_version }}
+          sha256sum release/tiledb-windows-x86_64-ucrt64-${{ steps.get-values.outputs.release_version }} > release/tiledb-windows-x86_64-ucrt64-${{ steps.get-values.outputs.release_version }}.sha256
       - name: "Upload binaries"
         uses: actions/upload-artifact@v4
         with:
           name: release-windows-x86_64-ucrt64-${{ steps.get-values.outputs.release_version }}
-          path: .github/workflows/mingw-w64-tiledb/*.pkg.tar.*
+          path: release/tiledb-*
       - name: "Print log files (failed build only)"
         shell: bash
         run: |
