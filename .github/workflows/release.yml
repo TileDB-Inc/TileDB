@@ -36,7 +36,7 @@ jobs:
         with:
           name: release-source
           path: |
-            build/tiledb-*.tar.gz*
+            build/tiledb-*
 
   Package-Binary-Release:
     name: Package Binary Release - ${{ matrix.platform }}
