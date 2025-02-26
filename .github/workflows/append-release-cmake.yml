@@ -33,7 +33,7 @@ jobs:
         with:
           # repository: 'TileDB-Inc/TileDB'
           version: ${{ inputs.ref }}
-          asset-file: '*.zip,*.tar.gz'
+          asset-file: '*.zip,*.tar.gz,*.tar.xz'
           asset-output: './release/'
 
       - name: Render template
