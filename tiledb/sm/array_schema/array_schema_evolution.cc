@@ -181,6 +181,8 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
     schema->expand_current_domain(current_domain_to_expand_);
   }
 
+  schema->check_without_config();
+
   return schema;
 }
 
