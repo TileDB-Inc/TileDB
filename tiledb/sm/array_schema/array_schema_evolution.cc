@@ -76,8 +76,7 @@ class ArraySchemaEvolutionException : public StatusException {
 ArraySchemaEvolution::ArraySchemaEvolution(
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
-    , attributes_to_add_map_(
-          memory_tracker->get_resource(MemoryType::ATTRIBUTES))
+    , attributes_to_add_(memory_tracker->get_resource(MemoryType::ATTRIBUTES))
     , enumerations_to_add_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_extend_map_(
@@ -85,7 +84,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
-    std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add,
+    std::vector<shared_ptr<Attribute>> attrs_to_add,
     std::unordered_set<std::string> attrs_to_drop,
     std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add,
     std::unordered_map<std::string, shared_ptr<const Enumeration>>
@@ -95,8 +94,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     shared_ptr<CurrentDomain> current_domain,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
-    , attributes_to_add_map_(
-          memory_tracker->get_resource(MemoryType::ATTRIBUTES))
+    , attributes_to_add_(memory_tracker->get_resource(MemoryType::ATTRIBUTES))
     , attributes_to_drop_(attrs_to_drop)
     , enumerations_to_add_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
@@ -106,7 +104,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     , timestamp_range_(timestamp_range)
     , current_domain_to_expand_(current_domain) {
   for (auto& elem : attrs_to_add) {
-    attributes_to_add_map_.insert(elem);
+    attributes_to_add_.push_back(elem);
   }
 
   for (auto& elem : enmrs_to_add) {
@@ -147,8 +145,8 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
   }
 
   // Add attributes.
-  for (auto& attr : attributes_to_add_map_) {
-    throw_if_not_ok(schema->add_attribute(attr.second, false));
+  for (auto& attr : attributes_to_add_) {
+    throw_if_not_ok(schema->add_attribute(attr, false));
   }
 
   // Drop attributes.
@@ -192,22 +190,23 @@ void ArraySchemaEvolution::add_attribute(shared_ptr<const Attribute> attr) {
     throw ArraySchemaEvolutionException(
         "Cannot add attribute; Input attribute is null");
   }
-  if (attributes_to_add_map_.find(attr->name()) !=
-      attributes_to_add_map_.end()) {
-    throw ArraySchemaEvolutionException(
-        "Cannot add attribute; Input attribute name is already there");
+  for (const auto& a : attributes_to_add_) {
+    if (a->name() == attr->name()) {
+      throw ArraySchemaEvolutionException(
+          "Cannot add attribute; Input attribute name is already there");
+    }
   }
 
   // Create new attribute and potentially set a default name
   /*
-   * At present, the container for attributes within the schema evolution object
-   * is based on `unique_ptr`. The argument is `shared_ptr`, since that's how C
-   * API handles and `class Array` store them. It might be better to change the
-   * container type, but until then, we copy the attribute into a new
-   * allocation.
+   * At present, the container for attributes within the schema evolution
+   * object is based on `unique_ptr`. The argument is `shared_ptr`, since
+   * that's how C API handles and `class Array` store them. It might be better
+   * to change the container type, but until then, we copy the attribute into
+   * a new allocation.
    */
-  attributes_to_add_map_[attr->name()] =
-      tdb_unique_ptr<Attribute>(tdb_new(Attribute, *attr));
+  attributes_to_add_.push_back(
+      tdb_unique_ptr<Attribute>(tdb_new(Attribute, *attr)));
   if (attributes_to_drop_.find(attr->name()) != attributes_to_drop_.end()) {
     attributes_to_drop_.erase(attr->name());
   }
@@ -216,9 +215,9 @@ void ArraySchemaEvolution::add_attribute(shared_ptr<const Attribute> attr) {
 std::vector<std::string> ArraySchemaEvolution::attribute_names_to_add() const {
   std::lock_guard<std::mutex> lock(mtx_);
   std::vector<std::string> names;
-  names.reserve(attributes_to_add_map_.size());
-  for (auto& entry : attributes_to_add_map_) {
-    names.emplace_back(entry.first);
+  names.reserve(attributes_to_add_.size());
+  for (auto& entry : attributes_to_add_) {
+    names.emplace_back(entry->name());
   }
   return names;
 }
@@ -226,18 +225,25 @@ std::vector<std::string> ArraySchemaEvolution::attribute_names_to_add() const {
 const Attribute* ArraySchemaEvolution::attribute_to_add(
     const std::string& name) const {
   std::lock_guard<std::mutex> lock(mtx_);
-  auto it = attributes_to_add_map_.find(name);
-  return (it == attributes_to_add_map_.end()) ? nullptr : it->second.get();
+  for (const auto& attr : attributes_to_add_) {
+    if (attr->name() == name) {
+      return attr.get();
+    }
+  }
+  return nullptr;
 }
 
 void ArraySchemaEvolution::drop_attribute(const std::string& attribute_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   attributes_to_drop_.insert(attribute_name);
-  auto ait = attributes_to_add_map_.find(attribute_name);
-  if (ait != attributes_to_add_map_.end()) {
-    // Reset the pointer and erase it
-    attributes_to_add_map_.erase(ait);
-  }
+
+  // Remove any added attributes with this name
+  attributes_to_add_.erase(
+      std::remove_if(
+          attributes_to_add_.begin(),
+          attributes_to_add_.end(),
+          [&](auto& a) { return a->name() == attribute_name; }),
+      attributes_to_add_.end());
 }
 
 std::vector<std::string> ArraySchemaEvolution::attribute_names_to_drop() const {
@@ -382,7 +388,8 @@ void ArraySchemaEvolution::expand_current_domain(
     shared_ptr<CurrentDomain> current_domain) {
   if (current_domain == nullptr) {
     throw ArraySchemaEvolutionException(
-        "Cannot expand the array current domain; Input current domain is null");
+        "Cannot expand the array current domain; Input current domain is "
+        "null");
   }
 
   if (current_domain->empty()) {
@@ -407,7 +414,7 @@ shared_ptr<CurrentDomain> ArraySchemaEvolution::current_domain_to_expand()
 /* ****************************** */
 
 void ArraySchemaEvolution::clear() {
-  attributes_to_add_map_.clear();
+  attributes_to_add_.clear();
   attributes_to_drop_.clear();
   enumerations_to_add_map_.clear();
   enumerations_to_drop_.clear();
