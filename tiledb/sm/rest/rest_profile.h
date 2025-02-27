@@ -64,22 +64,22 @@ class RestProfile {
   /* ****************************** */
 
   /** The default name of a RestProfile. */
-  static constexpr std::string DEFAULT_NAME{"default"};
+  static const std::string DEFAULT_NAME;
 
   /** The user's REST password. */
-  static constexpr std::string DEFAULT_PASSWORD{""};
+  static const std::string DEFAULT_PASSWORD;
 
   /** The namespace that should be charged for the request. */
-  static constexpr std::string DEFAULT_PAYER_NAMESPACE{""};
+  static const std::string DEFAULT_PAYER_NAMESPACE;
 
   /** The user's REST token. */
-  static constexpr std::string DEFAULT_TOKEN{""};
+  static const std::string DEFAULT_TOKEN;
 
   /** The default address for REST server. */
-  static constexpr std::string DEFAULT_SERVER_ADDRESS{"https://api.tiledb.com"};
+  static const std::string DEFAULT_SERVER_ADDRESS;
 
   /** The user's REST username. */
-  static constexpr std::string DEFAULT_USERNAME{""};
+  static const std::string DEFAULT_USERNAME;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

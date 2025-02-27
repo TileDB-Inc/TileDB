@@ -27,13 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class HomeDirectory and function home_directory().
+ * This file defines standalone function home_directory().
  */
 
 #ifndef TILEDB_HOME_DIRECTORY_H
 #define TILEDB_HOME_DIRECTORY_H
 
-#include <optional>
 #include <string>
 
 namespace tiledb::common::filesystem {
@@ -42,37 +41,9 @@ namespace tiledb::common::filesystem {
  * Standalone function which returns the path to user's home directory.
  *
  * @invariant `sudo` does not always preserve the path to `$HOME`. Rather than
- * throw if the path does not exist, this API will return `std::nullopt`.
+ * throw if the path does not exist, this API will return an empty string.
  */
-std::optional<std::string> home_directory();
-
-class HomeDirectory {
- public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-
-  /** Constructor. */
-  HomeDirectory();
-
-  /** Destructor. */
-  ~HomeDirectory() = default;
-
-  /* ********************************* */
-  /*                API                */
-  /* ********************************* */
-
-  /** Return the path of the home directory. */
-  std::optional<std::string> path();
-
- private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
-  /** The path of the home directory. */
-  std::optional<std::string> path_;
-};
+std::string home_directory();
 
 }  // namespace tiledb::common::filesystem
 
