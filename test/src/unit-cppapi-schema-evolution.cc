@@ -1025,3 +1025,50 @@ TEST_CASE(
     }
   }
 }
+
+TEST_CASE(
+    "C++ API: SchemaEvolution add duplicate attribute",
+    "[cppapi][schema][evolution][add]") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(
+      "test_schema_evolution_add_duplicate_attribute")};
+
+  // create initial array
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  domain.add_dimension(d1);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+
+  SECTION("Add attribute to evolution twice") {
+    // try evolving
+    auto evolution = ArraySchemaEvolution(ctx);
+    evolution.add_attribute(Attribute::create<int>(ctx, "a2"));
+    CHECK_THROWS(evolution.add_attribute(Attribute::create<int>(ctx, "a2")));
+
+    evolution.drop_attribute("a2");
+    evolution.add_attribute(Attribute::create<int>(ctx, "a2"));
+    CHECK_THROWS(evolution.add_attribute(Attribute::create<int>(ctx, "a2")));
+  }
+
+  SECTION("Add attribute with same name as schema attribute") {
+    // create array
+    Array::create(array_uri, schema);
+    test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
+
+    // try evolving
+    auto evolution = ArraySchemaEvolution(ctx);
+    evolution.add_attribute(Attribute::create<int>(ctx, "a1"));
+
+    // should throw, cannot add an attribute with the same name
+    CHECK_THROWS(evolution.array_evolve(array_uri));
+
+    // load schema back should succeed
+    CHECK_NOTHROW(Array::load_schema(ctx, array_uri));
+  }
+}
