@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class HomeDirectory and function home_directory().
+ * This file implements standalone function home_directory().
  */
 
 #ifdef _WIN32
@@ -45,20 +45,8 @@
 
 namespace tiledb::common::filesystem {
 
-/* ********************************* */
-/*                API                */
-/* ********************************* */
-
-std::optional<std::string> home_directory() {
-  return HomeDirectory().path();
-}
-
-/* ********************************* */
-/*           HomeDirectory           */
-/* ********************************* */
-
-HomeDirectory::HomeDirectory()
-    : path_(std::nullopt) {
+std::string home_directory() {
+  std::string path = "";
 #ifdef _WIN32
   wchar_t* home;
   auto _ = ScopedExecutor([&]() {
@@ -66,18 +54,15 @@ HomeDirectory::HomeDirectory()
       CoTaskMemFree(home);
   });
   if (SHGetKnownFolderPath(FOLDERID_Profile, 0, NULL, &home) == S_OK) {
-    path_ = std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(home);
+    path = std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(home);
   }
 #else
   const char* home = std::getenv("HOME");
   if (home != nullptr) {
-    path_ = home;
+    path = home;
   }
 #endif
-}
-
-std::optional<std::string> HomeDirectory::path() {
-  return path_;
+  return path;
 }
 
 }  // namespace tiledb::common::filesystem

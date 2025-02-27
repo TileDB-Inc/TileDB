@@ -42,6 +42,17 @@ using namespace tiledb::common::filesystem;
 namespace tiledb::sm {
 
 /* ****************************** */
+/*       PARAMETER DEFAULTS       */
+/* ****************************** */
+
+const std::string RestProfile::DEFAULT_NAME{"default"};
+const std::string RestProfile::DEFAULT_PASSWORD{""};
+const std::string RestProfile::DEFAULT_PAYER_NAMESPACE{""};
+const std::string RestProfile::DEFAULT_TOKEN{""};
+const std::string RestProfile::DEFAULT_SERVER_ADDRESS{"https://api.tiledb.com"};
+const std::string RestProfile::DEFAULT_USERNAME{""};
+
+/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
@@ -74,7 +85,7 @@ RestProfile::RestProfile(const std::string& name) {
    * accordingly, so they may decide the proper course of action: set the
    * $HOME path, or perhaps stop using `sudo`.
    */
-  auto homedir = home_directory().has_value() ? home_directory().value() : "";
+  auto homedir = home_directory();
   if (homedir.empty()) {
     throw RestProfileException(
         "Failed to create RestProfile; $HOME is not set.");
