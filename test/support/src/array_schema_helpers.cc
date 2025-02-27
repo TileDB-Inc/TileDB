@@ -36,6 +36,49 @@ using namespace tiledb;
 
 namespace tiledb::test {
 
+bool is_equivalent_filter(
+    const tiledb::Filter& left, const tiledb::Filter& right) {
+  // FIXME if it ever matters: check options
+  return left.filter_type() == right.filter_type();
+}
+
+bool is_equivalent_filter_list(
+    const tiledb::FilterList& left, const tiledb::FilterList& right) {
+  if (left.nfilters() != right.nfilters()) {
+    return false;
+  }
+  for (unsigned i = 0; i < left.nfilters(); i++) {
+    if (!(is_equivalent_filter(left.filter(i), right.filter(i)))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool is_equivalent_attribute(
+    const tiledb::Attribute& left, const tiledb::Attribute& right) {
+  if (!(left.name() == right.name() && left.type() == right.type() &&
+        left.cell_val_num() == right.cell_val_num() &&
+        left.nullable() == right.nullable() &&
+        is_equivalent_filter_list(left.filter_list(), right.filter_list()))) {
+    return false;
+  }
+
+  const void *leftfill, *rightfill;
+  uint64_t leftfillsize, rightfillsize;
+  uint8_t leftfillvalid, rightfillvalid;
+  if (left.nullable()) {
+    left.get_fill_value(&leftfill, &leftfillsize, &leftfillvalid);
+    right.get_fill_value(&rightfill, &rightfillsize, &rightfillvalid);
+  } else {
+    left.get_fill_value(&leftfill, &leftfillsize);
+    right.get_fill_value(&rightfill, &rightfillsize);
+    leftfillvalid = rightfillvalid = 1;
+  }
+  return leftfillsize == rightfillsize && leftfillvalid == rightfillvalid &&
+         (memcmp(leftfill, rightfill, leftfillsize) == 0);
+}
+
 bool is_equivalent_enumeration(
     const sm::Enumeration& left, const sm::Enumeration& right) {
   return left.name() == right.name() && left.type() == right.type() &&
