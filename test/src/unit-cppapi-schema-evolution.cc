@@ -1072,3 +1072,37 @@ TEST_CASE(
     CHECK_NOTHROW(Array::load_schema(ctx, array_uri));
   }
 }
+
+TEST_CASE(
+    "C++ API: SchemaEvolution drop last attribute",
+    "[cppapi][schema][evolution][drop]") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{
+      vfs_test_setup.array_uri("test_schema_evolution_drop_last_attribute")};
+
+  // create initial array
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  domain.add_dimension(d1);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+
+  // create array
+  Array::create(array_uri, schema);
+  test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
+
+  // try evolving
+  auto evolution = ArraySchemaEvolution(ctx);
+  evolution.drop_attribute("a1");
+
+  // should throw, schema must have at least one attribute
+  CHECK_THROWS(evolution.array_evolve(array_uri));
+
+  // load schema back should succeed
+  CHECK_NOTHROW(Array::load_schema(ctx, array_uri));
+}
