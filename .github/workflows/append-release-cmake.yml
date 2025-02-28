@@ -66,9 +66,9 @@ jobs:
                           fi
           
                           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$FILE"
-                          HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
+                          HASH=$(cat release/$FILE.sha256 | cut -d \  -f 1)
           
-                          DESCRIPTION_VAR=${PLATFORM//-/_}
+                          DESCRIPTION_VAR="DESCRIPTION_${PLATFORM//-/_}"
                           echo "${PLATFORM},${URL},${HASH},${!DESCRIPTION_VAR}" >> $RELLIST
                   fi
           done
