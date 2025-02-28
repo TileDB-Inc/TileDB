@@ -44,13 +44,13 @@ jobs:
           cp cmake/inputs/DownloadPrebuiltTileDB.cmake $MODULE
           echo "platform,url,sha256,description" > $RELLIST
           
-          DESCRIPTION_LINUX-X86_64="Linux x86_64 release artifact"
-          DESCRIPTION_LINUX-X86_64-NOAVX2="Linux x86_64 release artifact without AVX2 instructions"
-          DESCRIPTION_LINUX-ARM64="Linux ARM64(aarch64) release artifact"
-          DESCRIPTION_MACOS-ARM64="MacOS ARM64 release artifact"
-          DESCRIPTION_MACOS-X86_64="MacOS x86_64 release artifact"
-          DESCRIPTION_WINDOWS-X86_64="Windows x86_64 release artifact"
-          DESCRIPTION_WINDOWS-X86_64-UCRT64="INTERNAL USE: Windows x86_64 release artifact produced in R toolchain"
+          DESCRIPTION_LINUX_X86_64="Linux x86_64 release artifact"
+          DESCRIPTION_LINUX_X86_64_NOAVX2="Linux x86_64 release artifact without AVX2 instructions"
+          DESCRIPTION_LINUX_ARM64="Linux ARM64(aarch64) release artifact"
+          DESCRIPTION_MACOS_ARM64="MacOS ARM64 release artifact"
+          DESCRIPTION_MACOS_X86_64="MacOS x86_64 release artifact"
+          DESCRIPTION_WINDOWS_X86_64="Windows x86_64 release artifact"
+          DESCRIPTION_WINDOWS_X86_64-UCRT64="INTERNAL USE: Windows x86_64 release artifact produced in R toolchain"
           
           for FILE in $(ls release)
           do
@@ -68,7 +68,8 @@ jobs:
                           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$FILE"
                           HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
           
-                          echo "${PLATFORM},${URL},${HASH},${DESCRIPTION_${PLATFORM}}" >> $RELLIST
+                          DESCRIPTION_VAR=${PLATFORM//-/_}
+                          echo "${PLATFORM},${URL},${HASH},${!DESCRIPTION_VAR}" >> $RELLIST
                   fi
           done
           
