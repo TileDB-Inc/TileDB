@@ -66,20 +66,22 @@ jobs:
                           fi
           
                           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$FILE"
-                          HASH=$(cat release/$FILE.sha256 | cut -d \  -f 1)
+                          HASH=$(cat release/$FILE.sha256 | cut -d ' ' -f 1)
           
                           DESCRIPTION_VAR="DESCRIPTION_${PLATFORM//-/_}"
+                          echo ${DESCRIPTION_VAR}
+                          echo ${!DESCRIPTION_VAR}
                           echo "${PLATFORM},${URL},${HASH},${!DESCRIPTION_VAR}" >> $RELLIST
                   fi
           done
           
           SOURCE_FILE_NAME=$(ls release/tiledb-source-*.tar.gz)
           URL_TILEDB_SOURCE="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$(basename $SOURCE_FILE_NAME)"
-          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \  -f 1)
+          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d ' ' -f 1)
           
           echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE},Source release artifact" >> $RELLIST
           
-          HASH=$(sha256sum $RELLIST | cut -d " " -f 1)
+          HASH=$(sha256sum $RELLIST | cut -d ' ' -f 1)
           echo $HASH > $RELLIST.sha256
           
           cat $RELLIST
