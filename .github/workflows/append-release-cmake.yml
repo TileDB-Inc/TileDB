@@ -42,7 +42,15 @@ jobs:
           RELLIST="output/releases.csv"
           MODULE="output/DownloadPrebuiltTileDB.cmake"
           cp cmake/inputs/DownloadPrebuiltTileDB.cmake $MODULE
-          echo "platform,url,sha256" > $RELLIST
+          echo "platform,url,sha256,description" > $RELLIST
+          
+          DESCRIPTION_LINUX-X86_64="Linux x86_64 release artifact"
+          DESCRIPTION_LINUX-X86_64-NOAVX2="Linux x86_64 release artifact without AVX2 instructions"
+          DESCRIPTION_LINUX-ARM64="Linux ARM64(aarch64) release artifact"
+          DESCRIPTION_MACOS-ARM64="MacOS ARM64 release artifact"
+          DESCRIPTION_MACOS-X86_64="MacOS x86_64 release artifact"
+          DESCRIPTION_WINDOWS-X86_64="Windows x86_64 release artifact"
+          DESCRIPTION_WINDOWS-X86_64-UCRT64="INTERNAL USE: Windows x86_64 release artifact produced in R toolchain"
           
           for FILE in $(ls release)
           do
@@ -60,13 +68,13 @@ jobs:
                           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$FILE"
                           HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
           
-                          echo "${PLATFORM},${URL},${HASH}" >> $RELLIST
+                          echo "${PLATFORM},${URL},${HASH},${DESCRIPTION_${PLATFORM}}" >> $RELLIST
                   fi
           done
           
           SOURCE_FILE_NAME=$(ls release/tiledb-source-*.tar.gz)
           URL_TILEDB_SOURCE="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$(basename $SOURCE_FILE_NAME)"
-          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \t -f 1)
+          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \  -f 1)
           
           echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE}" >> $RELLIST
           
