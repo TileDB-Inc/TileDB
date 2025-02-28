@@ -76,7 +76,7 @@ jobs:
           URL_TILEDB_SOURCE="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$(basename $SOURCE_FILE_NAME)"
           HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \  -f 1)
           
-          echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE}" >> $RELLIST
+          echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE},Source release artifact" >> $RELLIST
           
           HASH=$(sha256sum $RELLIST | cut -d " " -f 1)
           echo $HASH > $RELLIST.sha256
