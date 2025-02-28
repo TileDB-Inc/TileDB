@@ -38,7 +38,7 @@ jobs:
 
       - name: Render template
         run: |
-          PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2|-ucrt64)?-(.+)\.(tar\.gz|tar\.xz|zip)$"
+          PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2|-mingw64_ucrt64)?-(.+)\.(tar\.gz|tar\.xz|zip)$"
           RELLIST="output/releases.csv"
           MODULE="output/DownloadPrebuiltTileDB.cmake"
           cp cmake/inputs/DownloadPrebuiltTileDB.cmake $MODULE
