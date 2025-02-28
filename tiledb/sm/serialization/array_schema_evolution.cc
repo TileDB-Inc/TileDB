@@ -168,11 +168,11 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
     const capnp::ArraySchemaEvolution::Reader& evolution_reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   // Create attributes to add
-  std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add;
+  std::vector<shared_ptr<Attribute>> attrs_to_add;
   auto attrs_to_add_reader = evolution_reader.getAttributesToAdd();
   for (auto attr_reader : attrs_to_add_reader) {
     auto attr = attribute_from_capnp(attr_reader);
-    attrs_to_add[attr->name()] = attr;
+    attrs_to_add.push_back(attr);
   }
 
   // Create attributes to drop

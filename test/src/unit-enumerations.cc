@@ -1639,7 +1639,7 @@ TEST_CASE_METHOD(
 
   auto orig_schema = array->array_schema_latest_ptr();
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
-  auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
+  auto attr3 = make_shared<Attribute>(HERE(), "attr4", Datatype::UINT32);
   ase->add_attribute(attr3);
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
 }
@@ -1656,7 +1656,7 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(values);
   ase->add_enumeration(enmr);
 
-  auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
+  auto attr3 = make_shared<Attribute>(HERE(), "attr4", Datatype::UINT32);
   attr3->set_enumeration_name(default_enmr_name);
   ase->add_attribute(attr3);
 

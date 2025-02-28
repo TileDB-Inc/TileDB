@@ -303,7 +303,7 @@ class Attribute {
    * @param value A pointer to the fill value to get.
    * @param size The size of the fill value to get.
    */
-  void get_fill_value(const void** value, uint64_t* size) {
+  void get_fill_value(const void** value, uint64_t* size) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_attribute_get_fill_value(
         ctx.ptr().get(), attr_.get(), value, size));
@@ -392,7 +392,8 @@ class Attribute {
    * @param size The size of the fill value to get.
    * @param valid The fill value validity to get.
    */
-  void get_fill_value(const void** value, uint64_t* size, uint8_t* valid) {
+  void get_fill_value(
+      const void** value, uint64_t* size, uint8_t* valid) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_attribute_get_fill_value_nullable(
         ctx.ptr().get(), attr_.get(), value, size, valid));
