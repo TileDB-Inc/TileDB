@@ -34,9 +34,9 @@ jobs:
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release
+          name: release-source
           path: |
-            build/tiledb-*.tar.gz*
+            build/tiledb-*
 
   Package-Binary-Release:
     name: Package Binary Release - ${{ matrix.platform }}
@@ -136,6 +136,9 @@ jobs:
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
 
+  Build-R-Binaries:
+    uses: ./.github/workflows/build-rtools40.yml
+
   Test-Release-Artifacts:
     needs:
       - Package-Binary-Release
@@ -144,7 +147,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: release-*
+          pattern: "*"
           merge-multiple: true
           path: dist
       - name: Test names of release artifacts
@@ -158,6 +161,7 @@ jobs:
     needs:
       - Test-Release-Artifacts
       - Package-Source-Release
+      - Build-R-Binaries
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
@@ -167,6 +171,9 @@ jobs:
           pattern: release-*
           merge-multiple: true
           path: dist
+      - name: DEBUG
+        run: |
+          ls -R dist/
       - name: Publish release artifacts
         uses: actions/github-script@v6
         with:
@@ -179,8 +186,9 @@ jobs:
               repo: repo.repo,
               tag: "${{ github.ref_name }}"
             });
-            const globber = await glob.create('dist/*');
+            const globber = await glob.create('dist/**/*');
             for await (const file of globber.globGenerator()) {
+              console.log(`Uploading file: ${file}`);
               await github.rest.repos.uploadReleaseAsset({
                 owner: repo.owner,
                 repo: repo.repo,
