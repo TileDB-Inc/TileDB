@@ -50,7 +50,7 @@ jobs:
           DESCRIPTION_MACOS_ARM64="MacOS ARM64 release artifact"
           DESCRIPTION_MACOS_X86_64="MacOS x86_64 release artifact"
           DESCRIPTION_WINDOWS_X86_64="Windows x86_64 release artifact"
-          DESCRIPTION_WINDOWS_X86_64-UCRT64="INTERNAL USE: Windows x86_64 release artifact produced in R toolchain"
+          DESCRIPTION_WINDOWS_X86_64_UCRT64="INTERNAL USE: Windows x86_64 release artifact produced in R toolchain"
           
           for FILE in $(ls release)
           do
