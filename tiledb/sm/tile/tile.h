@@ -46,7 +46,6 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class FilteredData;
 class MemoryTracker;
 
 /**
@@ -73,8 +72,6 @@ class TileBase {
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
 
-  virtual ~TileBase() = default;
-
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -95,16 +92,6 @@ class TileBase {
     return static_cast<T*>(data());
   }
 
-  /**
-   * Converts the data pointer to a specific type with no check on compute
-   * task. This is used for getting thte data from inside the compute thread
-   * itself for unfiltering.
-   */
-  template <class T>
-  inline T* data_as_unsafe() const {
-    return static_cast<T*>(data_unsafe());
-  }
-
   /** Gets the size, considering the data as a specific type. */
   template <class T>
   inline size_t size_as() const {
@@ -113,14 +100,6 @@ class TileBase {
 
   /** Returns the internal buffer. */
   inline void* data() const {
-    return data_.get();
-  }
-
-  /**
-   * Returns the internal buffer. This is used for getting thte data from
-   * inside the compute thread itself for unfiltering.
-   */
-  inline void* data_unsafe() const {
     return data_.get();
   }
 
@@ -155,8 +134,8 @@ class TileBase {
    *
    * @param var_tile Var tile.
    */
-  void add_extra_offset_unsafe(TileBase& var_tile) {
-    data_as_unsafe<uint64_t>()[size_ / cell_size_ - 1] = var_tile.size();
+  void add_extra_offset(TileBase& var_tile) {
+    data_as<uint64_t>()[size_ / cell_size_ - 1] = var_tile.size();
   }
 
  protected:
@@ -212,8 +191,6 @@ class Tile : public TileBase {
    * @param size The size of the tile.
    * @param filtered_data Pointer to the external filtered data.
    * @param filtered_size The filtered size to allocate.
-   * @param memory_tracker The memory resource to use.
-   * @param filtered_data_io_task The I/O task to wait on for data to be valid.
    */
   Tile(
       const format_version_t format_version,
@@ -223,8 +200,7 @@ class Tile : public TileBase {
       const uint64_t size,
       void* filtered_data,
       uint64_t filtered_size,
-      shared_ptr<MemoryTracker> memory_tracker,
-      std::optional<ThreadPool::SharedTask> filtered_data_io_task);
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor.
@@ -238,7 +214,6 @@ class Tile : public TileBase {
    * @param filtered_data Pointer to the external filtered data.
    * @param filtered_size The filtered size to allocate.
    * @param resource The memory resource to use.
-   * @param filtered_data_io_task The I/O task to wait on for data to be valid.
    */
   Tile(
       const format_version_t format_version,
@@ -248,13 +223,10 @@ class Tile : public TileBase {
       const uint64_t size,
       void* filtered_data,
       uint64_t filtered_size,
-      tdb::pmr::memory_resource* resource,
-      std::optional<ThreadPool::SharedTask> filtered_data_io_task);
+      tdb::pmr::memory_resource* resource);
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
-
-  ~Tile() = default;
 
   /* ********************************* */
   /*                API                */
@@ -281,43 +253,17 @@ class Tile : public TileBase {
 
   /** Returns the buffer that contains the filtered, on-disk format. */
   inline char* filtered_data() {
-    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-    if (filtered_data_io_task_.has_value()) {
-      if (filtered_data_io_task_.value().valid()) {
-        throw_if_not_ok(filtered_data_io_task_.value().wait());
-      } else {
-        throw std::future_error(std::future_errc::no_state);
-      }
-    }
     return static_cast<char*>(filtered_data_);
   }
 
   /** Returns the data casted as a type. */
   template <class T>
   inline T* filtered_data_as() {
-    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-    if (filtered_data_io_task_.has_value()) {
-      if (filtered_data_io_task_.value().valid()) {
-        throw_if_not_ok(filtered_data_io_task_.value().wait());
-      } else {
-        throw std::future_error(std::future_errc::no_state);
-      }
-    }
-
     return static_cast<T*>(filtered_data_);
   }
 
   /** Clears the filtered buffer. */
   void clear_filtered_buffer() {
-    std::scoped_lock<std::recursive_mutex> lock{filtered_data_io_task_mtx_};
-    if (filtered_data_io_task_.has_value()) {
-      if (filtered_data_io_task_.value().valid()) {
-        throw_if_not_ok(filtered_data_io_task_.value().wait());
-      } else {
-        throw std::future_error(std::future_errc::no_state);
-      }
-    }
-
     filtered_data_ = nullptr;
     filtered_size_ = 0;
   }
@@ -332,12 +278,8 @@ class Tile : public TileBase {
   /**
    * Zips the coordinate values such that a cell's coordinates across
    * all dimensions appear contiguously in the buffer.
-   *
-   * This is marked unsafe because we don't check for unfiltering to be
-   * completed since this function is used by the unfiltering task itself as
-   * part of post processing.
    */
-  void zip_coordinates_unsafe();
+  void zip_coordinates();
 
   /**
    * Reads the chunk data of a tile buffer and populates a chunk data structure.
@@ -411,17 +353,6 @@ class Tile : public TileBase {
 
   /** The size of the filtered data. */
   uint64_t filtered_size_;
-
-  /** I/O task to check and block on if filtered data is ready. */
-  mutable std::optional<ThreadPool::SharedTask> filtered_data_io_task_;
-
-  /**
-   * Lock for checking task, since this tile can be used by multiple threads.
-   * The ThreadPool::SharedTask lets multiple threads copy the task, but it
-   * doesn't let multiple threads access a single task itself. Due to this we
-   * need a mutex since the tile will be accessed by multiple threads.
-   */
-  mutable std::recursive_mutex filtered_data_io_task_mtx_;
 };
 
 /**
@@ -465,7 +396,7 @@ class WriterTile : public TileBase {
    * @param type The data type.
    * @param cell_size The cell size.
    * @param size The size of the tile.
-   * @param memory_tracker The memory tracker to use.
+   * @param meory_tracker The memory tracker to use.
    */
   WriterTile(
       const format_version_t format_version,

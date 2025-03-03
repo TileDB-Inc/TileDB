@@ -203,8 +203,7 @@ Tile create_tile_for_unfiltering(
       tile->cell_size() * nelts,
       tile->filtered_buffer().data(),
       tile->filtered_buffer().size(),
-      tracker,
-      std::nullopt};
+      tracker};
 }
 
 void run_reverse(
