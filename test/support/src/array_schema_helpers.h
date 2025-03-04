@@ -38,6 +38,9 @@
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
+#include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
+
 namespace tiledb::test {
 
 /**
@@ -65,6 +68,13 @@ bool is_equivalent_attribute(
  */
 bool is_equivalent_enumeration(
     const sm::Enumeration& left, const sm::Enumeration& right);
+
+/**
+ * @return if two enumerations `left` and `right` are equivalent,
+ *         i.e. have the same name, datatype, variants, etc
+ */
+bool is_equivalent_enumeration(
+    const Enumeration& left, const Enumeration& right);
 
 }  // namespace tiledb::test
 

@@ -51,6 +51,23 @@
 
 using namespace tiledb;
 
+/**
+ * @return a simple schema with dimension d1 and attribute a1
+ */
+static ArraySchema simple_schema(Context& ctx) {
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  domain.add_dimension(d1);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+
+  return schema;
+}
+
 TEST_CASE(
     "C++ API: SchemaEvolution, add and drop attributes",
     "[cppapi][schema][evolution][add][drop][rest]") {
@@ -1081,18 +1098,8 @@ TEST_CASE(
   auto array_uri{
       vfs_test_setup.array_uri("test_schema_evolution_drop_last_attribute")};
 
-  // create initial array
-  Domain domain(ctx);
-  auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
-  domain.add_dimension(d1);
-
-  auto a1 = Attribute::create<int>(ctx, "a1");
-
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain);
-  schema.add_attribute(a1);
-
   // create array
+  ArraySchema schema = simple_schema(ctx);
   Array::create(array_uri, schema);
   test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
 
@@ -1105,4 +1112,40 @@ TEST_CASE(
 
   // load schema back should succeed
   CHECK_NOTHROW(Array::load_schema(ctx, array_uri));
+}
+
+/**
+ * Add an enumeration which is not used by any attribute.
+ *
+ * FIXME: should this be an error?
+ * As far as I can tell the enumeration is undiscoverable if no attribute
+ * references it. It can be looked up by name but there is no
+ * API to list enumeration names.
+ */
+TEST_CASE("C++ API: SchemaEvolution add unused enumeration") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{
+      vfs_test_setup.array_uri("test_schema_evolution_add_unused_enumeration")};
+
+  // create array
+  ArraySchema schema = simple_schema(ctx);
+  Array::create(array_uri, schema);
+  test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
+
+  // evolve
+  auto evolution = ArraySchemaEvolution(ctx);
+  Enumeration enumeration_in = Enumeration::create_empty(
+      ctx, "us_states", TILEDB_STRING_ASCII, tiledb::sm::constants::var_num);
+  evolution.add_enumeration(enumeration_in);
+
+  evolution.array_evolve(array_uri);
+
+  auto schema_out = Array::load_schema(ctx, array_uri);
+
+  Enumeration enumeration_out =
+      ArraySchemaExperimental::get_enumeration_from_name(
+          ctx, schema_out, "us_states");
+
+  CHECK(test::is_equivalent_enumeration(enumeration_in, enumeration_out));
 }

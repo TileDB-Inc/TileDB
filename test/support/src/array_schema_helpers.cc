@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/array_schema_helpers.h"
+#include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 
 using namespace tiledb;
 
@@ -89,6 +90,12 @@ bool is_equivalent_enumeration(
              left.data().end(),
              right.data().begin(),
              right.data().end());
+}
+
+bool is_equivalent_enumeration(
+    const Enumeration& left, const Enumeration& right) {
+  return is_equivalent_enumeration(
+      *left.ptr()->enumeration().get(), *right.ptr()->enumeration().get());
 }
 
 }  // namespace tiledb::test
