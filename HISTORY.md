@@ -1,3 +1,13 @@
+# TileDB v2.27.2 Release Notes
+
+## Improvements
+
+* Allow creation of enumeration with sole value the empty string. [5460](https://github.com/TileDB-Inc/TileDB/pull/5460)
+
+## Defects removed
+
+* Revert improve readers by parallelizing I/O and compute operations due to performance regression. [#5472](https://github.com/TileDB-Inc/TileDB/pull/5472)
+
 # TileDB v2.27.1 Release Notes
 
 ## Improvements
