@@ -618,15 +618,14 @@ uint64_t Azure::blob_size(const URI& uri) const {
   }
 
   auto [container_name, blob_path] = parse_azure_uri(uri);
-  ::Azure::Storage::Blobs::ListBlobsOptions options;
-  options.Prefix = blob_path;
-  options.PageSizeHint = 1;
-  auto response = c.GetBlobContainerClient(container_name).ListBlobs(options);
-  if (response.Blobs.empty()) {
+  try {
+    auto response = c.GetBlobContainerClient(container_name)
+                        .GetBlobClient(blob_path)
+                        .GetProperties();
+    return static_cast<uint64_t>(response.Value.BlobSize);
+  } catch (const ::Azure::Storage::StorageException& e) {
     throw AzureException(
-        "Get blob size failed on: " + uri.to_string() + "Blob does not exist.");
-  } else {
-    return static_cast<uint64_t>(response.Blobs[0].BlobSize);
+        "Get blob size failed on: " + uri.to_string() + "; " + e.Message);
   }
 }
 
