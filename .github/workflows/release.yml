@@ -190,7 +190,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-*
+          pattern: release-*
           merge-multiple: true
           path: dist
       - name: Publish release artifacts
