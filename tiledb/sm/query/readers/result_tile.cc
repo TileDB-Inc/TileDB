@@ -91,20 +91,6 @@ ResultTile::ResultTile(
   coord_func_ = &ResultTile::zipped_coord;
 }
 
-ResultTile::~ResultTile() {
-  try {
-    // Wait for all attribute tasks to be done
-    wait_all_tiles(attr_tiles_);
-  } catch (...) {
-  }
-
-  try {
-    // Wait for all coordinates tasks to be done
-    wait_all_tiles(coord_tiles_);
-  } catch (...) {
-  }
-}
-
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -144,7 +130,7 @@ void ResultTile::erase_tile(const std::string& name) {
 
   // Handle attribute tile
   for (auto& at : attr_tiles_) {
-    if (at.second.has_value() && at.first == name) {
+    if (at.first == name) {
       at.second.reset();
       return;
     }
@@ -275,26 +261,6 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   return nullptr;
 }
 
-void ResultTile::wait_all_tiles(
-    const std::vector<std::pair<std::string, optional<TileTuple>>>& tiles)
-    const {
-  for (auto& at : tiles) {
-    const auto& tile_tuple = at.second;
-    if (tile_tuple.has_value()) {
-      // Wait for the fixed tile i/o to be done
-      tile_tuple.value().fixed_tile().filtered_data();
-      if (tile_tuple.value().var_tile_opt().has_value()) {
-        // Wait for the var tile i/o to be done
-        tile_tuple.value().var_tile_opt().value().filtered_data();
-      }
-      if (tile_tuple.value().validity_tile_opt().has_value()) {
-        // Wait for the validity tile i/o to be done
-        tile_tuple.value().validity_tile_opt().value().filtered_data();
-      }
-    }
-  }
-}
-
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile = coord_tiles_[dim_idx].second->fixed_tile();
   const uint64_t offset = pos * coord_tile.cell_size();
@@ -417,11 +383,7 @@ Status ResultTile::read(
   if ((!is_dim && name != constants::coords && !use_fragment_ts) ||
       (is_dim && !coord_tiles_[0].first.empty()) ||
       (name == constants::coords && coords_tile_.has_value())) {
-    auto tile_tuple = this->tile_tuple(name);
-    if (tile_tuple == nullptr) {
-      return Status::Ok();
-    }
-    const auto& tile = tile_tuple->fixed_tile();
+    const auto& tile = this->tile_tuple(name)->fixed_tile();
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;

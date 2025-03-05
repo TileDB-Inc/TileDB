@@ -697,6 +697,7 @@ std::list<FilteredData> ReaderBase::read_tiles(
   }
 
   uint64_t num_tiles_read{0};
+  std::vector<ThreadPool::Task> read_tasks;
 
   // Run all attributes independently.
   for (auto n : names) {
@@ -720,6 +721,7 @@ std::list<FilteredData> ReaderBase::read_tiles(
         var_sized,
         nullable,
         val_only,
+        read_tasks,
         memory_tracker_);
 
     // Go through each tiles and create the attribute tiles.
@@ -747,14 +749,12 @@ std::list<FilteredData> ReaderBase::read_tiles(
       // 'TileData' objects should be returned by this function and passed into
       // 'unfilter_tiles' so that the filter pipeline can stop using the
       // 'ResultTile' object to get access to the filtered data.
-      std::pair<void*, ThreadPool::SharedTask> t = {
-          nullptr, ThreadPool::SharedTask()};
       ResultTile::TileData tile_data{
           val_only ?
-              t :
+              nullptr :
               filtered_data.back().fixed_filtered_data(fragment.get(), tile),
           val_only ?
-              t :
+              nullptr :
               filtered_data.back().var_filtered_data(fragment.get(), tile),
           filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
 
@@ -778,6 +778,12 @@ std::list<FilteredData> ReaderBase::read_tiles(
   }
 
   stats_->add_counter("num_tiles_read", num_tiles_read);
+
+  // Wait for the read tasks to finish.
+  auto statuses{resources_.io_tp().wait_all_status(read_tasks)};
+  for (const auto& st : statuses) {
+    throw_if_not_ok(st);
+  }
 
   return filtered_data;
 }
@@ -848,7 +854,7 @@ Status ReaderBase::zip_tile_coordinates(
         array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
-      tile->zip_coordinates_unsafe();
+      tile->zip_coordinates();
     }
   }
   return Status::Ok();
@@ -874,18 +880,16 @@ Status ReaderBase::post_process_unfiltered_tile(
     return Status::Ok();
   }
 
-  if (!validity_only) {
-    auto& t = tile_tuple->fixed_tile();
-    t.clear_filtered_buffer();
+  auto& t = tile_tuple->fixed_tile();
+  t.clear_filtered_buffer();
 
-    throw_if_not_ok(zip_tile_coordinates(name, &t));
+  throw_if_not_ok(zip_tile_coordinates(name, &t));
 
-    if (var_size) {
-      auto& t_var = tile_tuple->var_tile();
-      t_var.clear_filtered_buffer();
-      throw_if_not_ok(zip_tile_coordinates(name, &t_var));
-      t.add_extra_offset_unsafe(t_var);
-    }
+  if (var_size && !validity_only) {
+    auto& t_var = tile_tuple->var_tile();
+    t_var.clear_filtered_buffer();
+    throw_if_not_ok(zip_tile_coordinates(name, &t_var));
+    t.add_extra_offset(t_var);
   }
 
   if (nullable) {
@@ -901,9 +905,8 @@ Status ReaderBase::unfilter_tiles(
     const std::string& name,
     const bool validity_only,
     const std::vector<ResultTile*>& result_tiles) {
-  const auto stat_type = (array_schema_.is_attr(name)) ?
-                             "unfilter_attr_tiles_builder" :
-                             "unfilter_coord_tiles_builder";
+  const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
+                                                         "unfilter_coord_tiles";
 
   const auto timer_se = stats_->start_timer(stat_type);
   auto var_size = array_schema_.var_size(name);
@@ -933,6 +936,10 @@ Status ReaderBase::unfilter_tiles(
   std::vector<ChunkData> tiles_chunk_data(num_tiles);
   std::vector<ChunkData> tiles_chunk_var_data(num_tiles);
   std::vector<ChunkData> tiles_chunk_validity_data(num_tiles);
+  // Vectors with the sizes of all unfiltered tile buffers
+  std::vector<uint64_t> unfiltered_tile_size(num_tiles);
+  std::vector<uint64_t> unfiltered_tile_var_size(num_tiles);
+  std::vector<uint64_t> unfiltered_tile_validity_size(num_tiles);
 
   // Pre-compute chunk offsets.
   auto status = parallel_for(
@@ -948,6 +955,9 @@ Status ReaderBase::unfilter_tiles(
                 tiles_chunk_var_data[i],
                 tiles_chunk_validity_data[i]);
         throw_if_not_ok(st);
+        unfiltered_tile_size[i] = tile_size.value();
+        unfiltered_tile_var_size[i] = tile_var_size.value();
+        unfiltered_tile_validity_size[i] = tile_validity_size.value();
         return Status::Ok();
       });
   RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
