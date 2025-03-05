@@ -33,16 +33,24 @@ jobs:
         with:
           # repository: 'TileDB-Inc/TileDB'
           version: ${{ inputs.ref }}
-          asset-file: '*.zip,*.tar.gz'
+          asset-file: '*.zip,*.tar.gz,*.tar.xz'
           asset-output: './release/'
 
       - name: Render template
         run: |
-          PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?-(.+)\.(tar\.gz|zip)$"
+          PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2|-mingw64_ucrt64)?-(.+)\.(tar\.gz|tar\.xz|zip)$"
           RELLIST="output/releases.csv"
           MODULE="output/DownloadPrebuiltTileDB.cmake"
           cp cmake/inputs/DownloadPrebuiltTileDB.cmake $MODULE
-          echo "platform,url,sha256" > $RELLIST
+          echo "platform,url,sha256,description" > $RELLIST
+          
+          DESCRIPTION_LINUX_X86_64="Linux x86_64 release artifact"
+          DESCRIPTION_LINUX_X86_64_NOAVX2="Linux x86_64 release artifact without AVX2 instructions"
+          DESCRIPTION_LINUX_ARM64="Linux ARM64(aarch64) release artifact"
+          DESCRIPTION_MACOS_ARM64="MacOS ARM64 release artifact"
+          DESCRIPTION_MACOS_X86_64="MacOS x86_64 release artifact"
+          DESCRIPTION_WINDOWS_X86_64="Windows x86_64 release artifact"
+          DESCRIPTION_WINDOWS_X86_64_MINGW64_UCRT64="INTERNAL USE: Windows x86_64 release artifact produced in R toolchain"
           
           for FILE in $(ls release)
           do
@@ -50,23 +58,28 @@ jobs:
                   then
                           OS=${BASH_REMATCH[1]^^}
                           ARCH=${BASH_REMATCH[2]^^}
-                          NOAVX2=${BASH_REMATCH[3]^^}
-                          PLATFORM=${OS}-${ARCH}${NOAVX2}
+                          OPTION=${BASH_REMATCH[3]^^}
+                          PLATFORM=${OS}-${ARCH}${OPTION}
+          
+                          if [[ $PLATFORM == *"SOURCE"* ]]; then
+                            continue
+                          fi
           
                           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$FILE"
-                          HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
+                          HASH=$(cat release/$FILE.sha256 | cut -d ' ' -f 1)
           
-                          echo "${PLATFORM},${URL},${HASH}" >> $RELLIST
+                          DESCRIPTION_VAR="DESCRIPTION_${PLATFORM//-/_}"
+                          echo "${PLATFORM},${URL},${HASH},${!DESCRIPTION_VAR}" >> $RELLIST
                   fi
           done
           
           SOURCE_FILE_NAME=$(ls release/tiledb-source-*.tar.gz)
           URL_TILEDB_SOURCE="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$(basename $SOURCE_FILE_NAME)"
-          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \t -f 1)
+          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d ' ' -f 1)
           
-          echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE}" >> $RELLIST
+          echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE},Source release artifact" >> $RELLIST
           
-          HASH=$(sha256sum $RELLIST | cut -d " " -f 1)
+          HASH=$(sha256sum $RELLIST | cut -d ' ' -f 1)
           echo $HASH > $RELLIST.sha256
           
           cat $RELLIST

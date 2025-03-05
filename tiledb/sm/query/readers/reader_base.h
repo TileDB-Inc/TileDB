@@ -543,8 +543,7 @@ class ReaderBase : public StrategyBase {
 
   /**
    * Concurrently executes across each name in `names` and each result tile
-   * in 'result_tiles'. Attaches a future to each result_tile that is signaling
-   * when reading the corresponding data from disk is done.
+   * in 'result_tiles'.
    *
    * This must be the entry point for reading attribute tiles because it
    * generates stats for reading attributes.
@@ -560,8 +559,7 @@ class ReaderBase : public StrategyBase {
 
   /**
    * Concurrently executes across each name in `names` and each result tile
-   * in 'result_tiles'. Attaches a future to each result_tile that is signaling
-   * when reading the corresponding data from disk is done.
+   * in 'result_tiles'.
    *
    * This must be the entry point for reading coordinate tiles because it
    * generates stats for reading coordinates.
@@ -580,8 +578,7 @@ class ReaderBase : public StrategyBase {
    * in the appropriate result tile.
    *
    * Concurrently executes across each name in `names` and each result tile
-   * in 'result_tiles'. Attaches a future to each result_tile that is signaling
-   * when reading the corresponding data from disk is done.
+   * in 'result_tiles'.
    *
    * @param names The field names.
    * @param result_tiles The retrieved tiles will be stored inside the
