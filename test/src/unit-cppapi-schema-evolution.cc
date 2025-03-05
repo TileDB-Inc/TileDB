@@ -32,7 +32,10 @@
 
 #include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "test/support/src/array_helpers.h"
+#include "test/support/src/array_schema_helpers.h"
 #include "test/support/src/mem_helpers.h"
+
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -47,6 +50,23 @@
 #include <limits>
 
 using namespace tiledb;
+
+/**
+ * @return a simple schema with dimension d1 and attribute a1
+ */
+static ArraySchema simple_schema(Context& ctx) {
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  domain.add_dimension(d1);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+
+  return schema;
+}
 
 TEST_CASE(
     "C++ API: SchemaEvolution, add and drop attributes",
@@ -949,4 +969,183 @@ TEST_CASE(
   throw_if_not_ok(schema->set_domain(dom));
 
   CHECK_NOTHROW(ase->evolve_schema(schema));
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution add multiple attributes",
+    "[cppapi][schema][evolution][add]") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(
+      "test_schema_evolution_add_multiple_attributes")};
+
+  // create initial array
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  domain.add_dimension(d1);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+
+  auto add_attributes = std::vector<Attribute>{
+      Attribute::create<int>(ctx, "a2"),
+      Attribute::create<int>(ctx, "a3"),
+      Attribute::create<int>(ctx, "a4")};
+
+  auto permutation = GENERATE(
+      std::vector<int>{0, 1, 2},
+      std::vector<int>{0, 2, 1},
+      std::vector<int>{1, 0, 2},
+      std::vector<int>{1, 2, 0},
+      std::vector<int>{2, 0, 1},
+      std::vector<int>{2, 1, 0});
+
+  DYNAMIC_SECTION(
+      "Add a1/a2/a3 in permutation: " + std::to_string(permutation[0]) + "/" +
+      std::to_string(permutation[1]) + std::to_string(permutation[2])) {
+    // create array
+    Array::create(array_uri, schema);
+    test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
+
+    // evolve it
+    auto evolution = ArraySchemaEvolution(ctx);
+    for (auto idx : permutation) {
+      evolution.add_attribute(add_attributes[idx]);
+    }
+    evolution.array_evolve(array_uri);
+
+    // check attribute order
+    auto schema = Array::load_schema(ctx, array_uri);
+    std::vector<Attribute> attributes;
+    for (unsigned a = 0; a < schema.attribute_num(); a++) {
+      attributes.push_back(schema.attribute(a));
+    }
+
+    CHECK(attributes.size() == 4);
+    if (attributes.size() >= 1) {
+      CHECK(test::is_equivalent_attribute(attributes[0], a1));
+    }
+    if (attributes.size() >= 2) {
+      CHECK(test::is_equivalent_attribute(
+          attributes[1], add_attributes[permutation[0]]));
+    }
+    if (attributes.size() >= 3) {
+      CHECK(test::is_equivalent_attribute(
+          attributes[2], add_attributes[permutation[1]]));
+    }
+    if (attributes.size() >= 4) {
+      CHECK(test::is_equivalent_attribute(
+          attributes[3], add_attributes[permutation[2]]));
+    }
+  }
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution add duplicate attribute",
+    "[cppapi][schema][evolution][add]") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(
+      "test_schema_evolution_add_duplicate_attribute")};
+
+  // create initial array
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
+  domain.add_dimension(d1);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+
+  SECTION("Add attribute to evolution twice") {
+    // try evolving
+    auto evolution = ArraySchemaEvolution(ctx);
+    evolution.add_attribute(Attribute::create<int>(ctx, "a2"));
+    CHECK_THROWS(evolution.add_attribute(Attribute::create<int>(ctx, "a2")));
+
+    evolution.drop_attribute("a2");
+    evolution.add_attribute(Attribute::create<int>(ctx, "a2"));
+    CHECK_THROWS(evolution.add_attribute(Attribute::create<int>(ctx, "a2")));
+  }
+
+  SECTION("Add attribute with same name as schema attribute") {
+    // create array
+    Array::create(array_uri, schema);
+    test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
+
+    // try evolving
+    auto evolution = ArraySchemaEvolution(ctx);
+    evolution.add_attribute(Attribute::create<int>(ctx, "a1"));
+
+    // should throw, cannot add an attribute with the same name
+    CHECK_THROWS(evolution.array_evolve(array_uri));
+
+    // load schema back should succeed
+    CHECK_NOTHROW(Array::load_schema(ctx, array_uri));
+  }
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution drop last attribute",
+    "[cppapi][schema][evolution][drop]") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{
+      vfs_test_setup.array_uri("test_schema_evolution_drop_last_attribute")};
+
+  // create array
+  ArraySchema schema = simple_schema(ctx);
+  Array::create(array_uri, schema);
+  test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
+
+  // try evolving
+  auto evolution = ArraySchemaEvolution(ctx);
+  evolution.drop_attribute("a1");
+
+  // should throw, schema must have at least one attribute
+  CHECK_THROWS(evolution.array_evolve(array_uri));
+
+  // load schema back should succeed
+  CHECK_NOTHROW(Array::load_schema(ctx, array_uri));
+}
+
+/**
+ * Add an enumeration which is not used by any attribute.
+ *
+ * FIXME: should this be an error?
+ * As far as I can tell the enumeration is undiscoverable if no attribute
+ * references it. It can be looked up by name but there is no
+ * API to list enumeration names.
+ */
+TEST_CASE("C++ API: SchemaEvolution add unused enumeration") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{
+      vfs_test_setup.array_uri("test_schema_evolution_add_unused_enumeration")};
+
+  // create array
+  ArraySchema schema = simple_schema(ctx);
+  Array::create(array_uri, schema);
+  test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
+
+  // evolve
+  auto evolution = ArraySchemaEvolution(ctx);
+  Enumeration enumeration_in = Enumeration::create_empty(
+      ctx, "us_states", TILEDB_STRING_ASCII, tiledb::sm::constants::var_num);
+  evolution.add_enumeration(enumeration_in);
+
+  evolution.array_evolve(array_uri);
+
+  auto schema_out = Array::load_schema(ctx, array_uri);
+
+  Enumeration enumeration_out =
+      ArraySchemaExperimental::get_enumeration_from_name(
+          ctx, schema_out, "us_states");
+
+  CHECK(test::is_equivalent_enumeration(enumeration_in, enumeration_out));
 }

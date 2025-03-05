@@ -84,7 +84,7 @@ class ArraySchemaEvolution {
    * @param memory_tracker Memory tracker to use for the new schema.
    */
   ArraySchemaEvolution(
-      std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add,
+      std::vector<shared_ptr<Attribute>> attrs_to_add,
       std::unordered_set<std::string> attrs_to_drop,
       std::unordered_map<std::string, shared_ptr<const Enumeration>>
           enmrs_to_add,
@@ -215,8 +215,7 @@ class ArraySchemaEvolution {
 
   /** The array attributes to be added. */
   /** It maps each attribute name to the corresponding attribute object. */
-  tdb::pmr::unordered_map<std::string, shared_ptr<Attribute>>
-      attributes_to_add_map_;
+  tdb::pmr::vector<shared_ptr<Attribute>> attributes_to_add_;
 
   /** The names of array attributes to be dropped. */
   std::unordered_set<std::string> attributes_to_drop_;

@@ -33,9 +33,34 @@
 #ifndef TILEDB_TEST_ARRAY_SCHEMA_HELPERS_H
 #define TILEDB_TEST_ARRAY_SCHEMA_HELPERS_H
 
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/cpp_api/tiledb"
+
+#include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 
 namespace tiledb::test {
+
+/**
+ * @return if two filters `left` and `right` represent the same transformations
+ */
+bool is_equivalent_filter(
+    const tiledb::Filter& left, const tiledb::Filter& right);
+
+/**
+ * @return if two filter lists `left` and `right` have the same filters in the
+ * same order
+ */
+bool is_equivalent_filter_list(
+    const tiledb::FilterList& left, const tiledb::FilterList& right);
+
+/**
+ * @return if two attributes `left` and `right` are equivalent
+ */
+bool is_equivalent_attribute(
+    const tiledb::Attribute& left, const tiledb::Attribute& right);
 
 /**
  * @return if two enumerations `left` and `right` are equivalent,
@@ -43,6 +68,13 @@ namespace tiledb::test {
  */
 bool is_equivalent_enumeration(
     const sm::Enumeration& left, const sm::Enumeration& right);
+
+/**
+ * @return if two enumerations `left` and `right` are equivalent,
+ *         i.e. have the same name, datatype, variants, etc
+ */
+bool is_equivalent_enumeration(
+    const Enumeration& left, const Enumeration& right);
 
 }  // namespace tiledb::test
 
