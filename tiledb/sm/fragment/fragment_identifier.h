@@ -70,7 +70,7 @@ enum class FragmentNameVersion { ONE, TWO, THREE };
  * Trailing "_".
  * Otherwise potentially-malformed names, which may not begin with "__".
  */
-class FragmentID : private URI {
+class FragmentID {
  private:
   /** The fragment name. */
   std::string name_;
