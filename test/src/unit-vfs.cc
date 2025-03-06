@@ -619,6 +619,12 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   // Directories don't get a size
   REQUIRE(children[1].file_size() == 0);
 
+  // Touch does not overwrite an existing file.
+  require_tiledb_ok(vfs_ls.touch(URI(subdir_file)));
+  uint64_t size;
+  require_tiledb_ok(vfs_ls.file_size(URI(subdir_file), &size));
+  REQUIRE(size == 6);
+
   // Clean up
   require_tiledb_ok(vfs_ls.remove_dir(URI(path)));
 }
