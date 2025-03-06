@@ -88,7 +88,7 @@ FragmentID::FragmentID(const URI& uri)
     sscanf(
         array_format_version_str.c_str(),
         "%" PRId64,
-        (long long int*)&timestamp_range_.first);
+        (int64_t*)&timestamp_range_.first);
     timestamp_range_.second = timestamp_range_.first;
   } else {
     if (name_version_ == FragmentNameVersion::TWO) {
@@ -97,8 +97,8 @@ FragmentID::FragmentID(const URI& uri)
     sscanf(
         name_.c_str(),
         "__%" PRId64 "_%" PRId64,
-        (long long int*)&timestamp_range_.first,
-        (long long int*)&timestamp_range_.second);
+        (int64_t*)&timestamp_range_.first,
+        (int64_t*)&timestamp_range_.second);
   }
   if (timestamp_range_.first > timestamp_range_.second) {
     throw FragmentIDException(
