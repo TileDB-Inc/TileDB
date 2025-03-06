@@ -57,6 +57,7 @@ if (TILEDB_CPP_API)
   list(APPEND SOURCES targets/sc-53791.cc)
   list(APPEND SOURCES targets/sc-53970.cc)
   list(APPEND SOURCES targets/sc-54473.cc)
+  list(APPEND SOURCES targets/sc-64121.cc)
 endif()
 
 add_executable(tiledb_regression
