@@ -87,7 +87,7 @@ FragmentID::FragmentID(const URI& uri)
     array_format_version_ = 2;
     sscanf(
         array_format_version_str.c_str(),
-        (std::string("%") + std::string(PRId64)).c_str(),
+        "%" PRId64,
         (long long int*)&timestamp_range_.first);
     timestamp_range_.second = timestamp_range_.first;
   } else {
@@ -96,8 +96,7 @@ FragmentID::FragmentID(const URI& uri)
     }
     sscanf(
         name_.c_str(),
-        (std::string("__%") + std::string(PRId64) + "_%" + std::string(PRId64))
-            .c_str(),
+        "__%" PRId64 "_%" PRId64,
         (long long int*)&timestamp_range_.first,
         (long long int*)&timestamp_range_.second);
   }
