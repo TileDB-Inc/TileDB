@@ -54,8 +54,7 @@ class InvalidURIException : public FragmentIDException {
 };
 
 FragmentID::FragmentID(const URI& uri)
-    : URI(uri)
-    , name_(uri.remove_trailing_slash().last_path_part())
+    : name_(uri.remove_trailing_slash().last_path_part())
     , timestamp_range_({0, 0})
     , name_version_(FragmentNameVersion::ONE) {
   // Ensure input uri is valid (non-empty)
