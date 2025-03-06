@@ -1258,9 +1258,19 @@ Status ArrayDirectory::is_fragment(
     const std::unordered_set<std::string>& ok_uris_set,
     const std::unordered_set<std::string>& consolidated_uris_set,
     int* is_fragment) const {
+  // If parsing the fragment ID fails, it's not a fragment.
+  std::string name;
+  format_version_t fragment_format_version;
+  try {
+    FragmentID fragment_id{uri};
+    name = fragment_id.name();
+    fragment_format_version = fragment_id.array_format_version();
+  } catch (const std::exception& e) {
+    *is_fragment = 0;
+    return Status::Ok();
+  }
+
   // If the URI name has a suffix, then it is not a fragment
-  FragmentID fragment_id{uri};
-  auto name = fragment_id.name();
   if (name.find_first_of('.') != std::string::npos) {
     *is_fragment = 0;
     return Status::Ok();
@@ -1291,7 +1301,7 @@ Status ArrayDirectory::is_fragment(
 
   // If the array format version is >= 5, then the above suffices to check if
   // the URI is indeed a fragment
-  if (fragment_id.array_format_version() >= 5) {
+  if (fragment_format_version >= 5) {
     *is_fragment = false;
     return Status::Ok();
   }
