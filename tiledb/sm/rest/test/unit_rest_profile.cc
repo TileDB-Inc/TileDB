@@ -119,6 +119,7 @@ TEST_CASE_METHOD(
     RestProfileFx, "REST Profile: Default profile", "[rest_profile][default]") {
   // Remove cloud.json to ensure the RestProfile constructor doesn't inherit it.
   std::filesystem::remove(cloudpath_);
+  CHECK(!std::filesystem::exists(cloudpath_));
 
   // Create and validate a default RestProfile.
   RestProfile profile(create_profile());
@@ -255,6 +256,10 @@ TEST_CASE_METHOD(
 
   // Set a non-default token on the second profile.
   p2.set_param("rest.token", token);
+  REQUIRE_THROWS_WITH(
+      p2.save_to_file(),
+      Catch::Matchers::ContainsSubstring("profile already exists"));
+  p.remove_from_file();
   p2.save_to_file();
   e.token = token;
   CHECK(is_valid(p2, e));

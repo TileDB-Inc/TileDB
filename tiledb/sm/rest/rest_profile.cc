@@ -128,25 +128,14 @@ void RestProfile::save_to_file() {
   if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
       (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
     throw RestProfileException(
-        "Failed to save RestProfile; invalid username/password pairing.");
+        "Failed to save; invalid username/password pairing.");
   }
 
   // If the file already exists, load it into a json object.
   json data;
-  std::string original_filepath = filepath_;
   if (std::filesystem::exists(filepath_)) {
-    // Temporarily append filename with a random label to guarantee atomicity.
-    filepath_ = filepath_ + random_label();
-    if (std::rename(original_filepath.c_str(), filepath_.c_str()) != 0) {
-      throw RestProfileException(
-          "Failed to save RestProfile due to an internal error.");
-    }
-
     // Read the file into the json object.
-    {
-      std::ifstream file(filepath_);
-      file >> data;
-    }
+    data = read_file(filepath_);
 
     // If the file is outdated, throw an error. This behavior will evolve.
     if (data["version"] < version_) {
@@ -154,9 +143,12 @@ void RestProfile::save_to_file() {
           "The version of your local profile.json file is out of date.");
     }
 
-    // If a profile of the given name already exists, remove it.
+    // RestProfiles are immutable, so disallow overwrites.
     if (data.contains(name_)) {
-      data.erase(name_);
+      throw RestProfileException(
+          "Failed to save \'" + name_ +
+          "\'; This profile already exists and "
+          "must be explicitly removed in order to be replaced.");
     }
   } else {
     // Write the version number iff this is the first time opening the file.
@@ -167,53 +159,20 @@ void RestProfile::save_to_file() {
   data.push_back(json::object_t::value_type(name_, to_json()));
 
   // Write to the file, which will be created if it does not yet exist.
-  {
-    std::ofstream file(filepath_);
-    file << std::setw(2) << data << std::endl;
-  }
-
-  // Remove the random label from the filename, if applicable.
-  if (filepath_ != original_filepath) {
-    if (std::rename(filepath_.c_str(), original_filepath.c_str()) != 0) {
-      throw RestProfileException(
-          "Failed to save RestProfile due to an internal error.");
-    }
-  }
+  write_file(data, filepath_);
 }
 
 void RestProfile::remove_from_file() {
   std::string original_filepath = filepath_;
   if (std::filesystem::exists(filepath_)) {
-    // Temporarily append filename with a random label to guarantee atomicity.
-    filepath_ = filepath_ + random_label();
-    if (std::rename(original_filepath.c_str(), filepath_.c_str()) != 0) {
-      throw RestProfileException(
-          "Failed to remove RestProfile due to an internal error.");
-    }
-
     // Read the file into a json object.
-    json data;
-    {
-      std::ifstream file(filepath_);
-      file >> data;
-    }
+    json data = read_file(filepath_);
 
     // If a profile of the given name exists, remove it.
     data.erase(data.find(name_));
 
     // Write the json back to the file.
-    {
-      std::ofstream file(filepath_);
-      file << std::setw(2) << data << std::endl;
-    }
-  }
-
-  // Remove the random label from the filename, if applicable.
-  if (filepath_ != original_filepath) {
-    if (std::rename(filepath_.c_str(), original_filepath.c_str()) != 0) {
-      throw RestProfileException(
-          "Failed to remove RestProfile due to an internal error.");
-    }
+    write_file(data, filepath_);
   }
 }
 
@@ -246,17 +205,10 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   }
 
   // Load the file into a json object.
-  std::ifstream file(filename);
-  json data;
-  try {
-    file >> data;
-  } catch (...) {
-    throw RestProfileException("Error parsing json file \'" + filename + "\'.");
-  }
+  json data = read_file(filename);
 
-  // If possible, load (overwrite) the parameters from the local file
+  // Update any written-parameters from the loaded json object.
   if (filename.c_str() == old_filepath_.c_str()) {
-    // Parse the old file and load the parameters
     if (data.contains("api_key") &&
         data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
       param_values_["rest.token"] = data["api_key"]["X-TILEDB-REST-API-KEY"];
@@ -276,6 +228,71 @@ void RestProfile::load_from_json_file(const std::string& filename) {
       for (auto it = profile.begin(); it != profile.end(); ++it) {
         param_values_[it.key()] = profile[it.key()];
       }
+    }
+  }
+}
+
+json RestProfile::read_file(const std::string& filepath) {
+  // Temporarily append filepath with a random label to guarantee atomicity.
+  std::string temp_filepath = filepath;
+  if (std::filesystem::exists(filepath)) {
+    temp_filepath += "." + random_label();
+    if (std::rename(filepath.c_str(), temp_filepath.c_str()) != 0) {
+      throw RestProfileException(
+          "Failed to load file due to an internal error.");
+    }
+  }
+
+  // Read the file into a json object.
+  json data;
+  {
+    std::ifstream file(temp_filepath);
+    try {
+      file >> data;
+    } catch (...) {
+      throw RestProfileException(
+          "Error parsing file \'" + temp_filepath + "\'.");
+    }
+  }
+
+  // Remove the random label from the filepath, if applicable.
+  if (temp_filepath != filepath) {
+    if (std::rename(temp_filepath.c_str(), filepath.c_str()) != 0) {
+      throw RestProfileException(
+          "Failed to load file due to an internal error.");
+    }
+  }
+
+  return data;
+}
+
+void RestProfile::write_file(json data, const std::string& filepath) {
+  // Temporarily append filepath with a random label to guarantee atomicity.
+  std::string temp_filepath = filepath;
+  if (std::filesystem::exists(filepath)) {
+    temp_filepath += "." + random_label();
+    if (std::rename(filepath.c_str(), temp_filepath.c_str()) != 0) {
+      throw RestProfileException(
+          "Failed to save file due to an internal error.");
+    }
+  }
+
+  // Load the json object contents into the file.
+  std::ofstream file(temp_filepath);
+  try {
+    file << std::setw(2) << data;
+    file.flush();
+    file.close();
+  } catch (...) {
+    throw RestProfileException(
+        "Failed to save file due to an internal error during write.");
+  }
+
+  // Remove the random label from the filepath, if applicable.
+  if (temp_filepath != filepath) {
+    if (std::rename(temp_filepath.c_str(), filepath.c_str()) != 0) {
+      throw RestProfileException(
+          "Failed to save file due to an internal error.");
     }
   }
 }
