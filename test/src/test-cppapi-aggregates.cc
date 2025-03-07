@@ -2590,7 +2590,7 @@ TEMPLATE_LIST_TEST_CASE(
       tiledb_datatype_t::TILEDB_GEOM_WKB,
       tiledb_datatype_t::TILEDB_GEOM_WKT);
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);

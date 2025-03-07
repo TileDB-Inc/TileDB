@@ -45,10 +45,9 @@ const std::string array_name = "fragment_info_array_c";
 TEST_CASE(
     "C API: Test fragment info, errors", "[capi][fragment_info][errors]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create fragment info object
@@ -185,11 +184,9 @@ TEST_CASE(
     "C API: Test fragment info, load and getters",
     "[capi][fragment_info][load][getters]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   bool encrypt = false;
@@ -568,11 +565,9 @@ TEST_CASE(
 
 TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Key
@@ -767,11 +762,9 @@ TEST_CASE(
     "C API: Test fragment info, load from array with string dimension",
     "[capi][fragment_info][load][string-dims][mbr]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   remove_dir(array_name, ctx, vfs);
@@ -952,11 +945,9 @@ TEST_CASE(
     "C API: Test fragment info, consolidated fragment metadata",
     "[capi][fragment_info][consolidated-metadata]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1164,11 +1155,9 @@ TEST_CASE(
     "C API: Test fragment info, to vacuum",
     "[capi][fragment_info][to-vacuum]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1368,11 +1357,9 @@ TEST_CASE(
 
 TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1578,11 +1565,9 @@ TEST_CASE(
     "C API: Test fragment info, dump after consolidation",
     "[capi][fragment_info][dump][to_vacuum]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1759,11 +1744,9 @@ TEST_CASE(
     "C API: Test fragment info, dump with string dimension",
     "[capi][fragment_info][dump][string-dims]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1872,11 +1855,9 @@ TEST_CASE(
     "C API: Test fragment info, naming by index",
     "[capi][fragment_info][index-naming]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1987,11 +1968,9 @@ TEST_CASE(
     "C API: Test fragment info, consolidated fragment metadata multiple",
     "[capi][fragment_info][consolidated-metadata][multiple]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array

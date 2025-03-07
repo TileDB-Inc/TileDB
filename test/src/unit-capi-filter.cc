@@ -31,16 +31,17 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/constants.h"
 
+using namespace tiledb::test;
+
 TEST_CASE("C API: Test filter list on attribute", "[capi][filter-list]") {
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
 
   tiledb_filter_t* filter;
-  rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
+  auto rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
 
   int level = 5;

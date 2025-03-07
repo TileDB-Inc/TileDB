@@ -1022,7 +1022,7 @@ class GroupDtorDoesntThrowException : public std::exception {
 };
 
 TEST_CASE("C++ API: Group close group with error", "[cppapi][group][error]") {
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
   std::vector<std::string> dnames = {"main_group", "main_group_renamed"};
 
@@ -1086,7 +1086,7 @@ TEST_CASE(
     "C++ API: Group delete recursive", "[cppapi][group][delete][recursive]") {
   // Initialize context and VFS.
   // NOTE: This test makes sense to only run on the local filesystem.
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
 
   // Setup group structure

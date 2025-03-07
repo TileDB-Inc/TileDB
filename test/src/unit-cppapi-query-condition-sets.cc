@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/ast_helpers.h"
+#include "test/support/src/helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -44,6 +45,7 @@
 #endif
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 enum class TestArrayType : uint8_t { DENSE, SPARSE, LEGACY };
 
@@ -495,7 +497,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE(
     "Error - C API - nullptr field name", "[query-condition][set][error]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   const char* data = "foobar";
   uint64_t offsets[2] = {0, 3};
   tiledb_query_condition_t* qc;

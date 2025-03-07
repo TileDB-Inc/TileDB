@@ -73,7 +73,7 @@ TEST_CASE("NDRectangle - Basic", "[cppapi][ArraySchema][NDRectangle]") {
 }
 
 TEST_CASE("NDRectangle - Errors", "[cppapi][ArraySchema][NDRectangle]") {
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
 
   // Create a domain
   tiledb::Domain domain(ctx);

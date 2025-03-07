@@ -39,6 +39,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 class tiledb::sm::WhiteboxConfig {
  public:
@@ -160,7 +161,7 @@ TEST_CASE("C++ API: Config Serialization", "[cppapi][config][serialization]") {
   tiledb::Config config1;
   config1["foo"] = "bar";
 
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
 
   // Serialize the query (client-side).
   tiledb_buffer_t* buff1;

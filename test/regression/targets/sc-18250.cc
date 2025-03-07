@@ -5,6 +5,8 @@
 
 #include <test/support/tdb_catch.h>
 
+#include "test/support/src/helpers.h"
+
 static constexpr std::string_view schema_str = R"rstr(
 {"arrayType":"dense","attributes":[{
 		"cellValNum":1,"compressor":"NO_COMPRESSION",
@@ -23,12 +25,9 @@ TEST_CASE(
     "Capnp serialization: Filter pipeline default construction (sc-18250)",
     "[serialization]") {
   int32_t status;
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* ctx = tiledb::test::vanilla_context_c();
   tiledb_buffer_t* buf;
   tiledb_array_schema_t* schema;
-
-  status = tiledb_ctx_alloc(NULL, &ctx);
-  REQUIRE(status == TILEDB_OK);
 
   status = tiledb_buffer_alloc(ctx, &buf);
   REQUIRE(status == TILEDB_OK);

@@ -92,7 +92,7 @@ struct DenseTilerFx {
 
 DenseTilerFx::DenseTilerFx()
     : tracker_(tiledb::test::create_test_memory_tracker()) {
-  REQUIRE(tiledb_ctx_alloc(NULL, &ctx_) == TILEDB_OK);
+  ctx_ = tiledb::test::vanilla_context_c();
   array_ = NULL;
 }
 
@@ -103,7 +103,7 @@ DenseTilerFx::~DenseTilerFx() {
 }
 
 void DenseTilerFx::remove_array(const std::string& array_name) {
-  tiledb::Context ctx;
+  tiledb::Context& ctx = test::vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -115,7 +115,7 @@ void DenseTilerFx::create_array(
     const std::vector<AttributeInfo>& attr_info,
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order) {
-  tiledb::Context ctx;
+  tiledb::Context& ctx = test::vanilla_context_cpp();
 
   // Clean array if it exists
   remove_array(array_name);

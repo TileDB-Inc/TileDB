@@ -147,7 +147,7 @@ void set_query_var_dimension_buffer(
 TEST_CASE(
     "Backwards compatibility: Test error opening 1.3.0 array",
     "[backwards-compat]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   std::string array_uri(arrays_dir + "/dense_array_v1_3_0");
   REQUIRE_THROWS_WITH(
       Array(ctx, array_uri, TILEDB_READ),
@@ -196,7 +196,7 @@ void set_buffer_wrapper(
 TEST_CASE(
     "Backwards compatibility: Test reading 1.4.0 array with non-split coords",
     "[backwards-compat][non-split-coords]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
   Array array(ctx, array_uri, TILEDB_READ);
   std::vector<int> subarray = {1, 4, 10, 10};
@@ -229,7 +229,7 @@ TEST_CASE(
     "[backwards-compat][coords]") {
   std::string encryption_key = "unittestunittestunittestunittest";
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   tiledb::Config cfg;
   cfg["sm.encryption_type"] = "AES_256_GCM";
   cfg["sm.encryption_key"] = encryption_key.c_str();
@@ -710,7 +710,7 @@ TEST_CASE(
   }
 
   std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   std::string fragment_uri;
 
   try {
@@ -763,7 +763,7 @@ TEST_CASE(
     "[backwards-compat][split-buffers]") {
   std::string encryption_key = "unittestunittestunittestunittest";
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   tiledb::Config cfg;
   cfg["sm.encryption_type"] = "AES_256_GCM";
   cfg["sm.encryption_key"] = encryption_key.c_str();
@@ -1265,7 +1265,7 @@ TEST_CASE(
     "write/read it",
     "[backwards-compat][upgrade-version][write-read-new-version]") {
   std::string array_name(arrays_dir + "/non_split_coords_v1_4_0");
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   std::string schema_folder;
   std::string fragment_uri;
 
@@ -1387,7 +1387,7 @@ TEST_CASE(
     "Backwards compatibility: Test reading group metadata written with "
     "previous version of tiledb",
     "[backwards-compat][group][metadata]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   std::string compat_folder(arrays_dir + "/read_compatibility_test");
   if (Object::object(ctx, compat_folder).type() != Object::Type::Group) {
     return;
@@ -1418,7 +1418,7 @@ TEST_CASE(
 TEST_CASE(
     "Backwards compatibility: Test v1 groups",
     "[backwards-compat][group][v1]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   // Copy the group to a temporary directory because we will be modifying it.
@@ -1463,4 +1463,13 @@ TEST_CASE(
   CHECK(!tiledb::sm::utils::parse::ends_with(children[0], "_1"));
   // This is the file written by this test.
   CHECK(tiledb::sm::utils::parse::ends_with(children[1], "_1"));
+}
+
+TEST_CASE("VanillaContext static option") {
+  static std::optional<Context> vanilla_impl;
+  vanilla_impl.emplace();
+}
+
+TEST_CASE("VanillaContext static non-option") {
+  static Context vanilla_impl;
 }

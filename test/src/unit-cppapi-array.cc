@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/constants.h"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 struct Point {
   int coords[3];
@@ -670,7 +671,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Consolidation of empty arrays",
     "[cppapi][consolidation][non-rest]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
 
@@ -1742,7 +1743,7 @@ TEST_CASE(
     "C++ API: Array open VFS calls, sparse",
     "[cppapi][sparse][vfs-calls][non-rest]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -1797,7 +1798,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Array write and read from MemFS", "[cppapi][memfs][non-rest]") {
   const std::string array_name = "mem://cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // Create
   Domain domain(ctx);
@@ -1944,7 +1945,7 @@ TEST_CASE(
       std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
   std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
   std::string new_array_name(arrays_dir + "/experimental_array_vUINT32_MAX");
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // Try writing to an older-versioned array
   REQUIRE_THROWS_WITH(
@@ -2059,7 +2060,7 @@ TEST_CASE(
 
 TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {
   const std::string array_name_1d = "cpp_unit_array_1d";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   bool dups = GENERATE(true, false);

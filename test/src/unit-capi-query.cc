@@ -747,16 +747,13 @@ TEST_CASE_METHOD(
   tiledb_array_type_t array_type =
       layout == TILEDB_UNORDERED ? TILEDB_SPARSE : TILEDB_DENSE;
 
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* ctx = vanilla_context_c();
   int rc;
   {
     tiledb_array_schema_t* schema;
     tiledb_domain_t* domain;
     tiledb_dimension_t* dim;
     tiledb_attribute_t* attr;
-
-    rc = tiledb_ctx_alloc(nullptr, &ctx);
-    REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_array_schema_alloc(ctx, array_type, &schema);
     REQUIRE(rc == TILEDB_OK);

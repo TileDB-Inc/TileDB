@@ -145,7 +145,7 @@ void write_2d_array(
 }
 
 TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 
@@ -1734,7 +1734,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, string, consolidation",
     "[cppapi][hilbert][2d][string][consolidation][non-rest]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 

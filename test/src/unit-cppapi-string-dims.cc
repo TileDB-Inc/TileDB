@@ -38,6 +38,7 @@
 #include "tiledb/common/logger_public.h"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 std::vector<std::string> dataAndOffsetToStrings(
     Query query,
@@ -127,7 +128,7 @@ TEST_CASE(
     "C++ API: Test infinite string splits",
     "[cppapi][string-dims][infinite-split]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -205,7 +206,7 @@ TEST_CASE(
     "C++ API: Test default string dimensions",
     "[cppapi][string-dims][default]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'd', 'e', 'e', 'f'};
   write_array_1(ctx, array_name, dim1, false);
@@ -437,7 +438,7 @@ TEST_CASE(
     "C++ API: Test default string dimensions with partitioning",
     "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'a', 'b', 'b', 'c'};
   write_array_1(ctx, array_name, dim1, false);
@@ -709,7 +710,7 @@ TEST_CASE(
     "C++ API: Test default string dimensions with partitioning - with SECTIONs",
     "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'a', 'b', 'b', 'c'};
   write_array_1(ctx, array_name, dim1, false);
@@ -955,7 +956,7 @@ TEST_CASE(
     "varying bufcnt",
     "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'a', 'b', 'b', 'c'};
   write_array_1(ctx, array_name, dim1, true);
@@ -1210,7 +1211,7 @@ TEST_CASE(
     "withsections",
     "[cppapi][string-dims][default][partitioning]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   std::vector<char> dim1 = {'a', 'b', 'b', 'c', 'a', 'b', 'b', 'c'};
   write_array_1(ctx, array_name, dim1, true);
@@ -1590,7 +1591,7 @@ TEST_CASE(
     "[cppapi][string-dims][rle-strings][dict-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Domain domain(ctx);
   // Create var-length string dimension
   auto dim_var_string =

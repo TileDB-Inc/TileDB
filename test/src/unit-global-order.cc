@@ -32,6 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>
@@ -60,8 +61,7 @@ struct GlobalOrderWriteFx {
 };
 
 GlobalOrderWriteFx::GlobalOrderWriteFx() {
-  int rc = tiledb_ctx_alloc(NULL, &ctx_);
-  REQUIRE(rc == TILEDB_OK);
+  ctx_ = tiledb::test::vanilla_context_c();
 }
 
 GlobalOrderWriteFx::~GlobalOrderWriteFx() {

@@ -38,9 +38,11 @@
 
 #include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 int num_rows = 20;
 int a_fill_value = -1;
@@ -644,7 +646,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -775,7 +777,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -916,7 +918,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1043,7 +1045,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1190,7 +1192,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1355,7 +1357,7 @@ TEST_CASE(
     "[query][query-condition][utf8]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1536,7 +1538,7 @@ TEST_CASE(
 TEST_CASE(
     "Testing dense query condition with overlapping fragment domains",
     "[query][query-condition][dense][overlapping-fd]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1612,7 +1614,7 @@ TEST_CASE(
 TEST_CASE(
     "Testing sparse query condition with the same fragment domain.",
     "[query][query-condition][sparse][same-fd]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1691,7 +1693,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1836,7 +1838,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1996,7 +1998,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2141,7 +2143,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2305,7 +2307,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2487,7 +2489,7 @@ TEST_CASE(
 TEST_CASE(
     "Testing read query with simple QC, condition on dimensions, string dim",
     "[query][query-condition][dimension]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2569,7 +2571,7 @@ TEST_CASE(
     "[query][query-condition][attr-not-in-buffers]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2688,7 +2690,7 @@ TEST_CASE(
 TEST_CASE(
     "Testing read query with simple QC, condition on attribute, bool attr",
     "[query][query-condition][dimension]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {

@@ -43,9 +43,11 @@
 #include "tiledb/sm/filesystem/posix.h"
 #endif
 
+using namespace tiledb::test;
+
 TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 #ifdef _WIN32
   std::string path = sm::Win::current_dir() + "\\vfs_test\\";
@@ -106,7 +108,7 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
 TEST_CASE(
     "C++ API: Test VFS dir size", "[cppapi][cppapi-vfs][cppapi-vfs-dir-size]") {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
 #ifdef _WIN32
@@ -179,7 +181,7 @@ TEST_CASE(
     "C++ API: Test VFS copy file",
     "[cppapi][cppapi-vfs][cppapi-vfs-copy-file]") {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
 #ifndef _WIN32
@@ -244,7 +246,7 @@ TEST_CASE(
     "C++ API: Test VFS copy directory",
     "[cppapi][cppapi-vfs][cppapi-vfs-copy-dir]") {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
 #ifndef _WIN32

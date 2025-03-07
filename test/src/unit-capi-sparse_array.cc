@@ -7104,7 +7104,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Get the array directory
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::sm::ContextResources& resources = ctx.ptr()->context().resources();
   tiledb::sm::URI array_uri(array_name);
   tiledb::sm::ArrayDirectory array_dir =

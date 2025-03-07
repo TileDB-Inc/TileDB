@@ -2441,8 +2441,7 @@ TEST_CASE_METHOD(
   const char* array_name = "array_open_serialization";
 
   // Create TileDB context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(NULL, &ctx);
+  tiledb_ctx_t* ctx = vanilla_context_c();
 
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
   int dim_domain[] = {1, 4, 1, 4};

@@ -53,6 +53,7 @@
 #include "tiledb/sm/storage_manager/context.h"
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 struct RequestHandlerFx {
   RequestHandlerFx(const std::string array_uri);
@@ -264,8 +265,7 @@ TEST_CASE_METHOD(
 
   // Create and open array
   create_array();
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(NULL, &ctx) == TILEDB_OK);
+  tiledb_ctx_t* ctx = vanilla_context_c();
   tiledb_array_t* array = nullptr;
   REQUIRE(tiledb_array_alloc(ctx, uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -478,7 +478,7 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
 
 shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::schema_add_attribute(
     const std::string& attr_name) {
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::ArraySchemaEvolution ase(ctx);
   auto attr = tiledb::Attribute::create<int32_t>(ctx, attr_name);
   ase.add_attribute(attr);
