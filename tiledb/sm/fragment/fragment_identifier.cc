@@ -107,6 +107,19 @@ FragmentID::FragmentID(const URI& uri)
   }
 }
 
+bool FragmentID::has_fragment_name(const URI& uri) {
+  if (uri.empty()) {
+    throw InvalidURIException("URI may not be empty.");
+  }
+
+  auto name = uri.remove_trailing_slash().last_path_part();
+  auto pos = name.find_last_of('.');
+  if (pos != std::string::npos) {
+    name = name.substr(0, pos);
+  }
+  return name.find_last_of('_') != std::string::npos;
+}
+
 FragmentID::FragmentID(const std::string_view& path)
     : FragmentID(URI(path)) {
 }
