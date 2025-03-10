@@ -99,6 +99,11 @@ class FragmentID {
   /** Destructor. */
   ~FragmentID() = default;
 
+  /**
+   * Returns whether a URI contains a fragment name.
+   */
+  static bool has_fragment_name(const URI& uri);
+
   /** Accessor to the fragment name. */
   inline const std::string& name() const {
     return name_;
