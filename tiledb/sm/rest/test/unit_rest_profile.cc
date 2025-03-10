@@ -134,6 +134,21 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     RestProfileFx,
+    "REST Profile: Default profile, empty directory",
+    "[rest_profile][default][empty_directory]") {
+  // Remove the .tiledb directory to ensure the cloud.json file isn't inherited.
+  std::filesystem::remove_all(homedir_ + ".tiledb");
+
+  // Create and validate a default RestProfile.
+  RestProfile profile(create_profile());
+  profile.save_to_file();
+  expected_values_t expected;
+  expected.token = RestProfile::DEFAULT_TOKEN;
+  CHECK(is_valid(profile, expected));
+}
+
+TEST_CASE_METHOD(
+    RestProfileFx,
     "REST Profile: Default profile inherited from cloudpath",
     "[rest_profile][default][inherited]") {
   // Create and validate a default RestProfile.

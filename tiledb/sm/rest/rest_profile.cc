@@ -42,6 +42,57 @@ using namespace tiledb::common::filesystem;
 namespace tiledb::sm {
 
 /* ****************************** */
+/*           STATIC API           */
+/* ****************************** */
+
+/**
+ * Read the given file and return its contents as a json object.
+ *
+ * @param filepath The path of the file to load.
+ * @return The contents of the file, as a json object.
+ */
+static json read_file(const std::string& filepath) {
+  json data;
+  {
+    std::ifstream file(filepath);
+    try {
+      file >> data;
+    } catch (...) {
+      throw RestProfileException("Error parsing file \'" + filepath + "\'.");
+    }
+  }
+  return data;
+}
+
+/**
+ * Write the given json to the given file.
+ *
+ * @param data The json data to write to the file.
+ * @param filepath The path of the file to which the data is written.
+ */
+static void write_file(json data, const std::string& filepath) {
+  // Temporarily append filepath with a random label to guarantee atomicity.
+  std::string temp_filepath = filepath + "." + random_label();
+
+  // Load the json object contents into the file.
+  std::ofstream file(temp_filepath);
+  try {
+    file << std::setw(2) << data;
+    file.flush();
+    file.close();
+  } catch (...) {
+    throw RestProfileException(
+        "Failed to write file due to an internal error during write.");
+  }
+
+  // Remove the random label from the filepath.
+  if (std::rename(temp_filepath.c_str(), filepath.c_str()) != 0) {
+    throw RestProfileException(
+        "Failed to write file due to an internal error.");
+  }
+}
+
+/* ****************************** */
 /*       PARAMETER DEFAULTS       */
 /* ****************************** */
 
@@ -80,10 +131,10 @@ RestProfile::RestProfile(const std::string& name) {
    * Ensure the user's $HOME is found.
    * There's an edge case in which `sudo` does not always preserve the path to
    * `$HOME`. In this case, the home_directory() API does not throw, but instead
-   * returns `std::nullopt`. As such, we can check for a value in the returned
-   * `std::optional` path of the home_directory and throw an error to the user
-   * accordingly, so they may decide the proper course of action: set the
-   * $HOME path, or perhaps stop using `sudo`.
+   * returns an empty string. As such, we can check for a value in the returned
+   * path of the home_directory and throw an error to the user accordingly,
+   * so they may decide the proper course of action: set the $HOME path,
+   * or perhaps stop using `sudo`.
    */
   auto homedir = home_directory();
   if (homedir.empty()) {
@@ -101,7 +152,8 @@ RestProfile::RestProfile(const std::string& name) {
 void RestProfile::set_param(
     const std::string& param, const std::string& value) {
   // Validate incoming parameter name
-  if (param_values_.count(param) == 0) {
+  auto it = param_values_.find(param);
+  if (it == param_values_.end()) {
     throw RestProfileException(
         "Failed to set parameter of invalid name \'" + param + "\'");
   }
@@ -163,7 +215,6 @@ void RestProfile::save_to_file() {
 }
 
 void RestProfile::remove_from_file() {
-  std::string original_filepath = filepath_;
   if (std::filesystem::exists(filepath_)) {
     // Read the file into a json object.
     json data = read_file(filepath_);
@@ -228,71 +279,6 @@ void RestProfile::load_from_json_file(const std::string& filename) {
       for (auto it = profile.begin(); it != profile.end(); ++it) {
         param_values_[it.key()] = profile[it.key()];
       }
-    }
-  }
-}
-
-json RestProfile::read_file(const std::string& filepath) {
-  // Temporarily append filepath with a random label to guarantee atomicity.
-  std::string temp_filepath = filepath;
-  if (std::filesystem::exists(filepath)) {
-    temp_filepath += "." + random_label();
-    if (std::rename(filepath.c_str(), temp_filepath.c_str()) != 0) {
-      throw RestProfileException(
-          "Failed to load file due to an internal error.");
-    }
-  }
-
-  // Read the file into a json object.
-  json data;
-  {
-    std::ifstream file(temp_filepath);
-    try {
-      file >> data;
-    } catch (...) {
-      throw RestProfileException(
-          "Error parsing file \'" + temp_filepath + "\'.");
-    }
-  }
-
-  // Remove the random label from the filepath, if applicable.
-  if (temp_filepath != filepath) {
-    if (std::rename(temp_filepath.c_str(), filepath.c_str()) != 0) {
-      throw RestProfileException(
-          "Failed to load file due to an internal error.");
-    }
-  }
-
-  return data;
-}
-
-void RestProfile::write_file(json data, const std::string& filepath) {
-  // Temporarily append filepath with a random label to guarantee atomicity.
-  std::string temp_filepath = filepath;
-  if (std::filesystem::exists(filepath)) {
-    temp_filepath += "." + random_label();
-    if (std::rename(filepath.c_str(), temp_filepath.c_str()) != 0) {
-      throw RestProfileException(
-          "Failed to save file due to an internal error.");
-    }
-  }
-
-  // Load the json object contents into the file.
-  std::ofstream file(temp_filepath);
-  try {
-    file << std::setw(2) << data;
-    file.flush();
-    file.close();
-  } catch (...) {
-    throw RestProfileException(
-        "Failed to save file due to an internal error during write.");
-  }
-
-  // Remove the random label from the filepath, if applicable.
-  if (temp_filepath != filepath) {
-    if (std::rename(temp_filepath.c_str(), filepath.c_str()) != 0) {
-      throw RestProfileException(
-          "Failed to save file due to an internal error.");
     }
   }
 }

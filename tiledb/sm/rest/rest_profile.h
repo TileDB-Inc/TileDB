@@ -160,22 +160,6 @@ class RestProfile {
    */
   void load_from_json_file(const std::string& filepath);
 
-  /**
-   * Reads the given file and returns its contents as a json object.
-   *
-   * @param filepath The path of the file to load.
-   * @return The contents of the file, as a json object.
-   * */
-  json read_file(const std::string& filepath);
-
-  /**
-   * Writes the given json to the given file.
-   *
-   * @param data The json data to write to the file.
-   * @param filepath The path of the file to which the data is written.
-   */
-  void write_file(json data, const std::string& filepath);
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
