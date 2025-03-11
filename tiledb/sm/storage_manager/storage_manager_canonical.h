@@ -52,6 +52,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
@@ -145,6 +146,9 @@ class StorageManagerCanonical {
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /** The GlobalState to use for this StorageManager. */
+  shared_ptr<global_state::GlobalState> global_state_;
 
   /**
    * VFS instance used in `cancel_all_tasks`.
