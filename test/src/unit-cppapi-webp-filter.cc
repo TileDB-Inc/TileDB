@@ -39,11 +39,11 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/webp_filter.h"
 
+using namespace tiledb::test;
+
 // For optional visual verification that images appear as expected.
 #ifdef PNG_FOUND
 #include <png.h>
-
-using namespace tiledb::test;
 
 void write_image(
     const std::vector<uint8_t>& data,
