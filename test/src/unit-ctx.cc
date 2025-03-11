@@ -43,7 +43,8 @@
 using namespace tiledb::test;
 
 TEST_CASE("C API: Test context tags", "[capi][ctx-tags]") {
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   // Only run these tests if the rest client has been initialized
   if (ctx->has_rest_client()) {
@@ -75,7 +76,7 @@ TEST_CASE("C API: Test context tags", "[capi][ctx-tags]") {
 }
 
 TEST_CASE("C++ API: Test context tags", "[cppapi][ctx-tags]") {
-  tiledb::Context& ctx = vanilla_context_cpp();
+  tiledb::Context ctx;
 
   // Only run these tests if the rest client has been initialized
   if (ctx.ptr().get()->has_rest_client()) {

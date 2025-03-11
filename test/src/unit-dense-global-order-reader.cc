@@ -39,10 +39,10 @@ static void write_array(
 TEST_CASE(
     "SC-60301: Read data with global cell order returns fill values",
     "[dense-reader][bug][global-cell-order][fixed][sc60301]") {
-  test::VFSTestSetup vfs_test_setup;
+  test::VFSTempDir vfs_test_setup;
   const std::string array_uri =
       vfs_test_setup.array_uri("dense_global_cell_order");
-  Context ctx{vfs_test_setup.ctx()};
+  Context ctx{vfs_test_setup->ctx()};
 
   // Test setup
   create_array(ctx, array_uri);

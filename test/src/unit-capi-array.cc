@@ -90,7 +90,7 @@ struct ArrayFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filesystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
 
   // Encryption parameters
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -2472,7 +2472,6 @@ TEST_CASE_METHOD(
   tiledb_array_schema_add_attribute(ctx, array_schema, a);
 
   // Set a few config variables
-  tiledb_ctx_free(&ctx);
   tiledb_config_t* config;
   tiledb_error_t* error;
   tiledb_config_alloc(&config, &error);
@@ -2481,6 +2480,8 @@ TEST_CASE_METHOD(
       config, "rest.load_metadata_on_array_open", "false", &error);
   tiledb_config_set(
       config, "rest.load_non_empty_domain_on_array_open", "false", &error);
+
+  ctx = nullptr;
   tiledb_ctx_alloc(config, &ctx);
 
   // Create the array
@@ -2536,7 +2537,6 @@ TEST_CASE_METHOD(
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
   tiledb_config_free(&config);
-  tiledb_ctx_free(&ctx);
   remove_temp_dir(array_name);
 #endif
 }

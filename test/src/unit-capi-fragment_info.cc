@@ -45,7 +45,7 @@ const std::string array_name = "fragment_info_array_c";
 TEST_CASE(
     "C API: Test fragment info, errors", "[capi][fragment_info][errors]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -176,7 +176,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
 
@@ -184,7 +183,7 @@ TEST_CASE(
     "C API: Test fragment info, load and getters",
     "[capi][fragment_info][load][getters]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -559,7 +558,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
 
@@ -691,6 +689,8 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   }
 #endif
 
+  // different context
+  ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
   rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
   CHECK(rc == TILEDB_OK);
@@ -755,7 +755,6 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
     tiledb_config_free(&cfg);
   }
   tiledb_vfs_free(&vfs);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE(
@@ -822,6 +821,7 @@ TEST_CASE(
   }
 #endif
 
+  ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
 
   // Create fragment info object
@@ -937,7 +937,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
 
@@ -945,7 +944,7 @@ TEST_CASE(
     "C API: Test fragment info, consolidated fragment metadata",
     "[capi][fragment_info][consolidated-metadata]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -1145,7 +1144,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
   tiledb_error_free(&error);
   tiledb_config_free(&config);
@@ -1155,7 +1153,7 @@ TEST_CASE(
     "C API: Test fragment info, to vacuum",
     "[capi][fragment_info][to-vacuum]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -1349,7 +1347,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
   tiledb_error_free(&error);
   tiledb_config_free(&config);
@@ -1357,7 +1354,7 @@ TEST_CASE(
 
 TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -1557,7 +1554,6 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
   tiledb_fragment_info_free(&fragment_info);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
 
@@ -1565,7 +1561,7 @@ TEST_CASE(
     "C API: Test fragment info, dump after consolidation",
     "[capi][fragment_info][dump][to_vacuum]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -1736,7 +1732,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
 
@@ -1744,7 +1739,7 @@ TEST_CASE(
     "C API: Test fragment info, dump with string dimension",
     "[capi][fragment_info][dump][string-dims]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -1847,7 +1842,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
 
@@ -1855,7 +1849,7 @@ TEST_CASE(
     "C API: Test fragment info, naming by index",
     "[capi][fragment_info][index-naming]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -1960,7 +1954,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
 }
 
@@ -1968,7 +1961,7 @@ TEST_CASE(
     "C API: Test fragment info, consolidated fragment metadata multiple",
     "[capi][fragment_info][consolidated-metadata][multiple]") {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   int rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
@@ -2188,7 +2181,6 @@ TEST_CASE(
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
   remove_dir(array_name, ctx, vfs);
-  tiledb_ctx_free(&ctx);
   tiledb_vfs_free(&vfs);
   tiledb_error_free(&error);
   tiledb_config_free(&config);

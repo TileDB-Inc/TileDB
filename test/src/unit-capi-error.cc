@@ -40,7 +40,7 @@
 using namespace tiledb::test;
 
 TEST_CASE("C API: Test error and error message", "[capi][error]") {
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   const char* bad_path = nullptr;
   auto rc = tiledb_group_create(ctx, bad_path);
@@ -61,5 +61,4 @@ TEST_CASE("C API: Test error and error message", "[capi][error]") {
   // Clean up
   tiledb_error_free(&err);
   CHECK(err == nullptr);
-  tiledb_ctx_free(&ctx);
 }

@@ -58,7 +58,7 @@ struct DeletesFx {
   const std::string GROUP_NAME = "test_deletes_group/";
 
   // TileDB context.
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
   Context ctx_;
   VFS vfs_;
 
@@ -123,7 +123,7 @@ DeletesFx::DeletesFx()
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
   vfs_ = VFS(ctx_);
 }
 
@@ -132,7 +132,7 @@ void DeletesFx::set_purge_deleted_cells() {
   config.set("sm.consolidation.buffer_size", "1000");
   config.set("sm.consolidation.purge_deleted_cells", "true");
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
   vfs_ = VFS(ctx_);
 }
 
@@ -142,7 +142,7 @@ void DeletesFx::set_legacy() {
   config.set("sm.query.sparse_global_order.reader", "legacy");
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
   vfs_ = VFS(ctx_);
 }
 
@@ -178,7 +178,7 @@ void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   }
 
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
   vfs_ = VFS(ctx_);
 
   // Create dimensions.
@@ -568,7 +568,7 @@ TEST_CASE_METHOD(
   }
 
   // Consolidate with delete.
-  if (consolidate && !vfs_test_setup_.is_rest()) {
+  if (consolidate && !vfs_test_setup_->is_rest()) {
     consolidate_sparse(vacuum);
   }
 
@@ -636,7 +636,7 @@ TEST_CASE_METHOD(
     "fragment",
     "[cppapi][deletes][read][consolidated]") {
   // SC-46282 Test fails on remote filesystems (vacuum)
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 
@@ -854,7 +854,7 @@ TEST_CASE_METHOD(
   }
 
   // Consolidate with delete.
-  if (consolidate && !vfs_test_setup_.is_rest()) {
+  if (consolidate && !vfs_test_setup_->is_rest()) {
     consolidate_sparse(vacuum);
   }
 
@@ -940,7 +940,7 @@ TEST_CASE_METHOD(
     "CPP API: Test deletes, consolidation, delete same cell earlier",
     "[cppapi][deletes][consolidation][same-cell]") {
   // SC-46282 Test fails on remote filesystems (vacuum)
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 
@@ -1065,7 +1065,7 @@ TEST_CASE_METHOD(
     "CPP API: Test deletes, multiple consolidation with deletes",
     "[cppapi][deletes][consolidation][multiple]") {
   // SC-46282 Test fails on remote filesystems (vacuum)
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 
@@ -1184,7 +1184,7 @@ TEST_CASE_METHOD(
     "CPP API: Test deletes, multiple cells with same coords in same fragment",
     "[cppapi][deletes][consolidation][multiple-cells-same-coords]") {
   // SC-46282 Test fails on remote filesystems (vacuum)
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 
@@ -1369,7 +1369,7 @@ TEST_CASE_METHOD(
     "[cppapi][deletes][consolidation][multiple-cells-same-coords][across-"
     "tiles]") {
   // SC-46282 Test fails on remote filesystems (vacuum)
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 
@@ -1553,7 +1553,7 @@ TEST_CASE_METHOD(
     "option",
     "[cppapi][deletes][consolidation][with-delete-meta][purge]") {
   // SC-46282 Test fails on remote filesystems (vacuum)
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 
@@ -1605,7 +1605,7 @@ TEST_CASE_METHOD(
     "timestamps",
     "[cppapi][deletes][write][old-consolidated-fragment]") {
   // Copying across filesystems is not supported currently
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 
@@ -1888,7 +1888,7 @@ TEST_CASE_METHOD(
     "CPP API: Deletion of older-versioned array data",
     "[cppapi][deletes][array][older_version]") {
   // Copying across filesystems is not supported currently
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 

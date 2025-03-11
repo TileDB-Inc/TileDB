@@ -71,8 +71,8 @@ static ArraySchema simple_schema(Context& ctx) {
 TEST_CASE(
     "C++ API: SchemaEvolution, add and drop attributes",
     "[cppapi][schema][evolution][add][drop][rest]") {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("test_schema_evolution_array")};
 
   Domain domain(ctx);
@@ -122,8 +122,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution, check error when dropping dimension",
     "[cppapi][schema][evolution][drop][rest]") {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("test_schema_evolution_array")};
 
   Domain domain(ctx);
@@ -155,8 +155,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution, add attributes and read",
     "[cppapi][schema][evolution][add][rest]") {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
 
   auto layout = GENERATE(
       TILEDB_ROW_MAJOR,
@@ -463,7 +463,7 @@ TEST_CASE(
   vfs_test_setup.update_config(cfg.ptr().get());
   // + Global order does not support multi-range subarrays
   if (layout != TILEDB_GLOBAL_ORDER) {
-    ctx = vfs_test_setup.ctx();
+    ctx = vfs_test_setup->ctx();
 
     Array array(ctx, array_uri, TILEDB_READ);
 
@@ -688,8 +688,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution, add and drop attributes",
     "[cppapi][schema][evolution][add][query-condition][rest]") {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto layout = GENERATE(
       TILEDB_ROW_MAJOR,
       TILEDB_COL_MAJOR,
@@ -837,8 +837,8 @@ TEST_CASE(
  */
 void test_schema_evolution_drop_fixed_add_var(
     tiledb_array_type_t array_type, tiledb_layout_t layout) {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{
       vfs_test_setup.array_uri("test_schema_evolution_drop_fixed_add_var")};
 
@@ -974,8 +974,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution add multiple attributes",
     "[cppapi][schema][evolution][add]") {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri(
       "test_schema_evolution_add_multiple_attributes")};
 
@@ -1046,8 +1046,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution add duplicate attribute",
     "[cppapi][schema][evolution][add]") {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri(
       "test_schema_evolution_add_duplicate_attribute")};
 
@@ -1093,8 +1093,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: SchemaEvolution drop last attribute",
     "[cppapi][schema][evolution][drop]") {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{
       vfs_test_setup.array_uri("test_schema_evolution_drop_last_attribute")};
 
@@ -1123,8 +1123,8 @@ TEST_CASE(
  * API to list enumeration names.
  */
 TEST_CASE("C++ API: SchemaEvolution add unused enumeration") {
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{
       vfs_test_setup.array_uri("test_schema_evolution_add_unused_enumeration")};
 

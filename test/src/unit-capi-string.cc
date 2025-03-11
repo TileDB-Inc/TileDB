@@ -68,12 +68,12 @@ struct StringFx {
   void read_array(const std::string& array_name);
   void write_array(const std::string& array_name);
 
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
   tiledb_ctx_t* ctx_;
 };
 
 StringFx::StringFx()
-    : ctx_(vfs_test_setup_.ctx_c) {
+    : ctx_(vfs_test_setup_->ctx_c) {
 }
 
 // Create a simple dense 1D array with three string attributes

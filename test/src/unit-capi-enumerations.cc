@@ -42,7 +42,7 @@ using namespace tiledb::test;
 TEST_CASE(
     "C API: Test invalid attribute for tiledb_attribute_set_enumeration_name",
     "[enumeration][capi][error]") {
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   auto rc = tiledb_attribute_set_enumeration_name(ctx, nullptr, "enmr_name");
   REQUIRE(rc == TILEDB_ERR);
@@ -51,7 +51,7 @@ TEST_CASE(
 TEST_CASE(
     "C API: Test invalid attribute for tiledb_attribute_get_enumeration_name",
     "[enumeration][capi][error]") {
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   tiledb_string_t* name;
   auto rc = tiledb_attribute_get_enumeration_name(ctx, nullptr, &name);
@@ -61,7 +61,7 @@ TEST_CASE(
 TEST_CASE(
     "C API: Test invalid array schema for tiledb_array_schema_add_enumeration",
     "[enumeration][capi][error]") {
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   tiledb_enumeration_t* enmr;
   uint32_t values[5] = {1, 2, 3, 4, 5};
@@ -85,7 +85,7 @@ TEST_CASE(
 TEST_CASE(
     "C API: Test invalid array for tiledb_array_get_enumeration",
     "[enumeration][capi][error]") {
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   tiledb_enumeration_t* enmr;
   auto rc = tiledb_array_get_enumeration(ctx, nullptr, "an_enumeration", &enmr);
@@ -95,7 +95,7 @@ TEST_CASE(
 TEST_CASE(
     "C API: Test invalid enumeration name for tiledb_array_get_enumeration",
     "[enumeration][capi][error]") {
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx, "array_uri", &array);

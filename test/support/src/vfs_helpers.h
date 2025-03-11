@@ -62,7 +62,7 @@ tiledb::sm::URI test_dir(const std::string& prefix);
 /**
  * Create the vector of supported filesystems.
  */
-std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec();
+const std::vector<std::unique_ptr<SupportedFs>>& vfs_test_get_fs_vec();
 
 /**
  * Initialize the vfs test.
@@ -741,6 +741,70 @@ struct vfs_config {
   }
 };
 
+/*
+ * Class to instantiate when setting up a test case to run for all VFSs and
+ * REST
+ *
+ * Example usage: In the beginning of the test define a VFSTempDir variable
+ * and then just use the Context and the rest of the resources it encapsulates
+ * in the test. The resources will be automatically get freed when the variable
+ * will get out of scope.
+ *
+ * {
+ * tiledb::test::VFSTempDir vfs_test_setup{"foo_array"};
+ * auto ctx = vfs_test_setup.ctx();
+ * auto array_uri = vfs_test_setup.array_uri("quickstart_sparse");
+ * Array array(ctx, array_uri, TILEDB_WRITE);
+ * ...
+ * } // ctx context is destroyed and VFS directories removed
+ *
+ */
+struct VFSTestContext {
+  VFSTestContext(tiledb_config_t* config = nullptr);
+  ~VFSTestContext();
+
+  bool is_rest() const {
+    return fs_vec[0]->is_rest();
+  }
+
+  bool is_local() const {
+    return fs_vec[0]->is_local();
+  }
+
+  Context ctx() const {
+    return Context(ctx_c, false);
+  }
+
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec;
+  tiledb_ctx_handle_t* ctx_c;
+  tiledb_vfs_handle_t* vfs_c;
+  tiledb_config_handle_t* cfg_c;
+
+  static std::shared_ptr<const VFSTestContext> vanilla_instance(void);
+};
+
+struct VFSTempDir {
+  VFSTempDir(tiledb_config_t* config = nullptr, bool remove_tmpdir = true);
+  ~VFSTempDir();
+
+  std::string array_uri(
+      const std::string& array_name, bool strip_tiledb_prefix = false) const {
+    auto uri = (context_->fs_vec[0]->is_rest() && !strip_tiledb_prefix) ?
+                   ("tiledb://unit/" + temp_dir_ + array_name) :
+                   (temp_dir_ + array_name);
+    return uri;
+  }
+
+  std::shared_ptr<const VFSTestContext> context_;
+  std::string temp_dir_;
+
+  void update_config(tiledb_config_t* config);
+
+  const VFSTestContext* operator->() const {
+    return context_.get();
+  }
+};
+
 /**
  * Fixture for creating a temporary directory for a test case. This fixture
  * also manages the context and virtual file system for the test case.
@@ -749,26 +813,7 @@ struct TemporaryDirectoryFixture {
  public:
   /** Fixture constructor. */
   TemporaryDirectoryFixture()
-      : supported_filesystems_(vfs_test_get_fs_vec()) {
-    // Initialize virtual filesystem and context.
-    REQUIRE(vfs_test_init(supported_filesystems_, &ctx, &vfs_).ok());
-
-    // Create temporary directory based on the supported filesystem
-#ifdef _WIN32
-    SupportedFsLocal windows_fs;
-    temp_dir_ = windows_fs.file_prefix() + windows_fs.temp_dir();
-#else
-    SupportedFsLocal posix_fs;
-    temp_dir_ = posix_fs.file_prefix() + posix_fs.temp_dir();
-#endif
-    create_dir(temp_dir_, ctx, vfs_);
-  }
-
-  /** Fixture destructor. */
-  ~TemporaryDirectoryFixture() {
-    remove_dir(temp_dir_, ctx, vfs_);
-    tiledb_ctx_free(&ctx);
-    tiledb_vfs_free(&vfs_);
+      : vfs_temp_() {
   }
 
   /**
@@ -811,7 +856,7 @@ struct TemporaryDirectoryFixture {
    */
   inline void check_tiledb_error_with(
       int rc, const std::string& expected_msg) const {
-    test::check_tiledb_error_with(ctx, rc, expected_msg);
+    test::check_tiledb_error_with(get_ctx(), rc, expected_msg);
   }
 
   /**
@@ -822,19 +867,19 @@ struct TemporaryDirectoryFixture {
    * @param rc Return code from a TileDB C-API function.
    */
   inline void check_tiledb_ok(int rc) const {
-    test::check_tiledb_ok(ctx, rc);
+    test::check_tiledb_ok(get_ctx(), rc);
   }
 
   /** Create a path in the temporary directory. */
   inline std::string fullpath(std::string&& name) {
-    return temp_dir_ + name;
+    return vfs_temp_.temp_dir_ + name;
   }
 
   /**
    * Returns the context pointer object.
    */
-  inline tiledb_ctx_t* get_ctx() {
-    return ctx;
+  inline tiledb_ctx_t* get_ctx() const {
+    return vfs_temp_->ctx_c;
   }
 
   /**
@@ -847,7 +892,7 @@ struct TemporaryDirectoryFixture {
    */
   inline void require_tiledb_error_with(
       int rc, const std::string& expected_msg) const {
-    test::require_tiledb_error_with(ctx, rc, expected_msg);
+    test::require_tiledb_error_with(get_ctx(), rc, expected_msg);
   }
 
   /**
@@ -858,99 +903,12 @@ struct TemporaryDirectoryFixture {
    * @param rc Return code from a TileDB C-API function.
    */
   inline void require_tiledb_ok(int rc) const {
-    test::require_tiledb_ok(ctx, rc);
+    test::require_tiledb_ok(get_ctx(), rc);
   }
 
  protected:
-  /** TileDB context */
-  tiledb_ctx_t* ctx;
-
-  /** Name of the temporary directory to use for this test */
-  std::string temp_dir_;
-
-  /** Virtual file system */
-  tiledb_vfs_t* vfs_;
-
- private:
-  /** Vector of supported filesystems. Used to initialize ``vfs_``. */
-  const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
-};
-
-/*
- * Class to instantiate when setting up a test case to run for all VFSs and
- * REST
- *
- * Example usage: In the beginning of the test define a VFSTestSetup variable
- * and then just use the Context and the rest of the resources it encapsulates
- * in the test. The resources will be automatically get freed when the variable
- * will get out of scope.
- *
- * {
- * tiledb::test::VFSTestSetup vfs_test_setup{"foo_array"};
- * auto ctx = vfs_test_setup.ctx();
- * auto array_uri = vfs_test_setup.array_uri("quickstart_sparse");
- * Array array(ctx, array_uri, TILEDB_WRITE);
- * ...
- * } // ctx context is destroyed and VFS directories removed
- *
- */
-struct VFSTestSetup {
-  VFSTestSetup(tiledb_config_t* config = nullptr, bool remove_tmpdir = true)
-      : fs_vec(vfs_test_get_fs_vec())
-      , ctx_c{nullptr}
-      , vfs_c{nullptr}
-      , cfg_c{config} {
-    vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
-    temp_dir = fs_vec[0]->temp_dir();
-    if (remove_tmpdir) {
-      vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
-    }
-    tiledb_vfs_create_dir(ctx_c, vfs_c, temp_dir.c_str());
-  };
-
-  void update_config(tiledb_config_t* config) {
-    // free resources
-    tiledb_ctx_free(&ctx_c);
-    tiledb_vfs_free(&vfs_c);
-    cfg_c = config;
-
-    // reallocate with input config
-    vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
-  }
-
-  bool is_rest() {
-    return fs_vec[0]->is_rest();
-  }
-
-  bool is_local() {
-    return fs_vec[0]->is_local();
-  }
-
-  std::string array_uri(
-      const std::string& array_name, bool strip_tiledb_prefix = false) {
-    auto uri = (fs_vec[0]->is_rest() && !strip_tiledb_prefix) ?
-                   ("tiledb://unit/" + temp_dir + array_name) :
-                   (temp_dir + array_name);
-    return uri;
-  }
-
-  Context ctx() {
-    return Context(ctx_c, false);
-  }
-
-  ~VFSTestSetup() {
-    vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
-    vfs_test_close(fs_vec, ctx_c, vfs_c).ok();
-
-    tiledb_ctx_free(&ctx_c);
-    tiledb_vfs_free(&vfs_c);
-  };
-
-  std::vector<std::unique_ptr<SupportedFs>> fs_vec;
-  tiledb_ctx_handle_t* ctx_c;
-  tiledb_vfs_handle_t* vfs_c;
-  tiledb_config_handle_t* cfg_c;
-  std::string temp_dir;
+  /** VFS context */
+  const VFSTempDir vfs_temp_;
 };
 
 /**

@@ -51,7 +51,7 @@ using namespace tiledb::test;
 
 TEST_CASE("C API: Test URI", "[capi][uri]") {
   int rc;
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   char path[PLATFORM_PATH_MAX];
   unsigned path_length = PLATFORM_PATH_MAX;
@@ -111,6 +111,4 @@ TEST_CASE("C API: Test URI", "[capi][uri]") {
   CHECK(path[path_length] == '\0');
   CHECK(strlen(path) == path_length);
   CHECK(strcmp(path, "hdfs://my/path") == 0);
-
-  tiledb_ctx_free(&ctx);
 }

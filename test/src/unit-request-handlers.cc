@@ -265,7 +265,7 @@ TEST_CASE_METHOD(
 
   // Create and open array
   create_array();
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_array_t* array = nullptr;
   REQUIRE(tiledb_array_alloc(ctx, uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -311,7 +311,6 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_subarray_free(&sub);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(

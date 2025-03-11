@@ -55,7 +55,7 @@ struct CPPEnumerationFx {
 
   void create_array(bool with_empty_enumeration = false);
 
-  tiledb::test::VFSTestSetup vfs_test_setup_;
+  tiledb::test::VFSTempDir vfs_test_setup_;
   std::string uri_;
   Context ctx_;
   VFS vfs_;
@@ -486,7 +486,7 @@ TEST_CASE_METHOD(
   config["rest.load_enumerations_on_array_open_all_schemas"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
 
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
   // Loading the array with array open v1 will only initialize the latest schema
@@ -502,7 +502,7 @@ TEST_CASE_METHOD(
     if (array_open_v2) {
       // If we are not loading enmrs on array open we must load them explicitly
       // with a separate request.
-      if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+      if (!load_enmrs || !vfs_test_setup_->is_rest()) {
         // Load enumerations for all schemas if using array open v2.
         CHECK_NOTHROW(
             ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
@@ -692,7 +692,7 @@ TEST_CASE_METHOD(
   config["rest.load_enumerations_on_array_open_all_schemas"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
 
   // Open the array with no explicit timestamps set.
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
@@ -705,7 +705,7 @@ TEST_CASE_METHOD(
   if (load_enmrs) {
     // Array open v1 does not support loading enumerations on array open so we
     // must load them explicitly in this case.
-    if (!array_open_v2 || !vfs_test_setup_.is_rest()) {
+    if (!array_open_v2 || !vfs_test_setup_->is_rest()) {
       ArrayExperimental::load_all_enumerations(ctx_, array);
     }
     REQUIRE(
@@ -747,7 +747,7 @@ TEST_CASE_METHOD(
           true);
       // We did not reopen so we should not have loaded the evolved schema.
       CHECK(all_schemas.size() == 1);
-    } else if (vfs_test_setup_.is_rest()) {
+    } else if (vfs_test_setup_->is_rest()) {
       // If we have not loaded all enumerations at this point we will hit an
       // exception. REST has reopened the array server-side and as a result
       // loaded the evolved schema. Since we did not reopen locally after
@@ -759,7 +759,7 @@ TEST_CASE_METHOD(
           Catch::Matchers::ContainsSubstring(
               "Array opened using timestamp range (" + start + ", " + end +
               ") has no loaded schema named"));
-    } else if (vfs_test_setup_.is_local()) {
+    } else if (vfs_test_setup_->is_local()) {
       // Since there is no separation between opened arrays on client and server
       // for the local case there will be no exception. We will load only the
       // enumerations from the initial array schema before evolution.
@@ -784,7 +784,7 @@ TEST_CASE_METHOD(
     // Reopen and load the evolved enumerations.
     array.reopen();
     std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
-    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+    if (!load_enmrs || !vfs_test_setup_->is_rest()) {
       CHECK_NOTHROW(
           ArrayExperimental::load_enumerations_all_schemas(ctx_, array));
     }
@@ -824,7 +824,7 @@ TEST_CASE_METHOD(
 
     // Reopen to apply the schema evolution and reload enumerations.
     array.reopen();
-    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+    if (!load_enmrs || !vfs_test_setup_->is_rest()) {
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
   }
@@ -854,7 +854,7 @@ TEST_CASE_METHOD(
   // subsequent calls to load_enumerations_all_schemas.
   config["rest.load_enumerations_on_array_open"] = "true";
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
 
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
   // load_enumerations_all_schemas requires array open v2, so this test is not
@@ -895,7 +895,7 @@ TEST_CASE_METHOD(
   config["rest.load_enumerations_on_array_open"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
 
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
   bool array_open_v2 = array.ptr()->array()->use_refactored_array_open();
@@ -908,7 +908,7 @@ TEST_CASE_METHOD(
 
     // If we are not loading enmrs on array open we must load them explicitly
     // with a separate request.
-    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+    if (!load_enmrs || !vfs_test_setup_->is_rest()) {
       // Load enumerations for all schemas if using array open v2.
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
@@ -1093,7 +1093,7 @@ TEST_CASE_METHOD(
   config["rest.load_enumerations_on_array_open"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
 
   // Open the array with no explicit timestamps set.
   auto array = tiledb::Array(ctx_, uri_, TILEDB_READ);
@@ -1108,7 +1108,7 @@ TEST_CASE_METHOD(
     // must load them explicitly in this case.
     if (!array_open_v2) {
       ArrayExperimental::load_all_enumerations(ctx_, array);
-    } else if (!vfs_test_setup_.is_rest()) {
+    } else if (!vfs_test_setup_->is_rest()) {
       ArrayExperimental::load_enumerations_all_schemas(ctx_, array);
     }
     REQUIRE(
@@ -1156,7 +1156,7 @@ TEST_CASE_METHOD(
     // Reopen and load the evolved enumerations.
     array.reopen();
     std::string schema_name_2 = array.schema().ptr()->array_schema()->name();
-    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+    if (!load_enmrs || !vfs_test_setup_->is_rest()) {
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
     // Validate all array schemas now contain the expected enumerations.
@@ -1197,7 +1197,7 @@ TEST_CASE_METHOD(
 
     // Reopen to apply the schema evolution and reload enumerations.
     array.reopen();
-    if (!load_enmrs || !vfs_test_setup_.is_rest()) {
+    if (!load_enmrs || !vfs_test_setup_->is_rest()) {
       CHECK_NOTHROW(ArrayExperimental::load_all_enumerations(ctx_, array));
     }
   }
@@ -1582,8 +1582,8 @@ TEST_CASE_METHOD(
 
 CPPEnumerationFx::CPPEnumerationFx()
     : uri_(vfs_test_setup_.array_uri("enumeration_test_array"))
-    , ctx_(vfs_test_setup_.ctx())
-    , vfs_(vfs_test_setup_.ctx()) {
+    , ctx_(vfs_test_setup_->ctx())
+    , vfs_(vfs_test_setup_->ctx()) {
 }
 
 template <typename T>

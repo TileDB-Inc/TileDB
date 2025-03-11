@@ -38,7 +38,7 @@
 using namespace tiledb::test;
 
 TEST_CASE("C API: Test filter list on attribute", "[capi][filter-list]") {
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   tiledb_filter_t* filter;
   auto rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
@@ -97,5 +97,4 @@ TEST_CASE("C API: Test filter list on attribute", "[capi][filter-list]") {
   tiledb_attribute_free(&attr);
   tiledb_filter_free(&filter);
   tiledb_filter_list_free(&filter_list);
-  tiledb_ctx_free(&ctx);
 }

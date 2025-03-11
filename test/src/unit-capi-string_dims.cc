@@ -61,7 +61,7 @@ struct StringDimsFx {
   bool serialize_ = false;
 
   // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
   // Path to prepend to array name according to filesystem/mode
   std::string prefix_;
 

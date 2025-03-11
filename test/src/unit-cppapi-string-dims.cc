@@ -1529,8 +1529,8 @@ TEST_CASE(
     return start += 10;
   });
 
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("test_rle_string_dim")};
 
   Domain domain(ctx);

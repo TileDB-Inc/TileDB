@@ -91,8 +91,6 @@ Subarray2Fx::Subarray2Fx() {
 }
 
 Subarray2Fx::~Subarray2Fx() {
-  tiledb_ctx_free(&ctx_);
-  CHECK(ctx_ == nullptr);
 }
 
 bool Subarray2Fx::is_array(const std::string& array_name) {

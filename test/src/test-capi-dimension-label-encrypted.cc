@@ -45,6 +45,8 @@ TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "C-API: create encrypted array with a dimension label",
     "[capi][ArraySchema][DimensionLabel][encryption]") {
+  auto ctx = get_ctx();
+
   // Create an array schema and add a dimension label.
   uint64_t x_domain[2]{0, 63};
   uint64_t x_tile_extent{64};
@@ -129,6 +131,8 @@ TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "C-API: write encrypted dense array with a dimension label",
     "[capi][ArraySchema][DimensionLabel][encryption]") {
+  auto ctx = get_ctx();
+
   // Create an array schema and add a dimension label.
   uint64_t x_domain[2]{0, 3};
   uint64_t x_tile_extent{4};

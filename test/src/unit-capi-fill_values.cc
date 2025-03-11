@@ -59,7 +59,7 @@ TEST_CASE(
   int32_t value = 5;
   uint64_t value_size = sizeof(int32_t);
 
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   // Fixed-sized
   tiledb_attribute_t* a;
@@ -188,7 +188,6 @@ TEST_CASE(
   check_dump(ctx, a, dump);
 
   // Clean up
-  tiledb_ctx_free(&ctx);
   tiledb_attribute_free(&a);
 }
 
@@ -198,7 +197,7 @@ TEST_CASE(
   int32_t value = 5;
   uint64_t value_size = sizeof(int32_t);
 
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   // Fixed-sized, nullable
   tiledb_attribute_t* a;
@@ -284,6 +283,5 @@ TEST_CASE(
   check_dump(ctx, a, dump);
 
   // Clean up
-  tiledb_ctx_free(&ctx);
   tiledb_attribute_free(&a);
 }

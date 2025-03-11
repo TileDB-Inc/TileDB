@@ -43,7 +43,7 @@ struct RestCurrentDomainFx {
 
   void create_sparse_array(const std::string& array_name);
 
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
 
   // TileDB context
   tiledb_ctx_t* ctx_c_;
@@ -51,7 +51,7 @@ struct RestCurrentDomainFx {
 };
 
 RestCurrentDomainFx::RestCurrentDomainFx()
-    : ctx_c_(vfs_test_setup_.ctx_c) {
+    : ctx_c_(vfs_test_setup_->ctx_c) {
 }
 
 void RestCurrentDomainFx::create_sparse_array(const std::string& array_name) {

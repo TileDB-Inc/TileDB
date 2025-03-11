@@ -58,7 +58,7 @@ struct QueryFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
 
   // Functions
   QueryFx();
@@ -747,7 +747,7 @@ TEST_CASE_METHOD(
   tiledb_array_type_t array_type =
       layout == TILEDB_UNORDERED ? TILEDB_SPARSE : TILEDB_DENSE;
 
-  tiledb_ctx_t* ctx = vanilla_context_c();
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   int rc;
   {
     tiledb_array_schema_t* schema;
@@ -823,5 +823,4 @@ TEST_CASE_METHOD(
     tiledb_query_free(&query);
     tiledb_array_free(&array);
   }
-  tiledb_ctx_free(&ctx);
 }

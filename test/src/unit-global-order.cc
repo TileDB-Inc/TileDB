@@ -65,7 +65,6 @@ GlobalOrderWriteFx::GlobalOrderWriteFx() {
 }
 
 GlobalOrderWriteFx::~GlobalOrderWriteFx() {
-  tiledb_ctx_free(&ctx_);
 }
 
 // Create a simple dense 1D array

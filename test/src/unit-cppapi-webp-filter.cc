@@ -477,7 +477,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
   if constexpr (webp_filter_exists) {
-    tiledb_ctx_t* ctx = vanilla_context_c();
+    tiledb_ctx_t* const ctx = vanilla_context_c();
     tiledb_vfs_t* vfs;
     tiledb_vfs_alloc(ctx, nullptr, &vfs);
     int32_t is_dir = false;

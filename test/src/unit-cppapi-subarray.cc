@@ -430,15 +430,15 @@ TEST_CASE(
   auto reader_type = GENERATE("legacy", "refactored");
   tiledb::Config cfg;
   cfg["sm.query.dense.reader"] = reader_type;
-  tiledb::test::VFSTestSetup vfs_test_setup(cfg.ptr().get());
+  tiledb::test::VFSTempDir vfs_test_setup(cfg.ptr().get());
 
   // SC-45976 : Different behaviour between local and remote arrays when
   // submitting query with ranges oob of domain
-  if (!vfs_test_setup.is_rest()) {
+  if (!vfs_test_setup->is_rest()) {
     return;
   }
 
-  tiledb::Context ctx(vfs_test_setup.ctx());
+  tiledb::Context ctx(vfs_test_setup->ctx());
   std::string array_name = vfs_test_setup.array_uri("cpp_unit_array");
 
   // Create

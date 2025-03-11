@@ -59,7 +59,7 @@ struct ConsolidationPlanFx {
   bool is_array(const std::string& array_name);
   void check_last_error(std::string expected);
 
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
 
   // TileDB context
   tiledb_ctx_t* ctx_c_;
@@ -71,8 +71,8 @@ ConsolidationPlanFx::ConsolidationPlanFx() {
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_c_ = vfs_test_setup_.ctx_c;
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_c_ = vfs_test_setup_->ctx_c;
+  ctx_ = vfs_test_setup_->ctx();
   array_name_ = vfs_test_setup_.array_uri("test_consolidation_plan_array");
 }
 

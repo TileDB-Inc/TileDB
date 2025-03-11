@@ -99,7 +99,6 @@ DenseTilerFx::DenseTilerFx()
 DenseTilerFx::~DenseTilerFx() {
   close_array();
   tiledb_array_free(&array_);
-  tiledb_ctx_free(&ctx_);
 }
 
 void DenseTilerFx::remove_array(const std::string& array_name) {
