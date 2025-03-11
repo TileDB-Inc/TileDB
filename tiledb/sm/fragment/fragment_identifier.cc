@@ -54,8 +54,7 @@ class InvalidURIException : public FragmentIDException {
 };
 
 FragmentID::FragmentID(const URI& uri)
-    : URI(uri)
-    , name_(uri.remove_trailing_slash().last_path_part())
+    : name_(uri.remove_trailing_slash().last_path_part())
     , timestamp_range_({0, 0})
     , name_version_(FragmentNameVersion::ONE) {
   // Ensure input uri is valid (non-empty)
@@ -88,8 +87,8 @@ FragmentID::FragmentID(const URI& uri)
     array_format_version_ = 2;
     sscanf(
         array_format_version_str.c_str(),
-        (std::string("%") + std::string(PRId64)).c_str(),
-        (long long int*)&timestamp_range_.first);
+        "%" PRId64,
+        (int64_t*)&timestamp_range_.first);
     timestamp_range_.second = timestamp_range_.first;
   } else {
     if (name_version_ == FragmentNameVersion::TWO) {
@@ -97,16 +96,28 @@ FragmentID::FragmentID(const URI& uri)
     }
     sscanf(
         name_.c_str(),
-        (std::string("__%") + std::string(PRId64) + "_%" + std::string(PRId64))
-            .c_str(),
-        (long long int*)&timestamp_range_.first,
-        (long long int*)&timestamp_range_.second);
+        "__%" PRId64 "_%" PRId64,
+        (int64_t*)&timestamp_range_.first,
+        (int64_t*)&timestamp_range_.second);
   }
   if (timestamp_range_.first > timestamp_range_.second) {
     throw FragmentIDException(
         "Failed to construct FragmentID; start timestamp cannot "
         "be after end timestamp");
   }
+}
+
+bool FragmentID::has_fragment_name(const URI& uri) {
+  if (uri.empty()) {
+    throw InvalidURIException("URI may not be empty.");
+  }
+
+  auto name = uri.remove_trailing_slash().last_path_part();
+  auto pos = name.find_last_of('.');
+  if (pos != std::string::npos) {
+    name = name.substr(0, pos);
+  }
+  return name.find_last_of('_') != std::string::npos;
 }
 
 FragmentID::FragmentID(const std::string_view& path)
