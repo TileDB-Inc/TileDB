@@ -189,9 +189,13 @@ TEST_CASE("FragmentID: Valid uris", "[fragment_id][valid_uri]") {
 }
 
 TEST_CASE("FragmentID: has_fragment_name", "[fragment_id][has_fragment_name]") {
-  CHECK(FragmentID::has_fragment_name(URI("__0123456789ABCDEF0123456789ABCDEF")));
+  CHECK(
+      FragmentID::has_fragment_name(URI("__0123456789ABCDEF0123456789ABCDEF")));
   CHECK_THROWS(FragmentID::has_fragment_name(URI("")));
-  CHECK_FALSE(FragmentID::has_fragment_name(URI("0123456789ABCDEF0123456789ABCDEF")));
-  CHECK_FALSE(FragmentID::has_fragment_name(URI("__directory/0123456789ABCDEF0123456789ABCDEF")));
-  CHECK_FALSE(FragmentID::has_fragment_name(URI("0123456789ABCDEF0123456789ABCDEF.__ext")));
+  CHECK_FALSE(
+      FragmentID::has_fragment_name(URI("0123456789ABCDEF0123456789ABCDEF")));
+  CHECK_FALSE(FragmentID::has_fragment_name(
+      URI("__directory/0123456789ABCDEF0123456789ABCDEF")));
+  CHECK_FALSE(FragmentID::has_fragment_name(
+      URI("0123456789ABCDEF0123456789ABCDEF.__ext")));
 }
