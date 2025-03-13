@@ -86,9 +86,11 @@ static void write_file(json data, const std::string& filepath) {
   }
 
   // Remove the random label from the filepath.
-  if (std::rename(temp_filepath.c_str(), filepath.c_str()) != 0) {
+  try {
+    std::filesystem::rename(temp_filepath.c_str(), filepath.c_str());
+  } catch (std::filesystem::filesystem_error& e) {
     throw RestProfileException(
-        "Failed to write file due to an internal error.");
+        "Failed to write file due to internal error: " + std::string(e.what()));
   }
 }
 
