@@ -1258,9 +1258,15 @@ Status ArrayDirectory::is_fragment(
     const std::unordered_set<std::string>& ok_uris_set,
     const std::unordered_set<std::string>& consolidated_uris_set,
     int* is_fragment) const {
-  // If the URI name has a suffix, then it is not a fragment
+  // If the fragment ID does not have a name, ignore it.
+  if (!FragmentID::has_fragment_name(uri)) {
+    *is_fragment = 0;
+    return Status::Ok();
+  }
+
   FragmentID fragment_id{uri};
   auto name = fragment_id.name();
+  // If the URI name has a suffix, then it is not a fragment
   if (name.find_first_of('.') != std::string::npos) {
     *is_fragment = 0;
     return Status::Ok();
