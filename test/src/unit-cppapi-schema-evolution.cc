@@ -1116,11 +1116,7 @@ TEST_CASE(
 
 /**
  * Add an enumeration which is not used by any attribute.
- *
- * FIXME: should this be an error?
- * As far as I can tell the enumeration is undiscoverable if no attribute
- * references it. It can be looked up by name but there is no
- * API to list enumeration names.
+ * This leaves behind a dangling enumeration which is expected behavior.
  */
 TEST_CASE("C++ API: SchemaEvolution add unused enumeration") {
   test::VFSTestSetup vfs_test_setup;
@@ -1148,4 +1144,52 @@ TEST_CASE("C++ API: SchemaEvolution add unused enumeration") {
           ctx, schema_out, "us_states");
 
   CHECK(test::is_equivalent_enumeration(enumeration_in, enumeration_out));
+}
+
+/**
+ * Drop the last attribute which holds a reference to an enumeration.
+ * This leaves behind a dangling enumeration which is expected behavior.
+ */
+TEST_CASE("C++ API: SchemaEvolution dangling enumeration") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{
+      vfs_test_setup.array_uri("test_schema_evolution_add_unused_enumeration")};
+
+  // schema with enumeration
+  ArraySchema schema = simple_schema(ctx);
+
+  auto a2 = Attribute::create<int>(ctx, "a2");
+  Enumeration enumeration = Enumeration::create_empty(
+      ctx, "us_states", TILEDB_STRING_ASCII, tiledb::sm::constants::var_num);
+  AttributeExperimental::set_enumeration_name(ctx, a2, "us_states");
+
+  ArraySchemaExperimental::add_enumeration(ctx, schema, enumeration);
+  schema.add_attribute(a2);
+
+  // create array
+  Array::create(array_uri, schema);
+  test::DeleteArrayGuard guard(ctx.ptr().get(), array_uri.c_str());
+
+  // evolve to drop last attribute referring to enumeration
+  auto evolution = ArraySchemaEvolution(ctx);
+  evolution.drop_attribute("a2");
+
+  evolution.array_evolve(array_uri);
+
+  auto schema_out = Array::load_schema(ctx, array_uri);
+
+  // we can still find the enumeration
+  Enumeration enumeration_out =
+      ArraySchemaExperimental::get_enumeration_from_name(
+          ctx, schema_out, "us_states");
+
+  CHECK(test::is_equivalent_enumeration(enumeration, enumeration_out));
+
+  // though no attributes reference it
+  for (unsigned a = 0; a < schema_out.attribute_num(); a++) {
+    CHECK(!AttributeExperimental::get_enumeration_name(
+               ctx, schema_out.attribute(a))
+               .has_value());
+  }
 }
