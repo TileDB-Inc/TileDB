@@ -334,8 +334,8 @@ void NullableArrayCppFx::do_2d_nullable_test(
     const tiledb_layout_t cell_order,
     const tiledb_layout_t tile_order,
     const tiledb_layout_t write_order) {
-  VFSTestSetup vfs_test_setup{};
-  ctx_ = vfs_test_setup.ctx();
+  VFSTempDir vfs_test_setup{};
+  ctx_ = vfs_test_setup->ctx();
   auto array_name{vfs_test_setup.array_uri("cpp_2d_nullable_array")};
 
   // Skip row-major and col-major writes for sparse arrays.

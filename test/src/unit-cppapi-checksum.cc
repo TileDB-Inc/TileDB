@@ -33,7 +33,10 @@
 #include <test/support/tdb_catch.h>
 #include <fstream>
 #include "test/support/src/coords_workaround.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
+
+using namespace tiledb::test;
 
 static void check_filters(
     const tiledb::FilterList& answer, const tiledb::FilterList& check) {
@@ -47,7 +50,7 @@ static void check_filters(
 
 static void run_checksum_test(tiledb_filter_type_t filter_type) {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Context ctx2;
   VFS vfs(ctx);
   std::string array_name = "cpp_unit_array";

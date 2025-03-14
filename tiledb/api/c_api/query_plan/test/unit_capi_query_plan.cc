@@ -42,6 +42,8 @@ struct QueryPlanFx : TemporaryDirectoryFixture {
 };
 
 void QueryPlanFx::create_dense_array(const std::string& path) {
+  auto ctx = get_ctx();
+
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
@@ -111,7 +113,9 @@ TEST_CASE_METHOD(
     QueryPlanFx,
     "C API: tiledb_query_get_plan argument validation",
     "[capi][query_plan]") {
-  std::string array_name = temp_dir_ + "queryplan_array";
+  auto ctx = get_ctx();
+
+  std::string array_name = vfs_temp_.temp_dir_ + "queryplan_array";
   create_dense_array(array_name);
 
   tiledb_array_t* array;

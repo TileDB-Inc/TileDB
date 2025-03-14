@@ -85,14 +85,14 @@ bool check_result(
 }
 
 struct SerializationFx {
-  test::VFSTestSetup vfs_test_setup_;
+  test::VFSTempDir vfs_test_setup_;
   tiledb_ctx_t* ctx_;
   Context ctx;
   const std::string array_uri;
 
   SerializationFx()
-      : ctx_{vfs_test_setup_.ctx_c}
-      , ctx{vfs_test_setup_.ctx()}
+      : ctx_{vfs_test_setup_->ctx_c}
+      , ctx{vfs_test_setup_->ctx()}
       , array_uri{vfs_test_setup_.array_uri("testarray")} {
   }
 
@@ -640,8 +640,8 @@ TEST_CASE_METHOD(
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
 
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx_c;
-  auto ctx_client = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx_c;
+  auto ctx_client = vfs_test_setup_->ctx();
 
   SECTION("- Read all") {
     Array array(ctx_client, array_uri, TILEDB_READ);
@@ -734,7 +734,7 @@ TEST_CASE_METHOD(
     "[query][dense][serialization][rest]") {
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
-  if (!vfs_test_setup_.is_rest()) {
+  if (!vfs_test_setup_->is_rest()) {
     check_subarray_stats(1, 1);
   }
 

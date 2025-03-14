@@ -57,7 +57,7 @@ struct RemoteGlobalOrderWriteFx {
       , extent_(extent)
       , array_name_{"global-array-" + std::to_string(total_cell_count_)}
       , array_uri_(vfs_test_setup_.array_uri(array_name_))
-      , ctx_(vfs_test_setup_.ctx())
+      , ctx_(vfs_test_setup_->ctx())
       , array_type_(array_type){};
 
   // Create a simple dense array
@@ -166,7 +166,7 @@ struct RemoteGlobalOrderWriteFx {
       if (i + submit_cell_count_ < total_cell_count_) {
         query.submit();
       } else {
-        if (vfs_test_setup_.is_rest()) {
+        if (vfs_test_setup_->is_rest()) {
           if (check_finalize_fails) {
             CHECK_THROWS_WITH(
                 query.finalize(),
@@ -369,7 +369,7 @@ struct RemoteGlobalOrderWriteFx {
   const uint64_t extent_;
 
   const std::string array_name_;
-  test::VFSTestSetup vfs_test_setup_;
+  test::VFSTempDir vfs_test_setup_;
   std::string array_uri_;
   Context ctx_;
   tiledb_array_type_t array_type_;

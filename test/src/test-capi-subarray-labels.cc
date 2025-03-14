@@ -72,6 +72,8 @@ using namespace tiledb::test;
 class SampleLabelledArrayTestFixture : public TemporaryDirectoryFixture {
  public:
   SampleLabelledArrayTestFixture() {
+    auto ctx = get_ctx();
+
     // Create an array schema.
     uint64_t x_domain[2]{0, 63};
     uint64_t x_tile_extent{64};
@@ -120,6 +122,8 @@ TEST_CASE_METHOD(
     SampleLabelledArrayTestFixture,
     "Subarray with a fixed-length dimension label range",
     "[capi][subarray][DimensionLabel]") {
+  auto ctx = get_ctx();
+
   // Create array and subarray.
   tiledb_array_t* array;
   require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -199,6 +203,7 @@ TEST_CASE_METHOD(
     SampleLabelledArrayTestFixture,
     "Subarray with variable dimension label range",
     "[capi][subarray][DimensionLabel]") {
+  auto ctx = get_ctx();
   // Create array and subarray.
   tiledb_array_t* array;
   require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -266,6 +271,7 @@ TEST_CASE_METHOD(
     SampleLabelledArrayTestFixture,
     "Subarray with dimension label ranges blocked",
     "[capi][subarray][DimensionLabel]") {
+  auto ctx = get_ctx();
   // Create array and subarray.
   tiledb_array_t* array;
   require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));

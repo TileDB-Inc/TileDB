@@ -32,15 +32,18 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/coords_workaround.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
 
 #include <limits>
 
+using namespace tiledb::test;
+
 TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   FilterList filters(ctx);
   filters.add_filter({ctx, TILEDB_FILTER_LZ4});
@@ -202,7 +205,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
 }
 
 TEST_CASE("C++ API: Test schema virtual destructors", "[cppapi][schema]") {
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   // Test that this generates no compiler warnings.
   std::unique_ptr<tiledb::ArraySchema> schema;
 
@@ -214,7 +217,7 @@ TEST_CASE(
     "C++ API: Test schema, heterogeneous domain, errors",
     "[cppapi][schema][heter][error]") {
   using namespace tiledb;
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
 
   auto d1 = Dimension::create<float>(ctx, "d1", {{1.0f, 2.0f}}, .5f);
   auto d2 = Dimension::create<int32_t>(ctx, "d2", {{1, 2}}, 1);
@@ -272,7 +275,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Schema, Dimension ranges", "[cppapi][schema][dimension-ranges]") {
   using namespace tiledb;
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
 
   // Test creating dimensions with signed, unsigned, 32-bit, and 64-bit integer
   // domain types.

@@ -64,6 +64,8 @@ TEST_CASE_METHOD(
   serialize = GENERATE(true, false);
 #endif
 
+  auto ctx = get_ctx();
+
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
   auto label_order = GENERATE(TILEDB_INCREASING_DATA, TILEDB_DECREASING_DATA);
 
@@ -166,6 +168,8 @@ TEST_CASE_METHOD(
   // examples).
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
 
+  auto ctx = get_ctx();
+
   // Create an array schema.
   uint64_t x_domain[2]{0, 63};
   uint64_t x_tile_extent{64};
@@ -206,6 +210,8 @@ TEST_CASE_METHOD(
 #ifdef TILEDB_SERIALIZATION
   serialize = GENERATE(true, false);
 #endif
+
+  auto ctx = get_ctx();
 
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
   // Create an array schema
@@ -326,6 +332,8 @@ TEST_CASE_METHOD(
 #ifdef TILEDB_SERIALIZATION
   serialize = GENERATE(true, false);
 #endif
+
+  auto ctx = get_ctx();
 
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
   // Create an array schema

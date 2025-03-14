@@ -35,17 +35,18 @@
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 namespace sparse_consolidate {
 void remove_array(const std::string& array_name) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
 
 void create_array(const std::string& array_name) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Domain domain(ctx);
   auto d = Dimension::create<int>(ctx, "d", {{1, 4}}, 4);
   domain.add_dimensions(d);
@@ -60,7 +61,7 @@ void write_array(
     const std::string& array_name,
     std::vector<int> d,
     std::vector<int> values) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED);
@@ -74,7 +75,7 @@ void read_array(
     const std::string& array_name,
     const std::vector<int>& ranges,
     const std::vector<int>& c_values) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_ROW_MAJOR);
@@ -107,7 +108,7 @@ TEST_CASE(
 
   read_array(array_name, {1, 2, 3}, {1, 2, 3});
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Config config;
   config["sm.consolidation.buffer_size"] = "8";
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
@@ -141,7 +142,7 @@ TEST_CASE(
 
   read_array(array_name, {1, 2, 3}, {1, 2, 3});
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Config config;
   config["sm.consolidation.buffer_size"] = "8";
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));

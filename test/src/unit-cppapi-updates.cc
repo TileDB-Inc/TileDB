@@ -40,10 +40,10 @@ using namespace tiledb;
 TEST_CASE(
     "C++ API updates: test writing two identical fragments",
     "[updates][updates-identical-fragments][rest]") {
-  test::VFSTestSetup vfs_test_setup;
+  test::VFSTempDir vfs_test_setup;
   const std::string array_name =
       vfs_test_setup.array_uri("updates_identical_fragments");
-  Context ctx{vfs_test_setup.ctx()};
+  Context ctx{vfs_test_setup->ctx()};
 
   // Create
   const int rowmin = 0, rowmax = 9, row_ext = rowmax - rowmin + 1;
@@ -121,10 +121,10 @@ TEST_CASE(
 TEST_CASE(
     "C++ API updates: empty second write",
     "[updates][updates-empty-write][rest-fails][sc-45709]") {
-  test::VFSTestSetup vfs_test_setup;
+  test::VFSTempDir vfs_test_setup;
   const std::string array_name =
       vfs_test_setup.array_uri("updates_empty_write");
-  Context ctx{vfs_test_setup.ctx()};
+  Context ctx{vfs_test_setup->ctx()};
 
   // Create
   Domain domain(ctx);

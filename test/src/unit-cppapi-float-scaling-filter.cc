@@ -35,9 +35,11 @@
 #include <vector>
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 std::string array_name = "cpp_unit_array";
 int dim_hi = 10;
@@ -46,7 +48,7 @@ TEST_CASE(
     "C++ API: Float Scaling Filter options",
     "[cppapi][filter][float-scaling]") {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // Test filter creation and option setting/getting
   Filter f(ctx, TILEDB_FILTER_SCALE_FLOAT);
@@ -194,7 +196,7 @@ TEMPLATE_PRODUCT_TEST_CASE(
     FloatScalingFilterTestStruct,
     ((float, int8_t), (double, int8_t))) {
   // Setup.
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
