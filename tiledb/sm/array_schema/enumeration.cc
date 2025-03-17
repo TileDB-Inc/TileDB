@@ -187,7 +187,7 @@ Enumeration::Enumeration(
     // For the empty string edge case allocate 1 byte to obtain a valid memory
     // address even though unused
     if (data_size == 0) {
-      data_.realloc(1);
+      throw_if_not_ok(data_.realloc(1));
     }
 
     throw_if_not_ok(data_.write(data, 0, data_size));
