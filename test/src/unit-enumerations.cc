@@ -256,7 +256,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "Basic Variable Size With Single Empty Value Using nullptr",
+    "Basic Variable Size With Single Empty Value Using nullptr ",
     "[enumeration][error][invalid-offsets-args]") {
   uint64_t offsets = 0;
   auto enmr = Enumeration::create(
@@ -278,6 +278,89 @@ TEST_CASE_METHOD(
       Datatype::STRING_ASCII,
       constants::var_num,
       false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Single Empty Value Using nullptr Index Retrieval",
+    "[enumeration][basic][index_of]") {
+  uint64_t offsets = 0;
+  auto enmr = Enumeration::create(
+      default_enmr_name,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      nullptr,
+      0,
+      &offsets,
+      sizeof(uint64_t),
+      memory_tracker_);
+
+  std::string value_str = "";
+  const char* value_ptr = "";
+
+  REQUIRE(enmr->index_of(value_str.data(), value_str.size()) == 0);
+  REQUIRE(enmr->index_of(value_ptr, 0) == 0);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Single Empty Value Using nullptr Address Check",
+    "[enumeration][basic][buffer-address]") {
+  uint64_t offsets = 0;
+  auto enmr = Enumeration::create(
+      default_enmr_name,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      nullptr,
+      0,
+      &offsets,
+      sizeof(uint64_t),
+      memory_tracker_);
+
+  REQUIRE(enmr->data().data() != nullptr);
+  REQUIRE(enmr->data().size() == 0);
+  REQUIRE(enmr->offsets().data() != nullptr);
+  REQUIRE(enmr->offsets().size() == sizeof(uint64_t));
+  REQUIRE(enmr->elem_count() == 1);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Single Empty Value Enumeration Creation Address "
+    "Check",
+    "[enumeration][basic][buffer-address]") {
+  std::vector<std::string> values = {""};
+  auto enmr = create_enumeration(values);
+
+  REQUIRE(enmr->data().data() != nullptr);
+  REQUIRE(enmr->data().size() == 0);
+  REQUIRE(enmr->offsets().data() != nullptr);
+  REQUIRE(enmr->offsets().size() == sizeof(uint64_t));
+  REQUIRE(enmr->elem_count() == 1);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size Empty Address Check",
+    "[enumeration][basic][buffer-address]") {
+  auto enmr = Enumeration::create(
+      default_enmr_name,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      nullptr,
+      0,
+      nullptr,
+      0,
+      memory_tracker_);
+
+  REQUIRE(enmr->data().data() == nullptr);
+  REQUIRE(enmr->data().size() == 0);
+  REQUIRE(enmr->offsets().data() == nullptr);
+  REQUIRE(enmr->offsets().size() == 0);
+  REQUIRE(enmr->elem_count() == 0);
 }
 
 TEST_CASE_METHOD(
