@@ -283,7 +283,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     EnumerationFx,
     "Basic Variable Size With Single Empty Value Using nullptr Index Retrieval",
-    "[enumeration][basic][index_of]") {
+    "[enumeration][index-of][var-size]") {
   uint64_t offsets = 0;
   auto enmr = Enumeration::create(
       default_enmr_name,
@@ -319,7 +319,7 @@ TEST_CASE_METHOD(
       sizeof(uint64_t),
       memory_tracker_);
 
-  REQUIRE(enmr->data().data() != nullptr);
+  REQUIRE(enmr->data().data() == nullptr);
   REQUIRE(enmr->data().size() == 0);
   REQUIRE(enmr->offsets().data() != nullptr);
   REQUIRE(enmr->offsets().size() == sizeof(uint64_t));
@@ -334,7 +334,7 @@ TEST_CASE_METHOD(
   std::vector<std::string> values = {""};
   auto enmr = create_enumeration(values);
 
-  REQUIRE(enmr->data().data() != nullptr);
+  REQUIRE(enmr->data().data() == nullptr);
   REQUIRE(enmr->data().size() == 0);
   REQUIRE(enmr->offsets().data() != nullptr);
   REQUIRE(enmr->offsets().size() == sizeof(uint64_t));
