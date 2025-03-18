@@ -34,15 +34,16 @@
 
 namespace tiledb::sm {
 /**
- * Contains the local filesystem code shared by the Windows and POSIX filesystems.
+ * Contains the local filesystem code shared by the Windows and POSIX
+ * filesystems.
  */
 class LocalFilesystem {
  protected:
- /**
-  * Creates the containing directories of a path if they do not exist.
-  * 
-  * @param path The path to a file.
-  */
+  /**
+   * Creates the containing directories of a path if they do not exist.
+   *
+   * @param path The path to a file.
+   */
   static void ensure_directory(const std::string& path);
 };
 }  // namespace tiledb::sm
