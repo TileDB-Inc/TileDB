@@ -152,6 +152,8 @@ void Posix::create_dir(const URI& uri) const {
 void Posix::touch(const URI& uri) const {
   auto filename = uri.to_path();
 
+  ensure_directory(filename);
+
   int fd =
       ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, file_permissions_);
   if (fd == -1 || ::close(fd) != 0) {
@@ -218,6 +220,8 @@ void Posix::file_size(const URI& uri, uint64_t* size) const {
 }
 
 void Posix::move_file(const URI& old_path, const URI& new_path) const {
+  auto new_uri_path = new_path.to_path();
+  ensure_directory(new_uri_path);
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
     throw IOError(std::string("Cannot move path: ") + strerror(errno));
   }
@@ -229,7 +233,9 @@ void Posix::move_dir(const URI& old_uri, const URI& new_uri) const {
 
 void Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
   std::ifstream src(old_uri.to_path(), std::ios::binary);
-  std::ofstream dst(new_uri.to_path(), std::ios::binary);
+  auto new_uri_path = new_uri.to_path();
+  ensure_directory(new_uri_path);
+  std::ofstream dst(new_uri_path, std::ios::binary);
   dst << src.rdbuf();
 }
 
@@ -365,6 +371,8 @@ void Posix::write(
   uint64_t file_offset = 0;
   if (is_file(URI(path))) {
     file_size(URI(path), &file_offset);
+  } else {
+    ensure_directory(path);
   }
 
   // Open or create file.
