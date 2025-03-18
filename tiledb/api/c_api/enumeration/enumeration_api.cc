@@ -125,6 +125,22 @@ capi_return_t tiledb_enumeration_get_name(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_enumeration_get_value_index(
+    tiledb_enumeration_t* enumeration,
+    const void* value,
+    uint64_t value_size,
+    int* exist,
+    uint64_t* index) {
+  ensure_enumeration_is_valid(enumeration);
+  ensure_output_pointer_is_valid(exist);
+  ensure_output_pointer_is_valid(index);
+
+  *index = enumeration->enumeration()->index_of(value, value_size);
+  *exist = *index != sm::constants::enumeration_missing_value ? 1 : 0;
+
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_enumeration_get_type(
     tiledb_enumeration_t* enumeration, tiledb_datatype_t* type) {
   ensure_enumeration_is_valid(enumeration);
@@ -267,6 +283,18 @@ CAPI_INTERFACE(
     tiledb_string_handle_t** name) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_name>(
       ctx, enumeration, name);
+}
+
+CAPI_INTERFACE(
+    enumeration_get_value_index,
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_t* enumeration,
+    const void* value,
+    uint64_t value_size,
+    int* exist,
+    uint64_t* index) {
+  return api_entry_context<tiledb::api::tiledb_enumeration_get_value_index>(
+      ctx, enumeration, value, value_size, exist, index);
 }
 
 CAPI_INTERFACE(
