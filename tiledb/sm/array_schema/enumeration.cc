@@ -296,6 +296,11 @@ shared_ptr<const Enumeration> Enumeration::extend(
       throw EnumerationException(
           "Offsets size is non-zero when extending a fixed sized enumeration.");
     }
+
+    if (data_size % cell_size() != 0) {
+      throw EnumerationException(
+          "Invalid data size is not a multiple of the cell size.");
+    }
   }
 
   // Construct an empty enumeration to merge the old and new data
@@ -337,7 +342,7 @@ shared_ptr<const Enumeration> Enumeration::extend(
     span<uint64_t> offsets_arr(
         static_cast<uint64_t*>(
             extended_enumeration->offsets_.data(offsets_.size())),
-        offsets_size);
+        offsets_size / sizeof(uint64_t));
     for (uint64_t i = 0; i < offsets_arr.size(); i++) {
       offsets_arr[i] += data_.size();
     }
