@@ -202,10 +202,9 @@ class Enumeration {
 
   template <typename T, impl::enable_trivial<T>* = nullptr>
   std::optional<uint64_t> index_of(T value) {
-    bool exist = 0;
+    int exist = 0;
     uint64_t index;
     tiledb_ctx_t* c_ctx = ctx_.get().ptr().get();
-
     ctx_.get().handle_error(tiledb_enumeration_get_value_index(
         c_ctx, enumeration_.get(), &value, sizeof(T), &exist, &index));
 
