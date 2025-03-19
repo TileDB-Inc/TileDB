@@ -31,13 +31,15 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 TEST_CASE("C++ API: Test get query layout", "[cppapi][query]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -70,7 +72,7 @@ TEST_CASE("C++ API: Test get query layout", "[cppapi][query]") {
 
 TEST_CASE("C++ API: Test get query array", "[cppapi][query]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -113,7 +115,7 @@ TEST_CASE(
     "C++ API: Test get written fragments for reads",
     "[cppapi][query][written-fragments][read]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -144,7 +146,7 @@ TEST_CASE(
     "C++ API: Test get written fragments for writes",
     "[cppapi][query][written-fragments][write]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -174,7 +176,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Write on open read array", "[cppapi][query][write-on-open]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -235,7 +237,7 @@ TEST_CASE(
     "C++ API: Test add and get ranges by name",
     "[cppapi][query][range][string-dims]") {
   const std::string array_name = "test_ranges";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -303,7 +305,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test boolean query buffer", "[cppapi][query][bool_buffer]") {
   const std::string array_name = "bool_buffer_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -351,7 +353,7 @@ TEST_CASE(
     "C++ API: Test query set_data_buffer typecheck",
     "[cppapi][query][set_data_buffer]") {
   const std::string array_name = "buffer_typecheck_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);

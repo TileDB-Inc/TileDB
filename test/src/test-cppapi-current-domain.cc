@@ -40,7 +40,7 @@
 using namespace tiledb::test;
 
 struct CurrentDomainFx {
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
 
   // Constructors/destructors.
   CurrentDomainFx();
@@ -52,8 +52,8 @@ struct CurrentDomainFx {
 
 CurrentDomainFx::CurrentDomainFx() {
   tiledb::Config config;
-  ctx_c_ = vfs_test_setup_.ctx_c;
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_c_ = vfs_test_setup_->ctx_c;
+  ctx_ = vfs_test_setup_->ctx();
 }
 
 TEST_CASE_METHOD(

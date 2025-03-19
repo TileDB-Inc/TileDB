@@ -36,6 +36,7 @@
 #include <random>
 
 #include "test/support/src/ast_helpers.h"
+#include "test/support/src/helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -52,6 +53,7 @@
 #endif
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 /*
  * The test fixture. See the first test for a basic example of expected
@@ -580,7 +582,7 @@ TEST_CASE_METHOD(
 TEST_CASE(
     "Check error on creating a TILEDB_ALWAYS_TRUE QueryCondition",
     "[query-condition][enumeration][logic][op-error]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   // TILEDB_ALWAYS_TRUE is not an exposed symbol so we even have to force
   // the issue by knowing the internal value and casting it.
   auto op = static_cast<tiledb_query_condition_op_t>(253);
@@ -592,7 +594,7 @@ TEST_CASE(
 TEST_CASE(
     "Check error on creating a TILEDB_ALWAYS_FALSE QueryCondition",
     "[query-condition][enumeration][logic][op-error]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   // TILEDB_ALWAYS_FALSE is not an exposed symbol so we even have to force
   // the issue by knowing the internal value and casting it.
   auto op = static_cast<tiledb_query_condition_op_t>(254);

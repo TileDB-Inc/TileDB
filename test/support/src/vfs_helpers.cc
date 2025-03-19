@@ -51,8 +51,11 @@ tiledb::sm::URI test_dir(const std::string& prefix) {
   return tiledb::sm::URI(prefix + "tiledb-" + std::to_string(PRNG::get()()));
 }
 
-std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
-  std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+const std::vector<std::unique_ptr<SupportedFs>>& vfs_test_get_fs_vec() {
+  static std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+  if (!fs_vec.empty()) {
+    return fs_vec;
+  }
 
   bool supports_s3 = false;
   bool supports_hdfs = false;
@@ -151,6 +154,48 @@ void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path) {
   vfs_test_remove_temp_dir(ctx, vfs, path);
   CHECK(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
+}
+
+VFSTestContext::VFSTestContext(tiledb_config_t* config)
+    : fs_vec(vfs_test_get_fs_vec())
+    , ctx_c{nullptr}
+    , vfs_c{nullptr}
+    , cfg_c{config} {
+  vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
+}
+
+VFSTestContext::~VFSTestContext() {
+  vfs_test_close(fs_vec, ctx_c, vfs_c).ok();
+
+  tiledb_ctx_free(&ctx_c);
+  tiledb_vfs_free(&vfs_c);
+}
+
+std::shared_ptr<const VFSTestContext> VFSTestContext::vanilla_instance() {
+  static std::shared_ptr<VFSTestContext> vanilla_instance(new VFSTestContext());
+  return vanilla_instance;
+}
+
+VFSTempDir::VFSTempDir(tiledb_config_t* config, bool remove_tmpdir)
+    : context_(VFSTestContext::vanilla_instance()) {
+  if (config) {
+    update_config(config);
+  }
+
+  temp_dir_ = context_->fs_vec[0]->temp_dir();
+
+  if (remove_tmpdir) {
+    vfs_test_remove_temp_dir(context_->ctx_c, context_->vfs_c, temp_dir_);
+  }
+  tiledb_vfs_create_dir(context_->ctx_c, context_->vfs_c, temp_dir_.c_str());
+}
+
+VFSTempDir::~VFSTempDir() {
+  vfs_test_remove_temp_dir(context_->ctx_c, context_->vfs_c, temp_dir_);
+}
+
+void VFSTempDir::update_config(tiledb_config_t* config) {
+  context_.reset(new VFSTestContext(config));
 }
 
 std::string vfs_array_uri(
@@ -412,7 +457,7 @@ void TemporaryDirectoryFixture::alloc_encrypted_ctx(
     tiledb_ctx_t** ctx_with_encrypt) const {
   // Get the configuration settings for the fixture's context.
   tiledb_config_t* config;
-  require_tiledb_ok(tiledb_ctx_get_config(ctx, &config));
+  require_tiledb_ok(tiledb_ctx_get_config(vfs_temp_->ctx_c, &config));
 
   // Change the configuration to match the desired encryption settings.
   tiledb_error_t* error;
@@ -436,9 +481,9 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
     tiledb_array_schema_t* array_schema,
     const bool serialize) {
   auto array_uri = fullpath(std::move(name));
-  require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
+  require_tiledb_ok(tiledb_array_schema_check(vfs_temp_->ctx_c, array_schema));
   require_tiledb_ok(tiledb_array_create_serialization_wrapper(
-      ctx, array_uri, array_schema, serialize));
+      get_ctx(), array_uri, array_schema, serialize));
   return array_uri;
 }
 

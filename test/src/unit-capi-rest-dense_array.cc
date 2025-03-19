@@ -68,7 +68,7 @@ struct DenseArrayRESTFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const int ITER_NUM = 10;
 
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
   std::string array_uri_;
 
   // TileDB context and VFS
@@ -188,8 +188,8 @@ struct DenseArrayRESTFx {
 };
 
 DenseArrayRESTFx::DenseArrayRESTFx()
-    : ctx_(vfs_test_setup_.ctx_c)
-    , vfs_(vfs_test_setup_.vfs_c) {
+    : ctx_(vfs_test_setup_->ctx_c)
+    , vfs_(vfs_test_setup_->vfs_c) {
   std::srand(0);
 }
 
@@ -1802,7 +1802,7 @@ TEST_CASE_METHOD(
   array_uri_ = vfs_test_setup_.array_uri("dense_set_subarray_sparse");
   create_dense_array(array_uri_);
 
-  if (vfs_test_setup_.is_rest()) {
+  if (vfs_test_setup_->is_rest()) {
     // Set config to use a non-default environment prefix.
     // Prevents test from picking up on REST CI environment configuration.
     tiledb_config_t* cfg;

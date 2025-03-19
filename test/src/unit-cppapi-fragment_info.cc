@@ -145,7 +145,7 @@ TEST_CASE(
     "C++ API: Test fragment info, load and getters",
     "[cppapi][fragment_info][load][getters]") {
   // Create TileDB context
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   // Create array
@@ -372,7 +372,7 @@ TEST_CASE(
 
 TEST_CASE("C++ API: Test MBR fragment info", "[cppapi][fragment_info][mbr]") {
   // Create TileDB context
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   // Create sparse array
@@ -515,7 +515,7 @@ TEST_CASE(
     "C++ API: Test fragment info, load from array with string dimension",
     "[cppapi][fragment_info][load][string-dims][mbr]") {
   // Create TileDB context
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Config cfg;
   VFS vfs(ctx);
 
@@ -619,7 +619,7 @@ TEST_CASE(
     "C++ API: Test fragment info, consolidated fragment metadata",
     "[cppapi][fragment_info][consolidated-metadata]") {
   // Create TileDB context
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   // Create array
@@ -788,7 +788,7 @@ TEST_CASE(
     "C++ API: Test fragment info, to vacuum",
     "[cppapi][fragment_info][to-vacuum]") {
   // Create TileDB context
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   // Create array
@@ -976,7 +976,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test fragment info, dump", "[cppapi][fragment_info][dump]") {
   // Create TileDB context
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   // Create array
