@@ -42,6 +42,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/local.h"
 #include "tiledb/sm/filesystem/ls_scanner.h"
 
 using namespace tiledb::common;
@@ -62,7 +63,7 @@ typedef void* HANDLE;
 /**
  * This class implements Windows filesystem functions.
  */
-class Win {
+class Win : LocalFilesystem {
  public:
   /**
    * Returns the absolute (string) path of the input in the

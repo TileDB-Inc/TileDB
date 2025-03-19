@@ -40,6 +40,7 @@ commence(object_library vfs)
         vfs_file_handle.cc
         win.cc
         filesystem_base.cc
+        local.cc
         ../curl/curl_init.cc
     )
     if (TILEDB_S3)

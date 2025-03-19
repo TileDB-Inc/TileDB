@@ -48,6 +48,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem_base.h"
+#include "tiledb/sm/filesystem/local.h"
 #include "tiledb/sm/filesystem/ls_scanner.h"
 
 using namespace tiledb::common;
@@ -65,7 +66,7 @@ class URI;
 /**
  * This class implements the POSIX filesystem functions.
  */
-class Posix : public FilesystemBase {
+class Posix : public FilesystemBase, public LocalFilesystem {
  public:
   /** Default constructor. */
   Posix()
