@@ -31,6 +31,7 @@
  */
 
 #include <iostream>
+#include <memory>
 #include <sstream>
 
 #include "tiledb/common/memory_tracker.h"
@@ -297,45 +298,54 @@ shared_ptr<const Enumeration> Enumeration::extend(
     }
   }
 
-  Buffer new_data(data_.size() + data_size);
-  throw_if_not_ok(new_data.write(data_.data(), data_.size()));
-  if (data_size > 0) {
-    throw_if_not_ok(new_data.write(data, data_size));
-  }
-
-  const void* new_offsets_ptr = nullptr;
-  uint64_t new_offsets_size = 0;
-
-  Buffer new_offsets(offsets_.size() + offsets_size);
-
-  if (var_size()) {
-    // First we write our existing offsets
-    throw_if_not_ok(new_offsets.write(offsets_.data(), offsets_.size()));
-
-    // All new offsets have to be rewritten to be relative to the length
-    // of the current data array.
-    const uint64_t* offsets_arr = static_cast<const uint64_t*>(offsets);
-    uint64_t num_offsets = offsets_size / sizeof(uint64_t);
-    for (uint64_t i = 0; i < num_offsets; i++) {
-      uint64_t new_offset = offsets_arr[i] + data_.size();
-      throw_if_not_ok(new_offsets.write(&new_offset, sizeof(uint64_t)));
-    }
-
-    new_offsets_ptr = new_offsets.data();
-    new_offsets_size = new_offsets.size();
-  }
-
-  return create(
+  // Construct an empty enumeration to merge the old and new data
+  auto extended_enumeration = std::const_pointer_cast<Enumeration>(create(
       name_,
       "",
       type_,
       cell_val_num_,
       ordered_,
-      new_data.data(),
-      new_data.size(),
-      new_offsets_ptr,
-      new_offsets_size,
-      memory_tracker_);
+      nullptr,
+      0,
+      nullptr,
+      0,
+      memory_tracker_));
+
+  // In case the old enumeration is empty and we extend with an empty string we
+  // do not need to do anything for the data buffer
+  if (data_.size() + data_size != 0) {
+    throw_if_not_ok(
+        extended_enumeration->data_.realloc(data_.size() + data_size));
+
+    throw_if_not_ok(
+        extended_enumeration->data_.write(data_.data(), data_.size()));
+    throw_if_not_ok(extended_enumeration->data_.write(data, data_size));
+  }
+
+  if (var_size()) {
+    throw_if_not_ok(
+        extended_enumeration->offsets_.realloc(offsets_.size() + offsets_size));
+
+    // First we write our existing offsets
+    throw_if_not_ok(
+        extended_enumeration->offsets_.write(offsets_.data(), offsets_.size()));
+
+    // Second we write new offsets all at once without modifying them
+    throw_if_not_ok(
+        extended_enumeration->offsets_.write(offsets, offsets_size));
+
+    span<uint64_t> offsets_arr(
+        static_cast<uint64_t*>(
+            extended_enumeration->offsets_.data(offsets_.size())),
+        offsets_size);
+    for (uint64_t i = 0; i < offsets_arr.size(); i++) {
+      offsets_arr[i] += data_.size();
+    }
+  }
+
+  extended_enumeration->generate_value_map();
+
+  return extended_enumeration;
 }
 
 bool Enumeration::is_extension_of(shared_ptr<const Enumeration> other) const {
@@ -461,7 +471,6 @@ void Enumeration::add_value_to_map(std::string_view& sv, uint64_t index) {
         "Invalid duplicated value in enumeration '" + std::string(sv) + "'");
   }
 }
-
 }  // namespace tiledb::sm
 
 std::ostream& operator<<(
