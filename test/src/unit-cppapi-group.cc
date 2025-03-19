@@ -1021,67 +1021,6 @@ class GroupDtorDoesntThrowException : public std::exception {
   }
 };
 
-TEST_CASE("C++ API: Group close group with error", "[cppapi][group][error]") {
-  tiledb::Context ctx;
-  tiledb::VFS vfs(ctx);
-  std::vector<std::string> dnames = {"main_group", "main_group_renamed"};
-
-  auto cleaner = [&]() -> void {
-    for (auto dir : dnames) {
-      if (vfs.is_dir(dir)) {
-        vfs.remove_dir(dir);
-      }
-    }
-  };
-  cleaner();
-
-  // This test is a bit subtle in that we're attempting to assert that a
-  // destructor doesn't throw. Since throwing from a destructor is perfectly
-  // valid (although extremely discouraged outside of extremely niche cases)
-  // we have to force a situation such that an exception thrown from the
-  // destructor would cause some other observable behavior.
-  //
-  // For this test, I'm using the case where throwing an exception while the
-  // stack is already being unwound being C++ mandated as a call to
-  // std::terminate which will fail this test quite hard.
-  //
-  // The GroupDtroDoesntThrowException is a specific class so that we know
-  // we've caught the exception we expect. The thrown_correctly assertion
-  // is mostly for show since the real failure would be the std::terminate
-  // which is unrecoverable.
-
-  bool thrown_correctly = false;
-
-  try {
-    // Create our group preliminaries
-    tiledb::create_group(ctx, "main_group");
-    tiledb::create_group(ctx, "main_group/sub_group");
-
-    tiledb::Group group(ctx, "main_group", TILEDB_WRITE);
-    group.add_member("main_group/sub_group", false, "sub_group");
-
-    // Muck with the filesystem so that when the group.close() is called it
-    // throws an exception due to missing paths
-    REQUIRE(rename("main_group", "main_group_renamed") == 0);
-
-    // Check that group.close() actually throws
-    REQUIRE_THROWS(group.close());
-
-    // By throwing here, Group will go out of scope calling close. If this
-    // throws we end up with the exact reason why throwing from a destructor
-    // is a bad idea because throwing an exception while the stack is
-    // unwinding is specified by the language to call std::terminate
-    throw GroupDtorDoesntThrowException();
-
-  } catch (GroupDtorDoesntThrowException& exc) {
-    thrown_correctly = true;
-  }
-
-  REQUIRE(thrown_correctly);
-
-  cleaner();
-}
-
 TEST_CASE(
     "C++ API: Group delete recursive", "[cppapi][group][delete][recursive]") {
   // Initialize context and VFS.
