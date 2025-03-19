@@ -182,8 +182,15 @@ Enumeration::Enumeration(
     }
   }
 
-  throw_if_not_ok(data_.write(data, 0, data_size));
-  throw_if_not_ok(offsets_.write(offsets, 0, offsets_size));
+  // std::memcpy with nullptr in either src or dest can lead to UB
+  // data_size != 0 guarantees internal data buffer address to be not null
+  if (data != nullptr && data_size != 0) {
+    throw_if_not_ok(data_.write(data, 0, data_size));
+  }
+  if (offsets != nullptr) {
+    throw_if_not_ok(offsets_.write(offsets, 0, offsets_size));
+  }
+
   generate_value_map();
 }
 
@@ -415,11 +422,6 @@ uint64_t Enumeration::index_of(const void* data, uint64_t size) const {
 }
 
 void Enumeration::generate_value_map() {
-  // If we've got no data, there are no values to generate.
-  if (data_.size() == 0) {
-    return;
-  }
-
   auto char_data = data_.data_as<char>();
   if (var_size()) {
     auto offsets = offsets_.data_as<uint64_t>();
