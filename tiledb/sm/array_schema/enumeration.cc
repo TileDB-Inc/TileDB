@@ -31,7 +31,6 @@
  */
 
 #include <iostream>
-#include <memory>
 #include <sstream>
 
 #include "tiledb/common/memory_tracker.h"
@@ -195,6 +194,141 @@ Enumeration::Enumeration(
   generate_value_map();
 }
 
+Enumeration::Enumeration(
+    const std::string& name,
+    const std::string& path_name,
+    Datatype type,
+    uint32_t cell_val_num,
+    bool ordered,
+    Buffer&& data,
+    Buffer&& offsets,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , name_(name)
+    , path_name_(path_name)
+    , type_(type)
+    , cell_val_num_(cell_val_num)
+    , ordered_(ordered)
+    , data_(std::move(data))
+    , offsets_(std::move(offsets))
+    , value_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
+  ensure_datatype_is_valid(type);
+
+  if (name.empty()) {
+    throw EnumerationException("Enumeration name must not be empty");
+  }
+
+  if (path_name_.empty()) {
+    path_name_ = "__" + tiledb::common::random_label() + "_" +
+                 std::to_string(constants::enumerations_version);
+  }
+
+  if (path_name.find("/") != std::string::npos) {
+    throw EnumerationException(
+        "Enumeration path name must not contain path separators");
+  }
+
+  if (cell_val_num == 0) {
+    throw EnumerationException("Invalid cell_val_num in Enumeration");
+  }
+
+  // Check if we're creating an empty enumeration and bail.
+  auto data_empty = (data_.data() == nullptr && data_.size() == 0);
+  auto offsets_empty = (offsets_.data() == nullptr && offsets_.size() == 0);
+  if (data_empty && offsets_empty) {
+    // This is an empty enumeration so we're done checking for argument
+    // validity.
+    return;
+  }
+
+  if (var_size()) {
+    if (offsets_.data() == nullptr) {
+      throw EnumerationException(
+          "Var sized enumeration values require a non-null offsets pointer.");
+    }
+
+    if (offsets_.size() == 0) {
+      throw EnumerationException(
+          "Var sized enumeration values require a non-zero offsets size.");
+    }
+
+    if (offsets_.size() % constants::cell_var_offset_size != 0) {
+      throw EnumerationException(
+          "Invalid offsets size is not a multiple of sizeof(uint64_t)");
+    }
+
+    // Setup some temporary aliases for quick reference
+    auto offset_values = offsets_.data_as<const uint64_t>();
+    auto num_offsets = offsets_.size() / constants::cell_var_offset_size;
+
+    // Check for the edge case of a single value so we can handle the case of
+    // having a single empty value.
+    if (num_offsets == 1 && offset_values[0] == 0) {
+      // If data is nullptr and data_size > 0, then the user appears to have
+      // intended to provided us with a non-empty value.
+      if (data_.size() > 0 && data_.data() == nullptr) {
+        throw EnumerationException(
+            "Invalid data buffer; must not be nullptr when data_size "
+            "is non-zero.");
+      }
+      // Else, data_size is zero and we don't care what data is. We ignore the
+      // check for data_size == 0 && data != nullptr here because a common
+      // use case with our APIs is to use a std::string to contain all of the
+      // var data which AFAIK never returns nullptr.
+    } else {
+      // We have more than one string which requires a non-nullptr data and
+      // non-zero data size that is greater than or equal to the last
+      // offset provided.
+      if (data_.data() == nullptr) {
+        // Users need to be able to create an enumeration containing one value
+        // which is the empty string.
+        //
+        // The std::vector<uint8_t> foo(0, 0) constructor at our callsite
+        // results in a foo.data() which is nullptr and foo.size() which is
+        // zero. So if data is nullptr, we only fail if data_size is not zero.
+        if (data_.size() != 0) {
+          throw EnumerationException(
+              "Invalid data input, nullptr provided when the provided offsets "
+              "require data.");
+        }
+      }
+
+      if (data_.size() < offset_values[num_offsets - 1]) {
+        throw EnumerationException(
+            "Invalid data input, data_size is smaller than the last provided "
+            "offset.");
+      }
+    }
+  } else {  // !var_sized()
+    if (offsets_.data() != nullptr) {
+      throw EnumerationException(
+          "Fixed length value type defined but offsets is not nullptr.");
+    }
+
+    if (offsets_.size() != 0) {
+      throw EnumerationException(
+          "Fixed length value type defined but offsets size is non-zero.");
+    }
+
+    if (data_.data() == nullptr) {
+      throw EnumerationException(
+          "Invalid data buffer must not be nullptr for fixed sized data.");
+    }
+
+    if (data_.size() == 0) {
+      throw EnumerationException(
+          "Invalid data size; must be non-zero for fixed size data.");
+    }
+
+    if (data_.size() % cell_size() != 0) {
+      throw EnumerationException(
+          "Invalid data size is not a multiple of the cell size.");
+    }
+  }
+
+  generate_value_map();
+}
+
 shared_ptr<const Enumeration> Enumeration::deserialize(
     Deserializer& deserializer, shared_ptr<MemoryTracker> memory_tracker) {
   auto disk_version = deserializer.read<uint32_t>();
@@ -303,54 +437,40 @@ shared_ptr<const Enumeration> Enumeration::extend(
     }
   }
 
-  // Construct an empty enumeration to merge the old and new data
-  auto extended_enumeration = std::const_pointer_cast<Enumeration>(create(
-      name_,
-      "",
-      type_,
-      cell_val_num_,
-      ordered_,
-      nullptr,
-      0,
-      nullptr,
-      0,
-      memory_tracker_));
+  Buffer data_buf(data_.size() + data_size);
+  Buffer offsets_buf(offsets_.size() + offsets_size);
 
-  // In case the old enumeration is empty and we extend with an empty string we
-  // do not need to do anything for the data buffer
-  if (data_.size() + data_size != 0) {
-    throw_if_not_ok(
-        extended_enumeration->data_.realloc(data_.size() + data_size));
-
-    throw_if_not_ok(
-        extended_enumeration->data_.write(data_.data(), data_.size()));
-    throw_if_not_ok(extended_enumeration->data_.write(data, data_size));
+  if (data_.size() != 0) {
+    throw_if_not_ok(data_buf.write(data_.data(), data_.size()));
+  }
+  if (data_size != 0) {
+    throw_if_not_ok(data_buf.write(data, data_size));
   }
 
   if (var_size()) {
-    throw_if_not_ok(
-        extended_enumeration->offsets_.realloc(offsets_.size() + offsets_size));
-
     // First we write our existing offsets
-    throw_if_not_ok(
-        extended_enumeration->offsets_.write(offsets_.data(), offsets_.size()));
+    throw_if_not_ok(offsets_buf.write(offsets_.data(), offsets_.size()));
 
     // Second we write new offsets all at once without modifying them
-    throw_if_not_ok(
-        extended_enumeration->offsets_.write(offsets, offsets_size));
+    throw_if_not_ok(offsets_buf.write(offsets, offsets_size));
 
     span<uint64_t> offsets_arr(
-        static_cast<uint64_t*>(
-            extended_enumeration->offsets_.data(offsets_.size())),
+        static_cast<uint64_t*>(offsets_buf.data(offsets_.size())),
         offsets_size / sizeof(uint64_t));
     for (uint64_t i = 0; i < offsets_arr.size(); i++) {
       offsets_arr[i] += data_.size();
     }
   }
 
-  extended_enumeration->generate_value_map();
-
-  return extended_enumeration;
+  return create(
+      name_,
+      "",
+      type_,
+      cell_val_num_,
+      ordered_,
+      std::move(data_buf),
+      std::move(offsets_buf),
+      memory_tracker_);
 }
 
 bool Enumeration::is_extension_of(shared_ptr<const Enumeration> other) const {

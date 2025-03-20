@@ -181,6 +181,63 @@ class Enumeration {
         memory_tracker);
   }
 
+  /** Create a new Enumeration
+   *
+   * @param name The name of this Enumeration as referenced by attributes.
+   * @param path_name The last URI path component of the Enumeration.
+   * @param type The datatype of the enumeration values.
+   * @param cell_val_num The cell_val_num of the enumeration.
+   * @param ordered Whether the enumeration should be considered as ordered.
+   *        If false, prevents inequality operators in QueryConditons from
+   *        being used with this enumeration.
+   * @param data A pointer to the enumerations values.
+   * @param offsets If cell_var_num is constants::var_num a pointer to the
+   *        offsets buffer. Must be null if cell_var_num is not var_num.
+   * @param memory_tracker The memory tracker associated with this Enumeration.
+   * @return shared_ptr<Enumeration> The created enumeration.
+   */
+  static shared_ptr<const Enumeration> create(
+      const std::string& name,
+      const std::string& path_name,
+      Datatype type,
+      uint32_t cell_val_num,
+      bool ordered,
+      Buffer&& data,
+      Buffer&& offsets,
+      shared_ptr<MemoryTracker> memory_tracker) {
+    struct EnableMakeShared : public Enumeration {
+      EnableMakeShared(
+          const std::string& name,
+          const std::string& path_name,
+          Datatype type,
+          uint32_t cell_val_num,
+          bool ordered,
+          Buffer&& data,
+          Buffer&& offsets,
+          shared_ptr<MemoryTracker> memory_tracker)
+          : Enumeration(
+                name,
+                path_name,
+                type,
+                cell_val_num,
+                ordered,
+                std::move(data),
+                std::move(offsets),
+                memory_tracker) {
+      }
+    };
+    return make_shared<EnableMakeShared>(
+        HERE(),
+        name,
+        path_name,
+        type,
+        cell_val_num,
+        ordered,
+        std::move(data),
+        std::move(offsets),
+        memory_tracker);
+  }
+
   /**
    * Deserialize an enumeration
    *
@@ -386,6 +443,31 @@ class Enumeration {
       uint64_t data_size,
       const void* offsets,
       uint64_t offsets_size,
+      shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Constructor
+   *
+   * @param name The name of this Enumeration as referenced by attributes.
+   * @param path_name The last URI path component of the Enumeration.
+   * @param type The datatype of the enumeration values.
+   * @param cell_val_num The cell_val_num of the enumeration.
+   * @param ordered Whether the enumeration should be considered as ordered.
+   *        If false, prevents inequality operators in QueryConditons from
+   *        being used with this enumeration.
+   * @param data An rvalue reference to a Buffer containing the enumerations
+   * values.
+   * @param offsets An rvalue reference to a Buffer containing the enumerations
+   * value offsets. Must be empty if cell_var_num is not var_num.
+   * @param memory_tracker The memory tracker.
+   */
+  Enumeration(
+      const std::string& name,
+      const std::string& path_name,
+      Datatype type,
+      uint32_t cell_val_num,
+      bool ordered,
+      Buffer&& data,
+      Buffer&& offsets,
       shared_ptr<MemoryTracker> memory_tracker);
 
   /* ********************************* */
