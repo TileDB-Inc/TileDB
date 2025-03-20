@@ -84,6 +84,8 @@ The attribute has internal format:
 | Nullable | `bool` | _New in version 7_ Whether or not the attribute can be null |
 | Fill value validity | `uint8_t` | _New in version 7_ The validity fill value |
 | Order | `uint8_t` | _New in version 17_ Order of the data stored in the attribute. This may be unordered, increasing or decreasing |
+| Enumeration length | `uint32_t` | Number of characters in enumeration name |
+| Enumeration name | `uint8_t` | Enumeration name character array |
 
 ## Dimension Label
 

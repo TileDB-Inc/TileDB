@@ -129,8 +129,8 @@ For *fixed-sized dimensions*, the `1DRange` format is:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
-| Range minimum | `uint8_t` | The minimum value with the same datatype as the dimension |
-| Range maximum | `uint8_t` | The maximum value with the same datatype as the dimension |
+| Range minimum | `uint8_t[]` | The minimum value with the same datatype as the dimension |
+| Range maximum | `uint8_t[]` | The maximum value with the same datatype as the dimension |
 
 For *var-sized dimensions*, the `1DRange` format is:
 
@@ -138,8 +138,8 @@ For *var-sized dimensions*, the `1DRange` format is:
 | :--- | :--- | :--- |
 | Range length | `uint64_t` | The number of bytes of the 1D range |
 | Minimum value length | `uint64_t` | The number of bytes of the minimum value |
-| Range minimum | `uint8_t` | The minimum (var-sized) value with the same datatype as the dimension |
-| Range maximum | `uint8_t` | The maximum (var-sized) value with the same datatype as the dimension |
+| Range minimum | `uint8_t[]` | The minimum (var-sized) value with the same datatype as the dimension |
+| Range maximum | `uint8_t[]` | The maximum (var-sized) value with the same datatype as the dimension |
 
 ### Tile Offsets
 
@@ -256,7 +256,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Includes delete metadata | `uint8_t` | _New in version 15_ Whether the fragment includes delete metadata (1) or not (0) |
 | File sizes | `uint64_t[]` | The size in bytes of each attribute/dimension file in the fragment. For var-length attributes/dimensions, this is the size of the offsets file. |
 | File var sizes | `uint64_t[]` | The size in bytes of each var-length attribute/dimension file in the fragment. |
-| File validity sizes | `uint64_t[]` | The size in bytes of each attribute/dimension validity vector file in the fragment. |
+| File validity sizes | `uint64_t[]` | _New in version 7_ The size in bytes of each attribute/dimension validity vector file in the fragment. |
 | R-Tree offset | `uint64_t` | The offset to the generic tile storing the R-Tree in the metadata file. |
 | Tile offset for attribute/dimension 1 | `uint64_t` | The offset to the generic tile storing the tile offsets for attribute/dimension 1. |
 | … | … | … |
@@ -284,8 +284,6 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile null counts offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile null counts for attribute/dimension N |
 | Fragment min max sum null count offset | `uint64_t` | The offset to the generic tile storing the fragment min max sum null count data. |
 | Processed conditions offset | `uint64_t` | _New in version 16_ The offset to the generic tile storing the processed conditions. |
-| Array schema name size | `uint64_t` | The total number of characters of the array schema name. |
-| Array schema name | `uint8_t[]` | The array schema name. |
 | Footer length | `uint64_t` | Sum of bytes of the above fields. |
 
 > [!NOTE]
