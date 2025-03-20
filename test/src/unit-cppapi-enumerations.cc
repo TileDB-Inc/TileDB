@@ -284,6 +284,46 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
+    "CPP: Enumeration API - Var Size index_of",
+    "[enumeration][index_of]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  auto enmr = Enumeration::create(ctx_, enmr_name, init_values, true);
+
+  std::string_view val = "wilma";
+
+  REQUIRE(enmr.index_of(val).has_value() == true);
+  REQUIRE(enmr.index_of(val).value() == 1);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Fix Size Int64 index_of",
+    "[enumeration][index_of]") {
+  std::vector<int64_t> init_values = {1, 5, 6};
+  auto enmr =
+      Enumeration::create(ctx_, enmr_name, init_values, true, TILEDB_INT64);
+  std::string_view val = "wilma";
+  REQUIRE(enmr.index_of(val).has_value() == false);
+
+  REQUIRE(enmr.index_of<int32_t>(1).has_value() == false);
+  REQUIRE(enmr.index_of<int64_t>(1).has_value() == true);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Fix Size Float32 index_of",
+    "[enumeration][index_of]") {
+  std::vector<float_t> init_values = {1, 5, 6, -4};
+  auto enmr = Enumeration::create(ctx_, enmr_name, init_values, true);
+
+  REQUIRE(enmr.index_of<int32_t>(-4).has_value() == false);
+  REQUIRE(enmr.index_of<float_t>(-4).has_value() == true);
+  REQUIRE(enmr.index_of<float_t>(-4).value() == 3);
+  REQUIRE(enmr.index_of<double_t>(-4).has_value() == false);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
     "CPP: Enumeration API - Dump Basic",
     "[enumeration][dump][basic]") {
   std::vector<int> values = {1, 2, 3, 4, 5};

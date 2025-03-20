@@ -585,3 +585,107 @@ TEST_CASE(
     REQUIRE(rc == TILEDB_ERR);
   }
 }
+
+TEST_CASE(
+    "C API: tiledb_enumeration_get_value_index argument validation",
+    "[capi][enumeration]") {
+  FixedSizeEnumeration fe;
+  VarSizeEnumeration ve;
+  NotAllEmptyStringEnumeration ne;
+  AllEmptyStringEnumeration ae;
+  int exist;
+  uint64_t index;
+
+  SECTION("found") {
+    uint32_t uint32_t_value = 3;
+    auto rc = tiledb_enumeration_get_value_index(
+        fe.ctx_.context,
+        fe.enumeration_,
+        &uint32_t_value,
+        sizeof(uint32_t),
+        &exist,
+        &index);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(exist == 1);
+    REQUIRE(index == 2);
+
+    std::string string_value = "bar";
+    rc = tiledb_enumeration_get_value_index(
+        ve.ctx_.context,
+        ve.enumeration_,
+        string_value.data(),
+        string_value.size(),
+        &exist,
+        &index);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(exist == 1);
+    REQUIRE(index == 1);
+
+    std::string empty_string_value = "";
+    rc = tiledb_enumeration_get_value_index(
+        ne.ctx_.context,
+        ne.enumeration_,
+        empty_string_value.data(),
+        empty_string_value.size(),
+        &exist,
+        &index);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(exist == 1);
+    REQUIRE(index == 1);
+
+    rc = tiledb_enumeration_get_value_index(
+        ae.ctx_.context,
+        ae.enumeration_,
+        empty_string_value.data(),
+        empty_string_value.size(),
+        &exist,
+        &index);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(exist == 1);
+    REQUIRE(index == 0);
+  }
+
+  SECTION("not found") {
+    uint32_t uint32_t_value = 10;
+    auto rc = tiledb_enumeration_get_value_index(
+        fe.ctx_.context,
+        fe.enumeration_,
+        &uint32_t_value,
+        sizeof(uint32_t),
+        &exist,
+        &index);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(exist == 0);
+
+    std::string string_value = "fun";
+    rc = tiledb_enumeration_get_value_index(
+        ve.ctx_.context,
+        ve.enumeration_,
+        string_value.data(),
+        string_value.size(),
+        &exist,
+        &index);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(exist == 0);
+
+    rc = tiledb_enumeration_get_value_index(
+        ne.ctx_.context,
+        ne.enumeration_,
+        string_value.data(),
+        string_value.size(),
+        &exist,
+        &index);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(exist == 0);
+
+    rc = tiledb_enumeration_get_value_index(
+        ae.ctx_.context,
+        ae.enumeration_,
+        string_value.data(),
+        string_value.size(),
+        &exist,
+        &index);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(exist == 0);
+  }
+}

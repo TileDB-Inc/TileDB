@@ -37,6 +37,8 @@
 #include "tiledb.h"
 #include "tiledb_experimental.h"
 
+#include <optional>
+
 namespace tiledb {
 
 class Enumeration {
@@ -196,6 +198,33 @@ class Enumeration {
     ctx_.get().handle_error(tiledb_string_free(&enmr_name));
 
     return ret;
+  }
+
+  template <typename T, impl::enable_trivial<T>* = nullptr>
+  std::optional<uint64_t> index_of(T value) {
+    int exist = 0;
+    uint64_t index;
+    tiledb_ctx_t* c_ctx = ctx_.get().ptr().get();
+    ctx_.get().handle_error(tiledb_enumeration_get_value_index(
+        c_ctx, enumeration_.get(), &value, sizeof(T), &exist, &index));
+
+    return exist == 1 ? std::make_optional(index) : std::nullopt;
+  }
+
+  template <typename T, impl::enable_trivial<T>* = nullptr>
+  std::optional<uint64_t> index_of(std::basic_string_view<T> value) {
+    int exist = 0;
+    uint64_t index;
+    tiledb_ctx_t* c_ctx = ctx_.get().ptr().get();
+    ctx_.get().handle_error(tiledb_enumeration_get_value_index(
+        c_ctx,
+        enumeration_.get(),
+        value.data(),
+        value.size() * sizeof(T),
+        &exist,
+        &index));
+
+    return exist == 1 ? std::make_optional(index) : std::nullopt;
   }
 
   /**
