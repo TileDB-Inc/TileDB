@@ -87,13 +87,6 @@ ArraySchema::ArraySchema(
     , uri_(URI())
     , array_uri_(URI())
     , version_(constants::format_version)
-    , timestamp_range_(
-          timestamp_range.has_value() ? std::make_pair(
-                                            timestamp_range.value().first,
-                                            timestamp_range.value().second) :
-                                        std::make_pair(
-                                            utils::time::timestamp_now_ms(),
-                                            utils::time::timestamp_now_ms()))
     , name_("")
     , array_type_(array_type)
     , allows_dups_(false)
@@ -113,6 +106,11 @@ ArraySchema::ArraySchema(
           memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , current_domain_(make_shared<CurrentDomain>(
           memory_tracker, constants::current_domain_version)) {
+  // Set timestamp to the user passed-in range, otherwise set to the current
+  // time
+  uint64_t now = utils::time::timestamp_now_ms();
+  timestamp_range_ = timestamp_range.value_or(std::make_pair(now, now));
+
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
