@@ -107,23 +107,10 @@ class ArraySchema : public Schema {
    * @param ctx TileDB context
    * @param type Array type, sparse or dense.
    */
-  explicit ArraySchema(
-      const Context& ctx,
-      tiledb_array_type_t type,
-      std::optional<std::pair<int64_t, int64_t>> timestamp_range = std::nullopt)
+  explicit ArraySchema(const Context& ctx, tiledb_array_type_t type)
       : Schema(ctx) {
     tiledb_array_schema_t* schema;
-    if (timestamp_range.has_value()) {
-      ctx.handle_error(tiledb_array_schema_alloc_at_timestamp(
-          ctx.ptr().get(),
-          type,
-          timestamp_range.value().first,
-          timestamp_range.value().second,
-          &schema));
-    } else {
-      ctx.handle_error(
-          tiledb_array_schema_alloc(ctx.ptr().get(), type, &schema));
-    }
+    ctx.handle_error(tiledb_array_schema_alloc(ctx.ptr().get(), type, &schema));
     schema_ = std::shared_ptr<tiledb_array_schema_t>(schema, deleter_);
   }
 
