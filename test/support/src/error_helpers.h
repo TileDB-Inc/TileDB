@@ -54,10 +54,11 @@
 /**
  * Asserts that a C API call does not return error.
  */
-#define TRY(ctx, thing)                                  \
-  do {                                                   \
-    auto rc = (thing);                                   \
-    ASSERTER("" == tiledb::test::error_if_any(ctx, rc)); \
+#define TRY(ctx, thing)                                   \
+  do {                                                    \
+    auto rc = (thing);                                    \
+    auto maybe_err = tiledb::test::error_if_any(ctx, rc); \
+    ASSERTER(std::optional<std::string>() == maybe_err);  \
   } while (0)
 
 namespace tiledb::test {
@@ -69,12 +70,12 @@ namespace tiledb::test {
  * Usage:
  * ```
  * auto rc = c_api_invocation();
- * REQUIRE("" == error_if_any(rc));
+ * REQUIRE(std::optional<std::string>() == error_if_any(rc));
  * ```
  */
-std::string error_if_any(tiledb_ctx_t* ctx, auto apirc) {
+std::optional<std::string> error_if_any(tiledb_ctx_t* ctx, auto apirc) {
   if (apirc == TILEDB_OK) {
-    return "";
+    return std::nullopt;
   }
 
   tiledb_error_t* error = NULL;

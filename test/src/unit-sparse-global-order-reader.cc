@@ -512,14 +512,15 @@ struct CSparseGlobalOrderFx {
   void run(Instance& instance);
 
   template <typename CAPIReturn>
-  std::string error_if_any(CAPIReturn apirc) const;
+  std::optional<std::string> error_if_any(CAPIReturn apirc) const;
 
   CSparseGlobalOrderFx();
   ~CSparseGlobalOrderFx();
 };
 
 template <typename CAPIReturn>
-std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
+std::optional<std::string> CSparseGlobalOrderFx::error_if_any(
+    CAPIReturn apirc) const {
   return tiledb::test::error_if_any(context(), apirc);
 }
 
@@ -620,7 +621,7 @@ void CSparseGlobalOrderFx::write_1d_fragment(
 
   // Submit query.
   rc = tiledb_query_submit(context(), query);
-  ASSERTER("" == error_if_any(rc));
+  ASSERTER(std::optional<std::string>() == error_if_any(rc));
 
   // Clean up.
   tiledb_query_free(&query);
@@ -671,7 +672,7 @@ void CSparseGlobalOrderFx::write_fragment(
 
   // Submit query.
   rc = tiledb_query_submit(context(), query);
-  ASSERTER("" == error_if_any(rc));
+  ASSERTER(std::optional<std::string>() == error_if_any(rc));
 
   // check that sizes match what we expect
   const uint64_t expect_num_cells = fragment.size();
@@ -2786,7 +2787,7 @@ TEST_CASE_METHOD(
 
   while (status == TILEDB_INCOMPLETE) {
     rc = tiledb_query_submit(context(), query);
-    CHECK("" == error_if_any(rc));
+    CHECK(std::optional<std::string>() == error_if_any(rc));
     tiledb_query_get_status(context(), query, &status);
     CHECK(4 == data_r_size);
     CHECK(4 == coords_r_size);
@@ -3368,38 +3369,41 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
     rc = tiledb_query_submit(context(), query);
     {
       const auto err = error_if_any(rc);
-      if (err.find("Cannot load enough tiles to emit results from all "
-                   "fragments in global order") != std::string::npos) {
-        if (!vfs_test_setup_.is_rest()) {
-          // skip for REST since we will not have access to tile sizes
-          const auto can_complete =
-              can_complete_in_memory_budget<Asserter, Instance>(
-                  context(), array_name_.c_str(), instance);
-          if (can_complete.has_value()) {
-            ASSERTER(!can_complete.value());
+      if (err.has_value()) {
+        if (err->find("Cannot load enough tiles to emit results from all "
+                      "fragments in global order") != std::string::npos) {
+          if (!vfs_test_setup_.is_rest()) {
+            // skip for REST since we will not have access to tile sizes
+            const auto can_complete =
+                can_complete_in_memory_budget<Asserter, Instance>(
+                    context(), array_name_.c_str(), instance);
+            if (can_complete.has_value()) {
+              ASSERTER(!can_complete.value());
+            }
+          }
+          tiledb_query_free(&query);
+          return;
+        }
+        if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
+          if (err->find(
+                  "Cannot allocate space for preprocess result tile ID list") !=
+              std::string::npos) {
+            // not enough memory to determine tile order
+            // we can probably make some assertions about what this should have
+            // looked like but for now we'll let it go
+            tiledb_query_free(&query);
+            return;
+          }
+          if (err->find("Cannot load tile offsets") != std::string::npos) {
+            // not enough memory budget for tile offsets, don't bother asserting
+            // about it (for now?)
+            tiledb_query_free(&query);
+            return;
           }
         }
-        tiledb_query_free(&query);
-        return;
       }
-      if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
-        if (err.find(
-                "Cannot allocate space for preprocess result tile ID list") !=
-            std::string::npos) {
-          // not enough memory to determine tile order
-          // we can probably make some assertions about what this should have
-          // looked like but for now we'll let it go
-          tiledb_query_free(&query);
-          return;
-        }
-        if (err.find("Cannot load tile offsets") != std::string::npos) {
-          // not enough memory budget for tile offsets, don't bother asserting
-          // about it (for now?)
-          tiledb_query_free(&query);
-          return;
-        }
-      }
-      ASSERTER("" == err);
+      // other errors we do not expect, this fails deterministically
+      ASSERTER(std::optional<std::string>() == err);
     }
 
     tiledb_query_status_t status;
