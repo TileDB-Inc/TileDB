@@ -55,10 +55,8 @@ extern "C" {
  *
  * @code{.c}
  * tiledb_array_schema_t* array_schema;
- * uint64_t t1 = 10;
- * uint64_t t2 = 20;
- * tiledb_array_schema_alloc_at_timestamp(ctx, TILEDB_DENSE, t1, t2,
- * &array_schema);
+ * uint64_t ts = 10;
+ * tiledb_array_schema_alloc_at_timestamp(ctx, TILEDB_DENSE, ts, &array_schema);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -70,8 +68,7 @@ extern "C" {
 TILEDB_EXPORT capi_return_t tiledb_array_schema_alloc_at_timestamp(
     tiledb_ctx_t* ctx,
     tiledb_array_type_t array_type,
-    uint64_t t1,
-    uint64_t t2,
+    uint64_t timestamp,
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
 /**

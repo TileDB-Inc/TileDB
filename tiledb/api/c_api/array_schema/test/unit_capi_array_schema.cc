@@ -1001,3 +1001,33 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
+
+TEST_CASE(
+    "C API: tiledb_array_schema_alloc_at_timestamp argument validation",
+    "[capi][array_schema]") {
+  capi_return_t rc;
+  ordinary_array_schema x{};
+
+  SECTION("success") {
+    uint64_t timestamp_lo = 0;
+    uint64_t timestamp_hi = 0;
+    rc = tiledb_array_schema_alloc_at_timestamp(
+        x.ctx(), TILEDB_DENSE, 10, &x.schema);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    rc = tiledb_array_schema_timestamp_range(
+        x.ctx(), x.schema, &timestamp_lo, &timestamp_hi);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(timestamp_lo == 10);
+    REQUIRE(timestamp_hi == 10);
+  }
+  SECTION("null context") {
+    rc = tiledb_array_schema_alloc_at_timestamp(
+        nullptr, TILEDB_DENSE, 10, &x.schema);
+    REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
+  }
+  SECTION("null schema") {
+    rc = tiledb_array_schema_alloc_at_timestamp(
+        x.ctx(), TILEDB_DENSE, 10, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}

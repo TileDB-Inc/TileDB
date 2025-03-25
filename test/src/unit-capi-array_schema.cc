@@ -2779,7 +2779,7 @@ TEST_CASE_METHOD(
   // Create array schema at ts=10
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc_at_timestamp(
-      ctx_, TILEDB_DENSE, 10, 10, &array_schema);
+      ctx_, TILEDB_DENSE, 10, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -2960,7 +2960,7 @@ TEST_CASE_METHOD(
   // Create array schema at ts=1
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc_at_timestamp(
-      ctx_, TILEDB_DENSE, 1, 1, &array_schema);
+      ctx_, TILEDB_DENSE, 1, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
@@ -3119,7 +3119,7 @@ TEST_CASE_METHOD(
   // Create array schema at ts=1
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc_at_timestamp(
-      ctx_, TILEDB_DENSE, 1, 1, &array_schema);
+      ctx_, TILEDB_DENSE, 1, &array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
