@@ -119,7 +119,7 @@ Gen<tdb_unique_ptr<tiledb::sm::ASTNode>> make_query_condition(
     using R = std::pair<std::string, Gen<std::string>>;
     auto make_value_gen = [&](auto i) -> std::optional<R> {
       if (field == i) {
-        auto value = make_range(std::get<i>(field_domains));
+        auto value = make_coordinate(std::get<i>(field_domains));
         auto p = std::make_pair(field_names[i], gen::map(value, [](auto value) {
                                   return std::string(
                                       reinterpret_cast<char*>(&value),
