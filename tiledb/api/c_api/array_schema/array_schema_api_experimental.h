@@ -63,6 +63,7 @@ extern "C" {
  *
  * @param[in] ctx The TileDB context.
  * @param[in] array_type The array type.
+ * @param[in] timestamp The timestamp at which the schema is created.
  * @param[out] array_schema The TileDB array schema to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
