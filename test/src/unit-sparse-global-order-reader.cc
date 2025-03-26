@@ -947,6 +947,7 @@ static std::optional<bool> can_complete_in_memory_budget(
 
   CApiArray array(ctx, array_uri, TILEDB_READ);
 
+  const auto& array_schema = array->array()->array_schema_latest();
   const auto& fragment_metadata = array->array()->fragment_metadata();
 
   for (const auto& fragment : fragment_metadata) {
@@ -959,6 +960,8 @@ static std::optional<bool> can_complete_in_memory_budget(
     using BitmapType = uint8_t;
 
     size_t data_size = 0;
+    size_t bitmap_size = 0;
+
     for (size_t d = 0;
          d < std::tuple_size<decltype(instance.dimensions())>::value;
          d++) {
@@ -966,15 +969,30 @@ static std::optional<bool> can_complete_in_memory_budget(
           fragment_metadata[f]->tile_size("d" + std::to_string(d + 1), t);
     }
 
+    if (!instance.subarray.empty()) {
+      bitmap_size += fragment_metadata[f]->cell_num(t) * sizeof(BitmapType);
+    }
+
+    if (instance.condition.has_value()) {
+      // query condition fields are eagerly materialized
+      std::unordered_set<std::string> fields;
+      instance.condition.value()->get_field_names(fields);
+
+      for (const auto& field : fields) {
+        if (!array_schema.is_dim(field)) {
+          data_size += tiledb::sm::ReaderBase::get_attribute_tile_size(
+              array_schema, fragment_metadata, field, f, t);
+        }
+      }
+
+      bitmap_size += fragment_metadata[f]->cell_num(t) * sizeof(BitmapType);
+    }
+
     const size_t rt_size = sizeof(sm::GlobalOrderResultTile<BitmapType>);
-    const size_t subarray_size =
-        (instance.subarray.empty() ?
-             0 :
-             fragment_metadata[f]->cell_num(t) * sizeof(BitmapType));
-    return data_size + rt_size + subarray_size;
+    return data_size + rt_size + bitmap_size;
   };
 
-  const auto& domain = array->array()->array_schema_latest().domain();
+  const auto& domain = array_schema.domain();
   sm::GlobalCellCmp globalcmp(domain);
   stdx::reverse_comparator<sm::GlobalCellCmp> reverseglobalcmp(globalcmp);
 
@@ -1562,6 +1580,19 @@ TEST_CASE_METHOD(
     doit.operator()<tiledb::test::AsserterCatch>(16, 100, 64, true);
   }
 
+  SECTION("Condition") {
+    const int value = 3;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "d1", &value, sizeof(int), tiledb::sm::QueryConditionOp::LE));
+    doit.operator()<tiledb::test::AsserterCatch>(
+        10,
+        21,
+        1024,
+        false,
+        Subarray1DType<int>{templates::Domain<int>(3, 22)},
+        std::move(qc));
+  }
+
   SECTION("Shrink", "Some examples found by rapidcheck") {
     doit.operator()<tiledb::test::AsserterCatch>(
         10, 2, 64, false, Subarray1DType<int>{templates::Domain<int>(1, 3)});
@@ -1661,6 +1692,20 @@ TEST_CASE_METHOD(
 
   SECTION("Example") {
     doit.operator()<tiledb::test::AsserterCatch>(16, 16, 1024, 16, false);
+  }
+
+  SECTION("Condition") {
+    int value = 1;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
+    doit.operator()<tiledb::test::AsserterCatch>(
+        4,
+        12,
+        1024,
+        1024,
+        false,
+        std::vector<templates::Domain<int>>{templates::Domain<int>(0, 11)},
+        std::move(qc));
   }
 
   SECTION("Rapidcheck") {
