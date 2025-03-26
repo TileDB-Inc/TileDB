@@ -41,7 +41,7 @@
 
 namespace tiledb {
 namespace sm {
-struct ASTNode;
+class ASTNode;
 }
 }  // namespace tiledb
 
