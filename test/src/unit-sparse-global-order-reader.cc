@@ -1708,6 +1708,20 @@ TEST_CASE_METHOD(
         std::move(qc));
   }
 
+  SECTION("Shrink", "Some examples found by rapidcheck") {
+    int value = 1329;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
+    doit.operator()<tiledb::test::AsserterCatch>(
+        21,
+        133,
+        1024,
+        1024,
+        false,
+        std::vector<templates::Domain<int>>{templates::Domain<int>(397, 1320)},
+        std::move(qc));
+  }
+
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck merge bound duplication", [doit]() {
       const size_t num_fragments = *rc::gen::inRange(4, 32);
@@ -3278,13 +3292,21 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   ASSERTER(instance.num_user_cells > 0);
 
   std::decay_t<decltype(instance.fragments[0])> expect;
-  for (const auto& fragment : instance.fragments) {
+
+  // for de-duplicating, track the fragment that each coordinate came from
+  // we will use this to select the coordinate from the most recent fragment
+  std::vector<uint64_t> expect_fragment;
+
+  for (uint64_t f = 0; f < instance.fragments.size(); f++) {
+    const auto& fragment = instance.fragments[f];
+
     auto expect_dimensions = expect.dimensions();
     auto expect_attributes = expect.attributes();
 
     if (instance.subarray.empty() && !instance.condition.has_value()) {
       stdx::extend(expect_dimensions, fragment.dimensions());
       stdx::extend(expect_attributes, fragment.attributes());
+      expect_fragment.insert(expect_fragment.end(), fragment.size(), f);
     } else {
       std::vector<uint64_t> accept;
       std::optional<
@@ -3297,34 +3319,36 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
         if (!instance.pass_subarray(fragment, i)) {
           continue;
         }
-        if (eval.has_value() &&
-            !eval->test(fragment, i, *instance.condition.value().get())) {
-          continue;
-        }
         accept.push_back(i);
       }
+
       const auto fdimensions =
           stdx::select(fragment.dimensions(), std::span(accept));
       const auto fattributes =
           stdx::select(fragment.attributes(), std::span(accept));
       stdx::extend(expect_dimensions, stdx::reference_tuple(fdimensions));
       stdx::extend(expect_attributes, stdx::reference_tuple(fattributes));
+
+      expect_fragment.insert(expect_fragment.end(), accept.size(), f);
     }
   }
 
   // Open array for reading.
   CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
-  // sort for naive comparison
+  // finish preparing expected results - arrange in global order, dedup, and
+  // apply query condition
   {
     std::vector<uint64_t> idxs(expect.size());
     std::iota(idxs.begin(), idxs.end(), 0);
 
+    // sort in global order
     sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
 
     auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
       return std::apply(
-          [&globalcmp, ia, ib]<typename... Ts>(const std::vector<Ts>&... dims) {
+          [&globalcmp, &expect_fragment, ia, ib]<typename... Ts>(
+              const std::vector<Ts>&... dims) {
             const auto l = std::make_tuple(dims[ia]...);
             const auto r = std::make_tuple(dims[ib]...);
             return globalcmp(
@@ -3336,14 +3360,37 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
     std::sort(idxs.begin(), idxs.end(), icmp);
 
+    // de-duplicate coordinates
     if (!instance.allow_duplicates()) {
-      std::set<uint64_t, decltype(icmp)> dedup(icmp);
+      std::map<uint64_t, uint64_t, decltype(icmp)> dedup(icmp);
       for (const auto& idx : idxs) {
-        dedup.insert(idx);
+        auto it = dedup.find(idx);
+        if (it == dedup.end()) {
+          dedup[idx] = expect_fragment[idx];
+        } else if (expect_fragment[idx] > it->second) {
+          // NB: looks weird but we need this value of `idx`
+          dedup.erase(it);
+          dedup[idx] = expect_fragment[idx];
+        }
       }
 
       idxs.clear();
-      idxs.insert(idxs.end(), dedup.begin(), dedup.end());
+      idxs.reserve(dedup.size());
+      for (const auto& idx : dedup) {
+        idxs.push_back(idx.first);
+      }
+    }
+
+    // apply query condition
+    if (instance.condition.has_value()) {
+      std::vector<uint64_t> accept;
+      templates::QueryConditionEvalSchema<typename Instance::FragmentType> eval;
+      for (uint64_t i = 0; i < idxs.size(); i++) {
+        if (eval.test(expect, idxs[i], *instance.condition.value().get())) {
+          accept.push_back(idxs[i]);
+        }
+      }
+      idxs = accept;
     }
 
     expect.dimensions() = stdx::select(
