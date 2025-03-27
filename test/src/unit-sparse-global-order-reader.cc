@@ -3347,8 +3347,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
     auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
       return std::apply(
-          [&globalcmp, &expect_fragment, ia, ib]<typename... Ts>(
-              const std::vector<Ts>&... dims) {
+          [&globalcmp, ia, ib]<typename... Ts>(const std::vector<Ts>&... dims) {
             const auto l = std::make_tuple(dims[ia]...);
             const auto r = std::make_tuple(dims[ib]...);
             return globalcmp(
