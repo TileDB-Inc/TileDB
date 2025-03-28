@@ -103,6 +103,10 @@ capi_return_t tiledb_array_schema_alloc_at_timestamp(
     tiledb_array_schema_t** array_schema) {
   ensure_output_pointer_is_valid(array_schema);
 
+  if (timestamp == 0) {
+    throw CAPIException("timestamp cannot be 0");
+  }
+
   // Create ArraySchema object
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);

@@ -104,7 +104,7 @@ class ArraySchema {
   ArraySchema(
       ArrayType array_type,
       shared_ptr<MemoryTracker> memory_tracker,
-      std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
+      const std::optional<std::pair<uint64_t, uint64_t>>& timestamp_range =
           std::nullopt);
 
   /** Constructor with std::vector attributes.

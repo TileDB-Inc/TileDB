@@ -42,6 +42,8 @@ struct RestCurrentDomainFx {
   RestCurrentDomainFx();
 
   void create_sparse_array(const std::string& array_name);
+  void create_sparse_array_at_timestamp(
+      const std::string& array_name, uint64_t timestamp);
 
   VFSTestSetup vfs_test_setup_;
 
@@ -147,6 +149,90 @@ void RestCurrentDomainFx::create_sparse_array(const std::string& array_name) {
   tiledb_attribute_free(&a);
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
+void RestCurrentDomainFx::create_sparse_array_at_timestamp(
+    const std::string& array_name, uint64_t timestamp) {
+  uri_ = vfs_test_setup_.array_uri(array_name);
+
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc_at_timestamp(
+      ctx_c_, TILEDB_SPARSE, timestamp, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create dimensions
+  int64_t dim_domain[2] = {0, 99};
+  int64_t tile_extent = 10;
+  tiledb_dimension_t* dim;
+  rc = tiledb_dimension_alloc(
+      ctx_c_, "", TILEDB_INT64, &dim_domain[0], &tile_extent, &dim);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set domain
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx_c_, &domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx_c_, domain, dim);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_domain(ctx_c_, array_schema, domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set current domain to [0,10]
+  tiledb_current_domain_t* current_domain;
+  rc = tiledb_current_domain_create(ctx_c_, &current_domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_ndrectangle_t* ndr;
+  rc = tiledb_ndrectangle_alloc(ctx_c_, domain, &ndr);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_range_t orignal_range;
+  int64_t min = 0;
+  orignal_range.min = &min;
+  orignal_range.min_size = sizeof(int64_t);
+  int64_t max = 10;
+  orignal_range.max = &max;
+  orignal_range.max_size = sizeof(int64_t);
+  rc = tiledb_ndrectangle_set_range_for_name(ctx_c_, ndr, "", &orignal_range);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_current_domain_set_ndrectangle(ctx_c_, current_domain, ndr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_set_current_domain(
+      ctx_c_, array_schema, current_domain);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set attribute
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_alloc(ctx_c_, "attr", TILEDB_INT32, &attr);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx_c_, array_schema, attr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set schema members
+  uint64_t capacity = 500;
+  rc = tiledb_array_schema_set_capacity(ctx_c_, array_schema, capacity);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_layout_t cell_order = TILEDB_COL_MAJOR;
+  rc = tiledb_array_schema_set_cell_order(ctx_c_, array_schema, cell_order);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  rc = tiledb_array_schema_set_tile_order(ctx_c_, array_schema, tile_order);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check for invalid array schema
+  rc = tiledb_array_schema_check(ctx_c_, array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create array
+  rc = tiledb_array_create(ctx_c_, uri_.c_str(), array_schema);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_attribute_free(&attr);
+  tiledb_dimension_free(&dim);
+  tiledb_domain_free(&domain);
+  tiledb_current_domain_free(&current_domain);
+  tiledb_ndrectangle_free(&ndr);
   tiledb_array_schema_free(&array_schema);
 }
 
@@ -288,4 +374,123 @@ TEST_CASE_METHOD(
   tiledb_array_schema_free(&schema);
   REQUIRE(tiledb_array_close(ctx_c_, array) == TILEDB_OK);
   tiledb_array_free(&array);
+}
+
+TEST_CASE_METHOD(
+    RestCurrentDomainFx,
+    "C API: Current Domain basic schema evolution at timestamp",
+    "[current_domain][evolution][rest]") {
+  // Create array schema at ts=1
+  create_sparse_array_at_timestamp("currentdomain_array", 1);
+
+  // Create an array schema evolution
+  tiledb_array_schema_evolution_t* array_schema_evolution;
+  int rc = tiledb_array_schema_evolution_alloc(ctx_c_, &array_schema_evolution);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Extend current domain to [-10,20]
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_load(ctx_c_, uri_.c_str(), &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_domain_t* read_dom;
+  rc = tiledb_array_schema_get_domain(ctx_c_, array_schema, &read_dom);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_current_domain_t* extended_current_domain;
+  rc = tiledb_current_domain_create(ctx_c_, &extended_current_domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_ndrectangle_t* extended_ndr;
+  rc = tiledb_ndrectangle_alloc(ctx_c_, read_dom, &extended_ndr);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_range_t extended_range;
+  int64_t min = 0;
+  extended_range.min = &min;
+  extended_range.min_size = sizeof(int64_t);
+  int64_t max = 20;
+  extended_range.max = &max;
+  extended_range.max_size = sizeof(int64_t);
+  rc = tiledb_ndrectangle_set_range_for_name(
+      ctx_c_, extended_ndr, "", &extended_range);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_current_domain_set_ndrectangle(
+      ctx_c_, extended_current_domain, extended_ndr);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Set timestamp at ts=2
+  rc = tiledb_array_schema_evolution_expand_current_domain(
+      ctx_c_, array_schema_evolution, extended_current_domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_evolution_set_timestamp_range(
+      ctx_c_, array_schema_evolution, 2, 2);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Evolve schema
+  rc = tiledb_array_evolve(ctx_c_, uri_.c_str(), array_schema_evolution);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up array schema evolution
+  tiledb_array_schema_evolution_free(&array_schema_evolution);
+  tiledb_domain_free(&read_dom);
+  tiledb_current_domain_free(&extended_current_domain);
+  tiledb_ndrectangle_free(&extended_ndr);
+  tiledb_array_schema_free(&array_schema);
+
+  // Check current domain at ts=1 is [0,10]
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx_c_, uri_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_c_, array, 1);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_c_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_schema_t* read_schema;
+  rc = tiledb_array_get_schema(ctx_c_, array, &read_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_current_domain_t* read_current_domain;
+  rc = tiledb_array_schema_get_current_domain(
+      ctx_c_, read_schema, &read_current_domain);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_ndrectangle_t* read_ndr;
+  rc = tiledb_current_domain_get_ndrectangle(
+      ctx_c_, read_current_domain, &read_ndr);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_range_t read_range;
+  rc =
+      tiledb_ndrectangle_get_range_from_name(ctx_c_, read_ndr, "", &read_range);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(*(static_cast<const int64_t*>(read_range.min)) == 0);
+  REQUIRE(*(static_cast<const int64_t*>(read_range.max)) == 10);
+
+  // Check current domain at ts=2 is extended to [0,20]
+  rc = tiledb_array_alloc(ctx_c_, uri_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_c_, array, 2);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_c_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_get_schema(ctx_c_, array, &read_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_schema_get_current_domain(
+      ctx_c_, read_schema, &read_current_domain);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_current_domain_get_ndrectangle(
+      ctx_c_, read_current_domain, &read_ndr);
+  REQUIRE(rc == TILEDB_OK);
+  rc =
+      tiledb_ndrectangle_get_range_from_name(ctx_c_, read_ndr, "", &read_range);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(*(static_cast<const int64_t*>(read_range.min)) == 0);
+  REQUIRE(*(static_cast<const int64_t*>(read_range.max)) == 20);
+
+  // Close array
+  rc = tiledb_array_close(ctx_c_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up
+  tiledb_array_schema_free(&read_schema);
+  tiledb_array_free(&array);
+  tiledb_current_domain_free(&read_current_domain);
+  tiledb_ndrectangle_free(&read_ndr);
 }

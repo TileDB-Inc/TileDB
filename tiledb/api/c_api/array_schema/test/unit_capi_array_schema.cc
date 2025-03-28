@@ -1020,6 +1020,11 @@ TEST_CASE(
     REQUIRE(timestamp_lo == 10);
     REQUIRE(timestamp_hi == 10);
   }
+  SECTION("bad timestamp") {
+    rc = tiledb_array_schema_alloc_at_timestamp(
+        x.ctx(), TILEDB_DENSE, 0, &x.schema);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
   SECTION("null context") {
     rc = tiledb_array_schema_alloc_at_timestamp(
         nullptr, TILEDB_DENSE, 10, &x.schema);

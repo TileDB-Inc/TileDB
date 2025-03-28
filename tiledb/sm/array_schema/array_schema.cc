@@ -82,7 +82,7 @@ class ArraySchemaException : public StatusException {
 ArraySchema::ArraySchema(
     ArrayType array_type,
     shared_ptr<MemoryTracker> memory_tracker,
-    std::optional<std::pair<uint64_t, uint64_t>> timestamp_range)
+    const std::optional<std::pair<uint64_t, uint64_t>>& timestamp_range)
     : memory_tracker_(memory_tracker)
     , uri_(URI())
     , array_uri_(URI())
