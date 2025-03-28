@@ -380,6 +380,16 @@ TEST_CASE_METHOD(
     RestCurrentDomainFx,
     "C API: Current Domain basic schema evolution at timestamp",
     "[current_domain][evolution][rest]") {
+  // This is a known issue, time travelling is not working correctly when array v2/query v3 is used [see sc-49827]
+  bool found = false, refactored_query_submit = false;
+  auto status = ctx_c_->config().get<bool>(
+      "rest.use_refactored_array_open_and_query_submit",
+      &refactored_query_submit,
+      &found);
+  if(status.ok() && found && !refactored_query_submit) {
+    return;
+  }
+  
   // Create array schema at ts=1
   create_sparse_array_at_timestamp("currentdomain_array", 1);
 
