@@ -394,7 +394,8 @@ TEST_CASE(
         query.set_data_buffer("id", dimension);
       } else {
         Subarray subarray(ctx, array);
-        subarray.add_range<uint32_t>(0, 0, strings.size() - 1);
+        subarray.add_range<uint32_t>(
+            0, 0, static_cast<uint32_t>(strings.size() - 1));
         query.set_subarray(subarray);
       }
 
@@ -438,7 +439,8 @@ TEST_CASE(
 
       if (array_type == TILEDB_DENSE) {
         Subarray subarray(ctx, array);
-        subarray.add_range<uint32_t>(0, 0, strings.size() - 1);
+        subarray.add_range<uint32_t>(
+            0, 0, static_cast<uint32_t>(strings.size() - 1));
         query.set_subarray(subarray);
       }
 
