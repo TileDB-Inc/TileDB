@@ -246,14 +246,9 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LT> {
       return false;
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
-
-    return lhs_size < rhs_size;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl < svr;
   }
 };
 
@@ -266,14 +261,9 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::LE> {
       return false;
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
-
-    return lhs_size <= rhs_size;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl <= svr;
   }
 };
 
@@ -286,14 +276,9 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GT> {
       return false;
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size > rhs_size;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl > svr;
   }
 };
 
@@ -306,14 +291,9 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::GE> {
       return false;
     }
 
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size >= rhs_size;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl >= svr;
   }
 };
 
@@ -334,10 +314,9 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::EQ> {
       return false;
     }
 
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) == 0;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl == svr;
   }
 };
 
@@ -358,10 +337,9 @@ struct QueryCondition::BinaryCmpNullChecks<char*, QueryConditionOp::NE> {
       return true;
     }
 
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) != 0;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl != svr;
   }
 };
 
@@ -2143,14 +2121,9 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LT> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
-
-    return lhs_size < rhs_size;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl < svr;
   }
 };
 
@@ -2159,14 +2132,9 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::LE> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp < 0;
-    }
-
-    return lhs_size <= rhs_size;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl <= svr;
   }
 };
 
@@ -2175,14 +2143,9 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GT> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size > rhs_size;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl > svr;
   }
 };
 
@@ -2191,14 +2154,9 @@ template <>
 struct QueryCondition::BinaryCmp<char*, QueryConditionOp::GE> {
   static inline bool cmp(
       const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t rhs_size) {
-    const size_t min_size = std::min<size_t>(lhs_size, rhs_size);
-    const int cmp = strncmp(
-        static_cast<const char*>(lhs), static_cast<const char*>(rhs), min_size);
-    if (cmp != 0) {
-      return cmp > 0;
-    }
-
-    return lhs_size >= rhs_size;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl >= svr;
   }
 };
 
@@ -2211,10 +2169,9 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::EQ> {
       return false;
     }
 
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) == 0;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl == svr;
   }
 };
 
@@ -2227,10 +2184,9 @@ struct QueryCondition::BinaryCmp<char*, QueryConditionOp::NE> {
       return true;
     }
 
-    return strncmp(
-               static_cast<const char*>(lhs),
-               static_cast<const char*>(rhs),
-               lhs_size) != 0;
+    const std::string_view svl(static_cast<const char*>(lhs), lhs_size);
+    const std::string_view svr(static_cast<const char*>(rhs), rhs_size);
+    return svl != svr;
   }
 };
 
