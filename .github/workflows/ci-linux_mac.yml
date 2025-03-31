@@ -200,8 +200,13 @@ jobs:
           # Bypass Catch2 Framework stdout interception with awk on test output
           ./test/regression/tiledb_regression -d yes
           ./test/ci/test_assert -d yes
-          ./test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./test/tiledb_unit -d yes "~[rapidcheck]" | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/sm/filesystem/test/unit_vfs -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+          # Run rapidcheck tests as their own process so we can see the random seed for each
+          ./test/tiledb_unit --list-tests "[rapidcheck]" --verbosity quiet | while IFS= read -r testname; do
+            ./test/tiledb_unit "$testname"
+          done
 
           ctest -R tiledb_timing_unit | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
