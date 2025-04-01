@@ -38,7 +38,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     && apt-get clean \
     && apt-get purge -y \
     && rm -rf /var/lib/apt/lists* \
-    && pip3 install cmake
+    && pip3 install cmake<4
 
 # Copy TileDB source files from the build context.
 COPY . /home/tiledb/TileDB
