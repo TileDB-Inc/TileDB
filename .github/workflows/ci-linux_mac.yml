@@ -117,7 +117,7 @@ jobs:
         run: python3 ./scripts/ci/patch_vcpkg_triplets.py
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: 'Ubuntu Prelim'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
