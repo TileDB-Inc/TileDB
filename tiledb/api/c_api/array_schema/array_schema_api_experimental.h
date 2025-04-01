@@ -46,11 +46,11 @@ extern "C" {
 /**
  * Creates a TileDB array schema object with specified creation time.
  *
- * Note: This API is provided for compatibility with existing workloads that ascribe
- * a semantic value to timestamps. Setting custom timestamps in general increases
- * the likelihood of misuse and potential data corruption. This API intended to
- * be used for handling schema evolution at custom timestamps and should not be used
- * by new workloads.
+ * Note: This API is provided for compatibility with existing workloads that
+ * ascribe a semantic value to timestamps. Setting custom timestamps in general
+ * increases the likelihood of misuse and potential data corruption. This API
+ * intended to be used for handling schema evolution at custom timestamps and
+ * should not be used by new workloads.
  *
  * **Example:**
  *
