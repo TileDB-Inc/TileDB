@@ -33,6 +33,7 @@ For ease of review when patching existing ports, you are recommended to make one
 | Port          | Reason                                                         |
 |---------------|----------------------------------------------------------------|
 | `aws-sdk-cpp` | Patching to fix MinGW build failures.                          |
+| `capnproto`   | Patching to fix compatibility with CMake 4.0 (PR 2272)         |
 | `crc32c`      | Patching to fix compatibility with CMake 4.0 (PR 68)           |
 | `libmagic`    | Using a custom CMake-based port that is not accepted upstream. |
 | `libfaketime` | Port does not yet exist upstream                               |
