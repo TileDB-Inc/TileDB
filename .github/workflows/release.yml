@@ -13,7 +13,7 @@ jobs:
   Package-Source-Release:
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout TileDB
@@ -47,12 +47,13 @@ jobs:
           - platform: windows-x86_64
             os: windows-2022
             triplet: x64-windows-release
+          # We can safely use the latest image, since the real job will run in the manylinux container.
           - platform: linux-x86_64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             manylinux: quay.io/pypa/manylinux_2_28_x86_64
             triplet: x64-linux-release
           - platform: linux-x86_64-noavx2
-            os: ubuntu-20.04
+            os: ubuntu-latest
             cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux_2_28_x86_64

@@ -41,7 +41,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: GCS
-      matrix_image: ubuntu-20.04
+      matrix_image: ubuntu-22.04
       matrix_compiler_cc: 'gcc-10'
       matrix_compiler_cxx: 'g++-10'
       timeout: 120
@@ -91,7 +91,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_option: ASAN
-      matrix_image: ubuntu-20.04
+      matrix_image: ubuntu-22.04
       matrix_compiler_cc: 'gcc-10'
       matrix_compiler_cxx: 'g++-10'
       timeout: 120
@@ -111,7 +111,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: MANYLINUX
-      matrix_image: ubuntu-20.04
+      matrix_image: ubuntu-latest # We can safely use the latest image, since the real job will run in the manylinux container.
       matrix_compiler_cflags: "-lrt"
       matrix_compiler_cxxflags: "-lrt"
       timeout: 120
@@ -125,7 +125,7 @@ jobs:
     uses: ./.github/workflows/build-rtools40.yml
 
   backward_compatibility:
-    uses: ./.github/workflows/build-ubuntu20.04-backwards-compatibility.yml
+    uses: ./.github/workflows/build-backwards-compatibility.yml
 
   standalone:
     uses: ./.github/workflows/unit-test-runs.yml
