@@ -6,6 +6,7 @@ vcpkg_from_github(
     PATCHES
         fix-cmake-target-path.patch
         openssl.patch
+        fix_cmake_4.0.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS

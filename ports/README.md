@@ -37,4 +37,5 @@ For ease of review when patching existing ports, you are recommended to make one
 | `crc32c`      | Patching to fix compatibility with CMake 4.0 (PR 68)           |
 | `libmagic`    | Using a custom CMake-based port that is not accepted upstream. |
 | `libfaketime` | Port does not yet exist upstream                               |
+| `s2n`         | Patching to fix compatibility with CMake 4.0 (PR 4933)         |
 | `spdlog`      | Patching to compile with `-fvisibility=hidden`                 |
