@@ -11,6 +11,7 @@ vcpkg_from_github(
         fix_find_curl.patch
         find-dependency.patch
         fix-winsock-headers.patch # In MinGW, mstcpip.h references types from headers it does not include itself.
+        fix-wininet-http2.patch # https://github.com/aws/aws-sdk-cpp/pull/3365
 )
 
 string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "dynamic" FORCE_SHARED_CRT)
