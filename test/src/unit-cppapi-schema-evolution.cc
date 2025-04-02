@@ -686,7 +686,211 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: SchemaEvolution, add and drop attributes",
+    "C++ API: SchemaEvolution, drop and add attribute",
+    "[cppapi][schema][evolution][drop][add][query-condition][rest]") {
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto layout = GENERATE(
+      TILEDB_ROW_MAJOR,
+      TILEDB_COL_MAJOR,
+      TILEDB_UNORDERED,
+      TILEDB_GLOBAL_ORDER);
+  bool duplicates = GENERATE(true, false);
+  auto array_type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
+  bool sparse = array_type == TILEDB_SPARSE;
+
+  const char* layout_str = nullptr;
+  tiledb_layout_to_str(layout, &layout_str);
+  const char* type_str = nullptr;
+  tiledb_array_type_to_str(array_type, &type_str);
+  auto array_uri{
+      vfs_test_setup.array_uri("test_schema_evolution_query_condition_v2")};
+
+  DYNAMIC_SECTION(
+      type_str << " " << layout_str << " array"
+               << (duplicates ? " with duplicates enabled" : "")) {
+    {
+      ArraySchema schema(ctx, array_type);
+      // Duplicates are not supported for dense arrays.
+      if (sparse) {
+        schema.set_allows_dups(duplicates);
+        CHECK(duplicates == schema.allows_dups());
+      }
+      schema.set_cell_order(TILEDB_ROW_MAJOR);
+      schema.set_tile_order(TILEDB_COL_MAJOR);
+
+      Domain domain(ctx);
+      auto id1 = Dimension::create<int>(ctx, "d1", {{1, 4}}, 2);
+      auto id2 = Dimension::create<int>(ctx, "d2", {{1, 4}}, 2);
+      domain.add_dimension(id1).add_dimension(id2);
+      schema.set_domain(domain);
+
+      std::vector<std::string> enum_values = {"A", "B", "C", "D"};
+      auto e = Enumeration::create(ctx, "a_label", enum_values, false);
+      ArraySchemaExperimental::add_enumeration(ctx, schema, e);
+
+      auto a = Attribute::create<int>(ctx, "a");
+      AttributeExperimental::set_enumeration_name(ctx, a, "a_label");
+      schema.add_attribute(a);
+
+      auto b = Attribute::create<float>(ctx, "b");
+      float b_fill = -1.0f;
+      uint64_t size = sizeof(b_fill);
+      b.set_fill_value(&b_fill, size);
+      schema.add_attribute(b);
+
+      Array::create(array_uri, schema);
+    }
+
+    // Write data
+    {
+      Array array(ctx, array_uri, TILEDB_WRITE);
+      Query query(ctx, array, TILEDB_WRITE);
+      std::vector<int> d1_data = {1, 1, 2, 2};
+      std::vector<int> d2_data = {1, 2, 1, 2};
+      std::vector<int> a_data = {1, 2, 3, 4};
+      std::vector<float> b_data = {1.1, 2.2, 3.3, 4.4};
+
+      // Set coordinates.
+      if (sparse) {
+        query.set_data_buffer("d1", d1_data).set_data_buffer("d2", d2_data);
+      } else {
+        Subarray subarray(ctx, array);
+        subarray.add_range<int>(0, 1, 2).add_range<int>(1, 1, 2);
+        query.set_subarray(subarray);
+      }
+
+      // Set data buffers.
+      query.set_data_buffer("a", a_data).set_data_buffer("b", b_data);
+
+      // Perform the write and close the array.
+      CHECK(query.submit() == Query::Status::COMPLETE);
+      array.close();
+    }
+
+    // Evolve
+    {
+      // Drop attribute 'a'.
+      uint64_t now = tiledb_timestamp_now_ms() + 1;
+      ArraySchemaEvolution schemaEvolution = ArraySchemaEvolution(ctx);
+      schemaEvolution.set_timestamp_range(std::make_pair(now, now));
+      schemaEvolution.drop_attribute("a").array_evolve(array_uri);
+
+      // Add attribute 'a' without an enumeration label.
+      // Also modify it's datatype from fixed int to var-size string.
+      schemaEvolution = ArraySchemaEvolution(ctx);
+      now += 1;  // Ensure schema timestamps are unique.
+      schemaEvolution.set_timestamp_range({now, now});
+      Attribute a = Attribute::create<std::string>(ctx, "a");
+      a.set_nullable(true);
+      schemaEvolution.add_attribute(a);
+      schemaEvolution.array_evolve(array_uri);
+    }
+
+    // Write again
+    {
+      Array array(ctx, array_uri, TILEDB_WRITE);
+      Query query(ctx, array, TILEDB_WRITE);
+
+      std::vector<int> d1_data = {1, 1, 2, 2};
+      std::vector<int> d2_data = {1, 2, 1, 2};
+      std::string a_data = "ABCD";
+      std::vector<uint64_t> a_offsets = {0, 1, 2, 3};
+      std::vector<uint8_t> a_validity = {1, 1, 1, 1};
+      std::vector<float> b_data = {5.5, 6.6, 7.7, 8.8};
+
+      // Set coordinates.
+      if (sparse) {
+        query.set_data_buffer("d1", d1_data).set_data_buffer("d2", d2_data);
+      } else {
+        Subarray subarray(ctx, array);
+        subarray.add_range<int>(0, 1, 2).add_range<int>(1, 1, 2);
+        query.set_subarray(subarray);
+      }
+
+      query.set_data_buffer("a", a_data)
+          .set_offsets_buffer("a", a_offsets)
+          .set_validity_buffer("a", a_validity)
+          .set_data_buffer("b", b_data);
+
+      CHECK(query.submit() == Query::Status::COMPLETE);
+      array.close();
+    }
+
+    // Read with Query Condition
+    {
+      Array array(ctx, array_uri, TILEDB_READ);
+
+      std::vector<int> d1_data(4);
+      std::vector<int> d2_data(4);
+      std::string a_data(4, 'Z');
+      std::vector<uint64_t> a_offsets(4);
+      std::vector<uint8_t> a_validity(4);
+      std::vector<float> b_data(4);
+
+      // Sparse array with column major layout returns INCOMPLETE with 4
+      // elements.
+      if (sparse && layout == TILEDB_COL_MAJOR) {
+        d1_data.resize(8);
+        d2_data.resize(8);
+        a_offsets.resize(5);
+        a_validity.resize(5);
+        b_data.resize(8);
+      }
+
+      char value = 'C';
+      QueryCondition query_condition(ctx);
+      query_condition.init("a", &value, sizeof(value), TILEDB_EQ);
+
+      Query query(ctx, array, TILEDB_READ);
+      query.set_condition(query_condition)
+          .set_data_buffer("a", a_data)
+          .set_offsets_buffer("a", a_offsets)
+          .set_validity_buffer("a", a_validity)
+          .set_data_buffer("b", b_data);
+
+      Subarray subarray(ctx, array);
+      subarray.add_range<int>(0, 1, 2).add_range<int>(1, 1, 2);
+      query.set_subarray(subarray);
+
+      if (sparse) {
+        query.set_data_buffer("d1", d1_data).set_data_buffer("d2", d2_data);
+        query.set_layout(layout);
+      }
+
+      CHECK(query.submit() == Query::Status::COMPLETE);
+      array.close();
+
+      size_t result_num = query.result_buffer_elements()["a"].second;
+      CHECK(result_num == (sparse ? 1 : 4));
+      // Resize data buffers to prune the unused elements with no result.
+      d1_data.resize(result_num);
+      d2_data.resize(result_num);
+      a_data.resize(result_num);
+      a_validity.resize(result_num);
+      b_data.resize(result_num);
+
+      if (sparse) {
+        CHECK(d1_data == std::vector<int>{2});
+        CHECK(d2_data == std::vector<int>{1});
+        CHECK(a_data == "C");
+        CHECK(a_validity == std::vector<uint8_t>{1});
+        CHECK(b_data == std::vector<float>{7.7});
+      } else {
+        // Coordinates are not read for dense arrays.
+        CHECK(d1_data == std::vector<int>{0, 0, 0, 0});
+        CHECK(d2_data == std::vector<int>{0, 0, 0, 0});
+        // Dense reads return fill values for cells that do not satisfy the QC.
+        CHECK(a_data[2] == 'C');
+        CHECK(a_validity == std::vector<uint8_t>{0, 0, 1, 0});
+        CHECK(b_data == std::vector<float>{-1.0, -1.0, 7.7, -1.0});
+      }
+    }
+  }
+}
+
+TEST_CASE(
+    "C++ API: SchemaEvolution, add attributes",
     "[cppapi][schema][evolution][add][query-condition][rest]") {
   test::VFSTestSetup vfs_test_setup;
   Context ctx{vfs_test_setup.ctx()};

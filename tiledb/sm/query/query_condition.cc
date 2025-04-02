@@ -652,23 +652,35 @@ void QueryCondition::apply_ast_node(
         }
       }
     } else {
-      const auto f = result_tile->frag_idx();
+      if (result_tile == nullptr) {
+        throw QueryConditionException(
+            "Failed to apply query condition due to null '" + field_name +
+            "' ResultTile.");
+      }
+
+      const auto& frag_meta = fragment_metadata[result_tile->frag_idx()];
+      // If the tile_tuple is null it was skipped by this fragment in
+      // ReaderBase::skip_field. This is the case for evolved attributes / dims.
+      const auto tile_tuple = result_tile->tile_tuple(field_name);
+      // Special attributes handle null tile_tuples specifically.
+      // We can skip null tile_tuples only if they are not a special attribute.
+      bool skip_tile_tuple = !ArraySchema::is_special_attribute(field_name) &&
+                             tile_tuple == nullptr;
 
       // For delete timestamps conditions, if there's no delete metadata or
       // delete condition was already processed, GT condition is always true.
       if (field_name == constants::delete_timestamps &&
-          (!fragment_metadata[f]->has_delete_meta() ||
-           fragment_metadata[f]
-                   ->loaded_metadata()
-                   ->get_processed_conditions_set()
-                   .count(condition_marker_) != 0)) {
+          (!frag_meta->has_delete_meta() ||
+           frag_meta->loaded_metadata()->get_processed_conditions_set().count(
+               condition_marker_) != 0)) {
         assert(Op == QueryConditionOp::GT);
         for (size_t c = starting_index; c < starting_index + length; ++c) {
           result_cell_bitmap[c] = 1;
         }
         starting_index += length;
         continue;
-      } else if (!fragment_metadata[f]->array_schema()->is_field(field_name)) {
+      } else if (
+          !frag_meta->array_schema()->is_field(field_name) || skip_tile_tuple) {
         // Requested field does not exist in this result cell - added by
         // evolution.
         for (size_t c = starting_index; c < starting_index + length; ++c) {
@@ -678,7 +690,6 @@ void QueryCondition::apply_ast_node(
         continue;
       }
 
-      const auto tile_tuple = result_tile->tile_tuple(field_name);
       uint8_t* buffer_validity = nullptr;
 
       if (nullable) {
@@ -2646,7 +2657,14 @@ void QueryCondition::apply_ast_node_sparse(
     CombinationOp combination_op,
     tdb::pmr::vector<BitmapType>& result_bitmap) const {
   std::string node_field_name = node->get_field_name();
-  if (!array_schema.is_field(node_field_name)) {
+  // If the tile_tuple is null it may have been skipped by this fragment in
+  // ReaderBase::skip_field. This is the case for evolved attributes / dims.
+  const auto tile_tuple = result_tile.tile_tuple(node_field_name);
+  // Special attributes handle null tile_tuples specifically.
+  // We can skip null tile_tuples only if they are not a special attribute.
+  bool skip_tile_tuple = !ArraySchema::is_special_attribute(node_field_name) &&
+                         tile_tuple == nullptr;
+  if (!array_schema.is_field(node_field_name) || skip_tile_tuple) {
     std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
     return;
   }
@@ -2657,7 +2675,6 @@ void QueryCondition::apply_ast_node_sparse(
 
   // Process the validity buffer now.
   if (nullable) {
-    const auto tile_tuple = result_tile.tile_tuple(node_field_name);
     const auto& tile_validity = tile_tuple->validity_tile();
     const auto buffer_validity = tile_validity.data_as<uint8_t>();
     const auto cell_num = result_tile.cell_num();
