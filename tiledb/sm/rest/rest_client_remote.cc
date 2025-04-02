@@ -128,8 +128,9 @@ RestClientRemote::check_array_exists_from_rest(const URI& uri) {
   RETURN_NOT_OK_TUPLE(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
       nullopt);
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri);
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri);
 
   // Make the request, the return data is ignored
   Buffer returned_data;
@@ -165,8 +166,9 @@ RestClientRemote::check_group_exists_from_rest(const URI& uri) {
   RETURN_NOT_OK_TUPLE(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
       nullopt);
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri);
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" +
+                          curlc.url_escape(group_ns) + "/" +
+                          curlc.url_escape(group_uri);
 
   // Make the request, the returned data is ignored for now.
   Buffer returned_data;
@@ -202,8 +204,9 @@ RestClientRemote::get_array_schema_from_rest(const URI& uri) {
   RETURN_NOT_OK_TUPLE(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
       nullopt);
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri);
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri);
 
   // Get the data
   Buffer returned_data;
@@ -248,8 +251,9 @@ RestClientRemote::post_array_schema_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) + "/schema?" +
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/schema?" +
                           "start_timestamp=" + std::to_string(timestamp_start) +
                           "&end_timestamp=" + std::to_string(timestamp_end);
 
@@ -297,7 +301,8 @@ Status RestClientRemote::post_array_schema_to_rest(
   // side caching should start from then on.
   RETURN_NOT_OK(curlc.init(
       config_, extra_headers_, &redirect_meta_, &redirect_mtx_, false));
-  auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
+  auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" +
+                     curlc.url_escape(array_ns) + "/" +
                      curlc.url_escape(array_uri);
   Buffer returned_data;
   const Status sc = curlc.post_data(
@@ -328,7 +333,8 @@ void RestClientRemote::post_array_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+  std::string url = redirect_uri(cache_key) + "/v2/arrays/" +
+                    curlc.url_escape(array_ns) + "/" +
                     curlc.url_escape(array_uri) + "/?";
 
   // Remote array operations should provide start and end timestamps
@@ -361,8 +367,9 @@ void RestClientRemote::delete_array_from_rest(const URI& uri) {
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri);
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri);
 
   Buffer returned_data;
   throw_if_not_ok(curlc.delete_data(
@@ -390,9 +397,9 @@ void RestClientRemote::post_delete_fragments_to_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) +
-                          "/delete_fragments";
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/delete_fragments";
 
   Buffer returned_data;
   throw_if_not_ok(curlc.post_data(
@@ -418,9 +425,9 @@ void RestClientRemote::post_delete_fragments_list_to_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) +
-                          "/delete_fragments_list";
+  const std::string url =
+      redirect_uri(cache_key) + "/v1/arrays/" + curlc.url_escape(array_ns) +
+      "/" + curlc.url_escape(array_uri) + "/delete_fragments_list";
 
   // Post query to rest
   Buffer returned_data;
@@ -441,8 +448,9 @@ Status RestClientRemote::deregister_array_from_rest(const URI& uri) {
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) + "/deregister";
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/deregister";
 
   Buffer returned_data;
   return curlc.delete_data(
@@ -465,9 +473,9 @@ Status RestClientRemote::get_array_non_empty_domain(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) +
-                          "/non_empty_domain?" +
+  const std::string url = redirect_uri(cache_key) + "/v2/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/non_empty_domain?" +
                           "start_timestamp=" + std::to_string(timestamp_start) +
                           "&end_timestamp=" + std::to_string(timestamp_end);
 
@@ -502,9 +510,9 @@ Status RestClientRemote::get_array_metadata_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) +
-                          "/array_metadata?" +
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/array_metadata?" +
                           "start_timestamp=" + std::to_string(timestamp_start) +
                           "&end_timestamp=" + std::to_string(timestamp_end);
 
@@ -544,9 +552,9 @@ Status RestClientRemote::post_array_metadata_to_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) +
-                          "/array_metadata?" +
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/array_metadata?" +
                           "start_timestamp=" + std::to_string(timestamp_start) +
                           "&end_timestamp=" + std::to_string(timestamp_end);
 
@@ -581,8 +589,9 @@ RestClientRemote::post_enumerations_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) + "/enumerations?" +
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/enumerations?" +
                           "start_timestamp=" + std::to_string(timestamp_start) +
                           "&end_timestamp=" + std::to_string(timestamp_end);
 
@@ -627,12 +636,12 @@ void RestClientRemote::post_query_plan_from_rest(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url;
   if (use_refactored_query(query.config())) {
-    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
-          curlc.url_escape(array_uri) +
+    url = redirect_uri(cache_key) + "/v3/arrays/" + curlc.url_escape(array_ns) +
+          "/" + curlc.url_escape(array_uri) +
           "/query/plan?type=" + query_type_str(query.type());
   } else {
-    url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
-          curlc.url_escape(array_uri) +
+    url = redirect_uri(cache_key) + "/v2/arrays/" + curlc.url_escape(array_ns) +
+          "/" + curlc.url_escape(array_uri) +
           "/query/plan?type=" + query_type_str(query.type());
   }
 
@@ -720,13 +729,13 @@ Status RestClientRemote::post_query_submit(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url;
   if (use_refactored_query(query->config())) {
-    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
-          curlc.url_escape(array_uri) +
+    url = redirect_uri(cache_key) + "/v3/arrays/" + curlc.url_escape(array_ns) +
+          "/" + curlc.url_escape(array_uri) +
           "/query/submit?type=" + query_type_str(query->type()) +
           "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
   } else {
-    url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
-          curlc.url_escape(array_uri) +
+    url = redirect_uri(cache_key) + "/v2/arrays/" + curlc.url_escape(array_ns) +
+          "/" + curlc.url_escape(array_uri) +
           "/query/submit?type=" + query_type_str(query->type()) +
           "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
   }
@@ -963,12 +972,12 @@ Status RestClientRemote::finalize_query_to_rest(const URI& uri, Query* query) {
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url;
   if (use_refactored_query(query->config())) {
-    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
-          curlc.url_escape(array_uri) +
+    url = redirect_uri(cache_key) + "/v3/arrays/" + curlc.url_escape(array_ns) +
+          "/" + curlc.url_escape(array_uri) +
           "/query/finalize?type=" + query_type_str(query->type());
   } else {
-    url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
-          curlc.url_escape(array_uri) +
+    url = redirect_uri(cache_key) + "/v1/arrays/" + curlc.url_escape(array_ns) +
+          "/" + curlc.url_escape(array_uri) +
           "/query/finalize?type=" + query_type_str(query->type());
   }
   Buffer returned_data;
@@ -1023,12 +1032,12 @@ Status RestClientRemote::submit_and_finalize_query_to_rest(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url;
   if (use_refactored_query(query->config())) {
-    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
-          curlc.url_escape(array_uri) +
+    url = redirect_uri(cache_key) + "/v3/arrays/" + curlc.url_escape(array_ns) +
+          "/" + curlc.url_escape(array_uri) +
           "/query/submit_and_finalize?type=" + query_type_str(query->type());
   } else {
-    url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
-          curlc.url_escape(array_uri) +
+    url = redirect_uri(cache_key) + "/v2/arrays/" + curlc.url_escape(array_ns) +
+          "/" + curlc.url_escape(array_uri) +
           "/query/submit_and_finalize?type=" + query_type_str(query->type());
   }
 
@@ -1150,8 +1159,8 @@ Status RestClientRemote::get_query_est_result_sizes(
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url =
-      redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
-      curlc.url_escape(array_uri) +
+      redirect_uri(cache_key) + "/v1/arrays/" + curlc.url_escape(array_ns) +
+      "/" + curlc.url_escape(array_uri) +
       "/query/est_result_sizes?type=" + query_type_str(query->type());
 
   // Remote array reads always supply the timestamp.
@@ -1200,7 +1209,8 @@ Status RestClientRemote::post_array_schema_evolution_to_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
+  auto deduced_url = redirect_uri(cache_key) + "/v1/arrays/" +
+                     curlc.url_escape(array_ns) + "/" +
                      curlc.url_escape(array_uri) + "/evolve";
   Buffer returned_data;
   const Status sc = curlc.post_data(
@@ -1231,8 +1241,9 @@ Status RestClientRemote::post_fragment_info_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) + "/fragment_info";
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/fragment_info";
 
   // Get the data
   Buffer returned_data;
@@ -1270,8 +1281,9 @@ Status RestClientRemote::post_group_metadata_from_rest(
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri) + "/metadata";
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" +
+                          curlc.url_escape(group_ns) + "/" +
+                          curlc.url_escape(group_uri) + "/metadata";
 
   // Get the data
   Buffer returned_data;
@@ -1313,8 +1325,9 @@ Status RestClientRemote::put_group_metadata_to_rest(
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri) + "/metadata";
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" +
+                          curlc.url_escape(group_ns) + "/" +
+                          curlc.url_escape(group_uri) + "/metadata";
 
   // Put the data
   Buffer returned_data;
@@ -1341,7 +1354,8 @@ Status RestClientRemote::post_group_create_to_rest(
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns;
+  const std::string url =
+      redirect_uri(cache_key) + "/v2/groups/" + curlc.url_escape(group_ns);
 
   // Create the group and check for error
   Buffer returned_data;
@@ -1367,8 +1381,9 @@ Status RestClientRemote::post_group_from_rest(const URI& uri, Group* group) {
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri);
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" +
+                          curlc.url_escape(group_ns) + "/" +
+                          curlc.url_escape(group_uri);
 
   // Get the data
   Buffer returned_data;
@@ -1406,8 +1421,9 @@ Status RestClientRemote::patch_group_to_rest(const URI& uri, Group* group) {
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri);
+  const std::string url = redirect_uri(cache_key) + "/v2/groups/" +
+                          curlc.url_escape(group_ns) + "/" +
+                          curlc.url_escape(group_uri);
 
   // Put the data
   Buffer returned_data;
@@ -1424,9 +1440,9 @@ void RestClientRemote::delete_group_from_rest(const URI& uri, bool recursive) {
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string recursive_str = recursive ? "true" : "false";
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri) +
-                          "/delete?recursive=" + recursive_str;
+  const std::string url =
+      redirect_uri(cache_key) + "/v2/groups/" + curlc.url_escape(group_ns) +
+      "/" + curlc.url_escape(group_uri) + "/delete?recursive=" + recursive_str;
 
   Buffer returned_data;
   throw_if_not_ok(curlc.delete_data(
@@ -1447,8 +1463,9 @@ Status RestClientRemote::post_consolidation_to_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) + "/consolidate";
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/consolidate";
 
   // Get the data
   Buffer returned_data;
@@ -1470,8 +1487,9 @@ Status RestClientRemote::post_vacuum_to_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) + "/vacuum";
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/vacuum";
 
   // Get the data
   Buffer returned_data;
@@ -1494,9 +1512,9 @@ RestClientRemote::post_consolidation_plan_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
-                          "/" + curlc.url_escape(array_uri) +
-                          "/consolidate/plan";
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" +
+                          curlc.url_escape(array_ns) + "/" +
+                          curlc.url_escape(array_uri) + "/consolidate/plan";
 
   // Get the data
   Buffer returned_data;
