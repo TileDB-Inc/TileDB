@@ -1,5 +1,5 @@
 breathe
-cmake<4
+cmake
 docutils
 jinja2
 sphinx_rtd_theme
