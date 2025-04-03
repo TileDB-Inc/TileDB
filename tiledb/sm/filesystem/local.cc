@@ -33,12 +33,25 @@
 #include "local.h"
 
 #include <filesystem>
+#include <sstream>
+
+#include "tiledb/common/logger.h"
+
+using namespace tiledb::common;
 
 namespace tiledb::sm {
-void LocalFilesystem::ensure_directory(const std::string& path) {
+Status LocalFilesystem::ensure_directory(const std::string& path) {
   std::filesystem::path p{path};
   if (p.has_parent_path()) {
-    std::filesystem::create_directories(p.parent_path());
+    std::error_code ec;
+    std::filesystem::create_directories(p.parent_path(), ec);
+    if (ec) {
+      std::stringstream ss;
+      ss << "Cannot create parent directories of '" << path << "' (" << ec
+         << ")";
+      return LOG_STATUS(Status_IOError(ss.str()));
+    }
   }
+  return Status::Ok();
 }
 }  // namespace tiledb::sm

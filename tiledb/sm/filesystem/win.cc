@@ -152,12 +152,18 @@ Status Win::create_dir(const std::string& path) const {
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
-  std::filesystem::create_directories(path);
+  std::error_code ec;
+  std::filesystem::create_directories(path, ec);
+  if (ec) {
+    return LOG_STATUS(Status_IOError(
+        std::string("Cannot create directory '") + path + "'; " +
+        ec.message()));
+  }
   return Status::Ok();
 }
 
 Status Win::touch(const std::string& filename) const {
-  ensure_directory(filename);
+  RETURN_NOT_OK(ensure_directory(filename));
   HANDLE file_h = CreateFile(
       filename.c_str(),
       GENERIC_WRITE,
@@ -532,7 +538,7 @@ Status Win::sync(const std::string& path) const {
 
 Status Win::write(
     const std::string& path, const void* buffer, uint64_t buffer_size) const {
-  ensure_directory(path);
+  RETURN_NOT_OK(ensure_directory(path));
   // Open the file for appending, creating it if it doesn't exist.
   HANDLE file_h = CreateFile(
       path.c_str(),

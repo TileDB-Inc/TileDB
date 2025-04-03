@@ -32,6 +32,9 @@
 
 #include <string>
 
+#include "tiledb/common/common.h"
+#include "tiledb/common/status.h"
+
 namespace tiledb::sm {
 /**
  * Contains the local filesystem code shared by the Windows and POSIX
@@ -43,7 +46,8 @@ class LocalFilesystem {
    * Creates the containing directories of a path if they do not exist.
    *
    * @param path The path to a file.
+   * @return Status
    */
-  static void ensure_directory(const std::string& path);
+  static Status ensure_directory(const std::string& path);
 };
 }  // namespace tiledb::sm
