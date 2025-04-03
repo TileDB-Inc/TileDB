@@ -103,7 +103,7 @@ class RTree {
    * in the RTree.
    */
   TileOverlap get_tile_overlap(
-      const NDRange& range, std::vector<bool>& is_default) const;
+      const NDRange& range, const std::vector<bool>& is_default) const;
 
   /**
    * Compute tile bitmap for the curent range.

@@ -116,7 +116,7 @@ unsigned RTree::fanout() const {
 }
 
 TileOverlap RTree::get_tile_overlap(
-    const NDRange& range, std::vector<bool>& is_default) const {
+    const NDRange& range, const std::vector<bool>& is_default) const {
   TileOverlap overlap;
 
   // Empty tree
