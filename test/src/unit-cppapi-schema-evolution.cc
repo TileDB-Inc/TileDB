@@ -760,7 +760,7 @@ TEST_CASE(
       std::vector<int> d2_data = {1, 2, 1, 2};
       std::vector<int> a_data = {1, 2, 3, 4};
       std::vector<uint8_t> a_validity = {1, 1, 1, 1};
-      std::vector<float> b_data = {1.1, 2.2, 3.3, 4.4};
+      std::vector<float> b_data = {1.1f, 2.2f, 3.3f, 4.4f};
 
       // Set coordinates.
       if (sparse) {
@@ -816,7 +816,7 @@ TEST_CASE(
       std::string a_data = "ABCD";
       std::vector<uint64_t> a_offsets = {0, 1, 2, 3};
       std::vector<uint8_t> a_validity = {1, 1, 1, 1};
-      std::vector<float> b_data = {5.5, 6.6, 7.7, 8.8};
+      std::vector<float> b_data = {5.5f, 6.6f, 7.7f, 8.8f};
 
       // Set coordinates.
       if (sparse) {
@@ -902,9 +902,8 @@ TEST_CASE(
         if (nullable) {
           CHECK(a_validity == std::vector<uint8_t>{1});
         }
-        CHECK(b_data == std::vector<float>{7.7});
+        CHECK(b_data == std::vector<float>{7.7f});
       } else {
-        // Coordinates are not read for dense arrays.
         CHECK(d1_data == std::vector<int>{1, 1, 2, 2});
         CHECK(d2_data == std::vector<int>{1, 2, 1, 2});
         // Dense reads return fill values for cells that do not satisfy the QC.
@@ -912,7 +911,7 @@ TEST_CASE(
         if (nullable) {
           CHECK(a_validity == std::vector<uint8_t>{0, 0, 1, 0});
         }
-        CHECK(b_data == std::vector<float>{-1.0, -1.0, 7.7, -1.0});
+        CHECK(b_data == std::vector<float>{-1.0f, -1.0f, 7.7f, -1.0f});
       }
     }
   }
