@@ -223,16 +223,4 @@ void V1V2PreloadedFragmentMetadata::load_processed_conditions(
   return;
 }
 
-void V1V2PreloadedFragmentMetadata::get_tile_overlap(
-    const NDRange& range,
-    std::vector<bool>& is_default,
-    TileOverlap* tile_overlap) {
-  *tile_overlap = rtree_.get_tile_overlap(range, is_default);
-}
-
-void V1V2PreloadedFragmentMetadata::compute_tile_bitmap(
-    const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) {
-  rtree_.compute_tile_bitmap(range, d, tile_bitmap);
-}
-
 }  // namespace tiledb::sm

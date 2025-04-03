@@ -623,18 +623,4 @@ void OndemandFragmentMetadata::load_tile_null_count_values(
   loaded_metadata_.tile_null_count_[idx] = true;
 }
 
-void OndemandFragmentMetadata::get_tile_overlap(
-    const NDRange& range,
-    std::vector<bool>& is_default,
-    TileOverlap* tile_overlap) {
-  assert(loaded_metadata_.rtree_);
-  *tile_overlap = rtree_.get_tile_overlap(range, is_default);
-}
-
-void OndemandFragmentMetadata::compute_tile_bitmap(
-    const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) {
-  assert(loaded_metadata_.rtree_);
-  rtree_.compute_tile_bitmap(range, d, tile_bitmap);
-}
-
 }  // namespace tiledb::sm

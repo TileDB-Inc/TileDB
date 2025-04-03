@@ -2348,7 +2348,7 @@ void Subarray::precompute_all_ranges_tile_overlap(
                 const auto r_end =
                     std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
                 for (uint64_t r = r_start; r <= r_end; ++r) {
-                  meta[f]->loaded_metadata()->compute_tile_bitmap(
+                  meta[f]->loaded_metadata()->rtree().compute_tile_bitmap(
                       range_subset_[d][r], d, &tile_bitmaps[d]);
                 }
                 return Status::Ok();
@@ -2649,8 +2649,9 @@ void Subarray::compute_relevant_fragment_tile_overlap(
           } else {  // Sparse fragment
             const auto& range =
                 this->ndrange(r + tile_overlap->range_idx_start());
-            meta[frag_idx]->loaded_metadata()->get_tile_overlap(
-                range, is_default_, tile_overlap->at(frag_idx, r));
+            *tile_overlap->at(frag_idx, r) =
+                meta[frag_idx]->loaded_metadata()->rtree().get_tile_overlap(
+                    range, is_default_);
           }
         }
 

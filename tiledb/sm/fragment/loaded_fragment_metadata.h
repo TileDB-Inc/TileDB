@@ -471,28 +471,6 @@ class LoadedFragmentMetadata {
     loaded_metadata_.rtree_ = true;
   }
 
-  /**
-   * Retrieves the overlap of all MBRs with the input ND range.
-   *
-   * @param range The range to use
-   * @param is_default If default range should be used
-   * @param tile_overlap The resulted tile overlap
-   */
-  virtual void get_tile_overlap(
-      const NDRange& range,
-      std::vector<bool>& is_default,
-      TileOverlap* tile_overlap) = 0;
-
-  /**
-   * Compute tile bitmap for the curent fragment/range/dimension.
-   *
-   * @param range The range to use
-   * @param d The dimension index
-   * @param tile_bitmap The resulted tile bitmap
-   */
-  virtual void compute_tile_bitmap(
-      const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) = 0;
-
   /** Frees the memory associated with the rtree. */
   void free_rtree();
 
