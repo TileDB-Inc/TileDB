@@ -2647,11 +2647,30 @@ void Subarray::compute_relevant_fragment_tile_overlap(
             *tile_overlap->at(frag_idx, r) = compute_tile_overlap(
                 r + tile_overlap->range_idx_start(), frag_idx);
           } else {  // Sparse fragment
-            const auto& range =
-                this->ndrange(r + tile_overlap->range_idx_start());
+            struct SubarrayNDRange {
+              const Subarray& subarray_;
+              const uint64_t ridx_;
+
+              SubarrayNDRange(const Subarray& subarray, uint64_t ridx)
+                  : subarray_(subarray)
+                  , ridx_(ridx) {
+              }
+
+              double overlap_ratio(const NDRange& bounding_rectangle) const {
+                const auto& domain =
+                    subarray_.array_->array_schema_latest().domain();
+                return domain.overlap_ratio(
+                    subarray_.ndrange(ridx_),
+                    subarray_.is_default_,
+                    bounding_rectangle);
+              }
+            };
             *tile_overlap->at(frag_idx, r) =
-                meta[frag_idx]->loaded_metadata()->rtree().get_tile_overlap(
-                    range, is_default_);
+                meta[frag_idx]
+                    ->loaded_metadata()
+                    ->rtree()
+                    .get_tile_overlap<SubarrayNDRange>(SubarrayNDRange(
+                        *this, r + tile_overlap->range_idx_start()));
           }
         }
 

@@ -33,6 +33,7 @@
 #ifndef TILEDB_RTREE_H
 #define TILEDB_RTREE_H
 
+#include <deque>
 #include <vector>
 
 #include "tiledb/common/common.h"
@@ -49,9 +50,16 @@ namespace sm {
 class Buffer;
 class ConstBuffer;
 class MemoryTracker;
+class Subarray;
 
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
+
+template <typename T>
+concept BoundingRectanglePredicate =
+    requires(const T& rectangle, const NDRange& mbr) {
+      { rectangle.overlap_ratio(mbr) } -> std::same_as<double>;
+    };
 
 /**
  * A simple RTree implementation. It supports storing only n-dimensional
@@ -99,11 +107,17 @@ class RTree {
   unsigned fanout() const;
 
   /**
-   * Returns the tile overlap of the input range with the MBRs stored
-   * in the RTree.
+   * Computes the tiles which qualify according to the visitor selectivity
+   * analysis.
+   *
+   * @param visitor
+   * @return the tile overlap containing qualifying tiles according to
+   * `visitor.visit(mbr)`
    */
-  TileOverlap get_tile_overlap(
-      const NDRange& range, const std::vector<bool>& is_default) const;
+  template <BoundingRectanglePredicate T>
+  TileOverlap get_tile_overlap(const T& predicate) const;
+
+  TileOverlap get_tile_overlap(const NDRange& rectangle) const;
 
   /**
    * Compute tile bitmap for the curent range.
@@ -272,6 +286,78 @@ class RTree {
    * Applicable to versions >= 5
    */
   void deserialize_v5(Deserializer& deserializer, const Domain* domain);
+};
+
+template <BoundingRectanglePredicate T>
+TileOverlap RTree::get_tile_overlap(const T& predicate) const {
+  TileOverlap overlap;
+
+  // Empty tree
+  if (domain_ == nullptr || levels_.empty())
+    return overlap;
+
+  // This will keep track of the traversal
+  std::deque<Entry> traversal;
+  traversal.push_front({0, 0});
+  auto leaf_num = levels_.back().size();
+  auto height = this->height();
+
+  while (!traversal.empty()) {
+    // Get next entry
+    auto entry = traversal.front();
+    traversal.pop_front();
+    const auto& mbr = levels_[entry.level_][entry.mbr_idx_];
+
+    // Get overlap ratio
+    const auto ratio = predicate.overlap_ratio(mbr);
+
+    // If there is overlap
+    if (ratio != 0.0) {
+      // If there is full overlap
+      if (ratio == 1.0) {
+        auto subtree_leaf_num = this->subtree_leaf_num(entry.level_);
+        assert(subtree_leaf_num > 0);
+        uint64_t start = entry.mbr_idx_ * subtree_leaf_num;
+        uint64_t end = start + std::min(subtree_leaf_num, leaf_num - start) - 1;
+        auto tile_range = std::pair<uint64_t, uint64_t>(start, end);
+        overlap.tile_ranges_.emplace_back(tile_range);
+      } else {  // Partial overlap
+        // If this is the leaf level, insert into results
+        if (entry.level_ == height - 1) {
+          auto mbr_idx_ratio =
+              std::pair<uint64_t, double>(entry.mbr_idx_, ratio);
+          overlap.tiles_.emplace_back(mbr_idx_ratio);
+        } else {  // Insert all "children" to traversal
+          auto next_mbr_num = (uint64_t)levels_[entry.level_ + 1].size();
+          auto start = entry.mbr_idx_ * fanout_;
+          auto end = std::min(start + fanout_ - 1, next_mbr_num - 1);
+          for (uint64_t i = start; i <= end; ++i)
+            traversal.push_front({entry.level_ + 1, end - (i - start)});
+        }
+      }
+    }
+  }
+
+  return overlap;
+}
+
+/**
+ * Contextualizes an `NDRange` with a `Domain` for use in `get_tile_overlap`
+ */
+struct NDRangeInDomain {
+  const Domain& domain_;
+  const NDRange& rectangle_;
+  const std::vector<bool> is_default_;
+
+  NDRangeInDomain(const Domain& domain, const NDRange& rectangle)
+      : domain_(domain)
+      , rectangle_(rectangle)
+      , is_default_(rectangle.size(), false) {
+  }
+
+  double overlap_ratio(const NDRange& rtree_rectangle) const {
+    return domain_.overlap_ratio(rectangle_, is_default_, rtree_rectangle);
+  }
 };
 
 }  // namespace sm

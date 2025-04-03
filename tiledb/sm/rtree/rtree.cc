@@ -37,6 +37,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 #include <cassert>
@@ -115,57 +116,9 @@ unsigned RTree::fanout() const {
   return fanout_;
 }
 
-TileOverlap RTree::get_tile_overlap(
-    const NDRange& range, const std::vector<bool>& is_default) const {
-  TileOverlap overlap;
-
-  // Empty tree
-  if (domain_ == nullptr || levels_.empty())
-    return overlap;
-
-  // This will keep track of the traversal
-  std::deque<Entry> traversal;
-  traversal.push_front({0, 0});
-  auto leaf_num = levels_.back().size();
-  auto height = this->height();
-
-  while (!traversal.empty()) {
-    // Get next entry
-    auto entry = traversal.front();
-    traversal.pop_front();
-    const auto& mbr = levels_[entry.level_][entry.mbr_idx_];
-
-    // Get overlap ratio
-    auto ratio = domain_->overlap_ratio(range, is_default, mbr);
-
-    // If there is overlap
-    if (ratio != 0.0) {
-      // If there is full overlap
-      if (ratio == 1.0) {
-        auto subtree_leaf_num = this->subtree_leaf_num(entry.level_);
-        assert(subtree_leaf_num > 0);
-        uint64_t start = entry.mbr_idx_ * subtree_leaf_num;
-        uint64_t end = start + std::min(subtree_leaf_num, leaf_num - start) - 1;
-        auto tile_range = std::pair<uint64_t, uint64_t>(start, end);
-        overlap.tile_ranges_.emplace_back(tile_range);
-      } else {  // Partial overlap
-        // If this is the leaf level, insert into results
-        if (entry.level_ == height - 1) {
-          auto mbr_idx_ratio =
-              std::pair<uint64_t, double>(entry.mbr_idx_, ratio);
-          overlap.tiles_.emplace_back(mbr_idx_ratio);
-        } else {  // Insert all "children" to traversal
-          auto next_mbr_num = (uint64_t)levels_[entry.level_ + 1].size();
-          auto start = entry.mbr_idx_ * fanout_;
-          auto end = std::min(start + fanout_ - 1, next_mbr_num - 1);
-          for (uint64_t i = start; i <= end; ++i)
-            traversal.push_front({entry.level_ + 1, end - (i - start)});
-        }
-      }
-    }
-  }
-
-  return overlap;
+TileOverlap RTree::get_tile_overlap(const NDRange& rectangle) const {
+  return get_tile_overlap<NDRangeInDomain>(
+      NDRangeInDomain(*domain_, rectangle));
 }
 
 void RTree::compute_tile_bitmap(

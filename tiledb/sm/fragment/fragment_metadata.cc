@@ -627,9 +627,7 @@ void FragmentMetadata::add_max_buffer_sizes_sparse(
   loaded_metadata_ptr_->load_rtree(encryption_key);
 
   // Get tile overlap
-  std::vector<bool> is_default(subarray.size(), false);
-  auto tile_overlap =
-      loaded_metadata_ptr_->rtree().get_tile_overlap(subarray, is_default);
+  auto tile_overlap = loaded_metadata_ptr_->rtree().get_tile_overlap(subarray);
 
   // Handle tile ranges
   for (const auto& tr : tile_overlap.tile_ranges_) {
