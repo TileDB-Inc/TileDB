@@ -59,6 +59,8 @@ void CAPINDRectangleFx::create_domain() {
   uint64_t tile_extents[] = {2, 2};
   uint64_t dim_domain[] = {1, 10, 1, 10};
 
+  auto ctx = get_ctx();
+
   int rc = tiledb_dimension_alloc(
       ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1_);
   CHECK(rc == TILEDB_OK);
@@ -85,6 +87,8 @@ TEST_CASE_METHOD(
     CAPINDRectangleFx,
     "C API: argument validation",
     "[capi][ndrectangle][args]") {
+  auto ctx = get_ctx();
+
   CHECK(
       tiledb_ndrectangle_alloc(nullptr, nullptr, nullptr) ==
       TILEDB_INVALID_CONTEXT);
@@ -178,6 +182,8 @@ TEST_CASE_METHOD(
     CAPINDRectangleFx,
     "C API: setting and getting ranges works",
     "[capi][ndrectangle][range]") {
+  auto ctx = get_ctx();
+
   tiledb_ndrectangle_t* ndr = nullptr;
   REQUIRE(tiledb_ndrectangle_alloc(ctx, domain_, &ndr) == TILEDB_OK);
 

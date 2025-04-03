@@ -79,6 +79,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
    * @param label_order Label order for the dimension label.
    */
   void create_example(tiledb_data_order_t label_order) {
+    auto ctx = get_ctx();
     // Create an array schema
     uint64_t x_tile_extent{4};
     auto array_schema = create_array_schema(
@@ -122,6 +123,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
       std::vector<double>& input_attr_data,
       std::vector<double>& input_label_data,
       bool error_on_write = false) {
+    auto ctx = get_ctx();
     // Open array for writing.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -173,6 +175,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
   void check_values_from_data_reader(
       const std::vector<double>& expected_label_data,
       const std::vector<double>& expected_attr_data) {
+    auto ctx = get_ctx();
     // Open array for reading.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -237,6 +240,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
       const std::vector<double> ranges,
       const std::vector<double> expected_label_data,
       const std::vector<double> expected_attr_data) {
+    auto ctx = get_ctx();
     // Open array for reading.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));

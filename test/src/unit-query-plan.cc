@@ -45,7 +45,7 @@ struct QueryPlanFx {
   void create_dense_array(const std::string& array_name);
   void create_sparse_array(const std::string& array_name);
 
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
 
   // TileDB context
   tiledb_ctx_t* ctx_c_;
@@ -53,7 +53,7 @@ struct QueryPlanFx {
 };
 
 QueryPlanFx::QueryPlanFx()
-    : ctx_c_(vfs_test_setup_.ctx_c) {
+    : ctx_c_(vfs_test_setup_->ctx_c) {
 }
 
 TEST_CASE_METHOD(

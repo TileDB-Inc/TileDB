@@ -31,9 +31,11 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 struct MyData {
   int a;
@@ -42,7 +44,7 @@ struct MyData {
 };
 
 TEST_CASE("C++ API: Types", "[cppapi][types]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   CHECK(
       (std::is_same<typename impl::TypeHandler<int>::value_type, int>::value));

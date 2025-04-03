@@ -31,9 +31,11 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 TEST_CASE("C++ API: Time attribute", "[cppapi][Time]") {
   const std::string array_name = "cpp_unit_time_array";
@@ -47,7 +49,7 @@ TEST_CASE("C++ API: Time attribute", "[cppapi][Time]") {
         TILEDB_TIME_PS,
         TILEDB_TIME_FS,
         TILEDB_TIME_AS}) {
-    Context ctx;
+    Context& ctx = vanilla_context_cpp();
     VFS vfs(ctx);
 
     if (vfs.is_dir(array_name))
@@ -112,7 +114,7 @@ TEST_CASE("C++ API: Time dimension", "[cppapi][time]") {
         TILEDB_TIME_PS,
         TILEDB_TIME_FS,
         TILEDB_TIME_AS}) {
-    Context ctx;
+    Context& ctx = vanilla_context_cpp();
     VFS vfs(ctx);
 
     if (vfs.is_dir(array_name))

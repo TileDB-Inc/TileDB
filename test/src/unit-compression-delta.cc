@@ -31,10 +31,13 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/datatype.h"
 
 #include <iostream>
+
+using namespace tiledb::test;
 
 using TestTypes = std::tuple<
     std::byte,
@@ -52,7 +55,7 @@ TEMPLATE_LIST_TEST_CASE(
     "[compression][delta]",
     TestTypes) {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "delta_compression_test";
   if (vfs.is_dir(array_name)) {
@@ -121,7 +124,7 @@ TEMPLATE_LIST_TEST_CASE(
 TEST_CASE(
     "Delta compression test reinterpret datatype", "[compression][delta]") {
   using namespace tiledb;
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "delta_compression_test";
   if (vfs.is_dir(array_name)) {

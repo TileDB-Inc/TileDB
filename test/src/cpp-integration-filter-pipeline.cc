@@ -44,11 +44,12 @@
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 TEST_CASE(
     "C++ API: Pipeline with filtered type conversions",
     "[cppapi][filter][pipeline]") {
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
   std::string array_name = "cpp_test_array";
   if (vfs.is_dir(array_name)) {
@@ -142,7 +143,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Filter pipeline validation",
     "[cppapi][filter][pipeline][validation]") {
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
 
   tiledb::Domain domain(ctx);
   float domain_lo = static_cast<float>(std::numeric_limits<int64_t>::min());

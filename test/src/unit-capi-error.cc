@@ -32,17 +32,18 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
 
+using namespace tiledb::test;
+
 TEST_CASE("C API: Test error and error message", "[capi][error]") {
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   const char* bad_path = nullptr;
-  rc = tiledb_group_create(ctx, bad_path);
+  auto rc = tiledb_group_create(ctx, bad_path);
   CHECK(rc == TILEDB_ERR);
 
   tiledb_error_t* err;
@@ -60,5 +61,4 @@ TEST_CASE("C API: Test error and error message", "[capi][error]") {
   // Clean up
   tiledb_error_free(&err);
   CHECK(err == nullptr);
-  tiledb_ctx_free(&ctx);
 }
