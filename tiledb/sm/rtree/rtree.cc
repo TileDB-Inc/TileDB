@@ -124,7 +124,7 @@ TileOverlap RTree::get_tile_overlap(
     return overlap;
 
   // This will keep track of the traversal
-  std::list<Entry> traversal;
+  std::deque<Entry> traversal;
   traversal.push_front({0, 0});
   auto leaf_num = levels_.back().size();
   auto height = this->height();
@@ -175,7 +175,7 @@ void RTree::compute_tile_bitmap(
     return;
 
   // This will keep track of the traversal
-  std::list<Entry> traversal;
+  std::deque<Entry> traversal;
   traversal.push_front({0, 0});
   auto leaf_num = levels_.back().size();
   auto height = this->height();
