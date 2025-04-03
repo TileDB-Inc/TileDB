@@ -799,7 +799,10 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
 #endif
 
 #ifdef HAVE_S3
-TEST_CASE("Validate vfs.s3.custom_headers.*", "[s3][custom-headers]") {
+TEST_CASE(
+    "Validate vfs.s3.custom_headers.*", "[s3][custom-headers][!mayfail]") {
+  // In newer versions of the AWS SDK, setting Content-MD5 outside of the
+  // official method on the request object is not supported.
   Config cfg = set_config_params(true);
 
   // Check the edge case of a key matching the ConfigIter prefix.
