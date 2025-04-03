@@ -1,11 +1,11 @@
 /**
- * @file test/support/stdx/optional.h
+ * @file test/support/rapidcheck/show.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2025 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,28 +27,41 @@
  *
  * @section DESCRIPTION
  *
- * This file defines functions for manipulating `std::optional`.
+ * This file provides forward declarations of `rc::detail::showValue`
+ * overloads, which seemingly must be included prior to the rapidcheck
+ * header files.
  */
 
-#ifndef TILEDB_TEST_SUPPORT_OPTIONAL_H
-#define TILEDB_TEST_SUPPORT_OPTIONAL_H
+#ifndef TILEDB_RAPIDCHECK_SHOW_H_
+#define TILEDB_RAPIDCHECK_SHOW_H_
 
-#include <optional>
+#include <test/support/stdx/optional.h>
 
-namespace stdx {
+#include <ostream>
 
-template <typename T>
-struct is_optional {
-  static constexpr bool value = false;
-};
+namespace tiledb {
+namespace sm {
+class ASTNode;
+}
+}  // namespace tiledb
 
-template <typename T>
-struct is_optional<std::optional<T>> {
-  static constexpr bool value = true;
-};
+// forward declarations of `showValue` overloads
+// (these must be declared prior to including `rapidcheck/Show.hpp` for some
+// reason)
+namespace rc::detail {
 
-template <typename T>
-concept is_optional_v = is_optional<T>::value;
-}  // namespace stdx
+/**
+ * Specializes `show` for `std::optional<T>` to print the final test case after
+ * shrinking
+ */
+template <stdx::is_optional_v T>
+void showValue(const T& value, std::ostream& os);
+
+/**
+ * Specializes `show` for query ASTNode
+ */
+void showValue(const tiledb::sm::ASTNode& value, std::ostream& os);
+
+}  // namespace rc::detail
 
 #endif

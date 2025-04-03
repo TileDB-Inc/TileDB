@@ -410,7 +410,7 @@ struct query_applicator {
               static_cast<const void*>(&field.data()[cell_offset]));
           auto rc = tiledb_query_set_data_buffer(
               ctx, query, name.c_str(), ptr, &field_size);
-          ASSERTER("" == error_if_any(ctx, rc));
+          ASSERTER(std::optional<std::string>() == error_if_any(ctx, rc));
         };
 
     unsigned d = 0;

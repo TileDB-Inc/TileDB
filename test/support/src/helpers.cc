@@ -175,8 +175,8 @@ void require_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
 
 void throw_if_error(tiledb_ctx_t* ctx, capi_return_t thing) {
   auto err = error_if_any(ctx, thing);
-  if (err != "") {
-    throw std::runtime_error(err);
+  if (err.has_value()) {
+    throw std::runtime_error(err.value());
   }
 }
 

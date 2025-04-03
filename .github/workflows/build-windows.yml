@@ -266,12 +266,23 @@ jobs:
 
           # Actually run tests
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe -d=yes ~[rapidcheck]"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
               Write-Host "Tests failed. tiledb_unit exit status: " $LastExitCocde
               $host.SetShouldExit($LastExitCode)
+          }
+
+          # Run rapidcheck tests as their own process so we can see the random seed for each
+          Invoke-Expression "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe --list-tests [rapidcheck] --verbosity quiet" | Foreach-Object {
+            $rapidcheck = "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe '$_'"
+            Write-Host "cmds: '$rapidcheck'"
+            Invoke-Expression $rapidcheck
+            if ($LastExitCode -ne 0) {
+              Write-Host "Rapidcheck test \"$_\" failed with exit status: " $LastExitCode
+              $host.SetShouldExit($LastExitCode)
+            }
           }
 
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\sm\filesystem\test\unit_vfs -d=yes"

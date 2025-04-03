@@ -221,6 +221,22 @@ class ReaderBase : public StrategyBase {
    */
   bool skip_field(const unsigned frag_idx, const std::string& name) const;
 
+  /**
+   * Get the size of an attribute tile.
+   *
+   * @param fragment_metadata The fragment metadata.
+   * @param name The attribute name.
+   * @param f The fragment idx.
+   * @param t The tile idx.
+   * @return Tile size.
+   */
+  static uint64_t get_attribute_tile_size(
+      const ArraySchema& array_schema,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::string& name,
+      unsigned f,
+      uint64_t);
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
