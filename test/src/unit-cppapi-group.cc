@@ -1013,14 +1013,6 @@ TEST_CASE_METHOD(
   group1.close();
 }
 
-/** Test Exception For Assertability */
-class GroupDtorDoesntThrowException : public std::exception {
- public:
-  explicit GroupDtorDoesntThrowException()
-      : std::exception() {
-  }
-};
-
 TEST_CASE(
     "C++ API: Group delete recursive", "[cppapi][group][delete][recursive]") {
   // Initialize context and VFS.
