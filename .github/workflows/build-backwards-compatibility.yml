@@ -1,4 +1,4 @@
-name: build-ubuntu-20.04-backwards-compatibility
+name: build-backwards-compatibility
 on:
   workflow_call:
 
@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-20.04
+          - ubuntu-22.04
     timeout-minutes: 120
     name: Build tiledb_unit
     steps:
@@ -56,7 +56,7 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-20.04
+          - ubuntu-22.04
         # Note: v2_1_0 arrays were never created so its currently skipped
         # Note: This matrix is used to set the value of TILEDB_COMPATIBILITY_VERSION
         tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1", "v2_10_0", "v2_11_0", "v2_12_3", "v2_13_2", "v2_14_0", "v2_15_0", "v2_16_3", "v2_17_5", "v2_18_3", "v2_19_1", "v2_20_1", "v2_21_1", "v2_22_0", "v2_23_0", "v2_24_0", "v2_25_0", "v2_26_0"]
