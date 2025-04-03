@@ -685,6 +685,13 @@ TEST_CASE(
   }
 }
 
+/**
+ * Validates the behavior of query conditions after evolution changes on an
+ * attribute with identical names across schemas.
+ *
+ * Initially the attribute is fixed-size and has an enumeration label set.
+ * After evolution the attribute becomes var-sized and has no enumeration label.
+ */
 TEST_CASE(
     "C++ API: SchemaEvolution, drop and add attribute",
     "[cppapi][schema][evolution][drop][add][query-condition][rest]") {
@@ -696,6 +703,7 @@ TEST_CASE(
       TILEDB_UNORDERED,
       TILEDB_GLOBAL_ORDER);
   bool duplicates = GENERATE(true, false);
+  bool nullable = GENERATE(true, false);
   auto array_type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
   bool sparse = array_type == TILEDB_SPARSE;
 
@@ -708,7 +716,8 @@ TEST_CASE(
 
   DYNAMIC_SECTION(
       type_str << " " << layout_str << " array"
-               << (duplicates ? " with duplicates enabled" : "")) {
+               << " with duplicates=" << (duplicates ? "true" : "false")
+               << " nullable=" << (nullable ? "true" : "false")) {
     {
       ArraySchema schema(ctx, array_type);
       // Duplicates are not supported for dense arrays.
@@ -731,6 +740,7 @@ TEST_CASE(
 
       auto a = Attribute::create<int>(ctx, "a");
       AttributeExperimental::set_enumeration_name(ctx, a, "a_label");
+      a.set_nullable(nullable);
       schema.add_attribute(a);
 
       auto b = Attribute::create<float>(ctx, "b");
@@ -749,6 +759,7 @@ TEST_CASE(
       std::vector<int> d1_data = {1, 1, 2, 2};
       std::vector<int> d2_data = {1, 2, 1, 2};
       std::vector<int> a_data = {1, 2, 3, 4};
+      std::vector<uint8_t> a_validity = {1, 1, 1, 1};
       std::vector<float> b_data = {1.1, 2.2, 3.3, 4.4};
 
       // Set coordinates.
@@ -762,6 +773,10 @@ TEST_CASE(
 
       // Set data buffers.
       query.set_data_buffer("a", a_data).set_data_buffer("b", b_data);
+
+      if (nullable) {
+        query.set_validity_buffer("a", a_validity);
+      }
 
       // Perform the write and close the array.
       CHECK(query.submit() == Query::Status::COMPLETE);
@@ -782,10 +797,14 @@ TEST_CASE(
       now += 1;  // Ensure schema timestamps are unique.
       schemaEvolution.set_timestamp_range({now, now});
       Attribute a = Attribute::create<std::string>(ctx, "a");
-      a.set_nullable(true);
+      // Invert nullability of the attribute after evolution.
+      a.set_nullable(!nullable);
       schemaEvolution.add_attribute(a);
       schemaEvolution.array_evolve(array_uri);
     }
+
+    // Update the bool to reflect inverted nullability of 'a' during evolution.
+    nullable = !nullable;
 
     // Write again
     {
@@ -810,8 +829,11 @@ TEST_CASE(
 
       query.set_data_buffer("a", a_data)
           .set_offsets_buffer("a", a_offsets)
-          .set_validity_buffer("a", a_validity)
           .set_data_buffer("b", b_data);
+
+      if (nullable) {
+        query.set_validity_buffer("a", a_validity);
+      }
 
       CHECK(query.submit() == Query::Status::COMPLETE);
       array.close();
@@ -844,17 +866,20 @@ TEST_CASE(
 
       Query query(ctx, array, TILEDB_READ);
       query.set_condition(query_condition)
+          .set_data_buffer("d1", d1_data)
+          .set_data_buffer("d2", d2_data)
           .set_data_buffer("a", a_data)
           .set_offsets_buffer("a", a_offsets)
-          .set_validity_buffer("a", a_validity)
           .set_data_buffer("b", b_data);
+      if (nullable) {
+        query.set_validity_buffer("a", a_validity);
+      }
 
       Subarray subarray(ctx, array);
       subarray.add_range<int>(0, 1, 2).add_range<int>(1, 1, 2);
       query.set_subarray(subarray);
 
       if (sparse) {
-        query.set_data_buffer("d1", d1_data).set_data_buffer("d2", d2_data);
         query.set_layout(layout);
       }
 
@@ -874,15 +899,19 @@ TEST_CASE(
         CHECK(d1_data == std::vector<int>{2});
         CHECK(d2_data == std::vector<int>{1});
         CHECK(a_data == "C");
-        CHECK(a_validity == std::vector<uint8_t>{1});
+        if (nullable) {
+          CHECK(a_validity == std::vector<uint8_t>{1});
+        }
         CHECK(b_data == std::vector<float>{7.7});
       } else {
         // Coordinates are not read for dense arrays.
-        CHECK(d1_data == std::vector<int>{0, 0, 0, 0});
-        CHECK(d2_data == std::vector<int>{0, 0, 0, 0});
+        CHECK(d1_data == std::vector<int>{1, 1, 2, 2});
+        CHECK(d2_data == std::vector<int>{1, 2, 1, 2});
         // Dense reads return fill values for cells that do not satisfy the QC.
         CHECK(a_data[2] == 'C');
-        CHECK(a_validity == std::vector<uint8_t>{0, 0, 1, 0});
+        if (nullable) {
+          CHECK(a_validity == std::vector<uint8_t>{0, 0, 1, 0});
+        }
         CHECK(b_data == std::vector<float>{-1.0, -1.0, 7.7, -1.0});
       }
     }

@@ -664,8 +664,9 @@ void QueryCondition::apply_ast_node(
       const auto tile_tuple = result_tile->tile_tuple(field_name);
       // Special attributes handle null tile_tuples specifically.
       // We can skip null tile_tuples only if they are not a special attribute.
-      bool skip_tile_tuple = !ArraySchema::is_special_attribute(field_name) &&
-                             tile_tuple == nullptr;
+      const bool skip_tile_tuple =
+          !ArraySchema::is_special_attribute(field_name) &&
+          tile_tuple == nullptr;
 
       // For delete timestamps conditions, if there's no delete metadata or
       // delete condition was already processed, GT condition is always true.
@@ -2662,8 +2663,9 @@ void QueryCondition::apply_ast_node_sparse(
   const auto tile_tuple = result_tile.tile_tuple(node_field_name);
   // Special attributes handle null tile_tuples specifically.
   // We can skip null tile_tuples only if they are not a special attribute.
-  bool skip_tile_tuple = !ArraySchema::is_special_attribute(node_field_name) &&
-                         tile_tuple == nullptr;
+  const bool skip_tile_tuple =
+      !ArraySchema::is_special_attribute(node_field_name) &&
+      tile_tuple == nullptr;
   if (!array_schema.is_field(node_field_name) || skip_tile_tuple) {
     std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
     return;
