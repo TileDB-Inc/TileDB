@@ -152,7 +152,7 @@ void Posix::create_dir(const URI& uri) const {
 void Posix::touch(const URI& uri) const {
   auto filename = uri.to_path();
 
-  RETURN_NOT_OK(ensure_directory(filename));
+  throw_if_not_ok(ensure_directory(filename));
 
   int fd =
       ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, file_permissions_);
@@ -221,7 +221,7 @@ void Posix::file_size(const URI& uri, uint64_t* size) const {
 
 void Posix::move_file(const URI& old_path, const URI& new_path) const {
   auto new_uri_path = new_path.to_path();
-  RETURN_NOT_OK(ensure_directory(new_uri_path));
+  throw_if_not_ok(ensure_directory(new_uri_path));
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
     throw IOError(std::string("Cannot move path: ") + strerror(errno));
   }
@@ -234,7 +234,7 @@ void Posix::move_dir(const URI& old_uri, const URI& new_uri) const {
 void Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
   std::ifstream src(old_uri.to_path(), std::ios::binary);
   auto new_uri_path = new_uri.to_path();
-  RETURN_NOT_OK(ensure_directory(new_uri_path));
+  throw_if_not_ok(ensure_directory(new_uri_path));
   std::ofstream dst(new_uri_path, std::ios::binary);
   dst << src.rdbuf();
 }
@@ -372,7 +372,7 @@ void Posix::write(
   if (is_file(URI(path))) {
     file_size(URI(path), &file_offset);
   } else {
-    RETURN_NOT_OK(ensure_directory(path));
+    throw_if_not_ok(ensure_directory(path));
   }
 
   // Open or create file.
