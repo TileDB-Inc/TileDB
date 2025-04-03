@@ -578,18 +578,18 @@ endif()
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
 find_package(BZip2 REQUIRED)
-find_package(LZ4 MODULE REQUIRED)
+find_package(lz4 CONFIG REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(Zstd MODULE REQUIRED)
+find_package(zstd CONFIG REQUIRED)
 find_package(LibMagic MODULE REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
-    lz4::lz4
+    LZ4::lz4
     spdlog::spdlog
     ZLIB::ZLIB
-    ${ZSTD_TARGET}
+    zstd::libzstd
     libmagic
 )
 
@@ -756,10 +756,9 @@ endif()
 # Link the dependencies specified earlier
 target_link_libraries(tiledb
   PRIVATE
-    # ZSTD_TARGET might be a generator expression. We need to evaluate it here again.
     # TODO: TILEDB_CORE_OBJECTS_ILIB should be removed and dependencies should be specified
     # without directly getting target_properties.
-    $<GENEX_EVAL:$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>>
+    $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
     $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
 )
 

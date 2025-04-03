@@ -1134,13 +1134,14 @@ uint64_t ReaderBase::offsets_bytesize() const {
 }
 
 uint64_t ReaderBase::get_attribute_tile_size(
-    const std::string& name, unsigned f, uint64_t t) const {
+    const ArraySchema& array_schema,
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::string& name,
+    unsigned f,
+    uint64_t t) {
   uint64_t tile_size = 0;
-  if (skip_field(f, name)) {
-    return tile_size;
-  }
 
-  tile_size += fragment_metadata_[f]->tile_size(name, t);
+  tile_size += fragment_metadata[f]->tile_size(name, t);
 
   /**
    * Note: There is a distinct case in which a schema may evolve from
@@ -1148,17 +1149,27 @@ uint64_t ReaderBase::get_attribute_tile_size(
    * contains fixed tiles. The tile_var_size should be calculated iff
    * both the current _and_ loaded attributes are var-sized.
    */
-  if (array_schema_.var_size(name)) {
+  if (array_schema.var_size(name)) {
     tile_size +=
-        fragment_metadata_[f]->loaded_metadata()->tile_var_size(name, t);
+        fragment_metadata[f]->loaded_metadata()->tile_var_size(name, t);
   }
 
-  if (array_schema_.is_nullable(name)) {
+  if (array_schema.is_nullable(name)) {
     tile_size +=
-        fragment_metadata_[f]->cell_num(t) * constants::cell_validity_size;
+        fragment_metadata[f]->cell_num(t) * constants::cell_validity_size;
   }
 
   return tile_size;
+}
+
+uint64_t ReaderBase::get_attribute_tile_size(
+    const std::string& name, unsigned f, uint64_t t) const {
+  if (skip_field(f, name)) {
+    return 0;
+  } else {
+    return get_attribute_tile_size(
+        array_schema_, fragment_metadata_, name, f, t);
+  }
 }
 
 uint64_t ReaderBase::get_attribute_persisted_tile_size(
