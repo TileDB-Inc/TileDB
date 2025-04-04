@@ -561,7 +561,7 @@ class Subarray {
   void add_range(unsigned dim_idx, const void* start, const void* end);
 
   /**
-   * @brief Set point ranges from an array
+   * @brief Set point ranges from a fixed-sized array
    *
    * @param dim_idx Dimension index.
    * @param start Pointer to start of the array.
@@ -574,6 +574,26 @@ class Subarray {
       unsigned dim_idx,
       const void* start,
       uint64_t count,
+      bool check_for_label = true);
+
+  /**
+   * @brief Set point ranges from a variable-sized array
+   *
+   * @param dim_idx Dimension index.
+   * @param buffer_val Pointer to start of the array.
+   * @param buffer_val_size Size of the buffer in bytes.
+   * @param buffer_off Pointer to the start of the offsets array.
+   * @param buffer_off_size Number of offsets in the offsets array.
+   * @param check_for_label If ``true``, verify no label ranges set on this
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
+   */
+  void add_point_ranges_var(
+      unsigned dim_idx,
+      const void* buffer_val,
+      uint64_t buffer_val_size,
+      const uint64_t* buffer_off,
+      uint64_t buffer_off_size,
       bool check_for_label = true);
 
   /**
