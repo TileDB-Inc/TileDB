@@ -249,6 +249,13 @@ class Query {
     return *this;
   }
 
+  Query& add_predicate(const std::string& predicate) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_query_add_predicate(
+        ctx.ptr().get(), query_.get(), predicate.c_str()));
+    return *this;
+  }
+
   /** Returns the array of the query. */
   const Array& array() {
     return array_;

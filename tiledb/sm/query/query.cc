@@ -1471,6 +1471,22 @@ Status Query::set_condition(const QueryCondition& condition) {
   return Status::Ok();
 }
 
+Status Query::add_predicate(const char*) {
+  if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
+    return logger_->status(Status_QueryError(
+        "Cannot add query predicate; Operation not applicable "
+        "to write queries"));
+  }
+  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
+    return logger_->status(Status_QueryError(
+        "Cannot add query predicate; Adding a predicate to an already "
+        "initialized query is not supported."));
+  }
+
+  return logger_->status(
+      Status_QueryError("Cannot add a query predicate: not implemented"));
+}
+
 Status Query::add_update_value(
     const char* field_name,
     const void* update_value,

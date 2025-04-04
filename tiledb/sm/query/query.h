@@ -645,6 +645,14 @@ class Query {
   Status set_condition(const QueryCondition& condition);
 
   /**
+   * Adds a predicate for filtering results in a read query.
+   *
+   * @param predicate A string representation of the desired predicate.
+   * @return Status
+   */
+  Status add_predicate(const char* predicate);
+
+  /**
    * Adds an update value for an update query.
    *
    * @param field_name The attribute name.
