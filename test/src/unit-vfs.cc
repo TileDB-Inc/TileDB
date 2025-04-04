@@ -135,7 +135,7 @@ std::string local_path() {
   return local_prefix + unit_vfs_dir_.path();
 }
 
-TEST_CASE("VFS: Test long local paths", "[vfs]") {
+TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   VFS vfs{
