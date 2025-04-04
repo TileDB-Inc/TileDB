@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022-2024 TileDB, Inc.
+# Copyright (c) 2022-2025 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -120,6 +120,9 @@ add_subdirectory(object)
 #
 # `query`: no dependencies yet but will have some
 add_subdirectory(query)
+
+# `rest`: no dependencies
+add_subdirectory(rest)
 
 # `subarray`: depends on `context`
 add_subdirectory(subarray)
