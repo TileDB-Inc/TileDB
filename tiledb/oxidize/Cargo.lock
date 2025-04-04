@@ -2842,6 +2842,7 @@ version = "0.1.0"
 dependencies = [
  "tiledb-arrow",
  "tiledb-expr",
+ "tiledb-session",
 ]
 
 [[package]]
@@ -2865,6 +2866,7 @@ name = "tiledb-expr"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arrow",
  "cxx",
  "cxx-build",
  "datafusion",
@@ -2906,6 +2908,22 @@ dependencies = [
 name = "tiledb-proptest-config"
 version = "0.1.0"
 source = "git+https://github.com/TileDB-Inc/tiledb-rs.git?branch=main#e418936fff551dd608e2a1b5e3c557f4c8e5d29d"
+
+[[package]]
+name = "tiledb-session"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cxx",
+ "cxx-build",
+ "datafusion",
+ "itertools",
+ "num-traits",
+ "thiserror 2.0.12",
+ "tiledb-arrow",
+ "tiledb-cxx-interface",
+ "tiledb-expr",
+]
 
 [[package]]
 name = "tiledb-sys-defs"

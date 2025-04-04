@@ -36,6 +36,7 @@
 
 #include "tiledb.h"
 #include "tiledb/common/unreachable.h"
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 #include "tiledb/type/datatype_traits.h"
 #include "tiledb/type/range/range.h"
@@ -576,6 +577,18 @@ struct query_buffers<std::optional<T>> {
   std::vector<uint8_t> validity_;
 
   query_buffers() {
+  }
+
+  query_buffers(std::vector<std::optional<T>> cells) {
+    for (const auto& cell : cells) {
+      if (cell.has_value()) {
+        values_.push_back(cell.value());
+        validity_.push_back(1);
+      } else {
+        values_.push_back(T());
+        validity_.push_back(0);
+      }
+    }
   }
 
   query_buffers(const self_type& other) = default;
@@ -1126,6 +1139,56 @@ struct query_buffers<std::optional<std::vector<T>>> {
 };
 
 /**
+ * Specialization of `query_buffers` for variable-length non-nullable cells
+ * whose physical type is `char` and thus the "logical type" of each cell
+ * is `std::string`.
+ *
+ * See `query_buffers<std::vector<T>>`.
+ */
+template <>
+struct query_buffers<std::string> : public query_buffers<std::vector<char>> {
+  query_buffers(std::vector<std::string> cells) {
+    for (const auto& cell : cells) {
+      offsets_.push_back(values_.size());
+      values_.insert(values_.end(), cell.begin(), cell.end());
+    }
+  }
+};
+
+template <AttributeType... Att>
+struct Fragment {
+  std::tuple<query_buffers<Att>...> atts_;
+
+  uint64_t size() const {
+    return std::get<0>(atts_).num_cells();
+  }
+
+  std::tuple<> dimensions() const {
+    return std::tuple<>();
+  }
+
+  std::tuple<const query_buffers<Att>&...> attributes() const {
+    return std::apply(
+        [](const query_buffers<Att>&... attribute) {
+          return std::tuple<const query_buffers<Att>&...>(attribute...);
+        },
+        atts_);
+  }
+
+  std::tuple<> dimensions() {
+    return std::tuple<>();
+  }
+
+  std::tuple<query_buffers<Att>&...> attributes() {
+    return std::apply(
+        [](query_buffers<Att>&... attribute) {
+          return std::tuple<query_buffers<Att>&...>(attribute...);
+        },
+        atts_);
+  }
+};
+
+/**
  * Data for a one-dimensional array
  */
 template <DimensionType D, AttributeType... Att>
@@ -1169,12 +1232,30 @@ struct Fragment1D {
  */
 template <DimensionType D1, DimensionType D2, typename... Att>
 struct Fragment2D {
+  using Self = Fragment2D<D1, D2, Att...>;
+
   query_buffers<D1> d1_;
   query_buffers<D2> d2_;
   std::tuple<query_buffers<Att>...> atts_;
 
   uint64_t size() const {
     return d1_.num_cells();
+  }
+
+  void reserve(uint64_t num_cells) {
+    d1_.reserve(num_cells);
+    d2_.reserve(num_cells);
+    std::apply(
+        [&](query_buffers<Att>&... att) { (att.reserve(num_cells), ...); },
+        atts_);
+  }
+
+  void resize(uint64_t num_cells) {
+    d1_.resize(num_cells);
+    d2_.resize(num_cells);
+    std::apply(
+        [&](query_buffers<Att>&... att) { (att.resize(num_cells), ...); },
+        atts_);
   }
 
   std::tuple<const query_buffers<D1>&, const query_buffers<D2>&> dimensions()
@@ -1202,6 +1283,8 @@ struct Fragment2D {
         },
         atts_);
   }
+
+  bool operator==(const Self& other) const = default;
 };
 
 /**
@@ -1369,6 +1452,25 @@ void set_fields(
   }(fragment.attributes());
 }
 
+template <typename Asserter, FragmentType F>
+void set_fields(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    fragment_field_sizes_t<F>& field_sizes,
+    F& fragment,
+    const tiledb::sm::ArraySchema& schema,
+    const fragment_field_sizes_t<F>& field_cursors =
+        fragment_field_sizes_t<F>()) {
+  std::function<std::string(unsigned)> dim_name = [&](unsigned dim) {
+    return schema.domain().dimension_ptr(dim)->name();
+  };
+  std::function<std::string(unsigned)> att_name = [&](unsigned att) {
+    return schema.attribute(att)->name();
+  };
+  return set_fields<Asserter, F>(
+      ctx, query, field_sizes, fragment, dim_name, att_name, field_cursors);
+}
+
 /**
  * @return the number of cells written into `fields` by a read query
  */
@@ -1377,6 +1479,19 @@ uint64_t num_cells(const F& fragment, const auto& field_sizes) {
   return [&]<typename... Ts>(auto fields) {
     return query_applicator<Asserter, Ts...>::num_cells(fields, field_sizes);
   }(std::tuple_cat(fragment.dimensions(), fragment.attributes()));
+}
+
+template <typename Asserter, FragmentType F>
+void resize_fields(F& fragment, const auto& field_sizes) {
+  std::apply(
+      [field_sizes](auto&... outfield) {
+        std::apply(
+            [&](const auto&... field_cursor) {
+              (outfield.finish_multipart_read(field_cursor), ...);
+            },
+            field_sizes);
+      },
+      std::tuple_cat(fragment.dimensions(), fragment.attributes()));
 }
 
 }  // namespace query

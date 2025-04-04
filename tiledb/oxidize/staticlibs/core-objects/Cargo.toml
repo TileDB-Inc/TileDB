@@ -7,6 +7,7 @@ version = { workspace = true }
 [dependencies]
 tiledb-arrow = { workspace = true }
 tiledb-expr = { workspace = true }
+tiledb-session = { workspace = true }
 
 [lib]
 name = "tiledb_core_objects_rs"

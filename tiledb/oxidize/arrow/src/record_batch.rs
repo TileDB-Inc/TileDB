@@ -6,11 +6,12 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    self as aa, Array as ArrowArray, FixedSizeListArray, GenericListArray, PrimitiveArray,
+    self as aa, Array as ArrowArray, FixedSizeListArray, GenericListArray, LargeStringArray,
+    PrimitiveArray,
 };
 use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::{self as adt, ArrowPrimitiveType, Field};
-use arrow::record_batch::RecordBatch;
+use arrow::record_batch::{RecordBatch, RecordBatchOptions};
 use tiledb_cxx_interface::sm::query::readers::{ResultTile, TileTuple};
 use tiledb_cxx_interface::sm::tile::Tile;
 
@@ -39,6 +40,10 @@ pub enum FieldError {
     InternalUnalignedValues,
     #[error("Internal error: invalid variable-length data offsets: {0}")]
     InternalOffsets(#[from] OffsetsError),
+    #[error("Error reading tile: {0}")]
+    InvalidTileData(#[source] arrow::error::ArrowError),
+    #[error("Attributes with enumerations are not supported in text predicates")]
+    EnumerationNotSupported,
 }
 
 /// Wraps a [RecordBatch] for passing across the FFI boundary.
@@ -117,8 +122,17 @@ pub unsafe fn to_record_batch(
     );
 
     // SAFETY: the four asserts above rule out each of the possible error conditions
-    let arrow = RecordBatch::try_new(Arc::clone(&schema.0), columns)
-        .expect("Logic error: preconditions for constructing RecordBatch not met");
+    let arrow = if columns.is_empty() {
+        RecordBatch::try_new_with_options(
+            Arc::clone(&schema.0),
+            columns,
+            &RecordBatchOptions::new().with_row_count(Some(tile.cell_num() as usize)),
+        )
+    } else {
+        RecordBatch::try_new(Arc::clone(&schema.0), columns)
+    };
+
+    let arrow = arrow.expect("Logic error: preconditions for constructing RecordBatch not met");
 
     Ok(Box::new(ArrowRecordBatch { arrow }))
 }
@@ -221,6 +235,21 @@ unsafe fn to_arrow_array(
                 null_buffer,
             )))
         }
+        DataType::LargeUtf8 => {
+            let Some(var_tile) = var else {
+                return Err(FieldError::ExpectedVarTile);
+            };
+            let offsets = crate::offsets::try_from_bytes(1, fixed.as_slice())?;
+            let values = unsafe {
+                // SAFETY: TODO add comment
+                to_buffer::<UInt8Type>(var_tile)
+            }?;
+
+            Ok(Arc::new(
+                LargeStringArray::try_new(offsets, values.into(), null_buffer)
+                    .map_err(FieldError::InvalidTileData)?,
+            ))
+        }
         DataType::LargeList(value_field) => {
             let Some(var_tile) = var else {
                 return Err(FieldError::ExpectedVarTile);
@@ -237,6 +266,13 @@ unsafe fn to_arrow_array(
                 values,
                 null_buffer,
             )))
+        }
+        DataType::Dictionary(_, _) => {
+            // NB: we will do this later,
+            // it will require some refactoring so that we build the enumeration
+            // ArrowArrays just once for the whole query, in addition to the
+            // issues with regards to the enumeration being loaded
+            return Err(FieldError::EnumerationNotSupported);
         }
         _ => {
             // SAFETY: ensured by limited range of return values of `crate::schema::arrow_datatype`
@@ -263,6 +299,23 @@ unsafe fn to_primitive_array<T>(
 where
     T: ArrowPrimitiveType,
 {
+    let values = unsafe {
+        // SAFETY: TODO add comment
+        to_buffer::<T>(tile)
+    }?;
+    Ok(Arc::new(PrimitiveArray::<T>::new(values, validity)) as Arc<dyn ArrowArray>)
+}
+
+/// Returns a [Buffer] which refers to the data contained inside the [Tile].
+///
+/// # Safety
+///
+/// This function is safe to call as long as the returned [Buffer]
+/// is not used after the argument [Tile] is destructed.
+unsafe fn to_buffer<T>(tile: &Tile) -> Result<ScalarBuffer<T::Native>, FieldError>
+where
+    T: ArrowPrimitiveType,
+{
     let (prefix, values, suffix) = {
         // SAFETY: transmuting u8 to primitive types is safe
         unsafe { tile.as_slice().align_to::<T::Native>() }
@@ -270,31 +323,29 @@ where
     if !(prefix.is_empty() && suffix.is_empty()) {
         return Err(FieldError::InternalUnalignedValues);
     }
-    let tile_buffer = if let Some(ptr) = std::ptr::NonNull::new(values.as_ptr() as *mut u8) {
-        // SAFETY:
-        //
-        // `Buffer::from_custom_allocation` creates a buffer which refers to an existing
-        // memory region whose ownership is tracked by some `Arc<dyn Allocation>`.
-        // `Allocation` is basically any type, whose `drop` implementation is responsible
-        // for freeing the memory.
-        //
-        // The tile memory which we reference lives on the `extern "C++"` side of the
-        // FFI boundary, as such we cannot use `Arc` to track its lifetime.
-        //
-        // As such:
-        // 1) we will use an object with trivial `drop` to set up the memory aliasing
-        // 2) there is an implicit lifetime requirement that the Tile must out-live
-        //    this Buffer, else we shall suffer use after free
-        // 3) the caller is responsible for upholding that guarantee
-        unsafe { Buffer::from_custom_allocation(ptr, tile.size() as usize, Arc::new(())) }
-    } else {
-        Buffer::from_vec(Vec::<T::Native>::new())
-    };
 
-    Ok(Arc::new(PrimitiveArray::<T>::new(
-        ScalarBuffer::from(tile_buffer),
-        validity,
-    )) as Arc<dyn ArrowArray>)
+    Ok(ScalarBuffer::<T::Native>::from(
+        if let Some(ptr) = std::ptr::NonNull::new(values.as_ptr() as *mut u8) {
+            // SAFETY:
+            //
+            // `Buffer::from_custom_allocation` creates a buffer which refers to an existing
+            // memory region whose ownership is tracked by some `Arc<dyn Allocation>`.
+            // `Allocation` is basically any type, whose `drop` implementation is responsible
+            // for freeing the memory.
+            //
+            // The tile memory which we reference lives on the `extern "C++"` side of the
+            // FFI boundary, as such we cannot use `Arc` to track its lifetime.
+            //
+            // As such:
+            // 1) we will use an object with trivial `drop` to set up the memory aliasing
+            // 2) there is an implicit lifetime requirement that the Tile must out-live
+            //    this Buffer, else we shall suffer use after free
+            // 3) the caller is responsible for upholding that guarantee
+            unsafe { Buffer::from_custom_allocation(ptr, tile.size() as usize, Arc::new(())) }
+        } else {
+            Buffer::from_vec(Vec::<T::Native>::new())
+        },
+    ))
 }
 
 /// Returns an [OffsetBuffer] which represents the contents of the [Tile].

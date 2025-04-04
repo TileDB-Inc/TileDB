@@ -40,7 +40,14 @@ cxxbridge(
     sm/query/ast/mod.rs
     sm/misc/mod.rs
     sm/tile/mod.rs
-) 
+)
+
+cxxbridge(
+  NAME
+    session
+  SOURCES
+    lib.rs
+)
 
 cxxbridge(
   NAME
@@ -61,6 +68,7 @@ oxidize(
     arrow
     cxx-interface
     expr
+    session
 )
 
 oxidize(

@@ -113,7 +113,12 @@ fn leaf_ast_to_binary_expr(
         );
     };
 
-    fn apply<T>(field: &Field, ast: &ASTNode, operator: Operator) -> Result<Expr, Error>
+    fn apply<T>(
+        schema: &ArraySchema,
+        field: &Field,
+        ast: &ASTNode,
+        operator: Operator,
+    ) -> Result<Expr, Error>
     where
         T: FromBytes,
         <T as FromBytes>::Bytes: for<'a> TryFrom<&'a [u8]>,
@@ -127,9 +132,10 @@ fn leaf_ast_to_binary_expr(
             .map(ScalarValue::from)
             .peekable();
 
-        let expect_datatype = tiledb_arrow::schema::field_arrow_datatype(field).map_err(|e| {
-            InternalError::SchemaField(field.name_cxx().to_string_lossy().into_owned(), e)
-        })?;
+        let expect_datatype =
+            tiledb_arrow::schema::field_arrow_datatype(schema, field).map_err(|e| {
+                InternalError::SchemaField(field.name_cxx().to_string_lossy().into_owned(), e)
+            })?;
 
         let right = match field.cell_val_num() {
             CellValNum::Single => {
@@ -199,7 +205,7 @@ fn leaf_ast_to_binary_expr(
     apply_physical_type!(
         value_type,
         NativeType,
-        apply::<NativeType>(&field, ast, op),
+        apply::<NativeType>(schema, &field, ast, op),
         |invalid: Datatype| Err(InternalError::InvalidDatatype(invalid.repr.into()).into())
     )
 }

@@ -59,6 +59,11 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/expr.h"
+#include "tiledb/oxidize/session.h"
+#endif
+
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -722,6 +727,27 @@ void Query::init() {
           label_buffers_,
           buffers_,
           fragment_name_));
+    }
+
+    if (!predicates_.empty()) {
+      try {
+        // treat existing query condition (if any) as datafusion
+        if (condition_.has_value()) {
+          predicates_.push_back(condition_->as_datafusion(array_schema()));
+          condition_.reset();
+        }
+
+        // join them together
+        rust::Slice<const rust::Box<
+            tiledb::oxidize::datafusion::logical_expr::LogicalExpr>>
+            preds(predicates_.data(), predicates_.size());
+        auto conjunction =
+            tiledb::oxidize::datafusion::logical_expr::make_conjunction(preds);
+        condition_.emplace(array_schema(), std::move(conjunction));
+      } catch (const rust::Error& e) {
+        throw QueryException(
+            "Error initializing predicates: " + std::string(e.what()));
+      }
     }
 
     // Create the query strategy if querying main array and the Subarray does
@@ -1494,6 +1520,49 @@ Status Query::set_condition(const QueryCondition& condition) {
   return Status::Ok();
 }
 
+Status Query::add_predicate(const char* predicate) {
+  if (type_ != QueryType::READ) {
+    return logger_->status(
+        Status_QueryError("Cannot add query predicate; Operation only "
+                          "applicable to read queries"));
+  }
+  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
+    return logger_->status(Status_QueryError(
+        "Cannot add query predicate; Adding a predicate to an already "
+        "initialized query is not supported."));
+  }
+
+  try {
+    auto box_extern_expr =
+        resources_.session().parse_expr(predicate, array_schema());
+    auto extern_expr = box_extern_expr.into_raw();
+
+    // NB: Rust cxx does not have a way to have crate A construct and return
+    // an opaque Rust type which is defined in crate B. So above we create an
+    // "ExternLogicalExpr" whose representation is exactly that of
+    // LogicalExpr, and we can transmute the raw pointer after un-boxing it.
+    // This is all quite unsafe but that's life at the FFI boundary. For now,
+    // hopefully.
+    using LogicalExpr = tiledb::oxidize::datafusion::logical_expr::LogicalExpr;
+    auto expr = rust::Box<LogicalExpr>::from_raw(
+        reinterpret_cast<LogicalExpr*>(extern_expr));
+
+    if (!expr->is_predicate(array_schema())) {
+      return Status_QueryError("Expression does not return a boolean value");
+    }
+    if (expr->has_aggregate_functions()) {
+      return Status_QueryError(
+          "Aggregate functions in predicate is not supported");
+    }
+    predicates_.push_back(std::move(expr));
+  } catch (const rust::Error& e) {
+    return Status_QueryError(
+        "Error adding predicate: " + std::string(e.what()));
+  }
+
+  return Status::Ok();
+}
+
 Status Query::add_update_value(
     const char* field_name,
     const void* update_value,
@@ -1657,7 +1726,8 @@ Status Query::submit() {
       throw_if_not_ok(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.
-      // If we cache an entire write a query may be uninitialized for N submits.
+      // If we cache an entire write a query may be uninitialized for N
+      // submits.
       if (!query_remote_buffer_storage_.has_value() &&
           type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
         query_remote_buffer_storage_.emplace(*this, buffers_);
@@ -1791,8 +1861,8 @@ bool Query::is_aggregate(std::string output_field_name) const {
 /* ****************************** */
 
 Layout Query::effective_layout() const {
-  // If the user has not set a layout, it will default to row-major, which will
-  // use the legacy reader on sparse arrays, and fail if aggregates were
+  // If the user has not set a layout, it will default to row-major, which
+  // will use the legacy reader on sparse arrays, and fail if aggregates were
   // specified. However, if only aggregates are specified and no regular data
   // buffers, the layout doesn't matter and we can transparently switch to the
   // much more efficient unordered layout.
@@ -1876,14 +1946,16 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       all_dense &= frag_md->dense();
     }
 
-    // We are going to deprecate dense arrays with sparse fragments in 2.27 but
-    // log a warning for now.
+    // We are going to deprecate dense arrays with sparse fragments in 2.27
+    // but log a warning for now.
     if (array_schema_->dense() && !all_dense) {
       LOG_WARN(
           "This dense array contains sparse fragments. Support for reading "
-          "sparse fragments in dense arrays will be removed in TileDB version "
+          "sparse fragments in dense arrays will be removed in TileDB "
+          "version "
           "2.27 to be released in September 2024. To make sure this array "
-          "continues to work after an upgrade to version 2.27 or later, please "
+          "continues to work after an upgrade to version 2.27 or later, "
+          "please "
           "consolidate the sparse fragments using a TileDB version 2.26 or "
           "earlier.");
     }
@@ -2008,8 +2080,8 @@ Status Query::check_buffer_names() {
                             "cells to be written"));
     }
 
-    // All attributes/dimensions must be provided unless this query is only for
-    // dimension labels.
+    // All attributes/dimensions must be provided unless this query is only
+    // for dimension labels.
     if (!only_dim_label_query() && !allow_separate_attribute_writes()) {
       auto expected_num = array_schema_->attribute_num();
       expected_num += static_cast<decltype(expected_num)>(

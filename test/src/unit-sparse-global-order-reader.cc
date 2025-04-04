@@ -36,6 +36,7 @@
 #include "test/support/src/array_templates.h"
 #include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
+#include "test/support/src/query_helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/array/array_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -147,6 +148,7 @@ struct FxRun1D {
 
   // for evaluating
   std::optional<tdb_unique_ptr<tiledb::sm::ASTNode>> condition;
+  bool condition_use_datafusion = false;
 
   DefaultArray1DConfig<DIMENSION_TYPE> array;
   SparseGlobalOrderReaderMemoryBudget memory;
@@ -258,6 +260,7 @@ struct FxRun2D {
       std::optional<templates::Domain<Coord1Type>>>>
       subarray;
   std::optional<tdb_unique_ptr<tiledb::sm::ASTNode>> condition;
+  bool condition_use_datafusion;
 
   size_t num_user_cells;
 
@@ -271,7 +274,8 @@ struct FxRun2D {
   SparseGlobalOrderReaderMemoryBudget memory;
 
   FxRun2D()
-      : capacity(64)
+      : condition_use_datafusion(false)
+      , capacity(64)
       , allow_dups(true)
       , tile_order_(TILEDB_ROW_MAJOR)
       , cell_order_(TILEDB_ROW_MAJOR) {
@@ -509,7 +513,8 @@ struct CSparseGlobalOrderFx {
   template <typename Asserter, InstanceType Instance>
   DeleteArrayGuard run_create(Instance& instance);
   template <typename Asserter, InstanceType Instance>
-  void run_execute(Instance& instance);
+  std::optional<typename Instance::FragmentType> run_execute(
+      Instance& instance);
 
   /**
    * Runs an input against a fresh array.
@@ -517,7 +522,7 @@ struct CSparseGlobalOrderFx {
    * and checks that what we read out matches what we put in.
    */
   template <typename Asserter, InstanceType Instance>
-  void run(Instance& instance);
+  std::optional<typename Instance::FragmentType> run(Instance& instance);
 
   template <typename CAPIReturn>
   std::optional<std::string> error_if_any(CAPIReturn apirc) const;
@@ -3401,11 +3406,12 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
  * expected result order computed from the input data.
  */
 template <typename Asserter, InstanceType Instance>
-void CSparseGlobalOrderFx::run(Instance& instance) {
+std::optional<typename Instance::FragmentType> CSparseGlobalOrderFx::run(
+    Instance& instance) {
   reset_config();
 
   auto tmparray = run_create<Asserter, Instance>(instance);
-  run_execute<Asserter, Instance>(instance);
+  return run_execute<Asserter, Instance>(instance);
 }
 
 template <typename Asserter, InstanceType Instance>
@@ -3432,10 +3438,11 @@ DeleteArrayGuard CSparseGlobalOrderFx::run_create(Instance& instance) {
 }
 
 template <typename Asserter, InstanceType Instance>
-void CSparseGlobalOrderFx::run_execute(Instance& instance) {
+std::optional<typename Instance::FragmentType>
+CSparseGlobalOrderFx::run_execute(Instance& instance) {
   ASSERTER(instance.num_user_cells > 0);
 
-  std::decay_t<decltype(instance.fragments[0])> expect;
+  typename Instance::FragmentType expect;
 
   // for de-duplicating, track the fragment that each coordinate came from
   // we will use this to select the coordinate from the most recent fragment
@@ -3453,12 +3460,6 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
       expect_fragment.insert(expect_fragment.end(), fragment.size(), f);
     } else {
       std::vector<uint64_t> accept;
-      std::optional<
-          templates::QueryConditionEvalSchema<typename Instance::FragmentType>>
-          eval;
-      if (instance.condition.has_value()) {
-        eval.emplace();
-      }
       for (uint64_t i = 0; i < fragment.size(); i++) {
         if (!instance.pass_subarray(fragment, i)) {
           continue;
@@ -3560,10 +3561,17 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   }
 
   if (instance.condition.has_value()) {
-    tiledb::sm::QueryCondition qc(instance.condition->get()->clone());
-    const auto rc =
-        query->query_->set_condition(qc);  // SAFETY: this performs a deep copy
-    ASSERTER(rc.to_string() == "Ok");
+    if (instance.condition_use_datafusion) {
+      const std::string sql = tiledb::test::to_sql(
+          *instance.condition.value().get(),
+          array->array()->array_schema_latest());
+      TRY(context(), tiledb_query_add_predicate(context(), query, sql.c_str()));
+    } else {
+      tiledb::sm::QueryCondition qc(instance.condition->get()->clone());
+      const auto rc = query->query_->set_condition(
+          qc);  // SAFETY: this performs a deep copy
+      ASSERTER(rc.to_string() == "Ok");
+    }
   }
 
   // Prepare output buffer
@@ -3613,7 +3621,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
             }
           }
           tiledb_query_free(&query);
-          return;
+          return std::nullopt;
         }
         if (err->find("Cannot set array memory budget") != std::string::npos) {
           if (!vfs_test_setup_.is_rest()) {
@@ -3626,7 +3634,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
             ASSERTER(array_usage > array_budget);
           }
           tiledb_query_free(&query);
-          return;
+          return std::nullopt;
         }
         if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
           if (err->find(
@@ -3636,13 +3644,13 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
             // we can probably make some assertions about what this should have
             // looked like but for now we'll let it go
             tiledb_query_free(&query);
-            return;
+            return std::nullopt;
           }
           if (err->find("Cannot load tile offsets") != std::string::npos) {
             // not enough memory budget for tile offsets, don't bother asserting
             // about it (for now?)
             tiledb_query_free(&query);
-            return;
+            return std::nullopt;
           }
         }
       }
@@ -3706,15 +3714,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   // Clean up.
   tiledb_query_free(&query);
 
-  std::apply(
-      [outcursor](auto&... outfield) {
-        std::apply(
-            [&](const auto&... field_cursor) {
-              (outfield.finish_multipart_read(field_cursor), ...);
-            },
-            outcursor);
-      },
-      std::tuple_cat(outdims, outatts));
+  templates::query::resize_fields<Asserter>(out, outcursor);
 
   ASSERTER(expect.dimensions() == outdims);
 
@@ -3788,6 +3788,8 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
       ASSERTER(can_complete.has_value());
     }
   }
+
+  return expect;
 }
 
 // rapidcheck generators and Arbitrary specializations
@@ -3869,20 +3871,22 @@ struct Arbitrary<FxRun1D<DIMENSION_TYPE, ATTR_TYPES...>> {
     auto num_user_cells = gen::inRange(1, 8 * 1024 * 1024);
 
     return gen::apply(
-        [](auto fragments, int num_user_cells) {
+        [](auto fragments, int num_user_cells, bool condition_use_datafusion) {
           FxRun1D instance;
           instance.array.allow_dups_ = std::get<0>(fragments);
           instance.array.dimension_ = std::get<1>(fragments);
           instance.subarray = std::get<2>(fragments);
           instance.fragments = std::move(std::get<3>(fragments).first);
           instance.condition = std::move(std::get<3>(fragments).second);
+          instance.condition_use_datafusion = condition_use_datafusion;
 
           instance.num_user_cells = num_user_cells;
 
           return instance;
         },
         fragments,
-        num_user_cells);
+        num_user_cells,
+        gen::arbitrary<bool>());
   }
 };
 
@@ -3978,7 +3982,8 @@ struct Arbitrary<FxRun2D> {
         [](auto fragments,
            int num_user_cells,
            tiledb_layout_t tile_order,
-           tiledb_layout_t cell_order) {
+           tiledb_layout_t cell_order,
+           bool condition_use_datafusion) {
           FxRun2D instance;
           instance.allow_dups = std::get<0>(fragments);
           instance.d1 = std::get<1>(fragments);
@@ -3986,6 +3991,7 @@ struct Arbitrary<FxRun2D> {
           instance.subarray = std::get<3>(fragments);
           instance.fragments = std::move(std::get<4>(fragments).first);
           instance.condition = std::move(std::get<4>(fragments).second);
+          instance.condition_use_datafusion = condition_use_datafusion;
 
           // TODO: capacity
           instance.num_user_cells = num_user_cells;
@@ -3997,7 +4003,8 @@ struct Arbitrary<FxRun2D> {
         fragments,
         num_user_cells,
         tile_order,
-        cell_order);
+        cell_order,
+        gen::arbitrary<bool>());
   }
 };
 
