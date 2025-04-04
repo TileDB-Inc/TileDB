@@ -1720,6 +1720,19 @@ TEST_CASE_METHOD(
         false,
         std::vector<templates::Domain<int>>{templates::Domain<int>(397, 1320)},
         std::move(qc));
+
+    value = 1;
+    qc.reset(new tiledb::sm::ASTNodeVal(
+        "d1", &value, sizeof(value), tiledb::sm::QueryConditionOp::LT));
+
+    doit.operator()<tiledb::test::AsserterCatch>(
+        17,
+        160,
+        1024,
+        1,
+        false,
+        Subarray1DType<int>{templates::Domain<int>(0, 1908)},
+        std::move(qc));
   }
 
   SECTION("Rapidcheck") {
@@ -3471,6 +3484,19 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
             if (can_complete.has_value()) {
               ASSERTER(!can_complete.value());
             }
+          }
+          tiledb_query_free(&query);
+          return;
+        }
+        if (err->find("Cannot set array memory budget") != std::string::npos) {
+          if (!vfs_test_setup_.is_rest()) {
+            // skip for REST since we will not have accurate array memory
+            const uint64_t array_usage =
+                array->array()->memory_tracker()->get_memory_usage();
+            const uint64_t array_budget =
+                std::stod(instance.memory.ratio_array_data_) *
+                std::stol(instance.memory.total_budget_);
+            ASSERTER(array_usage > array_budget);
           }
           tiledb_query_free(&query);
           return;
