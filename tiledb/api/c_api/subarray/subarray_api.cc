@@ -97,6 +97,19 @@ capi_return_t tiledb_subarray_add_point_ranges(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_subarray_add_point_ranges_var(
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const void* buffer_val,
+    uint64_t buffer_val_size,
+    const uint64_t* buffer_off,
+    uint64_t buffer_off_size) {
+  ensure_subarray_is_valid(subarray);
+  subarray->add_point_ranges_var(
+      dim_idx, buffer_val, buffer_val_size, buffer_off, buffer_off_size);
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_subarray_add_range(
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
@@ -305,6 +318,25 @@ CAPI_INTERFACE(
     uint64_t count) {
   return api_entry_context<tiledb::api::tiledb_subarray_add_point_ranges>(
       ctx, subarray, dim_idx, start, count);
+}
+
+CAPI_INTERFACE(
+    subarray_add_point_ranges_var,
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const void* buffer_val,
+    uint64_t buffer_val_size,
+    const uint64_t* buffer_off,
+    uint64_t buffer_off_size) {
+  return api_entry_context<tiledb::api::tiledb_subarray_add_point_ranges_var>(
+      ctx,
+      subarray,
+      dim_idx,
+      buffer_val,
+      buffer_val_size,
+      buffer_off,
+      buffer_off_size);
 }
 
 CAPI_INTERFACE(
