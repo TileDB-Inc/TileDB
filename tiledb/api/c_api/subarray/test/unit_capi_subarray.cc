@@ -172,6 +172,30 @@ TEST_CASE(
   SECTION("success") {
     rc = tiledb_subarray_add_point_ranges(x.ctx(), x.subarray, 0, ranges, 2);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+    // validate range_num
+    uint64_t range_num;
+    rc = tiledb_subarray_get_range_num(x.ctx(), x.subarray, 0, &range_num);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(range_num == 2);
+
+    // validate range
+    const void* start;
+    const void* end;
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 0, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(*static_cast<const int*>(start) == 1);
+    CHECK(*static_cast<const int*>(end) == 1);
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 1, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(*static_cast<const int*>(start) == 4);
+    CHECK(*static_cast<const int*>(end) == 4);
+    // there are only two ranges
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 2, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null context") {
     rc = tiledb_subarray_add_point_ranges(nullptr, x.subarray, 0, ranges, 2);
@@ -252,6 +276,10 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     CHECK(std::string(static_cast<const char*>(start), 2) == "st");
     CHECK(std::string(static_cast<const char*>(end), 2) == "st");
+    // there are only five ranges
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 5, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null context") {
     rc = tiledb_subarray_add_point_ranges_var(
