@@ -51,6 +51,8 @@ struct TileOverlap {
    * The ``ratio`` is defined as the ratio of the volume of the overlap over
    * the total tile volume. This is a number in [0.0, 1.0]. An overlap of 1.0
    * indicates full overlap and 0.0 no overlap at all.
+   *
+   * The ratio is used for result size estimation.
    */
   std::vector<std::pair<uint64_t, double>> tiles_;
 
