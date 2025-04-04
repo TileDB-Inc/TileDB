@@ -80,13 +80,13 @@ class ArraySchemaException : public StatusException {
 /* ****************************** */
 
 ArraySchema::ArraySchema(
-    ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker)
+    ArrayType array_type,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const std::optional<std::pair<uint64_t, uint64_t>>& timestamp_range)
     : memory_tracker_(memory_tracker)
     , uri_(URI())
     , array_uri_(URI())
     , version_(constants::format_version)
-    , timestamp_range_(std::make_pair(
-          utils::time::timestamp_now_ms(), utils::time::timestamp_now_ms()))
     , name_("")
     , array_type_(array_type)
     , allows_dups_(false)
@@ -106,6 +106,11 @@ ArraySchema::ArraySchema(
           memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , current_domain_(make_shared<CurrentDomain>(
           memory_tracker, constants::current_domain_version)) {
+  // Set timestamp to the user passed-in range, otherwise set to the current
+  // time
+  uint64_t now = utils::time::timestamp_now_ms();
+  timestamp_range_ = timestamp_range.value_or(std::make_pair(now, now));
+
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -121,7 +126,7 @@ ArraySchema::ArraySchema(
       Datatype::UINT8));
 
   // Generate URI and name for ArraySchema
-  generate_uri();
+  generate_uri(timestamp_range);
 }
 
 ArraySchema::ArraySchema(
