@@ -114,6 +114,11 @@ RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     , name_(name)
     , filepath_(homedir + constants::rest_profile_filepath)
     , old_filepath_(homedir + constants::cloud_profile_filepath) {
+  if (name_.empty()) {
+    throw RestProfileException(
+        "Failed to create RestProfile; name cannot be empty.");
+  }
+
   // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
   std::filesystem::create_directories(homedir + ".tiledb");
 
