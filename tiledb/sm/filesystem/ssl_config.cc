@@ -57,12 +57,10 @@ SSLConfig::SSLConfig(const Config& cfg)
     ca_path_ = ca_path.value();
   }
 
-  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
-    // If neither ca_file or ca_path are set, we look for a system default
-    // CA file on Linux platforms.
-    if (ca_file_.empty() && ca_path_.empty()) {
-      ca_file_ = tiledb::platform::PlatformCertFile::get();
-    }
+  // If neither ca_file or ca_path are set, we look for a system default
+  // CA file if available.
+  if (ca_file_.empty() && ca_path_.empty()) {
+    ca_file_ = tiledb::platform::PlatformCertFile::get();
   }
 
   auto verify = cfg.get<bool>("ssl.verify");
