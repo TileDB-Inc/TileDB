@@ -615,6 +615,22 @@ TILEDB_EXPORT int32_t tiledb_query_set_condition(
     const tiledb_query_condition_t* cond) TILEDB_NOEXCEPT;
 
 /**
+ * Adds a predicate to be applied to a read.
+ *
+ * **Example:**
+ *
+ * TODO
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param predicate A text representation of the desired predicate.
+ */
+TILEDB_EXPORT capi_return_t tiledb_query_add_predicate(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* predicate) TILEDB_NOEXCEPT;
+
+/**
  * Flushes all internal state of a query object and finalizes the query.
  * This is applicable only to global layout writes. It has no effect for
  * any other query type.
