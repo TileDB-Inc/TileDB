@@ -227,19 +227,17 @@ TEST_CASE(
     "[capi][subarray]") {
   capi_return_t rc;
   ordinary_subarray_var x{};
-  const char* buffer_val = "TileDBtest";
-  uint64_t buffer_val_size = 10;
-  uint64_t buffer_off[] = {0, 2, 3, 6, 8};
-  uint64_t buffer_off_size = 5;
+  const char* buffer = "aabcccddee";
+  uint64_t buffer_size = 10;
+  uint64_t offsets[] = {0, 2, 3, 6, 8};
+  uint64_t offsets_size = 5;
+
+  // According to the data passed, the expected ranges are:
+  // (aa, aa), (b, b), (ccc, ccc), (dd, dd), (ee, ee)
+
   SECTION("success") {
     rc = tiledb_subarray_add_point_ranges_var(
-        x.ctx(),
-        x.subarray,
-        0,
-        buffer_val,
-        buffer_val_size,
-        buffer_off,
-        buffer_off_size);
+        x.ctx(), x.subarray, 0, buffer, buffer_size, offsets, offsets_size);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
 
     // validate range_num
@@ -254,28 +252,28 @@ TEST_CASE(
     rc = tiledb_subarray_get_range(
         x.ctx(), x.subarray, 0, 0, &start, &end, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 2) == "Ti");
-    CHECK(std::string(static_cast<const char*>(end), 2) == "Ti");
+    CHECK(std::string(static_cast<const char*>(start), 2) == "aa");
+    CHECK(std::string(static_cast<const char*>(end), 2) == "aa");
     rc = tiledb_subarray_get_range(
         x.ctx(), x.subarray, 0, 1, &start, &end, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 1) == "l");
-    CHECK(std::string(static_cast<const char*>(end), 1) == "l");
+    CHECK(std::string(static_cast<const char*>(start), 1) == "b");
+    CHECK(std::string(static_cast<const char*>(end), 1) == "b");
     rc = tiledb_subarray_get_range(
         x.ctx(), x.subarray, 0, 2, &start, &end, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 3) == "eDB");
-    CHECK(std::string(static_cast<const char*>(end), 3) == "eDB");
+    CHECK(std::string(static_cast<const char*>(start), 3) == "ccc");
+    CHECK(std::string(static_cast<const char*>(end), 3) == "ccc");
     rc = tiledb_subarray_get_range(
         x.ctx(), x.subarray, 0, 3, &start, &end, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 2) == "te");
-    CHECK(std::string(static_cast<const char*>(end), 2) == "te");
+    CHECK(std::string(static_cast<const char*>(start), 2) == "dd");
+    CHECK(std::string(static_cast<const char*>(end), 2) == "dd");
     rc = tiledb_subarray_get_range(
         x.ctx(), x.subarray, 0, 4, &start, &end, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    CHECK(std::string(static_cast<const char*>(start), 2) == "st");
-    CHECK(std::string(static_cast<const char*>(end), 2) == "st");
+    CHECK(std::string(static_cast<const char*>(start), 2) == "ee");
+    CHECK(std::string(static_cast<const char*>(end), 2) == "ee");
     // there are only five ranges
     rc = tiledb_subarray_get_range(
         x.ctx(), x.subarray, 0, 5, &start, &end, nullptr);
@@ -283,57 +281,27 @@ TEST_CASE(
   }
   SECTION("null context") {
     rc = tiledb_subarray_add_point_ranges_var(
-        nullptr,
-        x.subarray,
-        0,
-        buffer_val,
-        buffer_val_size,
-        buffer_off,
-        buffer_off_size);
+        nullptr, x.subarray, 0, buffer, buffer_size, offsets, offsets_size);
     REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null subarray") {
     rc = tiledb_subarray_add_point_ranges_var(
-        x.ctx(),
-        nullptr,
-        0,
-        buffer_val,
-        buffer_val_size,
-        buffer_off,
-        buffer_off_size);
+        x.ctx(), nullptr, 0, buffer, buffer_size, offsets, offsets_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid dim_idx") {
     rc = tiledb_subarray_add_point_ranges_var(
-        x.ctx(),
-        x.subarray,
-        3,
-        buffer_val,
-        buffer_val_size,
-        buffer_off,
-        buffer_off_size);
+        x.ctx(), x.subarray, 3, buffer, buffer_size, offsets, offsets_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null buffer_val") {
     rc = tiledb_subarray_add_point_ranges_var(
-        x.ctx(),
-        x.subarray,
-        0,
-        nullptr,
-        buffer_val_size,
-        buffer_off,
-        buffer_off_size);
+        x.ctx(), x.subarray, 0, nullptr, buffer_size, offsets, offsets_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null buffer_off") {
     rc = tiledb_subarray_add_point_ranges_var(
-        x.ctx(),
-        x.subarray,
-        0,
-        buffer_val,
-        buffer_val_size,
-        nullptr,
-        buffer_off_size);
+        x.ctx(), x.subarray, 0, buffer, buffer_size, nullptr, offsets_size);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 
