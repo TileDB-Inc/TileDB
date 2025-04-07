@@ -427,6 +427,8 @@ void Enumeration::generate_value_map() {
     auto offsets = offsets_.data_as<uint64_t>();
     uint64_t num_offsets = offsets_.size() / sizeof(uint64_t);
 
+    value_map_.reserve(num_offsets);
+
     for (uint64_t i = 0; i < num_offsets; i++) {
       uint64_t length = 0;
       if (i < num_offsets - 1) {
@@ -441,6 +443,9 @@ void Enumeration::generate_value_map() {
   } else {
     uint64_t i = 0;
     auto stride = cell_size();
+
+    value_map_.reserve(data_.size() / stride);
+
     while (i * stride < data_.size()) {
       auto sv = std::string_view(char_data + i * stride, stride);
       add_value_to_map(sv, i);
