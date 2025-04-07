@@ -494,10 +494,12 @@ void Subarray::add_point_ranges_var(
     range.resize(2 * (end_offset - start_offset));
     // point ranges
     std::memcpy(
-        &range[0], (uint8_t*)start + start_offset, end_offset - start_offset);
+        &range[0],
+        static_cast<const uint8_t*>(start) + start_offset,
+        end_offset - start_offset);
     std::memcpy(
         &range[end_offset - start_offset],
-        (uint8_t*)start + start_offset,
+        static_cast<const uint8_t*>(start) + start_offset,
         end_offset - start_offset);
     // Add range
     this->add_range(
