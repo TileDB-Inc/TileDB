@@ -35,13 +35,15 @@ find_package(lz4 CONFIG)
 # vcpkg uses its own build system called lz4::lz4, and Conda does not use CMake at all.
 # Once lz4 releases a new version with these PRs merged, and vcpkg and Conda update to
 # that version, and we update our vcpkg baseline to that version, we can simplify this logic.
+#
+# Addendum: While vcpkg has updated to the official CMake build system, Conda has not yet.
+# Let's keep the lowercase name for maximum compatibility, and once Conda updates, we can
+# remove this find module and just call find_package(lz4 CONFIG) directly.
 if (lz4_FOUND)
-  if(TARGET LZ4::lz4)
+  if(TARGET LZ4::lz4 AND NOT TARGET lz4::lz4)
     add_library(lz4::lz4 ALIAS LZ4::lz4)
-    return()
-  elseif(TARGET lz4::lz4)
-    return()
   endif()
+  return()
 endif()
 
 # Package not found, search in system paths.
