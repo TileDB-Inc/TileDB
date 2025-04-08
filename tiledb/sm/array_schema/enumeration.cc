@@ -455,7 +455,7 @@ void Enumeration::generate_value_map() {
 }
 
 void Enumeration::add_value_to_map(std::string_view& sv, uint64_t index) {
-  const auto res = value_map_.insert(std::make_pair(sv, index));
+  const auto res = value_map_.emplace(sv, index);
   if (!res.second) {
     throw EnumerationException(
         "Invalid duplicated value in enumeration '" + std::string(sv) + "'");
