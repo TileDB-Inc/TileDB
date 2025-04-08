@@ -420,7 +420,10 @@ void Subarray::add_point_ranges(
           .domain()
           .dimension_ptr(dim_idx)
           ->var_size()) {
-    throw SubarrayException("Cannot add range; Range must be fixed-sized");
+    throw SubarrayException(
+        "Cannot add range; Range must be fixed-sized. If you "
+        "want to add a variable-sized range, use the "
+        "add_range_var() instead");
   }
 
   // Prepare a temp range
@@ -438,6 +441,71 @@ void Subarray::add_point_ranges(
     // Add range
     this->add_range(
         dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
+  }
+}
+
+void Subarray::add_point_ranges_var(
+    unsigned dim_idx,
+    const void* start,
+    uint64_t start_size,
+    const uint64_t* start_offsets,
+    uint64_t start_offsets_size,
+    bool check_for_label) {
+  if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
+    throw SubarrayException("Cannot add range; Invalid dimension index");
+  }
+
+  if (check_for_label && label_range_subset_[dim_idx].has_value()) {
+    throw SubarrayException(
+        "Cannot add range to to dimension; A range is already set on a "
+        "dimension label for this dimension");
+  }
+
+  if (start_offsets == nullptr || start == nullptr) {
+    throw SubarrayException("Cannot add ranges; Invalid start pointer");
+  }
+
+  if (!this->array_->array_schema_latest()
+           .domain()
+           .dimension_ptr(dim_idx)
+           ->var_size()) {
+    throw SubarrayException(
+        "Cannot add range; Range must be variable-sized"
+        "If you want to add a fixed-sized range, use the "
+        "add_point_ranges() instead");
+  }
+
+  // Prepare a temp range
+  std::vector<uint8_t> range;
+
+  for (size_t i = 0; i < start_offsets_size; i++) {
+    uint64_t start_offset = ((uint64_t*)start_offsets)[i];
+    uint64_t end_offset;
+    if (i == start_offsets_size - 1) {
+      end_offset = start_size;
+    } else {
+      end_offset = ((uint64_t*)start_offsets)[i + 1];
+    }
+
+    if (start_offset > start_size || end_offset > start_size) {
+      throw SubarrayException("Cannot add ranges; Invalid range");
+    }
+
+    range.resize(2 * (end_offset - start_offset));
+    // point ranges
+    std::memcpy(
+        &range[0],
+        static_cast<const uint8_t*>(start) + start_offset,
+        end_offset - start_offset);
+    std::memcpy(
+        &range[end_offset - start_offset],
+        static_cast<const uint8_t*>(start) + start_offset,
+        end_offset - start_offset);
+    // Add range
+    this->add_range(
+        dim_idx,
+        Range(&range[0], 2 * (end_offset - start_offset)),
+        err_on_range_oob_);
   }
 }
 

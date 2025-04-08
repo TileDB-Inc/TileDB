@@ -93,6 +93,16 @@ struct tiledb_subarray_handle_t
     subarray_->add_point_ranges(dim_idx, start, count, check);
   }
 
+  void add_point_ranges_var(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t start_size,
+      const uint64_t* start_offsets,
+      uint64_t start_offsets_size) {
+    subarray_->add_point_ranges_var(
+        dim_idx, start, start_size, start_offsets, start_offsets_size);
+  }
+
   void add_range(unsigned dim_idx, const void* start, const void* end) {
     subarray_->add_range(dim_idx, start, end);
   }
