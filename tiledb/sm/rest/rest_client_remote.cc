@@ -193,7 +193,8 @@ RestClientRemote::check_group_exists_from_rest(const URI& uri) {
 }
 
 tuple<Status, optional<shared_ptr<ArraySchema>>>
-RestClientRemote::get_array_schema_from_rest(const URI& uri) {
+RestClientRemote::get_array_schema_from_rest(
+    const ContextResources& resources, const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
@@ -218,7 +219,7 @@ RestClientRemote::get_array_schema_from_rest(const URI& uri) {
         nullopt};
 
   auto array_schema = serialization::array_schema_deserialize(
-      serialization_type_, returned_data, memory_tracker_);
+      resources, serialization_type_, returned_data, memory_tracker_);
 
   array_schema->set_array_uri(uri);
 
@@ -229,6 +230,7 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 RestClientRemote::post_array_schema_from_rest(
+    const ContextResources& resources,
     const Config& config,
     const URI& uri,
     uint64_t timestamp_start,
@@ -268,7 +270,12 @@ RestClientRemote::post_array_schema_from_rest(
   }
 
   return serialization::deserialize_load_array_schema_response(
-      uri, config, serialization_type_, returned_data, memory_tracker_);
+      resources,
+      uri,
+      config,
+      serialization_type_,
+      returned_data,
+      memory_tracker_);
 }
 
 Status RestClientRemote::post_array_schema_to_rest(
@@ -558,6 +565,7 @@ Status RestClientRemote::post_array_metadata_to_rest(
 
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 RestClientRemote::post_enumerations_from_rest(
+    const ContextResources& resources,
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
@@ -601,7 +609,12 @@ RestClientRemote::post_enumerations_from_rest(
   }
 
   return serialization::deserialize_load_enumerations_response(
-      array_schema, config, serialization_type_, returned_data, memory_tracker);
+      resources,
+      array_schema,
+      config,
+      serialization_type_,
+      returned_data,
+      memory_tracker);
 }
 
 void RestClientRemote::post_query_plan_from_rest(
@@ -1214,7 +1227,9 @@ Status RestClientRemote::post_array_schema_evolution_to_rest(
 }
 
 Status RestClientRemote::post_fragment_info_from_rest(
-    const URI& uri, FragmentInfo* fragment_info) {
+    const ContextResources& resources,
+    const URI& uri,
+    FragmentInfo* fragment_info) {
   if (fragment_info == nullptr)
     return LOG_STATUS(Status_RestError(
         "Error getting fragment info from REST; fragment info is null."));
@@ -1248,7 +1263,12 @@ Status RestClientRemote::post_fragment_info_from_rest(
         "Error getting fragment info from REST; server returned no data."));
 
   return serialization::fragment_info_deserialize(
-      fragment_info, serialization_type_, uri, returned_data, memory_tracker_);
+      resources,
+      fragment_info,
+      serialization_type_,
+      uri,
+      returned_data,
+      memory_tracker_);
 }
 
 Status RestClientRemote::post_group_metadata_from_rest(

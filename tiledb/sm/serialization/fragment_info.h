@@ -56,6 +56,7 @@ namespace serialization {
 /**
  * Convert Cap'n Proto message to Fragment Info.
  *
+ * @param resources Resources for building structures
  * @param fragment_info_reader cap'n proto class.
  * @param uri array uri that the fragment belongs to
  * @param fragment_info fragment info object to deserialize into.
@@ -63,6 +64,7 @@ namespace serialization {
  * @return Status
  */
 Status fragment_info_from_capnp(
+    const ContextResources& resources,
     const capnp::FragmentInfo::Reader& fragment_info_reader,
     const URI& uri,
     FragmentInfo* fragment_info,
@@ -122,6 +124,7 @@ Status fragment_info_serialize(
 /**
  * Deserialize a Cap'n Proto message into a fragment info object.
  *
+ * @param resources Resources for building structures
  * @param fragment_info fragment info object to deserialize into.
  * @param serialize_type format the data is serialized in: Cap'n Proto of JSON.
  * @param uri array uri that the fragment belongs to
@@ -130,6 +133,7 @@ Status fragment_info_serialize(
  * @return Status
  */
 Status fragment_info_deserialize(
+    const ContextResources& resources,
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,

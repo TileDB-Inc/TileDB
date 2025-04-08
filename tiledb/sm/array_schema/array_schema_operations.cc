@@ -245,7 +245,7 @@ shared_ptr<ArraySchema> load_array_schema(
   if (uri.is_tiledb()) {
     auto& rest_client = ctx.rest_client();
     auto&& [st, array_schema_response] =
-        rest_client.get_array_schema_from_rest(uri);
+        rest_client.get_array_schema_from_rest(ctx.resources(), uri);
     throw_if_not_ok(st);
     auto array_schema = std::move(array_schema_response).value();
 
@@ -254,6 +254,7 @@ shared_ptr<ArraySchema> load_array_schema(
       // Pass an empty list of enumeration names. REST will use timestamps to
       // load all enumerations on all schemas for the array within that range.
       auto ret = rest_client.post_enumerations_from_rest(
+          ctx.resources(),
           uri,
           array_schema->timestamp_start(),
           array_schema->timestamp_end(),

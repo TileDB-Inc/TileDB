@@ -88,6 +88,7 @@ void enumeration_to_capnp(
 }
 
 shared_ptr<const Enumeration> enumeration_from_capnp(
+    const ContextResources& resources,
     const capnp::Enumeration::Reader& reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   auto name = reader.getName();
@@ -113,6 +114,7 @@ shared_ptr<const Enumeration> enumeration_from_capnp(
   }
 
   return Enumeration::create(
+      resources,
       name,
       path_name,
       datatype,
@@ -190,6 +192,7 @@ void load_enumerations_response_to_capnp(
 
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 load_enumerations_response_from_capnp(
+    const ContextResources& resources,
     const capnp::LoadEnumerationsResponse::Reader& reader,
     const ArraySchema& array_schema,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -200,7 +203,7 @@ load_enumerations_response_from_capnp(
     auto enmr_readers = reader.getEnumerations();
     for (auto enmr_reader : enmr_readers) {
       loaded_enmrs.push_back(
-          enumeration_from_capnp(enmr_reader, memory_tracker));
+          enumeration_from_capnp(resources, enmr_reader, memory_tracker));
     }
     // The name of the latest array schema will not be serialized in the
     // response if we are only loading enumerations from the latest schema.
@@ -211,7 +214,7 @@ load_enumerations_response_from_capnp(
       std::vector<shared_ptr<const Enumeration>> loaded_enmrs;
       for (auto enmr_reader : enmr_entry_reader.getValue()) {
         loaded_enmrs.push_back(
-            enumeration_from_capnp(enmr_reader, memory_tracker));
+            enumeration_from_capnp(resources, enmr_reader, memory_tracker));
       }
 
       ret[enmr_entry_reader.getKey()] = loaded_enmrs;
@@ -344,6 +347,7 @@ void serialize_load_enumerations_response(
 
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
+    const ContextResources& resources,
     const ArraySchema& array_schema,
     const Config& config,
     SerializationType serialize_type,
@@ -358,7 +362,7 @@ deserialize_load_enumerations_response(
         utils::decode_json_message(response, builder);
         capnp::LoadEnumerationsResponse::Reader reader = builder.asReader();
         return load_enumerations_response_from_capnp(
-            reader, array_schema, memory_tracker);
+            resources, reader, array_schema, memory_tracker);
       }
       case SerializationType::CAPNP: {
         // Set traversal limit from config
@@ -377,7 +381,7 @@ deserialize_load_enumerations_response(
         capnp::LoadEnumerationsResponse::Reader reader =
             array_reader.getRoot<capnp::LoadEnumerationsResponse>();
         return load_enumerations_response_from_capnp(
-            reader, array_schema, memory_tracker);
+            resources, reader, array_schema, memory_tracker);
       }
       default: {
         throw EnumerationSerializationException(
@@ -421,6 +425,7 @@ void serialize_load_enumerations_response(
 
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
+    const Context&,
     const Array&,
     const Config&,
     SerializationType,

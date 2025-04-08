@@ -123,6 +123,7 @@ Status array_schema_to_capnp(
  * @return a new ArraySchema
  */
 shared_ptr<ArraySchema> array_schema_from_capnp(
+    const ContextResources& resources,
     const capnp::ArraySchema::Reader& schema_reader,
     const URI& uri,
     shared_ptr<MemoryTracker> memory_tracker);
@@ -142,11 +143,13 @@ void dimension_label_to_capnp(
 /**
  * Deserialize a dimension label from a cap'n proto object
  *
+ * @param resources Resources for building data structures
  * @param reader Cap'n proto reader object.
  * @param memory_tracker The memory tracker to use.
  * @return A new DimensionLabel.
  */
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
+    const ContextResources& resources,
     const capnp::DimensionLabel::Reader& reader,
     shared_ptr<MemoryTracker> memory_tracker);
 
@@ -168,6 +171,7 @@ Status array_schema_serialize(
     const bool client_side);
 
 shared_ptr<ArraySchema> array_schema_deserialize(
+    const ContextResources& resources,
     SerializationType serialize_type,
     span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker);
@@ -214,6 +218,7 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
+    const ContextResources& resources,
     const URI& uri,
     const Config& config,
     SerializationType serialization_type,

@@ -336,7 +336,7 @@ Status Array::open_without_fragments(
         throw instead of return Status */
       if (!use_refactored_array_open()) {
         auto&& [st, array_schema_latest] =
-            rest_client->get_array_schema_from_rest(array_uri_);
+            rest_client->get_array_schema_from_rest(resources_, array_uri_);
         if (!st.ok()) {
           throw StatusException(st);
         }
@@ -499,7 +499,7 @@ Status Array::open(
       }
       if (!use_refactored_array_open()) {
         auto&& [st, array_schema_latest] =
-            rest_client->get_array_schema_from_rest(array_uri_);
+            rest_client->get_array_schema_from_rest(resources_, array_uri_);
         throw_if_not_ok(st);
         set_array_schema_latest(array_schema_latest.value());
         if (serialize_enumerations()) {
@@ -850,6 +850,7 @@ Array::get_enumerations_all_schemas() {
       // Pass an empty list of enumeration names. REST will use timestamps to
       // load all enumerations on all schemas for the array within that range.
       ret = rest_client->post_enumerations_from_rest(
+          resources_,
           array_uri_,
           array_dir_timestamp_start_,
           array_dir_timestamp_end_,
@@ -949,6 +950,7 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
       }
 
       loaded = rest_client->post_enumerations_from_rest(
+          resources_,
           array_uri_,
           array_dir_timestamp_start_,
           array_dir_timestamp_end_,
@@ -2137,6 +2139,7 @@ void load_enumeration_into_schema(
     }
 
     auto ret = rest_client->post_enumerations_from_rest(
+        ctx.resources(),
         array_schema.array_uri(),
         array_schema.timestamp_start(),
         array_schema.timestamp_end(),

@@ -40,6 +40,7 @@
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 namespace tiledb::sm {
@@ -75,6 +76,7 @@ class Enumeration {
 
   /** Create a new Enumeration
    *
+   * @param resources Resources for computing the enumeration value map.
    * @param name The name of this Enumeration as referenced by attributes.
    * @param type The datatype of the enumeration values.
    * @param cell_val_num The cell_val_num of the enumeration.
@@ -91,6 +93,7 @@ class Enumeration {
    * @return shared_ptr<Enumeration> The created enumeration.
    */
   static shared_ptr<const Enumeration> create(
+      const ContextResources& resources,
       const std::string& name,
       Datatype type,
       uint32_t cell_val_num,
@@ -101,6 +104,7 @@ class Enumeration {
       uint64_t offsets_size,
       shared_ptr<MemoryTracker> memory_tracker) {
     return create(
+        resources,
         name,
         "",
         type,
@@ -115,6 +119,7 @@ class Enumeration {
 
   /** Create a new Enumeration
    *
+   * @param resources Resources for computing the enumeration value map.
    * @param name The name of this Enumeration as referenced by attributes.
    * @param path_name The last URI path component of the Enumeration.
    * @param type The datatype of the enumeration values.
@@ -132,6 +137,7 @@ class Enumeration {
    * @return shared_ptr<Enumeration> The created enumeration.
    */
   static shared_ptr<const Enumeration> create(
+      const ContextResources& resources,
       const std::string& name,
       const std::string& path_name,
       Datatype type,
@@ -144,6 +150,7 @@ class Enumeration {
       shared_ptr<MemoryTracker> memory_tracker) {
     struct EnableMakeShared : public Enumeration {
       EnableMakeShared(
+          const ContextResources& resources,
           const std::string& name,
           const std::string& path_name,
           Datatype type,
@@ -155,6 +162,7 @@ class Enumeration {
           uint64_t offsets_size,
           shared_ptr<MemoryTracker> memory_tracker)
           : Enumeration(
+                resources,
                 name,
                 path_name,
                 type,
@@ -169,6 +177,7 @@ class Enumeration {
     };
     return make_shared<EnableMakeShared>(
         HERE(),
+        resources,
         name,
         path_name,
         type,
@@ -189,7 +198,9 @@ class Enumeration {
    * @return A new Enumeration.
    */
   static shared_ptr<const Enumeration> deserialize(
-      Deserializer& deserializer, shared_ptr<MemoryTracker> memory_tracker);
+      const ContextResources& resources,
+      Deserializer& deserializer,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Create a new enumeration by extending an existing enumeration's
@@ -207,6 +218,7 @@ class Enumeration {
    * @return shared_ptr<Enumeration> The extended enumeration.
    */
   shared_ptr<const Enumeration> extend(
+      const ContextResources& resources,
       const void* data,
       uint64_t data_size,
       const void* offsets,
@@ -361,6 +373,7 @@ class Enumeration {
 
   /** Constructor
    *
+   * @param resources Resources for building the enumeration value map.
    * @param name The name of this Enumeration as referenced by attributes.
    * @param path_name The last URI path component of the Enumeration.
    * @param type The datatype of the enumeration values.
@@ -377,6 +390,7 @@ class Enumeration {
    * @param memory_tracker The memory tracker.
    */
   Enumeration(
+      const ContextResources& resources,
       const std::string& name,
       const std::string& path_name,
       Datatype type,
@@ -426,7 +440,7 @@ class Enumeration {
   /* ********************************* */
 
   /** Populate the value_map_ */
-  void generate_value_map();
+  void generate_value_map(const ContextResources& resources);
 
   /**
    * Add a value to value_map_
