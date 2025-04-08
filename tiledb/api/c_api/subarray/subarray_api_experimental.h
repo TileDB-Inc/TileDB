@@ -74,7 +74,7 @@ TILEDB_EXPORT capi_return_t tiledb_subarray_add_point_ranges(
  * **Example:**
  *
  * @code{.c}
- * const char* buffer = "TileDBtest";
+ * const char* buffer = "aabcccddee";
  * uint64_t buffer_size = 10;
  * uint64_t offsets[] = {0, 2, 3, 6, 8};
  * uint64_t offsets_size = 5;
