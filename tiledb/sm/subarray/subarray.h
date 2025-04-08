@@ -561,7 +561,7 @@ class Subarray {
   void add_range(unsigned dim_idx, const void* start, const void* end);
 
   /**
-   * @brief Set point ranges from a fixed-sized array
+   * @brief Set point ranges on a fixed-sized dimension
    *
    * @param dim_idx Dimension index.
    * @param start Pointer to start of the array.
@@ -577,7 +577,7 @@ class Subarray {
       bool check_for_label = true);
 
   /**
-   * @brief Set point ranges from a variable-sized array
+   * @brief Set point ranges on a variable-sized dimension
    *
    * @param dim_idx Dimension index.
    * @param start Pointer to start of the array.
