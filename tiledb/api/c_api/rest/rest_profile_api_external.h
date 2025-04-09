@@ -44,32 +44,11 @@ extern "C" {
 typedef struct tiledb_rest_profile_handle_t tiledb_rest_profile_t;
 
 /**
- * Allocates a TileDB RestProfile object.
- *
- * Accepts a name parameter, or `nullptr` to use the internal default.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_rest_profile_t* rest_profile;
- * tiledb_rest_profile_alloc("my_rest_profile", &rest_profile);
- *
- * tiledb_rest_profile_t* rest_profile1;
- * tiledb_rest_profile_alloc(nullptr, &rest_profile1);
- * @endcode
- *
- * @param[in] name A rest_profile name, or `nullptr` for default.
- * @param[out] rest_profile The rest_profile object to be created.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT capi_return_t tiledb_rest_profile_alloc(
-    const char* name, tiledb_rest_profile_t** rest_profile) TILEDB_NOEXCEPT;
-
-/**
  * Allocates an in-test TileDB RestProfile object.
  *
- * @note Intended for testing purposes only, to preserve the user's
- * `$HOME` path and their profiles from in-test changes.
+ * @note Directly passing `homedir` is intended primarily for testing purposes,
+ * to preserve the user's `$HOME` path and their profiles from in-test changes.
+ * Users may specifiy this path, or use `nullptr` for the default.
  *
  * **Example:**
  *
@@ -79,14 +58,17 @@ TILEDB_EXPORT capi_return_t tiledb_rest_profile_alloc(
  *   "my_rest_profile",
  *   TemporaryLocalDirectory("unit_capi_rest_profile").path(),
  *   &rest_profile);
+ *
+ * tiledb_rest_profile_t* rest_profile1;
+ * tiledb_rest_profile_alloc(nullptr, nullptr, &rest_profile1);
  * @endcode
  *
- * @param[in] name The rest_profile name.
- * @param[in] homedir The path to the in-test `$HOME` directory.
+ * @param[in] name The rest_profile name, or `nullptr` for default.
+ * @param[in] homedir The path to `$HOME` directory, or `nullptr` for default.
  * @param[out] rest_profile The rest_profile object to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_rest_profile_alloc_test(
+TILEDB_EXPORT capi_return_t tiledb_rest_profile_alloc(
     const char* name,
     const char* homedir,
     tiledb_rest_profile_t** rest_profile) TILEDB_NOEXCEPT;
@@ -106,8 +88,8 @@ TILEDB_EXPORT capi_return_t tiledb_rest_profile_alloc_test(
  *
  * @param[in] rest_profile The rest_profile object to be freed.
  */
-TILEDB_EXPORT void tiledb_rest_profile_free(
-    tiledb_rest_profile_t** rest_profile) TILEDB_NOEXCEPT;
+TILEDB_EXPORT capi_return_t
+tiledb_rest_profile_free(tiledb_rest_profile_t** rest_profile) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

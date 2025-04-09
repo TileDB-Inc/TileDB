@@ -29,6 +29,6 @@
 #include "../rest_profile_api_external.h"
 
 int main() {
-  tiledb_rest_profile_alloc_test(nullptr, nullptr, nullptr);
+  tiledb_rest_profile_alloc(nullptr, nullptr, nullptr);
   return 0;
 }
