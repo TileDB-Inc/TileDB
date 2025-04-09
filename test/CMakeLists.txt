@@ -202,6 +202,7 @@ if (TILEDB_SERIALIZATION)
     src/unit-capi-serialized_queries.cc
     src/unit-QueryCondition-serialization.cc
     src/unit-curl.cc
+    src/unit-rest-client-remote.cc
   )
 endif()
 

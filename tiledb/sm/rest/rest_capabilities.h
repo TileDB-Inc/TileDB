@@ -72,6 +72,9 @@ struct RestCapabilities {
   /// Whether or not the REST capabilities have been initialized.
   bool detected_ = false;
 
+  /// True if the configured REST server is legacy.
+  bool legacy_ = false;
+
   /// The currently deployed TileDB version available on the REST server.
   TileDBVersion rest_tiledb_version_{};
 
