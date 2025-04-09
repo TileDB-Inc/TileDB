@@ -1530,9 +1530,26 @@ const RestCapabilities& RestClientRemote::get_capabilities_from_rest() const {
   const std::string url = rest_server_ + "/v4/capabilities";
 
   Buffer data;
-  throw_if_not_ok(curlc.get_data(stats_, url, serialization_type_, &data, {}));
-  rest_capabilities_ =
-      serialization::rest_capabilities_deserialize(serialization_type_, data);
+  try {
+    throw_if_not_ok(
+        curlc.get_data(stats_, url, serialization_type_, &data, {}));
+  } catch (const std::exception& e) {
+    std::string msg = e.what();
+    if (msg.find("HTTP code 404") != std::string::npos) {
+      // Check if the message was a 404, indicating a legacy REST server.
+      rest_capabilities_.detected_ = rest_capabilities_.legacy_ = true;
+    } else {
+      // Failed to determine REST capabilities due to an unexpected error.
+      throw RestClientException(e.what());
+    }
+  }
+
+  // Deserialize the response if the request completed against 3.0 REST server.
+  if (!rest_capabilities_.legacy_) {
+    rest_capabilities_ =
+        serialization::rest_capabilities_deserialize(serialization_type_, data);
+  }
+
   return rest_capabilities_;
 }
 
