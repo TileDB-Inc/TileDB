@@ -49,7 +49,7 @@ class ordinary_rest_profile_exception : public StatusException {
 struct ordinary_rest_profile {
   tiledb_rest_profile_handle_t* rest_profile{nullptr};
   ordinary_rest_profile(const char* name, const char* homedir) {
-    int rc = tiledb_rest_profile_alloc_test(name, homedir, &rest_profile);
+    int rc = tiledb_rest_profile_alloc(name, homedir, &rest_profile);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test rest_profile");
     }
