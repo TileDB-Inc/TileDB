@@ -329,6 +329,13 @@ class ResultTile {
     /* ********************************* */
     /*                API                */
     /* ********************************* */
+    bool has_var_tile() const {
+      return var_tile_.has_value();
+    }
+
+    bool has_validity_tile() const {
+      return validity_tile_.has_value();
+    }
 
     /** @returns Fixed tile. */
     Tile& fixed_tile() {
