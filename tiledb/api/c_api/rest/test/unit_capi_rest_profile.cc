@@ -39,43 +39,41 @@
 const char* name_ = tiledb::sm::RestProfile::DEFAULT_NAME.c_str();
 tiledb::sm::TemporaryLocalDirectory tempdir_("unit_capi_rest_profile");
 
-/**
- * No TEST_CASE "C API: tiledb_rest_profile_alloc argument validation" here;
- * The user-facing API is not to be used in-test, to avoid async changes to
- * the local, on-disk file. Instead, `tiledb_rest_profile_alloc_test` is used
- * throughout this test, including in ordinary_rest_profile.
- */
-
 TEST_CASE(
-    "C API: tiledb_rest_profile_alloc_test argument validation",
+    "C API: tiledb_rest_profile_alloc argument validation",
     "[capi][rest_profile]") {
   capi_return_t rc;
   tiledb_rest_profile_t* profile;
   auto homedir = tempdir_.path().c_str();
   SECTION("success") {
-    rc = tiledb_rest_profile_alloc_test(name_, homedir, &profile);
+    rc = tiledb_rest_profile_alloc(name_, homedir, &profile);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE_NOTHROW(tiledb_rest_profile_free(&profile));
     CHECK(profile == nullptr);
   }
   SECTION("empty name") {
-    rc = tiledb_rest_profile_alloc_test("", homedir, &profile);
+    rc = tiledb_rest_profile_alloc("", homedir, &profile);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null name") {
-    rc = tiledb_rest_profile_alloc_test(nullptr, homedir, &profile);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+    rc = tiledb_rest_profile_alloc(nullptr, homedir, &profile);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE_NOTHROW(tiledb_rest_profile_free(&profile));
+    CHECK(profile == nullptr);
   }
   SECTION("empty homedir") {
-    rc = tiledb_rest_profile_alloc_test(name_, "", &profile);
+    rc = tiledb_rest_profile_alloc(name_, "", &profile);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null homedir") {
-    rc = tiledb_rest_profile_alloc_test(name_, nullptr, &profile);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+    // Normal expected use-case. Internally resolves to default homedir.
+    rc = tiledb_rest_profile_alloc(name_, nullptr, &profile);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE_NOTHROW(tiledb_rest_profile_free(&profile));
+    CHECK(profile == nullptr);
   }
   SECTION("null profile") {
-    rc = tiledb_rest_profile_alloc_test(name_, homedir, nullptr);
+    rc = tiledb_rest_profile_alloc(name_, homedir, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -84,18 +82,14 @@ TEST_CASE(
     "C API: tiledb_rest_profile_free argument validation",
     "[capi][rest_profile]") {
   tiledb_rest_profile_t* profile;
-  auto rc =
-      tiledb_rest_profile_alloc_test(name_, tempdir_.path().c_str(), &profile);
+  auto rc = tiledb_rest_profile_alloc(name_, tempdir_.path().c_str(), &profile);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     REQUIRE_NOTHROW(tiledb_rest_profile_free(&profile));
     CHECK(profile == nullptr);
   }
   SECTION("null profile") {
-    /*
-     * `tiledb_rest_profile_free` is a void function, otherwise we would check
-     * for an error.
-     */
-    REQUIRE_NOTHROW(tiledb_rest_profile_free(nullptr));
+    auto rc = tiledb_rest_profile_free(nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
