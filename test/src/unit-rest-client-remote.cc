@@ -93,43 +93,49 @@ TEST_CASE("REST capabilities endpoint", "[rest][version]") {
     auto tiledb_version = rest_client.rest_tiledb_version();
     // After the access above, RestCapabilities has been initialized.
     REQUIRE(rest_client.rest_capabilities_detected());
-    // Validate the TileDB version if it was provided in the response.
-    if (!rest_client.get_capabilities_from_rest().legacy_) {
-      // TODO: Should we use some default version for legacy?
-      //    This creates an edge case where rest_tiledb_version_ is not
-      //    initialized for legacy. That's fine until we start to add checks on
-      //    this version, expecting it to be relevant.
-      REQUIRE(tiledb_version == expected_version);
-    }
 
     // Check there was only one request sent.
     auto match_request_count = Catch::Matchers::ContainsSubstring(
         "\"capabilities_stats.RestClient.rest_http_requests\": 1");
     REQUIRE_THAT(stats.dump(0, 0), match_request_count);
 
-    // Further access attempts should not submit additional requests.
-    auto capabilities = rest_client.get_capabilities_from_rest();
-    if (!capabilities.legacy_) {
+    // Validate the TileDB version if it was provided in the response.
+    if (!rest_client.get_capabilities_from_rest().legacy_) {
+      REQUIRE(tiledb_version == expected_version);
+    }
+
+    // These access attempts should not submit additional requests.
+    if (!rest_client.get_capabilities_from_rest().legacy_) {
       REQUIRE(rest_client.rest_tiledb_version() == expected_version);
     }
 
-    // Subsequent access attempts should not submit any additional requests.
+    // Validate that repeated access does not submit any additional requests.
     REQUIRE_THAT(stats.dump(0, 0), match_request_count);
   }
 }
 
-TEST_CASE("Test getting REST URI components", "[uri]") {
-  // TODO: Add more URI combinations, relocate test alongside other URI tests.
-  std::string ns = GENERATE("workspace/teamspace", "ws_1234/ts_1234");
+TEST_CASE("Parse REST URI components", "[uri]") {
   std::string arr = GENERATE(
       "8f039466-6e90-42ea-af53-dc0ba47d00c2",
+      "a",
       "array_name",
-      "s3://bucket/arrays/array_name");
-  tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
+      "s3://bucket/arrays/array_name",
+      "s3://b/d/a");
 
   std::string array_namespace, array_uri;
-  REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, false).ok());
+  SECTION("Legacy REST URI components") {
+    std::string ns = GENERATE("demo", "d");
+    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, true).ok());
+    REQUIRE(array_namespace == ns);
+    REQUIRE(array_uri == arr);
+  }
 
-  REQUIRE(array_namespace == ns);
-  REQUIRE(array_uri == arr);
+  SECTION("Carrara REST URI components") {
+    std::string ns = GENERATE("workspace/teamspace", "ws_1234/ts_1234", "w/t");
+    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, false).ok());
+    REQUIRE(array_namespace == ns);
+    REQUIRE(array_uri == arr);
+  }
 }
