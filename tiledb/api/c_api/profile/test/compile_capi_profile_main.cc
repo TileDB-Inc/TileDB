@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/rest/test/compile_capi_rest_main.cc
+ * @file tiledb/api/c_api/profile/test/compile_capi_profile_main.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "../rest_profile_api_external.h"
+#include "../profile_api_external.h"
 
 int main() {
-  tiledb_rest_profile_alloc(nullptr, nullptr, nullptr);
+  tiledb_profile_alloc(nullptr, nullptr, nullptr);
   return 0;
 }
