@@ -390,9 +390,11 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
     end_iteration(result_tiles);
 
     // We need to ensure that progress is made each iteration.
-    // If we un-loaded any tiles then that is progress.
-    if (current_coords_mem == memory_used_for_coords_total_) {
-      // But if we did not, then progress is still observable
+    // If we filled the user buffers, then we made progress (or the user needs
+    // to re-size). If we un-loaded any tiles, then we made progress.
+    if (!user_buffers_full &&
+        current_coords_mem == memory_used_for_coords_total_) {
+      // But if we did neither, then progress is still observable
       // if we advanced the state of any tile.
       // - If we created a result tile, that is progress
       // - If we created at least one result slab, that is progress
