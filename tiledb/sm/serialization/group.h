@@ -140,7 +140,8 @@ Status group_update_deserialize(
 Status group_create_serialize(
     const Group* group,
     SerializationType serialize_type,
-    SerializationBuffer& serialized_buffer);
+    SerializationBuffer& serialized_buffer,
+    bool legacy);
 
 /**
  * Serialize a group metadata for remote POSTING

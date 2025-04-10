@@ -243,7 +243,7 @@ class URI {
   Status get_rest_components(
       std::string* array_namespace,
       std::string* array_uri,
-      bool legacy = true) const;
+      bool legacy) const;
 
   /**
    * Return the fragment name from the URI if one can be found.
