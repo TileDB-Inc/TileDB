@@ -262,9 +262,8 @@ Status URI::get_rest_components(
 
     std::string ws = uri_.substr(prefix.size(), ws_len);
     std::string ts = uri_.substr(ws_slash + 1, ts_len);
-    std::string arr_uri = uri_.substr(ts_slash + 1, array_len);
     *array_namespace = ws + "/" + ts;
-    *array_uri = arr_uri;
+    *array_uri = uri_.substr(ts_slash + 1, array_len);
   }
 
   return Status::Ok();
