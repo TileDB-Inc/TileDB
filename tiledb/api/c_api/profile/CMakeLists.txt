@@ -1,5 +1,5 @@
 #
-# tiledb/api/c_api/rest/CMakeLists.txt
+# tiledb/api/c_api/profile/CMakeLists.txt
 #
 # The MIT License
 #
@@ -28,14 +28,14 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 list(APPEND SOURCES
-  rest_profile_api.cc
+  profile_api.cc
 )
 gather_sources(${SOURCES})
 
-commence(object_library capi_rest)
+commence(object_library capi_profile)
   this_target_sources(${SOURCES})
   this_target_link_libraries(export)
-  this_target_object_libraries(rest_client capi_context_stub)
+  this_target_object_libraries(rest_profile capi_context_stub)
 conclude(object_library)
 
 add_test_subdirectory()

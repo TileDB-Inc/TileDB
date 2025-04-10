@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/rest/rest_profile_api_internal.h
+ * @file tiledb/api/c_api/profile/profile_api_internal.h
  *
  * @section LICENSE
  *
@@ -27,58 +27,57 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the internals of the RestProfile section of the C API.
+ * This file declares the internals of the profile section of the C API.
  */
 
-#ifndef TILEDB_CAPI_REST_PROFILE_INTERNAL_H
-#define TILEDB_CAPI_REST_PROFILE_INTERNAL_H
+#ifndef TILEDB_CAPI_PROFILE_INTERNAL_H
+#define TILEDB_CAPI_PROFILE_INTERNAL_H
 
-#include "rest_profile_api_external.h"
+#include "profile_api_external.h"
 
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/rest/rest_profile.h"
 
-/** Handle `struct` for CAPI rest_profile objects. */
-struct tiledb_rest_profile_handle_t
-    : public tiledb::api::CAPIHandle<tiledb_rest_profile_handle_t> {
+/** Handle `struct` for CAPI profile objects. */
+struct tiledb_profile_handle_t
+    : public tiledb::api::CAPIHandle<tiledb_profile_handle_t> {
   /** Type name */
-  static constexpr std::string_view object_type_name{"rest_profile"};
+  static constexpr std::string_view object_type_name{"profile"};
 
  private:
-  using rest_profile_type = shared_ptr<tiledb::sm::RestProfile>;
-  rest_profile_type rest_profile_;
+  using profile_type = shared_ptr<tiledb::sm::RestProfile>;
+  profile_type profile_;
 
  public:
   template <class... Args>
-  explicit tiledb_rest_profile_handle_t(Args... args)
-      : rest_profile_{make_shared<tiledb::sm::RestProfile>(
+  explicit tiledb_profile_handle_t(Args... args)
+      : profile_{make_shared<tiledb::sm::RestProfile>(
             HERE(), std::forward<Args>(args)...)} {
   }
 
   /**
    * Constructor from `shared_ptr<RestProfile>` copies the shared pointer.
    */
-  explicit tiledb_rest_profile_handle_t(const rest_profile_type& x)
-      : rest_profile_(x) {
+  explicit tiledb_profile_handle_t(const profile_type& x)
+      : profile_(x) {
   }
 
-  rest_profile_type rest_profile() const {
-    return rest_profile_;
+  profile_type profile() const {
+    return profile_;
   }
 };
 
 namespace tiledb::api {
 
 /**
- * Returns after successfully validating a rest_profile.
+ * Returns after successfully validating a profile.
  *
- * @param rest_profile Possibly-valid pointer to a rest_profile
+ * @param profile Possibly-valid pointer to a profile
  */
-inline void ensure_rest_profile_is_valid(
-    const tiledb_rest_profile_t* rest_profile) {
-  ensure_handle_is_valid(rest_profile);
+inline void ensure_profile_is_valid(const tiledb_profile_t* profile) {
+  ensure_handle_is_valid(profile);
 }
 
 }  // namespace tiledb::api
 
-#endif  // TILEDB_CAPI_REST_PROFILE_INTERNAL_H
+#endif  // TILEDB_CAPI_PROFILE_INTERNAL_H
