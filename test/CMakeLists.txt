@@ -171,6 +171,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-global-order-writes-remote.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
+    src/unit-cppapi-incomplete-var.cc
     src/unit-cppapi-max-fragment-size.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
