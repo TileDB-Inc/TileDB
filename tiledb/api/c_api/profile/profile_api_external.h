@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/rest/rest_profile_api_external.h
+ * @file tiledb/api/c_api/profile/profile_api_external.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the RestProfile C API for TileDB.
+ * This file declares the profile C API for TileDB.
  */
 
-#ifndef TILEDB_CAPI_REST_PROFILE_EXTERNAL_H
-#define TILEDB_CAPI_REST_PROFILE_EXTERNAL_H
+#ifndef TILEDB_CAPI_PROFILE_EXTERNAL_H
+#define TILEDB_CAPI_PROFILE_EXTERNAL_H
 
 #include "../api_external_common.h"
 #include "tiledb/common/common.h"
@@ -40,11 +40,11 @@
 extern "C" {
 #endif
 
-/** C API carrier for a TileDB RestProfile. */
-typedef struct tiledb_rest_profile_handle_t tiledb_rest_profile_t;
+/** C API carrier for a TileDB profile. */
+typedef struct tiledb_profile_handle_t tiledb_profile_t;
 
 /**
- * Allocates an in-test TileDB RestProfile object.
+ * Allocates an in-test TileDB profile object.
  *
  * @note Directly passing `homedir` is intended primarily for testing purposes,
  * to preserve the user's `$HOME` path and their profiles from in-test changes.
@@ -53,46 +53,46 @@ typedef struct tiledb_rest_profile_handle_t tiledb_rest_profile_t;
  * **Example:**
  *
  * @code{.c}
- * tiledb_rest_profile_t* rest_profile;
- * tiledb_rest_profile_alloc(
- *   "my_rest_profile",
- *   TemporaryLocalDirectory("unit_capi_rest_profile").path(),
- *   &rest_profile);
+ * tiledb_profile_t* profile;
+ * tiledb_profile_alloc(
+ *   "my_profile",
+ *   TemporaryLocalDirectory("unit_capi_profile").path(),
+ *   &profile);
  *
- * tiledb_rest_profile_t* rest_profile1;
- * tiledb_rest_profile_alloc(nullptr, nullptr, &rest_profile1);
+ * tiledb_profile_t* profile1;
+ * tiledb_profile_alloc(nullptr, nullptr, &profile1);
  * @endcode
  *
- * @param[in] name The rest_profile name, or `nullptr` for default.
+ * @param[in] name The profile name, or `nullptr` for default.
  * @param[in] homedir The path to `$HOME` directory, or `nullptr` for default.
- * @param[out] rest_profile The rest_profile object to be created.
+ * @param[out] profile The profile object to be created.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_rest_profile_alloc(
+TILEDB_EXPORT capi_return_t tiledb_profile_alloc(
     const char* name,
     const char* homedir,
-    tiledb_rest_profile_t** rest_profile) TILEDB_NOEXCEPT;
+    tiledb_profile_t** profile) TILEDB_NOEXCEPT;
 
 /**
- * Frees a TileDB RestProfile object.
+ * Frees a TileDB profile object.
  *
  * **Example:**
  *
  * @code{.c}
- * tiledb_rest_profile_t* rest_profile;
- * tiledb_rest_profile_alloc(&rest_profile);
- * tiledb_rest_profile_set_param("rest.username", "my_username");
- * tiledb_rest_profile_save();
- * tiledb_rest_profile_free(&rest_profile);
+ * tiledb_profile_t* profile;
+ * tiledb_profile_alloc(&profile);
+ * tiledb_profile_set_param("rest.username", "my_username");
+ * tiledb_profile_save();
+ * tiledb_profile_free(&profile);
  * @endcode
  *
- * @param[in] rest_profile The rest_profile object to be freed.
+ * @param[in] profile The profile object to be freed.
  */
-TILEDB_EXPORT capi_return_t
-tiledb_rest_profile_free(tiledb_rest_profile_t** rest_profile) TILEDB_NOEXCEPT;
+TILEDB_EXPORT capi_return_t tiledb_profile_free(tiledb_profile_t** profile)
+    TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // TILEDB_CAPI_REST_PROFILE_EXTERNAL_H
+#endif  // TILEDB_CAPI_PROFILE_EXTERNAL_H

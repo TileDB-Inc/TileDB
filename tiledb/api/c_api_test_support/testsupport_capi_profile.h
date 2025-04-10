@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api_test_support/testsupport_capi_rest_profile.h
+ * @file tiledb/api/c_api_test_support/testsupport_capi_profile.h
  *
  * @section LICENSE
  *
@@ -27,43 +27,42 @@
  *
  * @section DESCRIPTION
  *
- * This file defines test support for the rest_profile section of the C API.
+ * This file defines test support for the profile section of the C API.
  */
 
-#ifndef TILEDB_TESTSUPPORT_CAPI_REST_PROFILE_H
-#define TILEDB_TESTSUPPORT_CAPI_REST_PROFILE_H
+#ifndef TILEDB_TESTSUPPORT_CAPI_PROFILE_H
+#define TILEDB_TESTSUPPORT_CAPI_PROFILE_H
 
 #include "test/support/src/temporary_local_directory.h"
-#include "tiledb/api/c_api/rest/rest_profile_api_external.h"
-#include "tiledb/api/c_api/rest/rest_profile_api_internal.h"
+#include "tiledb/api/c_api/profile/profile_api_external.h"
+#include "tiledb/api/c_api/profile/profile_api_internal.h"
 
 namespace tiledb::api::test_support {
 
-class ordinary_rest_profile_exception : public StatusException {
+class ordinary_profile_exception : public StatusException {
  public:
-  explicit ordinary_rest_profile_exception(const std::string& message = "")
-      : StatusException("error creating test rest_profile; ", message) {
+  explicit ordinary_profile_exception(const std::string& message = "")
+      : StatusException("error creating test profile; ", message) {
   }
 };
 
-struct ordinary_rest_profile {
-  tiledb_rest_profile_handle_t* rest_profile{nullptr};
-  ordinary_rest_profile(const char* name, const char* homedir) {
-    int rc = tiledb_rest_profile_alloc(name, homedir, &rest_profile);
+struct ordinary_profile {
+  tiledb_profile_handle_t* profile{nullptr};
+  ordinary_profile(const char* name, const char* homedir) {
+    int rc = tiledb_profile_alloc(name, homedir, &profile);
     if (rc != TILEDB_OK) {
-      throw std::runtime_error("error creating test rest_profile");
+      throw std::runtime_error("error creating test profile");
     }
-    if (rest_profile == nullptr) {
+    if (profile == nullptr) {
       throw std::logic_error(
-          "tiledb_rest_profile_alloc_test returned OK but without "
-          "rest_profile");
+          "tiledb_profile_alloc_test returned OK but without profile");
     }
   }
-  ~ordinary_rest_profile() {
-    tiledb_rest_profile_free(&rest_profile);
+  ~ordinary_profile() {
+    tiledb_profile_free(&profile);
   }
 };
 
 }  // namespace tiledb::api::test_support
 
-#endif  // TILEDB_TESTSUPPORT_CAPI_REST_PROFILE_H
+#endif  // TILEDB_TESTSUPPORT_CAPI_PROFILE_H

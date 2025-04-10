@@ -1,5 +1,5 @@
 #
-# tiledb/api/c_api/rest/test/CMakeLists.txt
+# tiledb/api/c_api/profile/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -26,8 +26,8 @@
 
 include(unit_test)
 
-commence(unit_test capi_rest_profile)
-  this_target_sources(unit_capi_rest_profile.cc)
-  this_target_object_libraries(capi_rest)
+commence(unit_test capi_profile)
+  this_target_sources(unit_capi_profile.cc)
+  this_target_object_libraries(capi_profile)
   this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)

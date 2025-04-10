@@ -115,14 +115,14 @@ add_subdirectory(ndrectangle)
 # `object`: no dependencies
 add_subdirectory(object)
 
+# `profile`: no dependencies
+add_subdirectory(profile)
+
 # NOTE: Only the tiledb_query_type_t enum has been migrated
 # to the new C API layout.
 #
 # `query`: no dependencies yet but will have some
 add_subdirectory(query)
-
-# `rest`: no dependencies
-add_subdirectory(rest)
 
 # `subarray`: depends on `context`
 add_subdirectory(subarray)
