@@ -578,7 +578,7 @@ endif()
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
 find_package(BZip2 REQUIRED)
-find_package(lz4 CONFIG REQUIRED)
+find_package(LZ4 MODULE REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(zstd CONFIG REQUIRED)
@@ -586,7 +586,7 @@ find_package(LibMagic MODULE REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
-    LZ4::lz4
+    lz4::lz4
     spdlog::spdlog
     ZLIB::ZLIB
     zstd::libzstd
