@@ -1360,12 +1360,8 @@ Status RestClientRemote::post_group_create_to_rest(
 
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
-  RETURN_NOT_OK(
-      serialization::group_create_serialize(
-          group,
-          serialization_type_,
-          buff,
-          get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(serialization::group_create_serialize(
+      group, serialization_type_, buff, get_capabilities_from_rest().legacy_));
 
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1576,10 +1572,9 @@ const RestCapabilities& RestClientRemote::get_capabilities_from_rest() const {
   } catch (const std::exception& e) {
     std::string msg = e.what();
     if (msg.find("HTTP code 404") != std::string::npos) {
-      // Check if the message was a 404, indicating a legacy REST server.
+      // If the error was a 404, this indicates a legacy REST server.
       // Legacy REST supports clients <= 2.28.0.
-      rest_capabilities_ = RestCapabilities({2, 28, 0}, {2, 0, 0});
-      rest_capabilities_.legacy_ = true;
+      rest_capabilities_ = RestCapabilities({2, 28, 0}, {2, 0, 0}, true);
     } else {
       // Failed to determine REST capabilities due to an unexpected error.
       throw RestClientException(e.what());

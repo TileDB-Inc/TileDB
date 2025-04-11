@@ -61,8 +61,11 @@ struct RestCapabilities {
    * releases.
    */
   RestCapabilities(
-      TileDBVersion rest_version, TileDBVersion rest_minimum_version)
+      TileDBVersion rest_version,
+      TileDBVersion rest_minimum_version,
+      bool legacy = false)
       : detected_(true)
+      , legacy_(legacy)
       , rest_tiledb_version_(rest_version)
       , rest_minimum_supported_version_(rest_minimum_version) {
   }
