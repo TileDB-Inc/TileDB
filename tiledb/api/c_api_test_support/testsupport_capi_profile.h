@@ -34,7 +34,7 @@
 #define TILEDB_TESTSUPPORT_CAPI_PROFILE_H
 
 #include "test/support/src/temporary_local_directory.h"
-#include "tiledb/api/c_api/profile/profile_api_external.h"
+#include "tiledb/api/c_api/profile/profile_api_experimental.h"
 #include "tiledb/api/c_api/profile/profile_api_internal.h"
 
 namespace tiledb::api::test_support {
@@ -48,6 +48,8 @@ class ordinary_profile_exception : public StatusException {
 
 struct ordinary_profile {
   tiledb_profile_handle_t* profile{nullptr};
+
+  /** Constructor. */
   ordinary_profile(const char* name, const char* homedir) {
     int rc = tiledb_profile_alloc(name, homedir, &profile);
     if (rc != TILEDB_OK) {
@@ -58,6 +60,24 @@ struct ordinary_profile {
           "tiledb_profile_alloc_test returned OK but without profile");
     }
   }
+
+  /** Constructor. */
+  ordinary_profile(const char* name)
+      : ordinary_profile(name, nullptr) {
+  }
+
+  /** Constructor. */
+  ordinary_profile()
+      : ordinary_profile(nullptr, nullptr) {
+  }
+
+  /** Copy and move constructors are deleted. */
+  ordinary_profile(const ordinary_profile&) = delete;
+  ordinary_profile& operator=(const ordinary_profile&) = delete;
+  ordinary_profile(ordinary_profile&&) = delete;
+  ordinary_profile& operator=(ordinary_profile&&) = delete;
+
+  /** Destructor. */
   ~ordinary_profile() {
     tiledb_profile_free(&profile);
   }

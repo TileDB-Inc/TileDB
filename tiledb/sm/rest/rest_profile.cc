@@ -112,6 +112,7 @@ const std::string RestProfile::DEFAULT_USERNAME{""};
 RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     : version_(constants::rest_profile_version)
     , name_(name)
+    , homedir_(std::move(homedir))
     , filepath_(homedir + constants::rest_profile_filepath)
     , old_filepath_(homedir + constants::cloud_profile_filepath) {
   if (name_.empty()) {
@@ -144,7 +145,7 @@ RestProfile::RestProfile(const std::string& name) {
    * or perhaps stop using `sudo`.
    */
   auto homedir = home_directory();
-  if (homedir.empty()) {
+  if (homedir[0] == '\0') {
     throw RestProfileException(
         "Failed to create RestProfile; $HOME is not set.");
   }

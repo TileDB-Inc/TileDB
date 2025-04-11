@@ -67,6 +67,22 @@ capi_return_t tiledb_profile_free(tiledb_profile_t** profile) {
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_profile_get_name(
+    tiledb_profile_t* profile, const char** name) {
+  ensure_profile_is_valid(profile);
+  ensure_output_pointer_is_valid(name);
+  *name = profile->profile()->name().c_str();
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_profile_get_homedir(
+    tiledb_profile_t* profile, const char** homedir) {
+  ensure_profile_is_valid(profile);
+  ensure_output_pointer_is_valid(homedir);
+  *homedir = profile->profile()->homedir().c_str();
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_plain;
@@ -82,4 +98,14 @@ CAPI_INTERFACE(
 
 CAPI_INTERFACE(profile_free, tiledb_profile_t** profile) {
   return api_entry_plain<tiledb::api::tiledb_profile_free>(profile);
+}
+
+CAPI_INTERFACE(profile_get_name, tiledb_profile_t* profile, const char** name) {
+  return api_entry_plain<tiledb::api::tiledb_profile_get_name>(profile, name);
+}
+
+CAPI_INTERFACE(
+    profile_get_homedir, tiledb_profile_t* profile, const char** homedir) {
+  return api_entry_plain<tiledb::api::tiledb_profile_get_homedir>(
+      profile, homedir);
 }

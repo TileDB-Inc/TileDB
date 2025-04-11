@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "../profile_api_external.h"
+#include "../profile_api_experimental.h"
 
 int main() {
   tiledb_profile_alloc(nullptr, nullptr, nullptr);

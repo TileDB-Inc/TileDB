@@ -33,7 +33,7 @@
 #ifndef TILEDB_CAPI_PROFILE_INTERNAL_H
 #define TILEDB_CAPI_PROFILE_INTERNAL_H
 
-#include "profile_api_external.h"
+#include "profile_api_experimental.h"
 
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/rest/rest_profile.h"
