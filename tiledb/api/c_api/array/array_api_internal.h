@@ -39,8 +39,6 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array/array.h"
 
-// using namespace tiledb::sm;
-
 /** Handle `struct` for API Array objects. */
 struct tiledb_array_handle_t
     : public tiledb::api::CAPIHandle<tiledb_array_handle_t> {

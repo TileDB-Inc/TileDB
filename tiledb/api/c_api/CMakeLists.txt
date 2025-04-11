@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022-2024 TileDB, Inc.
+# Copyright (c) 2022-2025 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -114,6 +114,9 @@ add_subdirectory(ndrectangle)
 
 # `object`: no dependencies
 add_subdirectory(object)
+
+# `profile`: no dependencies
+add_subdirectory(profile)
 
 # NOTE: Only the tiledb_query_type_t enum has been migrated
 # to the new C API layout.
