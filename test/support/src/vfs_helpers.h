@@ -161,6 +161,13 @@ class SupportedFs {
   virtual bool is_rest() = 0;
 
   /**
+   * Checks if the we are using legacy or 3.0 REST.
+   *
+   * @return true if legacy REST, false if 3.0 REST.
+   */
+  virtual bool is_legacy_rest() = 0;
+
+  /**
    * Checks if the filesystem is local or remote
    *
    * @return true if local, false if not
@@ -174,11 +181,12 @@ class SupportedFs {
  */
 class SupportedFsS3 : public SupportedFs {
  public:
-  SupportedFsS3(bool rest = false)
+  SupportedFsS3(bool rest = false, bool legacy_rest = false)
       : s3_prefix_("s3://")
       , s3_bucket_(s3_prefix_ + "tiledb-" + random_label() + "/")
       , temp_dir_(s3_bucket_ + "tiledb_test/")
-      , rest_(rest) {
+      , rest_(rest)
+      , legacy_rest_(legacy_rest) {
   }
 
   ~SupportedFsS3() = default;
@@ -230,6 +238,15 @@ class SupportedFsS3 : public SupportedFs {
   virtual bool is_rest();
 
   /**
+   * Checks if the we are using legacy or 3.0 REST.
+   *
+   * @return true if legacy REST, false if 3.0 REST.
+   */
+  inline bool is_legacy_rest() {
+    return legacy_rest_;
+  }
+
+  /**
    * Checks if the filesystem is local or remote
    *
    * @return true if local, false if not
@@ -254,6 +271,9 @@ class SupportedFsS3 : public SupportedFs {
 
   /** If the filesystem is accessed via REST. */
   bool rest_;
+
+  /** True if the REST server is legacy, false if using 3.0 REST */
+  bool legacy_rest_;
 };
 
 /**
@@ -315,6 +335,15 @@ class SupportedFsAzure : public SupportedFs {
    * @return true if REST, false if not
    */
   inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the we are using legacy or 3.0 REST.
+   *
+   * @return true if legacy REST, false if 3.0 REST.
+   */
+  inline bool is_legacy_rest() {
     return false;
   }
 
@@ -400,6 +429,15 @@ class SupportedFsGCS : public SupportedFs {
    * @return true if REST, false if not
    */
   inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the we are using legacy or 3.0 REST.
+   *
+   * @return true if legacy REST, false if 3.0 REST.
+   */
+  inline bool is_legacy_rest() {
     return false;
   }
 
@@ -502,6 +540,15 @@ class SupportedFsLocal : public SupportedFs {
   }
 
   /**
+   * Checks if the we are using legacy or 3.0 REST.
+   *
+   * @return true if legacy REST, false if 3.0 REST.
+   */
+  inline bool is_legacy_rest() {
+    return false;
+  }
+
+  /**
    * Checks if the filesystem is local or remote
    *
    * @return true if local, false if not
@@ -588,6 +635,15 @@ class SupportedFsMem : public SupportedFs {
    * @return true if REST, false if not
    */
   inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the we are using legacy or 3.0 REST.
+   *
+   * @return true if legacy REST, false if 3.0 REST.
+   */
+  inline bool is_legacy_rest() {
     return false;
   }
 
@@ -845,16 +901,27 @@ struct VFSTestSetup {
     return fs_vec[0]->is_rest();
   }
 
+  bool is_legacy_rest() {
+    return fs_vec[0]->is_legacy_rest();
+  }
+
   bool is_local() {
     return fs_vec[0]->is_local();
   }
 
   std::string array_uri(
       const std::string& array_name, bool strip_tiledb_prefix = false) {
-    auto uri = (fs_vec[0]->is_rest() && !strip_tiledb_prefix) ?
-                   ("tiledb://unit/" + temp_dir + array_name) :
-                   (temp_dir + array_name);
-    return uri;
+    // The order allows for stripping prefix from a REST URI.
+    if (strip_tiledb_prefix || !is_rest()) {
+      return temp_dir + array_name;
+    }
+
+    // Non-REST case is handled above.
+    if (is_legacy_rest()) {
+      return "tiledb://unit/" + temp_dir + array_name;
+    } else {
+      return "tiledb://workspace/unit/" + temp_dir + array_name;
+    }
   }
 
   Context ctx() {
