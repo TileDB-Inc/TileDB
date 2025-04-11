@@ -108,8 +108,31 @@ class RestProfile {
   /*              API               */
   /* ****************************** */
 
+  /**
+   * Returns the name of this profile.
+   *
+   * @return std::string The name of this profile.
+   */
   inline std::string name() {
     return name_;
+  }
+
+  /**
+   * Returns the path to the local $HOME directory.
+   *
+   * @invariant Use of home_directory() may cause unexpected behavior
+   * from this method. Depending on where in the stack the method is invoked,
+   * the path may be unresolved.
+   *
+   * #TODO Note to reviewer: we probably need to just change the constuctor to
+   * take in a std::string_view to ensure the home_directory() path ref doesn't
+   * go out of scope. We may also decide to just scrap this method entirely.
+   * It's not in the original design but I thought it useful in prod.
+   *
+   * @return std::string The path to the local $HOME directory.
+   */
+  inline std::string homedir() {
+    return homedir_;
   }
 
   /**
@@ -169,6 +192,9 @@ class RestProfile {
 
   /** The name of this RestProfile. */
   std::string name_;
+
+  /** The path to the local $HOME directory. */
+  std::string homedir_;
 
   /** The path to the local file which stores all profiles. */
   std::string filepath_;
