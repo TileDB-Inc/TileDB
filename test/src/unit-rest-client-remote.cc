@@ -37,6 +37,7 @@
 #include "tiledb/sm/rest/rest_client_remote.h"
 
 TEST_CASE("REST capabilities endpoint", "[rest][version]") {
+  using tiledb::sm::RestCapabilities;
   tiledb::test::VFSTestSetup vfs_test_setup;
   if (!vfs_test_setup.is_rest()) {
     return;
@@ -46,9 +47,6 @@ TEST_CASE("REST capabilities endpoint", "[rest][version]") {
   std::string serialization_format = GENERATE("JSON", "CAPNP");
   config["rest.server_serialization_format"] = serialization_format;
 
-  auto expected_version =
-      std::make_from_tuple<tiledb::sm::RestCapabilities::TileDBVersion>(
-          tiledb::version());
   tiledb::common::ThreadPool tp(1);
   DYNAMIC_SECTION(
       "GET request to retrieve REST tiledb version - "
@@ -59,16 +57,23 @@ TEST_CASE("REST capabilities endpoint", "[rest][version]") {
         tp,
         *tiledb::test::g_helper_logger(),
         tiledb::test::get_test_memory_tracker());
-    tiledb::sm::RestCapabilities expected_capabilities(
-        expected_version, {2, 28, 0});
     // Check on construction the capabilities are not initialized.
     REQUIRE(!rest_client.rest_capabilities_detected());
     auto actual_capabilities = rest_client.get_capabilities_from_rest();
 
     // If we detected a legacy REST server the test was successful but there
     // is no version response from legacy REST to validate.
-    if (!actual_capabilities.legacy_) {
-      REQUIRE(expected_capabilities == actual_capabilities);
+    if (rest_client.get_capabilities_from_rest().legacy_) {
+      REQUIRE(
+          RestCapabilities({2, 28, 0}, {2, 0, 0}, true) == actual_capabilities);
+    } else {
+      // We don't know what core version to expect on TileDB-Server.
+      // TileDB-Server supports clients >= 2.28.0, we can check minimum version.
+      REQUIRE(
+          RestCapabilities::TileDBVersion(2, 28, 0) ==
+          actual_capabilities.rest_minimum_supported_version_);
+      REQUIRE(actual_capabilities.legacy_ == false);
+      REQUIRE(actual_capabilities.detected_);
     }
     // We should have detected REST capabilities, either legacy or 3.0.
     REQUIRE(rest_client.rest_capabilities_detected());
@@ -84,30 +89,35 @@ TEST_CASE("REST capabilities endpoint", "[rest][version]") {
         tp,
         *tiledb::test::g_helper_logger(),
         tiledb::test::get_test_memory_tracker());
-    // Here we don't call `get_capabilities_from_rest`, but instead attempt to
-    // first access RestCapabilities directly. The RestClient should submit
-    // the GET request and initialize RestCapabilities, returning the result.
-    REQUIRE(!rest_client.rest_capabilities_detected());
 
+    REQUIRE(!rest_client.rest_capabilities_detected());
     // Should submit capabilities request and return the TileDBVersion result.
-    auto tiledb_version = rest_client.rest_tiledb_version();
+    auto min_tiledb_version =
+        rest_client.rest_minimum_supported_tiledb_version();
+
     // After the access above, RestCapabilities has been initialized.
     REQUIRE(rest_client.rest_capabilities_detected());
+    // Check min version since we don't know what core version is on the server.
+    RestCapabilities::TileDBVersion expected_min_tiledb;
+    if (rest_client.get_capabilities_from_rest().legacy_) {
+      // TODO: Minimum supported version for TileDB-Cloud-REST.
+      expected_min_tiledb = RestCapabilities::TileDBVersion(2, 0, 0);
+    } else {
+      expected_min_tiledb = RestCapabilities::TileDBVersion(2, 28, 0);
+    }
+
+    REQUIRE(min_tiledb_version == expected_min_tiledb);
 
     // Check there was only one request sent.
     auto match_request_count = Catch::Matchers::ContainsSubstring(
         "\"capabilities_stats.RestClient.rest_http_requests\": 1");
     REQUIRE_THAT(stats.dump(0, 0), match_request_count);
 
-    // Validate the TileDB version if it was provided in the response.
-    if (!rest_client.get_capabilities_from_rest().legacy_) {
-      REQUIRE(tiledb_version == expected_version);
-    }
-
     // These access attempts should not submit additional requests.
-    if (!rest_client.get_capabilities_from_rest().legacy_) {
-      REQUIRE(rest_client.rest_tiledb_version() == expected_version);
-    }
+    REQUIRE(
+        rest_client.get_capabilities_from_rest()
+            .rest_minimum_supported_version_ == expected_min_tiledb);
+    REQUIRE(rest_client.get_capabilities_from_rest().detected_);
 
     // Validate that repeated access does not submit any additional requests.
     REQUIRE_THAT(stats.dump(0, 0), match_request_count);
@@ -132,7 +142,10 @@ TEST_CASE("Parse REST URI components", "[uri]") {
   }
 
   SECTION("Carrara REST URI components") {
-    std::string ns = GENERATE("workspace/teamspace", "ws_1234/ts_1234", "w/t");
+    std::string ns = GENERATE(
+        "workspace/teamspace",
+        "ws_cvsj3li97ng28m60nhj0/ts_cvsj4ei97ng28m60nhkg",
+        "w/t");
     tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
     REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, false).ok());
     REQUIRE(array_namespace == ns);

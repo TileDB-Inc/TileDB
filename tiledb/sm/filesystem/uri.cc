@@ -214,14 +214,10 @@ Status URI::get_rest_components(
     std::string* array_namespace, std::string* array_uri, bool legacy) const {
   const std::string prefix = "tiledb://";
   const std::string ns_component =
-      legacy ? "<namespace>" : "<workspace>/<teamspace>";
+      legacy ? "tiledb://<namespace>" : "tiledb://<workspace>/<teamspace>";
   const auto error_st = Status_RestError(
-      "Invalid array URI for REST service; expected format is "
-      "'tiledb://" +
-      ns_component +
-      "/<array-name>' or "
-      "'tiledb://" +
-      ns_component + "/<array-uri>'.");
+      "Invalid array URI for REST service; expected format is " + ns_component +
+      "/<array-name>' or " + ns_component + "/<array-uri>'.");
 
   if (!is_tiledb() || uri_.empty() || uri_.find(prefix) == std::string::npos ||
       uri_.size() <= prefix.size()) {
