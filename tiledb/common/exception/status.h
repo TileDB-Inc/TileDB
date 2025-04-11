@@ -310,10 +310,6 @@ inline Status Status_UtilsError(const std::string& msg) {
 inline Status Status_S3Error(const std::string& msg) {
   return {"[TileDB::S3] Error", msg};
 }
-/** Return a FS_HDFS error class Status with a given message **/
-inline Status Status_HDFSError(const std::string& msg) {
-  return {"[TileDB::HDFS] Error", msg};
-}
 /** Return a FS_MEM error class Status with a given message **/
 inline Status Status_MemFSError(const std::string& msg) {
   return {"[TileDB::MemFS] Error", msg};

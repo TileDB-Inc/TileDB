@@ -377,10 +377,6 @@ if (TILEDB_GCS)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_GCS)
 endif()
 
-if (TILEDB_HDFS)
-  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_HDFS)
-endif()
-
 if (TILEDB_S3)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
