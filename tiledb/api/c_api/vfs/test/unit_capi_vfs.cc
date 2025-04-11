@@ -753,7 +753,7 @@ TEST_CASE(
 TEST_CASE(
     "C API: CallbackWrapperCAPI operator() validation",
     "[ls-recursive][callback][wrapper]") {
-  tiledb::sm::LsObjects data;
+  tiledb::sm::LsObjects data{};
   auto cb = [](const char* path,
                size_t path_len,
                uint64_t object_size,
@@ -769,7 +769,7 @@ TEST_CASE(
     ls_data->push_back({{path, path_len}, object_size});
     return 1;
   };
-  tiledb::sm::CallbackWrapperCAPI wrapper(cb, &data);
+  tiledb::sm::CallbackWrapperCAPI wrapper(std::move(cb), &data);
 
   SECTION("Callback return 1 signals to continue traversal") {
     CHECK(wrapper("file.txt", 10) == 1);
