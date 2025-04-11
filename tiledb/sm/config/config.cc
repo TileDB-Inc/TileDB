@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parse_argument.h"
+#include "tiledb/sm/rest/rest_profile.h"
 
 using namespace tiledb::common;
 
@@ -60,14 +61,12 @@ bool ignore_default_via_env(const std::string& param) {
 
 namespace tiledb::sm {
 
-/** Return a Config error class Status with a given message **/
-inline Status Status_ConfigError(const std::string& msg) {
-  return {"[TileDB::Config] Error", msg};
-}
-
-void throw_config_exception(const std::string& msg) {
-  throw StatusException(Status_ConfigError(msg));
-}
+class ConfigException : public StatusException {
+ public:
+  explicit ConfigException(const std::string& message)
+      : StatusException("Config", message) {
+  }
+};
 
 /* ****************************** */
 /*        CONFIG DEFAULTS         */
@@ -80,6 +79,9 @@ const std::string Config::CONFIG_LOGGING_LEVEL = "1";
 const std::string Config::CONFIG_LOGGING_LEVEL = "0";
 #endif
 const std::string Config::CONFIG_LOGGING_DEFAULT_FORMAT = "DEFAULT";
+const std::string Config::PROFILE_HOMEDIR =
+    tiledb::common::filesystem::home_directory();
+const std::string Config::PROFILE_NAME = "default";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -245,6 +247,8 @@ const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
 const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
+    std::make_pair("profile_homedir", Config::PROFILE_NAME),
+    std::make_pair("profile_name", Config::PROFILE_NAME),
     std::make_pair("rest.server_address", Config::REST_SERVER_DEFAULT_ADDRESS),
     std::make_pair(
         "rest.server_serialization_format",
@@ -566,14 +570,13 @@ Config::~Config() = default;
 Status Config::load_from_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
-    return LOG_STATUS(
-        Status_ConfigError("Cannot load from file; Invalid filename"));
+    throw ConfigException("Cannot load from file; Invalid filename");
 
   std::ifstream ifs(filename);
   if (!ifs.is_open()) {
     std::stringstream msg;
     msg << "Failed to open config file '" << filename << "'";
-    return LOG_STATUS(Status_ConfigError(msg.str()));
+    throw ConfigException(msg.str());
   }
 
   size_t linenum = 0;
@@ -594,7 +597,7 @@ Status Config::load_from_file(const std::string& filename) {
       std::stringstream msg;
       msg << "Failed to parse config file '" << filename << "'; ";
       msg << "Missing parameter value (line: " << linenum << ")";
-      return LOG_STATUS(Status_ConfigError(msg.str()));
+      throw ConfigException(msg.str());
     }
 
     // Parse extra
@@ -603,7 +606,7 @@ Status Config::load_from_file(const std::string& filename) {
       std::stringstream msg;
       msg << "Failed to parse config file '" << filename << "'; ";
       msg << "Invalid line format (line: " << linenum << ")";
-      return LOG_STATUS(Status_ConfigError(msg.str()));
+      throw ConfigException(msg.str());
     }
 
     // Set param-value pair
@@ -617,14 +620,13 @@ Status Config::load_from_file(const std::string& filename) {
 Status Config::save_to_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
-    return LOG_STATUS(
-        Status_ConfigError("Cannot save to file; Invalid filename"));
+    throw ConfigException("Cannot save to file; Invalid filename");
 
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
     std::stringstream msg;
     msg << "Failed to open config file '" << filename << "' for writing";
-    return LOG_STATUS(Status_ConfigError(msg.str()));
+    throw ConfigException(msg.str());
   }
   for (auto& pv : param_values_) {
     if (unserialized_params_.count(pv.first) != 0)
@@ -644,13 +646,13 @@ Status Config::set(const std::string& param, const std::string& value) {
 }
 
 std::string Config::get(const std::string& param, bool* found) const {
-  const char* val = get_from_config_or_env(param, found);
+  const char* val = get_from_config_or_fallback(param, found);
   return *found ? val : "";
 }
 
 Status Config::get(const std::string& param, const char** value) const {
   bool found;
-  const char* val = get_from_config_or_env(param, &found);
+  const char* val = get_from_config_or_fallback(param, &found);
   *value = found ? val : nullptr;
 
   return Status::Ok();
@@ -659,16 +661,16 @@ Status Config::get(const std::string& param, const char** value) const {
 template <class T>
 Status Config::get(const std::string& param, T* value, bool* found) const {
   // Check if parameter exists
-  const char* val = get_from_config_or_env(param, found);
+  const char* val = get_from_config_or_fallback(param, found);
   if (!*found)
     return Status::Ok();
 
   // Parameter found, retrieve value
   auto status = utils::parse::convert(val, value);
   if (!status.ok()) {
-    return Status_ConfigError(
-        std::string("Failed to parse config value '") + std::string(val) +
-        std::string("' for key '") + param + "' due to: " + status.to_string());
+    throw ConfigException(
+        "Failed to parse config value '" + std::string(val) + "' for key '" +
+        param + "' due to: " + status.to_string());
   }
   return Status::Ok();
 }
@@ -681,7 +683,7 @@ template <class T>
 Status Config::get_vector(
     const std::string& param, std::vector<T>* value, bool* found) const {
   // Check if parameter exists
-  const char* val = get_from_config_or_env(param, found);
+  const char* val = get_from_config_or_fallback(param, found);
   if (!*found)
     return Status::Ok();
 
@@ -746,6 +748,20 @@ Status Config::sanity_check(
   int64_t vint64 = 0;
   int chkno = -1;
 
+  // Check for RestProfile-specific parameters and warn users accordingly.
+  // Note: users are allowed to _fetch_ these parameters, but they must
+  // first be set on an immutable RestProfile.
+
+  // What happens if the user creates the Profile but doesn't save it?
+  // Maybe add a bool saved_ flag in RP to track if the profile's been saved.
+  if (param == "rest.password" || param == "rest.payer_namespace" ||
+      param == "rest.token" || param == "rest.server_address" ||
+      param == "rest.username") {
+    throw ConfigException(
+        "Parameter \'' + param + '\' is no longer set directly on the Config. "
+        "Instead, create a RestProfile and set \'profile_name\' accordingly.");
+  }
+
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
     RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));
@@ -753,8 +769,7 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "config.logging_format") {
     if (value != "DEFAULT" && value != "JSON")
-      return LOG_STATUS(
-          Status_ConfigError("Invalid logging format parameter value"));
+      throw ConfigException("Invalid logging format parameter value");
   } else if (param == "sm.allow_separate_attribute_writes") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.allow_updates_experimental") {
@@ -801,8 +816,7 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.var_offsets.mode") {
     if (value != "bytes" && value != "elements")
-      return LOG_STATUS(
-          Status_ConfigError("Invalid offsets format parameter value"));
+      throw ConfigException("Invalid offsets format parameter value");
   } else if (param == "sm.fragment_info.preload_mbrs") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "ssl.verify") {
@@ -827,8 +841,7 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
-      return LOG_STATUS(
-          Status_ConfigError("Invalid S3 scheme parameter value"));
+      throw ConfigException("Invalid S3 scheme parameter value");
   } else if (param == "vfs.s3.use_virtual_addressing") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.skit_init") {
@@ -916,39 +929,60 @@ const char* Config::get_from_config(
   return *found ? it->second.c_str() : "";
 }
 
-const char* Config::get_from_config_or_env(
+const char* Config::get_from_config_or_fallback(
     const std::string& param, bool* found) const {
-  // First let's see if the User has set the parameter
-  // If it is not a user set parameter it might be a default value if found in
-  // the config
+  // First check if the user has set the parameter
+  // If not, it may be a default value (if found in the config)
   bool user_set_parameter = set_params_.find(param) != set_params_.end();
 
-  // First check config
+  // [1. user-set config parameters]
   bool found_config;
   const char* value_config = get_from_config(param, &found_config);
-  // If its a user set parameter from the config return it
   if (found_config && user_set_parameter) {
     *found = found_config;
     return value_config;
   }
 
-  // Check if default for this parameter should be ignored based on
-  // environment variables
+  // Check if param default should be ignored based on environment variables
   if (ignore_default_via_env(param)) {
     *found = true;
     return "";
   }
 
-  // Check env if not found in config or if it was found in the config but is
-  // a default value
+  // [2. env variables]
   const char* value_env = get_from_env(param, found);
   if (*found)
     return value_env;
 
-  // At this point the value was not found to be user set in the config or an
-  // environmental variable so return any default value from the config or
-  // indicate it was not found
+  // [3. user-set profiles]
+  auto profile = RestProfile::load_if_exists(
+      param_values_.at("profile_name"), param_values_.at("profile_homedir"));
+  if (profile.has_value()) {
+    // The "s3.verify_ssl" parameter _may or may not_ be set on the profile.
+    // If that's the param to be fetched, see if it's set on the profile,
+    // and return its value (if it has one).
+    if (strcmp(param.c_str(), "s3.verify_ssl") == 0) {
+      auto verify_ssl = profile->get_verify_ssl();
+      if (verify_ssl.has_value()) {
+        *found = true;
+        return verify_ssl.value() ? "true" : "false";
+      }
+    } else {
+      // Fetch all other params from the profile normally.
+      try {
+        const char* value = std::move(profile->get_param(param).c_str());
+        *found = true;
+        return value;
+      } catch (...) {
+        throw;
+      }
+    }
+  }
+
+  // [4. default config value]
   *found = found_config;
+
+  // Final case: parameter value was not found.
   return *found ? value_config : "";
 }
 
@@ -957,7 +991,7 @@ Config::get_all_params_from_config_or_env() const {
   std::map<std::string, std::string> values;
   bool found = false;
   for (const auto& [key, value] : param_values_) {
-    std::string val = get_from_config_or_env(key, &found);
+    std::string val = get_from_config_or_fallback(key, &found);
     values.emplace(key, val);
   }
   return values;
@@ -972,7 +1006,7 @@ optional<T> Config::get_internal(const std::string& key) const {
     if (status.ok()) {
       return {converted_value};
     }
-    throw_config_exception(
+    throw ConfigException(
         "Failed to parse config value '" + std::string(value.value()) +
         "' for key '" + key + "'. Reason: " + status.to_string());
   }
@@ -984,13 +1018,13 @@ template <bool must_find_>
 optional<std::string> Config::get_internal_string(
     const std::string& key) const {
   bool found;
-  const char* value = get_from_config_or_env(key, &found);
+  const char* value = get_from_config_or_fallback(key, &found);
   if (found) {
     return {value};
   }
 
   if constexpr (must_find_) {
-    throw_config_exception("Failed to get config value for key: " + key);
+    throw ConfigException("Failed to get config value for key: " + key);
   }
   return {nullopt};
 }

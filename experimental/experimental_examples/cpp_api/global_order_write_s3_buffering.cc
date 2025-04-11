@@ -167,6 +167,15 @@ void read_and_validate(Context& ctx) {
 }
 
 int main() {
+  // #TODO once C & C++ APIs added, replace all occurrences of config params
+  // with setting on a profile and setting profile params on config
+  /*Profile profile;
+  profile.set_param("rest.username", "demo");
+  profile.set_param("rest.password", "demodemo");
+  profile.set_param("rest.server_address", "http://localhost:8181");
+  Config cfg;
+  cfg["profile_name"] = profile.get_name();*/
+
   Config cfg;
   cfg["rest.username"] = "demo";
   cfg["rest.password"] = "demodemo";

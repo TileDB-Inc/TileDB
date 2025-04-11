@@ -34,7 +34,6 @@
 
 #include "rest_profile.h"
 #include "tiledb/common/random/random_label.h"
-#include "tiledb/sm/misc/constants.h"
 
 using namespace tiledb::common;
 using namespace tiledb::common::filesystem;
@@ -171,6 +170,14 @@ std::string RestProfile::get_param(const std::string& param) const {
  * See issue [#727](https://github.com/nlohmann/json/issues/727) for details.
  */
 void RestProfile::save_to_file() {
+  // RestProfiles are immutable, so disallow overwrites.
+  if (saved_) {
+    throw RestProfileException(
+        "Failed to save \'" + name_ +
+        "\'; This profile has already been saved, "
+        "and must be explicitly removed in order to be replaced.");
+  }
+
   // Validate that the profile is complete (if username is set, so is password)
   if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
       (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
@@ -194,12 +201,12 @@ void RestProfile::save_to_file() {
           "The version of your local profile.json file is out of date.");
     }
 
-    // RestProfiles are immutable, so disallow overwrites.
+    // Double-check that this profile hasn't already been saved.
     if (data.contains(name_)) {
       throw RestProfileException(
           "Failed to save \'" + name_ +
-          "\'; This profile already exists and "
-          "must be explicitly removed in order to be replaced.");
+          "\'; This profile has already been saved,"
+          " and must be explicitly removed in order to be replaced.");
     }
   } else {
     // Write the version number iff this is the first time opening the file.
@@ -211,6 +218,9 @@ void RestProfile::save_to_file() {
 
   // Write to the file, which will be created if it does not yet exist.
   write_file(data, filepath_);
+
+  // Flip the `saved_` flag; This profile has now been written to disk.
+  saved_ = true;
 }
 
 void RestProfile::load_from_file() {
@@ -299,6 +309,9 @@ void RestProfile::load_from_json_file(const std::string& filename) {
     }
     if (data.contains("username")) {
       param_values_["rest.username"] = data["username"];
+    }
+    if (data.contains("verify_ssl")) {
+      verify_ssl_ = data["verify_ssl"];
     }
   } else {
     // Consider the name of the profile to load.
