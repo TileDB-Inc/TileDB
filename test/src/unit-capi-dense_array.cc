@@ -249,10 +249,10 @@ struct DenseArrayFx {
 };
 
 DenseArrayFx::DenseArrayFx()
-    : fs_vec_(vfs_test_get_fs_vec())
-    , prefix_(vfs_array_uri(fs_vec_[0], fs_vec_[0]->temp_dir())) {
+    : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+  prefix_ = vfs_array_uri(fs_vec_[0], fs_vec_[0]->temp_dir());
   std::srand(0);
 }
 
