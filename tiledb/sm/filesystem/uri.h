@@ -157,21 +157,6 @@ class URI {
   bool contains(std::string_view str) const;
 
   /**
-   * Checks if the input path is HDFS.
-   *
-   * @param path The path to be checked.
-   * @return The result of the check.
-   */
-  static bool is_hdfs(std::string_view path);
-
-  /**
-   * Checks if the URI is HDFS.
-   *
-   * @return The result of the check.
-   */
-  bool is_hdfs() const;
-
-  /**
    * Checks if the input path is S3.
    *
    * @param path The path to be checked.
@@ -294,8 +279,8 @@ class URI {
    * Returns the URI path for the current platform, stripping the resource. For
    * example, if "file:///my/path/" is the URI, this function will return
    * "/my/path/" on Mac and Linux. If "file:///C:/my/path" is the URI, this
-   * function will return "C:\my\path" on Windows. HDFS and S3 URIs are returned
-   * unmodified.
+   * function will return "C:\my\path" on Windows. Object store URIs are
+   * returned unmodified.
    *
    * @param uri The URI to convert.
    * @return std::string The converted path, or empty string on error.
@@ -305,8 +290,8 @@ class URI {
   /** Returns the URI path for the current platform, stripping the resource. For
    * example, if "file:///my/path/" is the URI, this function will return
    * "/my/path/" on Mac and Linux. If "file:///C:/my/path" is the URI, this
-   * function will return "C:\my\path" on Windows. HDFS and S3 URIs are returned
-   * unmodified.
+   * function will return "C:\my\path" on Windows. Object store URIs are
+   * returned unmodified.
    */
   std::string to_path() const;
 

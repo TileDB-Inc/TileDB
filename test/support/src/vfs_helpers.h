@@ -258,83 +258,6 @@ class SupportedFsS3 : public SupportedFs {
 
 /**
  * This class provides support for
- * the HDFS filesystem.
- */
-class SupportedFsHDFS : public SupportedFs {
- public:
-  SupportedFsHDFS()
-      : temp_dir_("hdfs:///tiledb_test/") {
-  }
-
-  ~SupportedFsHDFS() = default;
-
-  /* ********************************* */
-  /*               API                 */
-  /* ********************************* */
-
-  /**
-   * No-op
-   *
-   * @param config Configuration parameters
-   * @param error Error parameter
-   * @return Status OK if successful
-   */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
-
-  /**
-   * No-op
-   *
-   * @param ctx The TileDB context.
-   * @param vfs The VFS object.
-   * @return Status OK if successful
-   */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
-
-  /**
-   * No-op
-   *
-   * @param ctx The TileDB context.
-   * @param vfs The VFS object.
-   * @return Status OK if successful
-   */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
-
-  /**
-   * Get the name of the filesystem's directory
-   *
-   * @return string directory name
-   */
-  virtual std::string temp_dir();
-
-  /**
-   * Checks if the filesystem is accessed via REST
-   *
-   * @return true if REST, false if not
-   */
-  inline bool is_rest() {
-    return false;
-  }
-
-  /**
-   * Checks if the filesystem is local or remote
-   *
-   * @return true if local, false if not
-   */
-  inline bool is_local() {
-    return false;
-  }
-
- private:
-  /* ********************************* */
-  /*           ATTRIBUTES              */
-  /* ********************************* */
-
-  /** The directory name of the HDFS filesystem. */
-  std::string temp_dir_;
-};
-
-/**
- * This class provides support for
  * the Azure filesystem.
  */
 class SupportedFsAzure : public SupportedFs {
@@ -1155,14 +1078,6 @@ class GSTest : public VFSTestBase {
  public:
   explicit GSTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "gs://") {
-  }
-};
-
-/** Stub test object for tiledb::sm::HDFS functionality. */
-class HDFSTest : public VFSTestBase {
- public:
-  explicit HDFSTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "hdfs:///") {
   }
 };
 

@@ -113,7 +113,6 @@ jobs:
             -DTILEDB_S3=ON \
             -DTILEDB_AZURE=ON \
             -DTILEDB_GCS=ON \
-            -DTILEDB_HDFS=${{ startsWith(matrix.platform, 'windows') && 'OFF' || 'ON' }} \
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_WEBP=ON \
             -DTILEDB_TESTS=OFF \

@@ -293,7 +293,7 @@ class VFSFilebuf : public std::streambuf {
 /**
  * Implements a virtual filesystem that enables performing directory/file
  * operations with a unified API on different filesystems, such as local
- * posix/windows, HDFS, AWS S3, etc.
+ * posix/windows, S3, etc.
  */
 class VFS {
  public:

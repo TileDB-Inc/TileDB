@@ -67,10 +67,6 @@
 #include "tiledb/sm/filesystem/s3.h"
 #endif  // HAVE_S3
 
-#ifdef HAVE_HDFS
-#include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#endif  // HAVE_HDFS
-
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
 #endif  // HAVE_AZURE
@@ -135,12 +131,6 @@ static constexpr bool s3_enabled = true;
 #else
 static constexpr bool s3_enabled = false;
 #endif  // HAVE_S3
-
-#ifdef HAVE_HDFS
-static constexpr bool hdfs_enabled = true;
-#else
-static constexpr bool hdfs_enabled = false;
-#endif  // HAVE_HDFS
 
 #ifdef HAVE_AZURE
 static constexpr bool azure_enabled = true;
@@ -642,14 +632,6 @@ class VFS : private VFSBase,
         throw filesystem::VFSException(
             "TileDB was built without Azure support");
 #endif
-      } else if (parent.is_hdfs()) {
-#ifdef HAVE_HDFS
-        throw filesystem::VFSException(
-            "Recursive ls over " + parent.backend_name() +
-            " storage backend is not supported.");
-#else
-        throw filesystem::VFSException("TileDB was built without HDFS support");
-#endif
       } else {
         throw filesystem::VFSException(
             "Recursive ls over " + parent.backend_name() +
@@ -1008,10 +990,6 @@ class VFS : private VFSBase,
   Win win_;
 #else
   Posix posix_;
-#endif
-
-#ifdef HAVE_HDFS
-  tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
   /** The in-memory filesystem which is always supported */

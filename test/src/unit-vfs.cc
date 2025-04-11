@@ -198,8 +198,7 @@ TEST_CASE("VFS: Test long local paths", "[vfs][long-paths]") {
   }
 }
 
-using AllBackends =
-    std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest, HDFSTest>;
+using AllBackends = std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
   TestType fs({0});
@@ -325,19 +324,6 @@ TEMPLATE_LIST_TEST_CASE(
     URI ls_dir = dir1;
     URI ls_subdir = subdir;
     URI ls_file = file3;
-    if (path.is_hdfs()) {
-      // HDFS requires localhost-resolved paths for ls_with_sizes
-      auto localdir1 =
-          URI("hdfs://localhost:9000/vfs-" + random_label() + "/dir1/");
-      require_tiledb_ok(vfs.create_dir(localdir1));
-      auto localsubdir = URI(localdir1.to_string() + "subdir/");
-      require_tiledb_ok(vfs.create_dir(localsubdir));
-      auto localfile3 = URI(localdir1.to_string() + "file3");
-      require_tiledb_ok(vfs.touch(localfile3));
-      ls_dir = localdir1;
-      ls_subdir = localsubdir;
-      ls_file = localfile3;
-    }
     std::string s = "abcdef";
     require_tiledb_ok(vfs.write(ls_file, s.data(), s.size()));
     require_tiledb_ok(vfs.close_file(ls_file));
@@ -352,13 +338,6 @@ TEMPLATE_LIST_TEST_CASE(
         URI(children[1].path().native()) == ls_subdir.remove_trailing_slash());
     CHECK(children[0].file_size() == s.size());
     CHECK(children[1].file_size() == 0);  // Directories don't get a size
-
-    if (path.is_hdfs()) {
-      // Clean up
-      require_tiledb_ok(vfs.remove_dir(ls_dir));
-      require_tiledb_ok(vfs.is_dir(ls_dir, &exists));
-      CHECK(!exists);
-    }
 
     // Move file
     auto file6 = URI(path.to_string() + "file6");
@@ -494,8 +473,8 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   require_tiledb_ok(
       vfs.write(smallfile, write_buffer_small, buffer_size_small));
 
-  // On non-local and hdfs systems, before flushing, the files do not exist
-  if (!(path.is_file() || path.is_hdfs())) {
+  // On non-local systems, before flushing, the files do not exist
+  if (!(path.is_file())) {
     require_tiledb_ok(vfs.is_file(largefile, &exists));
     CHECK(!exists);
     require_tiledb_ok(vfs.is_file(smallfile, &exists));
@@ -668,26 +647,16 @@ TEST_CASE(
     "VFS: ls_recursive throws for unsupported backends",
     "[vfs][ls_recursive]") {
   // Local and mem fs tests are in tiledb/sm/filesystem/test/unit_ls_filtered.cc
-  std::string prefix = GENERATE("s3://", "hdfs://", "azure://", "gcs://");
+  std::string prefix = GENERATE("s3://", "azure://", "gcs://");
   VFSTest vfs_test({1}, prefix);
   if (!vfs_test.is_supported()) {
     return;
   }
   std::string backend = vfs_test.temp_dir_.backend_name();
 
-  if (vfs_test.temp_dir_.is_hdfs()) {
-    DYNAMIC_SECTION(backend << " unsupported backend should throw") {
-      CHECK_THROWS_WITH(
-          vfs_test.vfs_.ls_recursive(
-              vfs_test.temp_dir_, VFSTestBase::accept_all_files),
-          Catch::Matchers::ContainsSubstring(
-              "storage backend is not supported"));
-    }
-  } else {
-    DYNAMIC_SECTION(backend << " supported backend should not throw") {
-      CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-          vfs_test.temp_dir_, VFSTestBase::accept_all_files));
-    }
+  DYNAMIC_SECTION(backend << " supported backend should not throw") {
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
+        vfs_test.temp_dir_, VFSTestBase::accept_all_files));
   }
 }
 

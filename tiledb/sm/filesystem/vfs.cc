@@ -37,7 +37,6 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
-#include "tiledb/sm/filesystem/hdfs_filesystem.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -79,15 +78,6 @@ VFS::VFS(
   // Construct the read-ahead cache.
   read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
       tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
-
-#ifdef HAVE_HDFS
-  supported_fs_.insert(Filesystem::HDFS);
-  hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
-  st = hdfs_->init(config_);
-  if (!st.ok()) {
-    throw VFSException("Failed to initialize HDFS backend.");
-  }
-#endif
 
   if constexpr (s3_enabled) {
     supported_fs_.insert(Filesystem::S3);
@@ -131,8 +121,6 @@ std::string VFS::abs_path(std::string_view path) {
   if (URI::is_file(path))
     return Posix::abs_path(path);
 #endif
-  if (URI::is_hdfs(path))
-    return path_copy;
   if (URI::is_s3(path))
     return path_copy;
   if (URI::is_azure(path))
@@ -163,13 +151,6 @@ Status VFS::create_dir(const URI& uri) const {
 #else
     posix_.create_dir(uri);
     return Status::Ok();
-#endif
-  }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->create_dir(uri);
-#else
-    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
@@ -239,13 +220,6 @@ Status VFS::touch(const URI& uri) const {
 #else
     posix_.touch(uri);
     return Status::Ok();
-#endif
-  }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->touch(uri);
-#else
-    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
@@ -402,12 +376,6 @@ Status VFS::remove_dir(const URI& uri) const {
 #else
     posix_.remove_dir(uri);
 #endif
-  } else if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->remove_dir(uri);
-#else
-    throw BuiltWithout("HDFS");
-#endif
   } else if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().remove_dir(uri);
@@ -467,13 +435,6 @@ Status VFS::remove_file(const URI& uri) const {
     return Status::Ok();
 #endif
   }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->remove_file(uri);
-#else
-    throw BuiltWithout("HDFS");
-#endif
-  }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3().remove_object(uri);
@@ -522,10 +483,7 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
   bool found;
   *ops = 0;
 
-  if (uri.is_hdfs()) {
-    // HDFS backend is currently serial.
-    *ops = 1;
-  } else if (uri.is_s3()) {
+  if (uri.is_s3()) {
     RETURN_NOT_OK(
         config_.get<uint64_t>("vfs.s3.max_parallel_ops", ops, &found));
     assert(found);
@@ -553,13 +511,6 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 #else
     posix_.file_size(uri, size);
     return Status::Ok();
-#endif
-  }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->file_size(uri, size);
-#else
-    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
@@ -608,14 +559,6 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
 #endif
     return Status::Ok();
   }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->is_dir(uri, is_dir);
-#else
-    *is_dir = false;
-    throw BuiltWithout("HDFS");
-#endif
-  }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3().is_dir(uri, is_dir);
@@ -658,14 +601,6 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
     *is_file = posix_.is_file(uri);
 #endif
     return Status::Ok();
-  }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->is_file(uri, is_file);
-#else
-    *is_file = false;
-    throw BuiltWithout("HDFS");
-#endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
@@ -782,14 +717,6 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 #else
     throw BuiltWithout("GCS");
 #endif
-  } else if (parent.is_hdfs()) {
-#ifdef HAVE_HDFS
-    auto&& [st, entries_optional] = hdfs_->ls_with_sizes(parent);
-    throw_if_not_ok(st);
-    entries = *std::move(entries_optional);
-#else
-    throw BuiltWithout("HDFS");
-#endif
   } else if (parent.is_memfs()) {
     entries = memfs_.ls_with_sizes(URI("mem://" + parent.to_path()));
   } else {
@@ -824,17 +751,6 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
       return Status::Ok();
 #endif
     }
-    throw UnsupportedOperation("Moving files");
-  }
-
-  // HDFS
-  if (old_uri.is_hdfs()) {
-    if (new_uri.is_hdfs())
-#ifdef HAVE_HDFS
-      return hdfs_->move_path(old_uri, new_uri);
-#else
-      throw BuiltWithout("HDFS");
-#endif
     throw UnsupportedOperation("Moving files");
   }
 
@@ -896,17 +812,6 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
       return Status::Ok();
 #endif
     }
-    throw UnsupportedOperation("Moving directories");
-  }
-
-  // HDFS
-  if (old_uri.is_hdfs()) {
-    if (new_uri.is_hdfs())
-#ifdef HAVE_HDFS
-      return hdfs_->move_path(old_uri, new_uri);
-#else
-      throw BuiltWithout("HDFS");
-#endif
     throw UnsupportedOperation("Moving directories");
   }
 
@@ -979,18 +884,6 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
     throw UnsupportedOperation("Copying files");
   }
 
-  // HDFS
-  if (old_uri.is_hdfs()) {
-    if (new_uri.is_hdfs()) {
-      if constexpr (hdfs_enabled) {
-        throw VFSException("Copying files on HDFS is not yet supported.");
-      } else {
-        throw BuiltWithout("HDFS");
-      }
-    }
-    throw UnsupportedOperation("Copying files");
-  }
-
   // S3
   if (old_uri.is_s3()) {
     if (new_uri.is_s3()) {
@@ -1044,18 +937,6 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
       posix_.copy_dir(old_uri, new_uri);
       return Status::Ok();
 #endif
-    }
-    throw UnsupportedOperation("Copying directories");
-  }
-
-  // HDFS
-  if (old_uri.is_hdfs()) {
-    if (new_uri.is_hdfs()) {
-      if constexpr (hdfs_enabled) {
-        throw VFSException("Copying directories on HDFS is not yet supported.");
-      } else {
-        throw BuiltWithout("HDFS");
-      }
     }
     throw UnsupportedOperation("Copying directories");
   }
@@ -1184,13 +1065,6 @@ Status VFS::read_impl(
     return Status::Ok();
 #endif
   }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->read(uri, offset, buffer, nbytes);
-#else
-    throw BuiltWithout("HDFS");
-#endif
-  }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     const auto read_fn = std::bind(
@@ -1280,7 +1154,6 @@ Status VFS::read_ahead_impl(
   // read cache. Note that we intentionally do not use a read
   // cache for local files because we rely on the operating
   // system's file system to cache readahead data in memory.
-  // Additionally, we do not perform readahead with HDFS.
   bool success;
   RETURN_NOT_OK(read_ahead_cache_->read(uri, offset, buffer, nbytes, &success));
   if (success)
@@ -1322,8 +1195,6 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
     return supports_fs(Filesystem::AZURE);
   } else if (uri.is_gcs()) {
     return supports_fs(Filesystem::GCS);
-  } else if (uri.is_hdfs()) {
-    return supports_fs(Filesystem::HDFS);
   } else {
     return true;
   }
@@ -1337,13 +1208,6 @@ Status VFS::sync(const URI& uri) {
 #else
     posix_.sync(uri);
     return Status::Ok();
-#endif
-  }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->sync(uri);
-#else
-    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
@@ -1431,13 +1295,6 @@ Status VFS::close_file(const URI& uri) {
     return Status::Ok();
 #endif
   }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->sync(uri);
-#else
-    throw BuiltWithout("HDFS");
-#endif
-  }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3().flush_object(uri);
@@ -1493,13 +1350,6 @@ Status VFS::write(
 #else
     posix_.write(uri, buffer, buffer_size);
     return Status::Ok();
-#endif
-  }
-  if (uri.is_hdfs()) {
-#ifdef HAVE_HDFS
-    return hdfs_->write(uri, buffer, buffer_size);
-#else
-    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {

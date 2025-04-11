@@ -79,12 +79,6 @@ target_include_directories(
     ${TILEDB_EXPORT_HEADER_DIR}
 )
 
-if (TILEDB_HDFS)
-  target_include_directories(tiledb_test_support_lib PRIVATE
-    "${CMAKE_SOURCE_DIR}/external/include"
-    )
-endif()
-
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)

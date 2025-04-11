@@ -776,26 +776,23 @@ void create_azure_container(
 
 void get_supported_fs(
     bool* s3_supported,
-    bool* hdfs_supported,
     bool* azure_supported,
     bool* gcs_supported,
     bool* rest_s3_supported) {
   // Override VFS support if the user used the '--vfs' command line argument.
   if (g_vfs.empty()) {
     *s3_supported = tiledb::sm::filesystem::s3_enabled;
-    *hdfs_supported = tiledb::sm::filesystem::hdfs_enabled;
     *azure_supported = tiledb::sm::filesystem::azure_enabled;
     *gcs_supported = tiledb::sm::filesystem::gcs_enabled;
     *rest_s3_supported = false;
   } else {
-    if (!(g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
-          g_vfs == "azure" || g_vfs == "gcs" || g_vfs == "rest-s3")) {
+    if (!(g_vfs == "native" || g_vfs == "s3" || g_vfs == "azure" ||
+          g_vfs == "gcs" || g_vfs == "rest-s3")) {
       throw std::runtime_error(
           "Failed to get supported fs. Invalid --vfs command line argument.");
     }
 
     *s3_supported = g_vfs == "s3";
-    *hdfs_supported = g_vfs == "hdfs";
     *azure_supported = g_vfs == "azure";
     *gcs_supported = g_vfs == "gcs";
     *rest_s3_supported = g_vfs == "rest-s3";

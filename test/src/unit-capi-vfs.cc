@@ -127,26 +127,14 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
   // Get enabled filesystems
   // Note: get_supported_fs handles VFS support override from `--vfs`.
   bool s3_enabled;
-  bool hdfs_enabled;
   bool azure_enabled;
   bool gcs_enabled;
   bool rest_s3_enabled;
-  get_supported_fs(
-      &s3_enabled,
-      &hdfs_enabled,
-      &azure_enabled,
-      &gcs_enabled,
-      &rest_s3_enabled);
+  get_supported_fs(&s3_enabled, &azure_enabled, &gcs_enabled, &rest_s3_enabled);
 
   // Sections to test each filesystem, if enabled
   ordinary_vfs x(config);
   std::string path = "";
-  if (hdfs_enabled) {
-    SECTION("Filesystem: HDFS") {
-      path = "hdfs://localhost:9000/tiledb_test/";
-    }
-  }
-
   std::string s3_bucket;
   if (s3_enabled) {
     SECTION("Filesystem: S3") {
@@ -445,9 +433,9 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
           tiledb_vfs_remove_bucket(x.ctx, x.vfs, bucket2.c_str()));
     }
 
-    // Check copy (not yet supported for MemFS or HDFS)
+    // Check copy (not yet supported for MemFS or Windows)
     if constexpr (!tiledb::platform::is_os_windows) {
-      if (!tiledb::sm::URI::is_memfs(path) && !tiledb::sm::URI::is_hdfs(path)) {
+      if (!tiledb::sm::URI::is_memfs(path)) {
         auto dir = path + "dir/";
         auto file = dir + "file";
         int is_file = 0;

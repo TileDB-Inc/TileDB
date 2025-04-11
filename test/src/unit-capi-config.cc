@@ -561,9 +561,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   rc = tiledb_config_set(config, "vfs.s3.scheme", "https", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  rc = tiledb_config_set(config, "vfs.hdfs.username", "stavros", &error);
-  CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
   rc = tiledb_config_set(config, "sm.var_offsets.mode", "elements", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -768,9 +765,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.verify_ssl"] = "true";
   all_param_values["vfs.s3.no_sign_request"] = "false";
   all_param_values["vfs.s3.install_sigpipe_handler"] = "true";
-  all_param_values["vfs.hdfs.username"] = "stavros";
-  all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
-  all_param_values["vfs.hdfs.name_node_uri"] = "";
   all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.config_source"] = "auto";
@@ -846,9 +840,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.config_source"] = "auto";
   vfs_param_values["s3.install_sigpipe_handler"] = "true";
-  vfs_param_values["hdfs.username"] = "stavros";
-  vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
-  vfs_param_values["hdfs.name_node_uri"] = "";
 
   std::map<std::string, std::string> gcs_param_values;
   gcs_param_values["endpoint"] = "";

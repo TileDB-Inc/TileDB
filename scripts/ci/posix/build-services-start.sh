@@ -22,15 +22,3 @@ if [[ "$TILEDB_CI_BACKEND" == "AZURE" ]]; then
   source scripts/install-azurite.sh;
   source scripts/run-azurite.sh;
 fi
-
-if [[ "$TILEDB_CI_BACKEND" == "HDFS" ]]; then
-  # - run: |
-  # Start HDFS server if enabled
-  # - ssh to localhost is required for HDFS launch...
-  # - /home/vsts has permissions g+w and is owned by user 'docker'
-  #   for VSTS purposes, so disable ssh strictness
-  sudo sed -i.bak 's/StrictModes\ yes/StrictModes\ no/g' /etc/ssh/sshd_config
-
-  source scripts/install-hadoop.sh
-  source scripts/run-hadoop.sh
-fi

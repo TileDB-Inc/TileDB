@@ -132,6 +132,7 @@ while test $# != 0; do
     --enable-release-symbols) build_type="RelWithDebInfo";;
     --enable-coverage) build_type="Coverage";;
     --enable-verbose) tiledb_verbose="ON";;
+    # TODO: Completely remove the switch. Let's keep it for a while to cause configuration failures that will let users know that HDFS is no longer supported.
     --enable-hdfs) tiledb_hdfs="ON";;
     --enable-s3) tiledb_s3="ON";;
     --enable-azure) tiledb_azure="ON";;

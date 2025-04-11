@@ -409,25 +409,6 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
     CHECK_THAT(golden_ls, Catch::Matchers::Equals(ls_str));
     remove_temp_dir(temp_dir);
-  } else if (dynamic_cast<SupportedFsHDFS*>(fs) != nullptr) {
-    std::string temp_dir = "hdfs://localhost:9000/tiledb_test/";
-    remove_temp_dir(temp_dir);
-    create_hierarchy(temp_dir);
-    golden_walk = get_golden_walk(temp_dir);
-    golden_ls = get_golden_ls(temp_dir);
-    walk_str.clear();
-    ls_str.clear();
-    rc = tiledb_object_walk(
-        ctx_, temp_dir.c_str(), TILEDB_PREORDER, write_path, &walk_str);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_object_walk(
-        ctx_, temp_dir.c_str(), TILEDB_POSTORDER, write_path, &walk_str);
-    CHECK(rc == TILEDB_OK);
-    CHECK_THAT(golden_walk, Catch::Matchers::Equals(walk_str));
-    rc = tiledb_object_ls(ctx_, temp_dir.c_str(), write_path, &ls_str);
-    CHECK(rc == TILEDB_OK);
-    CHECK_THAT(golden_ls, Catch::Matchers::Equals(ls_str));
-    remove_temp_dir(temp_dir);
   } else {
     // TODO: refactor for each supported FS.
     std::string temp_dir = fs->temp_dir();

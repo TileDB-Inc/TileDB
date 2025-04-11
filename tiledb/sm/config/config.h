@@ -631,15 +631,6 @@ class Config {
    */
   static const std::string VFS_S3_INSTALL_SIGPIPE_HANDLER;
 
-  /** HDFS default kerb ticket cache path. */
-  static const std::string VFS_HDFS_KERB_TICKET_CACHE_PATH;
-
-  /** HDFS default name node uri. */
-  static const std::string VFS_HDFS_NAME_NODE_URI;
-
-  /** HDFS default username. */
-  static const std::string VFS_HDFS_USERNAME;
-
   /** S3 default bucket canned ACL */
   static const std::string VFS_S3_BUCKET_CANNED_ACL;
 

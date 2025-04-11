@@ -110,7 +110,7 @@ TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT;
  *
  * @code{.c}
  * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "hdfs:///tiledb_groups/my_group", &group);
+ * tiledb_group_alloc(ctx, "s3://tiledb_groups/my_group", &group);
  * tiledb_group_open(ctx, group, TILEDB_READ);
  * @endcode
  *
@@ -138,7 +138,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_open(
  *
  * @code{.c}
  * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "hdfs:///tiledb_groups/my_group", &group);
+ * tiledb_group_alloc(ctx, "s3://tiledb_groups/my_group", &group);
  * tiledb_group_open(ctx, group, TILEDB_READ);
  * tiledb_group_close(ctx, group);
  * @endcode

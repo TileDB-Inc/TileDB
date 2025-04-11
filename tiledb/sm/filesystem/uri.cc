@@ -68,8 +68,8 @@ URI::URI(std::string_view path) {
   else if (URI::is_file(path))
     uri_ = VFS::abs_path(path);
   else if (
-      URI::is_hdfs(path) || URI::is_s3(path) || URI::is_azure(path) ||
-      URI::is_gcs(path) || URI::is_memfs(path) || URI::is_tiledb(path))
+      URI::is_s3(path) || URI::is_azure(path) || URI::is_gcs(path) ||
+      URI::is_memfs(path) || URI::is_tiledb(path))
     uri_ = path;
   else
     uri_ = "";
@@ -85,8 +85,8 @@ URI::URI(std::string_view path, const bool& get_abs) {
       uri_ = path;
     }
   } else if (
-      URI::is_hdfs(path) || URI::is_s3(path) || URI::is_azure(path) ||
-      URI::is_gcs(path) || URI::is_memfs(path) || URI::is_tiledb(path)) {
+      URI::is_s3(path) || URI::is_azure(path) || URI::is_gcs(path) ||
+      URI::is_memfs(path) || URI::is_tiledb(path)) {
     uri_ = path;
   } else {
     uri_ = "";
@@ -162,14 +162,6 @@ bool URI::is_file() const {
   // additional check using "://".
   return utils::parse::starts_with(uri_, "file:///");
 #endif
-}
-
-bool URI::is_hdfs(std::string_view path) {
-  return utils::parse::starts_with(path, "hdfs://");
-}
-
-bool URI::is_hdfs() const {
-  return utils::parse::starts_with(uri_, "hdfs://");
 }
 
 bool URI::is_s3(std::string_view path) {
@@ -324,8 +316,7 @@ std::string URI::to_path(const std::string& uri) {
     return uri.substr(std::string("mem://").size());
   }
 
-  if (is_hdfs(uri) || is_s3(uri) || is_azure(uri) || is_gcs(uri) ||
-      is_tiledb(uri))
+  if (is_s3(uri) || is_azure(uri) || is_gcs(uri) || is_tiledb(uri))
     return uri;
 
   // Error

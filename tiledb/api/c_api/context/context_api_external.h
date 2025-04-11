@@ -154,7 +154,7 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_get_last_error(
  *
  * @code{.c}
  * int32_t is_supported;
- * tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
+ * tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
  * @endcode
  *
  * @param ctx The TileDB context.

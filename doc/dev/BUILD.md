@@ -73,7 +73,6 @@ The following are the most common configuration options:
 |`--enable-release-symbols`|`-EnableReleaseSymbols`|`CMAKE_BUILD_TYPE=RelWithDebInfo`|Enables release build with debug symbols|
 |`--enable-coverage`|`-EnableCoverage`|`CMAKE_BUILD_TYPE=Coverage`|Enables build with code coverage support|
 |`--enable-verbose`|`-EnableVerbose`|`TILEDB_VERBOSE=ON`|Enables verbose status messages|
-|`--enable-hdfs`|_(HDFS is unsupported on Windows)_|`TILEDB_HDFS=ON`|Enables building with HDFS storage backend support|
 |`--enable-s3`|`-EnableS3`|`TILEDB_S3=ON`|Enables building with S3 storage backend support|
 |`--enable-azure`|`-EnableAzure`|`TILEDB_AZURE=ON`|Enables building with Azure Blob Storage backend support|
 |`--enable-gcs`|`-EnableGcs`|`TILEDB_GCS=ON`|Enables building with Google Cloud Storage backend support|

@@ -145,10 +145,6 @@ TEST_CASE("URI: Test URI to path", "[uri]") {
   CHECK(uri.to_path() == "azure://path/on/azure");
   uri = URI("azure://relative/../path/on/azure");
   CHECK(uri.to_path() == "azure://relative/../path/on/azure");
-  uri = URI("hdfs://path/on/hdfs");
-  CHECK(uri.to_path() == "hdfs://path/on/hdfs");
-  uri = URI("hdfs://relative/../path/on/hdfs");
-  CHECK(uri.to_path() == "hdfs://relative/../path/on/hdfs");
 
   uri = URI("C:\\my\\path");
 #ifdef _WIN32
@@ -178,8 +174,6 @@ TEST_CASE("URI: Test schemes", "[uri]") {
   CHECK(URI("https://bucket/dir").is_s3());
 
   CHECK(URI("azure://container/dir").is_azure());
-
-  CHECK(URI("hdfs://namenode/dir").is_hdfs());
 
   CHECK(URI("tiledb://namespace/array").is_tiledb());
 }
@@ -225,7 +219,6 @@ TEST_CASE("URI: Test REST components, invalid", "[uri]") {
       "azure://container/dir",
       "http://bucket/dir",
       "https://bucket/dir",
-      "hdfs://namenode/dir",
       "tiledb:///array",
       "tiledb://ns",
       "tiledb://ns/",

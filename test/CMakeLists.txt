@@ -245,17 +245,6 @@ target_include_directories(tiledb_unit PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
 )
 
-# need to properly link the signal chaining library for catch to work with the jni hdfs interface
-# see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
-if (TILEDB_HDFS)
-  find_package(LIBJVM REQUIRED)
-  target_link_libraries(tiledb_unit
-    PUBLIC
-      LibJVM::libjvm
-      LibJVM::libjsig
-  )
-endif()
-
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
@@ -364,13 +353,6 @@ if (DEFINED ENV{TILEDB_NIGHTLY_BUILD})
     COMMAND tiledb_unit --durations=yes --allow-running-no-tests [nightly_only]
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
-endif()
-
-if(TILEDB_HDFS)
-  # need to force flat namespace for the signal chaining to work on macOS
-  if (APPLE)
-    set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "DYLD_FORCE_FLAT_NAMESPACE=1")
-  endif()
 endif()
 
 # CI tests

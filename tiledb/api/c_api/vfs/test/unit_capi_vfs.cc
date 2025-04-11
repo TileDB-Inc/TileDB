@@ -734,11 +734,7 @@ TEST_CASE(
   auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
   // Recursive ls is currently only supported for S3.
   tiledb::sm::URI uri{GENERATE(
-      "file:///path/",
-      "mem:///path/",
-      "azure://path/",
-      "gcs://path/",
-      "hdfs://path/")};
+      "file:///path/", "mem:///path/", "azure://path/", "gcs://path/")};
   DYNAMIC_SECTION(
       "Test recursive ls usupported backend over " << uri.backend_name()) {
     if (!vfs.vfs->vfs()->supports_uri_scheme(uri)) {
