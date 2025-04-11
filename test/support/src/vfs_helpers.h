@@ -161,7 +161,7 @@ class SupportedFs {
   virtual bool is_rest() = 0;
 
   /**
-   * Checks if the we are using legacy or 3.0 REST.
+   * Checks if we are using legacy or 3.0 REST.
    *
    * @return true if legacy REST, false if 3.0 REST.
    */
@@ -238,7 +238,7 @@ class SupportedFsS3 : public SupportedFs {
   virtual bool is_rest();
 
   /**
-   * Checks if the we are using legacy or 3.0 REST.
+   * Checks if we are using legacy or 3.0 REST.
    *
    * @return true if legacy REST, false if 3.0 REST.
    */
@@ -336,7 +336,7 @@ class SupportedFsHDFS : public SupportedFs {
   }
 
   /**
-   * Checks if the we are using legacy or 3.0 REST.
+   * Checks if we are using legacy or 3.0 REST.
    *
    * @return true if legacy REST, false if 3.0 REST.
    */
@@ -425,7 +425,7 @@ class SupportedFsAzure : public SupportedFs {
   }
 
   /**
-   * Checks if the we are using legacy or 3.0 REST.
+   * Checks if we are using legacy or 3.0 REST.
    *
    * @return true if legacy REST, false if 3.0 REST.
    */
@@ -519,7 +519,7 @@ class SupportedFsGCS : public SupportedFs {
   }
 
   /**
-   * Checks if the we are using legacy or 3.0 REST.
+   * Checks if we are using legacy or 3.0 REST.
    *
    * @return true if legacy REST, false if 3.0 REST.
    */
@@ -626,7 +626,7 @@ class SupportedFsLocal : public SupportedFs {
   }
 
   /**
-   * Checks if the we are using legacy or 3.0 REST.
+   * Checks if we are using legacy or 3.0 REST.
    *
    * @return true if legacy REST, false if 3.0 REST.
    */
@@ -725,7 +725,7 @@ class SupportedFsMem : public SupportedFs {
   }
 
   /**
-   * Checks if the we are using legacy or 3.0 REST.
+   * Checks if we are using legacy or 3.0 REST.
    *
    * @return true if legacy REST, false if 3.0 REST.
    */
