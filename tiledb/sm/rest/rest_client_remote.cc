@@ -124,9 +124,7 @@ RestClientRemote::check_array_exists_from_rest(const URI& uri) {
   Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK_TUPLE(
-      uri.get_rest_components(
-          &array_ns, &array_uri, get_capabilities_from_rest().legacy_),
-      nullopt);
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()), nullopt);
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK_TUPLE(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
@@ -164,9 +162,7 @@ RestClientRemote::check_group_exists_from_rest(const URI& uri) {
   Curl curlc(logger_);
   std::string group_ns, group_uri;
   RETURN_NOT_OK_TUPLE(
-      uri.get_rest_components(
-          &group_ns, &group_uri, get_capabilities_from_rest().legacy_),
-      nullopt);
+      uri.get_rest_components(&group_ns, &group_uri, rest_legacy()), nullopt);
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK_TUPLE(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
@@ -204,9 +200,7 @@ RestClientRemote::get_array_schema_from_rest(const URI& uri) {
   Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK_TUPLE(
-      uri.get_rest_components(
-          &array_ns, &array_uri, get_capabilities_from_rest().legacy_),
-      nullopt);
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()), nullopt);
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK_TUPLE(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_),
@@ -253,8 +247,8 @@ RestClientRemote::post_array_schema_from_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -299,8 +293,7 @@ Status RestClientRemote::post_array_schema_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   // We don't want to cache the URI used for array creation as it will
   // always be hardcoded to the default server. After creation the REST
@@ -335,8 +328,8 @@ void RestClientRemote::post_array_from_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -369,8 +362,8 @@ void RestClientRemote::delete_array_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -399,8 +392,8 @@ void RestClientRemote::post_delete_fragments_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -428,8 +421,8 @@ void RestClientRemote::post_delete_fragments_list_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -452,8 +445,7 @@ Status RestClientRemote::deregister_array_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -478,7 +470,7 @@ Status RestClientRemote::get_array_non_empty_domain(
   Curl curlc(logger_);
   std::string array_ns, array_uri;
   RETURN_NOT_OK(array->array_uri().get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+      &array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -515,8 +507,7 @@ Status RestClientRemote::get_array_metadata_from_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -558,8 +549,7 @@ Status RestClientRemote::post_array_metadata_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -596,8 +586,8 @@ RestClientRemote::post_enumerations_from_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -641,8 +631,8 @@ void RestClientRemote::post_query_plan_from_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -735,8 +725,7 @@ Status RestClientRemote::post_query_submit(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -979,8 +968,7 @@ Status RestClientRemote::finalize_query_to_rest(const URI& uri, Query* query) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1040,8 +1028,7 @@ Status RestClientRemote::submit_and_finalize_query_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1169,8 +1156,7 @@ Status RestClientRemote::get_query_est_result_sizes(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1221,8 +1207,7 @@ Status RestClientRemote::post_array_schema_evolution_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1253,8 +1238,7 @@ Status RestClientRemote::post_fragment_info_from_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1293,8 +1277,7 @@ Status RestClientRemote::post_group_metadata_from_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string group_ns, group_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &group_ns, &group_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri, rest_legacy()));
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1337,8 +1320,7 @@ Status RestClientRemote::put_group_metadata_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string group_ns, group_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &group_ns, &group_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri, rest_legacy()));
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1361,13 +1343,12 @@ Status RestClientRemote::post_group_create_to_rest(
   BufferList serialized{memory_tracker_};
   auto& buff = serialized.emplace_buffer();
   RETURN_NOT_OK(serialization::group_create_serialize(
-      group, serialization_type_, buff, get_capabilities_from_rest().legacy_));
+      group, serialization_type_, buff, rest_legacy()));
 
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string group_ns, group_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &group_ns, &group_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri, rest_legacy()));
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1393,8 +1374,7 @@ Status RestClientRemote::post_group_from_rest(const URI& uri, Group* group) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string group_ns, group_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &group_ns, &group_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri, rest_legacy()));
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1433,8 +1413,7 @@ Status RestClientRemote::patch_group_to_rest(const URI& uri, Group* group) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string group_ns, group_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &group_ns, &group_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&group_ns, &group_uri, rest_legacy()));
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1451,8 +1430,8 @@ void RestClientRemote::delete_group_from_rest(const URI& uri, bool recursive) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string group_ns, group_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &group_ns, &group_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&group_ns, &group_uri, rest_legacy()));
   const std::string cache_key = group_ns + ":" + group_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1476,8 +1455,7 @@ Status RestClientRemote::post_consolidation_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1500,8 +1478,7 @@ Status RestClientRemote::post_vacuum_to_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  RETURN_NOT_OK(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
@@ -1525,8 +1502,8 @@ RestClientRemote::post_consolidation_plan_from_rest(
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
-  throw_if_not_ok(uri.get_rest_components(
-      &array_ns, &array_uri, get_capabilities_from_rest().legacy_));
+  throw_if_not_ok(
+      uri.get_rest_components(&array_ns, &array_uri, rest_legacy()));
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));

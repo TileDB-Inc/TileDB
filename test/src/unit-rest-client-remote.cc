@@ -61,8 +61,6 @@ TEST_CASE("REST capabilities endpoint", "[rest][version]") {
     REQUIRE(!rest_client.rest_capabilities_detected());
     auto actual_capabilities = rest_client.get_capabilities_from_rest();
 
-    // If we detected a legacy REST server the test was successful but there
-    // is no version response from legacy REST to validate.
     if (rest_client.get_capabilities_from_rest().legacy_) {
       REQUIRE(
           RestCapabilities({2, 28, 0}, {2, 0, 0}, true) == actual_capabilities);

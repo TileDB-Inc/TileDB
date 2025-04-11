@@ -313,6 +313,11 @@ class RestClient {
     throw RestClientDisabledException();
   }
 
+  /// Operation disabled in base class.
+  inline virtual bool rest_legacy() const {
+    throw RestClientDisabledException();
+  }
+
   //-------------------------------------------------------
   // Rest client operations
   //-------------------------------------------------------
