@@ -145,6 +145,15 @@ class RestClientRemote : public RestClient {
   }
 
   /**
+   * Check if we are using a legacy or 3.0 REST server.
+   *
+   * @return True if we're using legacy REST, False if we're using 3.0 REST.
+   */
+  inline bool rest_legacy() const override {
+    return get_capabilities_from_rest().legacy_;
+  }
+
+  /**
    * Check if an array exists by making a REST call. To start with this fetches
    * the schema but ignores the body returned if non-error
    *
