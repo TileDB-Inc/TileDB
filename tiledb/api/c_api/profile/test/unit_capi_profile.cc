@@ -31,10 +31,12 @@
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 
+#include "../../../c_api_test_support/testsupport_capi_profile.h"
+#include "../profile_api_experimental.h"
+#include "../profile_api_internal.h"
 #include "test/support/src/temporary_local_directory.h"
 
-#include "../profile_api_external.h"
-#include "../profile_api_internal.h"
+using namespace tiledb::api::test_support;
 
 const char* name_ = tiledb::sm::RestProfile::DEFAULT_NAME.c_str();
 tiledb::sm::TemporaryLocalDirectory tempdir_("unit_capi_profile");
@@ -43,20 +45,25 @@ TEST_CASE(
     "C API: tiledb_profile_alloc argument validation", "[capi][profile]") {
   capi_return_t rc;
   tiledb_profile_t* profile;
-  auto homedir = tempdir_.path().c_str();
+  auto homedir_ = tempdir_.path().c_str();
   SECTION("success") {
-    rc = tiledb_profile_alloc(name_, homedir, &profile);
+    rc = tiledb_profile_alloc(name_, homedir_, &profile);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
   SECTION("empty name") {
-    rc = tiledb_profile_alloc("", homedir, &profile);
+    rc = tiledb_profile_alloc("", homedir_, &profile);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null name") {
-    rc = tiledb_profile_alloc(nullptr, homedir, &profile);
+    rc = tiledb_profile_alloc(nullptr, homedir_, &profile);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    // Ensure nullptr resolves to default name internally.
+    const char* name;
+    rc = tiledb_profile_get_name(profile, &name);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(strcmp(name, name_) == 0);
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
@@ -68,11 +75,17 @@ TEST_CASE(
     // Normal expected use-case. Internally resolves to default homedir.
     rc = tiledb_profile_alloc(name_, nullptr, &profile);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    const char* homedir;
+    rc = tiledb_profile_get_homedir(profile, &homedir);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    // Validate homedir is non-empty. The path may not be resolved when using
+    // the default homedir (per the RestProfile::homedir() invariant).
+    // #TODO REQUIRE(homedir[0] != '\0');
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
   SECTION("null profile") {
-    rc = tiledb_profile_alloc(name_, homedir, nullptr);
+    rc = tiledb_profile_alloc(name_, homedir_, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -87,6 +100,47 @@ TEST_CASE("C API: tiledb_profile_free argument validation", "[capi][profile]") {
   }
   SECTION("null profile") {
     auto rc = tiledb_profile_free(nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE(
+    "C API: tiledb_profile_get_name argument validation", "[capi][profile]") {
+  capi_return_t rc;
+  ordinary_profile x{name_, tempdir_.path().c_str()};
+  const char* name;
+  SECTION("success") {
+    rc = tiledb_profile_get_name(x.profile, &name);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(strcmp(name, name_) == 0);
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_get_name(nullptr, &name);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null name") {
+    rc = tiledb_profile_get_name(x.profile, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE(
+    "C API: tiledb_profile_get_homedir argument validation",
+    "[capi][profile]") {
+  capi_return_t rc;
+  ordinary_profile x{name_, tempdir_.path().c_str()};
+  const char* homedir;
+  SECTION("success") {
+    rc = tiledb_profile_get_homedir(x.profile, &homedir);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(homedir[0] != '\0');  // non-empty.
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_get_homedir(nullptr, &homedir);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null homedir") {
+    rc = tiledb_profile_get_homedir(x.profile, nullptr);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }

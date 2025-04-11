@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/profile/profile_api_external.h
+ * @file tiledb/api/c_api/profile/profile_api_experimental.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file declares the profile C API for TileDB.
  */
 
-#ifndef TILEDB_CAPI_PROFILE_EXTERNAL_H
-#define TILEDB_CAPI_PROFILE_EXTERNAL_H
+#ifndef TILEDB_CAPI_PROFILE_EXPERIMENTAL_H
+#define TILEDB_CAPI_PROFILE_EXPERIMENTAL_H
 
 #include "../api_external_common.h"
 #include "tiledb/common/common.h"
@@ -91,8 +91,48 @@ TILEDB_EXPORT capi_return_t tiledb_profile_alloc(
 TILEDB_EXPORT capi_return_t tiledb_profile_free(tiledb_profile_t** profile)
     TILEDB_NOEXCEPT;
 
+/**
+ * Retrieves the name from the given profile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_profile_t* profile;
+ * tiledb_profile_alloc(&profile);
+ * const char* name;
+ * tiledb_profile_get_name(profile, &name);
+ * tiledb_profile_free(&profile);
+ * @endcode
+ *
+ * @param[in] profile The profile.
+ * @param[out] name The name of the profile, to be retrieved.
+ * @return TILEDB_EXPORT
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_get_name(
+    tiledb_profile_t* profile, const char** name) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves the homedir from the given profile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_profile_t* profile;
+ * tiledb_profile_alloc(&profile);
+ * const char* homedir;
+ * tiledb_profile_get_homedir(profile, &homedir);
+ * tiledb_profile_free(&profile);
+ * @endcode
+ *
+ * @param[in] profile The profile.
+ * @param[out] homedir The homedir of the profile, to be retrieved.
+ * @return TILEDB_EXPORT
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_get_homedir(
+    tiledb_profile_t* profile, const char** homedir) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // TILEDB_CAPI_PROFILE_EXTERNAL_H
+#endif  // TILEDB_CAPI_PROFILE_EXPERIMENTAL_H
