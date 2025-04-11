@@ -90,3 +90,47 @@ TEST_CASE("C API: tiledb_profile_free argument validation", "[capi][profile]") {
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
+
+TEST_CASE(
+    "C API: tiledb_profile_set_param argument validation", "[capi][profile]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  auto homedir = tempdir_.path().c_str();
+  rc = tiledb_profile_alloc(name_, homedir, &profile);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  SECTION("success") {
+    rc = tiledb_profile_set_param(profile, "rest.username", "my_username");
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("empty param") {
+    rc = tiledb_profile_set_param(profile, "", "my_username");
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null param") {
+    rc = tiledb_profile_set_param(profile, nullptr, "my_username");
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("empty value") {
+    rc = tiledb_profile_set_param(profile, "rest.username", "");
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null value") {
+    rc = tiledb_profile_set_param(profile, "rest.username", nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE(
+    "C API: tiledb_profile_get_param argument validation", "[capi][profile]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  auto homedir = tempdir_.path().c_str();
+  rc = tiledb_profile_alloc(name_, homedir, &profile);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  SECTION("success") {
+    const char* value;
+    rc = tiledb_profile_get_param(profile, "rest.username", &value);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(value == nullptr);
+  }
+}

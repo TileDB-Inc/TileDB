@@ -30,5 +30,8 @@
 
 int main() {
   tiledb_profile_alloc(nullptr, nullptr, nullptr);
+  tiledb_profile_free(nullptr);
+  tiledb_profile_set_param(nullptr, nullptr, nullptr);
+  tiledb_profile_get_param(nullptr, nullptr, nullptr);
   return 0;
 }

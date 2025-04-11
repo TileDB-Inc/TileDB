@@ -702,6 +702,8 @@ Heap Profiler
 .. doxygenfunction:: tiledb_heap_profiler_enable
     :project: TileDB-C
 
+.. also add here
+
 Fragment Info
 -------------
 .. doxygenfunction:: tiledb_fragment_info_alloc
