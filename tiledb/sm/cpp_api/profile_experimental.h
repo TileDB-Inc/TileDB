@@ -131,6 +131,16 @@ class Profile {
     return profile_->profile()->homedir();
   }
 
+  /** Sets a parameter in the profile. */
+  void set_param(const std::string& param, const std::string& value) {
+    profile_->profile()->set_param(param, value);
+  }
+
+  /** Retrieves a parameter from the profile. */
+  std::string get_param(const std::string& param) {
+    return profile_->profile()->get_param(param);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
