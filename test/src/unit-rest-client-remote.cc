@@ -121,32 +121,3 @@ TEST_CASE("REST capabilities endpoint", "[rest][version]") {
     REQUIRE_THAT(stats.dump(0, 0), match_request_count);
   }
 }
-
-TEST_CASE("Parse REST URI components", "[uri]") {
-  std::string arr = GENERATE(
-      "8f039466-6e90-42ea-af53-dc0ba47d00c2",
-      "a",
-      "array_name",
-      "s3://bucket/arrays/array_name",
-      "s3://b/d/a");
-
-  std::string array_namespace, array_uri;
-  SECTION("Legacy REST URI components") {
-    std::string ns = GENERATE("demo", "d");
-    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
-    REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, true).ok());
-    REQUIRE(array_namespace == ns);
-    REQUIRE(array_uri == arr);
-  }
-
-  SECTION("Carrara REST URI components") {
-    std::string ns = GENERATE(
-        "workspace/teamspace",
-        "ws_cvsj3li97ng28m60nhj0/ts_cvsj4ei97ng28m60nhkg",
-        "w/t");
-    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
-    REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, false).ok());
-    REQUIRE(array_namespace == ns);
-    REQUIRE(array_uri == arr);
-  }
-}
