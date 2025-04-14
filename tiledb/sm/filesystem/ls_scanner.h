@@ -296,7 +296,7 @@ class CallbackWrapperCAPI {
 
   /** Constructor */
   CallbackWrapperCAPI(LsCallback cb, void* data)
-      : cb_(cb)
+      : cb_(std::move(cb))
       , data_(data) {
     if (cb_ == nullptr) {
       throw LsScanException("ls_recursive callback function cannot be null");
@@ -314,7 +314,7 @@ class CallbackWrapperCAPI {
    * @param size The size of the object in bytes.
    * @return True if the object should be included, False otherwise.
    */
-  bool operator()(std::string_view path, const uint64_t& size) const {
+  bool operator()(std::string_view path, const uint64_t size) const {
     int ret = cb_(path.data(), path.size(), size, data_);
     if (ret == 0) {
       // Throw an exception to stop traversal, which will be caught by the C++

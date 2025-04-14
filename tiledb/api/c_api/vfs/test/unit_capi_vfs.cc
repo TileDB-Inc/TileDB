@@ -749,11 +749,10 @@ TEST_CASE(
 TEST_CASE(
     "C API: CallbackWrapperCAPI operator() validation",
     "[ls-recursive][callback][wrapper]") {
-  tiledb::sm::LsObjects data;
-  auto cb = [](const char* path,
-               size_t path_len,
-               uint64_t object_size,
-               void* data) -> int32_t {
+  tiledb::sm::LsCallback cb = [](const char* path,
+                                 size_t path_len,
+                                 uint64_t object_size,
+                                 void* data) -> int32_t {
     if (object_size > 100) {
       // Throw if object size is greater than 100 bytes.
       throw std::runtime_error("Throwing callback");
@@ -765,7 +764,9 @@ TEST_CASE(
     ls_data->push_back({{path, path_len}, object_size});
     return 1;
   };
-  tiledb::sm::CallbackWrapperCAPI wrapper(cb, &data);
+
+  tiledb::sm::LsObjects data{};
+  tiledb::sm::CallbackWrapperCAPI wrapper(cb, static_cast<void*>(&data));
 
   SECTION("Callback return 1 signals to continue traversal") {
     CHECK(wrapper("file.txt", 10) == 1);
