@@ -144,3 +144,67 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
+
+TEST_CASE(
+    "C API: tiledb_profile_set_param argument validation", "[capi][profile]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  auto homedir = tempdir_.path().c_str();
+  rc = tiledb_profile_alloc(name_, homedir, &profile);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  SECTION("success") {
+    rc = tiledb_profile_set_param(profile, "rest.username", "username");
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("empty param") {
+    rc = tiledb_profile_set_param(profile, "", "username");
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null param") {
+    rc = tiledb_profile_set_param(profile, nullptr, "username");
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null value") {
+    rc = tiledb_profile_set_param(profile, "rest.username", nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE(
+    "C API: tiledb_profile_get_param argument validation", "[capi][profile]") {
+  capi_return_t rc;
+  ordinary_profile x{
+      name_, tempdir_.path().c_str(), "rest.username", "username"};
+  SECTION("success") {
+    const char* value;
+    rc = tiledb_profile_get_param(x.profile, "rest.username", &value);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(value != nullptr);
+    REQUIRE(strcmp(value, "username") == 0);
+  }
+  SECTION("empty param") {
+    const char* value;
+    rc = tiledb_profile_get_param(x.profile, "", &value);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null param") {
+    const char* value;
+    rc = tiledb_profile_get_param(x.profile, nullptr, &value);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null value") {
+    rc = tiledb_profile_get_param(x.profile, "rest.username", nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("invalid profile") {
+    tiledb_profile_t* invalid_profile = nullptr;
+    const char* value;
+    rc = tiledb_profile_get_param(invalid_profile, "rest.username", &value);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("invalid profile name") {
+    const char* value;
+    rc = tiledb_profile_get_param(x.profile, "invalid_param", &value);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}

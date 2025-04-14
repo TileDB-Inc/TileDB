@@ -775,6 +775,21 @@ Fragment Info
 .. doxygenfunction:: tiledb_fragment_info_dump_str
     :project: TileDB-C
 
+Profile
+-------------
+.. doxygenfunction:: tiledb_profile_alloc
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_profile_free
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_profile_get_name
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_profile_get_homedir
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_profile_set_param
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_profile_get_param
+    :project: TileDB-C
+
 Experimental
 -------------
 .. autodoxygenfile:: tiledb_experimental.h

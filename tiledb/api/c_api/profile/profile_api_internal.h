@@ -78,6 +78,21 @@ inline void ensure_profile_is_valid(const tiledb_profile_t* profile) {
   ensure_handle_is_valid(profile);
 }
 
+/**
+ * Returns after successfully validating a parameter.
+ *
+ * @param param Possibly-valid pointer to a parameter
+ */
+inline void ensure_param_argument_is_valid(const char* param) {
+  if (param == nullptr) {
+    throw CAPIStatusException("argument `param` may not be nullptr");
+  }
+  if (param[0] == '\0') {
+    throw CAPIException(
+        "[tiledb_profile_set_param] Parameter cannot be empty.");
+  }
+}
+
 }  // namespace tiledb::api
 
 #endif  // TILEDB_CAPI_PROFILE_INTERNAL_H

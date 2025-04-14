@@ -35,6 +35,18 @@
 
 namespace tiledb::api {
 
+inline char* copy_string(const std::string& str) {
+  auto ret = static_cast<char*>(std::malloc(str.size() + 1));
+  if (ret == nullptr) {
+    return nullptr;
+  }
+
+  std::memcpy(ret, str.data(), str.size());
+  ret[str.size()] = '\0';
+
+  return ret;
+}
+
 capi_return_t tiledb_profile_alloc(
     const char* name, const char* homedir, tiledb_profile_t** profile) {
   ensure_output_pointer_is_valid(profile);
@@ -83,6 +95,31 @@ capi_return_t tiledb_profile_get_homedir(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_profile_set_param(
+    tiledb_profile_t* profile, const char* param, const char* value) {
+  ensure_profile_is_valid(profile);
+  ensure_param_argument_is_valid(param);
+  if (value == nullptr) {
+    throw CAPIStatusException("argument `value` may not be nullptr");
+  }
+  profile->profile()->set_param(param, value);
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_profile_get_param(
+    tiledb_profile_t* profile, const char* param, const char** value) {
+  ensure_profile_is_valid(profile);
+  ensure_param_argument_is_valid(param);
+  ensure_output_pointer_is_valid(value);
+
+  const std::string str = profile->profile()->get_param(param);
+  *value = copy_string(str);
+  if (*value == nullptr) {
+    return TILEDB_ERR;
+  }
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_plain;
@@ -108,4 +145,22 @@ CAPI_INTERFACE(
     profile_get_homedir, tiledb_profile_t* profile, const char** homedir) {
   return api_entry_plain<tiledb::api::tiledb_profile_get_homedir>(
       profile, homedir);
+}
+
+CAPI_INTERFACE(
+    profile_set_param,
+    tiledb_profile_t* profile,
+    const char* param,
+    const char* value) {
+  return api_entry_plain<tiledb::api::tiledb_profile_set_param>(
+      profile, param, value);
+}
+
+CAPI_INTERFACE(
+    profile_get_param,
+    tiledb_profile_t* profile,
+    const char* param,
+    const char** value) {
+  return api_entry_plain<tiledb::api::tiledb_profile_get_param>(
+      profile, param, value);
 }

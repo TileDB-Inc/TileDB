@@ -62,6 +62,19 @@ struct ordinary_profile {
   }
 
   /** Constructor. */
+  ordinary_profile(
+      const char* name,
+      const char* homedir,
+      const char* param,
+      const char* value)
+      : ordinary_profile(name, homedir) {
+    int rc = tiledb_profile_set_param(profile, param, value);
+    if (rc != TILEDB_OK) {
+      throw ordinary_profile_exception("error setting profile parameter");
+    }
+  }
+
+  /** Constructor. */
   ordinary_profile(const char* name)
       : ordinary_profile(name, nullptr) {
   }

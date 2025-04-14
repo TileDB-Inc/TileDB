@@ -131,6 +131,54 @@ TILEDB_EXPORT capi_return_t tiledb_profile_get_name(
 TILEDB_EXPORT capi_return_t tiledb_profile_get_homedir(
     tiledb_profile_t* profile, const char** homedir) TILEDB_NOEXCEPT;
 
+/**
+ * Sets a parameter in the profile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_profile_t* profile;
+ * tiledb_profile_alloc(&profile);
+ * tiledb_profile_set_param("rest.username", "my_username");
+ * tiledb_profile_save();
+ * tiledb_profile_free(&profile);
+ * @endcode
+ *
+ * @param[in] profile The profile object.
+ * @param[in] param The parameter to set.
+ * @param[in] value The value to set.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_set_param(
+    tiledb_profile_t* profile,
+    const char* param,
+    const char* value) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves a parameter from the profile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_profile_t* profile;
+ * tiledb_profile_alloc(&profile);
+ * tiledb_profile_set_param("rest.username", "my_username");
+ * tiledb_profile_save();
+ * tiledb_profile_get_param(
+ *   profile, "rest.username", &value);
+ * tiledb_profile_free(&profile);
+ * @endcode
+ *
+ * @param[in] profile The profile object.
+ * @param[in] param The parameter to retrieve.
+ * @param[out] value The value to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_get_param(
+    tiledb_profile_t* profile,
+    const char* param,
+    const char** value) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif
