@@ -36,7 +36,7 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/rest/rest_client_remote.h"
 
-TEST_CASE("REST capabilities endpoint", "[rest][version]") {
+TEST_CASE("REST capabilities endpoint", "[rest][capabilities]") {
   using tiledb::sm::RestCapabilities;
   tiledb::test::VFSTestSetup vfs_test_setup;
   if (!vfs_test_setup.is_rest()) {

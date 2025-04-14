@@ -884,7 +884,7 @@ TEST_CASE_METHOD(
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_path = temp_dir + "array-open-at-reads";
-  std::string array_name = vfs_array_uri(fs_vec_[0], array_path);
+  std::string array_name = vfs_array_uri(fs_vec_[0], array_path, ctx_);
 
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -1510,7 +1510,7 @@ TEST_CASE_METHOD(
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "array-open-at-writes");
+      vfs_array_uri(fs_vec_[0], temp_dir + "array-open-at-writes", ctx_);
 
   SECTION("- without encryption") {
     encryption_type_ = TILEDB_NO_ENCRYPTION;
@@ -1728,7 +1728,7 @@ TEST_CASE_METHOD(
     "[capi][array][array-write-coords-oob][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "array-write-coords-oob");
+      vfs_array_uri(fs_vec_[0], temp_dir + "array-write-coords-oob", ctx_);
   create_temp_dir(temp_dir);
 
   int dimension = 0;
@@ -1876,7 +1876,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx, "C API: Test empty array", "[capi][array][array-empty][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name = vfs_array_uri(fs_vec_[0], temp_dir + "array_empty");
+  std::string array_name =
+      vfs_array_uri(fs_vec_[0], temp_dir + "array_empty", ctx_);
 
   create_temp_dir(temp_dir);
 
@@ -1928,7 +1929,7 @@ TEST_CASE_METHOD(
     ArrayFx, "C API: Test deletion of array", "[capi][array][delete][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_path = temp_dir + "array_delete";
-  std::string array_name = vfs_array_uri(fs_vec_[0], array_path);
+  std::string array_name = vfs_array_uri(fs_vec_[0], array_path, ctx_);
 
   create_temp_dir(temp_dir);
 
@@ -2004,7 +2005,7 @@ TEST_CASE_METHOD(
     "[capi][subarray][error][sparse][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_sparse");
+      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_sparse", ctx_);
   create_temp_dir(temp_dir);
 
   create_sparse_vector(array_name);
@@ -2066,7 +2067,7 @@ TEST_CASE_METHOD(
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense");
+      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense", ctx_);
   create_temp_dir(temp_dir);
 
   create_dense_array(array_name);
@@ -2146,7 +2147,7 @@ TEST_CASE_METHOD(
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense");
+      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense", ctx_);
 
   create_temp_dir(temp_dir);
 
@@ -2184,7 +2185,7 @@ TEST_CASE_METHOD(
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_name =
-      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense");
+      vfs_array_uri(fs_vec_[0], temp_dir + "query_error_dense", ctx_);
 
   create_temp_dir(temp_dir);
 

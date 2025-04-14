@@ -78,8 +78,6 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
 
   if (supports_rest_s3) {
     if (tiledb::sm::filesystem::s3_enabled) {
-      // We need a Context to identify if we are talking to legacy REST server.
-      // The VFSTestSetup ctor will use its context to initialize this state.
       fs_vec.emplace_back(std::make_unique<SupportedFsS3>(true));
     } else {
       throw tiledb::sm::filesystem::BuiltWithout("S3");
@@ -149,12 +147,13 @@ void vfs_test_create_temp_dir(
 }
 
 std::string vfs_array_uri(
-    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name) {
-  // The checks below will only be accurate if vfs_test_init has been called.
-  // For this reason it is recommended to use VFSTestSetup::array_uri instead.
-  if (fs->is_rest() && fs->is_legacy_rest()) {
+    const std::unique_ptr<SupportedFs>& fs,
+    const std::string& array_name,
+    tiledb_ctx_t* ctx) {
+  bool legacy = fs->is_rest() ? ctx->rest_client().rest_legacy() : false;
+  if (fs->is_rest() && legacy) {
     return "tiledb://unit/" + array_name;
-  } else if (fs->is_rest() && !fs->is_legacy_rest()) {
+  } else if (fs->is_rest() && !legacy) {
     return "tiledb://workspace/unit/" + array_name;
   } else {
     return array_name;
@@ -205,7 +204,6 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(is_bucket);
 
-  legacy_rest_ = ctx->rest_client().get_capabilities_from_rest().legacy_;
   return Status::Ok();
 }
 
@@ -526,6 +524,10 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
     }
   }
   std::sort(expected_results().begin(), expected_results().end());
+}
+
+bool VFSTestSetup::is_legacy_rest() {
+  return ctx_c->rest_client().rest_legacy();
 }
 
 }  // namespace tiledb::test
