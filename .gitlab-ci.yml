@@ -16,6 +16,9 @@ trigger_pipeline:
 
   variables:
     TILEDB_REF: ${CI_COMMIT_REF_NAME}
+    TILEDB_SERVER_REF: phw/add-workspace-to-legacy-routes
+
   trigger:
     project: tiledb-inc/tiledb-internal
     strategy: depend
+    branch: smr/sc-64563/test-tiledb-server
