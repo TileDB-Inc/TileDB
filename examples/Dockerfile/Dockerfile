@@ -6,7 +6,7 @@
 # docker build -f examples/Dockerfile/Dockerfile -t tiledb:dev .
 #
 # Use the build arg 'enable' to configure optional TileDB components, e.g.:
-#   docker build -f examples/Dockerfile/Dockerfile --build-arg enable=s3,hdfs -t tiledb:dev
+#   docker build -f examples/Dockerfile/Dockerfile --build-arg enable=s3 -t tiledb:dev
 
 FROM ubuntu:22.04
 

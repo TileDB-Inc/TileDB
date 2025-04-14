@@ -136,7 +136,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_load_with_config(
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "s3://tiledb_arrays/my_array", &array);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -156,7 +156,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_alloc(
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "s3://tiledb_arrays/my_array", &array);
  * tiledb_array_open(ctx, array, TILEDB_READ);
  * tiledb_array_close(ctx, array);
  * tiledb_array_free(&array);
@@ -172,7 +172,7 @@ TILEDB_EXPORT void tiledb_array_free(tiledb_array_t** array) TILEDB_NOEXCEPT;
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_create(ctx, "hdfs:///tiledb_arrays/my_array", array_schema);
+ * tiledb_array_create(ctx, "s3://tiledb_arrays/my_array", array_schema);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -198,7 +198,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_create(
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "s3://tiledb_arrays/my_array", &array);
  * tiledb_array_open(ctx, array, TILEDB_READ);
  * @endcode
  *
@@ -237,7 +237,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_is_open(
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "s3://tiledb_arrays/my_array", &array);
  * tiledb_array_open(ctx, array, TILEDB_READ);
  * tiledb_array_close(ctx, array);
  * @endcode
@@ -266,7 +266,7 @@ tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) TILEDB_NOEXCEPT;
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "s3://tiledb_arrays/my_array", &array);
  * tiledb_array_open(ctx, array, TILEDB_READ);
  * tiledb_array_reopen(ctx, array);
  *
@@ -290,7 +290,7 @@ tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) TILEDB_NOEXCEPT;
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_delete(ctx, "hdfs:///temp/my_array");
+ * tiledb_array_delete(ctx, "s3://tiledb_arrays/my_array");
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -307,7 +307,7 @@ tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) TILEDB_NOEXCEPT;
  *
  * @code{.c}
  * tiledb_array_delete_fragments_v2(
- *   ctx, "hdfs:///temp/my_array", 0, UINT64_MAX);
+ *   ctx, "s3://tiledb_arrays/my_array", 0, UINT64_MAX);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -330,10 +330,10 @@ TILEDB_EXPORT capi_return_t tiledb_array_delete_fragments_v2(
  *
  * @code{.c}
  * const char* fragment_uris[2] = {
- *   "hdfs:///temp/my_array/__fragments/1",
- *   "hdfs:///temp/my_array/__fragments/2"};
+ *   "s3://tiledb_arrays/my_array/__fragments/1",
+ *   "s3://tiledb_arrays/my_array/__fragments/2"};
  * tiledb_array_delete_fragments_list(
- *   ctx, "hdfs:///temp/my_array", fragment_uris, 2);
+ *   ctx, "s3://tiledb_arrays/my_array", fragment_uris, 2);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -536,7 +536,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_get_schema(
  *
  * @code{.c}
  * tiledb_array_t* array;
- * tiledb_array_alloc(ctx, "hdfs:///tiledb_arrays/my_array", &array);
+ * tiledb_array_alloc(ctx, "s3://tiledb_arrays/my_array", &array);
  * tiledb_array_open(ctx, array, TILEDB_READ);
  * tiledb_query_type_t query_type;
  * tiledb_array_get_type(ctx, array, &query_type);

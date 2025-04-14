@@ -183,7 +183,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/gcs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/local.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/mem_filesystem.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/path_win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
@@ -543,15 +542,6 @@ if (TILEDB_SERIALIZATION)
     INTERFACE
       CURL::libcurl
     )
-endif()
-
-# HDFS dependencies
-if (TILEDB_HDFS)
-  if(WIN32)
-    message(FATAL_ERROR "TileDB HDFS backend is not supported for Windows builds currently")
-  else()
-    message(STATUS "The TileDB library is compiled with HDFS support.")
-  endif()
 endif()
 
 # Sanitizer linker flags

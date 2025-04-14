@@ -55,12 +55,6 @@ static constexpr bool gcs = true;
 static constexpr bool gcs = false;
 #endif  // HAVE_GCS
 
-#ifdef HAVE_HDFS
-static constexpr bool hdfs = true;
-#else
-static constexpr bool hdfs = false;
-#endif  // HAVE_HDFS
-
 #ifdef HAVE_S3
 static constexpr bool s3 = true;
 #else
@@ -76,7 +70,6 @@ void to_json(json& j, const storage_backends&) {
   j = {
       {"azure", {{"enabled", azure}}},
       {"gcs", {{"enabled", gcs}}},
-      {"hdfs", {{"enabled", hdfs}}},
       {"s3", {{"enabled", s3}}}};
 }
 

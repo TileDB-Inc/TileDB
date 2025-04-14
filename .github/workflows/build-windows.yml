@@ -151,9 +151,6 @@ jobs:
           if ($env:TILEDB_SERIALIZATION -eq "ON") {
             $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
           }
-          # if ($env:TILEDB_HDFS -eq "ON") {
-          #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
-          #}
           if ($env:TILEDB_TOOLS -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableTools"
           }

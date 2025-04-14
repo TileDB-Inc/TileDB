@@ -64,17 +64,6 @@ jobs:
         run: |
           cmake --build build --target check --config ${{ matrix.config || 'Release' }}
 
-  test_hdfs_build:
-    uses: ./.github/workflows/ci-linux_mac.yml
-    with:
-      ci_backend: HDFS
-      matrix_image: ubuntu-24.04
-      matrix_compiler_cc: 'gcc-13'
-      matrix_compiler_cxx: 'g++-13'
-      timeout: 300
-      build_only: true
-      bootstrap_args: '--enable-hdfs --enable-static-tiledb --disable-werror'
-
   test_static_linkage:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -135,7 +124,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - test
-      - test_hdfs_build
       - test_static_linkage
     if: github.event_name == 'schedule' && (failure() || cancelled())
     steps:
