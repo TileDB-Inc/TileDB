@@ -97,7 +97,9 @@ void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
 
 std::string vfs_array_uri(
-    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name);
+    const std::unique_ptr<SupportedFs>& fs,
+    const std::string& array_name,
+    tiledb_ctx_t* ctx);
 
 /**
  * This class defines and manipulates
@@ -159,13 +161,6 @@ class SupportedFs {
    * @return true if REST, false if not
    */
   virtual bool is_rest() = 0;
-
-  /**
-   * Checks if we are using legacy or 3.0 REST.
-   *
-   * @return true if legacy REST, false if 3.0 REST.
-   */
-  virtual bool is_legacy_rest() = 0;
 
   /**
    * Checks if the filesystem is local or remote
@@ -236,15 +231,6 @@ class SupportedFsS3 : public SupportedFs {
    * @return true if REST, false if not
    */
   virtual bool is_rest();
-
-  /**
-   * Checks if we are using legacy or 3.0 REST.
-   *
-   * @return true if legacy REST, false if 3.0 REST.
-   */
-  inline bool is_legacy_rest() {
-    return legacy_rest_;
-  }
 
   /**
    * Checks if the filesystem is local or remote
@@ -339,15 +325,6 @@ class SupportedFsAzure : public SupportedFs {
   }
 
   /**
-   * Checks if we are using legacy or 3.0 REST.
-   *
-   * @return true if legacy REST, false if 3.0 REST.
-   */
-  inline bool is_legacy_rest() {
-    return false;
-  }
-
-  /**
    * Checks if the filesystem is local or remote
    *
    * @return true if local, false if not
@@ -429,15 +406,6 @@ class SupportedFsGCS : public SupportedFs {
    * @return true if REST, false if not
    */
   inline bool is_rest() {
-    return false;
-  }
-
-  /**
-   * Checks if we are using legacy or 3.0 REST.
-   *
-   * @return true if legacy REST, false if 3.0 REST.
-   */
-  inline bool is_legacy_rest() {
     return false;
   }
 
@@ -540,15 +508,6 @@ class SupportedFsLocal : public SupportedFs {
   }
 
   /**
-   * Checks if we are using legacy or 3.0 REST.
-   *
-   * @return true if legacy REST, false if 3.0 REST.
-   */
-  inline bool is_legacy_rest() {
-    return false;
-  }
-
-  /**
    * Checks if the filesystem is local or remote
    *
    * @return true if local, false if not
@@ -635,15 +594,6 @@ class SupportedFsMem : public SupportedFs {
    * @return true if REST, false if not
    */
   inline bool is_rest() {
-    return false;
-  }
-
-  /**
-   * Checks if we are using legacy or 3.0 REST.
-   *
-   * @return true if legacy REST, false if 3.0 REST.
-   */
-  inline bool is_legacy_rest() {
     return false;
   }
 
@@ -901,9 +851,7 @@ struct VFSTestSetup {
     return fs_vec[0]->is_rest();
   }
 
-  bool is_legacy_rest() {
-    return fs_vec[0]->is_legacy_rest();
-  }
+  bool is_legacy_rest();
 
   bool is_local() {
     return fs_vec[0]->is_local();

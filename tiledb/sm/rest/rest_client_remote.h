@@ -114,8 +114,7 @@ class RestClientRemote : public RestClient {
    * input config so that rest_client chooses the right URI
    *
    * @param config Config to check
-   *
-   * */
+   */
   static bool use_refactored_query(const Config& config);
 
   /**
