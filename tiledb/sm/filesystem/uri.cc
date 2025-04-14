@@ -255,6 +255,9 @@ Status URI::get_rest_components(
     auto ws_len = ws_slash - prefix.size();
     auto ts_len = ts_slash - (ws_len + 1) - prefix.size();
     auto array_len = uri_.size() - (ts_len + 1);
+    if (ws_len == 0 || ts_len == 0 || array_len == 0) {
+      return LOG_STATUS(error_st);
+    }
 
     std::string ws = uri_.substr(prefix.size(), ws_len);
     std::string ts = uri_.substr(ws_slash + 1, ts_len);
