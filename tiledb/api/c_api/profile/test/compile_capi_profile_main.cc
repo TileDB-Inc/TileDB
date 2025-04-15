@@ -29,6 +29,6 @@
 #include "../profile_api_experimental.h"
 
 int main() {
-  tiledb_profile_alloc(nullptr, nullptr, nullptr);
+  tiledb_profile_alloc(nullptr, nullptr, nullptr, nullptr);
   return 0;
 }
