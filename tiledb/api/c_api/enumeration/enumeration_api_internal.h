@@ -83,13 +83,11 @@ struct tiledb_enumeration_handle_t
    * Extend a given enumeration.
    */
   [[nodiscard]] shared_ptr<const tiledb::sm::Enumeration> extend(
-      tiledb_ctx_t* ctx,
       const void* data,
       uint64_t data_size,
       const void* offsets,
       uint64_t offsets_size) const {
-    return enumeration_->extend(
-        ctx->context().resources(), data, data_size, offsets, offsets_size);
+    return enumeration_->extend(data, data_size, offsets, offsets_size);
   }
 
   /**

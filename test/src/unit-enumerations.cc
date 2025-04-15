@@ -1022,8 +1022,7 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(init_values);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Unable to extend an enumeration without a data buffer.");
-  REQUIRE_THROWS_WITH(
-      enmr->extend(ctx_.resources(), nullptr, 10, nullptr, 0), matcher);
+  REQUIRE_THROWS_WITH(enmr->extend(nullptr, 10, nullptr, 0), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -1035,8 +1034,7 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(init_values);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Unable to extend an enumeration with a zero sized data buffer.");
-  REQUIRE_THROWS_WITH(
-      enmr->extend(ctx_.resources(), data, 0, nullptr, 0), matcher);
+  REQUIRE_THROWS_WITH(enmr->extend(data, 0, nullptr, 0), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -1048,8 +1046,7 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(init_values);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "The offsets buffer is required for this enumeration extension.");
-  REQUIRE_THROWS_WITH(
-      enmr->extend(ctx_.resources(), data, 11, nullptr, 0), matcher);
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, nullptr, 0), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -1063,8 +1060,7 @@ TEST_CASE_METHOD(
   auto matcher = Catch::Matchers::ContainsSubstring(
       "The offsets buffer for "
       "this enumeration extension must have a non-zero size.");
-  REQUIRE_THROWS_WITH(
-      enmr->extend(ctx_.resources(), data, 11, offsets, 0), matcher);
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 0), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -1077,8 +1073,7 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(init_values);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Invalid offsets size is not a multiple of sizeof(uint64_t)");
-  REQUIRE_THROWS_WITH(
-      enmr->extend(ctx_.resources(), data, 11, offsets, 17), matcher);
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 17), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -1091,8 +1086,7 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(init_values);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Offsets buffer provided when extending a fixed sized enumeration.");
-  REQUIRE_THROWS_WITH(
-      enmr->extend(ctx_.resources(), data, 11, offsets, 16), matcher);
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 16), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -1106,11 +1100,7 @@ TEST_CASE_METHOD(
       "Offsets size is non-zero when extending a fixed sized enumeration.");
   REQUIRE_THROWS_WITH(
       enmr->extend(
-          ctx_.resources(),
-          add_values.data(),
-          add_values.size() * sizeof(int),
-          nullptr,
-          16),
+          add_values.data(), add_values.size() * sizeof(int), nullptr, 16),
       matcher);
 }
 
@@ -1125,11 +1115,7 @@ TEST_CASE_METHOD(
       "Invalid duplicated value in enumeration");
   REQUIRE_THROWS_WITH(
       enmr->extend(
-          ctx_.resources(),
-          add_values.data(),
-          add_values.size() * sizeof(int),
-          nullptr,
-          0),
+          add_values.data(), add_values.size() * sizeof(int), nullptr, 0),
       matcher);
 }
 
@@ -2888,14 +2874,9 @@ shared_ptr<const Enumeration> EnumerationFx::extend_enumeration(
       raw_values[i] = values[i] ? 1 : 0;
     }
     return enmr->extend(
-        ctx_.resources(),
-        raw_values.data(),
-        raw_values.size() * sizeof(uint8_t),
-        nullptr,
-        0);
+        raw_values.data(), raw_values.size() * sizeof(uint8_t), nullptr, 0);
   } else if constexpr (std::is_pod_v<T>) {
-    return enmr->extend(
-        ctx_.resources(), values.data(), values.size() * sizeof(T), nullptr, 0);
+    return enmr->extend(values.data(), values.size() * sizeof(T), nullptr, 0);
   } else {
     uint64_t total_size = 0;
     for (auto v : values) {
@@ -2914,7 +2895,6 @@ shared_ptr<const Enumeration> EnumerationFx::extend_enumeration(
     }
 
     return enmr->extend(
-        ctx_.resources(),
         data.data(),
         total_size,
         offsets.data(),

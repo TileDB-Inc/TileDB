@@ -63,6 +63,9 @@ conclude(object_library)
 commence(object_library enumeration)
     this_target_sources(enumeration.cc)
     this_target_object_libraries(buffer constants seedable_global_PRNG)
+    if(TILEDB_STATS)
+        this_target_compile_definitions(-DTILEDB_STATS)
+    endif()
 conclude(object_library)
 
 #

@@ -62,7 +62,8 @@ Enumeration::Enumeration(
     uint64_t offsets_size,
     bool async,
     shared_ptr<MemoryTracker> memory_tracker)
-    : memory_tracker_(memory_tracker)
+    : resources_(resources)
+    , memory_tracker_(memory_tracker)
     , name_(name)
     , path_name_(path_name)
     , type_(type)
@@ -277,7 +278,6 @@ shared_ptr<const Enumeration> Enumeration::deserialize(
 }
 
 shared_ptr<const Enumeration> Enumeration::extend(
-    const ContextResources& resources,
     const void* data,
     uint64_t data_size,
     const void* offsets,
@@ -358,7 +358,7 @@ shared_ptr<const Enumeration> Enumeration::extend(
   }
 
   return create(
-      resources,
+      resources_,
       name_,
       "",
       type_,
@@ -474,6 +474,9 @@ static void add_value_to_map(
 }
 
 void Enumeration::generate_value_map() {
+  auto timer =
+      resources_.stats().start_timer("Enumeration::generate_value_map");
+
   auto char_data = data_.data_as<char>();
   if (var_size()) {
     auto offsets = offsets_.data_as<uint64_t>();

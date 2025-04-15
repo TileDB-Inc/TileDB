@@ -230,7 +230,6 @@ class Enumeration {
    * @return shared_ptr<Enumeration> The extended enumeration.
    */
   shared_ptr<const Enumeration> extend(
-      const ContextResources& resources,
       const void* data,
       uint64_t data_size,
       const void* offsets,
@@ -293,6 +292,10 @@ class Enumeration {
    */
   const tdb::pmr::unordered_map<std::string_view, uint64_t>& value_map() const {
     if (value_map_future_.valid()) {
+#ifdef TILEDB_STATS
+      stats::DurationInstrument<stats::Stats> timer =
+          resources_.stats().start_timer("Enumeration::await_value_map");
+#endif
       value_map_status_.emplace(value_map_future_.wait());
     }
     if (value_map_status_.value().ok()) {
@@ -426,6 +429,12 @@ class Enumeration {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * Resources of the enclosing context.
+   * Used for timers.
+   */
+  const ContextResources& resources_;
 
   /**
    * The memory tracker of the Enumeration.
