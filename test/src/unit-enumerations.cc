@@ -76,7 +76,8 @@ struct EnumerationFx {
       const std::vector<T>& values,
       bool ordered = false,
       Datatype type = static_cast<Datatype>(255),
-      std::string enmr_name = default_enmr_name);
+      std::string enmr_name = default_enmr_name,
+      bool async = false);
 
   shared_ptr<const Enumeration> create_empty_enumeration(
       Datatype type,
@@ -885,6 +886,39 @@ TEST_CASE_METHOD(
     "[enumeration][error][repeated-values]") {
   std::vector<std::string> values = {"foo", "", "bang", ""};
   REQUIRE_THROWS(create_enumeration(values));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Async",
+    "[enumeration][error][async]") {
+  std::vector<std::string> values = {"foo", "", "foo", "bar"};
+
+  SECTION("No await") {
+    REQUIRE_NOTHROW(create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true));
+  }
+
+  SECTION("No await, access a field") {
+    auto enmr = create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true);
+    REQUIRE_NOTHROW(enmr->name());
+  }
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid duplicated value in enumeration");
+
+  SECTION("Await value_map") {
+    auto enmr = create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true);
+    REQUIRE_THROWS(enmr->value_map(), matcher);
+  }
+
+  SECTION("Await index_of") {
+    auto enmr = create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true);
+    REQUIRE_THROWS(enmr->index_of("foo", 3), matcher);
+  }
 }
 
 TEST_CASE_METHOD(
@@ -2755,7 +2789,8 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
     const std::vector<T>& values,
     bool ordered,
     Datatype type,
-    std::string name) {
+    std::string name,
+    bool async) {
   TypeParams tp = TypeParams::get(values);
 
   if (type != static_cast<Datatype>(255)) {
@@ -2779,7 +2814,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         raw_values.size() * sizeof(uint8_t),
         nullptr,
         0,
-        false,
+        async,
         memory_tracker_);
   } else if constexpr (std::is_pod_v<T>) {
     return Enumeration::create(
@@ -2792,7 +2827,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         values.size() * sizeof(T),
         nullptr,
         0,
-        false,
+        async,
         memory_tracker_);
   } else {
     uint64_t total_size = 0;
@@ -2821,7 +2856,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         total_size,
         offsets.data(),
         offsets.size() * sizeof(uint64_t),
-        false,
+        async,
         memory_tracker_);
   }
 }
