@@ -66,6 +66,36 @@ class Logger;
 namespace sm {
 
 /**
+ * Exception class with `RestClient` origin
+ */
+class CurlException : public StatusException {
+ public:
+  explicit CurlException(
+      const std::string& message,
+      int curl_code = CURL_NONE,
+      int http_code = HTTP_NONE)
+      : StatusException("Curl", message)
+      , curl_code_(curl_code)
+      , http_code_(http_code) {
+  }
+
+  [[nodiscard]] int curl_code() const {
+    return curl_code_;
+  }
+
+  [[nodiscard]] int http_code() const {
+    return http_code_;
+  }
+
+  // TODO: IIUC curl code will always be available.
+  enum StatusCode { CURL_NONE = -2, HTTP_NONE };
+
+ private:
+  int curl_code_;
+  int http_code_;
+};
+
+/**
  * Helper class offering a high-level wrapper over some libcurl functions.
  *
  * Note: because the underlying libcurl handle is not threadsafe, the interface
@@ -330,9 +360,8 @@ class Curl {
    * @param serialization_type Serialization type to use
    * @param returned_data Buffer to store response data
    * @param res_ns_uri Array Namespace and URI
-   * @return Status
    */
-  Status get_data(
+  void get_data(
       stats::Stats* stats,
       const std::string& url,
       SerializationType serialization_type,
@@ -532,11 +561,23 @@ class Curl {
    *
    * @param curl_code Curl return code to check for errors
    * @param operation String describing operation that was performed
-   * @param returned_data Buffer containing any response data from server.
-   * Optional.
+   * @param returned_data Optional buffer containing response data from server.
    * @return Status
    */
   Status check_curl_errors(
+      CURLcode curl_code,
+      const std::string& operation,
+      const Buffer* returned_data = NULL) const;
+
+  /**
+   * Check the given curl code for errors, throwing CurlException if an error is
+   * found.
+   *
+   * @param curl_code Curl return code to check for errors
+   * @param operation String describing operation that was performed
+   * @param returned_data Optional buffer containing response data from server.
+   */
+  void check_curl_errors_v2(
       CURLcode curl_code,
       const std::string& operation,
       const Buffer* returned_data = NULL) const;

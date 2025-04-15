@@ -176,12 +176,11 @@ class SupportedFs {
  */
 class SupportedFsS3 : public SupportedFs {
  public:
-  SupportedFsS3(bool rest = false, bool legacy_rest = false)
+  SupportedFsS3(bool rest = false)
       : s3_prefix_("s3://")
       , s3_bucket_(s3_prefix_ + "tiledb-" + random_label() + "/")
       , temp_dir_(s3_bucket_ + "tiledb_test/")
-      , rest_(rest)
-      , legacy_rest_(legacy_rest) {
+      , rest_(rest) {
   }
 
   ~SupportedFsS3() = default;
@@ -257,9 +256,6 @@ class SupportedFsS3 : public SupportedFs {
 
   /** If the filesystem is accessed via REST. */
   bool rest_;
-
-  /** True if the REST server is legacy, false if using 3.0 REST */
-  bool legacy_rest_;
 };
 
 /**

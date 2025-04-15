@@ -62,8 +62,7 @@ TEST_CASE("REST capabilities endpoint", "[rest][capabilities]") {
     auto actual_capabilities = rest_client.get_capabilities_from_rest();
 
     if (rest_client.get_capabilities_from_rest().legacy_) {
-      REQUIRE(
-          RestCapabilities({2, 28, 0}, {2, 0, 0}, true) == actual_capabilities);
+      REQUIRE(RestCapabilities(nullopt, nullopt, true) == actual_capabilities);
     } else {
       // We don't know what core version to expect on TileDB-Server.
       // TileDB-Server supports clients >= 2.28.0, we can check minimum version.
@@ -73,7 +72,7 @@ TEST_CASE("REST capabilities endpoint", "[rest][capabilities]") {
       REQUIRE(actual_capabilities.legacy_ == false);
       REQUIRE(actual_capabilities.detected_);
     }
-    // We should have detected REST capabilities, either legacy or 3.0.
+    // We should have detected REST capabilities either legacy or TileDB-Server.
     REQUIRE(rest_client.rest_capabilities_detected());
   }
   DYNAMIC_SECTION(
@@ -96,12 +95,11 @@ TEST_CASE("REST capabilities endpoint", "[rest][capabilities]") {
     // After the access above, RestCapabilities has been initialized.
     REQUIRE(rest_client.rest_capabilities_detected());
     // Check min version since we don't know what core version is on the server.
-    RestCapabilities::TileDBVersion expected_min_tiledb;
+    std::optional<RestCapabilities::TileDBVersion> expected_min_tiledb;
     if (rest_client.get_capabilities_from_rest().legacy_) {
-      // TODO: Minimum supported version for TileDB-Cloud-REST.
-      expected_min_tiledb = RestCapabilities::TileDBVersion(2, 0, 0);
+      expected_min_tiledb = nullopt;
     } else {
-      expected_min_tiledb = RestCapabilities::TileDBVersion(2, 28, 0);
+      expected_min_tiledb = {2, 28, 0};
     }
 
     REQUIRE(min_tiledb_version == expected_min_tiledb);

@@ -134,22 +134,23 @@ RestClientRemote::check_array_exists_from_rest(const URI& uri) {
 
   // Make the request, the return data is ignored
   Buffer returned_data;
-  auto curl_st = curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key);
-
-  auto&& [status_st, http_status_code] = curlc.last_http_status_code();
-  RETURN_NOT_OK_TUPLE(status_st, std::nullopt);
-  // First check for 404's which indicate does not exist
-  if (http_status_code == 404) {
-    return {Status::Ok(), false};
+  try {
+    curlc.get_data(stats_, url, serialization_type_, &returned_data, cache_key);
+  } catch (const CurlException& e) {
+    if (e.http_code() == 404) {
+      // First check for 404's which indicates the array does not exist.
+      return {Status::Ok(), false};
+    }
+    // Unexpected error checking if array exists.
+    return {LOG_STATUS(Status_RestError(e.what())), std::nullopt};
   }
 
-  // Next handle any errors. This is second because a 404 produces a status
-  RETURN_NOT_OK_TUPLE(curl_st, std::nullopt);
-
-  // 200 http responses yield the array exists and user has permissions
+  // 200 http responses yield the array exists and user has permissions.
+  auto&& [status_st, http_status_code] = curlc.last_http_status_code();
   if (http_status_code == 200) {
     return {Status::Ok(), true};
+  } else {
+    RETURN_NOT_OK_TUPLE(status_st, std::nullopt);
   }
 
   // Default fall back, indicate it does not exist
@@ -210,10 +211,7 @@ RestClientRemote::get_array_schema_from_rest(const URI& uri) {
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK_TUPLE(
-      curlc.get_data(
-          stats_, url, serialization_type_, &returned_data, cache_key),
-      nullopt);
+  curlc.get_data(stats_, url, serialization_type_, &returned_data, cache_key);
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return {
         LOG_STATUS(Status_RestError(
@@ -482,9 +480,7 @@ Status RestClientRemote::get_array_non_empty_domain(
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key));
-
+  curlc.get_data(stats_, url, serialization_type_, &returned_data, cache_key);
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(
         Status_RestError("Error getting array non-empty domain "
@@ -519,8 +515,7 @@ Status RestClientRemote::get_array_metadata_from_rest(
 
   // Get the data
   Buffer returned_data;
-  RETURN_NOT_OK(curlc.get_data(
-      stats_, url, serialization_type_, &returned_data, cache_key));
+  curlc.get_data(stats_, url, serialization_type_, &returned_data, cache_key);
   if (returned_data.data() == nullptr || returned_data.size() == 0)
     return LOG_STATUS(Status_RestError(
         "Error getting array metadata from REST; server returned no data."));
@@ -948,14 +943,14 @@ size_t RestClientRemote::query_post_call_back(
 
     if (scratch->size() != length) {
       throw std::logic_error("");
-    };
+    }
   }
 
   bytes_processed += length;
 
   if (static_cast<size_t>(bytes_processed) != content_nbytes) {
     throw std::logic_error("");
-  };
+  }
   return return_wrapper(bytes_processed);
 }
 
@@ -1544,17 +1539,15 @@ const RestCapabilities& RestClientRemote::get_capabilities_from_rest() const {
 
   Buffer data;
   try {
-    throw_if_not_ok(
-        curlc.get_data(stats_, url, serialization_type_, &data, {}));
-  } catch (const std::exception& e) {
-    std::string msg = e.what();
-    if (msg.find("HTTP code 404") != std::string::npos) {
+    curlc.get_data(stats_, url, serialization_type_, &data, {});
+  } catch (const CurlException& e) {
+    if (e.http_code() == 404) {
       // If the error was a 404, this indicates a legacy REST server.
       // Legacy REST supports clients <= 2.28.0.
-      rest_capabilities_ = RestCapabilities({2, 28, 0}, {2, 0, 0}, true);
+      rest_capabilities_.detected_ = rest_capabilities_.legacy_ = true;
     } else {
       // Failed to determine REST capabilities due to an unexpected error.
-      throw RestClientException(e.what());
+      throw;
     }
   }
 
