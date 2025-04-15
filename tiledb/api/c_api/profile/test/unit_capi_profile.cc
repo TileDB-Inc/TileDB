@@ -44,39 +44,40 @@ tiledb::sm::TemporaryLocalDirectory tempdir_("unit_capi_profile");
 TEST_CASE(
     "C API: tiledb_profile_alloc argument validation", "[capi][profile]") {
   capi_return_t rc;
+  tiledb_error_t* err = nullptr;
   tiledb_profile_t* profile;
   auto homedir_ = tempdir_.path().c_str();
   SECTION("success") {
-    rc = tiledb_profile_alloc(name_, homedir_, &profile);
+    rc = tiledb_profile_alloc(name_, homedir_, &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
   SECTION("empty name") {
-    rc = tiledb_profile_alloc("", homedir_, &profile);
+    rc = tiledb_profile_alloc("", homedir_, &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null name") {
-    rc = tiledb_profile_alloc(nullptr, homedir_, &profile);
+    rc = tiledb_profile_alloc(nullptr, homedir_, &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     // Ensure nullptr resolves to default name internally.
-    const char* name;
-    rc = tiledb_profile_get_name(profile, &name);
+    tiledb_string_t* name;
+    rc = tiledb_profile_get_name(profile, &name, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE(strcmp(name, name_) == 0);
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
   SECTION("empty homedir") {
-    rc = tiledb_profile_alloc(name_, "", &profile);
+    rc = tiledb_profile_alloc(name_, "", &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null homedir") {
     // Normal expected use-case. Internally resolves to default homedir.
-    rc = tiledb_profile_alloc(name_, nullptr, &profile);
+    rc = tiledb_profile_alloc(name_, nullptr, &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    const char* homedir;
-    rc = tiledb_profile_get_homedir(profile, &homedir);
+    tiledb_string_t* homedir;
+    rc = tiledb_profile_get_homedir(profile, &homedir, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     // Validate homedir is non-empty. The path may not be resolved when using
     // the default homedir (per the RestProfile::homedir() invariant).
@@ -85,14 +86,16 @@ TEST_CASE(
     CHECK(profile == nullptr);
   }
   SECTION("null profile") {
-    rc = tiledb_profile_alloc(name_, homedir_, nullptr);
+    rc = tiledb_profile_alloc(name_, homedir_, nullptr, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
 
 TEST_CASE("C API: tiledb_profile_free argument validation", "[capi][profile]") {
   tiledb_profile_t* profile;
-  auto rc = tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile);
+  tiledb_error_t* err = nullptr;
+  auto rc =
+      tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
   REQUIRE(tiledb_status(rc) == TILEDB_OK);
   SECTION("success") {
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
@@ -107,19 +110,20 @@ TEST_CASE("C API: tiledb_profile_free argument validation", "[capi][profile]") {
 TEST_CASE(
     "C API: tiledb_profile_get_name argument validation", "[capi][profile]") {
   capi_return_t rc;
+  tiledb_error_t* err = nullptr;
   ordinary_profile x{name_, tempdir_.path().c_str()};
-  const char* name;
+  tiledb_string_t* name;
   SECTION("success") {
-    rc = tiledb_profile_get_name(x.profile, &name);
+    rc = tiledb_profile_get_name(x.profile, &name, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE(strcmp(name, name_) == 0);
   }
   SECTION("null profile") {
-    rc = tiledb_profile_get_name(nullptr, &name);
+    rc = tiledb_profile_get_name(nullptr, &name, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null name") {
-    rc = tiledb_profile_get_name(x.profile, nullptr);
+    rc = tiledb_profile_get_name(x.profile, nullptr, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
@@ -128,19 +132,20 @@ TEST_CASE(
     "C API: tiledb_profile_get_homedir argument validation",
     "[capi][profile]") {
   capi_return_t rc;
+  tiledb_error_t* err = nullptr;
   ordinary_profile x{name_, tempdir_.path().c_str()};
-  const char* homedir;
+  tiledb_string_t* homedir;
   SECTION("success") {
-    rc = tiledb_profile_get_homedir(x.profile, &homedir);
+    rc = tiledb_profile_get_homedir(x.profile, &homedir, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     REQUIRE(homedir[0] != '\0');  // non-empty.
   }
   SECTION("null profile") {
-    rc = tiledb_profile_get_homedir(nullptr, &homedir);
+    rc = tiledb_profile_get_homedir(nullptr, &homedir, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null homedir") {
-    rc = tiledb_profile_get_homedir(x.profile, nullptr);
+    rc = tiledb_profile_get_homedir(x.profile, nullptr, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }

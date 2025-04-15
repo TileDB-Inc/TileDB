@@ -59,16 +59,16 @@ TEST_CASE(
   auto homedir_ = tempdir_.path().c_str();
   SECTION("default, explicitly passed") {
     Profile p(name_, homedir_);
-    REQUIRE(strcmp(p.get_name().c_str(), name_) == 0);
+    REQUIRE(p.get_name() == name_);
   }
   /*SECTION("default, inherited from nullptr") {
     Profile p(nullptr, homedir_);
-    REQUIRE(strcmp(p.get_name().c_str(), name_) == 0);
+    REQUIRE(p.get_name() == name_);
   }
   SECTION("non-default") {
     const char* name = "non_default";
     Profile p(name, homedir_);
-    REQUIRE(strcmp(p.get_name().c_str(), name) == 0);
+    REQUIRE(p.get_name() == name);
   }*/
 }
 
@@ -78,10 +78,10 @@ TEST_CASE(
   auto homedir_ = tempdir_.path().c_str();
   SECTION("explicitly passed") {
     Profile p(name_, homedir_);
-    REQUIRE(strcmp(p.get_homedir().c_str(), homedir_) == 0);
+    REQUIRE(p.get_homedir() == homedir_);
   }
   SECTION("inherited from nullptr") {
     Profile p(name_, nullptr);
-    REQUIRE(strcmp(p.get_homedir().c_str(), homedir_) == 0);
+    REQUIRE(p.get_homedir() == homedir_);
   }
 }*/

@@ -30,6 +30,8 @@
  * This file defines C API functions for the profile section.
  */
 
+#include "../error/error_api_internal.h"
+#include "../string/string_api_internal.h"
 #include "profile_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
@@ -60,52 +62,61 @@ capi_return_t tiledb_profile_alloc(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_profile_free(tiledb_profile_t** profile) {
+void tiledb_profile_free(tiledb_profile_t** profile) {
   ensure_output_pointer_is_valid(profile);
   ensure_profile_is_valid(*profile);
   tiledb_profile_t::break_handle(*profile);
-  return TILEDB_OK;
 }
 
 capi_return_t tiledb_profile_get_name(
-    tiledb_profile_t* profile, const char** name) {
+    tiledb_profile_t* profile, tiledb_string_handle_t** name) {
   ensure_profile_is_valid(profile);
   ensure_output_pointer_is_valid(name);
-  *name = profile->profile()->name().c_str();
+  *name = tiledb_string_handle_t::make_handle(profile->profile()->name());
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_profile_get_homedir(
-    tiledb_profile_t* profile, const char** homedir) {
+    tiledb_profile_t* profile, tiledb_string_handle_t** homedir) {
   ensure_profile_is_valid(profile);
   ensure_output_pointer_is_valid(homedir);
-  *homedir = profile->profile()->homedir().c_str();
+  *homedir = tiledb_string_handle_t::make_handle(profile->profile()->homedir());
   return TILEDB_OK;
 }
 
 }  // namespace tiledb::api
 
-using tiledb::api::api_entry_plain;
+using tiledb::api::api_entry_error;
+using tiledb::api::api_entry_void;
 
 CAPI_INTERFACE(
     profile_alloc,
     const char* name,
     const char* homedir,
-    tiledb_profile_t** profile) {
-  return api_entry_plain<tiledb::api::tiledb_profile_alloc>(
-      name, homedir, profile);
+    tiledb_profile_t** profile,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_alloc>(
+      error, name, homedir, profile);
 }
 
-CAPI_INTERFACE(profile_free, tiledb_profile_t** profile) {
-  return api_entry_plain<tiledb::api::tiledb_profile_free>(profile);
-}
-
-CAPI_INTERFACE(profile_get_name, tiledb_profile_t* profile, const char** name) {
-  return api_entry_plain<tiledb::api::tiledb_profile_get_name>(profile, name);
+CAPI_INTERFACE_VOID(profile_free, tiledb_profile_t** profile) {
+  return api_entry_void<tiledb::api::tiledb_profile_free>(profile);
 }
 
 CAPI_INTERFACE(
-    profile_get_homedir, tiledb_profile_t* profile, const char** homedir) {
-  return api_entry_plain<tiledb::api::tiledb_profile_get_homedir>(
-      profile, homedir);
+    profile_get_name,
+    tiledb_profile_t* profile,
+    tiledb_string_handle_t** name,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_get_name>(
+      error, profile, name);
+}
+
+CAPI_INTERFACE(
+    profile_get_homedir,
+    tiledb_profile_t* profile,
+    tiledb_string_handle_t** homedir,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_get_homedir>(
+      error, profile, homedir);
 }
