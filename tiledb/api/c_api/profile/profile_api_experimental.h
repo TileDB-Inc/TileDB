@@ -34,6 +34,8 @@
 #define TILEDB_CAPI_PROFILE_EXPERIMENTAL_H
 
 #include "../api_external_common.h"
+#include "../error/error_api_external.h"
+#include "../string/string_api_external.h"
 #include "tiledb/common/common.h"
 
 #ifdef __cplusplus
@@ -54,24 +56,30 @@ typedef struct tiledb_profile_handle_t tiledb_profile_t;
  *
  * @code{.c}
  * tiledb_profile_t* profile;
+ * tiledb_error_t* error = NULL;
  * tiledb_profile_alloc(
  *   "my_profile",
  *   TemporaryLocalDirectory("unit_capi_profile").path(),
- *   &profile);
+ *   &profile,
+ *   &error);
  *
  * tiledb_profile_t* profile1;
- * tiledb_profile_alloc(nullptr, nullptr, &profile1);
+ * tiledb_error_t* error1 = NULL;
+ * tiledb_profile_alloc(nullptr, nullptr, &profile1, &error1);
  * @endcode
  *
  * @param[in] name The profile name, or `nullptr` for default.
  * @param[in] homedir The path to `$HOME` directory, or `nullptr` for default.
  * @param[out] profile The profile object to be created.
+ * @param[out] error Error object returned upon error (`NULL` if there is
+ *     no error).
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_profile_alloc(
     const char* name,
     const char* homedir,
-    tiledb_profile_t** profile) TILEDB_NOEXCEPT;
+    tiledb_profile_t** profile,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Frees a TileDB profile object.
@@ -80,7 +88,8 @@ TILEDB_EXPORT capi_return_t tiledb_profile_alloc(
  *
  * @code{.c}
  * tiledb_profile_t* profile;
- * tiledb_profile_alloc(&profile);
+ * tiledb_error_t* error = NULL;
+ * tiledb_profile_alloc(&profile, &error);
  * tiledb_profile_set_param("rest.username", "my_username");
  * tiledb_profile_save();
  * tiledb_profile_free(&profile);
@@ -88,7 +97,7 @@ TILEDB_EXPORT capi_return_t tiledb_profile_alloc(
  *
  * @param[in] profile The profile object to be freed.
  */
-TILEDB_EXPORT capi_return_t tiledb_profile_free(tiledb_profile_t** profile)
+TILEDB_EXPORT void tiledb_profile_free(tiledb_profile_t** profile)
     TILEDB_NOEXCEPT;
 
 /**
@@ -98,18 +107,23 @@ TILEDB_EXPORT capi_return_t tiledb_profile_free(tiledb_profile_t** profile)
  *
  * @code{.c}
  * tiledb_profile_t* profile;
- * tiledb_profile_alloc(&profile);
- * const char* name;
+ * tiledb_error_t* error = NULL;
+ * tiledb_profile_alloc(&profile, &error);
+ * tiledb_string_t* name;
  * tiledb_profile_get_name(profile, &name);
  * tiledb_profile_free(&profile);
  * @endcode
  *
  * @param[in] profile The profile.
  * @param[out] name The name of the profile, to be retrieved.
+ * @param[out] error Error object returned upon error (`NULL` if there is
+ *     no error).
  * @return TILEDB_EXPORT
  */
 TILEDB_EXPORT capi_return_t tiledb_profile_get_name(
-    tiledb_profile_t* profile, const char** name) TILEDB_NOEXCEPT;
+    tiledb_profile_t* profile,
+    tiledb_string_t** name,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the homedir from the given profile.
@@ -118,18 +132,23 @@ TILEDB_EXPORT capi_return_t tiledb_profile_get_name(
  *
  * @code{.c}
  * tiledb_profile_t* profile;
- * tiledb_profile_alloc(&profile);
- * const char* homedir;
+ * tiledb_error_t* error = NULL;
+ * tiledb_profile_alloc(&profile, &error);
+ * tiledb_string_t* homedir;
  * tiledb_profile_get_homedir(profile, &homedir);
  * tiledb_profile_free(&profile);
  * @endcode
  *
  * @param[in] profile The profile.
  * @param[out] homedir The homedir of the profile, to be retrieved.
+ * @param[out] error Error object returned upon error (`NULL` if there is
+ *     no error).
  * @return TILEDB_EXPORT
  */
 TILEDB_EXPORT capi_return_t tiledb_profile_get_homedir(
-    tiledb_profile_t* profile, const char** homedir) TILEDB_NOEXCEPT;
+    tiledb_profile_t* profile,
+    tiledb_string_t** homedir,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

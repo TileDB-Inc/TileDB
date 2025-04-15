@@ -51,7 +51,8 @@ struct ordinary_profile {
 
   /** Constructor. */
   ordinary_profile(const char* name, const char* homedir) {
-    int rc = tiledb_profile_alloc(name, homedir, &profile);
+    tiledb_error_t* err = nullptr;
+    int rc = tiledb_profile_alloc(name, homedir, &profile, &err);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test profile");
     }

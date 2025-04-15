@@ -38,7 +38,7 @@
 #include "exception.h"
 #include "tiledb_experimental.h"
 
-#include "tiledb/api/c_api/profile/profile_api_internal.h"
+#include "tiledb/api/c_api/profile/profile_api_experimental.h"
 
 #include <memory>
 #include <string>
@@ -75,21 +75,16 @@ class Profile {
    */
   explicit Profile(const std::string& name, const std::string& homedir) {
     const char *n = nullptr, *h = nullptr;
-    if (name[0] != '\0') {
-      n = name.c_str();
-    }
-    if (homedir[0] != '\0') {
-      h = name.c_str();
-    }
+    name.c_str();
+    homedir.c_str();
 
     tiledb_profile_t* capi_profile;
-    try {
-      tiledb_profile_alloc(n, h, &capi_profile);
-    } catch (std::exception& e) {
+    tiledb_error_t* capi_error = nullptr;
+
+    int rc = tiledb_profile_alloc(n, h, &capi_profile, &capi_error);
+    if (rc != TILEDB_OK)
       throw ProfileException(
-          "Failed to create Profile due to an internal error: " +
-          std::string(e.what()));
-    }
+          "Failed to create Profile due to an internal error.");
 
     profile_ = std::shared_ptr<tiledb_profile_t>(capi_profile, Profile::free);
   }
@@ -104,15 +99,6 @@ class Profile {
   ~Profile() = default;
 
   /* ********************************* */
-  /*          STATIC FUNCTIONS         */
-  /* ********************************* */
-
-  /** Wrapper function for freeing a profile C object. */
-  static void free(tiledb_profile_t* profile) {
-    tiledb_profile_free(&profile);
-  }
-
-  /* ********************************* */
   /*                API                */
   /* ********************************* */
 
@@ -123,12 +109,26 @@ class Profile {
 
   /** Retrieves the name of the profile. */
   std::string get_name() {
-    return profile_->profile()->name();
+    tiledb_error_t* capi_error = nullptr;
+    tiledb_string_t* name;
+
+    int rc = tiledb_profile_get_name(profile_.get(), &name, &capi_error);
+    if (rc != TILEDB_OK)
+      throw ProfileException(
+          "Failed to retrieve profile name due to an internal error.");
+
+    return impl::CAPIString(&name).str();
   }
 
   /** Retrieves the homedir of the profile. */
   std::string get_homedir() {
-    return profile_->profile()->homedir();
+    tiledb_error_t* capi_error = nullptr;
+    tiledb_string_t* homedir;
+    int rc = tiledb_profile_get_homedir(profile_.get(), &homedir, &capi_error);
+    if (rc != TILEDB_OK)
+      throw ProfileException(
+          "Failed to retrieve profile homedir due to an internal error.");
+    return impl::CAPIString(&homedir).str();
   }
 
  private:
@@ -136,8 +136,13 @@ class Profile {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The TileDB C profile object. */
+  /** Pointer to the TileDB C profile object. */
   std::shared_ptr<tiledb_profile_t> profile_;
+
+  /** Wrapper function for freeing a profile C object. */
+  static void free(tiledb_profile_t* profile) {
+    tiledb_profile_free(&profile);
+  }
 };
 
 }  // namespace tiledb

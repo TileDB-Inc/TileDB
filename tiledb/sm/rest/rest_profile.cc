@@ -112,12 +112,12 @@ const std::string RestProfile::DEFAULT_USERNAME{""};
 RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     : version_(constants::rest_profile_version)
     , name_(name)
-    , homedir_(std::move(homedir))
+    , homedir_(homedir)
     , filepath_(homedir + constants::rest_profile_filepath)
     , old_filepath_(homedir + constants::cloud_profile_filepath) {
   if (name_.empty()) {
     throw RestProfileException(
-        "Failed to create RestProfile; name cannot be empty.");
+        "Failed to create RestProfile: name cannot be empty.");
   }
 
   // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
