@@ -37,6 +37,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -50,6 +51,9 @@ class MemoryTracker;
 /** Defines an array enumeration */
 class Enumeration {
  public:
+  using EnumerationValueMap =
+      tdb::pmr::unordered_map<std::string_view, uint64_t>;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -61,7 +65,7 @@ class Enumeration {
   DISABLE_MOVE(Enumeration);
 
   /** Destructor. */
-  ~Enumeration() = default;
+  ~Enumeration();
 
   /* ********************************* */
   /*             OPERATORS             */
@@ -89,6 +93,7 @@ class Enumeration {
    *        offsets buffer. Must be null if cell_var_num is not var_num.
    * @param offsets_size The size of the buffer pointed to by offsets. Must be
    *        zero of cell_var_num is not var_num.
+   * @param async whether to lazily or eagerly compute `value_map_`
    * @param memory_tracker The memory tracker associated with this Enumeration.
    * @return shared_ptr<Enumeration> The created enumeration.
    */
@@ -102,6 +107,7 @@ class Enumeration {
       uint64_t data_size,
       const void* offsets,
       uint64_t offsets_size,
+      bool async,
       shared_ptr<MemoryTracker> memory_tracker) {
     return create(
         resources,
@@ -114,6 +120,7 @@ class Enumeration {
         data_size,
         offsets,
         offsets_size,
+        async,
         memory_tracker);
   }
 
@@ -133,6 +140,7 @@ class Enumeration {
    *        offsets buffer. Must be null if cell_var_num is not var_num.
    * @param offsets_size The size of the buffer pointed to by offsets. Must be
    *        zero of cell_var_num is not var_num.
+   * @param async Whether to lazily or eagerly compute `value_map`
    * @param memory_tracker The memory tracker associated with this Enumeration.
    * @return shared_ptr<Enumeration> The created enumeration.
    */
@@ -147,6 +155,7 @@ class Enumeration {
       uint64_t data_size,
       const void* offsets,
       uint64_t offsets_size,
+      bool async,
       shared_ptr<MemoryTracker> memory_tracker) {
     struct EnableMakeShared : public Enumeration {
       EnableMakeShared(
@@ -160,6 +169,7 @@ class Enumeration {
           uint64_t data_size,
           const void* offsets,
           uint64_t offsets_size,
+          bool async,
           shared_ptr<MemoryTracker> memory_tracker)
           : Enumeration(
                 resources,
@@ -172,6 +182,7 @@ class Enumeration {
                 data_size,
                 offsets,
                 offsets_size,
+                async,
                 memory_tracker) {
       }
     };
@@ -187,6 +198,7 @@ class Enumeration {
         data_size,
         offsets,
         offsets_size,
+        async,
         memory_tracker);
   }
 
@@ -280,7 +292,14 @@ class Enumeration {
    *        value map of the enumeration.
    */
   const tdb::pmr::unordered_map<std::string_view, uint64_t>& value_map() const {
-    return value_map_;
+    if (value_map_future_.valid()) {
+      value_map_status_.emplace(value_map_future_.wait());
+    }
+    if (value_map_status_.value().ok()) {
+      return value_map_;
+    } else {
+      throw StatusException(value_map_status_.value());
+    }
   }
 
   /**
@@ -387,6 +406,7 @@ class Enumeration {
    *        offsets buffer. Must be null if cell_var_num is not var_num.
    * @param offsets_size The size of the buffer pointed to by offsets. Must be
    *        zero of cell_var_num is not var_num.
+   * @param async Whether to lazily or eagerly compute `value_map_`
    * @param memory_tracker The memory tracker.
    */
   Enumeration(
@@ -400,6 +420,7 @@ class Enumeration {
       uint64_t data_size,
       const void* offsets,
       uint64_t offsets_size,
+      bool async,
       shared_ptr<MemoryTracker> memory_tracker);
 
   /* ********************************* */
@@ -432,23 +453,21 @@ class Enumeration {
   /** The offsets of each enumeration value if var sized. */
   Buffer offsets_;
 
-  /** Map of values to indices */
-  tdb::pmr::unordered_map<std::string_view, uint64_t> value_map_;
+  /** Map of values to indices, computed lazily */
+  EnumerationValueMap value_map_;
+
+  /** Exception thrown while computing value map */
+  mutable std::optional<Status> value_map_status_;
+
+  /** Handle for waiting on the value map construction */
+  mutable tiledb::common::ThreadPool::Task value_map_future_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
   /** Populate the value_map_ */
-  void generate_value_map(const ContextResources& resources);
-
-  /**
-   * Add a value to value_map_
-   *
-   * @param sv A string view of the data to add.
-   * @param index The index of the data in the Enumeration.
-   */
-  void add_value_to_map(std::string_view& sv, uint64_t index);
+  void generate_value_map();
 };
 
 }  // namespace tiledb::sm

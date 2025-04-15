@@ -474,6 +474,7 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
       total_size,
       offsets.data(),
       offsets.size() * sizeof(uint64_t),
+      true,
       tiledb::test::create_test_memory_tracker());
 }
 

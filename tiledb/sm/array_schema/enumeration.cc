@@ -33,6 +33,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/random/random_label.h"
 
@@ -59,6 +60,7 @@ Enumeration::Enumeration(
     uint64_t data_size,
     const void* offsets,
     uint64_t offsets_size,
+    bool async,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , name_(name)
@@ -95,6 +97,7 @@ Enumeration::Enumeration(
   if (data_empty && offsets_empty) {
     // This is an empty enumeration so we're done checking for argument
     // validity.
+    value_map_status_.emplace(Status::Ok());
     return;
   }
 
@@ -192,7 +195,30 @@ Enumeration::Enumeration(
     throw_if_not_ok(offsets_.write(offsets, 0, offsets_size));
   }
 
-  generate_value_map(resources);
+  if (async) {
+    tiledb::common::ThreadPool::Task value_map_future =
+        resources.compute_tp().async(
+            [](std::reference_wrapper<Enumeration> enumeration) {
+              enumeration.get().generate_value_map();
+              return Status::Ok();
+            },
+            std::reference_wrapper<Enumeration>(*this));
+    value_map_future_ = std::move(value_map_future);
+  } else {
+    generate_value_map();
+    value_map_status_.emplace(Status::Ok());
+  }
+}
+
+Enumeration::~Enumeration() {
+  if (value_map_future_.valid()) {
+    auto st = value_map_future_.wait();
+    if (!st.ok()) {
+      tiledb::common::global_logger().warn(
+          "Enumeration::~Enumeration(): Error computing value map: " +
+          st.to_string());
+    }
+  }
 }
 
 shared_ptr<const Enumeration> Enumeration::deserialize(
@@ -246,6 +272,7 @@ shared_ptr<const Enumeration> Enumeration::deserialize(
       data_size,
       offsets,
       offsets_size,
+      true,
       memory_tracker);
 }
 
@@ -341,6 +368,7 @@ shared_ptr<const Enumeration> Enumeration::extend(
       new_data.size(),
       new_offsets_ptr,
       new_offsets_size,
+      false,
       memory_tracker_);
 }
 
@@ -419,15 +447,33 @@ void Enumeration::serialize(Serializer& serializer) const {
 uint64_t Enumeration::index_of(const void* data, uint64_t size) const {
   std::string_view value_view(static_cast<const char*>(data), size);
 
-  auto iter = value_map_.find(value_view);
-  if (iter == value_map_.end()) {
+  const auto& values = value_map();
+  auto iter = values.find(value_view);
+  if (iter == values.end()) {
     return constants::enumeration_missing_value;
   }
 
   return iter->second;
 }
 
-void Enumeration::generate_value_map(const ContextResources&) {
+/**
+ * Add a value to a value map. Checks for duplicates.
+ *
+ * @param sv A string view of the data to add.
+ * @param index The index of the data in the Enumeration.
+ */
+static void add_value_to_map(
+    Enumeration::EnumerationValueMap& value_map,
+    std::string_view& sv,
+    uint64_t index) {
+  const auto res = value_map.emplace(sv, index);
+  if (!res.second) {
+    throw EnumerationException(
+        "Invalid duplicated value in enumeration '" + std::string(sv) + "'");
+  }
+}
+
+void Enumeration::generate_value_map() {
   auto char_data = data_.data_as<char>();
   if (var_size()) {
     auto offsets = offsets_.data_as<uint64_t>();
@@ -444,7 +490,7 @@ void Enumeration::generate_value_map(const ContextResources&) {
       }
 
       auto sv = std::string_view(char_data + offsets[i], length);
-      add_value_to_map(sv, i);
+      add_value_to_map(value_map_, sv, i);
     }
   } else {
     uint64_t i = 0;
@@ -454,17 +500,9 @@ void Enumeration::generate_value_map(const ContextResources&) {
 
     while (i * stride < data_.size()) {
       auto sv = std::string_view(char_data + i * stride, stride);
-      add_value_to_map(sv, i);
+      add_value_to_map(value_map_, sv, i);
       i += 1;
     }
-  }
-}
-
-void Enumeration::add_value_to_map(std::string_view& sv, uint64_t index) {
-  const auto res = value_map_.emplace(sv, index);
-  if (!res.second) {
-    throw EnumerationException(
-        "Invalid duplicated value in enumeration '" + std::string(sv) + "'");
   }
 }
 

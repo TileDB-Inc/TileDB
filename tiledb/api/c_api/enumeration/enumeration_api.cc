@@ -80,7 +80,11 @@ capi_return_t tiledb_enumeration_alloc(
         data_size,
         offsets,
         offsets_size,
+        false,
         memory_tracker);
+
+    // wait for the value map to finish in case it throws
+    (*enumeration)->enumeration()->value_map();
   } catch (...) {
     *enumeration = nullptr;
     throw;

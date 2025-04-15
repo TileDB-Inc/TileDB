@@ -124,6 +124,7 @@ shared_ptr<const Enumeration> enumeration_from_capnp(
       data_size,
       offsets,
       offsets_size,
+      true,
       memory_tracker);
 }
 
