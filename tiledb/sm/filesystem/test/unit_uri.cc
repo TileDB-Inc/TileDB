@@ -262,7 +262,7 @@ TEST_CASE("URI: Get REST components", "[uri]") {
     REQUIRE(array_uri == arr);
   }
 
-  SECTION("Carrara REST URI components") {
+  SECTION("TileDB-Server REST URI components") {
     std::string ns = GENERATE(
         "workspace/teamspace",
         "ws_cvsj3li97ng28m60nhj0/ts_cvsj4ei97ng28m60nhkg",
