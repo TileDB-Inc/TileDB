@@ -62,7 +62,11 @@ struct tiledb_profile_handle_t
       : profile_(x) {
   }
 
-  profile_type profile() const {
+  /**
+   * Get the internal instance of RestProfile.
+   * @returns The internal RestProfile.
+   */
+  [[nodiscard]] inline profile_type profile() const {
     return profile_;
   }
 };
