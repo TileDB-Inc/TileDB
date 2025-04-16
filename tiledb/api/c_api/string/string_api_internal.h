@@ -68,6 +68,14 @@ struct tiledb_string_handle_t
       : value_{s} {
   }
 
+  /**
+   * Ordinary constructor.
+   * @param s A string_view
+   */
+  explicit tiledb_string_handle_t(const std::string_view s)
+      : value_{s} {
+  }
+
   [[nodiscard]] inline const std::string_view view() const {
     return std::string_view{value_};
   }

@@ -64,7 +64,12 @@ TEST_CASE(
     tiledb_string_t* name;
     rc = tiledb_profile_get_name(profile, &name, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    REQUIRE(strcmp(name, name_) == 0);
+    const char* out_ptr;
+    size_t out_length;
+    rc = tiledb_string_view(name, &out_ptr, &out_length);
+    REQUIRE(rc == TILEDB_OK);
+    std::string out_str(out_ptr, out_length);
+    CHECK(out_str == std::string(name_));
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
@@ -102,8 +107,7 @@ TEST_CASE("C API: tiledb_profile_free argument validation", "[capi][profile]") {
     CHECK(profile == nullptr);
   }
   SECTION("null profile") {
-    auto rc = tiledb_profile_free(nullptr);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+    tiledb_profile_free(nullptr);
   }
 }
 
@@ -116,7 +120,12 @@ TEST_CASE(
   SECTION("success") {
     rc = tiledb_profile_get_name(x.profile, &name, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    REQUIRE(strcmp(name, name_) == 0);
+    const char* out_ptr;
+    size_t out_length;
+    rc = tiledb_string_view(name, &out_ptr, &out_length);
+    REQUIRE(rc == TILEDB_OK);
+    std::string out_str(out_ptr, out_length);
+    REQUIRE(out_str == std::string(name_));
   }
   SECTION("null profile") {
     rc = tiledb_profile_get_name(nullptr, &name, &err);
@@ -138,7 +147,11 @@ TEST_CASE(
   SECTION("success") {
     rc = tiledb_profile_get_homedir(x.profile, &homedir, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    REQUIRE(homedir[0] != '\0');  // non-empty.
+    const char* out_ptr;
+    size_t out_length;
+    rc = tiledb_string_view(homedir, &out_ptr, &out_length);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(out_length > 0);
   }
   SECTION("null profile") {
     rc = tiledb_profile_get_homedir(nullptr, &homedir, &err);
