@@ -49,6 +49,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
+class ContextResources;
 class Dimension;
 class MemoryTracker;
 class SerializationBuffer;
