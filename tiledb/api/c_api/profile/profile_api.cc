@@ -43,21 +43,19 @@ capi_return_t tiledb_profile_alloc(
   if (!name) {
     // Passing nullptr resolves to the default case.
     name = tiledb::sm::RestProfile::DEFAULT_NAME.c_str();
-  }
-  if (name[0] == '\0') {
+  } else if (name[0] == '\0') {
     throw CAPIException("[tiledb_profile_alloc] Name cannot be empty.");
   }
 
-  if (homedir) {
-    if (homedir[0] == '\0') {
-      throw CAPIException(
-          "[tiledb_profile_alloc] $HOME directory cannot be empty.");
-    }
-    *profile =
-        tiledb_profile_t::make_handle(std::string(name), std::string(homedir));
-  } else {
-    *profile = tiledb_profile_t::make_handle(std::string(name));
+  if (!homedir) {
+    // Passing nullptr resolves to the default case.
+    homedir = tiledb::common::filesystem::home_directory().c_str();
+  } else if (homedir[0] == '\0') {
+    throw CAPIException(
+        "[tiledb_profile_alloc] $HOME directory cannot be empty.");
   }
+
+  *profile = tiledb_profile_t::make_handle(name, homedir);
 
   return TILEDB_OK;
 }
