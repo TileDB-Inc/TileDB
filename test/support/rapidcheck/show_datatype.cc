@@ -1,5 +1,5 @@
 /**
- * @file test/support/rapidcheck/show.h
+ * @file test/support/rapidcheck/show_datatype.cc
  *
  * @section LICENSE
  *
@@ -32,45 +32,16 @@
  * header files.
  */
 
-#ifndef TILEDB_RAPIDCHECK_SHOW_H_
-#define TILEDB_RAPIDCHECK_SHOW_H_
+#include <test/support/rapidcheck/show.h>
 
-#include <test/support/stdx/optional.h>
+#include "tiledb/sm/enums/query_condition_op.h"
+#include "tiledb/sm/query/ast/query_ast.h"
 
-#include <ostream>
-
-#include "tiledb/sm/enums/datatype.h"
-
-namespace tiledb {
-namespace sm {
-class ASTNode;
-}  // namespace sm
-}  // namespace tiledb
-
-// forward declarations of `showValue` overloads
-// (these must be declared prior to including `rapidcheck/Show.hpp` for some
-// reason)
 namespace rc::detail {
 
-/**
- * Specializes `show` for `std::optional<T>` to print the final test case after
- * shrinking
- */
-template <stdx::is_optional_v T>
-void showValue(const T& value, std::ostream& os);
-
-/**
- * Specializes `show` for Datatype
- */
 void showValue(const tiledb::sm::Datatype& value, std::ostream& os) {
   os << tiledb::sm::datatype_str(value);
 }
 
-/**
- * Specializes `show` for query ASTNode
- */
-void showValue(const tiledb::sm::ASTNode& value, std::ostream& os);
-
 }  // namespace rc::detail
 
-#endif
