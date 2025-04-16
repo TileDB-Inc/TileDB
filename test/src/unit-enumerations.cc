@@ -149,6 +149,16 @@ struct EnumerationFx {
 };
 
 template <typename T>
+static shared_ptr<const Enumeration> create_enumeration(
+    Context& ctx,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const std::vector<T>& values,
+    bool ordered,
+    Datatype type,
+    std::string name,
+    bool async);
+
+template <typename T>
 QueryCondition create_qc(
     const char* field_name, T condition_value, const QueryConditionOp& op);
 
@@ -919,6 +929,47 @@ TEST_CASE_METHOD(
         values, false, Datatype::STRING_ASCII, default_enmr_name, true);
     REQUIRE_THROWS(enmr->index_of("foo", 3), matcher);
   }
+
+  SECTION("Await index_of exception is thrown every time") {
+    auto enmr = create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true);
+    REQUIRE_THROWS(enmr->index_of("foo", 3), matcher);
+    REQUIRE_THROWS(enmr->index_of("foo", 3), matcher);
+  }
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation - Async Safety",
+    "[enumeration][async]") {
+  shared_ptr<const Enumeration> enmr;
+  {
+    const std::vector<std::string> values = {"foo", "bar", "baz", "gub"};
+
+    Config cfg;
+    Context ctx(cfg);
+    enmr = ::create_enumeration(
+        ctx,
+        memory_tracker_,
+        values,
+        false,
+        Datatype::STRING_ASCII,
+        default_enmr_name,
+        true);
+
+    // `ctx` is destructed here.
+    // The future borrows its resources.
+    // If `ctx` does not await its thread pool tasks, then the
+    // `generate_value_map` future may refer to the destructed resources and
+    // SEGV.
+    // (fortunately `ctx` does await its thread pool tasks, so that shouldn't
+    // happen)
+  }
+
+  CHECK(enmr->index_of("foo", 3) == 0);
+  CHECK(enmr->index_of("bar", 3) == 1);
+  CHECK(enmr->index_of("baz", 3) == 2);
+  CHECK(enmr->index_of("gub", 3) == 3);
 }
 
 TEST_CASE_METHOD(
@@ -2771,7 +2822,9 @@ EnumerationFx::~EnumerationFx() {
 }
 
 template <typename T>
-shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
+static shared_ptr<const Enumeration> create_enumeration(
+    Context& ctx,
+    shared_ptr<MemoryTracker> memory_tracker,
     const std::vector<T>& values,
     bool ordered,
     Datatype type,
@@ -2791,7 +2844,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
       raw_values[i] = values[i] ? 1 : 0;
     }
     return Enumeration::create(
-        ctx_.resources(),
+        ctx.resources(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2801,10 +2854,10 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         nullptr,
         0,
         async,
-        memory_tracker_);
+        memory_tracker);
   } else if constexpr (std::is_pod_v<T>) {
     return Enumeration::create(
-        ctx_.resources(),
+        ctx.resources(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2814,7 +2867,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         nullptr,
         0,
         async,
-        memory_tracker_);
+        memory_tracker);
   } else {
     uint64_t total_size = 0;
     for (auto v : values) {
@@ -2833,7 +2886,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
     }
 
     return Enumeration::create(
-        ctx_.resources(),
+        ctx.resources(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2843,8 +2896,19 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         offsets.data(),
         offsets.size() * sizeof(uint64_t),
         async,
-        memory_tracker_);
+        memory_tracker);
   }
+}
+
+template <typename T>
+shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
+    const std::vector<T>& values,
+    bool ordered,
+    Datatype type,
+    std::string name,
+    bool async) {
+  return ::create_enumeration<T>(
+      ctx_, memory_tracker_, values, ordered, type, name, async);
 }
 
 shared_ptr<const Enumeration> EnumerationFx::create_empty_enumeration(
