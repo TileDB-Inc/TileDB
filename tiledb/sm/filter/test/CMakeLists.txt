@@ -51,12 +51,14 @@ commence(unit_test run_filter_pipeline)
         unit_bit_width_reduction_pipeline.cc
         unit_bitshuffle_pipeline.cc
         unit_byteshuffle_pipeline.cc
+        unit_double_delta_pipeline.cc
         unit_encryption_pipeline.cc
         unit_positive_delta_pipeline.cc
         unit_run_filter_pipeline.cc
         unit_webp_pipeline.cc
         unit_xor_pipeline.cc
     )
+    this_target_link_libraries(rapidcheck)
 conclude(unit_test)
 
 commence(unit_test float_scale_input_val)
