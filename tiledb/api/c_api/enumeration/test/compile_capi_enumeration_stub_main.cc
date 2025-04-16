@@ -28,10 +28,14 @@
 
 #include "../enumeration_api_internal.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/storage_manager/context.h"
 
 int main() {
+  tiledb::sm::Config cfg;
+  tiledb::sm::Context ctx(cfg);
   try {
     tiledb_enumeration_handle_t e{
+        ctx.resources(),
         "fooo",
         tiledb::sm::Datatype::INT32,
         1,
@@ -40,6 +44,7 @@ int main() {
         0,
         nullptr,
         0,
+        false,
         nullptr};
   } catch (...) {
   }
