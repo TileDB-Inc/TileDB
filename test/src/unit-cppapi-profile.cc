@@ -35,44 +35,33 @@
 
 #include "test/support/src/temporary_local_directory.h"
 #include "tiledb/sm/cpp_api/profile_experimental.h"
+#include "tiledb/sm/rest/rest_profile.h"
 
 using namespace tiledb;
 using namespace tiledb::test;
 
-const char* name_ = tiledb::sm::RestProfile::DEFAULT_NAME.c_str();
+const std::string name_ = tiledb::sm::RestProfile::DEFAULT_NAME;
 tiledb::sm::TemporaryLocalDirectory tempdir_("unit_cppapi_profile");
-
-/**
- * Notes to reviewer:
- * This test is segfaulting. I suspect it's something to do with the
- * destruction of the underlying object. I had a lot of trouble getting
- * the behavior on L91 of tiledb/sm/cpp_api/profile_experimental.h to work,
- * which may be a conrtibuting factor.
- *
- * Please see my other notes to reviewer on L127 of
- * tiledb/sm/rest/rest_profile.h for important information regarding the
- * get_homedir() method.
- */
 
 TEST_CASE(
     "C++ API: Profile get_name validation", "[cppapi][profile][get_name]") {
-  auto homedir_ = tempdir_.path().c_str();
+  const std::string homedir_ = tempdir_.path();
   SECTION("default, explicitly passed") {
     Profile p(name_, homedir_);
     REQUIRE(p.get_name() == name_);
   }
-  /*SECTION("default, inherited from nullptr") {
-    Profile p(nullptr, homedir_);
+  SECTION("default, inherited from nullptr") {
+    Profile p(std::nullopt, homedir_);
     REQUIRE(p.get_name() == name_);
   }
   SECTION("non-default") {
     const char* name = "non_default";
     Profile p(name, homedir_);
     REQUIRE(p.get_name() == name);
-  }*/
+  }
 }
 
-/*TEST_CASE(
+TEST_CASE(
     "C++ API: Profile get_homedir validation",
     "[cppapi][profile][get_homedir]") {
   auto homedir_ = tempdir_.path().c_str();
@@ -81,7 +70,12 @@ TEST_CASE(
     REQUIRE(p.get_homedir() == homedir_);
   }
   SECTION("inherited from nullptr") {
-    Profile p(name_, nullptr);
-    REQUIRE(p.get_homedir() == homedir_);
+    Profile p(name_, std::nullopt);
+    REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
   }
-}*/
+  SECTION("non-default") {
+    const char* homedir = "non_default";
+    Profile p(name_, homedir);
+    REQUIRE(p.get_homedir() == "non_default");
+  }
+}

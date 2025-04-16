@@ -64,14 +64,6 @@ struct tiledb_string_handle_t
    * Ordinary constructor.
    * @param s A string
    */
-  explicit tiledb_string_handle_t(const std::string& s)
-      : value_{s} {
-  }
-
-  /**
-   * Ordinary constructor.
-   * @param s A string_view
-   */
   explicit tiledb_string_handle_t(const std::string_view s)
       : value_{s} {
   }
