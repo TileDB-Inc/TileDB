@@ -225,7 +225,7 @@ Status URI::get_rest_components(
   }
 
   if (legacy) {
-    // Extract '<namespace>' if we are using a 3.0 REST server.
+    // Extract '<namespace>' if we are talking to legacy REST.
 
     // Find '/' between namespace and array uri.
     auto slash = uri_.find('/', prefix.size());
@@ -240,7 +240,7 @@ Status URI::get_rest_components(
     *array_namespace = uri_.substr(prefix.size(), namespace_len);
     *array_uri = uri_.substr(slash + 1, array_len);
   } else {
-    // Extract '<workspace>/<teamspace>' if we are using a 3.0 REST server.
+    // Extract '<workspace>/<teamspace>' if we are talking to TileDB-Server.
 
     // Find '/' between workspace and teamspace.
     auto ws_slash = uri_.find('/', prefix.size());

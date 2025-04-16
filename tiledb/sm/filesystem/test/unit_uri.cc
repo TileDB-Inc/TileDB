@@ -185,7 +185,8 @@ TEST_CASE("URI: Test REST components, valid", "[uri]") {
       "array", "array/uri", "s3://bucket/dir", "azure://container/dir");
   const std::string uri{"tiledb://" + ns_component + "/" + array_component};
   std::string ns, array;
-  DYNAMIC_SECTION((legacy ? "legacy " : "3.0 ") << "\"" << uri << "\" valid") {
+  DYNAMIC_SECTION(
+      (legacy ? "legacy " : "TileDB-Server ") << "\"" << uri << "\" valid") {
     CHECK(URI(uri).get_rest_components(&ns, &array, legacy).ok());
     CHECK(ns == ns_component);
     CHECK(array == array_component);
@@ -216,7 +217,7 @@ TEST_CASE("URI: Test REST components, invalid", "[uri]") {
   for (size_t j = 0; j < N; ++j) {
     std::string x{invalid_rest_uri[j]};
     DYNAMIC_SECTION(
-        (legacy ? "legacy " : "3.0 ") << "\"" << x << "\" invalid") {
+        (legacy ? "legacy " : "TileDB-Server ") << "\"" << x << "\" invalid") {
       CHECK(!URI(x).get_rest_components(&ns, &array, legacy).ok());
     }
   }
