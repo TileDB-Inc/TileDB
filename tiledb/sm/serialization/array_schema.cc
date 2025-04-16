@@ -1880,7 +1880,10 @@ Status array_schema_serialize(
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
-    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
+    const ContextResources& resources,
+    SerializationType,
+    span<const char>,
+    shared_ptr<MemoryTracker>) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -1931,6 +1934,7 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
+    const ContextResources& resources,
     const URI&,
     const Config&,
     SerializationType,
