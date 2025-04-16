@@ -111,10 +111,10 @@ class RestProfile {
   /**
    * Returns the name of this profile.
    *
-   * @return std::string The name of this profile.
+   * @return std::string_view The name of this profile.
    */
-  inline std::string name() {
-    return name_;
+  inline const std::string_view name() const {
+    return std::string_view(name_);
   }
 
   /**
@@ -129,10 +129,10 @@ class RestProfile {
    * go out of scope. We may also decide to just scrap this method entirely.
    * It's not in the original design but I thought it useful in prod.
    *
-   * @return std::string The path to the local $HOME directory.
+   * @return std::string_view The path to the local $HOME directory.
    */
-  inline std::string homedir() {
-    return homedir_;
+  inline const std::string_view homedir() const {
+    return std::string_view(homedir_);
   }
 
   /**
