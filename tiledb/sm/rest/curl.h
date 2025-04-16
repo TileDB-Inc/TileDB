@@ -71,9 +71,7 @@ namespace sm {
 class CurlException : public StatusException {
  public:
   explicit CurlException(
-      const std::string& message,
-      int curl_code = CURL_NONE,
-      int http_code = HTTP_NONE)
+      const std::string& message, int curl_code, int http_code = HTTP_NONE)
       : StatusException("Curl", message)
       , curl_code_(curl_code)
       , http_code_(http_code) {
@@ -87,8 +85,7 @@ class CurlException : public StatusException {
     return http_code_;
   }
 
-  // TODO: IIUC curl code will always be available.
-  enum StatusCode { CURL_NONE = -2, HTTP_NONE };
+  static constexpr int HTTP_NONE = -1;
 
  private:
   int curl_code_;
