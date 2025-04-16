@@ -70,13 +70,15 @@ class Profile {
    * preserve local files from in-test changes. Users may pass their own
    * `homedir`, but are encouraged to use `nullptr`, the default case.
    *
-   * @param name The profile name, or `nullptr` for default.
-   * @param homedir The local $HOME directory path, or `nullptr` for default.
+   * @param name The profile name if you want to override the default.
+   * @param homedir The local $HOME directory path if you want to override the
+   * default.
    */
-  explicit Profile(const std::string& name, const std::string& homedir) {
-    const char *n = nullptr, *h = nullptr;
-    name.c_str();
-    homedir.c_str();
+  explicit Profile(
+      std::optional<std::string> name = std::nullopt,
+      std::optional<std::string> homedir = std::nullopt) {
+    const char* n = name.has_value() ? name->c_str() : nullptr;
+    const char* h = homedir.has_value() ? homedir->c_str() : nullptr;
 
     tiledb_profile_t* capi_profile;
     tiledb_error_t* capi_error = nullptr;
@@ -117,7 +119,11 @@ class Profile {
       throw ProfileException(
           "Failed to retrieve profile name due to an internal error.");
 
-    return impl::CAPIString(&name).str();
+    const char* out_ptr;
+    size_t out_length;
+    tiledb_string_view(name, &out_ptr, &out_length);
+    std::string out_str(out_ptr, out_length);
+    return out_str;
   }
 
   /** Retrieves the homedir of the profile. */
@@ -128,7 +134,12 @@ class Profile {
     if (rc != TILEDB_OK)
       throw ProfileException(
           "Failed to retrieve profile homedir due to an internal error.");
-    return impl::CAPIString(&homedir).str();
+
+    const char* out_ptr;
+    size_t out_length;
+    tiledb_string_view(homedir, &out_ptr, &out_length);
+    std::string out_str(out_ptr, out_length);
+    return out_str;
   }
 
  private:

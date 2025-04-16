@@ -86,7 +86,12 @@ TEST_CASE(
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
     // Validate homedir is non-empty. The path may not be resolved when using
     // the default homedir (per the RestProfile::homedir() invariant).
-    // #TODO REQUIRE(homedir[0] != '\0');
+    const char* out_ptr;
+    size_t out_length;
+    rc = tiledb_string_view(homedir, &out_ptr, &out_length);
+    REQUIRE(rc == TILEDB_OK);
+    std::string out_str(out_ptr, out_length);
+    CHECK(out_str == tiledb::common::filesystem::home_directory());
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
