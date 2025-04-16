@@ -38,8 +38,6 @@
 #include "exception.h"
 #include "tiledb_experimental.h"
 
-#include "tiledb/api/c_api/profile/profile_api_experimental.h"
-
 #include <memory>
 #include <string>
 
