@@ -373,6 +373,7 @@ Status array_schema_evolution_serialize(
 
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution**,
+    const ContextResources&,
     const Config&,
     SerializationType,
     span<const char>,
