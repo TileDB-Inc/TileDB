@@ -103,7 +103,7 @@ struct RestProfileFx {
    * as a json object.
    */
   json profile_from_file_to_json(
-      std::string_view filepath, std::string_view name) {
+      std::string filepath, std::string name) {
     json data;
     if (std::filesystem::exists(filepath)) {
       std::ifstream file(filepath);
@@ -166,17 +166,17 @@ TEST_CASE_METHOD(
   // Create a default RestProfile.
   RestProfile p(create_profile());
   std::string filepath = homedir_ + ".tiledb/profiles.json";
-  CHECK(profile_from_file_to_json(filepath, p.name()).empty());
+  CHECK(profile_from_file_to_json(filepath, std::string(p.name())).empty());
 
   // Save and validate.
   p.save_to_file();
   expected_values_t e;
   CHECK(is_valid(p, e));
-  CHECK(!profile_from_file_to_json(filepath, p.name()).empty());
+  CHECK(!profile_from_file_to_json(filepath, std::string(p.name())).empty());
 
   // Remove the profile and validate that the local json object is removed.
   p.remove_from_file();
-  CHECK(profile_from_file_to_json(filepath, p.name()).empty());
+  CHECK(profile_from_file_to_json(filepath, std::string(p.name())).empty());
 }
 
 TEST_CASE_METHOD(

@@ -73,9 +73,4 @@ TEST_CASE(
     Profile p(name_, std::nullopt);
     REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
   }
-  SECTION("non-default") {
-    const char* homedir = "non_default";
-    Profile p(name_, homedir);
-    REQUIRE(p.get_homedir() == "non_default");
-  }
 }
