@@ -31,10 +31,9 @@
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 
-#include "../../../c_api_test_support/testsupport_capi_profile.h"
-#include "../profile_api_experimental.h"
 #include "../profile_api_internal.h"
 #include "test/support/src/temporary_local_directory.h"
+#include "tiledb/api/c_api_test_support/testsupport_capi_profile.h"
 
 using namespace tiledb::api::test_support;
 
