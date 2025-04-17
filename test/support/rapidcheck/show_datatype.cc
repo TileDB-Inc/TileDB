@@ -44,4 +44,3 @@ void showValue(const tiledb::sm::Datatype& value, std::ostream& os) {
 }
 
 }  // namespace rc::detail
-
