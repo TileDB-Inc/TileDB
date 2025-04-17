@@ -34,12 +34,7 @@ $ conda install -c conda-forge tiledb
 
 (see links below for Python, R, and other API installation instructions)
 
-Alternatively, you can use the Docker image we provide:
-
-```bash
-$ docker pull tiledb/tiledb
-$ docker run -it tiledb/tiledb
-```
+Alternatively, you can use the [Dockerfile we provide.](examples/Dockerfile/Dockerfile)
 
 We include several [examples](https://github.com/TileDB-Inc/TileDB/tree/main/examples). You can start with the following:
 
