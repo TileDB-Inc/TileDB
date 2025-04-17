@@ -1,0 +1,179 @@
+/**
+ * @file tiledb/api/c_api/profile/test/unit_capi_profile.cc
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2025 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * Validates the arguments for the profile C API.
+ */
+
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>
+
+#include "../profile_api_internal.h"
+#include "test/support/src/temporary_local_directory.h"
+#include "tiledb/api/c_api_test_support/testsupport_capi_profile.h"
+
+using namespace tiledb::api::test_support;
+
+struct CAPINProfileFx {
+  const char* name_;
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
+
+  CAPINProfileFx()
+      : name_(tiledb::sm::RestProfile::DEFAULT_NAME.c_str())
+      , tempdir_("unit_capi_profile") {
+  }
+};
+
+TEST_CASE(
+    "C API: tiledb_profile_alloc argument validation", "[capi][profile]") {
+  CAPINProfileFx fx;
+  capi_return_t rc;
+  tiledb_error_t* err = nullptr;
+  tiledb_profile_t* profile;
+  auto homedir_ = fx.tempdir_.path().c_str();
+  SECTION("success") {
+    rc = tiledb_profile_alloc(fx.name_, homedir_, &profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE_NOTHROW(tiledb_profile_free(&profile));
+    CHECK(profile == nullptr);
+  }
+  SECTION("empty name") {
+    rc = tiledb_profile_alloc("", homedir_, &profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null name") {
+    rc = tiledb_profile_alloc(nullptr, homedir_, &profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    // Ensure nullptr resolves to default name internally.
+    tiledb_string_t* name;
+    rc = tiledb_profile_get_name(profile, &name, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    const char* out_ptr;
+    size_t out_length;
+    rc = tiledb_string_view(name, &out_ptr, &out_length);
+    REQUIRE(rc == TILEDB_OK);
+    std::string out_str(out_ptr, out_length);
+    CHECK(out_str == std::string(fx.name_));
+    REQUIRE_NOTHROW(tiledb_profile_free(&profile));
+    CHECK(profile == nullptr);
+  }
+  SECTION("empty homedir") {
+    rc = tiledb_profile_alloc(fx.name_, "", &profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null homedir") {
+    // Normal expected use-case. Internally resolves to default homedir.
+    rc = tiledb_profile_alloc(fx.name_, nullptr, &profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    tiledb_string_t* homedir;
+    rc = tiledb_profile_get_homedir(profile, &homedir, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    // Validate homedir is non-empty. The path may not be resolved when using
+    // the default homedir (per the RestProfile::homedir() invariant).
+    const char* out_ptr;
+    size_t out_length;
+    rc = tiledb_string_view(homedir, &out_ptr, &out_length);
+    REQUIRE(rc == TILEDB_OK);
+    std::string out_str(out_ptr, out_length);
+    CHECK(out_str == tiledb::common::filesystem::home_directory());
+    REQUIRE_NOTHROW(tiledb_profile_free(&profile));
+    CHECK(profile == nullptr);
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_alloc(fx.name_, homedir_, nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE("C API: tiledb_profile_free argument validation", "[capi][profile]") {
+  CAPINProfileFx fx;
+  tiledb_profile_t* profile;
+  tiledb_error_t* err = nullptr;
+  auto rc = tiledb_profile_alloc(
+      fx.name_, fx.tempdir_.path().c_str(), &profile, &err);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  SECTION("success") {
+    REQUIRE_NOTHROW(tiledb_profile_free(&profile));
+    CHECK(profile == nullptr);
+  }
+  SECTION("null profile") {
+    tiledb_profile_free(nullptr);
+  }
+}
+
+TEST_CASE(
+    "C API: tiledb_profile_get_name argument validation", "[capi][profile]") {
+  CAPINProfileFx fx;
+  capi_return_t rc;
+  tiledb_error_t* err = nullptr;
+  ordinary_profile x{fx.name_, fx.tempdir_.path().c_str()};
+  tiledb_string_t* name;
+  SECTION("success") {
+    rc = tiledb_profile_get_name(x.profile, &name, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    const char* out_ptr;
+    size_t out_length;
+    rc = tiledb_string_view(name, &out_ptr, &out_length);
+    REQUIRE(rc == TILEDB_OK);
+    std::string out_str(out_ptr, out_length);
+    REQUIRE(out_str == std::string(fx.name_));
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_get_name(nullptr, &name, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null name") {
+    rc = tiledb_profile_get_name(x.profile, nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE(
+    "C API: tiledb_profile_get_homedir argument validation",
+    "[capi][profile]") {
+  CAPINProfileFx fx;
+  capi_return_t rc;
+  tiledb_error_t* err = nullptr;
+  ordinary_profile x{fx.name_, fx.tempdir_.path().c_str()};
+  tiledb_string_t* homedir;
+  SECTION("success") {
+    rc = tiledb_profile_get_homedir(x.profile, &homedir, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    const char* out_ptr;
+    size_t out_length;
+    rc = tiledb_string_view(homedir, &out_ptr, &out_length);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(out_length > 0);
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_get_homedir(nullptr, &homedir, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null homedir") {
+    rc = tiledb_profile_get_homedir(x.profile, nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
