@@ -40,11 +40,20 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-const std::string name_ = tiledb::sm::RestProfile::DEFAULT_NAME;
-tiledb::sm::TemporaryLocalDirectory tempdir_("unit_cppapi_profile");
+struct ProfileCPPFx {
+  const std::string name_;
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
 
-TEST_CASE(
-    "C++ API: Profile get_name validation", "[cppapi][profile][get_name]") {
+  ProfileCPPFx()
+      : name_(tiledb::sm::RestProfile::DEFAULT_NAME)
+      , tempdir_("unit_cppapi_profile") {
+  }
+};
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile get_name validation",
+    "[cppapi][profile][get_name]") {
   const std::string homedir_ = tempdir_.path();
   SECTION("default, explicitly passed") {
     Profile p(name_, homedir_);
@@ -61,7 +70,8 @@ TEST_CASE(
   }
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    ProfileCPPFx,
     "C++ API: Profile get_homedir validation",
     "[cppapi][profile][get_homedir]") {
   auto homedir_ = tempdir_.path().c_str();

@@ -102,8 +102,7 @@ struct RestProfileFx {
    * Returns the RestProfile at the given name from the local file,
    * as a json object.
    */
-  json profile_from_file_to_json(
-      std::string filepath, std::string name) {
+  json profile_from_file_to_json(std::string filepath, std::string name) {
     json data;
     if (std::filesystem::exists(filepath)) {
       std::ifstream file(filepath);
