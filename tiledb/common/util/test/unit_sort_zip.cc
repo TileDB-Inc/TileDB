@@ -337,7 +337,7 @@ TEST_CASE("sort_zip: sort zip view", "[zip_view]") {
 /*
  * Disable test temporarily as they have compilations issues on the nightly
 builders
- * SC- to fix them.
+ * Opened SC-66005 to fix them.
 
 TEST_CASE(
     "sort_zip: sort zip view containing alt_var_length_view", "[zip_view]") {

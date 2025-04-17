@@ -2949,10 +2949,10 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, simultaneous writes",
-    "[capi][dense][dense-simultaneous-writes][rest][!mayfail]") {
+    "[capi][dense][dense-simultaneous-writes][rest][.]") {
   /* Catch2's assertion macros are not thread safe. In this test we are
-   * asserting using REQUIRE and CHECK macros, which are not thread safe so it
-   * might fail.
+   * asserting inside threads using REQUIRE macros, which are not thread safe so
+   * it might fail. Opened SC-66006 to adapt this test to avoid the issue.
    * https://github.com/catchorg/Catch2/blob/devel/docs/limitations.md#thread-safe-assertions
    * for more. */
 
