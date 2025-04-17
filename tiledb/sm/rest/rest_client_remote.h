@@ -114,22 +114,22 @@ class RestClientRemote : public RestClient {
    * input config so that rest_client chooses the right URI
    *
    * @param config Config to check
-   *
-   * */
+   */
   static bool use_refactored_query(const Config& config);
 
   /**
    * @return TileDB core version currently deployed to the REST server.
    */
-  inline const TileDBVersion& rest_tiledb_version() const override {
+  inline const std::optional<TileDBVersion>& rest_tiledb_version()
+      const override {
     return get_capabilities_from_rest().rest_tiledb_version_;
   }
 
   /**
    * @return Minimum TileDB core version currently supported by the REST server.
    */
-  inline const TileDBVersion& rest_minimum_supported_tiledb_version()
-      const override {
+  inline const std::optional<TileDBVersion>&
+  rest_minimum_supported_tiledb_version() const override {
     return get_capabilities_from_rest().rest_minimum_supported_version_;
   }
 
@@ -142,6 +142,15 @@ class RestClientRemote : public RestClient {
    */
   inline bool rest_capabilities_detected() const override {
     return rest_capabilities_.detected_;
+  }
+
+  /**
+   * Check if we are using legacy REST or TileDB-Server.
+   *
+   * @return True if we're using legacy REST, False if using TileDB-Server.
+   */
+  inline bool rest_legacy() const override {
+    return get_capabilities_from_rest().legacy_;
   }
 
   /**

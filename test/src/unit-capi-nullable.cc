@@ -217,7 +217,8 @@ NullableArrayFx::~NullableArrayFx() {
 }
 
 const string NullableArrayFx::array_path(const string& array_name) {
-  return vfs_array_uri(vfs_test_get_fs_vec()[0], temp_dir_.path() + array_name);
+  return vfs_array_uri(
+      vfs_test_get_fs_vec()[0], temp_dir_.path() + array_name, ctx_);
 }
 
 void NullableArrayFx::create_array(
