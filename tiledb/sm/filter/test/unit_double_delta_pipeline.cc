@@ -36,13 +36,96 @@
 #include <test/support/tdb_rapidcheck.h>
 
 #include "filter_test_support.h"
+#include "test/support/oxidize/rust_std.h"
 #include "test/support/rapidcheck/datatype.h"
 #include "test/support/src/mem_helpers.h"
+#include "tiledb/sm/compressors/dd_compressor.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
+
+TEST_CASE(
+    "Filter: Double Delta overflow detection unsigned",
+    "[filter][rapidcheck]") {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  uint64_t a, uint64_t b)
+                  ->std::optional<int64_t> {
+    const std::optional<int64_t> detect =
+        double_delta::Integral64<uint64_t>::delta(a, b);
+
+    std::optional<int64_t> detect_rust;
+    {
+      int64_t value;
+      if (rust::std::u64_checked_sub(a, b, value)) {
+        detect_rust.emplace(value);
+      }
+    }
+    ASSERTER(detect == detect_rust);
+
+    return detect;
+  };
+
+  SECTION("Example") {
+    CHECK(doit(0, 0) == 0);
+    CHECK(doit(0, 1) == -1);
+    CHECK(doit(0, 0x7FFFFFFFFFFFFFFF) == 0x8000000000000001);
+    CHECK(doit(0, 0x8000000000000000) == 0x8000000000000000);
+    CHECK(doit(0, 0x8000000000000001) == std::nullopt);
+    CHECK(doit(0xFFFFFFFFFFFFFFFF, 0) == std::nullopt);
+    CHECK(doit(0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFE) == std::nullopt);
+    CHECK(doit(0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF) == std::nullopt);
+    CHECK(doit(0xFFFFFFFFFFFFFFFF, 0x8000000000000000) == 0x7FFFFFFFFFFFFFFF);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("Integral64<uint64_t>::delta", [doit](uint64_t a, uint64_t b) {
+      doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+    });
+  }
+}
+
+TEST_CASE(
+    "Filter: Double Delta overflow detection signed", "[filter][rapidcheck]") {
+  auto doit =
+      []<typename Asserter = tiledb::test::AsserterCatch>(int64_t a, int64_t b)
+          ->std::optional<int64_t> {
+    const std::optional<int64_t> detect =
+        double_delta::Integral64<int64_t>::delta(a, b);
+
+    std::optional<int64_t> detect_rust;
+    {
+      int64_t value;
+      if (rust::std::i64_checked_sub(a, b, value)) {
+        detect_rust.emplace(value);
+      }
+    }
+    ASSERTER(detect == detect_rust);
+
+    return detect;
+  };
+
+  SECTION("Example") {
+    CHECK(doit(0, 0) == 0);
+    CHECK(doit(0, 1) == -1);
+    CHECK(doit(0, 0x7FFFFFFFFFFFFFFF) == 0x8000000000000001);
+    CHECK(doit(0, 0x8000000000000000) == std::nullopt);
+    CHECK(doit(0, 0x8000000000000001) == 0x7FFFFFFFFFFFFFFF);
+    CHECK(doit(-1, 0) == -1);
+    CHECK(doit(-1, 0x7FFFFFFFFFFFFFFE) == 0x8000000000000001);
+    CHECK(doit(-1, 0x7FFFFFFFFFFFFFFF) == 0x8000000000000000);
+    CHECK(doit(-1, 0x8000000000000000) == 0x7FFFFFFFFFFFFFFF);
+    CHECK(doit(0x7FFFFFFFFFFFFFFF, 0) == 0x7FFFFFFFFFFFFFFF);
+    CHECK(doit(0x7FFFFFFFFFFFFFFF, -1) == std::nullopt);
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("Integral64<iint64_t>::delta", [doit](int64_t a, int64_t b) {
+      doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+    });
+  }
+}
 
 namespace rc {
 static Gen<Datatype> make_reinterpret_datatype(Datatype input_type) {
