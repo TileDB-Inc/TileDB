@@ -275,10 +275,19 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
   }
 
   SECTION("Shrinking") {
-    const std::vector<uint8_t> data = {0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,
-                                       0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0};
-    doit.operator()<tiledb::test::AsserterCatch>(
-        0, Datatype::UINT64, Datatype::UINT64, data);
+    // overflow scenario
+    {
+      const std::vector<uint8_t> data = {0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,
+                                         0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0};
+      doit.operator()<tiledb::test::AsserterCatch>(
+          0, Datatype::UINT64, Datatype::UINT64, data);
+    }
+    // ???
+    {
+      const std::vector<uint8_t> data = {1, 0, 1};
+      doit.operator()<tiledb::test::AsserterCatch>(
+          0, Datatype::UINT8, Datatype::ANY, data);
+    }
   }
 
   SECTION("Rapidcheck") {
