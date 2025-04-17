@@ -35,6 +35,8 @@
 
 #include "tiledb/common/common.h"
 
+#include <type_traits>
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -188,6 +190,95 @@ class DoubleDelta {
       uint64_t* chunk,
       int* bit_in_chunk);
 };
+
+namespace double_delta {
+
+template <typename T>
+struct Integral64;
+
+template <typename T>
+  requires std::is_unsigned_v<T> || std::is_same_v<T, std::byte>
+struct Integral64<T> {
+  using type = uint64_t;
+
+  /**
+   * @return `a - b` if it can be represented as an `int64_t` without undefined
+   * behavior, `std::nullopt` otherwise
+   */
+  static std::optional<int64_t> delta(uint64_t a, uint64_t b) {
+    if (a >= b) {
+      // since `b >= 0` due to unsigned-ness this will not underflow
+      // but we do have to check if it can be represented as `int64_t`
+      if (a - b > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+        return std::nullopt;
+      } else {
+        return a - b;
+      }
+    }
+
+    // NB: a traditional and "obvious" way of detecting overflow
+    // is using the signed-ness of the subtraction result compared
+    // against the inputs.  This is actually undefined behavior
+    // and could also possibly be optimized out by a compiler
+    // which would make us sad.
+    //
+    // We will instead rely on `a - b == -(b - a)` which decays to the
+    // above case, and we can check for the only possible
+    // result which we don't have to negate.
+    const auto negative_delta = delta(b, a);
+    if (!negative_delta.has_value()) {
+      // edge case: the delta is exactly the non-negatable twos complement value
+      if (b - a ==
+          static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) + 1) {
+        return std::numeric_limits<int64_t>::min();
+      } else {
+        return std::nullopt;
+      }
+    } else {
+      return -negative_delta.value();
+    }
+  }
+};
+
+template <typename T>
+  requires std::is_signed_v<T>
+struct Integral64<T> {
+  using type = int64_t;
+
+  /**
+   * @return `a - b` if it can be represented as an `int64_t` without
+   * undefined behavior, `std::nullopt` otherwise
+   */
+  static std::optional<int64_t> delta(int64_t a, int64_t b) {
+    if (a < b) {
+      // negate so we can apply logic with generality
+      const auto negated = delta(b, a);
+      if (!negated.has_value()) {
+        if (a - b == std::numeric_limits<int64_t>::min()) {
+          return std::numeric_limits<int64_t>::min();
+        } else {
+          return std::nullopt;
+        }
+      } else if (negated.value() == std::numeric_limits<int64_t>::min()) {
+        return std::nullopt;
+      } else {
+        return -negated.value();
+      }
+    } else {
+      // overflow condition `a - b > i64::MAX`
+      // is equivalent to `a > i64::MAX + b`
+      if (b >= 0) {
+        return a - b;
+      } else if (a > std::numeric_limits<int64_t>::max() + b) {
+        return std::nullopt;
+      } else {
+        return a - b;
+      }
+    }
+  }
+};
+
+}  // namespace double_delta
 
 }  // namespace sm
 }  // namespace tiledb

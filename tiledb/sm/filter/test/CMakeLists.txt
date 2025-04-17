@@ -58,7 +58,8 @@ commence(unit_test run_filter_pipeline)
         unit_webp_pipeline.cc
         unit_xor_pipeline.cc
     )
-    this_target_link_libraries(rapidcheck)
+    this_target_link_libraries(rapidcheck cxx_rust_std)
+    target_include_directories(unit_run_filter_pipeline PRIVATE ${CMAKE_BINARY_DIR})
 conclude(unit_test)
 
 commence(unit_test float_scale_input_val)

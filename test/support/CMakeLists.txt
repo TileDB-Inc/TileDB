@@ -115,4 +115,6 @@ commence(object_library mem_helpers)
   this_target_object_libraries(baseline)
 conclude(object_library)
 
+add_subdirectory(oxidize)
+
 add_test_subdirectory()

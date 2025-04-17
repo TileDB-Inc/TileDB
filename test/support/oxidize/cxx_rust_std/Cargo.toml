@@ -1,0 +1,14 @@
+[package]
+name = "cxx_rust_std"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+cxx = { workspace = true }
+
+[build-dependencies]
+cxx-build = { workspace = true }
+
+[lib]
+crate-type = ["staticlib"]
