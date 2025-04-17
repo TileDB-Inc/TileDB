@@ -55,7 +55,8 @@ capi_return_t tiledb_profile_alloc(
         "[tiledb_profile_alloc] $HOME directory cannot be empty.");
   }
 
-  *profile = tiledb_profile_t::make_handle(name, homedir);
+  *profile =
+      tiledb_profile_t::make_handle(std::string(name), std::string(homedir));
 
   return TILEDB_OK;
 }
