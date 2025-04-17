@@ -36,7 +36,6 @@
 #include "../api_external_common.h"
 #include "../error/error_api_external.h"
 #include "../string/string_api_external.h"
-#include "tiledb/common/common.h"
 
 #ifdef __cplusplus
 extern "C" {
