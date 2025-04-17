@@ -108,7 +108,7 @@ class Profile {
   }
 
   /** Retrieves the name of the profile. */
-  std::string get_name() {
+  std::string get_name() const {
     tiledb_error_t* capi_error = nullptr;
     tiledb_string_t* name;
 
@@ -125,7 +125,7 @@ class Profile {
   }
 
   /** Retrieves the homedir of the profile. */
-  std::string get_homedir() {
+  std::string get_homedir() const {
     tiledb_error_t* capi_error = nullptr;
     tiledb_string_t* homedir;
     int rc = tiledb_profile_get_homedir(profile_.get(), &homedir, &capi_error);
