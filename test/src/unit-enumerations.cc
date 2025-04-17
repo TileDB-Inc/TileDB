@@ -76,7 +76,8 @@ struct EnumerationFx {
       const std::vector<T>& values,
       bool ordered = false,
       Datatype type = static_cast<Datatype>(255),
-      std::string enmr_name = default_enmr_name);
+      std::string enmr_name = default_enmr_name,
+      bool async = false);
 
   shared_ptr<const Enumeration> create_empty_enumeration(
       Datatype type,
@@ -148,6 +149,16 @@ struct EnumerationFx {
 };
 
 template <typename T>
+static shared_ptr<const Enumeration> create_enumeration(
+    Context& ctx,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const std::vector<T>& values,
+    bool ordered,
+    Datatype type,
+    std::string name,
+    bool async);
+
+template <typename T>
 QueryCondition create_qc(
     const char* field_name, T condition_value, const QueryConditionOp& op);
 
@@ -163,6 +174,7 @@ QueryCondition create_qc(
 TEST_CASE_METHOD(
     EnumerationFx, "Create Empty Enumeration", "[enumeration][empty]") {
   Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -171,6 +183,7 @@ TEST_CASE_METHOD(
       0,
       nullptr,
       0,
+      false,
       memory_tracker_);
 }
 
@@ -179,6 +192,7 @@ TEST_CASE_METHOD(
     "Create Empty Var Sized Enumeration",
     "[enumeration][empty]") {
   Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -187,6 +201,7 @@ TEST_CASE_METHOD(
       0,
       nullptr,
       0,
+      false,
       memory_tracker_);
 }
 
@@ -260,6 +275,7 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-offsets-args]") {
   uint64_t offsets = 0;
   auto enmr = Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -268,6 +284,7 @@ TEST_CASE_METHOD(
       0,
       &offsets,
       sizeof(uint64_t),
+      false,
       memory_tracker_);
 
   std::vector<std::string> values = {""};
@@ -286,6 +303,7 @@ TEST_CASE_METHOD(
     "[enumeration][index-of][var-size]") {
   uint64_t offsets = 0;
   auto enmr = Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -294,6 +312,7 @@ TEST_CASE_METHOD(
       0,
       &offsets,
       sizeof(uint64_t),
+      false,
       memory_tracker_);
 
   std::string value_str = "";
@@ -309,6 +328,7 @@ TEST_CASE_METHOD(
     "[enumeration][basic][buffer-address]") {
   uint64_t offsets = 0;
   auto enmr = Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -317,6 +337,7 @@ TEST_CASE_METHOD(
       0,
       &offsets,
       sizeof(uint64_t),
+      false,
       memory_tracker_);
 
   REQUIRE(enmr->data().data() == nullptr);
@@ -346,6 +367,7 @@ TEST_CASE_METHOD(
     "Basic Variable Size Empty Address Check",
     "[enumeration][basic][buffer-address]") {
   auto enmr = Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -354,6 +376,7 @@ TEST_CASE_METHOD(
       0,
       nullptr,
       0,
+      false,
       memory_tracker_);
 
   REQUIRE(enmr->data().data() == nullptr);
@@ -414,6 +437,7 @@ TEST_CASE_METHOD(
     "[enumeration][basic][fixed][multi-cell-val-num]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   auto enmr = Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       2,
@@ -422,6 +446,7 @@ TEST_CASE_METHOD(
       values.size() * sizeof(int),
       nullptr,
       0,
+      false,
       memory_tracker_);
   check_enumeration(enmr, default_enmr_name, values, Datatype::INT32, 2, false);
 }
@@ -434,6 +459,7 @@ TEST_CASE_METHOD(
       "Invalid data buffer must not be nullptr for fixed sized data.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
+          ctx_.resources(),
           default_enmr_name,
           Datatype::INT32,
           1,
@@ -442,6 +468,7 @@ TEST_CASE_METHOD(
           10,
           nullptr,
           0,
+          false,
           memory_tracker_),
       matcher);
 }
@@ -455,6 +482,7 @@ TEST_CASE_METHOD(
       "Invalid data size; must be non-zero for fixed size data.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
+          ctx_.resources(),
           default_enmr_name,
           Datatype::INT32,
           1,
@@ -463,6 +491,7 @@ TEST_CASE_METHOD(
           0,
           nullptr,
           0,
+          false,
           memory_tracker_),
       matcher);
 }
@@ -476,6 +505,7 @@ TEST_CASE_METHOD(
       "Var sized enumeration values require a non-null offsets pointer.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
+          ctx_.resources(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -484,6 +514,7 @@ TEST_CASE_METHOD(
           strlen(val),
           nullptr,
           8,
+          false,
           memory_tracker_),
       matcher);
 }
@@ -498,6 +529,7 @@ TEST_CASE_METHOD(
       "Var sized enumeration values require a non-zero offsets size.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
+          ctx_.resources(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -506,6 +538,7 @@ TEST_CASE_METHOD(
           strlen(val),
           &offset,
           0,
+          false,
           memory_tracker_),
       matcher);
 }
@@ -520,6 +553,7 @@ TEST_CASE_METHOD(
       "is non-zero.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
+          ctx_.resources(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -528,6 +562,7 @@ TEST_CASE_METHOD(
           5,
           &offsets,
           sizeof(uint64_t),
+          false,
           memory_tracker_),
       matcher);
 }
@@ -542,6 +577,7 @@ TEST_CASE_METHOD(
       "require data.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
+          ctx_.resources(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -550,6 +586,7 @@ TEST_CASE_METHOD(
           5,
           &offsets,
           sizeof(uint64_t),
+          false,
           memory_tracker_),
       matcher);
 }
@@ -565,6 +602,7 @@ TEST_CASE_METHOD(
       "offset.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
+          ctx_.resources(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -573,6 +611,7 @@ TEST_CASE_METHOD(
           2,
           &offsets,
           sizeof(uint64_t),
+          false,
           memory_tracker_),
       matcher);
 }
@@ -583,6 +622,7 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-name]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       std::string(),
       Datatype::INT32,
       2,
@@ -591,6 +631,7 @@ TEST_CASE_METHOD(
       values.size() * sizeof(int),
       nullptr,
       0,
+      false,
       memory_tracker_));
 }
 
@@ -600,6 +641,7 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-name]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       "",
       Datatype::INT32,
       2,
@@ -608,6 +650,7 @@ TEST_CASE_METHOD(
       values.size() * sizeof(int),
       nullptr,
       0,
+      false,
       memory_tracker_));
 }
 
@@ -617,6 +660,7 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-name]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       "an/bad/path",
       Datatype::INT32,
@@ -626,6 +670,7 @@ TEST_CASE_METHOD(
       values.size() * sizeof(int),
       nullptr,
       0,
+      false,
       memory_tracker_));
 }
 
@@ -635,6 +680,7 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-cell-val-num]") {
   std::vector<int> values = {1, 2, 3};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       0,
@@ -643,6 +689,7 @@ TEST_CASE_METHOD(
       values.size() * sizeof(int),
       nullptr,
       0,
+      false,
       memory_tracker_));
 }
 
@@ -652,6 +699,7 @@ TEST_CASE_METHOD(
     "[enumeration][error][data-nullptr]") {
   std::vector<int> values = {1, 2, 3};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -660,6 +708,7 @@ TEST_CASE_METHOD(
       values.size() * sizeof(int),
       nullptr,
       0,
+      false,
       memory_tracker_));
 }
 
@@ -669,6 +718,7 @@ TEST_CASE_METHOD(
     "[enumeration][error][data-zero-size]") {
   std::vector<int> values = {1, 2, 3};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -677,6 +727,7 @@ TEST_CASE_METHOD(
       0,
       nullptr,
       0,
+      false,
       memory_tracker_));
 }
 
@@ -687,6 +738,7 @@ TEST_CASE_METHOD(
   auto data = "foobarbazbam";
   std::vector<uint64_t> offsets = {0, 3, 6, 9};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -695,6 +747,7 @@ TEST_CASE_METHOD(
       strlen(data),
       nullptr,
       offsets.size() * sizeof(uint64_t),
+      false,
       memory_tracker_));
 }
 
@@ -705,6 +758,7 @@ TEST_CASE_METHOD(
   auto data = "foobarbazbam";
   std::vector<uint64_t> offsets = {0, 3, 6, 9};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -713,6 +767,7 @@ TEST_CASE_METHOD(
       strlen(data),
       offsets.data(),
       0,
+      false,
       memory_tracker_));
 }
 
@@ -723,6 +778,7 @@ TEST_CASE_METHOD(
   std::vector<int> values = {0, 1, 2, 3, 4};
   std::vector<uint64_t> offsets = {0, 3, 6, 9};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -731,6 +787,7 @@ TEST_CASE_METHOD(
       values.size() * sizeof(int),
       offsets.data(),
       0,
+      false,
       memory_tracker_));
 }
 
@@ -740,6 +797,7 @@ TEST_CASE_METHOD(
     "[enumeration][error][offsets-not-required]") {
   std::vector<int> values = {0, 1, 2, 3, 4};
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -748,6 +806,7 @@ TEST_CASE_METHOD(
       values.size() * sizeof(int),
       nullptr,
       100,
+      false,
       memory_tracker_));
 }
 
@@ -760,6 +819,7 @@ TEST_CASE_METHOD(
   // Passing 3 for the offsets size is incorrect because the offsets size has
   // to be a multiple of `sizeof(uint64_t)`
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -768,6 +828,7 @@ TEST_CASE_METHOD(
       strlen(data),
       offsets.data(),
       3,
+      false,
       memory_tracker_));
 }
 
@@ -779,6 +840,7 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> offsets = {0, 3, 6, 100};
   // The last offset is larger than data_size
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -787,6 +849,7 @@ TEST_CASE_METHOD(
       strlen(data),
       offsets.data(),
       offsets.size() * sizeof(uint64_t),
+      false,
       memory_tracker_));
 }
 
@@ -798,6 +861,7 @@ TEST_CASE_METHOD(
   // Passing 3 for the data size is invalid as its not a multiple of
   // sizeof(int)
   REQUIRE_THROWS(Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -806,6 +870,7 @@ TEST_CASE_METHOD(
       3,
       nullptr,
       0,
+      false,
       memory_tracker_));
 }
 
@@ -831,6 +896,80 @@ TEST_CASE_METHOD(
     "[enumeration][error][repeated-values]") {
   std::vector<std::string> values = {"foo", "", "bang", ""};
   REQUIRE_THROWS(create_enumeration(values));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Async",
+    "[enumeration][error][async]") {
+  std::vector<std::string> values = {"foo", "", "foo", "bar"};
+
+  SECTION("No await") {
+    REQUIRE_NOTHROW(create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true));
+  }
+
+  SECTION("No await, access a field") {
+    auto enmr = create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true);
+    REQUIRE_NOTHROW(enmr->name());
+  }
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid duplicated value in enumeration");
+
+  SECTION("Await value_map") {
+    auto enmr = create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true);
+    REQUIRE_THROWS(enmr->value_map(), matcher);
+  }
+
+  SECTION("Await index_of") {
+    auto enmr = create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true);
+    REQUIRE_THROWS(enmr->index_of("foo", 3), matcher);
+  }
+
+  SECTION("Await index_of exception is thrown every time") {
+    auto enmr = create_enumeration(
+        values, false, Datatype::STRING_ASCII, default_enmr_name, true);
+    REQUIRE_THROWS(enmr->index_of("foo", 3), matcher);
+    REQUIRE_THROWS(enmr->index_of("foo", 3), matcher);
+  }
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation - Async Safety",
+    "[enumeration][async]") {
+  shared_ptr<const Enumeration> enmr;
+  {
+    const std::vector<std::string> values = {"foo", "bar", "baz", "gub"};
+
+    Config cfg;
+    Context ctx(cfg);
+    enmr = ::create_enumeration(
+        ctx,
+        memory_tracker_,
+        values,
+        false,
+        Datatype::STRING_ASCII,
+        default_enmr_name,
+        true);
+
+    // `ctx` is destructed here.
+    // The future borrows its resources.
+    // If `ctx` does not await its thread pool tasks, then the
+    // `generate_value_map` future may refer to the destructed resources and
+    // SEGV.
+    // (fortunately `ctx` does await its thread pool tasks, so that shouldn't
+    // happen)
+  }
+
+  CHECK(enmr->index_of("foo", 3) == 0);
+  CHECK(enmr->index_of("bar", 3) == 1);
+  CHECK(enmr->index_of("baz", 3) == 2);
+  CHECK(enmr->index_of("gub", 3) == 3);
 }
 
 TEST_CASE_METHOD(
@@ -869,6 +1008,7 @@ TEST_CASE_METHOD(
   std::vector<int> extend_values = {5, 6, 7, 8, 9, 10};
   std::vector<int> final_values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   auto enmr1 = Enumeration::create(
+      ctx_.resources(),
       default_enmr_name,
       Datatype::INT32,
       2,
@@ -877,6 +1017,7 @@ TEST_CASE_METHOD(
       init_values.size() * sizeof(int),
       nullptr,
       0,
+      false,
       memory_tracker_);
   auto enmr2 = extend_enumeration(enmr1, extend_values);
   check_enumeration(
@@ -1074,7 +1215,8 @@ TEST_CASE_METHOD(
   memset(data, 1, 4);
 
   Deserializer deserializer(tile->data(), tile->size());
-  REQUIRE_THROWS(Enumeration::deserialize(deserializer, memory_tracker_));
+  REQUIRE_THROWS(Enumeration::deserialize(
+      ctx_.resources(), deserializer, memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -1519,6 +1661,7 @@ TEST_CASE_METHOD(
   std::vector<uint8_t> data(1024 * 1024 * 10 + 1);
   std::vector<uint64_t> offsets = {0};
   auto enmr = Enumeration::create(
+      ctx_.resources(),
       "enmr_name",
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -1527,6 +1670,7 @@ TEST_CASE_METHOD(
       data.size(),
       offsets.data(),
       offsets.size() * constants::cell_var_offset_size,
+      false,
       memory_tracker_);
 
   schema->add_enumeration(enmr);
@@ -1561,6 +1705,7 @@ TEST_CASE_METHOD(
   // Create more than 50MiB of enumeration data
   for (size_t i = 0; i < 10; i++) {
     auto enmr = Enumeration::create(
+        ctx_.resources(),
         "enmr_name_" + std::to_string(i),
         Datatype::STRING_ASCII,
         constants::var_num,
@@ -1569,6 +1714,7 @@ TEST_CASE_METHOD(
         data.size(),
         offsets.data(),
         offsets.size() * constants::cell_var_offset_size,
+        false,
         memory_tracker_);
     schema->add_enumeration(enmr);
   }
@@ -1690,6 +1836,7 @@ TEST_CASE_METHOD(
 
   // We have to force this condition by hand
   auto enmr3 = tiledb::sm::Enumeration::create(
+      ctx_.resources(),
       enmr2->name(),
       // Notice we're reusing the existing path name from enmr1
       enmr1->path_name(),
@@ -1700,6 +1847,7 @@ TEST_CASE_METHOD(
       enmr2->data().size(),
       enmr2->offsets().data(),
       enmr2->offsets().size(),
+      false,
       memory_tracker_);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
@@ -2366,6 +2514,7 @@ TEST_CASE_METHOD(
   auto schema1 = create_schema();
 
   auto enmr1 = Enumeration::create(
+      ctx_.resources(),
       "empty_fixed",
       Datatype::INT32,
       1,
@@ -2374,8 +2523,10 @@ TEST_CASE_METHOD(
       0,
       nullptr,
       0,
+      false,
       memory_tracker_);
   auto enmr2 = Enumeration::create(
+      ctx_.resources(),
       "empty_var",
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -2384,6 +2535,7 @@ TEST_CASE_METHOD(
       0,
       nullptr,
       0,
+      false,
       memory_tracker_);
 
   schema1->add_enumeration(enmr1);
@@ -2670,11 +2822,14 @@ EnumerationFx::~EnumerationFx() {
 }
 
 template <typename T>
-shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
+static shared_ptr<const Enumeration> create_enumeration(
+    Context& ctx,
+    shared_ptr<MemoryTracker> memory_tracker,
     const std::vector<T>& values,
     bool ordered,
     Datatype type,
-    std::string name) {
+    std::string name,
+    bool async) {
   TypeParams tp = TypeParams::get(values);
 
   if (type != static_cast<Datatype>(255)) {
@@ -2689,6 +2844,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
       raw_values[i] = values[i] ? 1 : 0;
     }
     return Enumeration::create(
+        ctx.resources(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2697,9 +2853,11 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         raw_values.size() * sizeof(uint8_t),
         nullptr,
         0,
-        memory_tracker_);
+        async,
+        memory_tracker);
   } else if constexpr (std::is_pod_v<T>) {
     return Enumeration::create(
+        ctx.resources(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2708,7 +2866,8 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         values.size() * sizeof(T),
         nullptr,
         0,
-        memory_tracker_);
+        async,
+        memory_tracker);
   } else {
     uint64_t total_size = 0;
     for (auto v : values) {
@@ -2727,6 +2886,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
     }
 
     return Enumeration::create(
+        ctx.resources(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2735,13 +2895,26 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         total_size,
         offsets.data(),
         offsets.size() * sizeof(uint64_t),
-        memory_tracker_);
+        async,
+        memory_tracker);
   }
+}
+
+template <typename T>
+shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
+    const std::vector<T>& values,
+    bool ordered,
+    Datatype type,
+    std::string name,
+    bool async) {
+  return ::create_enumeration<T>(
+      ctx_, memory_tracker_, values, ordered, type, name, async);
 }
 
 shared_ptr<const Enumeration> EnumerationFx::create_empty_enumeration(
     Datatype type, uint32_t cell_val_num, bool ordered, std::string name) {
   return Enumeration::create(
+      ctx_.resources(),
       name,
       type,
       cell_val_num,
@@ -2750,6 +2923,7 @@ shared_ptr<const Enumeration> EnumerationFx::create_empty_enumeration(
       0,
       nullptr,
       0,
+      false,
       memory_tracker_);
 }
 
@@ -2824,7 +2998,8 @@ void EnumerationFx::check_storage_deserialization(
   auto tile = serialize_to_tile(enmr);
 
   Deserializer deserializer(tile->data(), tile->size());
-  auto deserialized = Enumeration::deserialize(deserializer, memory_tracker_);
+  auto deserialized =
+      Enumeration::deserialize(ctx_.resources(), deserializer, memory_tracker_);
 
   REQUIRE(deserialized->name() == enmr->name());
   REQUIRE(deserialized->path_name().empty() == false);
@@ -3011,7 +3186,8 @@ shared_ptr<ArraySchema> EnumerationFx::ser_des_array_schema(
       MemoryType::SERIALIZATION_BUFFER)};
   throw_if_not_ok(serialization::array_schema_serialize(
       *(schema.get()), stype, buf, client_side));
-  return serialization::array_schema_deserialize(stype, buf, memory_tracker_);
+  return serialization::array_schema_deserialize(
+      ctx_.resources(), stype, buf, memory_tracker_);
 }
 
 shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
@@ -3023,7 +3199,7 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 
   ArraySchemaEvolution* ret;
   throw_if_not_ok(serialization::array_schema_evolution_deserialize(
-      &ret, cfg_, stype, buf, memory_tracker_));
+      &ret, ctx_.resources(), cfg_, stype, buf, memory_tracker_));
 
   return shared_ptr<ArraySchemaEvolution>(ret);
 }

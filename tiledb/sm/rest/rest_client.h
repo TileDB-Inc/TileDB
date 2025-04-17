@@ -331,7 +331,7 @@ class RestClient {
 
   /// Operation disabled in base class.
   inline virtual tuple<Status, optional<shared_ptr<ArraySchema>>>
-  get_array_schema_from_rest(const URI&) {
+  get_array_schema_from_rest(const ContextResources&, const URI&) {
     throw RestClientDisabledException();
   }
 
@@ -340,7 +340,12 @@ class RestClient {
       shared_ptr<ArraySchema>,
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   post_array_schema_from_rest(
-      const Config&, const URI&, uint64_t, uint64_t, bool) {
+      const ContextResources&,
+      const Config&,
+      const URI&,
+      uint64_t,
+      uint64_t,
+      bool) {
     throw RestClientDisabledException();
   }
 
@@ -399,6 +404,7 @@ class RestClient {
   inline virtual std::
       unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
       post_enumerations_from_rest(
+          const ContextResources&,
           const URI&,
           uint64_t,
           uint64_t,
@@ -443,7 +449,7 @@ class RestClient {
 
   /// Operation disabled in base class.
   inline virtual Status post_fragment_info_from_rest(
-      const URI&, FragmentInfo*) {
+      const ContextResources&, const URI&, FragmentInfo*) {
     throw RestClientDisabledException();
   }
 

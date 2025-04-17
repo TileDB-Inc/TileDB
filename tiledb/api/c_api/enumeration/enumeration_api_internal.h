@@ -34,6 +34,7 @@
 #define TILEDB_CAPI_ENUMERATION_INTERNAL_H
 
 #include "enumeration_api_experimental.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/enumeration.h"

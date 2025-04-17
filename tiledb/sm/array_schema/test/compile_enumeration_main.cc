@@ -26,12 +26,18 @@
  * THE SOFTWARE.
  */
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 int main(int, char*[]) {
+  tiledb::sm::Config config;
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  tiledb::sm::ContextResources resources(config, logger, 1, 1, "");
   try {
     tiledb::sm::Enumeration::create(
+        resources,
         "foo",
         tiledb::sm::Datatype::INT32,
         1,
@@ -40,6 +46,7 @@ int main(int, char*[]) {
         0,
         nullptr,
         0,
+        false,
         nullptr);
   } catch (...) {
   }

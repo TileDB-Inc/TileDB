@@ -266,6 +266,7 @@ Status single_fragment_info_to_capnp(
 }
 
 Status fragment_info_from_capnp(
+    const ContextResources& resources,
     const capnp::FragmentInfo::Reader& fragment_info_reader,
     const URI& array_uri,
     FragmentInfo* fragment_info,
@@ -275,7 +276,7 @@ Status fragment_info_from_capnp(
     auto array_schema_latest_reader =
         fragment_info_reader.getArraySchemaLatest();
     auto array_schema_latest{array_schema_from_capnp(
-        array_schema_latest_reader, array_uri, memory_tracker)};
+        resources, array_schema_latest_reader, array_uri, memory_tracker)};
     array_schema_latest->set_array_uri(array_uri);
     fragment_info->array_schema_latest() = array_schema_latest;
   }
@@ -288,7 +289,10 @@ Status fragment_info_from_capnp(
       auto entries = fragment_info_reader.getArraySchemasAll().getEntries();
       for (auto array_schema_build : entries) {
         auto schema{array_schema_from_capnp(
-            array_schema_build.getValue(), array_uri, memory_tracker)};
+            resources,
+            array_schema_build.getValue(),
+            array_uri,
+            memory_tracker)};
         schema->set_array_uri(array_uri);
         auto key = std::string_view{
             array_schema_build.getKey().cStr(),
@@ -430,6 +434,7 @@ Status fragment_info_serialize(
 }
 
 Status fragment_info_deserialize(
+    const ContextResources& resources,
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,
@@ -450,7 +455,7 @@ Status fragment_info_deserialize(
 
         // Deserialize
         RETURN_NOT_OK(fragment_info_from_capnp(
-            reader, uri, fragment_info, memory_tracker));
+            resources, reader, uri, fragment_info, memory_tracker));
         break;
       }
       case SerializationType::CAPNP: {
@@ -473,7 +478,7 @@ Status fragment_info_deserialize(
 
         // Deserialize
         RETURN_NOT_OK(fragment_info_from_capnp(
-            reader, uri, fragment_info, memory_tracker));
+            resources, reader, uri, fragment_info, memory_tracker));
         break;
       }
       default: {
