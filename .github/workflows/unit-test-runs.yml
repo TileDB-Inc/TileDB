@@ -80,8 +80,8 @@ jobs:
 
       - name: 'Run standalone unit tests'
         run: |
-          ctest --test-dir build -R '(^unit_|test_assert)' --no-tests=error
-          ctest --test-dir build -R 'test_ci_asserts'
+          ctest --test-dir build -R '(^unit_|test_assert)' --no-tests=error --output-on-failure
+          ctest --test-dir build -R 'test_ci_asserts' --output-on-failure
 
       - name: "Print log files (failed build only)"
         run: |
