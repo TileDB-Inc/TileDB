@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,8 +41,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * A filter type.
@@ -146,20 +145,19 @@ inline Status filter_type_enum(
   return Status::Ok();
 }
 
-/** Throws error if the input Filtertype enum is not between 0 and 16. */
+/** Throws error if the input Filtertype enum is not between 0 and 19. */
 inline void ensure_filtertype_is_valid(uint8_t type) {
-  if (type > 18) {
+  if (type > 19) {
     throw std::runtime_error(
         "Invalid FilterType (" + std::to_string(type) + ")");
   }
 }
 
-/** Throws error if the input Filtertype's enum is not between 0 and 16. */
+/** Throws error if the input Filtertype's enum is not between 0 and 19. */
 inline void ensure_filtertype_is_valid(FilterType type) {
   ensure_filtertype_is_valid(::stdx::to_underlying(type));
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FILTER_TYPE_H
