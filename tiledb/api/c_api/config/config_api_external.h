@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This file declares the configuration section of the C API for TileDB. It
- * include both configurations and their iterators.
+ * includes both configurations and their iterators.
  */
 
 #ifndef TILEDB_CAPI_CONFIG_EXTERNAL_H
@@ -697,6 +697,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `config.logging_format` <br>
  *    The logging format configured (DEFAULT or JSON)
  *    **Default**: "DEFAULT"
+ * - `profile_name` <br>
+ *    The name of the RestProfile to be used for REST transactions. <br>
+ *    **Default**: "default"
+ * - `profile_homedir` <br>
+ *    The local $HOME directory where the user profiles are saved. <br>
+ *    **Default**: tiledb::common::filesystem::home_directory()
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
  *    **Default**: "https://api.tiledb.com"
