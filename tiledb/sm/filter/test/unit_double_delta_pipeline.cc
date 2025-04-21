@@ -246,7 +246,6 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
   auto tracker = tiledb::test::create_test_memory_tracker();
 
   auto doit = [&]<typename Asserter>(
-                  int level,
                   Datatype input_type,
                   Datatype reinterpret_datatype,
                   const std::vector<uint8_t>& data) {
@@ -256,7 +255,7 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
 
     FilterPipeline pipeline;
     pipeline.add_filter(CompressionFilter(
-        Compressor::DOUBLE_DELTA, level, input_type, reinterpret_datatype));
+        Compressor::DOUBLE_DELTA, 0, input_type, reinterpret_datatype));
 
     check_run_pipeline_roundtrip(
         config,
@@ -271,7 +270,7 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
   SECTION("Example") {
     const std::vector<uint8_t> data = {0, 0, 0, 0, 0, 0, 0, 1};
     doit.operator()<tiledb::test::AsserterCatch>(
-        0, Datatype::UINT64, Datatype::UINT64, data);
+        Datatype::UINT64, Datatype::UINT64, data);
   }
 
   SECTION("Shrinking") {
@@ -280,7 +279,7 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
       const std::vector<uint8_t> data = {0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,
                                          0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0};
       doit.operator()<tiledb::test::AsserterCatch>(
-          0, Datatype::UINT64, Datatype::UINT64, data);
+          Datatype::UINT64, Datatype::UINT64, data);
     }
     // ???
     // FIXME: this is a regression from the checked sub code
@@ -291,19 +290,18 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
     {
       const std::vector<uint8_t> data = {1, 0, 1};
       doit.operator()<tiledb::test::AsserterCatch>(
-          0, Datatype::UINT8, Datatype::ANY, data);
+          Datatype::UINT8, Datatype::ANY, data);
     }
   }
 
   SECTION("Rapidcheck") {
     rc::prop("Filter: Round trip Compressor Double Delta", [doit]() {
-      const int level = *rc::gen::arbitrary<int>();
       const auto datatype = *rc::gen::arbitrary<Datatype>();
       const auto reinterpret = *rc::make_reinterpret_datatype(datatype);
       const auto bytes = *rc::make_input_bytes(datatype);
 
       doit.operator()<tiledb::test::AsserterRapidcheck>(
-          level, datatype, reinterpret, bytes);
+          datatype, reinterpret, bytes);
     });
   }
 }
