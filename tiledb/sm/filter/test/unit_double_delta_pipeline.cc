@@ -276,13 +276,18 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
 
   SECTION("Shrinking") {
     // overflow scenario
-    {
+    if (true) {
       const std::vector<uint8_t> data = {0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,
                                          0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0};
       doit.operator()<tiledb::test::AsserterCatch>(
           0, Datatype::UINT64, Datatype::UINT64, data);
     }
     // ???
+    // FIXME: this is a regression from the checked sub code
+    // step through with gdb, find the encoded values,
+    // pop stash, see what the new ones are
+    // deltas: [-1, 1]
+    // double: [2]
     {
       const std::vector<uint8_t> data = {1, 0, 1};
       doit.operator()<tiledb::test::AsserterCatch>(
