@@ -273,19 +273,23 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
         Datatype::UINT64, Datatype::UINT64, data);
   }
 
-  SECTION("Shrinking") {
+  SECTION("Shrinking 1") {
     // overflow scenario
-    if (false) {
-      const std::vector<uint8_t> data = {0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,
-                                         0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0};
-      doit.operator()<tiledb::test::AsserterCatch>(
-          Datatype::UINT64, Datatype::UINT64, data);
-    }
-    {
-      const std::vector<uint8_t> data = {1, 0, 1};
-      doit.operator()<tiledb::test::AsserterCatch>(
-          Datatype::UINT8, Datatype::ANY, data);
-    }
+    const std::vector<uint8_t> data = {0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,
+                                       0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::UINT64, Datatype::UINT64, data);
+  }
+  SECTION("Shrinking 2") {
+    const std::vector<uint8_t> data = {1, 0, 1};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::UINT8, Datatype::ANY, data);
+  }
+  SECTION("Shrinking 3") {
+    const std::vector<uint8_t> data = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::INT64, Datatype::ANY, data);
   }
 
   SECTION("Rapidcheck all") {
