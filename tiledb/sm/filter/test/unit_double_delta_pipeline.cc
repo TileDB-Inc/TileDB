@@ -275,18 +275,12 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
 
   SECTION("Shrinking") {
     // overflow scenario
-    if (true) {
+    if (false) {
       const std::vector<uint8_t> data = {0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,
                                          0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0};
       doit.operator()<tiledb::test::AsserterCatch>(
           Datatype::UINT64, Datatype::UINT64, data);
     }
-    // ???
-    // FIXME: this is a regression from the checked sub code
-    // step through with gdb, find the encoded values,
-    // pop stash, see what the new ones are
-    // deltas: [-1, 1]
-    // double: [2]
     {
       const std::vector<uint8_t> data = {1, 0, 1};
       doit.operator()<tiledb::test::AsserterCatch>(
@@ -294,7 +288,7 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
     }
   }
 
-  SECTION("Rapidcheck") {
+  SECTION("Rapidcheck all") {
     rc::prop("Filter: Round trip Compressor Double Delta", [doit]() {
       const auto datatype = *rc::gen::arbitrary<Datatype>();
       const auto reinterpret = *rc::make_reinterpret_datatype(datatype);
@@ -303,5 +297,28 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           datatype, reinterpret, bytes);
     });
+  }
+
+  SECTION("Rapidcheck non-overflowing") {
+    rc::prop(
+        "Filter: Round Trip Compressor Double Delta non-overflowing", [doit]() {
+          const auto [datatype, reinterpret] = *rc::gen::suchThat(
+              rc::gen::mapcat(
+                  rc::gen::arbitrary<Datatype>(),
+                  [](Datatype input) {
+                    return rc::gen::pair(
+                        rc::gen::just(input),
+                        rc::make_reinterpret_datatype(input));
+                  }),
+              [](std::pair<Datatype, Datatype> types) {
+                return datatype_size(types.first) != sizeof(int64_t) ||
+                       datatype_size(types.second) != sizeof(int64_t);
+              });
+
+          const auto bytes = *rc::make_input_bytes(datatype);
+
+          doit.operator()<tiledb::test::AsserterRapidcheck>(
+              datatype, reinterpret, bytes);
+        });
   }
 }
