@@ -45,6 +45,8 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
+#include "tiledb/sm/rest/rest_client.h"
+
 namespace tiledb::test {
 
 tiledb::sm::URI test_dir(const std::string& prefix) {
@@ -145,9 +147,14 @@ void vfs_test_create_temp_dir(
 }
 
 std::string vfs_array_uri(
-    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name) {
-  if (fs->is_rest()) {
-    return ("tiledb://unit/" + array_name);
+    const std::unique_ptr<SupportedFs>& fs,
+    const std::string& array_name,
+    tiledb_ctx_t* ctx) {
+  bool legacy = fs->is_rest() ? ctx->rest_client().rest_legacy() : false;
+  if (fs->is_rest() && legacy) {
+    return "tiledb://unit/" + array_name;
+  } else if (fs->is_rest() && !legacy) {
+    return "tiledb://workspace/unit/" + array_name;
   } else {
     return array_name;
   }
@@ -517,6 +524,10 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
     }
   }
   std::sort(expected_results().begin(), expected_results().end());
+}
+
+bool VFSTestSetup::is_legacy_rest() {
+  return ctx_c->rest_client().rest_legacy();
 }
 
 }  // namespace tiledb::test

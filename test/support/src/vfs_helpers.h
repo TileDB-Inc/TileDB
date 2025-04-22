@@ -97,7 +97,9 @@ void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
 
 std::string vfs_array_uri(
-    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name);
+    const std::unique_ptr<SupportedFs>& fs,
+    const std::string& array_name,
+    tiledb_ctx_t* ctx);
 
 /**
  * This class defines and manipulates
@@ -845,16 +847,25 @@ struct VFSTestSetup {
     return fs_vec[0]->is_rest();
   }
 
+  bool is_legacy_rest();
+
   bool is_local() {
     return fs_vec[0]->is_local();
   }
 
   std::string array_uri(
       const std::string& array_name, bool strip_tiledb_prefix = false) {
-    auto uri = (fs_vec[0]->is_rest() && !strip_tiledb_prefix) ?
-                   ("tiledb://unit/" + temp_dir + array_name) :
-                   (temp_dir + array_name);
-    return uri;
+    // The order allows for stripping prefix from a REST URI.
+    if (strip_tiledb_prefix || !is_rest()) {
+      return temp_dir + array_name;
+    }
+
+    // Non-REST case is handled above.
+    if (is_legacy_rest()) {
+      return "tiledb://unit/" + temp_dir + array_name;
+    } else {
+      return "tiledb://workspace/unit/" + temp_dir + array_name;
+    }
   }
 
   Context ctx() {

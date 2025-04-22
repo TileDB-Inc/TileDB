@@ -61,8 +61,11 @@ struct RestCapabilities {
    * releases.
    */
   RestCapabilities(
-      TileDBVersion rest_version, TileDBVersion rest_minimum_version)
+      std::optional<TileDBVersion> rest_version,
+      std::optional<TileDBVersion> rest_minimum_version,
+      bool legacy = false)
       : detected_(true)
+      , legacy_(legacy)
       , rest_tiledb_version_(rest_version)
       , rest_minimum_supported_version_(rest_minimum_version) {
   }
@@ -72,11 +75,14 @@ struct RestCapabilities {
   /// Whether or not the REST capabilities have been initialized.
   bool detected_ = false;
 
+  /// True if the configured REST server is legacy.
+  bool legacy_ = false;
+
   /// The currently deployed TileDB version available on the REST server.
-  TileDBVersion rest_tiledb_version_{};
+  std::optional<TileDBVersion> rest_tiledb_version_ = std::nullopt;
 
   /// The minimum TileDB version supported by the REST server.
-  TileDBVersion rest_minimum_supported_version_{};
+  std::optional<TileDBVersion> rest_minimum_supported_version_ = std::nullopt;
 };
 
 }  // namespace tiledb::sm

@@ -211,29 +211,59 @@ bool URI::is_tiledb() const {
 }
 
 Status URI::get_rest_components(
-    std::string* array_namespace, std::string* array_uri) const {
+    std::string* array_namespace, std::string* array_uri, bool legacy) const {
   const std::string prefix = "tiledb://";
+  const std::string ns_component =
+      legacy ? "tiledb://<namespace>" : "tiledb://<workspace>/<teamspace>";
   const auto error_st = Status_RestError(
-      "Invalid array URI for REST service; expected format is "
-      "'tiledb://<namespace>/<array-name>' or "
-      "'tiledb://<namespace>/<array-uri>'.");
+      "Invalid array URI for REST service; expected format is " + ns_component +
+      "/<array-name>' or " + ns_component + "/<array-uri>'.");
 
   if (!is_tiledb() || uri_.empty() || uri_.find(prefix) == std::string::npos ||
-      uri_.size() <= prefix.size())
+      uri_.size() <= prefix.size()) {
     return LOG_STATUS(error_st);
+  }
 
-  // Find '/' between namespace and array uri.
-  auto slash = uri_.find('/', prefix.size());
-  if (slash == std::string::npos)
-    return LOG_STATUS(error_st);
+  if (legacy) {
+    // Extract '<namespace>' if we are talking to legacy REST.
 
-  auto namespace_len = slash - prefix.size();
-  auto array_len = uri_.size() - (slash + 1);
-  if (namespace_len == 0 || array_len == 0)
-    return LOG_STATUS(error_st);
+    // Find '/' between namespace and array uri.
+    auto slash = uri_.find('/', prefix.size());
+    if (slash == std::string::npos) {
+      return LOG_STATUS(error_st);
+    }
+    auto namespace_len = slash - prefix.size();
+    auto array_len = uri_.size() - (slash + 1);
+    if (namespace_len == 0 || array_len == 0) {
+      return LOG_STATUS(error_st);
+    }
+    *array_namespace = uri_.substr(prefix.size(), namespace_len);
+    *array_uri = uri_.substr(slash + 1, array_len);
+  } else {
+    // Extract '<workspace>/<teamspace>' if we are talking to TileDB-Server.
 
-  *array_namespace = uri_.substr(prefix.size(), namespace_len);
-  *array_uri = uri_.substr(slash + 1, array_len);
+    // Find '/' between workspace and teamspace.
+    auto ws_slash = uri_.find('/', prefix.size());
+    if (ws_slash == std::string::npos) {
+      return LOG_STATUS(error_st);
+    }
+    // Find '/' between teamspace and array uri.
+    auto ts_slash = uri_.find('/', ws_slash + 1);
+    if (ts_slash == std::string::npos) {
+      return LOG_STATUS(error_st);
+    }
+    auto ws_len = ws_slash - prefix.size();
+    auto ts_len = ts_slash - (ws_len + 1) - prefix.size();
+    auto array_len = uri_.size() - (ts_len + 1);
+    if (ws_len == 0 || ts_len == 0 || array_len == 0) {
+      return LOG_STATUS(error_st);
+    }
+
+    std::string ws = uri_.substr(prefix.size(), ws_len);
+    std::string ts = uri_.substr(ws_slash + 1, ts_len);
+    *array_namespace = ws + "/" + ts;
+    *array_uri = uri_.substr(ts_slash + 1, array_len);
+  }
 
   return Status::Ok();
 }

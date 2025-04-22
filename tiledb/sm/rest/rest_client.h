@@ -298,18 +298,24 @@ class RestClient {
   }
 
   /// Operation disabled in base class.
-  inline virtual const TileDBVersion& rest_tiledb_version() const {
-    throw RestClientDisabledException();
-  }
-
-  /// Operation disabled in base class.
-  inline virtual const TileDBVersion& rest_minimum_supported_tiledb_version()
+  inline virtual const std::optional<TileDBVersion>& rest_tiledb_version()
       const {
     throw RestClientDisabledException();
   }
 
   /// Operation disabled in base class.
+  inline virtual const std::optional<TileDBVersion>&
+  rest_minimum_supported_tiledb_version() const {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
   inline virtual bool rest_capabilities_detected() const {
+    throw RestClientDisabledException();
+  }
+
+  /// Operation disabled in base class.
+  inline virtual bool rest_legacy() const {
     throw RestClientDisabledException();
   }
 
