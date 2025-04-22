@@ -568,7 +568,7 @@ void show<VerifyParallelMerge<uint64_t>>(
 
 TEST_CASE(
     "parallel merge rapidcheck uint64_t VerifySplitPointStream",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop(
       "verify_split_point_stream_bounds",
       [](VerifySplitPointStream<uint64_t> input) { input.verify(); });
@@ -576,7 +576,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck uint64_t VerifyIdentifyMergeUnit",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop(
       "verify_identify_merge_unit",
       [](VerifyIdentifyMergeUnit<uint64_t> input) { input.verify(); });
@@ -584,7 +584,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck uint64_t VerifyTournamentMerge",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop(
       "verify_tournament_merge",
       [](VerifyTournamentMerge<uint64_t> input) { input.verify(); });
@@ -592,7 +592,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck uint64_t VerifyParallelMerge",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   SECTION("Shrink", "Instances found previously") {
     VerifyParallelMerge<uint64_t> instance;
 
@@ -1318,7 +1318,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck int8_t VerifySplitPointStream",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop(
       "verify_split_point_stream_bounds",
       [](VerifySplitPointStream<int8_t> input) { input.verify(); });
@@ -1326,7 +1326,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck int8_t VerifyIdentifyMergeUnit",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop(
       "verify_identify_merge_unit",
       [](VerifyIdentifyMergeUnit<int8_t> input) { input.verify(); });
@@ -1334,7 +1334,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck int8_t VerifyTournamentMerge",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop("verify_tournament_merge", [](VerifyTournamentMerge<int8_t> input) {
     input.verify();
   });
@@ -1342,7 +1342,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck int8_t VerifyParallelMerge",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop("verify_parallel_merge", [](VerifyParallelMerge<int8_t> input) {
     input.verify();
   });
@@ -1370,7 +1370,7 @@ struct Arbitrary<OneDigit> {
 
 TEST_CASE(
     "parallel merge rapidcheck OneDigit VerifySplitPointStream",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop(
       "verify_split_point_stream_bounds",
       [](VerifySplitPointStream<OneDigit> input) { input.verify(); });
@@ -1378,7 +1378,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck OneDigit VerifyIdentifyMergeUnit",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop(
       "verify_identify_merge_unit",
       [](VerifyIdentifyMergeUnit<OneDigit> input) { input.verify(); });
@@ -1386,7 +1386,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck OneDigit VerifyTournamentMerge",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop(
       "verify_tournament_merge",
       [](VerifyTournamentMerge<OneDigit> input) { input.verify(); });
@@ -1394,7 +1394,7 @@ TEST_CASE(
 
 TEST_CASE(
     "parallel merge rapidcheck OneDigit VerifyParallelMerge",
-    "[algorithm][parallel_merge]") {
+    "[algorithm][parallel_merge][rapidcheck]") {
   rc::prop("verify_parallel_merge", [](VerifyParallelMerge<OneDigit> input) {
     input.verify();
   });
