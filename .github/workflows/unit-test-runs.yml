@@ -80,8 +80,12 @@ jobs:
 
       - name: 'Run standalone unit tests'
         run: |
-          ctest --test-dir build -R '(^unit_|test_assert)' --no-tests=error --output-on-failure
-          ctest --test-dir build -R 'test_ci_asserts' --output-on-failure
+          ctest --test-dir build -R '(^unit_|test_assert)' --no-tests=error --output-on-failure "~[rapidcheck]"
+          # Run rapidcheck tests on their own
+          ctest --test-dir build -R '(^unit_|test_assert)' --no-tests=error "[rapidcheck]"
+          ctest --test-dir build -R 'test_ci_asserts' --output-on-failure "~[rapidcheck]"
+          # Run rapidcheck tests on their own
+          ctest --test-dir build -R 'test_ci_asserts' "[rapidcheck]"
 
       - name: "Print log files (failed build only)"
         run: |
