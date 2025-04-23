@@ -60,11 +60,11 @@ template <stdx::is_optional_v T>
 void showValue(const T& value, std::ostream& os);
 
 /**
- * Specializes `show` for Datatype
+ * Specializes `show` for Datatype.
+ *
+ * Requires adding `show_datatype.cc` to source list.
  */
-void showValue(const tiledb::sm::Datatype& value, std::ostream& os) {
-  os << tiledb::sm::datatype_str(value);
-}
+void showValue(const tiledb::sm::Datatype& value, std::ostream& os);
 
 /**
  * Specializes `show` for query ASTNode

@@ -41,6 +41,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   support/src/helpers-dimension.h
   support/src/vfs_helpers.cc
   support/src/serialization_wrappers.cc
+  support/rapidcheck/show_datatype.cc
   )
 
 set(TILEDB_UNIT_TEST_SOURCES
