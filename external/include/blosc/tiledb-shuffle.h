@@ -35,7 +35,7 @@
 #define TILEDB_SHUFFLE_H
 
 // This blosc header contains an extern "C" statement, so we don't need to.
-#include "shuffle.h"
+#include "external/blosc/include/shuffle.h"
 
 namespace blosc {
   const auto &shuffle = blosc_internal_shuffle;
