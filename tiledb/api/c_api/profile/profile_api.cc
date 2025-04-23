@@ -51,8 +51,7 @@ capi_return_t tiledb_profile_alloc(
     // Passing nullptr resolves to the default case.
     homedir = tiledb::common::filesystem::home_directory().c_str();
   } else if (homedir[0] == '\0') {
-    throw CAPIException(
-        "[tiledb_profile_alloc] $HOME directory cannot be empty.");
+    throw CAPIException("[tiledb_profile_alloc] Homedir cannot be empty.");
   }
 
   *profile =

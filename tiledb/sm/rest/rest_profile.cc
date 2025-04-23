@@ -145,7 +145,7 @@ RestProfile::RestProfile(const std::string& name) {
    * or perhaps stop using `sudo`.
    */
   auto homedir = home_directory();
-  if (homedir[0] == '\0') {
+  if (homedir.empty()) {
     throw RestProfileException(
         "Failed to create RestProfile; $HOME is not set.");
   }

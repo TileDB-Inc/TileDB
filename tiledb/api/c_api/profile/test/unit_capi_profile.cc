@@ -120,7 +120,7 @@ TEST_CASE("C API: tiledb_profile_free argument validation", "[capi][profile]") {
     CHECK(profile == nullptr);
   }
   SECTION("null profile") {
-    tiledb_profile_free(nullptr);
+    REQUIRE_NOTHROW(tiledb_profile_free(nullptr));
   }
 }
 
