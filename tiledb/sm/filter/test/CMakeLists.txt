@@ -57,6 +57,7 @@ commence(unit_test run_filter_pipeline)
         unit_run_filter_pipeline.cc
         unit_webp_pipeline.cc
         unit_xor_pipeline.cc
+        ${CMAKE_SOURCE_DIR}/test/support/rapidcheck/show_datatype.cc
     )
     this_target_link_libraries(rapidcheck cxx_rust_std)
     target_include_directories(unit_run_filter_pipeline PRIVATE ${CMAKE_BINARY_DIR})
