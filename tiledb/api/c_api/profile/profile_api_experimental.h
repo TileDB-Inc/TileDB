@@ -45,11 +45,9 @@ extern "C" {
 typedef struct tiledb_profile_handle_t tiledb_profile_t;
 
 /**
- * Allocates an in-test TileDB profile object.
+ * Allocates a TileDB profile object.
  *
- * @note Directly passing `homedir` is intended primarily for testing purposes,
- * to preserve the user's `$HOME` path and their profiles from in-test changes.
- * Users may specifiy this path, or use `nullptr` for the default.
+ * @note Users may specify the path, or use `nullptr` for the default.
  *
  * **Example:**
  *
