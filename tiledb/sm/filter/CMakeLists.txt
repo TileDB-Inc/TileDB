@@ -61,9 +61,6 @@ conclude(object_library)
 commence(object_library byteshuffle_filter)
     this_target_sources(byteshuffle_filter.cc)
     this_target_object_libraries(baseline buffer filter)
-    # [As of CMake 3.21] Setting private options on object libraries does not set
-    # the corresponding properties on sources in the object library.
-    set_source_files_properties(byteshuffle_filter.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE};${TileDB_blosc_INCLUDE_DIRS}")
     this_target_link_libraries(blosc)
 conclude(object_library)
 
