@@ -1,0 +1,10 @@
+[package]
+name = "tiledb_sm_filter_test"
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cxx = { workspace = true }
+
+[build-dependencies]
+cxx-build = "1"

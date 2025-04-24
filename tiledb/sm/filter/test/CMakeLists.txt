@@ -46,6 +46,7 @@ commence(unit_test run_filter_pipeline)
         add_n_in_place_filter.cc
         filter_test_support.cc
         filtered_tile_checker.cc
+        oxidize.cc
         pseudo_checksum_filter.cc
         unit_checksum_pipeline.cc
         unit_bit_width_reduction_pipeline.cc
@@ -68,3 +69,5 @@ commence(unit_test float_scale_input_val)
     this_target_object_libraries(float_scaling_filter)
     this_target_sources(main.cc unit_float_scale_input_validation.cc)
 conclude(unit_test)
+
+add_subdirectory(oxidize)
