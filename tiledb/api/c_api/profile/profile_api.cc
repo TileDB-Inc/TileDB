@@ -40,22 +40,29 @@ namespace tiledb::api {
 capi_return_t tiledb_profile_alloc(
     const char* name, const char* homedir, tiledb_profile_t** profile) {
   ensure_output_pointer_is_valid(profile);
+  std::string name_str;
   if (!name) {
     // Passing nullptr resolves to the default case.
-    name = tiledb::sm::RestProfile::DEFAULT_NAME.c_str();
-  } else if (name[0] == '\0') {
-    throw CAPIException("[tiledb_profile_alloc] Name cannot be empty.");
+    name_str = tiledb::sm::RestProfile::DEFAULT_NAME;
+  } else {
+    name_str = name;
+    if (name_str.empty()) {
+      throw CAPIException("[tiledb_profile_alloc] Name cannot be empty.");
+    }
   }
 
+  std::string homedir_str;
   if (!homedir) {
     // Passing nullptr resolves to the default case.
-    homedir = tiledb::common::filesystem::home_directory().c_str();
-  } else if (homedir[0] == '\0') {
-    throw CAPIException("[tiledb_profile_alloc] Homedir cannot be empty.");
+    homedir_str = tiledb::common::filesystem::home_directory();
+  } else {
+    homedir_str = homedir;
+    if (homedir_str.empty()) {
+      throw CAPIException("[tiledb_profile_alloc] Homedir cannot be empty.");
+    }
   }
 
-  *profile =
-      tiledb_profile_t::make_handle(std::string(name), std::string(homedir));
+  *profile = tiledb_profile_t::make_handle(name_str, homedir_str);
 
   return TILEDB_OK;
 }
