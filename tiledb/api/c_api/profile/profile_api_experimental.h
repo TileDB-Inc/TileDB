@@ -179,6 +179,28 @@ TILEDB_EXPORT capi_return_t tiledb_profile_get_param(
     tiledb_string_t** value,
     tiledb_error_t** error) TILEDB_NOEXCEPT;
 
+/**
+ * Saves the given profile to the local file.
+ *
+ * @param[in] profile The profile.
+ * @param[out] error Error object returned upon error (`NULL` if there is no
+ * error).
+ * @return TILEDB_EXPORT
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_save(
+    tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
+
+/**
+ * Removes the given profile from the local file.
+ *
+ * @param[in] profile The profile.
+ * @param[out] error Error object returned upon error (`NULL` if there is no
+ * error).
+ * @return TILEDB_EXPORT
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_remove(
+    tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

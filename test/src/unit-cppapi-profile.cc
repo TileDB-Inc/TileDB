@@ -48,6 +48,18 @@ struct ProfileCPPFx {
       : name_(tiledb::sm::RestProfile::DEFAULT_NAME)
       , tempdir_("unit_cppapi_profile") {
   }
+
+  bool profile_exists(std::string filepath, std::string name) {
+    json data;
+    if (std::filesystem::exists(filepath)) {
+      std::ifstream file(filepath);
+      file >> data;
+      file.close();
+      return data.find(name) != data.end();
+    } else {
+      return false;
+    }
+  }
 };
 
 TEST_CASE_METHOD(
@@ -92,4 +104,75 @@ TEST_CASE_METHOD(
   Profile p(name_, tempdir_.path());
   p.set_param("rest.username", "test_user");
   REQUIRE(p.get_param("rest.username") == "test_user");
+}
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile save validation",
+    "[cppapi][profile][save]") {
+  SECTION("rest.username and rest.password not set") {
+    Profile p(name_, tempdir_.path());
+    // check that the profiles file was not there before
+    REQUIRE(!std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // save the profile
+    p.save();
+    // check that the profiles file is created
+    REQUIRE(std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // check that the profile is saved
+    REQUIRE(profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath, name_));
+  }
+  SECTION("rest.username and rest.password set") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.username", "test_user");
+    p.set_param("rest.password", "test_password");
+    // check that the profiles file was not there before
+    REQUIRE(!std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // save the profile
+    p.save();
+    // check that the profiles file is created
+    REQUIRE(std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // check that the profile is saved
+    REQUIRE(profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath, name_));
+  }
+  SECTION("rest.username set and rest.password not set") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.username", "test_user");
+    REQUIRE_THROWS(p.save());
+  }
+  SECTION("rest.username not set and rest.password set") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.password", "test_password");
+    REQUIRE_THROWS(p.save());
+  }
+}
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile remove validation",
+    "[cppapi][profile][remove]") {
+  SECTION("success") {
+    Profile p(name_, tempdir_.path());
+    // check that the profiles file was not there before
+    REQUIRE(!std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // save the profile
+    p.save();
+    // check that the profiles file is created
+    REQUIRE(std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // remove the profile
+    p.remove();
+    // check that the profiles file is still there
+    REQUIRE(std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // check that the profile is removed
+    REQUIRE(!profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath, name_));
+  }
 }

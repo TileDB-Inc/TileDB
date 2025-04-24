@@ -212,3 +212,46 @@ TEST_CASE_METHOD(
 
   tiledb_profile_free(&profile);
 }
+
+TEST_CASE_METHOD(
+    CAPINProfileFx,
+    "C API: tiledb_profile_save argument validation",
+    "[capi][profile][save]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  tiledb_error_t* err = nullptr;
+  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  REQUIRE(profile != nullptr);
+  SECTION("success") {
+    rc = tiledb_profile_save(profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_save(nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+
+  tiledb_profile_free(&profile);
+}
+
+TEST_CASE_METHOD(
+    CAPINProfileFx,
+    "C API: tiledb_profile_remove argument validation",
+    "[capi][profile][remove]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  tiledb_error_t* err = nullptr;
+  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  REQUIRE(profile != nullptr);
+  SECTION("success") {
+    rc = tiledb_profile_save(profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    rc = tiledb_profile_remove(profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_remove(nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  tiledb_profile_free(&profile);
+}

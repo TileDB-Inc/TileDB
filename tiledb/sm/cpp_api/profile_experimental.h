@@ -182,6 +182,24 @@ class Profile {
     return ret;
   }
 
+  /** Saves the profile to the local file. */
+  void save() {
+    tiledb_error_t* capi_error = nullptr;
+    int rc = tiledb_profile_save(profile_.get(), &capi_error);
+    if (rc != TILEDB_OK)
+      throw ProfileException(
+          "Failed to save profile to file due to an internal error.");
+  }
+
+  /** Removes the profile from the local file. */
+  void remove() {
+    tiledb_error_t* capi_error = nullptr;
+    int rc = tiledb_profile_remove(profile_.get(), &capi_error);
+    if (rc != TILEDB_OK)
+      throw ProfileException(
+          "Failed to remove profile from file due to an internal error.");
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
