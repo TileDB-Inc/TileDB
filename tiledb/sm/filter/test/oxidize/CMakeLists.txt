@@ -12,14 +12,24 @@ endif ()
 
 set(CARGO_MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
 
+set(CXX_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/cxxbridge/rust/")
+set(WRAP_RUST_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/cxxbridge/wrap_rust/src/")
+set(WRAP_RUST_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/cxxbridge/wrap_rust/src/lib.rs.cc")
+set(WRAP_RUST_LIB "${CMAKE_CURRENT_BINARY_DIR}/debug/libwrap_rust.a")
+
 # Step 2: Use cxx to generate the C++ code necessary to created
 # a shared library that Rust can link to.
 
-set(GEN_CMD "${CARGO_ENV} ${CARGO} build ${CARGO_PROFILE_ARG} --manifest-path ${CARGO_MANIFEST_PATH} -p wrap_rust")
-
 add_custom_command(
-  OUTPUT some_source_file
-  COMMAND ${GEN_CMD}
+  OUTPUT ${WRAP_RUST_SOURCE} ${WRAP_RUST_LIB}
+  COMMAND
+    ${CARGO_ENV}
+    ${CARGO}
+    build
+    ${CARGO_PROFILE_FLAG}
+    "--manifest-path" ${CARGO_MANIFEST_PATH}
+    "-pwrap_rust"
+  USES_TERMINAL
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
@@ -27,9 +37,23 @@ add_custom_command(
 # Rust to have access to.
 
 set(FILTER_PIPELINE_LIB "filter_pipeline_objlib")
-add_library(${FILTER_PIPELINE_LIB} SHARED EXCLUDE_FROM_ALL ${CRATE_CXX} ../oxidize.cc some_source_file)
-target_link_libraries(${FILTER_PIPELINE_LIB} PUBLIC filter_pipeline)
-target_include_directories(${FILTER_PIPELINE_LIB} PRIVATE ${CMAKE_BINARY_DIR})
+add_library(
+    ${FILTER_PIPELINE_LIB}
+    SHARED
+    EXCLUDE_FROM_ALL
+    ../filter_test_support.cc
+    ../filtered_tile_checker.cc
+    ../oxidize.cc
+    ${WRAP_RUST_SOURCE}
+)
+target_link_libraries(
+    ${FILTER_PIPELINE_LIB}
+    PUBLIC
+        filter_pipeline
+        tiledb_test_support_lib
+        ${WRAP_RUST_LIB}
+)
+target_include_directories(${FILTER_PIPELINE_LIB} PRIVATE ${CXX_INCLUDES} ${WRAP_RUST_INCLUDES})
 target_include_directories(${FILTER_PIPELINE_LIB}
   PRIVATE
     $<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
@@ -37,11 +61,19 @@ target_include_directories(${FILTER_PIPELINE_LIB}
 
 # Step 4: Build a test binary that links to the shared library we just created
 
-set(BUILD_CMD "${CARGO_COMMAND_ENV} cargo test ${CARGO_PROFILE_ARG} test --no-run --manifest-path ${CARGO_MANIFEST_PATH}")
-
 add_custom_command(
   OUTPUT a_test_binary
-  COMMAND ${CARGO_COMMAND}
+  COMMAND
+    ${CARGO_ENV}
+    "SEARCH_PATH=${CMAKE_CURRENT_BINARY_DIR}"
+    ${CARGO}
+    "test"
+    ${CARGO_PROFILE_FLAG}
+    "--no-run"
+    "--manifest-path" ${CARGO_MANIFEST_PATH}
+    "-pwrap_cpp"
+    ${CARGO}
+  USES_TERMINAL
   DEPENDS ${FILTER_PIPELINE_LIB}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -229,4 +261,6 @@ add_custom_target(
 #     NAME ${CRATE}_tests
 #     COMMAND cargo test ${CARGO_BUILD_FLAGS} --lib -p ${CRATE}
 #     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+# )
+# )
 # )

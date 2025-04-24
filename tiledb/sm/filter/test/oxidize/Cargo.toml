@@ -1,12 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-  "oxidize",
-  "sys"
-]
-default-members = [
-  "oxidize",
-]
+members = ["wrap_rust", "wrap_cpp"]
 
 [workspace.package]
 edition = "2024"
@@ -18,5 +12,5 @@ anyhow = "1"
 cxx = "1"
 cxx-build = "1"
 proptest = "1"
-tiledb_sm_filter_test = { path = "oxidize" }
-tiledb_sm_filter_test_sys = { path = "sys" }
+wrap_rust = { path = "wrap_rust" }
+wrap_cpp = { path = "wrap_cpp" }

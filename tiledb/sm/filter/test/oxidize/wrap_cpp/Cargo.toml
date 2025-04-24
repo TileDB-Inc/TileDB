@@ -3,14 +3,11 @@ name = "wrap_cpp"
 version = { workspace = true }
 edition = { workspace = true }
 
-[lib]
-name = "tiledb_sm_filter_test_sys"
-crate-type = ["staticlib"]
-
 [dev-dependencies]
+cxx = { workspace = true }
 anyhow = { workspace = true }
 proptest = { workspace = true }
-tiledb_sm_filter_test = { workspace = true }
+wrap_rust = { workspace = true }
 
 [build-dependencies]
-bindgen = "0.71"
+cxx-build = "1"

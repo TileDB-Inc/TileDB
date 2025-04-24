@@ -34,12 +34,12 @@
 #define TILEDB_FILTER_TEST_OXIDIZE_H
 
 #include "tiledb/sm/filter/test/oxidize.h"
+#include "cxx.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/test/filter_test_support.h"
-#include "tiledb/sm/filter/test/oxidize/cxxbridge/rust/cxx.h"
 
 #include <test/support/assert_helpers.h>
 

@@ -3,6 +3,10 @@ name = "wrap_rust"
 edition = { workspace = true }
 version = { workspace = true }
 
+[lib]
+name = "wrap_rust"
+crate-type = ["staticlib"]
+
 [dependencies]
 cxx = { workspace = true }
 

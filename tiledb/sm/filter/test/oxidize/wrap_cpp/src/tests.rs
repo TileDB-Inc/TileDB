@@ -1,9 +1,11 @@
+use super::*;
 use proptest::prelude::*;
 
+
 fn instance_pipeline_65154(data: &[i32]) -> anyhow::Result<()> {
-    let pipeline = tiledb_sm_filter_test::build_pipeline_65154();
+    let pipeline = build_pipeline_65154();
     let as_bytes = unsafe { std::mem::transmute::<&[i32], &[u8]>(data) };
-    Ok(tiledb_sm_filter_test::filter_pipeline_roundtrip(
+    Ok(filter_pipeline_roundtrip(
         &pipeline, as_bytes,
     )?)
 }
