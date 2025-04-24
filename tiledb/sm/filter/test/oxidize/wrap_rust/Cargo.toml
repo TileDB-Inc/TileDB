@@ -1,5 +1,5 @@
 [package]
-name = "tiledb_sm_filter_test"
+name = "wrap_rust"
 edition = { workspace = true }
 version = { workspace = true }
 

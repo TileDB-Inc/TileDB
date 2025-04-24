@@ -1,5 +1,5 @@
 [package]
-name = "tiledb_sm_filter_test_sys"
+name = "wrap_cpp"
 version = { workspace = true }
 edition = { workspace = true }
 

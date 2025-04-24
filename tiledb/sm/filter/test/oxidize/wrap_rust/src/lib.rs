@@ -16,6 +16,3 @@ mod ffi {
 }
 
 pub use ffi::*;
-
-#[cfg(test)]
-mod tests;

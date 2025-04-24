@@ -34,7 +34,6 @@
 #ifndef TILEDB_FILTER_TEST_OXIDIZE_H
 #define TILEDB_FILTER_TEST_OXIDIZE_H
 
-#include "tiledb/sm/filter/test/oxidize.h"
 #include "tiledb/sm/filter/test/oxidize/cxxbridge/rust/cxx.h"
 
 namespace tiledb::sm::test {

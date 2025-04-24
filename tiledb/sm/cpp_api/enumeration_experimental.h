@@ -212,7 +212,7 @@ class Enumeration {
   }
 
   template <typename T, impl::enable_trivial<T>* = nullptr>
-  std::optional<uint64_t> index_of(std::basic_string_view<T> value) {
+  std::optional<uint64_t> index_of(std::basic_string_view<T>& value) {
     int exist = 0;
     uint64_t index;
     tiledb_ctx_t* c_ctx = ctx_.get().ptr().get();
