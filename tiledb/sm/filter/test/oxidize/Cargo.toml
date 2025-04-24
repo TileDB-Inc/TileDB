@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = [
+  "oxidize",
+  "sys"
+]
+default-members = [
+  "oxidize",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.85"
+version = "0.1.0"
+
+[workspace.dependencies]
+anyhow = "1"
+cxx = "1"
+cxx-build = "1"
+proptest = "1"
+tiledb_sm_filter_test = { path = "oxidize" }
+tiledb_sm_filter_test_sys = { path = "sys" }
