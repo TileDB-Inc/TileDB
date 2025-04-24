@@ -99,11 +99,36 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ProfileCPPFx,
-    "C++ API: Profile set_param and get_param validation",
-    "[cppapi][profile][set_param][get_param]") {
-  Profile p(name_, tempdir_.path());
-  p.set_param("rest.username", "test_user");
-  REQUIRE(p.get_param("rest.username") == "test_user");
+    "C++ API: Profile set_param validation",
+    "[cppapi][profile][set_param]") {
+  SECTION("valid") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.username", "test_user");
+    p.set_param("rest.password", "test_password");
+  }
+  SECTION("valid empty value") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.username", "");
+  }
+  SECTION("invalid empty key") {
+    Profile p(name_, tempdir_.path());
+    REQUIRE_THROWS(p.set_param("", "test_user"));
+  }
+}
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile get_param validation",
+    "[cppapi][profile][get_param]") {
+  SECTION("valid") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.username", "test_user");
+    REQUIRE(p.get_param("rest.username") == "test_user");
+  }
+  SECTION("invalid empty key") {
+    Profile p(name_, tempdir_.path());
+    REQUIRE_THROWS(p.get_param(""));
+  }
 }
 
 TEST_CASE_METHOD(
