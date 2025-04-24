@@ -149,3 +149,66 @@ TEST_CASE_METHOD(
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
 }
+
+TEST_CASE_METHOD(
+    CAPINProfileFx,
+    "C API: tiledb_profile_set_param argument validation",
+    "[capi][profile][set_param]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  tiledb_error_t* err = nullptr;
+  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  REQUIRE(profile != nullptr);
+
+  SECTION("success") {
+    rc = tiledb_profile_set_param(profile, "rest.username", "test_user", &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null param") {
+    rc = tiledb_profile_set_param(profile, nullptr, "test_user", &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null value") {
+    rc = tiledb_profile_set_param(profile, "rest.username", nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null param and value") {
+    rc = tiledb_profile_set_param(profile, nullptr, nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_set_param(nullptr, "rest.username", "test_user", &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+
+  tiledb_profile_free(&profile);
+}
+
+TEST_CASE_METHOD(
+    CAPINProfileFx,
+    "C API: tiledb_profile_get_param argument validation",
+    "[capi][profile][get_param]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  tiledb_error_t* err = nullptr;
+  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  REQUIRE(profile != nullptr);
+
+  tiledb_string_t* value;
+  SECTION("success") {
+    rc = tiledb_profile_set_param(profile, "rest.username", "test_user", &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    rc = tiledb_profile_get_param(profile, "rest.username", &value, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null param") {
+    rc = tiledb_profile_get_param(profile, nullptr, &value, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null value") {
+    rc = tiledb_profile_get_param(profile, "rest.username", nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+
+  tiledb_profile_free(&profile);
+}
