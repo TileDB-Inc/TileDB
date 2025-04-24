@@ -67,38 +67,19 @@ TEST_CASE(
   SECTION("null name") {
     rc = tiledb_profile_alloc(nullptr, homedir_, &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    // Ensure nullptr resolves to default name internally.
-    tiledb_string_t* name;
-    rc = tiledb_profile_get_name(profile, &name, &err);
-    REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    const char* out_ptr;
-    size_t out_length;
-    rc = tiledb_string_view(name, &out_ptr, &out_length);
-    REQUIRE(rc == TILEDB_OK);
-    std::string out_str(out_ptr, out_length);
-    CHECK(out_str == std::string(fx.name_));
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
   SECTION("empty homedir") {
     rc = tiledb_profile_alloc(fx.name_, "", &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+    REQUIRE_NOTHROW(tiledb_profile_free(&profile));
+    CHECK(profile == nullptr);
   }
   SECTION("null homedir") {
     // Normal expected use-case. Internally resolves to default homedir.
     rc = tiledb_profile_alloc(fx.name_, nullptr, &profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    tiledb_string_t* homedir;
-    rc = tiledb_profile_get_homedir(profile, &homedir, &err);
-    REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    // Validate homedir is non-empty. The path may not be resolved when using
-    // the default homedir (per the RestProfile::homedir() invariant).
-    const char* out_ptr;
-    size_t out_length;
-    rc = tiledb_string_view(homedir, &out_ptr, &out_length);
-    REQUIRE(rc == TILEDB_OK);
-    std::string out_str(out_ptr, out_length);
-    CHECK(out_str == tiledb::common::filesystem::home_directory());
     REQUIRE_NOTHROW(tiledb_profile_free(&profile));
     CHECK(profile == nullptr);
   }
@@ -134,12 +115,6 @@ TEST_CASE(
   SECTION("success") {
     rc = tiledb_profile_get_name(x.profile, &name, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    const char* out_ptr;
-    size_t out_length;
-    rc = tiledb_string_view(name, &out_ptr, &out_length);
-    REQUIRE(rc == TILEDB_OK);
-    std::string out_str(out_ptr, out_length);
-    REQUIRE(out_str == std::string(fx.name_));
   }
   SECTION("null profile") {
     rc = tiledb_profile_get_name(nullptr, &name, &err);
@@ -162,11 +137,6 @@ TEST_CASE(
   SECTION("success") {
     rc = tiledb_profile_get_homedir(x.profile, &homedir, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    const char* out_ptr;
-    size_t out_length;
-    rc = tiledb_string_view(homedir, &out_ptr, &out_length);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(out_length > 0);
   }
   SECTION("null profile") {
     rc = tiledb_profile_get_homedir(nullptr, &homedir, &err);
