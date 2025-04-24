@@ -32,7 +32,7 @@ You can install the TileDB C++ library as follows:
 $ conda install -c conda-forge tiledb
 ```
 
-(see links below for Python, R, and other API installation instructions)
+Visit links below for Python, R, and other API installation instructions.
 
 Alternatively, you can use the [Dockerfile we provide.](examples/Dockerfile/Dockerfile)
 
@@ -43,12 +43,11 @@ We include several [examples](https://github.com/TileDB-Inc/TileDB/tree/main/exa
 
 ## Documentation
 
-You can find the detailed TileDB documentation at [https://docs.tiledb.com](https://docs.tiledb.com).
+You can find the detailed TileDB documentation at [https://cloud.tiledb.com/academy](https://cloud.tiledb.com/academy).
 
 ## Building from source
 
-Please see [building from source](https://docs.tiledb.com/main/how-to/installation/building-from-source) in
-the documentation.
+To build TileDB from source, visit [Building from Source](docs/building-from-source.md).
 
 ## Format Specification
 
@@ -57,9 +56,8 @@ The TileDB data format is open-source and can be found [here](format_spec/FORMAT
 ## Application-specific Packages
 
 * [TileDB-BioImaging](https://github.com/TileDB-Inc/TileDB-BioImaging): TileDB library for biomedical imaging, with support for image-optimized compression using WebP.
-* [TileDB Geospatial Tools](https://docs.tiledb.com/main/integrations-and-extensions/geospatial) (GDAL, PDAL, Rasterio)
 * [TileDB-SOMA](https://github.com/single-cell-data/TileDB-SOMA): TileDB implementation of the [SOMA](https://github.com/single-cell-data/SOMA) specification for single-cell genomic data. ([documentation](https://github.com/single-cell-data/TileDB-SOMA#quick-start))
-* [TileDB-VCF](https://github.com/TileDB-Inc/TileDB-VCF): TileDB library and query engine for genomic variant data. ([documentation](https://docs.tiledb.com/main/integrations-and-extensions/genomics/population-genomics)).
+* [TileDB-VCF](https://github.com/TileDB-Inc/TileDB-VCF): TileDB library and query engine for genomic variant data. ([documentation](https://cloud.tiledb.com/academy/structure/life-sciences/population-genomics/)).
 * [TileDB-Vector-Search](https://github.com/TileDB-Inc/TileDB-Vector-Search): open source, embeddable, and cloud-native vector similarity search database built on top of TileDB in high-performance C++, with an easy-to-use Python API.
 
 ## APIs
@@ -73,16 +71,6 @@ The TileDB team maintains a variety of APIs built on top of the C++ library:
 * [Java](https://github.com/TileDB-Inc/TileDB-Java)
 * [Go](https://github.com/TileDB-Inc/TileDB-Go)
 * [C#](https://github.com/TileDB-Inc/TileDB-CSharp)
-
-## Integrations
-
-TileDB is also integrated with several popular databases and data science tools:
-
-* [Spark](https://docs.tiledb.com/main/integrations-and-extensions/distributed-computing/spark)
-* [Dask](https://docs.tiledb.com/main/integrations-and-extensions/distributed-computing/dask)
-* [MariaDB](https://docs.tiledb.com/main/integrations-and-extensions/sql/mariadb)
-* [PrestoDB](https://docs.tiledb.com/main/integrations-and-extensions/sql/prestodb)
-* [Trino](https://docs.tiledb.com/main/integrations-and-extensions/distributed-computing/prestodb-1)
 
 ## Get involved
 

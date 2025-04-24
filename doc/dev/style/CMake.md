@@ -12,7 +12,7 @@ If it is decided a new option is needed, the following must be updated in additi
 
 1. the bootstrap scripts (`bootstrap`, `bootstrap.ps1`)
 2. continuous integration coverage to ensure the option is exercised in a CI build (edit github actions workflows under `.github/workflows`)
-3. the build documentation contained in our [online docs](https://docs.tiledb.com)
+3. the build documentation contained in our [online docs](../../../docs/building-from-source.md) and the [README](../../../README.md)
 
 
 ## TileDB Object Libraries

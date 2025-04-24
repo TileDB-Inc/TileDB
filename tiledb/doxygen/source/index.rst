@@ -16,9 +16,9 @@ is open-sourced under the permissive
 Useful Links
 ------------
 
-- `Main Developer Docs <https://docs.tiledb.com/>`_
-- `Installation <https://docs.tiledb.com/developer/installation/quick-install>`_
-- `Quickstart <https://docs.tiledb.com/main/how-to/installation/usage>`_
+- `Main Developer Docs <https://cloud.tiledb.com/academy/>`_
+- `Installation <https://github.com/TileDB-Inc/TileDB/blob/main/README.md#quickstart>`_
+- `Quickstart <https://github.com/TileDB-Inc/TileDB/blob/main/docs/usage.md>`_
 - `TileDB Github Repo <https://github.com/TileDB-Inc/TileDB>`_
 - `TileDB, Inc. Official Website <https://tiledb.com>`_
 
