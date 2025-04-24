@@ -32,7 +32,7 @@ You can install the TileDB C++ library as follows:
 $ conda install -c conda-forge tiledb
 ```
 
-Visit links below for Python, R, and other API installation instructions.
+Visit the links below for Python, R, and other APIs installation instructions.
 
 Alternatively, you can use the [Dockerfile we provide.](examples/Dockerfile/Dockerfile)
 
@@ -47,7 +47,7 @@ You can find the detailed TileDB documentation at [https://cloud.tiledb.com/acad
 
 ## Building from source
 
-To build TileDB from source, visit [Building from Source](docs/building-from-source.md).
+To build TileDB from source, visit [Building from Source](BUILDING_FROM_SOURCE.md).
 
 ## Format Specification
 
