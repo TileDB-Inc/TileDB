@@ -108,7 +108,7 @@ class Profile {
   }
 
   /** Retrieves the name of the profile. */
-  std::string_view get_name() const {
+  std::string get_name() const {
     tiledb_error_t* capi_error = nullptr;
     tiledb_string_t* name;
 
@@ -117,14 +117,20 @@ class Profile {
       throw ProfileException(
           "Failed to retrieve profile name due to an internal error.");
 
-    const char* out_ptr;
-    size_t out_length;
-    tiledb_string_view(name, &out_ptr, &out_length);
-    return std::string_view(out_ptr, out_length);
+    // Convert string handle to a std::string
+    const char* name_ptr;
+    size_t name_len;
+    tiledb_string_view(name, &name_ptr, &name_len);
+    std::string ret(name_ptr, name_len);
+
+    // Release the string handle
+    tiledb_string_free(&name);
+
+    return ret;
   }
 
   /** Retrieves the homedir of the profile. */
-  std::string_view get_homedir() const {
+  std::string get_homedir() const {
     tiledb_error_t* capi_error = nullptr;
     tiledb_string_t* homedir;
     int rc = tiledb_profile_get_homedir(profile_.get(), &homedir, &capi_error);
@@ -132,10 +138,16 @@ class Profile {
       throw ProfileException(
           "Failed to retrieve profile homedir due to an internal error.");
 
-    const char* out_ptr;
-    size_t out_length;
-    tiledb_string_view(homedir, &out_ptr, &out_length);
-    return std::string_view(out_ptr, out_length);
+    // Convert string handle to a std::string
+    const char* homedir_ptr;
+    size_t homedir_length;
+    tiledb_string_view(homedir, &homedir_ptr, &homedir_length);
+    std::string ret(homedir_ptr, homedir_length);
+
+    // Release the string handle
+    tiledb_string_free(&homedir);
+
+    return ret;
   }
 
  private:

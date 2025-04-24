@@ -111,10 +111,10 @@ class RestProfile {
   /**
    * Returns the name of this profile.
    *
-   * @return std::string_view The name of this profile.
+   * @return std::string The name of this profile.
    */
-  inline const std::string_view name() const {
-    return std::string_view(name_);
+  inline const std::string name() const {
+    return std::string(name_);
   }
 
   /**
@@ -125,14 +125,14 @@ class RestProfile {
    * the path may be unresolved.
    *
    * #TODO Note to reviewer: we probably need to just change the constuctor to
-   * take in a std::string_view to ensure the home_directory() path ref doesn't
+   * take in a std::string to ensure the home_directory() path ref doesn't
    * go out of scope. We may also decide to just scrap this method entirely.
    * It's not in the original design but I thought it useful in prod.
    *
-   * @return std::string_view The path to the local $HOME directory.
+   * @return std::string The path to the local $HOME directory.
    */
-  inline const std::string_view homedir() const {
-    return std::string_view(homedir_);
+  inline const std::string homedir() const {
+    return std::string(homedir_);
   }
 
   /**
