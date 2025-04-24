@@ -27,8 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This set of unit tests checks running the filter pipeline with the webp
- * filter.
+ * This set of unit tests checks running the filter pipeline with the double
+ * delta filter.
  */
 
 #include <test/support/assert_helpers.h>
@@ -39,6 +39,7 @@
 #include "test/support/oxidize/rust_std.h"
 #include "test/support/rapidcheck/datatype.h"
 #include "test/support/src/mem_helpers.h"
+#include "tile_data_generator.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/tile/tile.h"
@@ -174,70 +175,6 @@ static Gen<std::vector<uint8_t>> make_input_bytes(Datatype input_type) {
 }
 
 }  // namespace rc
-
-static shared_ptr<WriterTile> to_writer_tile(
-    shared_ptr<MemoryTracker> tracker,
-    Datatype input_type,
-    std::span<const uint8_t> bytes) {
-  auto wt = make_shared<WriterTile>(
-      HERE(),
-      constants::format_version,
-      input_type,
-      datatype_size(input_type),  // TODO: fix for cell val num
-      bytes.size(),
-      tracker);
-  wt->write(&bytes[0], 0, bytes.size());
-  return wt;
-}
-
-template <typename Asserter>
-class VecDataGenerator : public TileDataGenerator {
-  Datatype datatype_;
-  const std::vector<uint8_t>& bytes_;
-
- public:
-  VecDataGenerator(Datatype dt, const std::vector<uint8_t>& bytes)
-      : datatype_(dt)
-      , bytes_(bytes) {
-  }
-
-  uint64_t cell_size() const override {
-    return datatype_size(datatype_);
-  }
-
-  void check_tile_data(const Tile& tile) const override {
-    ASSERTER(tile.size() == bytes_.size());
-
-    // compare inversion in chunks (so that there's a bit more context on each
-    // line in the event of a failure)
-    constexpr uint64_t chunk_size = 128;
-    for (uint64_t i = 0; i < bytes_.size(); i += chunk_size) {
-      const uint64_t offset = i;
-      const uint64_t n = std::min(chunk_size, bytes_.size() - offset);
-
-      std::vector<uint8_t> chunk_in(
-          bytes_.begin() + offset, bytes_.begin() + offset + n);
-      std::vector<uint8_t> chunk_out(n);
-      tile.read(&chunk_out[0], offset, n);
-
-      ASSERTER(chunk_in == chunk_out);
-    }
-  }
-
-  Datatype datatype() const override {
-    return datatype_;
-  }
-
-  std::tuple<shared_ptr<WriterTile>, std::optional<shared_ptr<WriterTile>>>
-  create_writer_tiles(shared_ptr<MemoryTracker> memory_tracker) const override {
-    return std::make_pair(
-        to_writer_tile(memory_tracker, datatype(), bytes_), std::nullopt);
-  }
-
-  uint64_t original_tile_size() const override {
-    return bytes_.size();
-  }
-};
 
 TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
   tiledb::sm::Config config;
