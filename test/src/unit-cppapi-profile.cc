@@ -84,3 +84,12 @@ TEST_CASE_METHOD(
     REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
   }
 }
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile set_param and get_param validation",
+    "[cppapi][profile][set_param][get_param]") {
+  Profile p(name_, tempdir_.path());
+  p.set_param("rest.username", "test_user");
+  REQUIRE(p.get_param("rest.username") == "test_user");
+}

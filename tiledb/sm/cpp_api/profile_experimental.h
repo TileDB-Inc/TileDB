@@ -150,6 +150,38 @@ class Profile {
     return ret;
   }
 
+  /** Sets a parameter in the profile. */
+  void set_param(const std::string& param, const std::string& value) {
+    tiledb_error_t* capi_error = nullptr;
+    int rc = tiledb_profile_set_param(
+        profile_.get(), param.c_str(), value.c_str(), &capi_error);
+    if (rc != TILEDB_OK)
+      throw ProfileException(
+          "Failed to set parameter due to an internal error.");
+  }
+
+  /** Retrieves a parameter value from the profile. */
+  std::string get_param(const std::string& param) const {
+    tiledb_error_t* capi_error = nullptr;
+    tiledb_string_t* value;
+    int rc = tiledb_profile_get_param(
+        profile_.get(), param.c_str(), &value, &capi_error);
+    if (rc != TILEDB_OK)
+      throw ProfileException(
+          "Failed to get parameter due to an internal error.");
+
+    // Convert string handle to a std::string
+    const char* value_ptr;
+    size_t value_len;
+    tiledb_string_view(value, &value_ptr, &value_len);
+    std::string ret(value_ptr, value_len);
+
+    // Release the string handle
+    tiledb_string_free(&value);
+
+    return ret;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

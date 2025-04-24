@@ -147,6 +147,38 @@ TILEDB_EXPORT capi_return_t tiledb_profile_get_homedir(
     tiledb_string_t** homedir,
     tiledb_error_t** error) TILEDB_NOEXCEPT;
 
+/**
+ * Sets a parameter in the given profile.
+ *
+ * @param[in] profile The profile.
+ * @param[in] param The parameter name.
+ * @param[in] value The parameter value.
+ * @param[out] error Error object returned upon error (`NULL` if there is no
+ * error).
+ * @return TILEDB_EXPORT
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_set_param(
+    tiledb_profile_t* profile,
+    const char* param,
+    const char* value,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves a parameter value from the given profile.
+ *
+ * @param[in] profile The profile.
+ * @param[in] param The parameter name.
+ * @param[out] value The parameter value.
+ * @param[out] error Error object returned upon error (`NULL` if there is no
+ * error).
+ * @return TILEDB_EXPORT
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_get_param(
+    tiledb_profile_t* profile,
+    const char* param,
+    tiledb_string_t** value,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

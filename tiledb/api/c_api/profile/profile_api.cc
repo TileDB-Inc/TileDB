@@ -89,6 +89,31 @@ capi_return_t tiledb_profile_get_homedir(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_profile_set_param(
+    tiledb_profile_t* profile, const char* param, const char* value) {
+  ensure_profile_is_valid(profile);
+  if (!param || !value) {
+    throw CAPIException(
+        "[tiledb_profile_set_param] Parameter or value cannot be null.");
+  }
+  profile->profile()->set_param(param, value);
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_profile_get_param(
+    tiledb_profile_t* profile,
+    const char* param,
+    tiledb_string_handle_t** value) {
+  ensure_profile_is_valid(profile);
+  ensure_output_pointer_is_valid(value);
+  if (!param) {
+    throw CAPIException("[tiledb_profile_get_param] Parameter cannot be null.");
+  }
+  *value =
+      tiledb_string_handle_t::make_handle(profile->profile()->get_param(param));
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_error;
@@ -124,4 +149,24 @@ CAPI_INTERFACE(
     tiledb_error_t** error) {
   return api_entry_error<tiledb::api::tiledb_profile_get_homedir>(
       error, profile, homedir);
+}
+
+CAPI_INTERFACE(
+    profile_set_param,
+    tiledb_profile_t* profile,
+    const char* param,
+    const char* value,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_set_param>(
+      error, profile, param, value);
+}
+
+CAPI_INTERFACE(
+    profile_get_param,
+    tiledb_profile_t* profile,
+    const char* param,
+    tiledb_string_handle_t** value,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_get_param>(
+      error, profile, param, value);
 }
