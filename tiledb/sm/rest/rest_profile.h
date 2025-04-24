@@ -120,15 +120,6 @@ class RestProfile {
   /**
    * Returns the path to the local $HOME directory.
    *
-   * @invariant Use of home_directory() may cause unexpected behavior
-   * from this method. Depending on where in the stack the method is invoked,
-   * the path may be unresolved.
-   *
-   * #TODO Note to reviewer: we probably need to just change the constuctor to
-   * take in a std::string to ensure the home_directory() path ref doesn't
-   * go out of scope. We may also decide to just scrap this method entirely.
-   * It's not in the original design but I thought it useful in prod.
-   *
    * @return std::string The path to the local $HOME directory.
    */
   inline const std::string homedir() const {
