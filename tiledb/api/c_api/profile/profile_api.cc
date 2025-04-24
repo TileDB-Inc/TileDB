@@ -114,6 +114,18 @@ capi_return_t tiledb_profile_get_param(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_profile_save(tiledb_profile_t* profile) {
+  ensure_profile_is_valid(profile);
+  profile->profile()->save_to_file();
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_profile_remove(tiledb_profile_t* profile) {
+  ensure_profile_is_valid(profile);
+  profile->profile()->remove_from_file();
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_error;
@@ -169,4 +181,14 @@ CAPI_INTERFACE(
     tiledb_error_t** error) {
   return api_entry_error<tiledb::api::tiledb_profile_get_param>(
       error, profile, param, value);
+}
+
+CAPI_INTERFACE(
+    profile_save, tiledb_profile_t* profile, tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_save>(error, profile);
+}
+
+CAPI_INTERFACE(
+    profile_remove, tiledb_profile_t* profile, tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_remove>(error, profile);
 }
