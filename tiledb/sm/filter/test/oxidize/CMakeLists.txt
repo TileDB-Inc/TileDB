@@ -42,6 +42,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 target_include_directories(${CRATE} PRIVATE ${CMAKE_BINARY_DIR})
 
 
+set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES cxxbridge ${TARGET_DIR})
+
+
 
 # Get all propreties that cmake supports
 if(NOT CMAKE_PROPERTY_LIST)
