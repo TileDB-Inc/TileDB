@@ -188,7 +188,9 @@ void RestProfile::save_to_file() {
   if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
       (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
     throw RestProfileException(
-        "Failed to save; invalid username/password pairing.");
+        "Failed to save profile: 'rest.username' and 'rest.password' must "
+        "either both be set or both remain unset. Mixing a default username "
+        "with a custom password (or vice versa) is not allowed.");
   }
 
   // If the file already exists, load it into a json object.

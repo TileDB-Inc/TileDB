@@ -238,7 +238,10 @@ TEST_CASE_METHOD(
   p.set_param("rest.username", "username");
   REQUIRE_THROWS_WITH(
       p.save_to_file(),
-      Catch::Matchers::ContainsSubstring("invalid username/password pairing"));
+      Catch::Matchers::ContainsSubstring(
+          "Failed to save profile: 'rest.username' and 'rest.password' must "
+          "either both be set or both remain unset. Mixing a default username "
+          "with a custom password (or vice versa) is not allowed."));
   // Set password and save valid profile
   p.set_param("rest.password", "password");
   p.save_to_file();
