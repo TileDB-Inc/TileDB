@@ -225,15 +225,29 @@ void RestProfile::save_to_file() {
 }
 
 void RestProfile::remove_from_file() {
-  if (std::filesystem::exists(filepath_)) {
-    // Read the file into a json object.
-    json data = read_file(filepath_);
+  if (!std::filesystem::exists(filepath_)) {
+    throw RestProfileException(
+        "Failed to remove profile; file does not exist.");
+  }
 
-    // If a profile of the given name exists, remove it.
-    data.erase(data.find(name_));
+  // Read the file into a json object.
+  json data = read_file(filepath_);
 
-    // Write the json back to the file.
+  // If a profile of the given name exists, remove it.
+  auto it = data.find(name_);
+  if (it == data.end()) {
+    throw RestProfileException(
+        "Failed to remove profile; profile does not exist.");
+  }
+  data.erase(it);
+
+  // Write the json back to the file.
+  try {
     write_file(data, filepath_);
+  } catch (const std::exception& e) {
+    throw RestProfileException(
+        "Failed to remove profile; error writing file: " +
+        std::string(e.what()));
   }
 }
 
