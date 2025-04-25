@@ -1,0 +1,10 @@
+**/.DS_Store
+
+.nova
+target
+test.config
+
+.*.swp
+.*.swo
+
+/.idea/*

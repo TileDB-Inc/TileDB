@@ -1,3 +1,4 @@
+.cache*
 .nova*
 .vscode*
 *.sw?

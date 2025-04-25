@@ -63,3 +63,11 @@ commence(unit_test float_scale_input_val)
     this_target_object_libraries(float_scaling_filter)
     this_target_sources(main.cc unit_float_scale_input_validation.cc)
 conclude(unit_test)
+
+commence(unit_test filter_pipeline_rs)
+    this_target_sources(
+        main.cc
+        unit_filter_pipeline_rs.cc
+    )
+    this_target_link_libraries(filter_pipeline_test_rs)
+conclude(unit_test)
