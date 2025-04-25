@@ -33,6 +33,7 @@
 #ifndef TILEDB_CPP_PROFILE_EXPERIMENTAL_H
 #define TILEDB_CPP_PROFILE_EXPERIMENTAL_H
 
+#include "capi_string.h"
 #include "context.h"
 #include "deleter.h"
 #include "exception.h"
@@ -226,6 +227,22 @@ class Profile {
       tiledb_error_free(&capi_error);
       throw ProfileException(msg);
     }
+  }
+
+  /** Dumps the profile in ASCII format. */
+  std::string dump() const {
+    tiledb_error_t* capi_error = nullptr;
+    tiledb_string_t* str;
+    int rc = tiledb_profile_dump_str(profile_.get(), &str, &capi_error);
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
+
+    return impl::convert_to_string(&str).value();
   }
 
  private:

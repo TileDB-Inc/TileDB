@@ -201,6 +201,30 @@ TILEDB_EXPORT capi_return_t tiledb_profile_save(
 TILEDB_EXPORT capi_return_t tiledb_profile_remove(
     tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
+/**
+ * Dumps a string representation of the given profile.
+ *
+ * The output string handle must be freed by the user after use.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_profile_dump_str(profile, &tdb_string);
+ * // Use the string
+ * tiledb_string_free(&tdb_string);
+ * @endcode
+ *
+ * @param[in] profile The profile.
+ * @param[out] out The output string handle.
+ * @param[out] error Error object returned upon error (`NULL` if there is no
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_dump_str(
+    tiledb_profile_t* profile,
+    tiledb_string_t** out,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif
