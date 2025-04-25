@@ -34,6 +34,7 @@
 #define TILEDB_FILTER_TEST_OXIDIZE_H
 
 #include "tiledb/sm/filter/test/oxidize.h"
+#include "build/tiledb/tiledb_export.h"
 #include "cxx.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
@@ -48,7 +49,7 @@ namespace tiledb::sm::test {
 /**
  * @return a filter pipeline used in SC-65154
  */
-std::unique_ptr<FilterPipeline> build_pipeline_65154() {
+TILEDB_EXPORT std::unique_ptr<FilterPipeline> build_pipeline_65154() {
   const Datatype input_type = Datatype::INT32;
   FilterPipeline pipeline;
   pipeline.add_filter(CompressionFilter(
@@ -64,7 +65,7 @@ std::unique_ptr<FilterPipeline> build_pipeline_65154() {
  * Runs `check_run_pipeline_roundtrip` from `filter_test_support.h` against
  * some Rust data
  */
-void filter_pipeline_roundtrip(
+TILEDB_EXPORT void filter_pipeline_roundtrip(
     const FilterPipeline& pipeline, rust::Slice<const uint8_t> data) {
   tiledb::sm::Config config;
 
