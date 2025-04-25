@@ -30,4 +30,5 @@ commence(unit_test delete_update_condition)
     # The dependencies can't yet be factored into separate object libraries
     this_target_link_libraries(ast_test_support_lib)
     this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(blosc)
 conclude(unit_test)

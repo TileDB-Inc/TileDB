@@ -34,4 +34,5 @@ commence(unit_test query_plan)
     target_include_directories(unit_query_plan PRIVATE
         "$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>")
     this_target_link_libraries(tiledb_test_support_lib)
+    this_target_link_libraries(blosc)
 conclude(unit_test)

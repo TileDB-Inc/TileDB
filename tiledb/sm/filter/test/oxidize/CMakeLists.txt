@@ -62,25 +62,24 @@ target_include_directories(${FILTER_PIPELINE_LIB}
 # Step 4: Build a test binary that links to the shared library we just created
 
 add_test(
-  oxidized_filter_pipeline
+  NAME oxidized_filter_pipeline
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMAND
-    ${CARGO_ENV}
-    "TILEDB_ROOT=${CMAKE_SOURCE_DIR}"
-    "CXX_ROOT=${CMAKE_CURRENT_BINARY_DIR}/cxxbridge"
-    "SEARCH_PATH=${CMAKE_CURRENT_BINARY_DIR}"
     ${CARGO}
     "test"
     ${CARGO_PROFILE_FLAG}
     "--no-run"
     "-pwrap_cpp"
-    ${CARGO}
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 )
 
-set_tests_properties(${FILTER_PIPELINE_LIB} PROPERTIES FIXTURES_SETUP filter_pipeline)
-set_tests_properties(test PROPERTIES  FIXTURES_REQUIRED filter_pipeline)
-
-add_custom_target(
-    xkcd_boop
-    DEPENDS a_test_binary
+set_property(
+    TEST
+        oxidized_filter_pipeline
+    PROPERTY ENVIRONMENT
+        "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+        ";CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+        ";TILEDB_ROOT=${CMAKE_SOURCE_DIR}"
+        ";CXX_ROOT=${CMAKE_CURRENT_BINARY_DIR}/cxxbridge"
+        ";SEARCH_PATH=${CMAKE_CURRENT_BINARY_DIR}"
 )
+

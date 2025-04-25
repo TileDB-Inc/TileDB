@@ -50,7 +50,7 @@ include(Format)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h" VERFILE)
 if (NOT VERFILE)
-  message(FATAL_ERROR "Failed to parse tiledb_version.h!")
+    message(FATAL_ERROR "Failed to parse tiledb_version.h!")
 endif()
 
 string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9])*" _ ${VERFILE})
@@ -71,13 +71,13 @@ set(REGEX_CHARS "[\\^\\$\\+\\*\\?\\|\\(\\)]") # note: must be escaped, and regex
 set(REGEX_CHAR_PATH_MSG " contains a REGEX character and may break CMakeList processing. Please use"
                         " a different path, or set TILEDB_ALLOW_REGEX_CHAR_PATH to override.")
 if (NOT TILEDB_ALLOW_REGEX_CHAR_PATH)
-  if (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
-    message(FATAL_ERROR "CMAKE_CURRENT_SOURCE_DIR ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_CURRENT_SOURCE_DIR}'")
-  elseif (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
-    message(FATAL_ERROR "CMAKE_CURRENT_BINARY_DIR ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_CURRENT_BINARY_DIR}'")
-  elseif (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
-    message(FATAL_ERROR "CMAKE_INSTALL_PREFIX ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_INSTALL_PREFIX}'")
-  endif()
+    if (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
+        message(FATAL_ERROR "CMAKE_CURRENT_SOURCE_DIR ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_CURRENT_SOURCE_DIR}'")
+    elseif (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
+        message(FATAL_ERROR "CMAKE_CURRENT_BINARY_DIR ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_CURRENT_BINARY_DIR}'")
+    elseif (CMAKE_CURRENT_SOURCE_DIR MATCHES ${REGEX_CHARS})
+        message(FATAL_ERROR "CMAKE_INSTALL_PREFIX ${REGEX_CHAR_PATH_MSG}:\n  '${CMAKE_INSTALL_PREFIX}'")
+    endif()
 endif()
 
 ############################################################
@@ -85,30 +85,30 @@ endif()
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
 if(APPLE)
-  # Use @rpath on macOS for building shared libraries.
-  set(CMAKE_MACOSX_RPATH ON)
-  # Don't allow macOS .frameworks to be used for dependencies.
-  set(CMAKE_FIND_FRAMEWORK NEVER)
+    # Use @rpath on macOS for building shared libraries.
+    set(CMAKE_MACOSX_RPATH ON)
+    # Don't allow macOS .frameworks to be used for dependencies.
+    set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
 # Set C++20 as default required standard for all C++ targets.
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ Standard")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
-  # Use GNU extensions under Cygwin
-  set(CMAKE_CXX_EXTENSIONS ON)
+    # Use GNU extensions under Cygwin
+    set(CMAKE_CXX_EXTENSIONS ON)
 else()
-  set(CMAKE_CXX_EXTENSIONS OFF)
+    set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
 if (TILEDB_CCACHE)
-  include(FindCcache)
-  set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
-  set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
+    include(FindCcache)
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
 endif()
 
 # Set -fvisibility=hidden (or equivalent) flags by default.
@@ -133,78 +133,78 @@ message(STATUS "  CMake version: ${CMAKE_VERSION}")
 
 # Set compiler flags
 if (MSVC)
-  # Turn on standards-conformance mode
-  add_compile_options("/permissive-")
-  # /EH: Enables standard C++ stack unwinding.
-  # s: Catches only standard C++ exceptions when you use catch(...) syntax.
-  # c: The compiler assumes that functions declared as extern "C" never throw a C++ exception
-  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
-  # We disable some warnings that are not present in gcc/clang -Wall:
-  #   C4101: unreferenced local variable
-  #   C4146: unary minus operator applied to unsigned type
-  #   C4244: conversion warning of floating point to integer type.
-  #   C4251: C++ export warning
-  #   C4456: local variable hiding previous local variable
-  #   C4457: local variable hiding function parameter
-  #   C4702: unreachable code
-  #   C4800: warning implicit cast int to bool
-  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
-  # Warnings as errors:
-  if (TILEDB_WERROR)
-    add_compile_options(/WX)
-  endif()
-  # Turn off MSVC deprecation of certain standard library functions. This allows
-  # other deprecations to remain visible.
-  add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
-  # We currently need to suppress warnings about deprecation (C4996) for two cases:
-  #   1. C++ API functions that call deprecated C API functions
-  #   2. two warnings in `test/src/helpers.cc` that call deprecated C API functions
-  add_compile_options(/wd4996)
-  # Disable GDI (which we don't need, and causes some macro
-  # re-definition issues if wingdi.h is included)
-  add_compile_definitions("NOGDI")
-  # Add /MPn flag from CMake invocation (if defined).
-  add_compile_options(${MSVC_MP_FLAG})
-  # Build-specific flags
-  add_compile_definitions("$<IF:$<CONFIG:Debug>,DEBUG,NDEBUG>")
-  add_compile_options(
+    # Turn on standards-conformance mode
+    add_compile_options("/permissive-")
+    # /EH: Enables standard C++ stack unwinding.
+    # s: Catches only standard C++ exceptions when you use catch(...) syntax.
+    # c: The compiler assumes that functions declared as extern "C" never throw a C++ exception
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
+    # We disable some warnings that are not present in gcc/clang -Wall:
+    #   C4101: unreferenced local variable
+    #   C4146: unary minus operator applied to unsigned type
+    #   C4244: conversion warning of floating point to integer type.
+    #   C4251: C++ export warning
+    #   C4456: local variable hiding previous local variable
+    #   C4457: local variable hiding function parameter
+    #   C4702: unreachable code
+    #   C4800: warning implicit cast int to bool
+    add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
+    # Warnings as errors:
+    if (TILEDB_WERROR)
+        add_compile_options(/WX)
+    endif()
+    # Turn off MSVC deprecation of certain standard library functions. This allows
+    # other deprecations to remain visible.
+    add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
+    # We currently need to suppress warnings about deprecation (C4996) for two cases:
+    #   1. C++ API functions that call deprecated C API functions
+    #   2. two warnings in `test/src/helpers.cc` that call deprecated C API functions
+    add_compile_options(/wd4996)
+    # Disable GDI (which we don't need, and causes some macro
+    # re-definition issues if wingdi.h is included)
+    add_compile_definitions("NOGDI")
+    # Add /MPn flag from CMake invocation (if defined).
+    add_compile_options(${MSVC_MP_FLAG})
+    # Build-specific flags
+    add_compile_definitions("$<IF:$<CONFIG:Debug>,DEBUG,NDEBUG>")
+    add_compile_options(
     # /Od: Disable optimizations
     "$<$<CONFIG:Debug>:/Od>"
     # /Ox: Enable most speed optimizations
     "$<$<CONFIG:Release,RelWithDebInfo>:/Ox>"
     # /Zi: Generate debug info in a separate .pdb file
     "$<$<CONFIG:Debug,RelWithDebInfo>:/Zi>")
-  # /bigobj: increase number of sections in .obj file
-  add_compile_options("/bigobj")
+    # /bigobj: increase number of sections in .obj file
+    add_compile_options("/bigobj")
 else()
-  add_compile_options(-Wall -Wextra)
-  if (TILEDB_WERROR)
-    add_compile_options(-Werror)
-  endif()
-  # Build-specific flags
-  add_compile_definitions("$<IF:$<CONFIG:Debug,Coverage>,DEBUG,NDEBUG>")
-  add_compile_options(
+    add_compile_options(-Wall -Wextra)
+    if (TILEDB_WERROR)
+        add_compile_options(-Werror)
+    endif()
+    # Build-specific flags
+    add_compile_definitions("$<IF:$<CONFIG:Debug,Coverage>,DEBUG,NDEBUG>")
+    add_compile_options(
     "$<$<CONFIG:Debug>:-O0;-g3;-ggdb3;-gdwarf-3>"
     "$<$<CONFIG:Coverage>:-g3;-gdwarf-3;--coverage>"
     "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
     "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options(
       "$<$<CONFIG:Debug>:-fstandalone-debug>"
       "$<$<CONFIG:Coverage>:-fprofile-instr-generate;-fcoverage-mapping>")
-    add_link_options("$<$<CONFIG:Coverage>:--coverage;-fprofile-instr-generate;-fcoverage-mapping>")
-  endif()
-
-  # Disable newer Clang warnings about unqualified calls to std::move
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
-      add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
+        add_link_options("$<$<CONFIG:Coverage>:--coverage;-fprofile-instr-generate;-fcoverage-mapping>")
     endif()
-  endif()
 
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "16")
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fexperimental-library>)
-  endif()
+    # Disable newer Clang warnings about unqualified calls to std::move
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
+            add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
+        endif()
+    endif()
+
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "16")
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fexperimental-library>)
+    endif()
 endif()
 
 # Definitions for all targets
@@ -214,20 +214,20 @@ add_definitions(-D_FILE_OFFSET_BITS=64)
 include(CheckAVX2Support)
 CheckAVX2Support()
 if (COMPILER_SUPPORTS_AVX2)
-  add_compile_options(${COMPILER_AVX2_FLAG})
+    add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
 
 if(TILEDB_SANITIZER)
-  validate_sanitizer_options()
+    validate_sanitizer_options()
 endif()
 
 include(DetectStdPmr)
 
 if(TILEDB_USE_CPP17_PMR)
-  message(STATUS "Building with cpp17::pmr")
-  add_definitions(-DUSE_CPP17_PMR)
+    message(STATUS "Building with cpp17::pmr")
+    add_definitions(-DUSE_CPP17_PMR)
 else()
-  message(STATUS "Building with std::pmr")
+    message(STATUS "Building with std::pmr")
 endif()
 
 #######################################################
@@ -370,15 +370,15 @@ set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEA
 add_library(configuration_definitions INTERFACE)
 
 if (TILEDB_AZURE)
-  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_AZURE)
+    target_compile_definitions(configuration_definitions INTERFACE -DHAVE_AZURE)
 endif()
 
 if (TILEDB_GCS)
-  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_GCS)
+    target_compile_definitions(configuration_definitions INTERFACE -DHAVE_GCS)
 endif()
 
 if (TILEDB_S3)
-  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
+    target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
 
 ##################################
@@ -400,15 +400,15 @@ set(TILEDB_LOCALINSTALL_INCLUDE "${TILEDB_LOCALINSTALL_DIR}/include")
 # C API
 #####################
 foreach(HEADER ${TILEDB_C_API_FILENAME_HEADERS})
-  cmake_path(GET HEADER FILENAME HEADER_STRIPPED)
-  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
+    cmake_path(GET HEADER FILENAME HEADER_STRIPPED)
+    configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
 endforeach()
 foreach(HEADER ${TILEDB_C_API_RELATIVE_HEADERS})
-  cmake_path(RELATIVE_PATH HEADER
+    cmake_path(RELATIVE_PATH HEADER
       BASE_DIRECTORY ${TILEDB_C_API_RELATIVE_HEADER_BASE}
       OUTPUT_VARIABLE HEADER_STRIPPED
       )
-  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${HEADER_STRIPPED} COPYONLY)
+    configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${HEADER_STRIPPED} COPYONLY)
 endforeach()
 # `configure_file` for the export header happens after it's been generated
 
@@ -422,11 +422,11 @@ file(GLOB TILEDB_CPP_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/tiledb_experimental"
     )
 foreach(HEADER ${TILEDB_CPP_HEADERS})
-  string(REGEX
+    string(REGEX
       REPLACE "^${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/" ""
       HEADER_STRIPPED ${HEADER}
       )
-  configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
+    configure_file(${HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/tiledb/${HEADER_STRIPPED} COPYONLY)
 endforeach()
 
 #####################
@@ -444,13 +444,13 @@ target_include_directories(local_install INTERFACE ${CMAKE_SOURCE_DIR})
 enable_testing()
 
 if(TILEDB_TESTS)
-  find_package(rapidcheck CONFIG REQUIRED)
-  # Add custom Catch2 entry point that suppresses message boxes on debug assertion
-  # failures on Windows CI.
-  find_package(Catch2 REQUIRED)
-  add_library(tiledb_Catch2WithMain STATIC
+    find_package(rapidcheck CONFIG REQUIRED)
+    # Add custom Catch2 entry point that suppresses message boxes on debug assertion
+    # failures on Windows CI.
+    find_package(Catch2 REQUIRED)
+    add_library(tiledb_Catch2WithMain STATIC
     test/support/src/tdb_catch_main.cc)
-  target_link_libraries(tiledb_Catch2WithMain PUBLIC Catch2::Catch2)
+    target_link_libraries(tiledb_Catch2WithMain PUBLIC Catch2::Catch2)
 endif()
 
 # -------------------------------------------------------
@@ -496,13 +496,13 @@ add_custom_target(all_unit_tests)
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
 if (TILEDB_TESTS)
-  # Isolate the experimental unit tests into their own target
-  add_custom_target(experimental_unit_tests)
-  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
-  if (${Unit_Tests})
-    add_dependencies(experimental_unit_tests ${Unit_Tests})
-  endif()
-  reset_accumulator(ACCUMULATOR unit_test_targets)
+    # Isolate the experimental unit tests into their own target
+    add_custom_target(experimental_unit_tests)
+    retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
+    if (${Unit_Tests})
+        add_dependencies(experimental_unit_tests ${Unit_Tests})
+    endif()
+    reset_accumulator(ACCUMULATOR unit_test_targets)
 endif()
 
 # Build the TileDB library
@@ -515,67 +515,71 @@ add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
-  add_subdirectory(tools)
+    add_subdirectory(tools)
 endif()
 
 # -------------------------------------------------------
 # Tests
 # -------------------------------------------------------
 if (TILEDB_TESTS)
-  add_subdirectory(test/support)
-  add_subdirectory(test)
+    add_subdirectory(test/support)
+    add_subdirectory(test)
 
-  # ----------------------------------
-  # All unit test executables from `unit_test` environments are dependencies of
-  # the `all_unit_tests` phantom target.
-  #
-  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
-  add_custom_target(ordinary_unit_tests)
-  add_dependencies(ordinary_unit_tests ${Unit_Tests})
-  add_dependencies(all_unit_tests ordinary_unit_tests)
-  add_dependencies(all_unit_tests experimental_unit_tests)
+    # ----------------------------------
+    # All unit test executables from `unit_test` environments are dependencies of
+    # the `all_unit_tests` phantom target.
+    #
+    retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
+    add_custom_target(ordinary_unit_tests)
+    add_dependencies(ordinary_unit_tests ${Unit_Tests})
+    add_dependencies(all_unit_tests ordinary_unit_tests)
+    add_dependencies(all_unit_tests experimental_unit_tests)
 
-  # ----------------------------------
-  # Target `tests` build and runs all test executables
-  add_custom_target(tests)
-  add_dependencies(tests all_unit_tests)
+    # ----------------------------------
+    # Target `tests` build and runs all test executables
+    add_custom_target(tests)
+    add_dependencies(tests all_unit_tests)
 
-  # ----------------------------------
-  # Test targets added explicitly
-  add_dependencies(tests tiledb_unit)
-  add_dependencies(tests tiledb_regression)
-  add_dependencies(tests test_assert)
-  if(TILEDB_ARROW_TESTS)
-    add_dependencies(tests unit_arrow)
-  endif()
+    # ----------------------------------
+    # Test targets added explicitly
+    add_dependencies(tests tiledb_unit)
+    add_dependencies(tests tiledb_regression)
+    add_dependencies(tests test_assert)
+    if(TILEDB_ARROW_TESTS)
+        add_dependencies(tests unit_arrow)
+    endif()
 
-  # C API support
-  add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
-  # C API basics
-  add_dependencies(tests unit_capi_config unit_capi_context)
-  add_dependencies(tests unit_capi_array)
-  add_dependencies(tests unit_capi_array_schema)
-  add_dependencies(tests unit_capi_buffer)
-  add_dependencies(tests unit_capi_buffer_list)
-  add_dependencies(tests unit_capi_data_order)
-  add_dependencies(tests unit_capi_datatype)
-  add_dependencies(tests unit_capi_filesystem)
-  add_dependencies(tests unit_capi_query_type)
-  add_dependencies(tests unit_capi_vfs)
-  # C API array schema
-  add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)
+    # ----------------------------------
+    # Rust test dependencies
+    add_dependencies(tests filter_pipeline_objlib)
 
-  if (ENABLE_MAGIC_TEST)
-    add_dependencies(tests unit_mgc_dict)
-  endif()
+    # C API support
+    add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
+    # C API basics
+    add_dependencies(tests unit_capi_config unit_capi_context)
+    add_dependencies(tests unit_capi_array)
+    add_dependencies(tests unit_capi_array_schema)
+    add_dependencies(tests unit_capi_buffer)
+    add_dependencies(tests unit_capi_buffer_list)
+    add_dependencies(tests unit_capi_data_order)
+    add_dependencies(tests unit_capi_datatype)
+    add_dependencies(tests unit_capi_filesystem)
+    add_dependencies(tests unit_capi_query_type)
+    add_dependencies(tests unit_capi_vfs)
+    # C API array schema
+    add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)
 
-  add_subdirectory(test/regression)
+    if (ENABLE_MAGIC_TEST)
+        add_dependencies(tests unit_mgc_dict)
+    endif()
 
-  # Add custom target 'check', which builds and runs all tests.
-  # This includes both the main test suite in the 'test' directory (consisting of
-  # tiledb_unit, tiledb_regression and other tests), as well as the standalone
-  # tests in subdirectories of the 'tiledb' directory.
-  add_custom_target(check
+    add_subdirectory(test/regression)
+
+    # Add custom target 'check', which builds and runs all tests.
+    # This includes both the main test suite in the 'test' directory (consisting of
+    # tiledb_unit, tiledb_regression and other tests), as well as the standalone
+    # tests in subdirectories of the 'tiledb' directory.
+    add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
     DEPENDS tests
     USES_TERMINAL
@@ -609,10 +613,10 @@ add_custom_target(
 ###########################################################
 
 if(TILEDB_EXTRA_CMAKE_INCLUDE)
-  get_filename_component(
+    get_filename_component(
     EXTRA_INCLUDE_ABSPATH
     "${TILEDB_EXTRA_CMAKE_INCLUDE}"
     ABSOLUTE
   )
-  include("${EXTRA_INCLUDE_ABSPATH}")
+    include("${EXTRA_INCLUDE_ABSPATH}")
 endif()

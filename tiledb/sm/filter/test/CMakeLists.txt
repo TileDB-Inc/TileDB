@@ -27,18 +27,18 @@
 include(unit_test)
 
 commence(unit_test filter_create)
-    this_target_object_libraries(all_filters)
-    this_target_sources(main.cc unit_filter_create.cc)
+this_target_object_libraries(all_filters)
+this_target_sources(main.cc unit_filter_create.cc)
 conclude(unit_test)
 
 commence(unit_test filter_pipeline)
-    this_target_object_libraries(filter_pipeline)
-    this_target_sources(main.cc unit_filter_pipeline.cc)
+this_target_object_libraries(filter_pipeline)
+this_target_sources(main.cc unit_filter_pipeline.cc)
 conclude(unit_test)
 
 commence(unit_test run_filter_pipeline)
-    this_target_object_libraries(filter_pipeline mem_helpers)
-    this_target_sources(
+this_target_object_libraries(filter_pipeline mem_helpers)
+this_target_sources(
         main.cc
         add_1_in_place_filter.cc
         add_1_including_metadata_filter.cc
@@ -46,7 +46,6 @@ commence(unit_test run_filter_pipeline)
         add_n_in_place_filter.cc
         filter_test_support.cc
         filtered_tile_checker.cc
-        oxidize.cc
         pseudo_checksum_filter.cc
         unit_checksum_pipeline.cc
         unit_bit_width_reduction_pipeline.cc
@@ -61,13 +60,13 @@ commence(unit_test run_filter_pipeline)
         unit_65154.cc
         ${CMAKE_SOURCE_DIR}/test/support/rapidcheck/show_datatype.cc
     )
-    this_target_link_libraries(rapidcheck cxx_rust_std)
-    target_include_directories(unit_run_filter_pipeline PRIVATE ${CMAKE_BINARY_DIR})
+this_target_link_libraries(rapidcheck cxx_rust_std)
+target_include_directories(unit_run_filter_pipeline PRIVATE ${CMAKE_BINARY_DIR})
 conclude(unit_test)
 
 commence(unit_test float_scale_input_val)
-    this_target_object_libraries(float_scaling_filter)
-    this_target_sources(main.cc unit_float_scale_input_validation.cc)
+this_target_object_libraries(float_scaling_filter)
+this_target_sources(main.cc unit_float_scale_input_validation.cc)
 conclude(unit_test)
 
 add_subdirectory(oxidize)

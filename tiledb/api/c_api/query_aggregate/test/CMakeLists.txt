@@ -33,6 +33,7 @@ commence(unit_test capi_query_aggregate)
     target_compile_options(unit_capi_query_aggregate PRIVATE -Wno-deprecated-declarations)
   endif()
   this_target_link_libraries(tiledb_test_support_lib)
+  this_target_link_libraries(blosc)
   
   if (TILEDB_SERIALIZATION)
     add_definitions(-DTILEDB_SERIALIZATION)
