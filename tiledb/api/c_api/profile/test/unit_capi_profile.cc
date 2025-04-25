@@ -255,3 +255,30 @@ TEST_CASE_METHOD(
   }
   tiledb_profile_free(&profile);
 }
+
+TEST_CASE_METHOD(
+    CAPINProfileFx,
+    "C API: tiledb_profile_dump_str argument validation",
+    "[capi][profile][dump]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  tiledb_error_t* err = nullptr;
+  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  REQUIRE(profile != nullptr);
+  tiledb_string_t* dump_ascii;
+  SECTION("success") {
+    rc = tiledb_profile_dump_str(profile, &dump_ascii, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    tiledb_string_free(&dump_ascii);
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_dump_str(nullptr, &dump_ascii, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null dump_ascii") {
+    rc = tiledb_profile_dump_str(profile, nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+
+  tiledb_profile_free(&profile);
+}

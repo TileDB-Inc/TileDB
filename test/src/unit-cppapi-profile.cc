@@ -235,3 +235,25 @@ TEST_CASE_METHOD(
         p1.get_name()));
   }
 }
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile dump validation",
+    "[cppapi][profile][dump]") {
+  SECTION("success") {
+    Profile p(name_, tempdir_.path());
+    p.set_param("rest.username", "test_user");
+    p.set_param("rest.password", "test_password");
+    std::string dump_str = p.dump();
+
+    // check that the dump string contains the expected values
+    REQUIRE(dump_str.find("rest.username") != std::string::npos);
+    REQUIRE(dump_str.find("test_user") != std::string::npos);
+    REQUIRE(dump_str.find("rest.password") != std::string::npos);
+    REQUIRE(dump_str.find("test_password") != std::string::npos);
+    REQUIRE(dump_str.find("rest.payer_namespace") != std::string::npos);
+    REQUIRE(dump_str.find("rest.server_address") != std::string::npos);
+    REQUIRE(dump_str.find("https://api.tiledb.com") != std::string::npos);
+    REQUIRE(dump_str.find("rest.token") != std::string::npos);
+  }
+}
