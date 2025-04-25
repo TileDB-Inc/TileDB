@@ -4,7 +4,7 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 cxx = { workspace = true }

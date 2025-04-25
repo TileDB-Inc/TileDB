@@ -5,7 +5,6 @@ edition = { workspace = true }
 
 [lib]
 name = "tiledb_sm_filter_test_sys"
-crate-type = ["staticlib"]
 
 [dev-dependencies]
 anyhow = { workspace = true }
