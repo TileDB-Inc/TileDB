@@ -82,9 +82,13 @@ class Profile {
     tiledb_error_t* capi_error = nullptr;
 
     int rc = tiledb_profile_alloc(n, h, &capi_profile, &capi_error);
-    if (rc != TILEDB_OK)
-      throw ProfileException(
-          "Failed to create Profile due to an internal error.");
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
 
     profile_ = std::shared_ptr<tiledb_profile_t>(capi_profile, Profile::free);
   }
@@ -113,9 +117,13 @@ class Profile {
     tiledb_string_t* name;
 
     int rc = tiledb_profile_get_name(profile_.get(), &name, &capi_error);
-    if (rc != TILEDB_OK)
-      throw ProfileException(
-          "Failed to retrieve profile name due to an internal error.");
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
 
     // Convert string handle to a std::string
     const char* name_ptr;
@@ -134,9 +142,13 @@ class Profile {
     tiledb_error_t* capi_error = nullptr;
     tiledb_string_t* homedir;
     int rc = tiledb_profile_get_homedir(profile_.get(), &homedir, &capi_error);
-    if (rc != TILEDB_OK)
-      throw ProfileException(
-          "Failed to retrieve profile homedir due to an internal error.");
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
 
     // Convert string handle to a std::string
     const char* homedir_ptr;
@@ -155,9 +167,13 @@ class Profile {
     tiledb_error_t* capi_error = nullptr;
     int rc = tiledb_profile_set_param(
         profile_.get(), param.c_str(), value.c_str(), &capi_error);
-    if (rc != TILEDB_OK)
-      throw ProfileException(
-          "Failed to set parameter due to an internal error.");
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
   }
 
   /** Retrieves a parameter value from the profile. */
@@ -166,9 +182,13 @@ class Profile {
     tiledb_string_t* value;
     int rc = tiledb_profile_get_param(
         profile_.get(), param.c_str(), &value, &capi_error);
-    if (rc != TILEDB_OK)
-      throw ProfileException(
-          "Failed to get parameter due to an internal error.");
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
 
     // Convert string handle to a std::string
     const char* value_ptr;
@@ -186,18 +206,26 @@ class Profile {
   void save() {
     tiledb_error_t* capi_error = nullptr;
     int rc = tiledb_profile_save(profile_.get(), &capi_error);
-    if (rc != TILEDB_OK)
-      throw ProfileException(
-          "Failed to save profile to file due to an internal error.");
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
   }
 
   /** Removes the profile from the local file. */
   void remove() {
     tiledb_error_t* capi_error = nullptr;
     int rc = tiledb_profile_remove(profile_.get(), &capi_error);
-    if (rc != TILEDB_OK)
-      throw ProfileException(
-          "Failed to remove profile from file due to an internal error.");
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
   }
 
  private:
