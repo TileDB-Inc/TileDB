@@ -200,4 +200,38 @@ TEST_CASE_METHOD(
     REQUIRE(!profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath, name_));
   }
+  SECTION("profiles file is present") {
+    Profile p(name_, tempdir_.path());
+    // check that the profiles file was not there before
+    REQUIRE(!std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // attempt to remove the profile
+    REQUIRE_THROWS(p.remove());
+  }
+  SECTION("another profile is saved - profiles file is present") {
+    Profile p1(name_, tempdir_.path());
+    Profile p2("another_profile", tempdir_.path());
+    // check that the profiles file was not there before
+    REQUIRE(!std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // save the other profile
+    p2.save();
+    // check that the profiles file is created
+    REQUIRE(std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // check that the other profile is saved
+    REQUIRE(profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        p2.get_name()));
+    // attempt remove the tested profile
+    REQUIRE_THROWS(p1.remove());
+    // check that the other profile still exists
+    REQUIRE(profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        p2.get_name()));
+    // check that the tested profile still does not exist
+    REQUIRE(!profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        p1.get_name()));
+  }
 }
