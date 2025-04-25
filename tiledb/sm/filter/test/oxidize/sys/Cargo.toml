@@ -11,6 +11,3 @@ crate-type = ["staticlib"]
 anyhow = { workspace = true }
 proptest = { workspace = true }
 tiledb_sm_filter_test = { workspace = true }
-
-[build-dependencies]
-bindgen = "0.71"

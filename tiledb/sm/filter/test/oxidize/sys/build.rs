@@ -49,22 +49,4 @@ fn main() {
         }
     }
     */
-
-    if false {
-        let tiledb_root = PathBuf::from("../../../../")
-            .canonicalize()
-            .expect("Unable to find root directory");
-
-        let bindings = bindgen::Builder::default()
-            .header("sys.h")
-            .clang_arg(format!("-I{}", tiledb_root.display()))
-            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-            .generate()
-            .expect("Unable to generate C bindings");
-
-        let out_dir = PathBuf::from(std::env::var("OUT_DIR").expect("OUT_DIR is not set"));
-        bindings
-            .write_to_file(out_dir.join("bindings.rs"))
-            .expect("Unable to write C bindings");
-    }
 }
