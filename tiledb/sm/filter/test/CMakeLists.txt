@@ -105,8 +105,11 @@ print_target_properties(test_filter_pipeline_rs)
 commence(unit_test filter_pipeline_rs)
     this_target_sources(
         main.cc
+        filter_test_support.cc
+        filtered_tile_checker.cc
         unit_filter_pipeline_rs.cc
     )
+    this_target_object_libraries(filter_pipeline mem_helpers)
     this_target_link_libraries(test_filter_pipeline_rs)
 conclude(unit_test)
 

@@ -1,11 +1,11 @@
 /**
- * @file test/support/rapidcheck/show.h
+ * @file unit_filter_pipeline_rs.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,51 +26,31 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file provides forward declarations of `rc::detail::showValue`
- * overloads, which seemingly must be included prior to the rapidcheck
- * header files.
+ * Class for generating data on a writer data and checking for that same data
+ * on another tile.
  */
 
-#ifndef TILEDB_RAPIDCHECK_SHOW_H_
-#define TILEDB_RAPIDCHECK_SHOW_H_
+#ifndef TILEDB_UNIT_FILTER_PIPELINE_RS_H
+#define TILEDB_UNIT_FILTER_PIPELINE_RS_H
 
-#include <test/support/stdx/optional.h>
+#include "cxxbridge/rust/cxx.h"
+#include "tiledb/api/c_api/api_external_common.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
 
-#include <ostream>
-
-#include "tiledb/sm/enums/datatype.h"
-
-namespace tiledb {
-namespace sm {
-class ASTNode;
-}  // namespace sm
-}  // namespace tiledb
-
-// forward declarations of `showValue` overloads
-// (these must be declared prior to including `rapidcheck/Show.hpp` for some
-// reason)
-namespace rc::detail {
+namespace tiledb::sm::test {
 
 /**
- * Specializes `show` for `std::optional<T>` to print the final test case after
- * shrinking
+ * @return a filter pipeline used in SC-65154
  */
-template <stdx::is_optional_v T>
-void showValue(const T& value, std::ostream& os);
+TILEDB_EXPORT std::unique_ptr<FilterPipeline> build_pipeline_65154();
 
 /**
- * Specializes `show` for Datatype.
- *
- * Requires adding `show_datatype.cc` to source list.
+ * Runs `check_run_pipeline_roundtrip` from `filter_test_support.h` against
+ * some Rust data
  */
-void showValue(const tiledb::sm::Datatype& value, std::ostream& os);
+TILEDB_EXPORT void filter_pipeline_roundtrip(
+    const FilterPipeline& pipeline, rust::Slice<const uint8_t> data);
 
-/**
- * Specializes `show` for query ASTNode
- */
-void showValue(const tiledb::sm::ASTNode& value, std::ostream& os);
-
-}  // namespace rc::detail
+}  // namespace tiledb::sm::test
 
 #endif

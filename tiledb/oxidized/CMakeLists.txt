@@ -61,6 +61,12 @@ add_custom_target(
 
 foreach(crate cpp lib IN ZIP_LISTS TILEDB_CRATES RUST_GEN_CPPS RUST_GEN_LIBS)
     add_library(${crate} OBJECT ${cpp})
-    target_include_directories(${crate} PUBLIC ${CARGO_INCLUDE_DIR})
+    target_include_directories(
+        ${crate}
+        PUBLIC
+            ${CMAKE_SOURCE_DIR}
+            ${CMAKE_BINARY_DIR}/tiledb/
+            ${CARGO_INCLUDE_DIR}
+    )
     target_link_libraries(${crate} ${lib})
 endforeach()

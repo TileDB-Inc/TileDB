@@ -28,11 +28,69 @@
  * @section DESCRIPTION
  */
 
-#include "cxxbridge/test_filter_pipeline_rs/src/lib.rs.h"
-
 #include <test/support/tdb_catch.h>
+
+// #include "cxxbridge/rust/cxx.h"
+#include "cxxbridge/test_filter_pipeline_rs/src/lib.rs.h"
+#include "test/support/assert_helpers.h"
+#include "test/support/src/mem_helpers.h"
+#include "tiledb/sm/filter/bit_width_reduction_filter.h"
+#include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/filter/filter_pipeline.h"
+#include "tiledb/sm/filter/test/filter_test_support.h"
+#include "tiledb/sm/filter/test/unit_filter_pipeline_rs.h"
 
 TEST_CASE(
     "FilterPipeline: Test Rust", "[oxidized][filter_pipeline][deserialize]") {
-  tiledb::oxidized::run_filter_pipeline_rs();
+  tiledb::oxidized::test::run_filter_pipeline_rs();
 }
+
+TEST_CASE(
+    "FilterPipeline: Proptest 65154", "[oxidized][filter_pipeline][65154]") {
+  tiledb::oxidized::test::run_proptest_65154();
+}
+
+namespace tiledb::sm::test {
+
+/**
+ * @return a filter pipeline used in SC-65154
+ */
+TILEDB_EXPORT std::unique_ptr<FilterPipeline> build_pipeline_65154() {
+  const Datatype input_type = Datatype::INT32;
+  FilterPipeline pipeline;
+  pipeline.add_filter(CompressionFilter(
+      Compressor::DOUBLE_DELTA, 0, input_type, Datatype::ANY));
+  pipeline.add_filter(BitWidthReductionFilter(input_type));
+  pipeline.add_filter(CompressionFilter(Compressor::ZSTD, 9, input_type));
+
+  return std::unique_ptr<FilterPipeline>(
+      new FilterPipeline(std::move(pipeline)));
+}
+
+/**
+ * Runs `check_run_pipeline_roundtrip` from `filter_test_support.h` against
+ * some Rust data
+ */
+TILEDB_EXPORT void filter_pipeline_roundtrip(
+    const FilterPipeline& pipeline, rust::Slice<const uint8_t> data) {
+  tiledb::sm::Config config;
+
+  ThreadPool thread_pool(4);
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
+  const Datatype input_type = Datatype::INT32;  // FIXME
+  VecDataGenerator<tiledb::test::AsserterRuntimeException> tile_gen(
+      input_type, std::span<const uint8_t>(data.begin(), data.end()));
+  auto [input_tile, offsets_tile] = tile_gen.create_writer_tiles(tracker);
+
+  check_run_pipeline_roundtrip(
+      config,
+      thread_pool,
+      input_tile,
+      offsets_tile,
+      pipeline,
+      &tile_gen,
+      tracker);
+}
+
+}  // namespace tiledb::sm::test

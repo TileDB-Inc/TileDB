@@ -63,7 +63,7 @@ void check_run_pipeline_full(
     ThreadPool& tp,
     shared_ptr<WriterTile>& tile,
     std::optional<shared_ptr<WriterTile>>& offsets_tile,
-    FilterPipeline& pipeline,
+    const FilterPipeline& pipeline,
     const TileDataGenerator* test_data,
     const FilteredTileChecker& filtered_buffer_checker,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -114,7 +114,7 @@ void check_run_pipeline_roundtrip(
     ThreadPool& tp,
     shared_ptr<WriterTile> tile,
     std::optional<shared_ptr<WriterTile>>& offsets_tile,
-    FilterPipeline& pipeline,
+    const FilterPipeline& pipeline,
     const TileDataGenerator* test_data,
     shared_ptr<MemoryTracker> memory_tracker) {
   // Run the pipeline forward.
