@@ -1,5 +1,5 @@
 [package]
-name = "filter_pipeline_test_rs"
+name = "test_filter_pipeline_rs"
 version.workspace = true
 edition.workspace = true
 

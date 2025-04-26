@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  */
 
-#include "cxxbridge/filter_pipeline_test_rs/src/lib.rs.h"
+#include "cxxbridge/test_filter_pipeline_rs/src/lib.rs.h"
 
 #include <test/support/tdb_catch.h>
 
