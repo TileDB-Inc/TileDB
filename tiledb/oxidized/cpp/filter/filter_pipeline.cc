@@ -31,23 +31,23 @@
 #include <test/support/tdb_catch.h>
 
 // #include "cxxbridge/rust/cxx.h"
-#include "cxxbridge/test_filter_pipeline_rs/src/lib.rs.h"
+#include "cxxbridge/filter_pipeline/src/lib.rs.h"
+#include "filter_pipeline.h"
 #include "test/support/assert_helpers.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/test/filter_test_support.h"
-#include "tiledb/sm/filter/test/unit_filter_pipeline_rs.h"
 
 TEST_CASE(
     "FilterPipeline: Test Rust", "[oxidized][filter_pipeline][deserialize]") {
-  tiledb::oxidized::test::run_filter_pipeline_rs();
+  REQUIRE(tiledb::oxidized::test::run_filter_pipeline_rs());
 }
 
 TEST_CASE(
     "FilterPipeline: Proptest 65154", "[oxidized][filter_pipeline][65154]") {
-  tiledb::oxidized::test::run_proptest_65154();
+  REQUIRE(tiledb::oxidized::test::run_proptest_65154());
 }
 
 namespace tiledb::sm::test {

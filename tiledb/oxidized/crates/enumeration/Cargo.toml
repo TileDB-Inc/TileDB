@@ -1,7 +1,8 @@
 [package]
-name = "test_filter_pipeline_rs"
-version.workspace = true
+name = "enumeration"
 edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [lib]
 crate-type = ["staticlib"]

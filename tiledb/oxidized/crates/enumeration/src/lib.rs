@@ -7,12 +7,13 @@ mod ffi {
     #[namespace = "tiledb::oxidized::test"]
     extern "Rust" {
         fn enumeration_name_prop() -> bool;
+        fn check_empty_enumeration_name() -> bool;
     }
 
     #[namespace = "tiledb::sm"]
     unsafe extern "C++" {
         include!("tiledb/sm/array_schema/enumeration.h");
-        include!("tiledb/sm/array_schema/test/unit_enumeration_rs.h");
+        include!("tiledb/oxidized/cpp/array_schema/enumeration.h");
         type ConstEnumeration;
 
         fn name(self: &ConstEnumeration) -> &CxxString;
@@ -26,8 +27,16 @@ mod ffi {
     }
 }
 
+pub fn check_empty_enumeration_name() -> bool {
+    let_cxx_string!(error = "");
+    let res = ffi::create_enumeration(&error);
+    assert!(res.is_err());
+    assert!(format!("{}", res.err().unwrap()).contains("must not be empty"));
+    true
+}
+
 pub fn prop_enumeration_name() -> impl Strategy<Value = String> {
-    proptest::string::string_regex(".*")
+    proptest::string::string_regex("..*")
         .expect("Error creating enumeration name strategy")
 }
 

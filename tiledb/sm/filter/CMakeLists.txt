@@ -169,4 +169,12 @@ commence(object_library filter_pipeline)
     this_target_object_libraries(all_filters baseline buffer constants stats thread_pool tile)
 conclude(object_library)
 
+commence(object_library filter_pipeline_test_support)
+    this_target_sources(
+        test/filter_test_support.cc
+        test/filtered_tile_checker.cc
+    )
+    this_target_object_libraries(baseline buffer tiledb_crypto)
+conclude(object_library)
+
 add_test_subdirectory()

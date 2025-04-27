@@ -1,11 +1,11 @@
 /**
- * @file tiledb/sm/array_schema/test/unit_enumertion.cc
+ * @file tiledb/oxidized/cpp/filter_pipeline/main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,35 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file contains unit tests for enumerations.
+ * This file defines a test `main()`
  */
 
-#include "unit_enumeration_rs.h"
+#define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
-#include "cxxbridge/test_enumeration_rs/src/lib.rs.h"
-#include "test/support/src/mem_helpers.h"
-#include "tiledb/sm/array_schema/enumeration.h"
-
-using namespace tiledb::sm;
-
-namespace tiledb::sm::test {
-
-/**
- * @return an Enumeration
- */
-std::shared_ptr<ConstEnumeration> create_enumeration(const std::string& name) {
-  auto tracker = tiledb::test::create_test_memory_tracker();
-  return Enumeration::create(
-      name, Datatype::INT32, 1, false, nullptr, 0, nullptr, 0, tracker);
-}
-
-}  // namespace tiledb::sm::test
-
-/*
- * Every attribute must appear in both attribute containers. Indices and
- * pointers must be coherent. For example, if attribute(i).name() == s, then
- * attribute(i) == attribute(s).
- */
-TEST_CASE("Enumeration name", "[oxidized][enumeration][name]") {
-  tiledb::oxidized::test::enumeration_name_prop();
-}
