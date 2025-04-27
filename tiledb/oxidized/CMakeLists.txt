@@ -13,6 +13,7 @@ set(CARGO_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/target")
 set(CARGO_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/target/${CARGO_PROFILE}")
 
 set(TILEDB_CRATES
+    test_enumeration_rs
     test_filter_pipeline_rs
 )
 
@@ -64,9 +65,9 @@ foreach(crate cpp lib IN ZIP_LISTS TILEDB_CRATES RUST_GEN_CPPS RUST_GEN_LIBS)
     target_include_directories(
         ${crate}
         PUBLIC
+            ${CARGO_INCLUDE_DIR}
             ${CMAKE_SOURCE_DIR}
             ${CMAKE_BINARY_DIR}/tiledb/
-            ${CARGO_INCLUDE_DIR}
     )
     target_link_libraries(${crate} ${lib})
 endforeach()

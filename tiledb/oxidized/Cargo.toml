@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["tests/test_filter_pipeline_rs"]
+members = ["tests/test_enumeration_rs", "tests/test_filter_pipeline_rs"]
 
 [workspace.package]
 edition = "2024"

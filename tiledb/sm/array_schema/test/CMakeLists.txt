@@ -43,3 +43,12 @@ commence(unit_test array_schema)
     )
     this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)
+
+commence(unit_test enumeration)
+    this_target_sources(
+        main.cc
+        unit_enumeration_rs.cc
+    )
+    this_target_object_libraries(enumeration mem_helpers)
+    this_target_link_libraries(test_enumeration_rs)
+conclude(unit_test)

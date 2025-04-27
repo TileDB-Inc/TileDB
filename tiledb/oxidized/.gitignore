@@ -8,3 +8,5 @@ test.config
 .*.swo
 
 /.idea/*
+
+Cargo.lock

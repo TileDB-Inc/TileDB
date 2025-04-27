@@ -1,0 +1,16 @@
+[package]
+name = "test_enumeration_rs"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+anyhow.workspace = true
+cxx.workspace = true
+proptest.workspace = true
+
+[build-dependencies]
+cxx-build.workspace = true
