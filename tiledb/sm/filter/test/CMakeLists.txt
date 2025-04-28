@@ -46,7 +46,6 @@ commence(unit_test run_filter_pipeline)
         add_n_in_place_filter.cc
         filter_test_support.cc
         filtered_tile_checker.cc
-        oxidize.cc
         pseudo_checksum_filter.cc
         unit_checksum_pipeline.cc
         unit_bit_width_reduction_pipeline.cc
