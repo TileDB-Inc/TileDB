@@ -136,10 +136,10 @@ class DoubleDelta {
    * @tparam The datatype of the values.
    * @param in The input buffer.
    * @param num The number of values in the buffer.
-   * @param bitsize The bitsize of the double deltas to be retrieved.
+   * @return The bitsize of the double deltas to be retrieved.
    */
   template <class T>
-  static void compute_bitsize(T* in, uint64_t num, unsigned int* bitsize);
+  static unsigned compute_bitsize(const T* in, uint64_t num);
 
   /**
    * Decompression function.
@@ -194,11 +194,44 @@ class DoubleDelta {
 namespace double_delta {
 
 template <typename T>
-struct Integral64;
+struct Integral64 {
+  using type = int64_t;
 
-template <typename T>
-  requires std::is_unsigned_v<T> || std::is_same_v<T, std::byte>
-struct Integral64<T> {
+  /**
+   * @return `a - b` if it can be represented as an `int64_t` without
+   * undefined behavior, `std::nullopt` otherwise
+   */
+  static std::optional<int64_t> delta(int64_t a, int64_t b) {
+    if (a < b) {
+      // negate so we can apply logic with generality
+      const auto negated = delta(b, a);
+      if (!negated.has_value()) {
+        if (a - b == std::numeric_limits<int64_t>::min()) {
+          return std::numeric_limits<int64_t>::min();
+        } else {
+          return std::nullopt;
+        }
+      } else if (negated.value() == std::numeric_limits<int64_t>::min()) {
+        return std::nullopt;
+      } else {
+        return -negated.value();
+      }
+    } else {
+      // overflow condition `a - b > i64::MAX`
+      // is equivalent to `a > i64::MAX + b`
+      if (b >= 0) {
+        return a - b;
+      } else if (a > std::numeric_limits<int64_t>::max() + b) {
+        return std::nullopt;
+      } else {
+        return a - b;
+      }
+    }
+  }
+};
+
+template <>
+struct Integral64<uint64_t> {
   using type = uint64_t;
 
   /**
@@ -236,44 +269,6 @@ struct Integral64<T> {
       }
     } else {
       return -negative_delta.value();
-    }
-  }
-};
-
-template <typename T>
-  requires std::is_signed_v<T>
-struct Integral64<T> {
-  using type = int64_t;
-
-  /**
-   * @return `a - b` if it can be represented as an `int64_t` without
-   * undefined behavior, `std::nullopt` otherwise
-   */
-  static std::optional<int64_t> delta(int64_t a, int64_t b) {
-    if (a < b) {
-      // negate so we can apply logic with generality
-      const auto negated = delta(b, a);
-      if (!negated.has_value()) {
-        if (a - b == std::numeric_limits<int64_t>::min()) {
-          return std::numeric_limits<int64_t>::min();
-        } else {
-          return std::nullopt;
-        }
-      } else if (negated.value() == std::numeric_limits<int64_t>::min()) {
-        return std::nullopt;
-      } else {
-        return -negated.value();
-      }
-    } else {
-      // overflow condition `a - b > i64::MAX`
-      // is equivalent to `a > i64::MAX + b`
-      if (b >= 0) {
-        return a - b;
-      } else if (a > std::numeric_limits<int64_t>::max() + b) {
-        return std::nullopt;
-      } else {
-        return a - b;
-      }
     }
   }
 };
