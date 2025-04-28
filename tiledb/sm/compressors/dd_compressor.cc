@@ -215,7 +215,8 @@ void DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 
   // Calculate bitsize (ignoring the sign bit)
   auto in = (T*)input_buffer->data();
-  const unsigned int bitsize = compute_bitsize<T>(in, num);
+  unsigned int bitsize;
+  compute_bitsize(in, num, &bitsize);
   assert(bitsize <= std::numeric_limits<uint8_t>::max());
   auto bitsize_c = static_cast<uint8_t>(bitsize);
 
@@ -256,54 +257,35 @@ void DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 }
 
 template <class T>
-unsigned DoubleDelta::compute_bitsize(const T* in, uint64_t num) {
+void DoubleDelta::compute_bitsize(T* in, uint64_t num, unsigned int* bitsize) {
   // Find maximum absolute double delta
+  *bitsize = 0;
+  int64_t max = 0;
   if (num <= 2) {
-    return 0;
+    *bitsize = 0;
+    return;
   }
-
-  using DeltaType = double_delta::Integral64<T>::type;
-
-  uint64_t max_delta = 0;
-  std::optional<int64_t> prev_delta;
-  for (uint64_t i = 1; i < num; ++i) {
-    const DeltaType cur = (DeltaType)(in[i]);
-    const DeltaType prev = (DeltaType)(in[i - 1]);
-
-    const std::optional<int64_t> cur_delta =
-        double_delta::Integral64<T>::delta(cur, prev);
-    if (!cur_delta.has_value()) {
-      throw DoubleDeltaException(
-          "Cannot compress with DoubleDelta: delta exceeds range of int64_t");
-    }
-
-    if (prev_delta.has_value()) {
-      const std::optional<int64_t> dd =
-          double_delta::Integral64<int64_t>::delta(
-              cur_delta.value(), prev_delta.value());
-      if (!dd.has_value()) {
-        throw DoubleDeltaException(
-            "Cannot compress with DoubleDelta; Some negative double delta is "
-            "out "
-            "of bounds");
-      }
-      max_delta =
-          std::max(static_cast<uint64_t>(std::abs(dd.value())), max_delta);
-    } else {
-      max_delta = std::abs(cur_delta.value());
-    }
-
-    prev_delta = cur_delta.value();
+  int64_t prev_delta = int64_t(in[1]) - int64_t(in[0]);
+  char delta_out_of_bounds = 0;
+  for (uint64_t i = 2; i < num; ++i) {
+    int64_t cur_delta = int64_t(in[i]) - int64_t(in[i - 1]);
+    int64_t dd = cur_delta - prev_delta;
+    delta_out_of_bounds |= (char)(cur_delta < 0 && prev_delta > 0 && dd > 0);
+    delta_out_of_bounds |= (char)(cur_delta > 0 && prev_delta < 0 && dd < 0);
+    max = std::max(std::abs(dd), max);
+    prev_delta = cur_delta;
   }
-
+  // Handle error
+  if (delta_out_of_bounds) {
+    throw DoubleDeltaException(
+        "Cannot compress with DoubleDelta; Some negative double delta is out "
+        "of bounds");
+  }
   // Calculate bitsize of the maximum absolute double delta
-  unsigned bitsize = 0;
   do {
-    ++bitsize;
-    max_delta >>= 1;
-  } while (max_delta);
-
-  return bitsize;
+    ++(*bitsize);
+    max >>= 1;
+  } while (max);
 }
 
 template <class T>

@@ -252,15 +252,8 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
                         rc::make_reinterpret_datatype(input));
                   }),
               [](std::pair<Datatype, Datatype> types) {
-                if (datatype_size(types.first) < sizeof(int64_t)) {
-                  return true;
-                } else if (
-                    types.second != Datatype::ANY &&
-                    datatype_size(types.second) < sizeof(int64_t)) {
-                  return true;
-                } else {
-                  return false;
-                }
+                return datatype_size(types.first) != sizeof(int64_t) ||
+                       datatype_size(types.second) != sizeof(int64_t);
               });
 
           const auto bytes = *rc::make_input_bytes(datatype);
