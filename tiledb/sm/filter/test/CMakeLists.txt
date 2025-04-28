@@ -68,5 +68,3 @@ commence(unit_test float_scale_input_val)
     this_target_object_libraries(float_scaling_filter)
     this_target_sources(main.cc unit_float_scale_input_validation.cc)
 conclude(unit_test)
-
-add_subdirectory(oxidize)
