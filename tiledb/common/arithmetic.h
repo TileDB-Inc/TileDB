@@ -197,11 +197,18 @@ struct checked_arithmetic<uint64_t> {
 template <>
 struct checked_arithmetic<int64_t> {
   static std::optional<int64_t> add(int64_t a, int64_t b) {
-    // FIXME: this is wrong
-    if (a <= std::numeric_limits<int64_t>::max() - b) {
-      return a + b;
+    if (b >= 0) {
+      if (a <= std::numeric_limits<int64_t>::max() - b) {
+        return a + b;
+      } else {
+        return std::nullopt;
+      }
     } else {
-      return std::nullopt;
+      if (std::numeric_limits<int64_t>::min() - b <= a) {
+        return a + b;
+      } else {
+        return std::nullopt;
+      }
     }
   }
 

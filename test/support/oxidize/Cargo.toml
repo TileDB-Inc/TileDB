@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-  "cxx_rust_std"
+  "arithmetic"
 ]
 default-members = [
-  "cxx_rust_std"
+  "arithmetic"
 ]
 
 [workspace.package]
@@ -15,3 +15,4 @@ version = "0.1.0"
 [workspace.dependencies]
 cxx = "1"
 cxx-build = "1"
+num-traits = "0.2"
