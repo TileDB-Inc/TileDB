@@ -72,3 +72,5 @@ foreach(crate IN LISTS TILEDB_CRATES)
     )
     target_link_libraries(${crate}_rs ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${crate}${CMAKE_STATIC_LIBRARY_SUFFIX})
 endforeach()
+
+set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} *.h)
