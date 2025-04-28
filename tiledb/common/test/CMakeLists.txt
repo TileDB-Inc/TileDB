@@ -26,6 +26,11 @@
 
 include(unit_test)
 
+commence(unit_test arithmetic)
+    this_target_sources(main.cc unit_arithmetic.cc)
+    this_target_link_libraries(cxx_rust_std rapidcheck)
+conclude(unit_test)
+
 commence(unit_test experimental)
     this_target_object_libraries(baseline)
     this_target_sources(

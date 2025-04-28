@@ -60,7 +60,7 @@ commence(unit_test run_filter_pipeline)
         unit_65154.cc
         ${CMAKE_SOURCE_DIR}/test/support/rapidcheck/show_datatype.cc
     )
-    this_target_link_libraries(rapidcheck cxx_rust_std)
+    this_target_link_libraries(rapidcheck)
     target_include_directories(unit_run_filter_pipeline PRIVATE ${CMAKE_BINARY_DIR})
 conclude(unit_test)
 

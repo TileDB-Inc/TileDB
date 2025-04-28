@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/compressors/dd_compressor.h"
+#include "tiledb/common/arithmetic.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -64,7 +65,7 @@ void DoubleDelta::compress(
     case Datatype::BLOB:
     case Datatype::GEOM_WKB:
     case Datatype::GEOM_WKT:
-      return DoubleDelta::compress<std::byte>(input_buffer, output_buffer);
+      return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::compress<int8_t>(input_buffer, output_buffer);
     case Datatype::BOOL:
@@ -83,7 +84,7 @@ void DoubleDelta::compress(
     case Datatype::UINT64:
       return DoubleDelta::compress<uint64_t>(input_buffer, output_buffer);
     case Datatype::CHAR:
-      return DoubleDelta::compress<char>(input_buffer, output_buffer);
+      return DoubleDelta::compress<int64_t>(input_buffer, output_buffer);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -134,7 +135,7 @@ void DoubleDelta::decompress(
     case Datatype::BLOB:
     case Datatype::GEOM_WKB:
     case Datatype::GEOM_WKT:
-      return DoubleDelta::decompress<std::byte>(input_buffer, output_buffer);
+      return DoubleDelta::decompress<uint8_t>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
     case Datatype::BOOL:
@@ -153,7 +154,7 @@ void DoubleDelta::decompress(
     case Datatype::UINT64:
       return DoubleDelta::decompress<uint64_t>(input_buffer, output_buffer);
     case Datatype::CHAR:
-      return DoubleDelta::decompress<char>(input_buffer, output_buffer);
+      return DoubleDelta::decompress<int64_t>(input_buffer, output_buffer);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -262,7 +263,7 @@ unsigned DoubleDelta::compute_bitsize(const T* in, uint64_t num) {
     return 0;
   }
 
-  using DeltaType = double_delta::Integral64<T>::type;
+  using DeltaType = common::integral_64<T>::type;
 
   uint64_t max_delta = 0;
   std::optional<int64_t> prev_delta;
@@ -271,7 +272,7 @@ unsigned DoubleDelta::compute_bitsize(const T* in, uint64_t num) {
     const DeltaType prev = (DeltaType)(in[i - 1]);
 
     const std::optional<int64_t> cur_delta =
-        double_delta::Integral64<T>::delta(cur, prev);
+        common::checked_arithmetic<DeltaType>::sub_signed(cur, prev);
     if (!cur_delta.has_value()) {
       throw DoubleDeltaException(
           "Cannot compress with DoubleDelta: delta exceeds range of int64_t");
@@ -279,7 +280,7 @@ unsigned DoubleDelta::compute_bitsize(const T* in, uint64_t num) {
 
     if (prev_delta.has_value()) {
       const std::optional<int64_t> dd =
-          double_delta::Integral64<int64_t>::delta(
+          common::checked_arithmetic<int64_t>::sub(
               cur_delta.value(), prev_delta.value());
       if (!dd.has_value()) {
         throw DoubleDeltaException(
@@ -446,8 +447,6 @@ void DoubleDelta::write_double_delta(
 
 // Explicit template instantiations
 
-template void DoubleDelta::compress<char>(
-    ConstBuffer* input_buffer, Buffer* output_buffer);
 template void DoubleDelta::compress<int8_t>(
     ConstBuffer* input_buffer, Buffer* output_buffer);
 template void DoubleDelta::compress<uint8_t>(
