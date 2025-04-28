@@ -50,7 +50,7 @@ $ make -j <nprocs>
 To **install** to the configured prefix, run the following:
 
 ```bash
-$ make install-tiledb
+$ make install
 ```
 
 Note that building against the installed shared library requires setting the library search path at build-time or run-time, as documented in [Usage](usage.md). System-wide installations requiring `sudo` permissions may avoid this step by running `sudo ldconfig` after installation.
