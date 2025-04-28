@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/enumeration",
+    "crates/filter",
     "crates/filter_pipeline"
 ]
 

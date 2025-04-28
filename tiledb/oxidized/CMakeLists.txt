@@ -33,6 +33,7 @@ set(CARGO_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/target/${CARGO_TARGET}")
 
 set(TILEDB_CRATES
     enumeration
+    filter
     filter_pipeline
 )
 
@@ -41,6 +42,7 @@ set(TILEDB_CRATES
 # `rust` target to trigger building the bindings as well.
 set(RUST_SOURCES
   crates/enumeration/src/lib.rs
+  crates/filter/src/lib.rs
   crates/filter_pipeline/src/lib.rs
 )
 

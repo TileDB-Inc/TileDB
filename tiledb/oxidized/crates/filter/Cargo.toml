@@ -1,0 +1,14 @@
+[package]
+name = "filter"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+cxx = { workspace = true }
+
+[build-dependencies]
+cxx-build = { workspace = true }
