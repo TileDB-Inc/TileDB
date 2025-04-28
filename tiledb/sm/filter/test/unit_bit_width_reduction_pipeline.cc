@@ -542,6 +542,13 @@ TEST_CASE("Filter: Round trip BitWidthReduction", "[filter][rapidcheck]") {
     doit.operator()<tiledb::test::AsserterCatch>(Datatype::UINT64, data);
   }
 
+  SECTION("Shrinking", "Examples found by rapidcheck") {
+    SECTION("Overflow") {
+      const std::vector<uint8_t> bytes = {0, 128, 127, 127};
+      doit.operator()<tiledb::test::AsserterCatch>(Datatype::INT16, bytes);
+    }
+  }
+
   SECTION("Rapidcheck") {
     rc::prop("Filter: Round trip BitWidthReduction", [doit]() {
       const auto datatype = *rc::gen::arbitrary<Datatype>();
