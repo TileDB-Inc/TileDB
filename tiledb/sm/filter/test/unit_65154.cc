@@ -38,7 +38,6 @@
 #include <test/support/tdb_rapidcheck.h>
 
 #include "filter_test_support.h"
-#include "test/support/oxidize/rust_std.h"
 #include "test/support/rapidcheck/datatype.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
