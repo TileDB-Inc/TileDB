@@ -19,15 +19,17 @@ endif()
 set(CARGO cargo) # ToDo: Auto-discover cargo
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CARGO_PROFILE "debug")
+    set(CARGO_PROFILE "dev")
+    set(CARGO_TARGET "debug")
 else ()
     set(CARGO_PROFILE "release")
+    set(CARGO_TARGET "release")
 endif ()
 
 set(CARGO_MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
 
 set(CARGO_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/target")
-set(CARGO_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/target/${CARGO_PROFILE}")
+set(CARGO_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/target/${CARGO_TARGET}")
 
 set(TILEDB_CRATES
     enumeration
