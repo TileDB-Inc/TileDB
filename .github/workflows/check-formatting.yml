@@ -53,10 +53,10 @@ jobs:
 
       - name: Check Formatting
         run: |
-          cd test/support/oxidize
+          cd $GITHUB_WORKSPACE/test/support/oxidize
           cargo fmt --quiet --check
 
       - name: Lint
         run: |
-          cd test/support/oxidize
+          cd $GITHUB_WORKSPACE/test/support/oxidize
           cargo clippy --no-deps --all-targets --all-features -- -Dwarnings
