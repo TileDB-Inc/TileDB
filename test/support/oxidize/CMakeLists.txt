@@ -38,7 +38,7 @@ if (TILEDB_RUST)
                 "--manifest-path" ${CARGO_MANIFEST_PATH}
                 "-p" ${crate}
             COMMAND
-                cp "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.h" "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
+                ${CMAKE_COMMAND} -E copy "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.h" "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
             USES_TERMINAL
             DEPENDS
                 ${CMAKE_CURRENT_SOURCE_DIR}/${crate}/src/lib.rs
