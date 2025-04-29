@@ -1,7 +1,3 @@
-set(TILEDB_CRATES
-    arithmetic
-)
-
 if (NOT TILEDB_TESTS)
   message(FATAL_ERROR "Building Rust without tests is not supported.")
 endif()
@@ -21,59 +17,74 @@ set(CARGO_MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
 set(CARGO_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/target")
 set(CARGO_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/target/${CARGO_TARGET}")
 
-if (TILEDB_RUST)
-    foreach(crate IN LISTS TILEDB_CRATES)
-        add_custom_command(
-            OUTPUT
-                "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
-                "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.cc"
-                "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${crate}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-            COMMAND
-                "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}"
-                "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
-                ${CARGO}
-                build
-                "-q"
-                "--profile" ${CARGO_PROFILE}
-                "--manifest-path" ${CARGO_MANIFEST_PATH}
-                "-p" ${crate}
-            COMMAND
-                ${CMAKE_COMMAND} -E copy "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.h" "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
-            USES_TERMINAL
-            DEPENDS
-                ${CMAKE_CURRENT_SOURCE_DIR}/${crate}/src/lib.rs
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        )
-    endforeach()
-else ()
-    foreach(crate IN LISTS TILEDB_CRATES)
-        add_custom_command(
-            OUTPUT
-                "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
-                "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.cc"
-                "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${crate}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-            COMMAND
-                echo "This build is not configured with Rust support enabled."
-            COMMAND
-                echo "To build this target, configure with '-DTILEDB_RUST=ON'."
-            COMMAND
-                exit 1
-        )
-    endforeach()
-endif ()
 
-# Note: Object libraries are "{crate_name}_rs" to avoid clashing with the
-# existing object libraries.
-foreach(crate IN LISTS TILEDB_CRATES)
-    add_library(${crate}_rs OBJECT "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.cc")
+# Declares targets for building a Rust crate.
+
+# Inputs:
+#   NAME crate_name
+#   SOURCES source1 source2 ...
+#
+# Outputs:
+#   ${crate_name}_rs object library target
+#   Building this target produces the object library and also the `#[cxx::bridge]` files.
+function(add_crate)
+    set(options)
+    set(oneValueArgs NAME)
+    set(multiValueArgs SOURCES)
+    cmake_parse_arguments(ADD_CRATE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if (NOT ADD_CRATE_NAME)
+        message(SEND_ERROR "Function add_crate requires a NAME argument")
+    endif()
+
+    if (NOT ADD_CRATE_SOURCES)
+        message(SEND_ERROR "Function add_crate requires one or more SOURCES arguments")
+    endif()
+
+    add_custom_command(
+        OUTPUT
+            "${CMAKE_CURRENT_BINARY_DIR}/${ADD_CRATE_NAME}.h"
+            "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/src/lib.rs.cc"
+            "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        COMMAND
+            "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+            "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
+            ${CARGO}
+            build
+            "-q"
+            "--profile" ${CARGO_PROFILE}
+            "--manifest-path" ${CARGO_MANIFEST_PATH}
+            "-p" ${ADD_CRATE_NAME}
+        COMMAND
+            ${CMAKE_COMMAND} -E copy "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/src/lib.rs.h" "${CMAKE_CURRENT_BINARY_DIR}/${ADD_CRATE_NAME}.h"
+        USES_TERMINAL
+        DEPENDS
+            ${ADD_CRATE_SOURCES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+
+    # Note: Object libraries are "{crate_name}_rs" to avoid clashing with the
+    # existing object libraries.
+    add_library(${ADD_CRATE_NAME}_rs OBJECT "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/src/lib.rs.cc")
     target_include_directories(
-        ${crate}_rs
+        ${ADD_CRATE_NAME}_rs
         PUBLIC
             ${CARGO_INCLUDE_DIR}
             ${CMAKE_SOURCE_DIR}
             ${CMAKE_BINARY_DIR}/tiledb/
     )
-    target_link_libraries(${crate}_rs ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${crate}${CMAKE_STATIC_LIBRARY_SUFFIX})
-endforeach()
+    target_link_libraries(
+        ${ADD_CRATE_NAME}_rs
+        ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+    )
+endfunction ()
+
+
+# and now, the crates themselves!
+
+add_crate(
+    NAME arithmetic
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/arithmetic/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/arithmetic/src/lib.rs
+)
 
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} *.h)
