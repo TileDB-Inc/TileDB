@@ -216,6 +216,19 @@ class Profile {
     }
   }
 
+  /** Loads the profile from the local file. */
+  void load() {
+    tiledb_error_t* capi_error = nullptr;
+    int rc = tiledb_profile_load(profile_.get(), &capi_error);
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
+  }
+
   /** Removes the profile from the local file. */
   void remove() {
     tiledb_error_t* capi_error = nullptr;
