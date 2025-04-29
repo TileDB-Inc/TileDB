@@ -220,6 +220,23 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
     doit.operator()<tiledb::test::AsserterCatch>(
         Datatype::INT64, Datatype::ANY, data);
   }
+  SECTION("Shrinking 4") {
+    const std::vector<uint8_t> data = {0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0,
+                                       0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 93};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::INT64, Datatype::INT64, data);
+  }
+  SECTION("Shrinking 5") {
+    const std::vector<uint8_t> data = {
+        2, 0, 2, 1, 2, 3, 0, 2, 1, 3, 1, 0, 3, 0, 1, 2};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::DATETIME_DAY, Datatype::UINT64, data);
+  }
+  SECTION("Shrinking 6") {
+    const std::vector<uint8_t> data = {0, 1, 0, 0, 1, 1, 1, 0};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::DATETIME_MONTH, Datatype::UINT64, data);
+  }
 
   SECTION("Rapidcheck all") {
     rc::prop("Filter: Round trip Compressor Double Delta", [doit]() {
