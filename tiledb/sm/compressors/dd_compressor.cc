@@ -84,7 +84,7 @@ void DoubleDelta::compress(
     case Datatype::UINT64:
       return DoubleDelta::compress<uint64_t>(input_buffer, output_buffer);
     case Datatype::CHAR:
-      return DoubleDelta::compress<int64_t>(input_buffer, output_buffer);
+      return DoubleDelta::compress<int8_t>(input_buffer, output_buffer);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -154,7 +154,7 @@ void DoubleDelta::decompress(
     case Datatype::UINT64:
       return DoubleDelta::decompress<uint64_t>(input_buffer, output_buffer);
     case Datatype::CHAR:
-      return DoubleDelta::decompress<int64_t>(input_buffer, output_buffer);
+      return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
