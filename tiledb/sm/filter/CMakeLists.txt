@@ -35,15 +35,6 @@ commence(object_library filter)
     this_target_object_libraries(baseline buffer tiledb_crypto)
 conclude(object_library)
 
-# Why do we need this here? Seems like it might be needed for each object library that
-# uses crypto_openssl.cc.o?
-# OpenSSL-3 deprecates MD5
-if(MSVC)
-  set_source_files_properties(${CMAKE_SOURCE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "/wd4996")
-else()
-  set_source_files_properties(${CMAKE_SOURCE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
-endif()
-
 #
 # `bitshuffle_filter` object library
 #

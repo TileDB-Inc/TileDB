@@ -61,7 +61,6 @@ commence(unit_test run_filter_pipeline)
         ${CMAKE_SOURCE_DIR}/test/support/rapidcheck/show_datatype.cc
     )
     this_target_link_libraries(rapidcheck)
-    target_include_directories(unit_run_filter_pipeline PRIVATE ${CMAKE_BINARY_DIR})
 conclude(unit_test)
 
 commence(unit_test float_scale_input_val)
