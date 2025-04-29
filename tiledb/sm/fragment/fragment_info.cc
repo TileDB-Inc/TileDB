@@ -818,7 +818,8 @@ Status FragmentInfo::load() {
     // as it's the case for local fragment info load requests.
     throw_if_not_ok(config_.set("sm.fragment_info.preload_mbrs", "true"));
 
-    return rest_client->post_fragment_info_from_rest(array_uri_, this);
+    return rest_client->post_fragment_info_from_rest(
+        *resources_, array_uri_, this);
   }
 
   // Create an ArrayDirectory object and load

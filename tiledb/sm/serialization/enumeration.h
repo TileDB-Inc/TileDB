@@ -63,12 +63,14 @@ void enumeration_to_capnp(
 /**
  * Deserialize an enumeration from a cap'n proto object
  *
+ * @param resources Resources for building the enumeration value map
  * @param reader Cap'n proto reader object
  * @param memory_tracker The memory tracker associated with the Enumeration
  * object.
  * @return A new Enumeration
  */
 shared_ptr<const Enumeration> enumeration_from_capnp(
+    const ContextResources& resources,
     const capnp::Enumeration::Reader& reader,
     shared_ptr<MemoryTracker> memory_tracker);
 
@@ -92,6 +94,7 @@ void serialize_load_enumerations_response(
 
 std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
 deserialize_load_enumerations_response(
+    const ContextResources& ctx,
     const ArraySchema& array_schema,
     const Config& config,
     SerializationType serialization_type,

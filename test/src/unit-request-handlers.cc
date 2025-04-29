@@ -465,6 +465,7 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
   }
 
   return Enumeration::create(
+      ctx_.resources(),
       name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -473,6 +474,7 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
       total_size,
       offsets.data(),
       offsets.size() * sizeof(uint64_t),
+      true,
       tiledb::test::create_test_memory_tracker());
 }
 
@@ -546,7 +548,7 @@ HandleLoadArraySchemaRequestFx::call_handler(
   REQUIRE(rval == TILEDB_OK);
 
   return serialization::deserialize_load_array_schema_response(
-      uri_, cfg_, stype, resp_buf->buffer(), memory_tracker_);
+      ctx_.resources(), uri_, cfg_, stype, resp_buf->buffer(), memory_tracker_);
 }
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {

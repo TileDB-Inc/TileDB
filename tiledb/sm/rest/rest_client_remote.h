@@ -176,17 +176,19 @@ class RestClientRemote : public RestClient {
   /**
    * Get a data encoded array schema from rest server.
    *
+   * @param resources resources for building data structures
    * @param uri of array being loaded
    * @return Status and new ArraySchema shared pointer.
    */
   tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema_from_rest(
-      const URI& uri) override;
+      const ContextResources& resources, const URI& uri) override;
 
   /**
    * Get an array schema from the rest server. This will eventually replace the
    * get_array_schema_from_rest after TileDB-Cloud-REST merges support for the
    * POST endpoint.
    *
+   * @param resources Resources for building data structures
    * @param config The TileDB config.
    * @param uri The Array URI to load the schema from.
    * @param timestamp_start The starting timestamp used to open the array.
@@ -198,6 +200,7 @@ class RestClientRemote : public RestClient {
       shared_ptr<ArraySchema>,
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   post_array_schema_from_rest(
+      const ContextResources& resources,
       const Config& config,
       const URI& uri,
       uint64_t timestamp_start,
@@ -321,6 +324,7 @@ class RestClientRemote : public RestClient {
    */
   std::unordered_map<std::string, std::vector<shared_ptr<const Enumeration>>>
   post_enumerations_from_rest(
+      const ContextResources& ctx,
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
@@ -389,12 +393,15 @@ class RestClientRemote : public RestClient {
   /**
    * Get array's fragment info from rest server
    *
+   * @param resources Resources for building data structures
    * @param uri Array uri to query for
    * @param fragment_info Fragment info object to store the incoming info
    * @return Status Ok() on success Error() on failures
    */
   Status post_fragment_info_from_rest(
-      const URI& uri, FragmentInfo* fragment_info) override;
+      const ContextResources& resources,
+      const URI& uri,
+      FragmentInfo* fragment_info) override;
 
   /**
    * Gets the group's metadata from the REST server (and updates the in-memory

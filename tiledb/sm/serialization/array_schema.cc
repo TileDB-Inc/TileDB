@@ -800,6 +800,7 @@ void dimension_label_to_capnp(
 }
 
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
+    const ContextResources& resources,
     const capnp::DimensionLabel::Reader& dim_label_reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   // Get datatype
@@ -808,7 +809,8 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
   shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
-    schema = array_schema_from_capnp(schema_reader, URI(), memory_tracker);
+    schema = array_schema_from_capnp(
+        resources, schema_reader, URI(), memory_tracker);
   }
 
   auto is_relative = dim_label_reader.getRelative();
@@ -938,6 +940,7 @@ Status array_schema_to_capnp(
 
 // #TODO Add security validation on incoming URI
 shared_ptr<ArraySchema> array_schema_from_capnp(
+    const ContextResources& resources,
     const capnp::ArraySchema::Reader& schema_reader,
     const URI& uri,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -1093,8 +1096,8 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
     dimension_labels.reserve(dim_labels_reader.size());
     try {
       for (auto dim_label_reader : dim_labels_reader) {
-        dimension_labels.emplace_back(
-            dimension_label_from_capnp(dim_label_reader, memory_tracker));
+        dimension_labels.emplace_back(dimension_label_from_capnp(
+            resources, dim_label_reader, memory_tracker));
       }
     } catch (const std::exception& e) {
       std::throw_with_nested(std::runtime_error(
@@ -1111,7 +1114,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
     try {
       for (auto&& enmr_reader : enmr_readers) {
         enumerations.emplace_back(
-            enumeration_from_capnp(enmr_reader, memory_tracker));
+            enumeration_from_capnp(resources, enmr_reader, memory_tracker));
       }
     } catch (const std::exception& e) {
       std::throw_with_nested(std::runtime_error(
@@ -1229,6 +1232,7 @@ Status array_schema_serialize(
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
+    const ContextResources& resources,
     SerializationType serialize_type,
     span<const char> serialized_buffer,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -1243,7 +1247,7 @@ shared_ptr<ArraySchema> array_schema_deserialize(
         utils::decode_json_message(serialized_buffer, array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
         return array_schema_from_capnp(
-            array_schema_reader, URI(), memory_tracker);
+            resources, array_schema_reader, URI(), memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -1253,7 +1257,7 @@ shared_ptr<ArraySchema> array_schema_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         array_schema_reader = reader.getRoot<capnp::ArraySchema>();
         return array_schema_from_capnp(
-            array_schema_reader, URI(), memory_tracker);
+            resources, array_schema_reader, URI(), memory_tracker);
       }
       default: {
         throw StatusException(Status_SerializationError(
@@ -1782,11 +1786,13 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 load_array_schema_response_from_capnp(
+    const ContextResources& resources,
     const URI& uri,
     capnp::LoadArraySchemaResponse::Reader& reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   auto schema_reader = reader.getSchema();
-  auto schema = array_schema_from_capnp(schema_reader, URI(), memory_tracker);
+  auto schema =
+      array_schema_from_capnp(resources, schema_reader, URI(), memory_tracker);
   schema->set_array_uri(uri);
 
   std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
@@ -1797,7 +1803,10 @@ load_array_schema_response_from_capnp(
       auto entries = all_schemas_reader.getEntries();
       for (auto array_schema_build : entries) {
         auto schema_entry = array_schema_from_capnp(
-            array_schema_build.getValue(), schema->array_uri(), memory_tracker);
+            resources,
+            array_schema_build.getValue(),
+            schema->array_uri(),
+            memory_tracker);
         schema_entry->set_array_uri(schema->array_uri());
         all_schemas[array_schema_build.getKey()] = schema_entry;
       }
@@ -1810,6 +1819,7 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
+    const ContextResources& resources,
     const URI& uri,
     const Config& config,
     SerializationType serialization_type,
@@ -1824,7 +1834,7 @@ deserialize_load_array_schema_response(
         utils::decode_json_message(data, builder);
         auto reader = builder.asReader();
         return load_array_schema_response_from_capnp(
-            uri, reader, memory_tracker);
+            resources, uri, reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
         // Set traversal limit from config
@@ -1842,7 +1852,7 @@ deserialize_load_array_schema_response(
             readerOptions);
         auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
         return load_array_schema_response_from_capnp(
-            uri, reader, memory_tracker);
+            resources, uri, reader, memory_tracker);
       }
       default: {
         throw ArraySchemaSerializationException(
@@ -1870,7 +1880,10 @@ Status array_schema_serialize(
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
-    SerializationType, span<const char>, shared_ptr<MemoryTracker>) {
+    const ContextResources& resources,
+    SerializationType,
+    span<const char>,
+    shared_ptr<MemoryTracker>) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -1921,6 +1934,7 @@ std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 deserialize_load_array_schema_response(
+    const ContextResources& resources,
     const URI&,
     const Config&,
     SerializationType,

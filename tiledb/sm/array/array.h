@@ -746,6 +746,10 @@ class Array {
     return config_;
   }
 
+  inline const ContextResources& resources() const {
+    return resources_;
+  }
+
   /** Directly set the array URI for serialized compatibility with pre
    * TileDB 2.5 clients */
   void set_uri_serialized(const std::string& uri) {

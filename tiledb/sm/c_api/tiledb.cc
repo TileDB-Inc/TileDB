@@ -1454,6 +1454,7 @@ int32_t tiledb_deserialize_array_schema(
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
   auto shared_schema = tiledb::sm::serialization::array_schema_deserialize(
+      ctx->context().resources(),
       (tiledb::sm::SerializationType)serialize_type,
       buffer->buffer(),
       memory_tracker);
@@ -1578,6 +1579,7 @@ int32_t tiledb_deserialize_array_schema_evolution(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_deserialize(
               &((*array_schema_evolution)->array_schema_evolution_),
+              ctx->resources(),
               ctx->config(),
               (tiledb::sm::SerializationType)serialize_type,
               buffer->buffer(),
@@ -2136,6 +2138,7 @@ int32_t tiledb_deserialize_fragment_info(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::fragment_info_deserialize(
+              ctx->context().resources(),
               fragment_info->fragment_info().get(),
               (tiledb::sm::SerializationType)serialize_type,
               uri,
