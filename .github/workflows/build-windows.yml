@@ -122,10 +122,6 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@v4
       - name: Prevent vcpkg from building debug variants
         run: python $env:GITHUB_WORKSPACE/scripts/ci/patch_vcpkg_triplets.py
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
 
       - name: Configure TileDB
         shell: pwsh
