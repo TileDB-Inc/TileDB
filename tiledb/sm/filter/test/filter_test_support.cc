@@ -132,17 +132,17 @@ void check_run_pipeline_roundtrip(
       tile->filtered_buffer(), memory_tracker);
   ChunkData chunk_data;
   unfiltered_tile.load_chunk_data(chunk_data);
-  CHECK(pipeline
-            .run_reverse(
-                &dummy_stats,
-                &unfiltered_tile,
-                nullptr,
-                chunk_data,
-                0,
-                chunk_data.filtered_chunks_.size(),
-                tp.concurrency_level(),
-                config)
-            .ok());
+  REQUIRE(pipeline
+              .run_reverse(
+                  &dummy_stats,
+                  &unfiltered_tile,
+                  nullptr,
+                  chunk_data,
+                  0,
+                  chunk_data.filtered_chunks_.size(),
+                  tp.concurrency_level(),
+                  config)
+              .ok());
 
   // Check the original data is reverted.
   test_data->check_tile_data(unfiltered_tile);
