@@ -145,6 +145,9 @@ class RestProfile {
   /** Saves this profile to the local file. */
   void save_to_file();
 
+  /** Loads this profile from the local file. */
+  void load_from_file();
+
   /** Removes this profile from the local file. */
   void remove_from_file();
 
