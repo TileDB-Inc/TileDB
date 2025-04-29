@@ -422,9 +422,14 @@ uint8_t BitWidthReductionFilter::compute_bits_required(
     return sizeof(T) * 8;
   }
 
+  std::optional<T> range_offset = checked_arithmetic<T>::add(range.value(), 1);
+  if (!range_offset.has_value()) {
+    return sizeof(T) * 8;
+  }
+
   // Compute the number of bits required to store the max (normalized) window
   // value, rounding to the nearest C integer type width.
-  uint8_t bits = bits_required(range.value() + 1);
+  uint8_t bits = bits_required(range_offset.value());
   if (bits <= 8)
     bits = 8;
   else if (bits <= 16)
