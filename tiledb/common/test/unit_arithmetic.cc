@@ -48,7 +48,7 @@ TEST_CASE(
     std::optional<uint32_t> rs;
     {
       uint32_t value;
-      if (rust::std::u32_checked_add(a, b, value)) {
+      if (rust::arithmetic::u32_checked_add(a, b, value)) {
         rs.emplace(value);
       }
     }
@@ -74,7 +74,7 @@ TEST_CASE(
     std::optional<int32_t> rs;
     {
       int32_t value;
-      if (rust::std::i32_checked_add(a, b, value)) {
+      if (rust::arithmetic::i32_checked_add(a, b, value)) {
         rs.emplace(value);
       }
     }
@@ -99,7 +99,7 @@ TEST_CASE(
     std::optional<uint64_t> rs;
     {
       uint64_t value;
-      if (rust::std::u64_checked_add(a, b, value)) {
+      if (rust::arithmetic::u64_checked_add(a, b, value)) {
         rs.emplace(value);
       }
     }
@@ -125,7 +125,7 @@ TEST_CASE(
     std::optional<int64_t> rs;
     {
       int64_t value;
-      if (rust::std::i64_checked_add(a, b, value)) {
+      if (rust::arithmetic::i64_checked_add(a, b, value)) {
         rs.emplace(value);
       }
     }
@@ -151,7 +151,7 @@ TEST_CASE(
     std::optional<uint32_t> rs;
     {
       uint32_t value;
-      if (rust::std::u32_checked_sub(a, b, value)) {
+      if (rust::arithmetic::u32_checked_sub(a, b, value)) {
         rs.emplace(value);
       }
     }
@@ -178,7 +178,7 @@ TEST_CASE(
     std::optional<int32_t> rs;
     {
       int32_t value;
-      if (rust::std::i32_checked_sub(a, b, value)) {
+      if (rust::arithmetic::i32_checked_sub(a, b, value)) {
         rs.emplace(value);
       }
     }
@@ -204,7 +204,7 @@ TEST_CASE(
     std::optional<uint64_t> rs;
     {
       uint64_t value;
-      if (rust::std::u64_checked_sub(a, b, value)) {
+      if (rust::arithmetic::u64_checked_sub(a, b, value)) {
         rs.emplace(value);
       }
     }
@@ -233,7 +233,7 @@ TEST_CASE(
     std::optional<int64_t> rs;
     {
       int64_t value;
-      if (rust::std::u64_checked_sub_signed(a, b, value)) {
+      if (rust::arithmetic::u64_checked_sub_signed(a, b, value)) {
         rs.emplace(value);
       }
     }
@@ -273,7 +273,7 @@ TEST_CASE(
     std::optional<int64_t> rs;
     {
       int64_t value;
-      if (rust::std::i64_checked_sub(a, b, value)) {
+      if (rust::arithmetic::i64_checked_sub(a, b, value)) {
         rs.emplace(value);
       }
     }
