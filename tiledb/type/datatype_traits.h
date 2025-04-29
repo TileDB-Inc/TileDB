@@ -36,9 +36,9 @@
 
 #include "tiledb/sm/enums/datatype.h"
 
-using tiledb::sm::Datatype;
-
 namespace tiledb::type {
+
+using tiledb::sm::Datatype;
 
 /**
  * `datatype_traits`
