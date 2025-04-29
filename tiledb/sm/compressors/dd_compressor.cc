@@ -216,7 +216,7 @@ void DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 
   // Calculate bitsize (ignoring the sign bit)
   auto in = (T*)input_buffer->data();
-  const unsigned int bitsize = compute_bitsize<T>(in, num);
+  const uint32_t bitsize = compute_bitsize<T>(in, num);
   assert(bitsize <= std::numeric_limits<uint8_t>::max());
   auto bitsize_c = static_cast<uint8_t>(bitsize);
 
@@ -257,7 +257,7 @@ void DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 }
 
 template <class T>
-unsigned DoubleDelta::compute_bitsize(const T* in, uint64_t num) {
+uint32_t DoubleDelta::compute_bitsize(const T* in, uint64_t num) {
   // Find maximum absolute double delta
   if (num <= 2) {
     return 0;

@@ -139,7 +139,7 @@ class DoubleDelta {
    * @return The bitsize of the double deltas to be retrieved.
    */
   template <class T>
-  static unsigned compute_bitsize(const T* in, uint64_t num);
+  static uint32_t compute_bitsize(const T* in, uint64_t num);
 
   /**
    * Decompression function.
