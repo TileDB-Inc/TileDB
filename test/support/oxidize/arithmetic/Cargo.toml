@@ -1,8 +1,8 @@
 [package]
 name = "arithmetic"
-edition.workspace = true
-rust-version.workspace = true
-version.workspace = true
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
 
 [dependencies]
 cxx = { workspace = true }
