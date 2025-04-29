@@ -39,9 +39,11 @@
 #include "test/support/rapidcheck/datatype.h"
 #include "test/support/src/mem_helpers.h"
 #include "tile_data_generator.h"
+#include "tiledb/common/arithmetic.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/type/datatype_queries.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -94,6 +96,59 @@ static Gen<std::vector<uint8_t>> make_input_bytes(Datatype input_type) {
 
 }  // namespace rc
 
+/**
+ * @return true if we should expect `bytes` to overflow when interpreted
+ * using `filter_type`
+ */
+static bool expect_overflow(
+    Datatype filter_type, std::span<const uint8_t> data) {
+  if (datatype_size(filter_type) % sizeof(uint64_t) != 0) {
+    return false;
+  }
+
+  std::vector<int64_t> deltae;
+  if (tiledb::type::has_signed_value_type(filter_type)) {
+    std::span<const int64_t> values(
+        reinterpret_cast<const int64_t*>(&data[0]),
+        data.size() / sizeof(int64_t));
+    if (values.size() <= 1) {
+      return false;
+    }
+    for (uint64_t i = 1; i < values.size(); i++) {
+      std::optional<int64_t> delta =
+          checked_arithmetic<int64_t>::sub(values[i], values[i - 1]);
+      if (delta.has_value()) {
+        deltae.push_back(delta.value());
+      } else {
+        return true;
+      }
+    }
+  } else {
+    std::span<const uint64_t> values(
+        reinterpret_cast<const uint64_t*>(&data[0]),
+        data.size() / sizeof(int64_t));
+    if (values.size() <= 1) {
+      return false;
+    }
+    for (uint64_t i = 1; i < values.size(); i++) {
+      std::optional<int64_t> delta =
+          checked_arithmetic<int64_t>::sub_signed(values[i], values[i - 1]);
+      if (delta.has_value()) {
+        deltae.push_back(delta.value());
+      } else {
+        return true;
+      }
+    }
+  }
+  for (uint64_t i = 1; i < deltae.size(); i++) {
+    if (!checked_arithmetic<int64_t>::sub(deltae[i], deltae[i - 1])
+             .has_value()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
   tiledb::sm::Config config;
 
@@ -112,14 +167,33 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
     pipeline.add_filter(CompressionFilter(
         Compressor::DOUBLE_DELTA, 0, input_type, reinterpret_datatype));
 
-    check_run_pipeline_roundtrip(
-        config,
-        thread_pool,
-        input_tile,
-        offsets_tile,
-        pipeline,
-        &tile_gen,
-        tracker);
+    bool overflowed = false;
+    try {
+      check_run_pipeline_roundtrip(
+          config,
+          thread_pool,
+          input_tile,
+          offsets_tile,
+          pipeline,
+          &tile_gen,
+          tracker);
+    } catch (const StatusException& e) {
+      const std::string what(e.what());
+      if (what.find("Cannot compress with DoubleDelta: delta exceeds range "
+                    "of int64_t") != std::string::npos) {
+        overflowed = true;
+      } else if (
+          what.find("Some negative double delta is out of bounds") !=
+          std::string::npos) {
+        overflowed = true;
+      } else {
+        throw;
+      }
+    }
+    const Datatype interpret_type =
+        (reinterpret_datatype == Datatype::ANY ? input_type :
+                                                 reinterpret_datatype);
+    ASSERTER(overflowed == expect_overflow(interpret_type, data));
   };
 
   SECTION("Example") {
