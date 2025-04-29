@@ -236,6 +236,31 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CAPINProfileFx,
+    "C API: tiledb_profile_load argument validation",
+    "[capi][profile][load]") {
+  capi_return_t rc;
+  tiledb_profile_t* profile;
+  tiledb_error_t* err = nullptr;
+  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &profile, &err);
+  REQUIRE(profile != nullptr);
+  rc = tiledb_profile_save(profile, &err);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  tiledb_profile_t* loaded_profile;
+  // use the same name and homedir
+  tiledb_profile_alloc(name_, tempdir_.path().c_str(), &loaded_profile, &err);
+  REQUIRE(loaded_profile != nullptr);
+  SECTION("success") {
+    rc = tiledb_profile_load(loaded_profile, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null profile") {
+    rc = tiledb_profile_load(nullptr, &err);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE_METHOD(
+    CAPINProfileFx,
     "C API: tiledb_profile_remove argument validation",
     "[capi][profile][remove]") {
   capi_return_t rc;
