@@ -113,8 +113,8 @@ class RestProfile {
    *
    * @return std::string The name of this profile.
    */
-  inline const std::string name() const {
-    return std::string(name_);
+  inline const std::string& name() const {
+    return name_;
   }
 
   /**
@@ -122,8 +122,8 @@ class RestProfile {
    *
    * @return std::string The path to the local $HOME directory.
    */
-  inline const std::string homedir() const {
-    return std::string(homedir_);
+  inline const std::string& homedir() const {
+    return homedir_;
   }
 
   /**
