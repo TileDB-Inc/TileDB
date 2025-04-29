@@ -298,7 +298,7 @@ uint32_t DoubleDelta::compute_bitsize(const T* in, uint64_t num) {
   }
 
   // Calculate bitsize of the maximum absolute double delta
-  unsigned bitsize = 0;
+  uint32_t bitsize = 0;
   do {
     ++bitsize;
     max_delta >>= 1;
@@ -316,7 +316,7 @@ void DoubleDelta::decompress(
   uint64_t value_size = sizeof(T);
   throw_if_not_ok(input_buffer->read(&bitsize_c, sizeof(uint8_t)));
   throw_if_not_ok(input_buffer->read(&num, sizeof(uint64_t)));
-  auto bitsize = static_cast<unsigned int>(bitsize_c);
+  auto bitsize = static_cast<uint32_t>(bitsize_c);
   auto out = (T*)output_buffer->cur_data();
 
   // Trivial case - no compression
