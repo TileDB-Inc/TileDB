@@ -6,21 +6,7 @@ if (NOT TILEDB_TESTS)
   message(FATAL_ERROR "Building Rust without tests is not supported.")
 endif()
 
-if (NOT TILEDB_RUST)
-  add_custom_target(
-    rust
-    COMMAND
-        echo "This build is not configured with Rust support enabled."
-  )
-  add_custom_target(
-    rust-test
-    COMMAND
-        echo "This build is not configured with Rust support enabled."
-  )
-  return()
-endif()
-
-set(CARGO cargo) # ToDo: Auto-discover cargo
+find_program(CARGO cargo)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CARGO_PROFILE "dev")
@@ -35,29 +21,46 @@ set(CARGO_MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
 set(CARGO_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/target")
 set(CARGO_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/target/${CARGO_TARGET}")
 
-foreach(crate IN LISTS TILEDB_CRATES)
-    add_custom_command(
-        OUTPUT
-            "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
-            "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.cc"
-            "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${crate}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        COMMAND
-            "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}"
-            "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
-            ${CARGO}
-            build
-            "-q"
-            "--profile" ${CARGO_PROFILE}
-            "--manifest-path" ${CARGO_MANIFEST_PATH}
-            "-p" ${crate}
-        COMMAND
-            cp "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.h" "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
-        USES_TERMINAL
-        DEPENDS
-            ${CMAKE_CURRENT_SOURCE_DIR}/${crate}/src/lib.rs
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
-endforeach()
+if (TILEDB_RUST)
+    foreach(crate IN LISTS TILEDB_CRATES)
+        add_custom_command(
+            OUTPUT
+                "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
+                "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.cc"
+                "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${crate}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            COMMAND
+                "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+                "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
+                ${CARGO}
+                build
+                "-q"
+                "--profile" ${CARGO_PROFILE}
+                "--manifest-path" ${CARGO_MANIFEST_PATH}
+                "-p" ${crate}
+            COMMAND
+                cp "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.h" "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
+            USES_TERMINAL
+            DEPENDS
+                ${CMAKE_CURRENT_SOURCE_DIR}/${crate}/src/lib.rs
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        )
+    endforeach()
+else ()
+    foreach(crate IN LISTS TILEDB_CRATES)
+        add_custom_command(
+            OUTPUT
+                "${CMAKE_CURRENT_BINARY_DIR}/${crate}.h"
+                "${CARGO_INCLUDE_DIR}/cxxbridge/${crate}/src/lib.rs.cc"
+                "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${crate}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            COMMAND
+                echo "This build is not configured with Rust support enabled."
+            COMMAND
+                echo "To build this target, configure with '-DTILEDB_RUST=ON'."
+            COMMAND
+                exit 1
+        )
+    endforeach()
+endif ()
 
 # Note: Object libraries are "{crate_name}_rs" to avoid clashing with the
 # existing object libraries.
