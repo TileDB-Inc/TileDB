@@ -87,6 +87,23 @@ struct Arbitrary<Datatype> {
   };
 };
 
+[[maybe_unused]] static Gen<std::vector<uint8_t>> make_input_bytes(
+    Datatype input_type) {
+  auto gen_elt = rc::gen::container<std::vector<uint8_t>>(
+      datatype_size(input_type), gen::arbitrary<uint8_t>());
+  auto gen_container =
+      gen::nonEmpty(gen::container<std::vector<std::vector<uint8_t>>>(gen_elt));
+  return gen::map(
+      gen_container, [input_type](std::vector<std::vector<uint8_t>> elts) {
+        std::vector<uint8_t> flat;
+        flat.reserve(elts.size() * datatype_size(input_type));
+        for (const std::vector<uint8_t>& elt : elts) {
+          flat.insert(flat.end(), elt.begin(), elt.end());
+        }
+        return flat;
+      });
+}
+
 }  // namespace rc
 
 #endif

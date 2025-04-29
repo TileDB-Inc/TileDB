@@ -79,21 +79,6 @@ static Gen<Datatype> make_reinterpret_datatype(Datatype input_type) {
   }
 }
 
-static Gen<std::vector<uint8_t>> make_input_bytes(Datatype input_type) {
-  auto gen_elt = rc::gen::container<std::vector<uint8_t>>(
-      datatype_size(input_type), gen::arbitrary<uint8_t>());
-  return gen::map(
-      gen::nonEmpty(gen::container<std::vector<std::vector<uint8_t>>>(gen_elt)),
-      [input_type](std::vector<std::vector<uint8_t>> elts) {
-        std::vector<uint8_t> flat;
-        flat.reserve(elts.size() * datatype_size(input_type));
-        for (const std::vector<uint8_t>& elt : elts) {
-          flat.insert(flat.end(), elt.begin(), elt.end());
-        }
-        return flat;
-      });
-}
-
 }  // namespace rc
 
 /**

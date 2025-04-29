@@ -48,30 +48,6 @@
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-namespace rc {
-
-static Gen<std::vector<uint8_t>> make_input_bytes(
-    Datatype input_type, uint64_t num_records = 0) {
-  auto gen_elt = rc::gen::container<std::vector<uint8_t>>(
-      datatype_size(input_type), gen::arbitrary<uint8_t>());
-  auto gen_container = gen::nonEmpty(
-      num_records == 0 ?
-          gen::container<std::vector<std::vector<uint8_t>>>(gen_elt) :
-          gen::container<std::vector<std::vector<uint8_t>>>(
-              num_records, gen_elt));
-  return gen::map(
-      gen_container, [input_type](std::vector<std::vector<uint8_t>> elts) {
-        std::vector<uint8_t> flat;
-        flat.reserve(elts.size() * datatype_size(input_type));
-        for (const std::vector<uint8_t>& elt : elts) {
-          flat.insert(flat.end(), elt.begin(), elt.end());
-        }
-        return flat;
-      });
-}
-
-}  // namespace rc
-
 TEST_CASE("Filter: Round trip SC-65154", "[filter][rapidcheck]") {
   tiledb::sm::Config config;
 
@@ -121,14 +97,14 @@ TEST_CASE("Filter: Round trip SC-65154", "[filter][rapidcheck]") {
 
   SECTION("Rapidcheck int32") {
     rc::prop("Filter: Round trip SC-65154 int32", [doit]() {
-      const auto bytes = *rc::make_input_bytes(Datatype::INT32, 100000);
+      const auto bytes = *rc::make_input_bytes(Datatype::INT32);
       doit.operator()<tiledb::test::AsserterRapidcheck>(Datatype::INT32, bytes);
     });
   }
 
   SECTION("Rapidcheck uint32") {
     rc::prop("Filter: Round trip SC-65154 uint32", [doit]() {
-      const auto bytes = *rc::make_input_bytes(Datatype::UINT32, 100000);
+      const auto bytes = *rc::make_input_bytes(Datatype::UINT32);
       doit.operator()<tiledb::test::AsserterRapidcheck>(
           Datatype::UINT32, bytes);
     });
