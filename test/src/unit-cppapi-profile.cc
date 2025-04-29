@@ -179,6 +179,60 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ProfileCPPFx,
+    "C++ API: Profile load validation",
+    "[cppapi][profile][load]") {
+  SECTION("success") {
+    Profile p(name_, tempdir_.path());
+    // check that the profiles file was not there before
+    REQUIRE(!std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // save some parameters
+    p.set_param("rest.username", "test_user");
+    p.set_param("rest.password", "test_password");
+    // save the profile
+    p.save();
+    // check that the profiles file is created
+    REQUIRE(std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+
+    // create a new profile object
+    Profile p2(name_, tempdir_.path());
+    // load the profile
+    p2.load();
+    // check that the parameters are loaded correctly
+    REQUIRE(p2.get_param("rest.username") == "test_user");
+    REQUIRE(p2.get_param("rest.password") == "test_password");
+  }
+  SECTION("profiles file is present") {
+    Profile p(name_, tempdir_.path());
+    // check that the profiles file is not there
+    REQUIRE(!std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // attempt to load the profile
+    REQUIRE_THROWS(p.load());
+  }
+  SECTION("another profile is saved - profiles file is present") {
+    Profile p1(name_, tempdir_.path());
+    Profile p2("another_profile", tempdir_.path());
+    // check that the profiles file was not there before
+    REQUIRE(!std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // save the other profile
+    p1.save();
+    // check that the profiles file is created
+    REQUIRE(std::filesystem::exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+    // check that the other profile is saved
+    REQUIRE(profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        p1.get_name()));
+    // attempt to load the tested profile
+    REQUIRE_THROWS(p2.load());
+  }
+}
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
     "C++ API: Profile remove validation",
     "[cppapi][profile][remove]") {
   SECTION("success") {
