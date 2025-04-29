@@ -48,8 +48,8 @@ jobs:
       - name: Install Rust Stable
         if: ${{ inputs.rust }}
         uses: dtolnay/rust-toolchain@stable
-      with:
-        components: clippy, rustfmt
+        with:
+          components: clippy, rustfmt
 
       - name: Check Formatting
         run: |
