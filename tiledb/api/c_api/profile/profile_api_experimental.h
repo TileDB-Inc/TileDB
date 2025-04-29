@@ -191,6 +191,27 @@ TILEDB_EXPORT capi_return_t tiledb_profile_save(
     tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
+ * Loads a profile from the local file.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_profile_t* profile;
+ * tiledb_error_t* error = NULL;
+ * tiledb_profile_alloc(&profile, &error);
+ * tiledb_profile_load(profile, &error);
+ * tiledb_profile_free(&profile);
+ * @endcode
+ *
+ * @param[in] profile The profile.
+ * @param[out] error Error object returned upon error (`NULL` if there is
+ *     no error).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_profile_load(
+    tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
+
+/**
  * Removes the given profile from the local file.
  *
  * @param[in] profile The profile.

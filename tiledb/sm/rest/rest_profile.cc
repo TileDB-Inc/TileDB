@@ -119,19 +119,6 @@ RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     throw RestProfileException(
         "Failed to create RestProfile: name cannot be empty.");
   }
-
-  // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
-  std::filesystem::create_directories(homedir + ".tiledb");
-
-  // If the local file exists, load the profile with the given name.
-  if (std::filesystem::exists(filepath_)) {
-    load_from_json_file(filepath_);
-  } else {
-    // If the old version of the file exists, load the profile from there
-    if (std::filesystem::exists(old_filepath_)) {
-      load_from_json_file(old_filepath_);
-    }
-  }
 }
 
 RestProfile::RestProfile(const std::string& name) {
@@ -192,6 +179,8 @@ void RestProfile::save_to_file() {
         "either both be set or both remain unset. Mixing a default username "
         "with a custom password (or vice versa) is not allowed.");
   }
+  // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
+  std::filesystem::create_directories(homedir_ + ".tiledb");
 
   // If the file already exists, load it into a json object.
   json data;
@@ -222,6 +211,19 @@ void RestProfile::save_to_file() {
 
   // Write to the file, which will be created if it does not yet exist.
   write_file(data, filepath_);
+}
+
+void RestProfile::load_from_file() {
+  if (std::filesystem::exists(filepath_)) {
+    // If the local file exists, load the profile with the given name.
+    load_from_json_file(filepath_);
+  } else if (std::filesystem::exists(old_filepath_)) {
+    // If the old version of the file exists, load the profile from there
+    load_from_json_file(old_filepath_);
+  } else {
+    // If the file does not exist, throw an error.
+    throw RestProfileException("Failed to load profile; file does not exist.");
+  }
 }
 
 void RestProfile::remove_from_file() {
@@ -282,8 +284,9 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   // Load the file into a json object.
   json data = read_file(filename);
 
-  // Update any written-parameters from the loaded json object.
   if (filename.c_str() == old_filepath_.c_str()) {
+    // Update any written-parameters from the loaded json object without
+    // considering name.
     if (data.contains("api_key") &&
         data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
       param_values_["rest.token"] = data["api_key"]["X-TILEDB-REST-API-KEY"];
@@ -298,11 +301,15 @@ void RestProfile::load_from_json_file(const std::string& filename) {
       param_values_["rest.username"] = data["username"];
     }
   } else {
+    // Consider the name of the profile to load.
     json profile = data[name_];
     if (!profile.is_null()) {
       for (auto it = profile.begin(); it != profile.end(); ++it) {
         param_values_[it.key()] = profile[it.key()];
       }
+    } else {
+      throw RestProfileException(
+          "Failed to load profile; profile \'" + name_ + "\' does not exist.");
     }
   }
 }
