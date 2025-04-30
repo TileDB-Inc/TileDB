@@ -3,7 +3,7 @@
 
 #[cxx::bridge]
 mod ffi {
-    #[namespace = "rust::arithmetic"]
+    #[namespace = "tiledb::rust::arithmetic"]
     extern "Rust" {
         fn u32_checked_add(a: u32, b: u32, out: &mut u32) -> bool;
         fn i32_checked_add(a: i32, b: i32, out: &mut i32) -> bool;

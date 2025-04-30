@@ -518,8 +518,6 @@ if (TILEDB_TOOLS)
   add_subdirectory(tools)
 endif()
 
-add_subdirectory(oxidize)
-
 # -------------------------------------------------------
 # Tests
 # -------------------------------------------------------
