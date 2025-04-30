@@ -56,11 +56,12 @@ function(add_crate)
         DEPENDS
             ${ADD_CRATE_SOURCES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        EXCLUDE_FROM_ALL
     )
 
     # Note: Object libraries are "{crate_name}_rs" to avoid clashing with the
     # existing object libraries.
-    add_library(${ADD_CRATE_NAME}_rs OBJECT "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/src/lib.rs.cc")
+    add_library(${ADD_CRATE_NAME}_rs OBJECT EXCLUDE_FROM_ALL "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/src/lib.rs.cc")
     target_include_directories(
         ${ADD_CRATE_NAME}_rs
         PUBLIC
