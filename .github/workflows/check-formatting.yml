@@ -39,24 +39,18 @@ jobs:
       - name: Check formatting
         run: $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
 
-  rust-lint:
-    runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
-    timeout-minutes: 90
-    name: Check Rust Format
-    steps:
       - name: Install Rust Stable
         if: ${{ inputs.rust }}
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
 
-      - name: Check Formatting
+      - name: Check Rust Formatting
         run: |
-          cd $GITHUB_WORKSPACE/test/support/oxidize
+          cd $GITHUB_WORKSPACE/oxidize
           cargo fmt --quiet --check
 
-      - name: Lint
+      - name: Rust Lint
         run: |
-          cd $GITHUB_WORKSPACE/test/support/oxidize
+          cd $GITHUB_WORKSPACE/oxidize
           cargo clippy --no-deps --all-targets --all-features -- -Dwarnings
