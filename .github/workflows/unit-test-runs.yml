@@ -40,6 +40,9 @@ jobs:
           python -m pip install --upgrade pip virtualenv
           pip install pyarrow pybind11[global] numpy
 
+      - name: Install Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Setup MSVC toolset
         uses: TheMrMilchmann/setup-msvc-dev@v3
         if: ${{ startsWith(matrix.os, 'windows-') }}
@@ -74,7 +77,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_ASSERTIONS=ON \
-            -DTILEDB_ARROW_TESTS=ON
+            -DTILEDB_ARROW_TESTS=ON \
+            -DTILEDB_RUST=ON
           # Build all unit tests
           cmake --build build --target tests -j4
 

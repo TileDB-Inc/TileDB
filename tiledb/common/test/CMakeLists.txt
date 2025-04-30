@@ -26,6 +26,15 @@
 
 include(unit_test)
 
+if (TILEDB_RUST)
+    # all of the tests depend on Rust test support
+    commence(unit_test arithmetic)
+        this_target_sources(main.cc unit_arithmetic.cc)
+        this_target_object_libraries(arithmetic_rs)
+        this_target_link_libraries(rapidcheck)
+    conclude(unit_test)
+endif ()
+
 commence(unit_test experimental)
     this_target_object_libraries(baseline)
     this_target_sources(

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
+#include "tiledb/common/arithmetic.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_option.h"
@@ -416,13 +417,19 @@ uint8_t BitWidthReductionFilter::compute_bits_required(
   buffer->set_offset(orig_offset);
 
   // Check for overflow
-  T range = window_max - window_min;
-  if (range == std::numeric_limits<T>::max())
+  std::optional<T> range = checked_arithmetic<T>::sub(window_max, window_min);
+  if (!range.has_value()) {
     return sizeof(T) * 8;
+  }
+
+  std::optional<T> range_offset = checked_arithmetic<T>::add(range.value(), 1);
+  if (!range_offset.has_value()) {
+    return sizeof(T) * 8;
+  }
 
   // Compute the number of bits required to store the max (normalized) window
   // value, rounding to the nearest C integer type width.
-  uint8_t bits = bits_required(range + 1);
+  uint8_t bits = bits_required(range_offset.value());
   if (bits <= 8)
     bits = 8;
   else if (bits <= 16)
