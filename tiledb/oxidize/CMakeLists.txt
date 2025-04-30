@@ -56,7 +56,6 @@ function(add_crate)
         DEPENDS
             ${ADD_CRATE_SOURCES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        EXCLUDE_FROM_ALL
     )
 
     # Note: Object libraries are "{crate_name}_rs" to avoid clashing with the
