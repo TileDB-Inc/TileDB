@@ -96,7 +96,7 @@ static bool expect_overflow(
     std::span<const int64_t> values(
         reinterpret_cast<const int64_t*>(&data[0]),
         data.size() / sizeof(int64_t));
-    if (values.size() <= 1) {
+    if (values.size() <= 2) {
       return false;
     }
     for (uint64_t i = 1; i < values.size(); i++) {
@@ -112,7 +112,7 @@ static bool expect_overflow(
     std::span<const uint64_t> values(
         reinterpret_cast<const uint64_t*>(&data[0]),
         data.size() / sizeof(int64_t));
-    if (values.size() <= 1) {
+    if (values.size() <= 2) {
       return false;
     }
     for (uint64_t i = 1; i < values.size(); i++) {
@@ -219,6 +219,12 @@ TEST_CASE("Filter: Round trip Compressor DoubleDelta", "[filter][rapidcheck]") {
   }
   SECTION("Shrinking 6") {
     const std::vector<uint8_t> data = {0, 1, 0, 0, 1, 1, 1, 0};
+    doit.operator()<tiledb::test::AsserterCatch>(
+        Datatype::DATETIME_MONTH, Datatype::UINT64, data);
+  }
+  SECTION("Shrinking 7") {
+    const std::vector<uint8_t> data = {
+        0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 128};
     doit.operator()<tiledb::test::AsserterCatch>(
         Datatype::DATETIME_MONTH, Datatype::UINT64, data);
   }
