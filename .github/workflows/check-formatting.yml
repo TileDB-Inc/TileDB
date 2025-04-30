@@ -52,5 +52,5 @@ jobs:
 
       - name: Rust Lint
         run: |
-          cd $GITHUB_WORKSPACE/oxidize
+          cd $GITHUB_WORKSPACE/tiledb/oxidize
           cargo clippy --no-deps --all-targets --all-features -- -Dwarnings
