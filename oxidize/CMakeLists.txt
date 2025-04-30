@@ -1,7 +1,3 @@
-if (NOT TILEDB_TESTS)
-  message(FATAL_ERROR "Building Rust without tests is not supported.")
-endif()
-
 find_program(CARGO cargo)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
