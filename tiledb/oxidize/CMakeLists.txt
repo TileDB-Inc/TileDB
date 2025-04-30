@@ -47,7 +47,6 @@ function(add_crate)
             ${CARGO}
             build
             "-vvv"
-            "-q"
             "--profile" ${CARGO_PROFILE}
             "--manifest-path" ${CARGO_MANIFEST_PATH}
             "-p" ${ADD_CRATE_NAME}
