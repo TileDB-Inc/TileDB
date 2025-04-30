@@ -43,7 +43,6 @@ function(add_crate)
             "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/src/lib.rs.cc"
             "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
         COMMAND
-            "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}"
             "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
             ${CARGO}
             build
