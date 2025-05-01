@@ -125,8 +125,12 @@ function(add_crate)
     target_link_libraries(
         ${ADD_CRATE_NAME}_rs
         ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
-        ${ADD_CRATE_STATIC_LIBS_LIST}
+        #${ADD_CRATE_STATIC_LIBS_LIST}
     )
+    if (WIN32)
+        target_link_libraries(ws2_32)
+        target_link_options("/NODEFAULTLIB:library")
+    endif ()
 endfunction ()
 
 
