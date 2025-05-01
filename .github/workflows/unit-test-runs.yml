@@ -75,34 +75,8 @@ jobs:
           where link.exe
         if: ${{ startsWith(matrix.os, 'windows-') }}
 
-      #
-      # Rust's `rustc` will invoke `link.exe` without full qualification.
-      # If the wrong `link.exe` occurs prior in `$PATH`, then the build will fail.
-      # Here we fix up the `$PATH` to ensure that the correct `link.exe` is used.
-      #
-      - name: 'Fix link.exe path'
-        id: build-path
-        shell: pwsh
+      - name: 'Configure build'
         run: |
-          $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
-          $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
-          echo "PATH_FOR_BUILD"
-          echo "$PATH_FOR_BUILD"
-          echo "PATH_FOR_BUILD=$PATH_FOR_BUILD" >> "$GITHUB_OUTPUT"
-        if: ${{ startsWith(matrix.os, 'windows-') }}
-
-      - name: 'Set PATH_FOR_BUILD'
-        id: build-path
-        run: |
-          echo "PATH_FOR_BUILD=$PATH" >> "$GITHUB_OUTPUT"
-        if: ${{ !startsWith(matrix.os, 'windows-') }}
-
-      - name: 'Build standalone unit tests'
-        env:
-          PATH_FOR_BUILD: ${{ steps.build-path.outputs.PATH_FOR_BUILD }}
-        run: |
-          echo "PATH_FOR_BUILD = $PATH_FOR_BUILD"
-          export PATH=$PATH_FOR_BUILD
           cmake -S . \
             -B build \
             -G Ninja \
@@ -111,8 +85,29 @@ jobs:
             -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_ARROW_TESTS=ON \
             -DTILEDB_RUST=ON
-          # Build all unit tests
+
+      - name: 'Build standalone unit tests'
+        run: |
           cmake --build build --target tests -j4
+        if: ${{ !startsWith(matrix.os, 'windows-') }}
+
+      #
+      # Rust's `rustc` will invoke `link.exe` without full qualification.
+      # If the wrong `link.exe` occurs prior in `$PATH`, then the build will fail.
+      # Here we fix up the `$PATH` to ensure that the correct `link.exe` is used.
+      #
+      - name: 'Build standalone unit tests (Windows)'
+        shell: pwsh
+        run: |
+          $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
+          $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
+          echo "PATH_FOR_BUILD"
+          echo "$PATH_FOR_BUILD"
+          $Env:PATH = $PATH_FOR_BUILD
+          echo "Env:PATH"
+          echo "$Env:PATH"
+          cmake --build build --target tests -j4
+        if: ${{ startsWith(matrix.os, 'windows-') }}
 
       - name: 'Run standalone unit tests'
         run: |
