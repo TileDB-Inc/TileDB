@@ -10,3 +10,10 @@ add_crate(
     SOURCES
         Cargo.toml
 )
+
+add_crate(
+    NAME expr
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/expr/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/expr/src/lib.rs
+)
+
+set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} *.h)
