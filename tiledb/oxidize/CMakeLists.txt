@@ -129,7 +129,7 @@ function(add_crate)
             ws2_32.lib
             #${ADD_CRATE_STATIC_LIBS_LIST}
         )
-        target_link_options(${ADD_CRATE_NAME}_rs "/NODEFAULTLIB:library")
+        target_link_options(${ADD_CRATE_NAME}_rs PUBLIC "/NODEFAULTLIB:library")
     else ()
         target_link_libraries(
             ${ADD_CRATE_NAME}_rs
