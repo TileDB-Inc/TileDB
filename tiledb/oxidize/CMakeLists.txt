@@ -46,7 +46,7 @@ function(add_crate)
             ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
             ${CARGO}
             build
-            "-vvv"
+            "--quiet"
             "--profile" ${CARGO_PROFILE}
             "--manifest-path" ${CARGO_MANIFEST_PATH}
             "-p" ${ADD_CRATE_NAME}
