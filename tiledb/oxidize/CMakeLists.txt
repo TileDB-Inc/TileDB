@@ -122,14 +122,19 @@ function(add_crate)
             ${CMAKE_SOURCE_DIR}
             ${CMAKE_BINARY_DIR}/tiledb/
     )
-    target_link_libraries(
-        ${ADD_CRATE_NAME}_rs
-        ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
-        #${ADD_CRATE_STATIC_LIBS_LIST}
-    )
     if (WIN32)
-        target_link_libraries(${ADD_CRATE_NAME}_rs PUBLIC ws2_32.lib)
+        target_link_libraries(
+            ${ADD_CRATE_NAME}_rs
+            ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+            ws2_32.lib
+            #${ADD_CRATE_STATIC_LIBS_LIST}
+        )
         target_link_options(${ADD_CRATE_NAME}_rs "/NODEFAULTLIB:library")
+    else ()
+        target_link_libraries(
+            ${ADD_CRATE_NAME}_rs
+            ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+        )
     endif ()
 endfunction ()
 
