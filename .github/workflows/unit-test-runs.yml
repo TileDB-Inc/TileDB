@@ -81,6 +81,7 @@ jobs:
       # Here we fix up the `$PATH` to ensure that the correct `link.exe` is used.
       #
       - name: 'Fix link.exe path'
+        shell: pwsh
         run: |
           $PATH_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "*Git*" } -join ';'
           echo "PATH_FOR_BUILD=$PATH_FOR_BUILD" >> "$GITHUB_ENV"
