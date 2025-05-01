@@ -102,11 +102,7 @@ jobs:
         run: |
           $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
           $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
-          echo "PATH_FOR_BUILD"
-          echo "$PATH_FOR_BUILD"
           $Env:PATH = $PATH_FOR_BUILD
-          echo "Env:PATH"
-          echo "$Env:PATH"
           cmake -S . -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Debug `
             -DTILEDB_SERIALIZATION=ON `
@@ -120,11 +116,7 @@ jobs:
         run: |
           $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
           $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
-          echo "PATH_FOR_BUILD"
-          echo "$PATH_FOR_BUILD"
           $Env:PATH = $PATH_FOR_BUILD
-          echo "Env:PATH"
-          echo "$Env:PATH"
           cmake --build build --target tests -j4
         if: ${{ startsWith(matrix.os, 'windows-') }}
 
