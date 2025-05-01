@@ -85,6 +85,7 @@ jobs:
             -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_ARROW_TESTS=ON \
             -DTILEDB_RUST=ON
+        if: ${{ !startsWith(matrix.os, 'windows-') }}
 
       - name: 'Build standalone unit tests'
         run: |
@@ -96,6 +97,25 @@ jobs:
       # If the wrong `link.exe` occurs prior in `$PATH`, then the build will fail.
       # Here we fix up the `$PATH` to ensure that the correct `link.exe` is used.
       #
+      - name: 'Configure build (windows)'
+        run: |
+          $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
+          $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
+          echo "PATH_FOR_BUILD"
+          echo "$PATH_FOR_BUILD"
+          $Env:PATH = $PATH_FOR_BUILD
+          echo "Env:PATH"
+          echo "$Env:PATH"
+          cmake -S . \
+            -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DTILEDB_SERIALIZATION=ON \
+            -DTILEDB_ASSERTIONS=ON \
+            -DTILEDB_ARROW_TESTS=ON \
+            -DTILEDB_RUST=ON
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+
       - name: 'Build standalone unit tests (Windows)'
         shell: pwsh
         run: |
