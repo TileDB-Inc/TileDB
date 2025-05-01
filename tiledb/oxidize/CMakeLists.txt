@@ -70,6 +70,7 @@ function(add_crate)
                 ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
                 ${CARGO}
                 rustc
+                --profile ${CARGO_PROFILE}
                 -p ${ADD_CRATE_NAME}
                 --color never
                 --
