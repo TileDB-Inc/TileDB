@@ -49,8 +49,8 @@ endif()
 ################################################################
 
 commence(unit_test ast)
-    this_target_object_libraries(query_ast)
-    this_target_sources(main.cc unit-query-ast.cc)
+    this_target_object_libraries(query_ast expr_rs)
+    this_target_sources(main.cc unit-query-ast.cc unit-query-to-datafusion.cc)
     target_include_directories(unit_ast PRIVATE "${TILEDB_CORE_INCLUDE_DIR}")
     this_target_link_libraries(ast_test_support_lib)
     # We want tests to continue as normal even as the API is changing,
