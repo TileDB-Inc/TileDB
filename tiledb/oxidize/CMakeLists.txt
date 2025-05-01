@@ -101,6 +101,9 @@ function(add_crate)
             endif ()
         endif ()
 
+        # https://github.com/corrosion-rs/corrosion/blob/715c235daef4b8ee67278f12256334ad3dd4c4ae/cmake/FindRust.cmake
+        list(FILTER ADD_CRATE_STATIC_LIBS_LIST EXCLUDE REGEX "^msvcrtd?")
+
         message(NOTICE "${ADD_CRATE_NAME}_rs native-static-libs: ${ADD_CRATE_STATIC_LIBS_STDERR}")
         message(NOTICE "${ADD_CRATE_NAME}_rs link libraries: ${ADD_CRATE_STATIC_LIBS_LIST}")
     endif ()
