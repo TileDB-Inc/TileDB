@@ -85,6 +85,9 @@ jobs:
         run: |
           $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
           $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
+          echo $Env:PATH
+          echo $PATH_COMPONENTS_FOR_BUILD
+          echo $PATH_FOR_BUILD
           echo "PATH_FOR_BUILD=$PATH_FOR_BUILD" >> "$GITHUB_ENV"
         if: ${{ startsWith(matrix.os, 'windows-') }}
 
