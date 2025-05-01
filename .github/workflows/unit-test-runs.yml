@@ -70,6 +70,11 @@ jobs:
         shell: bash
         if: ${{ !startsWith(matrix.os, 'windows-') }}
 
+      - name: 'Print path'
+        run: |
+          where link.exe
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+
       - name: 'Build standalone unit tests'
         run: |
           cmake -S . \
