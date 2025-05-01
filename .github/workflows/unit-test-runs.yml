@@ -98,6 +98,7 @@ jobs:
       # Here we fix up the `$PATH` to ensure that the correct `link.exe` is used.
       #
       - name: 'Configure build (windows)'
+        shell: pwsh
         run: |
           $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
           $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
