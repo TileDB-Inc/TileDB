@@ -81,19 +81,24 @@ jobs:
       # Here we fix up the `$PATH` to ensure that the correct `link.exe` is used.
       #
       - name: 'Fix link.exe path'
+        id: build-path
         shell: pwsh
         run: |
           $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
           $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
-          echo "PATH_FOR_BUILD=$PATH_FOR_BUILD" >> "$GITHUB_ENV"
+          echo "PATH_FOR_BUILD=$PATH_FOR_BUILD"
+          echo "PATH_FOR_BUILD=$PATH_FOR_BUILD" >> "$GITHUB_OUTPUT"
         if: ${{ startsWith(matrix.os, 'windows-') }}
 
       - name: 'Set PATH_FOR_BUILD'
+        id: build-path
         run: |
-          echo "PATH_FOR_BUILD=$PATH" >> "$GITHUB_ENV"
+          echo "PATH_FOR_BUILD=$PATH" >> "$GITHUB_OUTPUT"
         if: ${{ !startsWith(matrix.os, 'windows-') }}
 
       - name: 'Build standalone unit tests'
+        env:
+          PATH_FOR_BUILD: ${{ steps.build-path.outputs.PATH_FOR_BUILD }}
         run: |
           echo "PATH_FOR_BUILD = $PATH_FOR_BUILD"
           export PATH=$PATH_FOR_BUILD
