@@ -58,6 +58,53 @@ function(add_crate)
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 
+    if (TILEDB_RUST)
+        #
+        # Identify system static libs to link with.
+        #
+        execute_process(
+            COMMAND
+                ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
+                ${CARGO}
+                rustc
+                -p ${ADD_CRATE_NAME}
+                --color never
+                --
+                --print native-static-libs
+            WORKING_DIRECTORY
+                ${CMAKE_CURRENT_SOURCE_DIR}
+            RESULT_VARIABLE
+                ADD_CRATE_STATIC_LIBS_STDOUT
+            ERROR_VARIABLE
+                ADD_CRATE_STATIC_LIBS_STDERR
+        )
+        set(ADD_CRATE_STATIC_LIBS_LIST "")
+
+        if (ADD_CRATE_STATIC_LIBS_STOUT)
+            message(FATAL_ERROR "Unable to identify native-static-libs for crate ${ADD_CRATE_NAME}: ${ADD_CRATE_STATIC_LIBS_STDOUT}")
+            message(FATAL_ERROR "Note: stderr was: ${ADD_CRATE_STATIC_LIBS_STDERR}")
+            return ()
+        else ()
+            if (ADD_CRATE_STATIC_LIBS_STDERR MATCHES "note: native-static-libs: ([^\r\n]+)\r?\n")
+                string(REPLACE " " ";" ADD_CRATE_STATIC_LIBS_LINK_FLAGS ${CMAKE_MATCH_1})
+
+                message(NOTICE "${ADD_CRATE_NAME}_rs match: ${CMAKE_MATCH_1}")
+                message(NOTICE "${ADD_CRATE_NAME}_rs replace: ${ADD_CRATE_STATIC_LIBS_LINK_FLAGS}")
+
+                foreach (ADD_CRATE_STATIC_LIB_LINK_FLAG ${ADD_CRATE_STATIC_LIBS_LINK_FLAGS})
+                    string(REGEX REPLACE "^-l" "" ADD_CRATE_STATIC_LIB ${ADD_CRATE_STATIC_LIB_LINK_FLAG})
+                    list(APPEND ADD_CRATE_STATIC_LIBS_LIST ${ADD_CRATE_STATIC_LIB})
+                endforeach ()
+            else ()
+                message(FATAL_ERROR "Unable to identify native-static-libs for crate ${ADD_CRATE_NAME}: regex match failure: found stdout=${ADD_CRATE_STATIC_LIBS_STDOUT}, stderr=${ADD_CRATE_STATIC_LIBS_STDERR}")
+                return ()
+            endif ()
+        endif ()
+
+        message(NOTICE "${ADD_CRATE_NAME}_rs native-static-libs: ${ADD_CRATE_STATIC_LIBS_STDERR}")
+        message(NOTICE "${ADD_CRATE_NAME}_rs link libraries: ${ADD_CRATE_STATIC_LIBS_LIST}")
+    endif ()
+
     # Note: Object libraries are "{crate_name}_rs" to avoid clashing with the
     # existing object libraries.
     add_library(${ADD_CRATE_NAME}_rs OBJECT EXCLUDE_FROM_ALL "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/src/lib.rs.cc")
@@ -71,6 +118,7 @@ function(add_crate)
     target_link_libraries(
         ${ADD_CRATE_NAME}_rs
         ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+        ${ADD_CRATE_STATIC_LIBS_LIST}
     )
 endfunction ()
 
