@@ -88,6 +88,67 @@ Enumeration::Enumeration(
     throw EnumerationException("Invalid cell_val_num in Enumeration");
   }
 
+  validate(data, data_size, offsets, offsets_size);
+
+  // std::memcpy with nullptr in either src or dest can lead to UB
+  // data_size != 0 guarantees internal data buffer address to be not null
+  if (data != nullptr && data_size != 0) {
+    throw_if_not_ok(data_.write(data, 0, data_size));
+  }
+  if (offsets != nullptr) {
+    throw_if_not_ok(offsets_.write(offsets, 0, offsets_size));
+  }
+
+  generate_value_map();
+}
+
+Enumeration::Enumeration(
+    const std::string& name,
+    const std::string& path_name,
+    Datatype type,
+    uint32_t cell_val_num,
+    bool ordered,
+    Buffer&& data,
+    Buffer&& offsets,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , name_(name)
+    , path_name_(path_name)
+    , type_(type)
+    , cell_val_num_(cell_val_num)
+    , ordered_(ordered)
+    , data_(std::move(data))
+    , offsets_(std::move(offsets))
+    , value_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
+  ensure_datatype_is_valid(type);
+
+  if (name.empty()) {
+    throw EnumerationException("Enumeration name must not be empty");
+  }
+
+  if (path_name_.empty()) {
+    path_name_ = "__" + tiledb::common::random_label() + "_" +
+                 std::to_string(constants::enumerations_version);
+  }
+
+  if (path_name.find("/") != std::string::npos) {
+    throw EnumerationException(
+        "Enumeration path name must not contain path separators");
+  }
+
+  if (cell_val_num == 0) {
+    throw EnumerationException("Invalid cell_val_num in Enumeration");
+  }
+
+  validate(data_.data(), data_.size(), offsets_.data(), offsets_.size());
+  generate_value_map();
+}
+
+void Enumeration::validate(
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size) {
   // Check if we're creating an empty enumeration and bail.
   auto data_empty = (data == nullptr && data_size == 0);
   auto offsets_empty = (offsets == nullptr && offsets_size == 0);
@@ -181,17 +242,6 @@ Enumeration::Enumeration(
           "Invalid data size is not a multiple of the cell size.");
     }
   }
-
-  // std::memcpy with nullptr in either src or dest can lead to UB
-  // data_size != 0 guarantees internal data buffer address to be not null
-  if (data != nullptr && data_size != 0) {
-    throw_if_not_ok(data_.write(data, 0, data_size));
-  }
-  if (offsets != nullptr) {
-    throw_if_not_ok(offsets_.write(offsets, 0, offsets_size));
-  }
-
-  generate_value_map();
 }
 
 shared_ptr<const Enumeration> Enumeration::deserialize(
@@ -295,34 +345,36 @@ shared_ptr<const Enumeration> Enumeration::extend(
       throw EnumerationException(
           "Offsets size is non-zero when extending a fixed sized enumeration.");
     }
+
+    if (data_size % cell_size() != 0) {
+      throw EnumerationException(
+          "Invalid data size is not a multiple of the cell size.");
+    }
   }
 
-  Buffer new_data(data_.size() + data_size);
-  throw_if_not_ok(new_data.write(data_.data(), data_.size()));
-  if (data_size > 0) {
-    throw_if_not_ok(new_data.write(data, data_size));
+  Buffer data_buf(data_.size() + data_size);
+  Buffer offsets_buf(offsets_.size() + offsets_size);
+
+  if (data_.size() != 0) {
+    throw_if_not_ok(data_buf.write(data_.data(), data_.size()));
   }
-
-  const void* new_offsets_ptr = nullptr;
-  uint64_t new_offsets_size = 0;
-
-  Buffer new_offsets(offsets_.size() + offsets_size);
+  if (data_size != 0) {
+    throw_if_not_ok(data_buf.write(data, data_size));
+  }
 
   if (var_size()) {
     // First we write our existing offsets
-    throw_if_not_ok(new_offsets.write(offsets_.data(), offsets_.size()));
+    throw_if_not_ok(offsets_buf.write(offsets_.data(), offsets_.size()));
 
-    // All new offsets have to be rewritten to be relative to the length
-    // of the current data array.
-    const uint64_t* offsets_arr = static_cast<const uint64_t*>(offsets);
-    uint64_t num_offsets = offsets_size / sizeof(uint64_t);
-    for (uint64_t i = 0; i < num_offsets; i++) {
-      uint64_t new_offset = offsets_arr[i] + data_.size();
-      throw_if_not_ok(new_offsets.write(&new_offset, sizeof(uint64_t)));
+    // Second we write new offsets all at once without modifying them
+    throw_if_not_ok(offsets_buf.write(offsets, offsets_size));
+
+    span<uint64_t> offsets_arr(
+        static_cast<uint64_t*>(offsets_buf.data(offsets_.size())),
+        offsets_size / sizeof(uint64_t));
+    for (uint64_t i = 0; i < offsets_arr.size(); i++) {
+      offsets_arr[i] += data_.size();
     }
-
-    new_offsets_ptr = new_offsets.data();
-    new_offsets_size = new_offsets.size();
   }
 
   return create(
@@ -331,10 +383,8 @@ shared_ptr<const Enumeration> Enumeration::extend(
       type_,
       cell_val_num_,
       ordered_,
-      new_data.data(),
-      new_data.size(),
-      new_offsets_ptr,
-      new_offsets_size,
+      std::move(data_buf),
+      std::move(offsets_buf),
       memory_tracker_);
 }
 
@@ -461,7 +511,6 @@ void Enumeration::add_value_to_map(std::string_view& sv, uint64_t index) {
         "Invalid duplicated value in enumeration '" + std::string(sv) + "'");
   }
 }
-
 }  // namespace tiledb::sm
 
 std::ostream& operator<<(
