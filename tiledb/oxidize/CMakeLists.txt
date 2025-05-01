@@ -8,6 +8,9 @@ else ()
     set(CARGO_TARGET "release")
 endif ()
 
+message(NOTICE "CARGO_PROFILE: ${CARGO_PROFILE}")
+message(NOTICE "CARGO_TARGET: ${CARGO_TARGET}")
+
 set(CARGO_MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
 
 set(CARGO_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/target")
