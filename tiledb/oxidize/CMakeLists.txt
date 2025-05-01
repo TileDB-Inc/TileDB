@@ -128,8 +128,8 @@ function(add_crate)
         #${ADD_CRATE_STATIC_LIBS_LIST}
     )
     if (WIN32)
-        target_link_libraries(ws2_32.lib)
-        target_link_options("/NODEFAULTLIB:library")
+        target_link_libraries(${ADD_CRATE_NAME}_rs PUBLIC ws2_32.lib)
+        target_link_options(${ADD_CRATE_NAME}_rs "/NODEFAULTLIB:library")
     endif ()
 endfunction ()
 
