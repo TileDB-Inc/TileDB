@@ -1,9 +1,36 @@
 #[cxx::bridge]
 mod ffi {
     #[namespace = "tiledb::sm"]
+    enum QueryConditionOp {
+        LT,
+        LE,
+        GT,
+        GE,
+        EQ,
+        NE,
+        IN,
+        NOT_IN,
+        ALWAYS_TRUE = 253,
+        ALWAYS_FALSE = 254,
+    }
+
+    #[namespace = "tiledb::sm"]
+    enum QueryConditionCombinationOp {
+        AND,
+        OR,
+        NOT,
+    }
+
+    #[namespace = "tiledb::sm"]
     unsafe extern "C++" {
         include!("tiledb/sm/enums/query_condition_op.h");
         type QueryConditionOp;
+    }
+
+    #[namespace = "tiledb::sm"]
+    unsafe extern "C++" {
+        include!("tiledb/sm/enums/query_condition_combination_op.h");
+        type QueryConditionCombinationOp;
     }
 
     #[namespace = "tiledb::sm"]
