@@ -1,4 +1,4 @@
-#include "build/tiledb/oxidize/expr.h"
+#include "build/tiledb/oxidize/target/cxxbridge/expr/src/lib.rs.h"
 
 #include <test/support/tdb_catch.h>
 

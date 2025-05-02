@@ -4,24 +4,25 @@
 
 add_crate(
     NAME arithmetic
-    SOURCES Cargo.toml arithmetic/src/lib.rs
+    BRIDGES src/lib.rs
+    SOURCES Cargo.toml
 )
 
 add_crate(
     NAME expr
-    SOURCES Cargo.toml src/lib.rs
+    BRIDGES src/lib.rs
+    SOURCES Cargo.toml
 )
 
 add_crate(
     NAME oxidize
-    SOURCES
-        Cargo.toml
-        src/lib.rs
-        src/sm/mod.rs
+    BRIDGES
         src/sm/array_schema/mod.rs
         src/sm/enums/mod.rs
-        src/sm/query/mod.rs
+        src/sm/misc/mod.rs
         src/sm/query/ast/mod.rs
+    SOURCES
+        Cargo.toml
 )
 
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} *.h)
