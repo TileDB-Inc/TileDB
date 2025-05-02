@@ -46,7 +46,7 @@ struct expected_values_t {
   std::string name = RestProfile::DEFAULT_NAME;
   std::string password = RestProfile::DEFAULT_PASSWORD;
   std::string payer_namespace = RestProfile::DEFAULT_PAYER_NAMESPACE;
-  std::string token = cloudtoken_;
+  std::string token = RestProfile::DEFAULT_TOKEN;
   std::string server_address = RestProfile::DEFAULT_SERVER_ADDRESS;
   std::string username = RestProfile::DEFAULT_USERNAME;
 };
@@ -123,7 +123,6 @@ TEST_CASE_METHOD(
 
   // Create and validate a default RestProfile.
   RestProfile profile(create_profile());
-  profile.save_to_file();
 
   // Set the expected token value; expected_values_t uses cloudtoken_ by
   // default.
@@ -141,7 +140,6 @@ TEST_CASE_METHOD(
 
   // Create and validate a default RestProfile.
   RestProfile profile(create_profile());
-  profile.save_to_file();
   expected_values_t expected;
   expected.token = RestProfile::DEFAULT_TOKEN;
   CHECK(is_valid(profile, expected));
@@ -153,7 +151,6 @@ TEST_CASE_METHOD(
     "[rest_profile][default][inherited]") {
   // Create and validate a default RestProfile.
   RestProfile profile(create_profile());
-  profile.save_to_file();
   expected_values_t expected;
   CHECK(is_valid(profile, expected));
 }
@@ -167,10 +164,11 @@ TEST_CASE_METHOD(
   std::string filepath = homedir_ + ".tiledb/profiles.json";
   CHECK(profile_from_file_to_json(filepath, std::string(p.name())).empty());
 
-  // Save and validate.
-  p.save_to_file();
+  // Validate.
   expected_values_t e;
   CHECK(is_valid(p, e));
+  // Save to file and validate that the local json object is created.
+  p.save_to_file();
   CHECK(!profile_from_file_to_json(filepath, std::string(p.name())).empty());
 
   // Remove the profile and validate that the local json object is removed.
@@ -256,7 +254,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     RestProfileFx,
     "REST Profile: Multiple profiles, same name",
-    "[rest_profile][multiple][same_name]") {
+    "[rest_profile][load][multiple][same_name]") {
   std::string payer_namespace = "payer_namespace";
   std::string token = "token";
 
@@ -270,6 +268,7 @@ TEST_CASE_METHOD(
 
   // Create a second profile, ensuring the payer_namespace is inherited.
   RestProfile p2(create_profile());
+  p2.load_from_file();
   CHECK(p2.get_param("rest.payer_namespace") == payer_namespace);
 
   // Set a non-default token on the second profile.
@@ -283,7 +282,7 @@ TEST_CASE_METHOD(
   CHECK(is_valid(p2, e));
 
   // Ensure the first profile is now out of date.
-  CHECK(p.get_param("rest.token") == cloudtoken_);
+  CHECK(p.get_param("rest.token") == RestProfile::DEFAULT_TOKEN);
 }
 
 TEST_CASE_METHOD(
