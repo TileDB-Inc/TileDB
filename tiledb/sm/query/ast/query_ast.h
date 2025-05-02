@@ -241,6 +241,16 @@ class ASTNode {
    */
   virtual ~ASTNode() {
   }
+
+  /**
+   * @return the number of children nodes
+   */
+  uint64_t num_children() const;
+
+  /**
+   * @return the ith child of this, or `nullptr` if out of bounds
+   */
+  const ASTNode* get_child(uint64_t i) const;
 };
 
 /**

@@ -45,6 +45,19 @@ static inline bool supported_string_type(Datatype type) {
       type == Datatype::STRING_UTF8);
 }
 
+uint64_t ASTNode::num_children() const {
+  return get_children().size();
+}
+
+const ASTNode* ASTNode::get_child(uint64_t i) const {
+  const auto& children = get_children();
+  if (i < children.size()) {
+    return children[i].get();
+  } else {
+    return nullptr;
+  }
+}
+
 ASTNodeVal::ASTNodeVal(
     const std::string& field_name,
     const void* const data,

@@ -83,6 +83,11 @@ add_crate(
 )
 
 add_crate(
+    NAME array_schema
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/expr/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/expr/src/lib.rs
+)
+
+add_crate(
     NAME expr
     SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/expr/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/expr/src/lib.rs
 )
