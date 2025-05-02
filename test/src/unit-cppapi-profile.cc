@@ -71,7 +71,7 @@ struct expected_values_t {
   std::string username = sm::RestProfile::DEFAULT_USERNAME;
 };
 
-bool is_valid(const Profile& p, const expected_values_t& e) {
+bool is_expected(const Profile& p, const expected_values_t& e) {
   return p.get_name() == e.name && p.get_param("rest.username") == e.username &&
          p.get_param("rest.password") == e.password &&
          p.get_param("rest.payer_namespace") == e.payer_namespace &&
@@ -218,7 +218,7 @@ TEST_CASE_METHOD(
     // check that the parameters are loaded correctly
     expected.username = "test_user";
     expected.password = "test_password";
-    is_valid(p2, expected);
+    is_expected(p2, expected);
   }
   SECTION("profiles file is present") {
     // check that the profiles file is not there
@@ -351,7 +351,7 @@ TEST_CASE_METHOD(
     REQUIRE_THROWS(p.save());
 
     // assert the properties of the profile
-    REQUIRE(is_valid(p, expected));
+    REQUIRE(is_expected(p, expected));
 
     // remove the profile from the profiles file
     p.remove();
@@ -385,7 +385,7 @@ TEST_CASE_METHOD(
         tiledb::sm::RestProfile::DEFAULT_NAME));
 
     // assert the properties of the profile
-    REQUIRE(is_valid(p, expected));
+    REQUIRE(is_expected(p, expected));
 
     // remove the profile from the profiles file
     p.remove();
@@ -415,7 +415,7 @@ TEST_CASE_METHOD(
         name_));
 
     // assert the properties of the profile
-    REQUIRE(is_valid(p, expected));
+    REQUIRE(is_expected(p, expected));
 
     // remove the profile from the profiles file
     p.remove();
@@ -442,7 +442,7 @@ TEST_CASE_METHOD(
         tiledb::sm::RestProfile::DEFAULT_NAME));
 
     // assert the properties of the profile
-    REQUIRE(is_valid(p, expected));
+    REQUIRE(is_expected(p, expected));
 
     // remove the profile from the profiles file
     p.remove();
