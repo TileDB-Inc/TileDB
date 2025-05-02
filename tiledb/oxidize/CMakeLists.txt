@@ -37,6 +37,8 @@ function(add_crate)
         message(SEND_ERROR "Function add_crate requires one or more SOURCES arguments")
     endif()
 
+    list(TRANSFORM ADD_CRATE_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_CRATE_NAME}/)
+
     add_custom_command(
         OUTPUT
             "${CMAKE_CURRENT_BINARY_DIR}/${ADD_CRATE_NAME}.h"
@@ -79,17 +81,24 @@ endfunction ()
 
 add_crate(
     NAME arithmetic
-    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/arithmetic/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/arithmetic/src/lib.rs
-)
-
-add_crate(
-    NAME array_schema
-    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/expr/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/expr/src/lib.rs
+    SOURCES Cargo.toml arithmetic/src/lib.rs
 )
 
 add_crate(
     NAME expr
-    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/expr/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/expr/src/lib.rs
+    SOURCES Cargo.toml src/lib.rs
+)
+
+add_crate(
+    NAME oxidize
+    SOURCES
+        Cargo.toml
+        src/lib.rs
+        src/sm/mod.rs
+        src/sm/array_schema/mod.rs
+        src/sm/enums/mod.rs
+        src/sm/query/mod.rs
+        src/sm/query/ast/mod.rs
 )
 
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} *.h)
