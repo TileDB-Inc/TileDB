@@ -1,24 +1,27 @@
 # assumes cargo is found via `Modules/FindCargo.cmake`
 
-include(oxidize)
+# and now, the crates themselves!
 
 add_crate(
-    NAME
-        arithmetic
-    BRIDGES
-        src/lib.rs
-    SOURCES
-        Cargo.toml
-)
-
-add_crate(
-    NAME array_schema
-    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/expr/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/expr/src/lib.rs
+    NAME arithmetic
+    SOURCES Cargo.toml arithmetic/src/lib.rs
 )
 
 add_crate(
     NAME expr
-    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/expr/Cargo.toml ${CMAKE_CURRENT_SOURCE_DIR}/expr/src/lib.rs
+    SOURCES Cargo.toml src/lib.rs
+)
+
+add_crate(
+    NAME oxidize
+    SOURCES
+        Cargo.toml
+        src/lib.rs
+        src/sm/mod.rs
+        src/sm/array_schema/mod.rs
+        src/sm/enums/mod.rs
+        src/sm/query/mod.rs
+        src/sm/query/ast/mod.rs
 )
 
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} *.h)
