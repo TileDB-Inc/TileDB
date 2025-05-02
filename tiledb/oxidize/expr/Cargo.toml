@@ -6,6 +6,7 @@ version = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
+array_schema = { workspace = true }
 cxx = { workspace = true }
 datafusion = { workspace = true }
 
