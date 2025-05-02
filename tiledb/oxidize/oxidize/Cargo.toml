@@ -1,17 +1,11 @@
 [package]
-name = "expr"
+name = "oxidize"
 edition = { workspace = true }
 rust-version = { workspace = true }
 version = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
 cxx = { workspace = true }
-datafusion = { workspace = true }
-oxidize = { workspace = true }
 
 [build-dependencies]
 cxx-build = { workspace = true }
-
-[lib]
-crate-type = ["staticlib"]
