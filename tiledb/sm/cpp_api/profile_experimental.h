@@ -89,11 +89,10 @@ class Profile {
     profile_ = std::shared_ptr<tiledb_profile_t>(capi_profile, Profile::free);
   }
 
-  /** Copy and move constructors are deleted. Profile objects are immutable. */
-  Profile(const Profile&) = delete;
-  Profile& operator=(const Profile&) = delete;
-  Profile(Profile&&) noexcept = default;
-  Profile& operator=(Profile&&) noexcept = default;
+  Profile(const Profile&) = default;
+  Profile(Profile&&) = default;
+  Profile& operator=(const Profile&) = default;
+  Profile& operator=(Profile&&) = default;
 
   /** Destructor. */
   ~Profile() = default;
