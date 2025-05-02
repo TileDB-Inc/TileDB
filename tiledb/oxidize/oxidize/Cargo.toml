@@ -11,4 +11,4 @@ cxx = { workspace = true }
 cxx-build = { workspace = true }
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "rlib"]
