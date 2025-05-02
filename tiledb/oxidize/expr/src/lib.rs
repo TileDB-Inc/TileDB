@@ -2,6 +2,9 @@
 mod ffi {
     #[namespace = "tiledb::sm"]
     extern "C++" {
+        include!("tiledb/sm/array_schema/array_schema.h");
+        include!("tiledb/sm/query/ast/query_ast.h");
+
         type ArraySchema = oxidize::sm::array_schema::ArraySchema;
         type ASTNode = oxidize::sm::query::ast::ASTNode;
     }
