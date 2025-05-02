@@ -34,6 +34,7 @@
 
 #include "tiledb/common/unreachable.h"
 
+#include <cstdint>
 #include <limits>
 #include <optional>
 

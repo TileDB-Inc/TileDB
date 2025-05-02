@@ -30,7 +30,6 @@
  * This file tests arithmetic functions defined in `arithmetic.h`.
  */
 
-#include "build/tiledb/oxidize/arithmetic.h"
 #include "tiledb/common/arithmetic.h"
 
 #include <test/support/assert_helpers.h>
