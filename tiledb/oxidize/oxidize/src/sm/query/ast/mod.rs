@@ -1,0 +1,25 @@
+#[cxx::bridge]
+mod ffi {
+    #[namespace = "tiledb::sm"]
+    extern "C++" {
+        type ByteVecValue = crate::sm::misc::ByteVecValue;
+        type QueryConditionOp = crate::sm::enums::QueryConditionOp;
+        type QueryConditionCombinationOp = crate::sm::enums::QueryConditionCombinationOp;
+    }
+
+    #[namespace = "tiledb::sm"]
+    unsafe extern "C++" {
+        include!("tiledb/sm/query/ast/query_ast.h");
+
+        type ASTNode;
+        fn is_expr(&self) -> bool;
+        fn get_field_name(&self) -> &CxxString;
+        fn get_op(&self) -> &QueryConditionOp;
+        fn get_combination_op(&self) -> &QueryConditionCombinationOp;
+        fn get_data(&self) -> &ByteVecValue;
+        fn num_children(&self) -> u64;
+        fn get_child(&self, i: u64) -> *const ASTNode;
+    }
+}
+
+pub use ffi::ASTNode;

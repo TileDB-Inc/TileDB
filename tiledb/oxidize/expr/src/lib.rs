@@ -2,67 +2,8 @@
 mod ffi {
     #[namespace = "tiledb::sm"]
     extern "C++" {
-        type Datatype = array_schema::Datatype;
-        type Attribute = array_schema::Attribute;
-        type Dimension = array_schema::Dimension;
-        type Domain = array_schema::Domain;
-        type ArraySchema = array_schema::ArraySchema;
-    }
-
-    #[namespace = "tiledb::sm"]
-    enum QueryConditionOp {
-        LT,
-        LE,
-        GT,
-        GE,
-        EQ,
-        NE,
-        IN,
-        NOT_IN,
-        ALWAYS_TRUE = 253,
-        ALWAYS_FALSE = 254,
-    }
-
-    #[namespace = "tiledb::sm"]
-    enum QueryConditionCombinationOp {
-        AND,
-        OR,
-        NOT,
-    }
-
-    #[namespace = "tiledb::sm"]
-    unsafe extern "C++" {
-        include!("tiledb/sm/misc/types.h");
-
-        type ByteVecValue;
-        fn size(&self) -> usize;
-        fn data(&self) -> *const u8;
-    }
-
-    #[namespace = "tiledb::sm"]
-    unsafe extern "C++" {
-        include!("tiledb/sm/enums/query_condition_op.h");
-        type QueryConditionOp;
-    }
-
-    #[namespace = "tiledb::sm"]
-    unsafe extern "C++" {
-        include!("tiledb/sm/enums/query_condition_combination_op.h");
-        type QueryConditionCombinationOp;
-    }
-
-    #[namespace = "tiledb::sm"]
-    unsafe extern "C++" {
-        include!("tiledb/sm/query/ast/query_ast.h");
-
-        type ASTNode;
-        fn is_expr(&self) -> bool;
-        fn get_field_name(&self) -> &CxxString;
-        fn get_op(&self) -> &QueryConditionOp;
-        fn get_combination_op(&self) -> &QueryConditionCombinationOp;
-        fn get_data(&self) -> &ByteVecValue;
-        fn num_children(&self) -> u64;
-        fn get_child(&self, i: u64) -> *const ASTNode;
+        type ArraySchema = oxidize::sm::array_schema::ArraySchema;
+        type ASTNode = oxidize::sm::query::ast::ASTNode;
     }
 
     #[namespace = "tiledb::rust"]
@@ -74,17 +15,19 @@ mod ffi {
 }
 
 use anyhow::anyhow;
-use array_schema::{ArraySchema, Datatype};
 use datafusion::common::{Column, ScalarValue};
 use datafusion::logical_expr::{BinaryExpr, Expr as DatafusionExpr, Operator};
+use oxidize::sm::array_schema::ArraySchema;
+use oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
+use oxidize::sm::query::ast::ASTNode;
 
-struct Expr {
+pub struct Expr {
     datafusion_expr: DatafusionExpr,
 }
 
 fn leaf_ast_to_binary_expr(
     schema: &ArraySchema,
-    query_condition: &crate::ffi::ASTNode,
+    query_condition: &ASTNode,
     operator: Operator,
 ) -> anyhow::Result<DatafusionExpr> {
     let Some(field) = schema.field_cxx(query_condition.get_field_name()) else {
@@ -128,7 +71,7 @@ fn leaf_ast_to_binary_expr(
 
 fn combination_ast_to_binary_expr(
     schema: &ArraySchema,
-    query_condition: &crate::ffi::ASTNode,
+    query_condition: &ASTNode,
     operator: Operator,
 ) -> anyhow::Result<DatafusionExpr> {
     match query_condition.num_children() {
@@ -178,33 +121,28 @@ fn combination_ast_to_binary_expr(
 
 fn to_datafusion_impl(
     schema: &ArraySchema,
-    query_condition: &crate::ffi::ASTNode,
+    query_condition: &ASTNode,
 ) -> anyhow::Result<DatafusionExpr> {
     if query_condition.is_expr() {
         match *query_condition.get_combination_op() {
-            ffi::QueryConditionCombinationOp::AND => {
+            QueryConditionCombinationOp::AND => {
                 combination_ast_to_binary_expr(schema, query_condition, Operator::And)
             }
-            ffi::QueryConditionCombinationOp::OR => {
+            QueryConditionCombinationOp::OR => {
                 combination_ast_to_binary_expr(schema, query_condition, Operator::Or)
             }
-            ffi::QueryConditionCombinationOp::NOT => todo!(),
+            QueryConditionCombinationOp::NOT => todo!(),
             _ => todo!(),
         }
     } else {
         match *query_condition.get_op() {
-            ffi::QueryConditionOp::LT => {
-                leaf_ast_to_binary_expr(schema, query_condition, Operator::Lt)
-            }
+            QueryConditionOp::LT => leaf_ast_to_binary_expr(schema, query_condition, Operator::Lt),
             _ => todo!(),
         }
     }
 }
 
-fn to_datafusion(
-    schema: &ArraySchema,
-    query_condition: &crate::ffi::ASTNode,
-) -> anyhow::Result<Box<Expr>> {
+pub fn to_datafusion(schema: &ArraySchema, query_condition: &ASTNode) -> anyhow::Result<Box<Expr>> {
     Ok(Box::new(Expr {
         datafusion_expr: to_datafusion_impl(schema, query_condition)?,
     }))

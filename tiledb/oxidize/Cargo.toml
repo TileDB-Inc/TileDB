@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
   "arithmetic",
-  "array_schema",
+  "oxidize",
   "expr"
 ]
 
@@ -13,8 +13,8 @@ version = "0.1.0"
 
 [workspace.dependencies]
 anyhow = "1"
-array_schema = { path = "array_schema" }
 cxx = "1"
 cxx-build = "1"
 datafusion = { version = "47", features = [] }
 num-traits = "0.2"
+oxidize = { path = "oxidize" }
