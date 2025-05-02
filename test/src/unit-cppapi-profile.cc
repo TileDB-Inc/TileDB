@@ -62,6 +62,23 @@ struct ProfileCPPFx {
   }
 };
 
+struct expected_values_t {
+  std::string name = sm::RestProfile::DEFAULT_NAME;
+  std::string password = sm::RestProfile::DEFAULT_PASSWORD;
+  std::string payer_namespace = sm::RestProfile::DEFAULT_PAYER_NAMESPACE;
+  std::string token = sm::RestProfile::DEFAULT_TOKEN;
+  std::string server_address = sm::RestProfile::DEFAULT_SERVER_ADDRESS;
+  std::string username = sm::RestProfile::DEFAULT_USERNAME;
+};
+
+bool is_valid(const Profile& p, const expected_values_t& e) {
+  return p.get_name() == e.name && p.get_param("rest.username") == e.username &&
+         p.get_param("rest.password") == e.password &&
+         p.get_param("rest.payer_namespace") == e.payer_namespace &&
+         p.get_param("rest.server_address") == e.server_address &&
+         p.get_param("rest.token") == e.token;
+}
+
 TEST_CASE_METHOD(
     ProfileCPPFx,
     "C++ API: Profile get_name validation",
@@ -183,6 +200,7 @@ TEST_CASE_METHOD(
     "[cppapi][profile][load]") {
   SECTION("success") {
     Profile p(name_, tempdir_.path());
+    expected_values_t expected;
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
@@ -200,8 +218,10 @@ TEST_CASE_METHOD(
     // load the profile
     p2.load();
     // check that the parameters are loaded correctly
-    REQUIRE(p2.get_param("rest.username") == "test_user");
-    REQUIRE(p2.get_param("rest.password") == "test_password");
+    // check that the parameters are loaded correctly
+    expected.username = "test_user";
+    expected.password = "test_password";
+    is_valid(p2, expected);
   }
   SECTION("profiles file is present") {
     Profile p(name_, tempdir_.path());
@@ -318,6 +338,8 @@ TEST_CASE_METHOD(
     "[cppapi][profile][default_constructor][save_twice]") {
   SECTION("Default constructor") {
     Profile p;
+    expected_values_t expected;
+
     // check that the profile doesn't exist
     REQUIRE(!profile_exists(
         tiledb::common::filesystem::home_directory() +
@@ -330,16 +352,12 @@ TEST_CASE_METHOD(
         tiledb::common::filesystem::home_directory() +
             tiledb::sm::constants::rest_profile_filepath,
         tiledb::sm::RestProfile::DEFAULT_NAME));
+
     // check that saving the profile twice does throw an error
     REQUIRE_THROWS(p.save());
+
     // assert the properties of the profile
-    REQUIRE(p.get_name() == tiledb::sm::RestProfile::DEFAULT_NAME);
-    REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
-    REQUIRE(p.get_param("rest.username") == "");
-    REQUIRE(p.get_param("rest.password") == "");
-    REQUIRE(p.get_param("rest.payer_namespace") == "");
-    REQUIRE(p.get_param("rest.server_address") == "https://api.tiledb.com");
-    REQUIRE(p.get_param("rest.token") == "");
+    REQUIRE(is_valid(p, expected));
 
     // remove the profile from the profiles file
     p.remove();
@@ -357,25 +375,23 @@ TEST_CASE_METHOD(
     "[cppapi][profile][nullopt_combinations]") {
   SECTION("(std::nullopt, std::nullopt)") {
     Profile p(std::nullopt, std::nullopt);
+    expected_values_t expected;
+
     // check that the profile doesn't exist
     REQUIRE(!profile_exists(
         tiledb::common::filesystem::home_directory() +
             tiledb::sm::constants::rest_profile_filepath,
         tiledb::sm::RestProfile::DEFAULT_NAME));
+
     p.save();
     // check if the profile is saved
     REQUIRE(profile_exists(
         tiledb::common::filesystem::home_directory() +
             tiledb::sm::constants::rest_profile_filepath,
         tiledb::sm::RestProfile::DEFAULT_NAME));
+
     // assert the properties of the profile
-    REQUIRE(p.get_name() == tiledb::sm::RestProfile::DEFAULT_NAME);
-    REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
-    REQUIRE(p.get_param("rest.username") == "");
-    REQUIRE(p.get_param("rest.password") == "");
-    REQUIRE(p.get_param("rest.payer_namespace") == "");
-    REQUIRE(p.get_param("rest.server_address") == "https://api.tiledb.com");
-    REQUIRE(p.get_param("rest.token") == "");
+    REQUIRE(is_valid(p, expected));
 
     // remove the profile from the profiles file
     p.remove();
@@ -388,25 +404,25 @@ TEST_CASE_METHOD(
 
   SECTION("(name_, std::nullopt)") {
     Profile p(name_, std::nullopt);
+    expected_values_t expected;
+    expected.name = name_;
+
     // check that the profile doesn't exist
     REQUIRE(!profile_exists(
         tiledb::common::filesystem::home_directory() +
             tiledb::sm::constants::rest_profile_filepath,
         name_));
+
     p.save();
     // check if the profile is saved
     REQUIRE(profile_exists(
         tiledb::common::filesystem::home_directory() +
             tiledb::sm::constants::rest_profile_filepath,
         name_));
+
     // assert the properties of the profile
-    REQUIRE(p.get_name() == name_);
-    REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
-    REQUIRE(p.get_param("rest.username") == "");
-    REQUIRE(p.get_param("rest.password") == "");
-    REQUIRE(p.get_param("rest.payer_namespace") == "");
-    REQUIRE(p.get_param("rest.server_address") == "https://api.tiledb.com");
-    REQUIRE(p.get_param("rest.token") == "");
+    REQUIRE(is_valid(p, expected));
+
     // remove the profile from the profiles file
     p.remove();
     // check if the profile is removed
@@ -418,23 +434,22 @@ TEST_CASE_METHOD(
 
   SECTION("(std::nullopt, tempdir_.path())") {
     Profile p(std::nullopt, tempdir_.path());
+    expected_values_t expected;
+
     // check that the profile doesn't exist
     REQUIRE(!profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
         tiledb::sm::RestProfile::DEFAULT_NAME));
+
     p.save();
     // check if the profile is saved
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
         tiledb::sm::RestProfile::DEFAULT_NAME));
+
     // assert the properties of the profile
-    REQUIRE(p.get_name() == tiledb::sm::RestProfile::DEFAULT_NAME);
-    REQUIRE(p.get_homedir() == tempdir_.path());
-    REQUIRE(p.get_param("rest.username") == "");
-    REQUIRE(p.get_param("rest.password") == "");
-    REQUIRE(p.get_param("rest.payer_namespace") == "");
-    REQUIRE(p.get_param("rest.server_address") == "https://api.tiledb.com");
-    REQUIRE(p.get_param("rest.token") == "");
+    REQUIRE(is_valid(p, expected));
+
     // remove the profile from the profiles file
     p.remove();
     // check if the profile is removed
