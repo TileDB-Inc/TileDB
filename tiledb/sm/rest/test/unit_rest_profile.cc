@@ -88,7 +88,7 @@ struct RestProfileFx {
   }
 
   /** Returns true iff the profile's parameter values match the expected. */
-  bool is_valid(RestProfile p, expected_values_t e) {
+  bool is_expected(RestProfile p, expected_values_t e) {
     if (p.name() == e.name && p.get_param("rest.password") == e.password &&
         p.get_param("rest.payer_namespace") == e.payer_namespace &&
         p.get_param("rest.token") == e.token &&
@@ -128,7 +128,7 @@ TEST_CASE_METHOD(
   // default.
   expected_values_t expected;
   expected.token = RestProfile::DEFAULT_TOKEN;
-  CHECK(is_valid(profile, expected));
+  CHECK(is_expected(profile, expected));
 }
 
 TEST_CASE_METHOD(
@@ -142,7 +142,7 @@ TEST_CASE_METHOD(
   RestProfile profile(create_profile());
   expected_values_t expected;
   expected.token = RestProfile::DEFAULT_TOKEN;
-  CHECK(is_valid(profile, expected));
+  CHECK(is_expected(profile, expected));
 }
 
 TEST_CASE_METHOD(
@@ -152,7 +152,7 @@ TEST_CASE_METHOD(
   // Create and validate a default RestProfile.
   RestProfile profile(create_profile());
   expected_values_t expected;
-  CHECK(is_valid(profile, expected));
+  CHECK(is_expected(profile, expected));
 }
 
 TEST_CASE_METHOD(
@@ -166,7 +166,7 @@ TEST_CASE_METHOD(
 
   // Validate.
   expected_values_t e;
-  CHECK(is_valid(p, e));
+  CHECK(is_expected(p, e));
   // Save to file and validate that the local json object is created.
   p.save_to_file();
   CHECK(!profile_from_file_to_json(filepath, std::string(p.name())).empty());
@@ -196,7 +196,7 @@ TEST_CASE_METHOD(
   p.set_param("rest.server_address", e.server_address);
   p.set_param("rest.username", e.username);
   p.save_to_file();
-  CHECK(is_valid(p, e));
+  CHECK(is_expected(p, e));
 }
 
 TEST_CASE_METHOD(
@@ -248,7 +248,7 @@ TEST_CASE_METHOD(
   expected_values_t e;
   e.username = "username";
   e.password = "password";
-  CHECK(is_valid(p, e));
+  CHECK(is_expected(p, e));
 }
 
 TEST_CASE_METHOD(
@@ -264,7 +264,7 @@ TEST_CASE_METHOD(
   p.save_to_file();
   expected_values_t e;
   e.payer_namespace = payer_namespace;
-  CHECK(is_valid(p, e));
+  CHECK(is_expected(p, e));
 
   // Create a second profile, ensuring the payer_namespace is inherited.
   RestProfile p2(create_profile());
@@ -279,7 +279,7 @@ TEST_CASE_METHOD(
   p.remove_from_file();
   p2.save_to_file();
   e.token = token;
-  CHECK(is_valid(p2, e));
+  CHECK(is_expected(p2, e));
 
   // Ensure the first profile is now out of date.
   CHECK(p.get_param("rest.token") == RestProfile::DEFAULT_TOKEN);
@@ -298,7 +298,7 @@ TEST_CASE_METHOD(
   p.save_to_file();
   expected_values_t e;
   e.payer_namespace = payer_namespace;
-  CHECK(is_valid(p, e));
+  CHECK(is_expected(p, e));
 
   // Create a second profile with non-default name and ensure the
   // payer_namespace and cloudtoken_ are NOT inherited.
@@ -308,7 +308,7 @@ TEST_CASE_METHOD(
   e.name = name;
   e.payer_namespace = RestProfile::DEFAULT_PAYER_NAMESPACE;
   e.token = RestProfile::DEFAULT_TOKEN;
-  CHECK(is_valid(p2, e));
+  CHECK(is_expected(p2, e));
 
   // Ensure the default profile is unchanged.
   CHECK(p.name() == RestProfile::DEFAULT_NAME);
