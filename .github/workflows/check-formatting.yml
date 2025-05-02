@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Check Formatting
+    name: Check Clang Format
     steps:
       - uses: actions/checkout@v3
       - name: 'Print env'
@@ -36,21 +36,5 @@ jobs:
           printenv
         shell: bash
 
-      - name: Check Clang Formatting
+      - name: Check formatting
         run: $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
-
-      - name: Install Rust Stable
-        if: ${{ inputs.rust }}
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Check Rust Formatting
-        run: |
-          cd $GITHUB_WORKSPACE/tiledb/oxidize
-          cargo fmt --quiet --check
-
-      - name: Rust Lint
-        run: |
-          cd $GITHUB_WORKSPACE/tiledb/oxidize
-          cargo clippy --no-deps --all-targets --all-features -- -Dwarnings
