@@ -193,6 +193,9 @@ TILEDB_EXPORT capi_return_t tiledb_profile_save(
 /**
  * Loads a profile from the local file.
  *
+ * TODO: Add a way to set the loaded profile to a config so that we show to the
+ * user how to use it after loading it.
+ *
  * **Example:**
  *
  * @code{.c}
