@@ -311,3 +311,135 @@ TEST_CASE_METHOD(
     REQUIRE(dump_str.find("rest.token") != std::string::npos);
   }
 }
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile default constructor validation",
+    "[cppapi][profile][default_constructor][save_twice]") {
+  SECTION("Default constructor") {
+    Profile p;
+    // check that the profile doesn't exist
+    REQUIRE(!profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+
+    p.save();
+    // check if the default profile file is created in the home directory
+    REQUIRE(profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+    // check that saving the profile twice does throw an error
+    REQUIRE_THROWS(p.save());
+    // assert the properties of the profile
+    REQUIRE(p.get_name() == tiledb::sm::RestProfile::DEFAULT_NAME);
+    REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p.get_param("rest.username") == "");
+    REQUIRE(p.get_param("rest.password") == "");
+    REQUIRE(p.get_param("rest.payer_namespace") == "");
+    REQUIRE(p.get_param("rest.server_address") == "https://api.tiledb.com");
+    REQUIRE(p.get_param("rest.token") == "");
+
+    // remove the profile from the profiles file
+    p.remove();
+    // check if the profile is removed
+    REQUIRE(!profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+  }
+}
+
+TEST_CASE_METHOD(
+    ProfileCPPFx,
+    "C++ API: Profile std::nullopt combinations",
+    "[cppapi][profile][nullopt_combinations]") {
+  SECTION("(std::nullopt, std::nullopt)") {
+    Profile p(std::nullopt, std::nullopt);
+    // check that the profile doesn't exist
+    REQUIRE(!profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+    p.save();
+    // check if the profile is saved
+    REQUIRE(profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+    // assert the properties of the profile
+    REQUIRE(p.get_name() == tiledb::sm::RestProfile::DEFAULT_NAME);
+    REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p.get_param("rest.username") == "");
+    REQUIRE(p.get_param("rest.password") == "");
+    REQUIRE(p.get_param("rest.payer_namespace") == "");
+    REQUIRE(p.get_param("rest.server_address") == "https://api.tiledb.com");
+    REQUIRE(p.get_param("rest.token") == "");
+
+    // remove the profile from the profiles file
+    p.remove();
+    // check if the profile is removed
+    REQUIRE(!profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+  }
+
+  SECTION("(name_, std::nullopt)") {
+    Profile p(name_, std::nullopt);
+    // check that the profile doesn't exist
+    REQUIRE(!profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        name_));
+    p.save();
+    // check if the profile is saved
+    REQUIRE(profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        name_));
+    // assert the properties of the profile
+    REQUIRE(p.get_name() == name_);
+    REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p.get_param("rest.username") == "");
+    REQUIRE(p.get_param("rest.password") == "");
+    REQUIRE(p.get_param("rest.payer_namespace") == "");
+    REQUIRE(p.get_param("rest.server_address") == "https://api.tiledb.com");
+    REQUIRE(p.get_param("rest.token") == "");
+    // remove the profile from the profiles file
+    p.remove();
+    // check if the profile is removed
+    REQUIRE(!profile_exists(
+        tiledb::common::filesystem::home_directory() +
+            tiledb::sm::constants::rest_profile_filepath,
+        name_));
+  }
+
+  SECTION("(std::nullopt, tempdir_.path())") {
+    Profile p(std::nullopt, tempdir_.path());
+    // check that the profile doesn't exist
+    REQUIRE(!profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+    p.save();
+    // check if the profile is saved
+    REQUIRE(profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+    // assert the properties of the profile
+    REQUIRE(p.get_name() == tiledb::sm::RestProfile::DEFAULT_NAME);
+    REQUIRE(p.get_homedir() == tempdir_.path());
+    REQUIRE(p.get_param("rest.username") == "");
+    REQUIRE(p.get_param("rest.password") == "");
+    REQUIRE(p.get_param("rest.payer_namespace") == "");
+    REQUIRE(p.get_param("rest.server_address") == "https://api.tiledb.com");
+    REQUIRE(p.get_param("rest.token") == "");
+    // remove the profile from the profiles file
+    p.remove();
+    // check if the profile is removed
+    REQUIRE(!profile_exists(
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        tiledb::sm::RestProfile::DEFAULT_NAME));
+  }
+}
