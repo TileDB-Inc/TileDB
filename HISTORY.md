@@ -1,3 +1,83 @@
+# TileDB v2.28.0 Release Notes
+
+## Disk Format
+
+## Breaking C API changes
+
+## Breaking behavior
+* The release binaries for Windows now require MSVC 2022. [#5419](https://github.com/TileDB-Inc/TileDB/pull/5419)
+* On local filesystem, VFS operations will automatically create all missing parent directories when creating a file. [#5480](https://github.com/TileDB-Inc/TileDB/pull/5480)
+
+## New features
+* Add `rest.load_enumerations_on_array_open_all_schemas` config parameter. [#5379](https://github.com/TileDB-Inc/TileDB/pull/5379)
+* Add endpoint for REST version and capabilities. [#5429](https://github.com/TileDB-Inc/TileDB/pull/5429)
+* Add `Enumeration::index_of` API [#5482](https://github.com/TileDB-Inc/TileDB/pull/5482)
+* Support setting of schema-creation timestamp [#5484](https://github.com/TileDB-Inc/TileDB/pull/5484)
+
+## Improvements
+* Added additional context in the error messages of operations that likely failed due to region mismatch. [#5380](https://github.com/TileDB-Inc/TileDB/pull/5380)
+* `manylinux_2_28` for linux release [#5398](https://github.com/TileDB-Inc/TileDB/pull/5398)
+* Add classes for `Task` and `SharedTask` in threadpool [#5391](https://github.com/TileDB-Inc/TileDB/pull/5391)
+* Improved error messages when the S3 or Azure multipart upload part size is too low, and suggest improving it. [#5406](https://github.com/TileDB-Inc/TileDB/pull/5406)
+* C.41 constructor: `Azure`. [#5392](https://github.com/TileDB-Inc/TileDB/pull/5392)
+* C.41 constructor: `GCS` [#5393](https://github.com/TileDB-Inc/TileDB/pull/5393)
+* Show errant values in current-domain out-of-bounds error message [#5421](https://github.com/TileDB-Inc/TileDB/pull/5421)
+* Use `-fvisibility=hidden` for `spdlog` [#5427](https://github.com/TileDB-Inc/TileDB/pull/5427)
+* Show file size, offset, nbytes, and URI in file-read error message [#5432](https://github.com/TileDB-Inc/TileDB/pull/5432)
+* Sparse global order reader determine global order of result tiles [#5417](https://github.com/TileDB-Inc/TileDB/pull/5417)
+* Result tile wait_all should block on the async I/O result [#5446](https://github.com/TileDB-Inc/TileDB/pull/5446)
+* Split C API smoke tests up into one dynamic section per read query [#5456](https://github.com/TileDB-Inc/TileDB/pull/5456)
+* Users should be able to create an enumeration of which the sole value is the empty string [#5460](https://github.com/TileDB-Inc/TileDB/pull/5460)
+* Enable null test query conditions on non-nullable attributes [#5464](https://github.com/TileDB-Inc/TileDB/pull/5464)
+* Schema evolution consistent attribute order [#5470](https://github.com/TileDB-Inc/TileDB/pull/5470)
+* Update vcpkg version baseline to https://github.com/microsoft/vcpkg/commit/ea2a964f9303270322cf3f2d51c265ba146c422d. [#5430](https://github.com/TileDB-Inc/TileDB/pull/5430)
+* Improve efficiency of `Enumeration::generate_value_map` [#5493](https://github.com/TileDB-Inc/TileDB/pull/5493)
+* Optimized cost efficiency of getting file size on Azure. [#5497](https://github.com/TileDB-Inc/TileDB/pull/5497)
+* Add instructions for building from source into `README.md`. [#5505](https://github.com/TileDB-Inc/TileDB/pull/5505)
+* Optimize `Enumeration::extend` implementation [#5483](https://github.com/TileDB-Inc/TileDB/pull/5483)
+
+## Deprecations
+* Removed support for HDFS. [#5496](https://github.com/TileDB-Inc/TileDB/pull/5496)
+
+## Defects removed
+* Fix print_logs invocation in release CI [#5376](https://github.com/TileDB-Inc/TileDB/pull/5376)
+* Fixed `tiledb_vfs_is_file` masking failures on S3 by returning false. [#5380](https://github.com/TileDB-Inc/TileDB/pull/5380)
+* Fix macos x86_64 release [#5384](https://github.com/TileDB-Inc/TileDB/pull/5384)
+* Fix a bug in `Domain::expand_to_tiles(NDRange*)`, which failed to respect the current domain, causing errors when tile extents exceeded it. A new function is introduced to properly account for the current domain during consolidation. [#5390](https://github.com/TileDB-Inc/TileDB/pull/5390)
+* Fix transient failures in `unit_seedable_global_PRNG`. [#5234](https://github.com/TileDB-Inc/TileDB/pull/5234)
+* Fix swap of uninitialized variables [#5412](https://github.com/TileDB-Inc/TileDB/pull/5412)
+* Patch intermittent `SchemaEvolution` test failure. [#5435](https://github.com/TileDB-Inc/TileDB/pull/5435)
+* Fix failures when opening an array or group with an empty `.vac` file. [#5452](https://github.com/TileDB-Inc/TileDB/pull/5452)
+* Fix compile errors with Visual Studio 2022 17.13. [#5454](https://github.com/TileDB-Inc/TileDB/pull/5454)
+* Do not create empty `.vac` files in metadata consolidation [#5453](https://github.com/TileDB-Inc/TileDB/pull/5453)
+* Repeatable read for multiple fragments written at fixed timestamp [#5459](https://github.com/TileDB-Inc/TileDB/pull/5459)
+* Fixed `tiledb_vfs_touch` to not overwrite existing files on GCS. [#5285](https://github.com/TileDB-Inc/TileDB/pull/5285)
+* Fixed `tiledb_vfs_touch` to not overwrite existing files or fail on Azure and Windows respectively, under race conditions. [#5285](https://github.com/TileDB-Inc/TileDB/pull/5285)
+* Fix whitespace error in printing quoted paths [#5469](https://github.com/TileDB-Inc/TileDB/pull/5469)
+* Fixed opening arrays with unrecognized files in their root directory. [#5474](https://github.com/TileDB-Inc/TileDB/pull/5474)
+* Fix undefined behavior in `Enumeration` constructor [#5479](https://github.com/TileDB-Inc/TileDB/pull/5479)
+* Fixed linker errors when building tests. [#5481](https://github.com/TileDB-Inc/TileDB/pull/5481)
+* Fix sparse global order reader progress check [#5485](https://github.com/TileDB-Inc/TileDB/pull/5485)
+* Fix segfault in query condition after evolution. [#5487](https://github.com/TileDB-Inc/TileDB/pull/5487)
+* Fix wrong results when using query conditions with strings containing null byte [#5486](https://github.com/TileDB-Inc/TileDB/pull/5486)
+
+## API changes
+
+### C API
+* Add `tiledb_field_get_nullable` API [#5378](https://github.com/TileDB-Inc/TileDB/pull/5378)
+* Add `tiledb_stats_is_enabled` to C and C++ APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
+* Update documentation of `tiledb_vfs_touch` to specify that existing files are not overwritten, matching the current behavior. [#5285](https://github.com/TileDB-Inc/TileDB/pull/5285)
+* Support setting of schema-creation timestamp [#5484](https://github.com/TileDB-Inc/TileDB/pull/5484)
+* Add bulk point-range setter `tiledb_subarray_add_point_ranges_var` [#5490](https://github.com/TileDB-Inc/TileDB/pull/5490)
+
+### C++ API
+* add tiledb_stats_is_enabled to C and C++ APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
+* Add `const` to `attribute` in `AttributeExperimental::get_enumeration_name` [#5457](https://github.com/TileDB-Inc/TileDB/pull/5457)
+
+## Test only changes
+
+## Unrecognized PR label
+
 # TileDB v2.27.0 Release Notes
 
 ## Disk Format
