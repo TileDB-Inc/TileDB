@@ -91,9 +91,9 @@ class Profile {
 
   /** Copy and move constructors are deleted. Profile objects are immutable. */
   Profile(const Profile&) = delete;
-  Profile(Profile&&) = delete;
   Profile& operator=(const Profile&) = delete;
-  Profile& operator=(Profile&&) = delete;
+  Profile(Profile&&) noexcept = default;
+  Profile& operator=(Profile&&) noexcept = default;
 
   /** Destructor. */
   ~Profile() = default;
@@ -101,6 +101,32 @@ class Profile {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Factory function to load a profile from the local file.
+   *
+   * @param name The profile name if you want to override the default.
+   * @param homedir The local $HOME directory path if you want to override the
+   * @return A Profile object loaded from the file.
+   */
+  static Profile load(
+      std::optional<std::string> name = std::nullopt,
+      std::optional<std::string> homedir = std::nullopt) {
+    // create a profile object
+    Profile profile(name, homedir);
+
+    // load the profile
+    tiledb_error_t* capi_error = nullptr;
+    int rc = tiledb_profile_load(profile.profile_.get(), &capi_error);
+    if (rc != TILEDB_OK) {
+      const char* msg_cstr;
+      tiledb_error_message(capi_error, &msg_cstr);
+      std::string msg = msg_cstr;
+      tiledb_error_free(&capi_error);
+      throw ProfileException(msg);
+    }
+    return profile;
+  }
 
   /** Returns the C TileDB profile object. */
   std::shared_ptr<tiledb_profile_t> ptr() const {
@@ -202,19 +228,6 @@ class Profile {
   void save() {
     tiledb_error_t* capi_error = nullptr;
     int rc = tiledb_profile_save(profile_.get(), &capi_error);
-    if (rc != TILEDB_OK) {
-      const char* msg_cstr;
-      tiledb_error_message(capi_error, &msg_cstr);
-      std::string msg = msg_cstr;
-      tiledb_error_free(&capi_error);
-      throw ProfileException(msg);
-    }
-  }
-
-  /** Loads the profile from the local file. */
-  void load() {
-    tiledb_error_t* capi_error = nullptr;
-    int rc = tiledb_profile_load(profile_.get(), &capi_error);
     if (rc != TILEDB_OK) {
       const char* msg_cstr;
       tiledb_error_message(capi_error, &msg_cstr);

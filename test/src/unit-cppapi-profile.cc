@@ -213,23 +213,19 @@ TEST_CASE_METHOD(
     REQUIRE(std::filesystem::exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
 
-    // create a new profile object
-    Profile p2(name_, tempdir_.path());
-    // load the profile
-    p2.load();
-    // check that the parameters are loaded correctly
+    // load the profile again
+    Profile p2 = Profile::load(name_, tempdir_.path());
     // check that the parameters are loaded correctly
     expected.username = "test_user";
     expected.password = "test_password";
     is_valid(p2, expected);
   }
   SECTION("profiles file is present") {
-    Profile p(name_, tempdir_.path());
     // check that the profiles file is not there
     REQUIRE(!std::filesystem::exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
     // attempt to load the profile
-    REQUIRE_THROWS(p.load());
+    REQUIRE_THROWS(Profile::load(name_, tempdir_.path()));
   }
   SECTION("another profile is saved - profiles file is present") {
     Profile p1(name_, tempdir_.path());
@@ -246,8 +242,6 @@ TEST_CASE_METHOD(
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
         p1.get_name()));
-    // attempt to load the tested profile
-    REQUIRE_THROWS(p2.load());
   }
 }
 
