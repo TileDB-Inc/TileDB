@@ -57,13 +57,8 @@ class Profile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
-  Profile()
-      : Profile(nullptr, nullptr) {
-  }
-
   /**
-   * Constructor.
+   * Default Constructor.
    *
    * @note Use of `homedir` is intended primarily for testing purposes, to
    * preserve local files from in-test changes. Users may pass their own
