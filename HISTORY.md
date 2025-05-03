@@ -5,7 +5,7 @@
 ## Breaking C API changes
 
 ## Breaking behavior
-* The release binaries for Windows now require MSVC 2022. [#5419](https://github.com/TileDB-Inc/TileDB/pull/5419)
+* The release binaries for Windows now require MSVC 2022 runtime libraries. [#5419](https://github.com/TileDB-Inc/TileDB/pull/5419)
 * On local filesystem, VFS operations will automatically create all missing parent directories when creating a file. [#5480](https://github.com/TileDB-Inc/TileDB/pull/5480)
 
 ## New features
