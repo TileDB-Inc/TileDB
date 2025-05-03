@@ -9,7 +9,6 @@
 * On local filesystem, VFS operations will automatically create all missing parent directories when creating a file. [#5480](https://github.com/TileDB-Inc/TileDB/pull/5480)
 
 ## New features
-* Add `rest.load_enumerations_on_array_open_all_schemas` config parameter. [#5379](https://github.com/TileDB-Inc/TileDB/pull/5379)
 * Add endpoint for REST version and capabilities. [#5429](https://github.com/TileDB-Inc/TileDB/pull/5429)
 * Add `Enumeration::index_of` API [#5482](https://github.com/TileDB-Inc/TileDB/pull/5482)
 * Support setting of schema-creation timestamp [#5484](https://github.com/TileDB-Inc/TileDB/pull/5484)
