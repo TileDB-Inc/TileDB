@@ -38,7 +38,7 @@ use anyhow::anyhow;
 use datafusion::common::{Column, ScalarValue};
 use datafusion::logical_expr::expr::InList;
 use datafusion::logical_expr::{BinaryExpr, Expr as DatafusionExpr, Operator};
-use oxidize::sm::array_schema::{ArraySchema, Field};
+use oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
 use oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
 use oxidize::sm::query::ast::ASTNode;
 
@@ -52,66 +52,169 @@ impl Expr {
     }
 }
 
+macro_rules! from_le_bytes {
+    ($primitive:ty, $arraylen:literal) => {{
+        |bytes| {
+            if bytes.len() == 0 {
+                ScalarValue::from(None::<$primitive>)
+            } else {
+                type ArrayType = [u8; $arraylen];
+                // SAFETY: this macro is invoked after a type and size check
+                let array = ArrayType::try_from(bytes).unwrap();
+                let primitive = <$primitive>::from_le_bytes(array);
+                ScalarValue::from(Some(primitive))
+            }
+        }
+    }};
+}
+
 fn leaf_ast_to_binary_expr(
     schema: &ArraySchema,
-    query_condition: &ASTNode,
-    operator: Operator,
+    ast: &ASTNode,
+    op: Operator,
 ) -> anyhow::Result<DatafusionExpr> {
-    let Some(field) = schema.field_cxx(query_condition.get_field_name()) else {
+    let Some(field) = schema.field_cxx(ast.get_field_name()) else {
         todo!()
     };
-    let column = DatafusionExpr::Column(Column::from_name(field.name()?));
-    let value = {
+
+    fn apply<F>(
+        field: Field,
+        ast: &ASTNode,
+        operator: Operator,
+        value_to_scalar: F,
+    ) -> anyhow::Result<DatafusionExpr>
+    where
+        F: Fn(&[u8]) -> ScalarValue,
+    {
+        let column = DatafusionExpr::Column(Column::from_name(field.name()?));
         let value_type = field.datatype();
-        let bytes = query_condition.get_data();
-        if bytes.size() == 0 {
-            return Ok(DatafusionExpr::Literal(match value_type {
-                Datatype::INT8 => ScalarValue::Int8(None),
-                Datatype::INT16 => ScalarValue::Int16(None),
-                Datatype::INT32 => ScalarValue::Int32(None),
-                Datatype::INT64 => ScalarValue::Int64(None),
-                Datatype::UINT8 => ScalarValue::UInt8(None),
-                Datatype::UINT16 => ScalarValue::UInt16(None),
-                Datatype::UINT32 => ScalarValue::UInt32(None),
-                Datatype::UINT64 => ScalarValue::UInt64(None),
-                Datatype::FLOAT32 => ScalarValue::Float32(None),
-                Datatype::FLOAT64 => ScalarValue::Float64(None),
-                _ => todo!(),
-            }));
-        } else if bytes.size() != value_type.value_size() {
+        let bytes = ast.get_data();
+        if bytes.size() % value_type.value_size() != 0 {
+            todo!()
+        }
+        let right = match field.cell_val_num() {
+            CellValNum::Single => value_to_scalar(ast.get_data().as_slice()),
+            CellValNum::Fixed(_) => todo!(),
+            CellValNum::Var => {
+                let values = ast
+                    .get_data()
+                    .as_slice()
+                    .chunks(value_type.value_size())
+                    .map(value_to_scalar)
+                    .collect::<Vec<ScalarValue>>();
+                ScalarValue::LargeList(ScalarValue::new_large_list(&values, &values[0].data_type()))
+            }
+        };
+        Ok(DatafusionExpr::BinaryExpr(BinaryExpr {
+            left: Box::new(column),
+            op: operator,
+            right: Box::new(DatafusionExpr::Literal(right)),
+        }))
+    }
+
+    let value_type = field.datatype();
+
+    match value_type {
+        Datatype::INT8 => apply(field, ast, op, from_le_bytes!(i8, 1)),
+        Datatype::INT16 => apply(field, ast, op, from_le_bytes!(i16, 2)),
+        Datatype::INT32 => apply(field, ast, op, from_le_bytes!(i32, 4)),
+        Datatype::INT64
+        | Datatype::DATETIME_YEAR
+        | Datatype::DATETIME_MONTH
+        | Datatype::DATETIME_WEEK
+        | Datatype::DATETIME_DAY
+        | Datatype::DATETIME_HR
+        | Datatype::DATETIME_MIN
+        | Datatype::DATETIME_SEC
+        | Datatype::DATETIME_MS
+        | Datatype::DATETIME_US
+        | Datatype::DATETIME_NS
+        | Datatype::DATETIME_PS
+        | Datatype::DATETIME_FS
+        | Datatype::DATETIME_AS
+        | Datatype::TIME_HR
+        | Datatype::TIME_MIN
+        | Datatype::TIME_SEC
+        | Datatype::TIME_MS
+        | Datatype::TIME_US
+        | Datatype::TIME_NS
+        | Datatype::TIME_PS
+        | Datatype::TIME_FS
+        | Datatype::TIME_AS => apply(field, ast, op, from_le_bytes!(i64, 8)),
+        Datatype::UINT8
+        | Datatype::STRING_ASCII
+        | Datatype::STRING_UTF8
+        | Datatype::ANY
+        | Datatype::BLOB
+        | Datatype::BOOL
+        | Datatype::GEOM_WKB
+        | Datatype::GEOM_WKT => apply(field, ast, op, from_le_bytes!(u8, 1)),
+        Datatype::UINT16 | Datatype::STRING_UTF16 | Datatype::STRING_UCS2 => {
+            apply(field, ast, op, from_le_bytes!(u16, 2))
+        }
+        Datatype::UINT32 | Datatype::STRING_UTF32 | Datatype::STRING_UCS4 => {
+            apply(field, ast, op, from_le_bytes!(u32, 4))
+        }
+        Datatype::UINT64 => apply(field, ast, op, from_le_bytes!(u64, 8)),
+        Datatype::FLOAT32 => apply(field, ast, op, from_le_bytes!(f32, 4)),
+        Datatype::FLOAT64 => apply(field, ast, op, from_le_bytes!(f64, 8)),
+        Datatype::CHAR => apply(field, ast, op, from_le_bytes!(std::ffi::c_char, 1)),
+        _ => todo!(),
+    }
+}
+
+fn leaf_ast_to_in_list(
+    schema: &ArraySchema,
+    ast: &ASTNode,
+    negated: bool,
+) -> anyhow::Result<DatafusionExpr> {
+    let Some(field) = schema.field_cxx(ast.get_field_name()) else {
+        todo!()
+    };
+
+    fn apply<F>(
+        field: Field,
+        ast: &ASTNode,
+        negated: bool,
+        value_to_scalar: F,
+    ) -> anyhow::Result<DatafusionExpr>
+    where
+        F: Fn(&[u8]) -> ScalarValue,
+    {
+        let column = DatafusionExpr::Column(Column::from_name(field.name()?));
+        let value_type = field.datatype();
+        let bytes = ast.get_data();
+        if bytes.size() % value_type.value_size() != 0 {
             todo!()
         }
 
-        macro_rules! as_byte_array {
-            ($ptr:expr, $arraylen:literal) => {{
-                let raw = $ptr.data();
-                let slice = unsafe { std::slice::from_raw_parts(raw, $arraylen) };
-                // SAFETY: this macro is invoked after a type and size check
-                type ArrayType = [u8; $arraylen];
-                ArrayType::try_from(slice).unwrap()
-            }};
-        }
+        let in_list = bytes
+            .as_slice()
+            .chunks(value_type.value_size())
+            .map(value_to_scalar)
+            .map(DatafusionExpr::Literal)
+            .collect::<Vec<_>>();
+        Ok(DatafusionExpr::InList(InList {
+            expr: Box::new(column),
+            list: in_list,
+            negated,
+        }))
+    }
 
-        let scalar: ScalarValue = match value_type {
-            Datatype::INT8 => i8::from_le_bytes(as_byte_array!(bytes, 1)).into(),
-            Datatype::INT16 => i16::from_le_bytes(as_byte_array!(bytes, 2)).into(),
-            Datatype::INT32 => i32::from_le_bytes(as_byte_array!(bytes, 4)).into(),
-            Datatype::INT64 => i64::from_le_bytes(as_byte_array!(bytes, 8)).into(),
-            Datatype::UINT8 => u8::from_le_bytes(as_byte_array!(bytes, 1)).into(),
-            Datatype::UINT16 => u16::from_le_bytes(as_byte_array!(bytes, 2)).into(),
-            Datatype::UINT32 => u32::from_le_bytes(as_byte_array!(bytes, 4)).into(),
-            Datatype::UINT64 => u64::from_le_bytes(as_byte_array!(bytes, 8)).into(),
-            Datatype::FLOAT32 => f32::from_le_bytes(as_byte_array!(bytes, 4)).into(),
-            Datatype::FLOAT64 => f64::from_le_bytes(as_byte_array!(bytes, 8)).into(),
-            _ => todo!(),
-        };
-        DatafusionExpr::Literal(scalar)
-    };
-    Ok(DatafusionExpr::BinaryExpr(BinaryExpr {
-        left: Box::new(column),
-        op: operator,
-        right: Box::new(value),
-    }))
+    let value_type = field.datatype();
+    match value_type {
+        Datatype::INT8 => apply(field, ast, negated, from_le_bytes!(i8, 1)),
+        Datatype::INT16 => apply(field, ast, negated, from_le_bytes!(i16, 2)),
+        Datatype::INT32 => apply(field, ast, negated, from_le_bytes!(i32, 4)),
+        Datatype::INT64 => apply(field, ast, negated, from_le_bytes!(i64, 8)),
+        Datatype::UINT8 => apply(field, ast, negated, from_le_bytes!(u8, 1)),
+        Datatype::UINT16 => apply(field, ast, negated, from_le_bytes!(u16, 2)),
+        Datatype::UINT32 => apply(field, ast, negated, from_le_bytes!(u32, 4)),
+        Datatype::UINT64 => apply(field, ast, negated, from_le_bytes!(u64, 8)),
+        Datatype::FLOAT32 => apply(field, ast, negated, from_le_bytes!(f32, 4)),
+        Datatype::FLOAT64 => apply(field, ast, negated, from_le_bytes!(f64, 8)),
+        _ => todo!(),
+    }
 }
 
 fn combination_ast_to_binary_expr(
@@ -193,6 +296,8 @@ fn to_datafusion_impl(
             QueryConditionOp::NE => {
                 leaf_ast_to_binary_expr(schema, query_condition, Operator::NotEq)
             }
+            QueryConditionOp::IN => leaf_ast_to_in_list(schema, query_condition, false),
+            QueryConditionOp::NOT_IN => leaf_ast_to_in_list(schema, query_condition, true),
             QueryConditionOp::ALWAYS_TRUE => {
                 Ok(DatafusionExpr::Literal(ScalarValue::Boolean(Some(true))))
             }
