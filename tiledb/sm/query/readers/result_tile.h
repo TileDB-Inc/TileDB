@@ -462,6 +462,9 @@ class ResultTile {
       unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
+  const TileTuple* tile_tuple(const std::string& name) const;
+
+  /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);
 
   /**
@@ -1258,6 +1261,8 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   inline void compute_per_cell_delete_condition(QueryCondition*) {
   }
 };
+
+using TileTuple = ResultTile::TileTuple;
 
 }  // namespace sm
 }  // namespace tiledb

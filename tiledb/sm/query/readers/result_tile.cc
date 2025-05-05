@@ -223,6 +223,45 @@ void ResultTile::init_coord_tile(
   coord_func_ = &ResultTile::unzipped_coord;
 }
 
+const ResultTile::TileTuple* ResultTile::tile_tuple(
+    const std::string& name) const {
+  // Handle zipped coordinates tile
+  if (coords_tile_.has_value() && name == constants::coords) {
+    return &coords_tile_.value();
+  }
+
+  // Handle timestamps tile
+  if (timestamps_tile_.has_value() && name == constants::timestamps) {
+    return &timestamps_tile_.value();
+  }
+
+  // Handle delete timestamps tile
+  if (delete_timestamps_tile_.has_value() &&
+      name == constants::delete_timestamps) {
+    return &delete_timestamps_tile_.value();
+  }
+
+  if (delete_condition_index_tile_.has_value() &&
+      name == constants::delete_condition_index) {
+    return &delete_condition_index_tile_.value();
+  }
+
+  // Handle attribute tile
+  for (auto& at : attr_tiles_) {
+    if (at.first == name && at.second.has_value()) {
+      return &(at.second.value());
+    }
+  }
+
+  // Handle separate coordinates tile
+  for (auto& ct : coord_tiles_) {
+    if (ct.second.has_value() && ct.first == name)
+      return &(ct.second.value());
+  }
+
+  return nullptr;
+}
+
 ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   // Handle zipped coordinates tile
   if (coords_tile_.has_value() && name == constants::coords) {

@@ -4,6 +4,8 @@ fn main() {
         "src/sm/enums/mod.rs",
         "src/sm/misc/mod.rs",
         "src/sm/query/ast/mod.rs",
+        "src/sm/query/readers/mod.rs",
+        "src/sm/tile/mod.rs",
     ];
     let _bridges = cxx_build::bridges(bridge_sources.clone());
 
