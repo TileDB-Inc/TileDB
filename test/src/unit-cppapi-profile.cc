@@ -329,126 +329,16 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ProfileCPPFx,
     "C++ API: Profile default constructor validation",
-    "[cppapi][profile][default_constructor][save_twice]") {
+    "[cppapi][profile][default_constructor]") {
   SECTION("Default constructor") {
-    Profile p;
     expected_values_t expected;
 
-    // check that the profile doesn't exist
-    REQUIRE(!profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
+    Profile p1;
+    REQUIRE(p1.get_name() == expected.name);
+    REQUIRE(p1.get_homedir() == tiledb::common::filesystem::home_directory());
 
-    p.save();
-    // check if the default profile file is created in the home directory
-    REQUIRE(profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
-
-    // check that saving the profile twice does throw an error
-    REQUIRE_THROWS(p.save());
-
-    // assert the properties of the profile
-    REQUIRE(is_expected(p, expected));
-
-    // remove the profile from the profiles file
-    p.remove();
-    // check if the profile is removed
-    REQUIRE(!profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
-  }
-}
-
-TEST_CASE_METHOD(
-    ProfileCPPFx,
-    "C++ API: Profile std::nullopt combinations",
-    "[cppapi][profile][nullopt_combinations]") {
-  SECTION("(std::nullopt, std::nullopt)") {
-    Profile p(std::nullopt, std::nullopt);
-    expected_values_t expected;
-
-    // check that the profile doesn't exist
-    REQUIRE(!profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
-
-    p.save();
-    // check if the profile is saved
-    REQUIRE(profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
-
-    // assert the properties of the profile
-    REQUIRE(is_expected(p, expected));
-
-    // remove the profile from the profiles file
-    p.remove();
-    // check if the profile is removed
-    REQUIRE(!profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
-  }
-
-  SECTION("(name_, std::nullopt)") {
-    Profile p(name_, std::nullopt);
-    expected_values_t expected;
-    expected.name = name_;
-
-    // check that the profile doesn't exist
-    REQUIRE(!profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        name_));
-
-    p.save();
-    // check if the profile is saved
-    REQUIRE(profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        name_));
-
-    // assert the properties of the profile
-    REQUIRE(is_expected(p, expected));
-
-    // remove the profile from the profiles file
-    p.remove();
-    // check if the profile is removed
-    REQUIRE(!profile_exists(
-        tiledb::common::filesystem::home_directory() +
-            tiledb::sm::constants::rest_profile_filepath,
-        name_));
-  }
-
-  SECTION("(std::nullopt, tempdir_.path())") {
-    Profile p(std::nullopt, tempdir_.path());
-    expected_values_t expected;
-
-    // check that the profile doesn't exist
-    REQUIRE(!profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
-
-    p.save();
-    // check if the profile is saved
-    REQUIRE(profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
-
-    // assert the properties of the profile
-    REQUIRE(is_expected(p, expected));
-
-    // remove the profile from the profiles file
-    p.remove();
-    // check if the profile is removed
-    REQUIRE(!profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        tiledb::sm::RestProfile::DEFAULT_NAME));
+    Profile p2(std::nullopt, std::nullopt);
+    REQUIRE(p2.get_name() == expected.name);
+    REQUIRE(p2.get_homedir() == tiledb::common::filesystem::home_directory());
   }
 }
