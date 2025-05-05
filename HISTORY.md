@@ -29,7 +29,6 @@
 * Users should be able to create an enumeration of which the sole value is the empty string [#5460](https://github.com/TileDB-Inc/TileDB/pull/5460)
 * Enable null test query conditions on non-nullable attributes [#5464](https://github.com/TileDB-Inc/TileDB/pull/5464)
 * Schema evolution consistent attribute order [#5470](https://github.com/TileDB-Inc/TileDB/pull/5470)
-* Update vcpkg version baseline to https://github.com/microsoft/vcpkg/commit/ea2a964f9303270322cf3f2d51c265ba146c422d. [#5430](https://github.com/TileDB-Inc/TileDB/pull/5430)
 * Improve efficiency of `Enumeration::generate_value_map` [#5493](https://github.com/TileDB-Inc/TileDB/pull/5493)
 * Optimized cost efficiency of getting file size on Azure. [#5497](https://github.com/TileDB-Inc/TileDB/pull/5497)
 * Add instructions for building from source into `README.md`. [#5505](https://github.com/TileDB-Inc/TileDB/pull/5505)
@@ -73,9 +72,8 @@
 * add tiledb_stats_is_enabled to C and C++ APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
 * Add `const` to `attribute` in `AttributeExperimental::get_enumeration_name` [#5457](https://github.com/TileDB-Inc/TileDB/pull/5457)
 
-## Test only changes
-
-## Unrecognized PR label
+## Build System Changes
+* Update vcpkg version baseline to https://github.com/microsoft/vcpkg/commit/ea2a964f9303270322cf3f2d51c265ba146c422d. [#5430](https://github.com/TileDB-Inc/TileDB/pull/5430)
 
 # TileDB v2.27.0 Release Notes
 
