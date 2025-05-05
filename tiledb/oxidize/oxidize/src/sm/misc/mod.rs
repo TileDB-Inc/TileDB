@@ -13,8 +13,7 @@ mod ffi {
 pub use ffi::ByteVecValue;
 
 impl ByteVecValue {
-    pub fn as_slice(&self) -> &[u8] {
-        // SAFETY: depends on safety of the underlying C++ structure
-        unsafe { std::slice::from_raw_parts(self.data(), self.size()) }
+    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
+        crate::raw_as_slice::<'a, u8>(self.data(), self.size())
     }
 }
