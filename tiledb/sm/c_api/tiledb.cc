@@ -32,6 +32,7 @@
  */
 
 #include "tiledb.h"
+#include "build/tiledb/oxidize/target/cxxbridge/expr/src/lib.rs.h"
 #include "tiledb_experimental.h"
 #include "tiledb_serialization.h"
 #include "tiledb_struct_def.h"
@@ -580,6 +581,34 @@ int32_t tiledb_query_set_condition(
 
   // Set layout
   throw_if_not_ok(query->query_->set_condition(*cond->query_condition_));
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_condition_string(
+    tiledb_ctx_t*, tiledb_query_t* query, tiledb_string_t** desc_condition) {
+  const auto condition = query->query_->condition();
+  if (!condition.has_value()) {
+    *desc_condition = tiledb_string_t::make_handle(std::string("None"));
+    return TILEDB_OK;
+  }
+
+  const auto s = tiledb::rust::to_datafusion(
+      query->query_->array_schema(), *condition.value().ast().get());
+  *desc_condition = tiledb_string_t::make_handle(std::string(s->to_string()));
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_query_add_predicate(
+    tiledb_ctx_t* const ctx,
+    tiledb_query_t* const query,
+    const char* const predicate) {
+  // Sanity check
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  throw_if_not_ok(query->query_->add_predicate(predicate));
 
   return TILEDB_OK;
 }
@@ -2748,6 +2777,24 @@ CAPI_INTERFACE(
   return api_entry<tiledb::api::tiledb_query_set_condition>(ctx, query, cond);
 }
 
+CAPI_INTERFACE(
+    query_get_condition_string,
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_string_t** desc_condition) {
+  return api_entry<tiledb::api::tiledb_query_get_condition_string>(
+      ctx, query, desc_condition);
+}
+
+CAPI_INTERFACE(
+    query_add_predicate,
+    tiledb_ctx_t* const ctx,
+    tiledb_query_t* const query,
+    const char* const predicate) {
+  return api_entry<tiledb::api::tiledb_query_add_predicate>(
+      ctx, query, predicate);
+}
+
 CAPI_INTERFACE(query_finalize, tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return api_entry<tiledb::api::tiledb_query_finalize>(ctx, query);
 }
@@ -3580,3 +3627,4 @@ CAPI_INTERFACE(consolidation_plan_free_json_str, char** out) {
   return api_entry_plain<tiledb::api::tiledb_consolidation_plan_free_json_str>(
       out);
 }
+ 

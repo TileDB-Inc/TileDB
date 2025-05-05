@@ -226,6 +226,15 @@ void read_array_with_qc(tiledb_ctx_t* ctx, tiledb_query_condition_t* qc) {
 
   if (qc) {
     tiledb_query_set_condition(ctx, query, qc);
+
+    tiledb_string_t* desc;
+    tiledb_query_get_condition_string(ctx, query, &desc);
+
+    const char* data;
+    size_t size;
+    tiledb_string_view(desc, &data, &size);
+
+    printf("CONDITION STRING: %.*s\n", (int)(size), data);
   }
 
   tiledb_query_submit(ctx, query);
