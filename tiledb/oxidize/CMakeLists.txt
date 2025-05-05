@@ -10,8 +10,11 @@ add_crate(
 
 add_crate(
     NAME expr
-    BRIDGES src/lib.rs
-    SOURCES Cargo.toml
+    BRIDGES
+        src/lib.rs
+    SOURCES
+        Cargo.toml
+        src/record_batch.rs
 )
 
 add_crate(
@@ -21,6 +24,8 @@ add_crate(
         src/sm/enums/mod.rs
         src/sm/misc/mod.rs
         src/sm/query/ast/mod.rs
+        src/sm/query/readers/mod.rs
+        src/sm/tile/mod.rs
     SOURCES
         Cargo.toml
 )

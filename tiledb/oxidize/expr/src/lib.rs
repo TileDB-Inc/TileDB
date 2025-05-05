@@ -4,9 +4,11 @@ mod ffi {
     extern "C++" {
         include!("tiledb/sm/array_schema/array_schema.h");
         include!("tiledb/sm/query/ast/query_ast.h");
+        include!("tiledb/sm/query/readers/result_tile.h");
 
         type ArraySchema = oxidize::sm::array_schema::ArraySchema;
         type ASTNode = oxidize::sm::query::ast::ASTNode;
+        type ResultTile = oxidize::sm::query::readers::ResultTile;
     }
 
     #[namespace = "tiledb::rust"]
@@ -16,12 +18,27 @@ mod ffi {
 
         fn to_datafusion(schema: &ArraySchema, query_condition: &ASTNode) -> Result<Box<Expr>>;
     }
+
+    #[namespace = "tiledb::rust"]
+    extern "Rust" {
+        type ArrowRecordBatch;
+
+        fn to_arrow_record_batch(
+            schema: &ArraySchema,
+            tile: &ResultTile,
+        ) -> Result<Box<ArrowRecordBatch>>;
+    }
 }
+
+mod record_batch;
+
+pub use record_batch::{ArrowRecordBatch, to_arrow_record_batch};
 
 use anyhow::anyhow;
 use datafusion::common::{Column, ScalarValue};
+use datafusion::logical_expr::expr::InList;
 use datafusion::logical_expr::{BinaryExpr, Expr as DatafusionExpr, Operator};
-use oxidize::sm::array_schema::ArraySchema;
+use oxidize::sm::array_schema::{ArraySchema, Field};
 use oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
 use oxidize::sm::query::ast::ASTNode;
 

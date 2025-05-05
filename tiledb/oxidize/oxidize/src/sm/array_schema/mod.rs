@@ -11,6 +11,10 @@ mod ffi {
 
         type Attribute;
         fn name(&self) -> &CxxString;
+        fn nullable(&self) -> bool;
+
+        #[cxx_name = "cell_val_num"]
+        fn cell_val_num_cxx(&self) -> u32;
 
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
@@ -23,6 +27,9 @@ mod ffi {
         type Dimension;
         fn name(&self) -> &CxxString;
 
+        #[cxx_name = "cell_val_num"]
+        fn cell_val_num_cxx(&self) -> u32;
+
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
     }
@@ -33,6 +40,8 @@ mod ffi {
 
         type Domain;
 
+        fn dim_num(&self) -> u32;
+        fn dimension_ptr(&self, d: u32) -> *const Dimension;
         fn shared_dimension(&self, name: &CxxString) -> SharedPtr<Dimension>;
     }
 
@@ -41,14 +50,80 @@ mod ffi {
         include!("tiledb/sm/array_schema/array_schema.h");
 
         type ArraySchema;
+
         fn domain(&self) -> &Domain;
-        fn attribute(&self, name: &CxxString) -> *const Attribute;
+        fn attribute_num(&self) -> u32;
+
+        #[cxx_name = "attribute"]
+        fn attribute_by_idx(&self, idx: u32) -> *const Attribute;
+
+        #[cxx_name = "attribute"]
+        fn attribute_by_name(&self, name: &CxxString) -> *const Attribute;
     }
 }
 
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::num::NonZeroU32;
 use std::str::Utf8Error;
 
 pub use ffi::{ArraySchema, Attribute, Datatype, Dimension, Domain};
+
+#[derive(Debug)]
+pub enum CellValNum {
+    /// Cells of this field each contain exactly one value.
+    Single,
+    /// Cells of this field each contain a fixed number of values.
+    Fixed(NonZeroU32),
+    /// Cells of this field each contain a variable number of values.
+    Var,
+}
+
+impl CellValNum {
+    pub fn from_cxx(cell_val_num: u32) -> Option<Self> {
+        match cell_val_num {
+            1 => Some(Self::Single),
+            u32::MAX => Some(Self::Var),
+            n => Some(Self::Fixed(NonZeroU32::new(n)?)),
+        }
+    }
+}
+
+impl Display for CellValNum {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            CellValNum::Single => write!(f, "1"),
+            CellValNum::Fixed(nz) => write!(f, "{nz}"),
+            CellValNum::Var => write!(f, "{}", u32::MAX),
+        }
+    }
+}
+
+impl Domain {
+    pub fn dimensions(&self) -> impl Iterator<Item = &Dimension> {
+        (0..self.dim_num()).map(|d| unsafe {
+            // SAFETY: index is valid by the range
+            &*self.dimension_ptr(d)
+        })
+    }
+}
+
+impl Dimension {
+    pub fn cell_val_num(&self) -> CellValNum {
+        let cxx = self.cell_val_num_cxx();
+
+        // SAFETY: non-zero would have been validated by the ArraySchema
+        CellValNum::from_cxx(cxx).unwrap()
+    }
+}
+
+impl Attribute {
+    pub fn cell_val_num(&self) -> CellValNum {
+        let cxx = self.cell_val_num_cxx();
+
+        // SAFETY: non-zero would have been validated by the ArraySchema
+        CellValNum::from_cxx(cxx).unwrap()
+    }
+}
 
 pub enum Field<'a> {
     Attribute(&'a Attribute),
@@ -57,17 +132,34 @@ pub enum Field<'a> {
 
 impl Field<'_> {
     pub fn name(&self) -> Result<&str, Utf8Error> {
-        let cxx_name = match self {
+        self.name_cxx().to_str()
+    }
+
+    pub fn name_cxx(&self) -> &cxx::CxxString {
+        match self {
             Self::Attribute(a) => a.name(),
             Self::Dimension(d) => d.name(),
-        };
-        cxx_name.to_str()
+        }
     }
 
     pub fn datatype(&self) -> Datatype {
         match self {
             Self::Attribute(a) => a.datatype(),
             Self::Dimension(d) => d.datatype(),
+        }
+    }
+
+    pub fn cell_val_num(&self) -> CellValNum {
+        match self {
+            Self::Attribute(a) => a.cell_val_num(),
+            Self::Dimension(d) => d.cell_val_num(),
+        }
+    }
+
+    pub fn nullable(&self) -> bool {
+        match self {
+            Self::Attribute(a) => a.nullable(),
+            Self::Dimension(_) => false,
         }
     }
 }
@@ -79,7 +171,7 @@ impl ArraySchema {
     }
 
     pub fn field_cxx<'a>(&'a self, name: &cxx::CxxString) -> Option<Field<'a>> {
-        let maybe_attribute = self.attribute(name);
+        let maybe_attribute = self.attribute_by_name(name);
         if !maybe_attribute.is_null() {
             return Some(Field::Attribute(unsafe { &*maybe_attribute }));
         }
@@ -91,5 +183,20 @@ impl ArraySchema {
             // at least as long as `self`
             Field::Dimension(unsafe { core::mem::transmute::<_, &'a Dimension>(d) })
         })
+    }
+
+    pub fn attributes(&self) -> impl Iterator<Item = &Attribute> {
+        (0..self.attribute_num()).map(|a| unsafe {
+            // SAFETY: valid index by the loop range
+            &*self.attribute_by_idx(a)
+        })
+    }
+
+    /// Returns an iterator over all of the fields of this schema.
+    pub fn fields(&self) -> impl Iterator<Item = Field> {
+        self.domain()
+            .dimensions()
+            .map(|d| Field::Dimension(d))
+            .chain(self.attributes().map(|a| Field::Attribute(a)))
     }
 }
