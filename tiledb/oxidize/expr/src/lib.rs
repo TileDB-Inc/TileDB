@@ -12,6 +12,7 @@ mod ffi {
     #[namespace = "tiledb::rust"]
     extern "Rust" {
         type Expr;
+        fn to_string(&self) -> String;
 
         fn to_datafusion(schema: &ArraySchema, query_condition: &ASTNode) -> Result<Box<Expr>>;
     }
@@ -28,6 +29,12 @@ pub struct Expr {
     datafusion_expr: DatafusionExpr,
 }
 
+impl Expr {
+    pub fn to_string(&self) -> String {
+        self.datafusion_expr.human_display().to_string()
+    }
+}
+
 fn leaf_ast_to_binary_expr(
     schema: &ArraySchema,
     query_condition: &ASTNode,
@@ -40,7 +47,21 @@ fn leaf_ast_to_binary_expr(
     let value = {
         let value_type = field.datatype();
         let bytes = query_condition.get_data();
-        if bytes.size() != value_type.value_size() {
+        if bytes.size() == 0 {
+            return Ok(DatafusionExpr::Literal(match value_type {
+                Datatype::INT8 => ScalarValue::Int8(None),
+                Datatype::INT16 => ScalarValue::Int16(None),
+                Datatype::INT32 => ScalarValue::Int32(None),
+                Datatype::INT64 => ScalarValue::Int64(None),
+                Datatype::UINT8 => ScalarValue::UInt8(None),
+                Datatype::UINT16 => ScalarValue::UInt16(None),
+                Datatype::UINT32 => ScalarValue::UInt32(None),
+                Datatype::UINT64 => ScalarValue::UInt64(None),
+                Datatype::FLOAT32 => ScalarValue::Float32(None),
+                Datatype::FLOAT64 => ScalarValue::Float64(None),
+                _ => todo!(),
+            }));
+        } else if bytes.size() != value_type.value_size() {
             todo!()
         }
 
@@ -59,6 +80,10 @@ fn leaf_ast_to_binary_expr(
             Datatype::INT16 => i16::from_le_bytes(as_byte_array!(bytes, 2)).into(),
             Datatype::INT32 => i32::from_le_bytes(as_byte_array!(bytes, 4)).into(),
             Datatype::INT64 => i64::from_le_bytes(as_byte_array!(bytes, 8)).into(),
+            Datatype::UINT8 => u8::from_le_bytes(as_byte_array!(bytes, 1)).into(),
+            Datatype::UINT16 => u16::from_le_bytes(as_byte_array!(bytes, 2)).into(),
+            Datatype::UINT32 => u32::from_le_bytes(as_byte_array!(bytes, 4)).into(),
+            Datatype::UINT64 => u64::from_le_bytes(as_byte_array!(bytes, 8)).into(),
             Datatype::FLOAT32 => f32::from_le_bytes(as_byte_array!(bytes, 4)).into(),
             Datatype::FLOAT64 => f64::from_le_bytes(as_byte_array!(bytes, 8)).into(),
             _ => todo!(),
@@ -140,6 +165,23 @@ fn to_datafusion_impl(
     } else {
         match *query_condition.get_op() {
             QueryConditionOp::LT => leaf_ast_to_binary_expr(schema, query_condition, Operator::Lt),
+            QueryConditionOp::LE => {
+                leaf_ast_to_binary_expr(schema, query_condition, Operator::LtEq)
+            }
+            QueryConditionOp::GT => leaf_ast_to_binary_expr(schema, query_condition, Operator::Gt),
+            QueryConditionOp::GE => {
+                leaf_ast_to_binary_expr(schema, query_condition, Operator::GtEq)
+            }
+            QueryConditionOp::EQ => leaf_ast_to_binary_expr(schema, query_condition, Operator::Eq),
+            QueryConditionOp::NE => {
+                leaf_ast_to_binary_expr(schema, query_condition, Operator::NotEq)
+            }
+            QueryConditionOp::ALWAYS_TRUE => {
+                Ok(DatafusionExpr::Literal(ScalarValue::Boolean(Some(true))))
+            }
+            QueryConditionOp::ALWAYS_FALSE => {
+                Ok(DatafusionExpr::Literal(ScalarValue::Boolean(Some(false))))
+            }
             _ => todo!(),
         }
     }

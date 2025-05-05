@@ -32,6 +32,7 @@
  */
 
 #include "tiledb.h"
+#include "build/tiledb/oxidize/target/cxxbridge/expr/src/lib.rs.h"
 #include "tiledb_experimental.h"
 #include "tiledb_serialization.h"
 #include "tiledb_struct_def.h"
@@ -581,6 +582,20 @@ int32_t tiledb_query_set_condition(
   // Set layout
   throw_if_not_ok(query->query_->set_condition(*cond->query_condition_));
 
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_condition_string(
+    tiledb_ctx_t*, tiledb_query_t* query, tiledb_string_t** desc_condition) {
+  const auto condition = query->query_->condition();
+  if (!condition.has_value()) {
+    *desc_condition = tiledb_string_t::make_handle(std::string("None"));
+    return TILEDB_OK;
+  }
+
+  const auto s = tiledb::rust::to_datafusion(
+      query->query_->array_schema(), *condition.value().ast().get());
+  *desc_condition = tiledb_string_t::make_handle(std::string(s->to_string()));
   return TILEDB_OK;
 }
 
@@ -2760,6 +2775,15 @@ CAPI_INTERFACE(
     tiledb_query_t* const query,
     const tiledb_query_condition_t* const cond) {
   return api_entry<tiledb::api::tiledb_query_set_condition>(ctx, query, cond);
+}
+
+CAPI_INTERFACE(
+    query_get_condition_string,
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_string_t** desc_condition) {
+  return api_entry<tiledb::api::tiledb_query_get_condition_string>(
+      ctx, query, desc_condition);
 }
 
 CAPI_INTERFACE(
