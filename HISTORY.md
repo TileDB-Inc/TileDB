@@ -7,6 +7,7 @@
 ## Breaking behavior
 * The release binaries for Windows now require MSVC 2022 runtime libraries. [#5419](https://github.com/TileDB-Inc/TileDB/pull/5419)
 * On local filesystem, VFS operations will automatically create all missing parent directories when creating a file. [#5480](https://github.com/TileDB-Inc/TileDB/pull/5480)
+* `manylinux_2_28` for linux release [#5398](https://github.com/TileDB-Inc/TileDB/pull/5398)
 
 ## New features
 * Add endpoint for REST version and capabilities. [#5429](https://github.com/TileDB-Inc/TileDB/pull/5429)
@@ -15,7 +16,6 @@
 
 ## Improvements
 * Added additional context in the error messages of operations that likely failed due to region mismatch. [#5380](https://github.com/TileDB-Inc/TileDB/pull/5380)
-* `manylinux_2_28` for linux release [#5398](https://github.com/TileDB-Inc/TileDB/pull/5398)
 * Add classes for `Task` and `SharedTask` in threadpool [#5391](https://github.com/TileDB-Inc/TileDB/pull/5391)
 * Improved error messages when the S3 or Azure multipart upload part size is too low, and suggest improving it. [#5406](https://github.com/TileDB-Inc/TileDB/pull/5406)
 * C.41 constructor: `Azure`. [#5392](https://github.com/TileDB-Inc/TileDB/pull/5392)
@@ -66,7 +66,7 @@
 * Add bulk point-range setter `tiledb_subarray_add_point_ranges_var` [#5490](https://github.com/TileDB-Inc/TileDB/pull/5490)
 
 ### C++ API
-* add tiledb_stats_is_enabled to C and C++ APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
+* Add tiledb_stats_is_enabled to C and C++ APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
 * Add `const` to `attribute` in `AttributeExperimental::get_enumeration_name` [#5457](https://github.com/TileDB-Inc/TileDB/pull/5457)
 
 ## Build System Changes
