@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2024 TileDB, Inc.
+# Copyright (c) 2017-2025 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -176,6 +176,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-partial-attribute-write.cc
+    src/unit-cppapi-profile.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-query-condition.cc
     src/unit-cppapi-query-condition-enumerations.cc

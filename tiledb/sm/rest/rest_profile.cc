@@ -112,19 +112,12 @@ const std::string RestProfile::DEFAULT_USERNAME{""};
 RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     : version_(constants::rest_profile_version)
     , name_(name)
+    , homedir_(homedir)
     , filepath_(homedir + constants::rest_profile_filepath)
     , old_filepath_(homedir + constants::cloud_profile_filepath) {
-  // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
-  std::filesystem::create_directories(homedir + ".tiledb");
-
-  // If the local file exists, load the profile with the given name.
-  if (std::filesystem::exists(filepath_)) {
-    load_from_json_file(filepath_);
-  } else {
-    // If the old version of the file exists, load the profile from there
-    if (std::filesystem::exists(old_filepath_)) {
-      load_from_json_file(old_filepath_);
-    }
+  if (name_.empty()) {
+    throw RestProfileException(
+        "Failed to create RestProfile: name cannot be empty.");
   }
 }
 
@@ -182,8 +175,12 @@ void RestProfile::save_to_file() {
   if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
       (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
     throw RestProfileException(
-        "Failed to save; invalid username/password pairing.");
+        "Failed to save profile: 'rest.username' and 'rest.password' must "
+        "either both be set or both remain unset. Mixing a default username "
+        "with a custom password (or vice versa) is not allowed.");
   }
+  // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
+  std::filesystem::create_directories(homedir_ + ".tiledb");
 
   // If the file already exists, load it into a json object.
   json data;
@@ -216,16 +213,43 @@ void RestProfile::save_to_file() {
   write_file(data, filepath_);
 }
 
-void RestProfile::remove_from_file() {
+void RestProfile::load_from_file() {
   if (std::filesystem::exists(filepath_)) {
-    // Read the file into a json object.
-    json data = read_file(filepath_);
+    // If the local file exists, load the profile with the given name.
+    load_from_json_file(filepath_);
+  } else if (std::filesystem::exists(old_filepath_)) {
+    // If the old version of the file exists, load the profile from there
+    load_from_json_file(old_filepath_);
+  } else {
+    // If the file does not exist, throw an error.
+    throw RestProfileException("Failed to load profile; file does not exist.");
+  }
+}
 
-    // If a profile of the given name exists, remove it.
-    data.erase(data.find(name_));
+void RestProfile::remove_from_file() {
+  if (!std::filesystem::exists(filepath_)) {
+    throw RestProfileException(
+        "Failed to remove profile; file does not exist.");
+  }
 
-    // Write the json back to the file.
+  // Read the file into a json object.
+  json data = read_file(filepath_);
+
+  // If a profile of the given name exists, remove it.
+  auto it = data.find(name_);
+  if (it == data.end()) {
+    throw RestProfileException(
+        "Failed to remove profile; profile does not exist.");
+  }
+  data.erase(it);
+
+  // Write the json back to the file.
+  try {
     write_file(data, filepath_);
+  } catch (const std::exception& e) {
+    throw RestProfileException(
+        "Failed to remove profile; error writing file: " +
+        std::string(e.what()));
   }
 }
 
@@ -260,8 +284,9 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   // Load the file into a json object.
   json data = read_file(filename);
 
-  // Update any written-parameters from the loaded json object.
   if (filename.c_str() == old_filepath_.c_str()) {
+    // Update any written-parameters from the loaded json object without
+    // considering name.
     if (data.contains("api_key") &&
         data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
       param_values_["rest.token"] = data["api_key"]["X-TILEDB-REST-API-KEY"];
@@ -276,11 +301,15 @@ void RestProfile::load_from_json_file(const std::string& filename) {
       param_values_["rest.username"] = data["username"];
     }
   } else {
+    // Consider the name of the profile to load.
     json profile = data[name_];
     if (!profile.is_null()) {
       for (auto it = profile.begin(); it != profile.end(); ++it) {
         param_values_[it.key()] = profile[it.key()];
       }
+    } else {
+      throw RestProfileException(
+          "Failed to load profile; profile \'" + name_ + "\' does not exist.");
     }
   }
 }
