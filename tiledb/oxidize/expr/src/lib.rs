@@ -34,10 +34,10 @@ mod record_batch;
 
 pub use record_batch::{ArrowRecordBatch, to_arrow_record_batch};
 
-use anyhow::anyhow;
 use datafusion::common::{Column, ScalarValue};
 use datafusion::logical_expr::expr::InList;
 use datafusion::logical_expr::{BinaryExpr, Expr as DatafusionExpr, Operator};
+use itertools::Itertools;
 use oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
 use oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
 use oxidize::sm::query::ast::ASTNode;
@@ -222,49 +222,36 @@ fn combination_ast_to_binary_expr(
     query_condition: &ASTNode,
     operator: Operator,
 ) -> anyhow::Result<DatafusionExpr> {
-    match query_condition.num_children() {
-        0 => {
-            return Err(anyhow!(
-                "Expected two arguments for binary expression, found none"
-            ));
-        }
-        1 => {
-            return Err(anyhow!(
-                "Expected two arguments for binary expression, found one"
-            ));
-        }
-        2 => (),
-        n => {
-            return Err(anyhow!(
-                "Expected two arguments for binary expression, found {n}"
-            ));
-        }
-    };
-    let left = {
-        let ptr_left = query_condition.get_child(0);
-        if ptr_left.is_null() {
-            return Err(anyhow!(
-                "Unexpected NULL pointer for binary expression left argument"
-            ));
-        }
-        let ast_left = unsafe { &*ptr_left };
-        to_datafusion_impl(schema, ast_left)?
-    };
-    let right = {
-        let ptr_right = query_condition.get_child(1);
-        if ptr_right.is_null() {
-            return Err(anyhow!(
-                "Unexpected NULL pointer for binary expression right argument"
-            ));
-        }
-        let ast_right = unsafe { &*ptr_right };
-        to_datafusion_impl(schema, ast_right)?
-    };
-    Ok(DatafusionExpr::BinaryExpr(BinaryExpr {
-        left: Box::new(left),
-        op: operator,
-        right: Box::new(right),
-    }))
+    let mut level = query_condition
+        .children()
+        .map(|ast| to_datafusion_impl(schema, ast))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    while level.len() != 1 {
+        level = level
+            .into_iter()
+            .chunks(2)
+            .into_iter()
+            .map(|mut pair| {
+                let Some(left) = pair.next() else {
+                    unreachable!()
+                };
+                if let Some(right) = pair.next() {
+                    assert!(pair.next().is_none());
+                    DatafusionExpr::BinaryExpr(BinaryExpr {
+                        left: Box::new(left),
+                        op: operator,
+                        right: Box::new(right),
+                    })
+                } else {
+                    left
+                }
+            })
+            .collect::<Vec<_>>();
+    }
+    assert_eq!(1, level.len());
+
+    Ok(level.into_iter().next().unwrap())
 }
 
 fn to_datafusion_impl(
