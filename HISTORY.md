@@ -31,7 +31,6 @@
 * Schema evolution consistent attribute order [#5470](https://github.com/TileDB-Inc/TileDB/pull/5470)
 * Improve efficiency of `Enumeration::generate_value_map` [#5493](https://github.com/TileDB-Inc/TileDB/pull/5493)
 * Optimized cost efficiency of getting file size on Azure. [#5497](https://github.com/TileDB-Inc/TileDB/pull/5497)
-* Add instructions for building from source into `README.md`. [#5505](https://github.com/TileDB-Inc/TileDB/pull/5505)
 * Optimize `Enumeration::extend` implementation [#5483](https://github.com/TileDB-Inc/TileDB/pull/5483)
 
 ## Deprecations
