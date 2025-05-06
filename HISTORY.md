@@ -60,13 +60,13 @@
 
 ### C API
 * Add `tiledb_field_get_nullable` API [#5378](https://github.com/TileDB-Inc/TileDB/pull/5378)
-* Add `tiledb_stats_is_enabled` to C and C++ APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
+* Add `tiledb_stats_is_enabled` to C APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
 * Update documentation of `tiledb_vfs_touch` to specify that existing files are not overwritten, matching the current behavior. [#5285](https://github.com/TileDB-Inc/TileDB/pull/5285)
 * Support setting of schema-creation timestamp [#5484](https://github.com/TileDB-Inc/TileDB/pull/5484)
 * Add bulk point-range setter `tiledb_subarray_add_point_ranges_var` [#5490](https://github.com/TileDB-Inc/TileDB/pull/5490)
 
 ### C++ API
-* Add tiledb_stats_is_enabled to C and C++ APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
+* Add `Stats::is_enabled()` to C++ APIs [#5395](https://github.com/TileDB-Inc/TileDB/pull/5395)
 * Add `const` to `attribute` in `AttributeExperimental::get_enumeration_name` [#5457](https://github.com/TileDB-Inc/TileDB/pull/5457)
 
 ## Build System Changes
