@@ -38,11 +38,9 @@
 * Removed support for HDFS. [#5496](https://github.com/TileDB-Inc/TileDB/pull/5496)
 
 ## Defects removed
-* Fix print_logs invocation in release CI [#5376](https://github.com/TileDB-Inc/TileDB/pull/5376)
 * Fixed `tiledb_vfs_is_file` masking failures on S3 by returning false. [#5380](https://github.com/TileDB-Inc/TileDB/pull/5380)
 * Fix macos x86_64 release [#5384](https://github.com/TileDB-Inc/TileDB/pull/5384)
 * Fix a bug in `Domain::expand_to_tiles(NDRange*)`, which failed to respect the current domain, causing errors when tile extents exceeded it. A new function is introduced to properly account for the current domain during consolidation. [#5390](https://github.com/TileDB-Inc/TileDB/pull/5390)
-* Fix transient failures in `unit_seedable_global_PRNG`. [#5234](https://github.com/TileDB-Inc/TileDB/pull/5234)
 * Fix swap of uninitialized variables [#5412](https://github.com/TileDB-Inc/TileDB/pull/5412)
 * Patch intermittent `SchemaEvolution` test failure. [#5435](https://github.com/TileDB-Inc/TileDB/pull/5435)
 * Fix failures when opening an array or group with an empty `.vac` file. [#5452](https://github.com/TileDB-Inc/TileDB/pull/5452)
