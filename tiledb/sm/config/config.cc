@@ -79,9 +79,8 @@ const std::string Config::CONFIG_LOGGING_LEVEL = "1";
 const std::string Config::CONFIG_LOGGING_LEVEL = "0";
 #endif
 const std::string Config::CONFIG_LOGGING_DEFAULT_FORMAT = "DEFAULT";
-const std::string Config::PROFILE_HOMEDIR =
-    tiledb::common::filesystem::home_directory();
-const std::string Config::PROFILE_NAME = "default";
+const std::string Config::PROFILE_NAME = "";
+const std::string Config::PROFILE_HOMEDIR = "";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -247,8 +246,8 @@ const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
 const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
-    std::make_pair("profile_homedir", Config::PROFILE_NAME),
     std::make_pair("profile_name", Config::PROFILE_NAME),
+    std::make_pair("profile_homedir", Config::PROFILE_HOMEDIR),
     std::make_pair("rest.server_address", Config::REST_SERVER_DEFAULT_ADDRESS),
     std::make_pair(
         "rest.server_serialization_format",

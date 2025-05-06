@@ -201,11 +201,11 @@ void RestProfile::save_to_file() {
           "The version of your local profile.json file is out of date.");
     }
 
-    // Double-check that this profile hasn't already been saved.
+    // Check that this profile hasn't already been saved.
     if (data.contains(name_)) {
       throw RestProfileException(
           "Failed to save \'" + name_ +
-          "\'; This profile has already been saved,"
+          "\'; This profile has already been saved "
           " and must be explicitly removed in order to be replaced.");
     }
   } else {

@@ -698,11 +698,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The logging format configured (DEFAULT or JSON)
  *    **Default**: "DEFAULT"
  * - `profile_name` <br>
- *    The name of the RestProfile to be used for REST transactions. <br>
- *    **Default**: "default"
+ *    The name of the Profile to be used for REST transactions. <br>
+ *    **Default**: ""
  * - `profile_homedir` <br>
- *    The local $HOME directory where the user profiles are saved. <br>
- *    **Default**: tiledb::common::filesystem::home_directory()
+ *    The local directory where the user profiles are saved. <br>
+ *    **Default**: ""
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
  *    **Default**: "https://api.tiledb.com"

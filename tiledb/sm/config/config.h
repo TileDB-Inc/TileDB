@@ -80,11 +80,11 @@ class Config {
   /*        CONFIG DEFAULTS         */
   /* ****************************** */
 
-  /** The default RestProfile homedir. */
-  static const std::string PROFILE_HOMEDIR;
-
-  /** The default RestProfile name. */
+  /** The default Profile name to be used by REST. */
   static const std::string PROFILE_NAME;
+
+  /** The default Profile directory to be used by REST. */
+  static const std::string PROFILE_HOMEDIR;
 
   /** The default address for rest server. */
   static const std::string REST_SERVER_DEFAULT_ADDRESS;

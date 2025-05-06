@@ -255,13 +255,6 @@ class RestProfile {
       std::make_pair("rest.username", RestProfile::DEFAULT_USERNAME)};
 
   /**
-   * Flag representing whether or not this RestProfile has been `save`d.
-   * When `true`, this profile has been immutably written to disk, and its
-   * parameters can be fetched from upstream (the parent Config).
-   */
-  bool saved_{false};
-
-  /**
    * Flag which tracks the `Config::verify_ssl` parameter inherited from
    * `cloud.json`.
    *
