@@ -31,6 +31,7 @@ mod ffi {
 }
 
 mod record_batch;
+mod schema;
 
 pub use record_batch::{ArrowRecordBatch, to_arrow_record_batch};
 
