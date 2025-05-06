@@ -33,6 +33,7 @@
 
 #include "tiledb.h"
 #include "build/tiledb/oxidize/target/cxxbridge/expr/src/lib.rs.h"
+#include "build/tiledb/oxidize/target/cxxbridge/rust/cxx.h"
 #include "tiledb_experimental.h"
 #include "tiledb_serialization.h"
 #include "tiledb_struct_def.h"
@@ -593,10 +594,14 @@ int32_t tiledb_query_get_condition_string(
     return TILEDB_OK;
   }
 
-  const auto s = tiledb::rust::to_datafusion(
-      query->query_->array_schema(), *condition.value().ast().get());
-  *desc_condition = tiledb_string_t::make_handle(std::string(s->to_string()));
-  return TILEDB_OK;
+  try {
+    const auto s = tiledb::rust::to_datafusion(
+        query->query_->array_schema(), *condition.value().ast().get());
+    *desc_condition = tiledb_string_t::make_handle(std::string(s->to_string()));
+    return TILEDB_OK;
+  } catch (::rust::Error& e) {
+    throw StatusException("oxidize", std::string(e.what()));
+  }
 }
 
 capi_return_t tiledb_query_add_predicate(
