@@ -1,11 +1,11 @@
-/*
- * @file   version.h
+/**
+ * @file tiledb/api/c_api/profile/test/compile_capi_profile_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,9 @@
  * THE SOFTWARE.
  */
 
-#define TILEDB_VERSION_MAJOR 2
-#define TILEDB_VERSION_MINOR 29
-#define TILEDB_VERSION_PATCH 0
+#include "../profile_api_experimental.h"
+
+int main() {
+  tiledb_profile_alloc(nullptr, nullptr, nullptr, nullptr);
+  return 0;
+}

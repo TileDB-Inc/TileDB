@@ -108,8 +108,22 @@ class RestProfile {
   /*              API               */
   /* ****************************** */
 
-  inline std::string name() {
+  /**
+   * Returns the name of this profile.
+   *
+   * @return std::string The name of this profile.
+   */
+  inline const std::string& name() const {
     return name_;
+  }
+
+  /**
+   * Returns the path to the local $HOME directory.
+   *
+   * @return std::string The path to the local $HOME directory.
+   */
+  inline const std::string& homedir() const {
+    return homedir_;
   }
 
   /**
@@ -130,6 +144,9 @@ class RestProfile {
 
   /** Saves this profile to the local file. */
   void save_to_file();
+
+  /** Loads this profile from the local file. */
+  void load_from_file();
 
   /** Removes this profile from the local file. */
   void remove_from_file();
@@ -169,6 +186,9 @@ class RestProfile {
 
   /** The name of this RestProfile. */
   std::string name_;
+
+  /** The path to the local $HOME directory. */
+  std::string homedir_;
 
   /** The path to the local file which stores all profiles. */
   std::string filepath_;
