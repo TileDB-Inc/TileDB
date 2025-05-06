@@ -23,3 +23,12 @@ mod ffi {
 }
 
 pub use ffi::ASTNode;
+
+impl ASTNode {
+    pub fn children(&self) -> impl Iterator<Item = &ASTNode> {
+        (0..self.num_children()).map(|i| {
+            // SAFETY: `i` should be valid due to range
+            unsafe { &*self.get_child(i) }
+        })
+    }
+}
