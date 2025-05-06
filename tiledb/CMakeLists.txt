@@ -401,16 +401,11 @@ list(APPEND TILEDB_EXTERNALS_SOURCES
 
 #
 # Delegate configuration and detection of platform-specific code generation to
-# the subdirectory. For why the separation isn't clean, see comments there.
+# the subdirectory.
 #
 add_subdirectory(
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc
   ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
-list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${TileDB_blosc_INCLUDE_DIRS})
-list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
-set_source_files_properties(
-  ${TileDB_blosc_SOURCES}
-  PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
 
 ############################################################
 # Build core objects as a reusable object library
@@ -424,6 +419,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 # List of libraries to be linked to TILEDB_CORE_OBJECTS.
 set(TILEDB_CORE_OBJECTS_LIBS
   baseline
+  blosc
 )
 
 list(TRANSFORM TILEDB_CORE_OBJECTS_LIBS PREPEND "$<TARGET_OBJECTS:" OUTPUT_VARIABLE TILEDB_CORE_OBJECTS_LIBS_SOURCES)
@@ -494,9 +490,6 @@ add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
 # object store definitions
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE configuration_definitions)
-
-# blosc link dependencies
-target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
 
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
