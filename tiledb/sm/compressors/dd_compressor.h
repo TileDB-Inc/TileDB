@@ -35,8 +35,6 @@
 
 #include "tiledb/common/common.h"
 
-#include <type_traits>
-
 using namespace tiledb::common;
 
 namespace tiledb {
