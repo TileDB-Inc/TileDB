@@ -37,6 +37,8 @@
 #include <mutex>
 #include <thread>
 
+#include "tiledb/sm/global_state/global_state.h"
+
 namespace tiledb {
 namespace sm {
 namespace global_state {
