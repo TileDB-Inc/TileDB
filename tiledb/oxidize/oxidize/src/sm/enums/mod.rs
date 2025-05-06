@@ -54,6 +54,7 @@ mod ffi {
         type Datatype;
 
         fn datatype_size(datatype: Datatype) -> u64;
+        fn datatype_is_valid(datatype: Datatype) -> bool;
     }
 
     #[namespace = "tiledb::sm"]
@@ -81,6 +82,10 @@ mod ffi {
 pub use ffi::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
 
 impl Datatype {
+    pub fn is_valid(&self) -> bool {
+        ffi::datatype_is_valid(*self)
+    }
+
     pub fn value_size(&self) -> usize {
         ffi::datatype_size(*self) as usize
     }
