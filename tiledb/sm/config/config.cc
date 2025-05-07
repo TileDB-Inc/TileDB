@@ -751,16 +751,6 @@ Status Config::sanity_check(
   // Note: users are allowed to _fetch_ these parameters, but they must
   // first be set on an immutable RestProfile.
 
-  // What happens if the user creates the Profile but doesn't save it?
-  // Maybe add a bool saved_ flag in RP to track if the profile's been saved.
-  if (param == "rest.password" || param == "rest.payer_namespace" ||
-      param == "rest.token" || param == "rest.server_address" ||
-      param == "rest.username") {
-    throw ConfigException(
-        "Parameter \'' + param + '\' is no longer set directly on the Config. "
-        "Instead, create a RestProfile and set \'profile_name\' accordingly.");
-  }
-
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
     RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));

@@ -170,14 +170,6 @@ std::string RestProfile::get_param(const std::string& param) const {
  * See issue [#727](https://github.com/nlohmann/json/issues/727) for details.
  */
 void RestProfile::save_to_file() {
-  // RestProfiles are immutable, so disallow overwrites.
-  if (saved_) {
-    throw RestProfileException(
-        "Failed to save \'" + name_ +
-        "\'; This profile has already been saved, "
-        "and must be explicitly removed in order to be replaced.");
-  }
-
   // Validate that the profile is complete (if username is set, so is password)
   if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
       (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
@@ -218,9 +210,6 @@ void RestProfile::save_to_file() {
 
   // Write to the file, which will be created if it does not yet exist.
   write_file(data, filepath_);
-
-  // Flip the `saved_` flag; This profile has now been written to disk.
-  saved_ = true;
 }
 
 void RestProfile::load_from_file() {
