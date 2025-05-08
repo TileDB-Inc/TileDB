@@ -41,6 +41,7 @@
 #include "external/include/nlohmann/json.hpp"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/filesystem/home_directory.h"
+#include "tiledb/sm/misc/constants.h"
 
 using json = nlohmann::json;
 using namespace tiledb::common;
@@ -104,6 +105,45 @@ class RestProfile {
   /** Destructor. */
   ~RestProfile() = default;
 
+  /**
+   * Returns an optional RestProfile with the given name, which has value _iff_
+   * it has been saved to the local file; `std::nullopt` otherwise.
+   *
+   * @note This API will _not_ parse the `cloud.json` path. This method is
+   * expected to be used _primarily_ by a `Config` object inheriting
+   * written-parameters off of a `RestProfile`. Because a `RestProfile` is
+   * immutable, this method will guarantee its state (validity) at loadtime
+   * (the top of its usage stack).
+   *
+   * @param name The name of the profile to load.
+   * @param homedir The user's $HOME directory, or desired in-test path.
+   * @return The RestProfile with the given name, iff it's been saved.
+   */
+  static inline std::optional<RestProfile> load_if_exists(
+      const std::string& name, const std::string& homedir) {
+    auto filepath = homedir + constants::rest_profile_filepath;
+
+    // If the local file exists, return the profile of the given name, if
+    // exists.
+    if (std::filesystem::exists(filepath)) {
+      json data;
+      {
+        std::ifstream file(filepath);
+        try {
+          file >> data;
+        } catch (...) {
+          throw RestProfileException(
+              "Error parsing file \'" + filepath + "\'.");
+        }
+      }
+      // if (read_data(filepath).contains(name)) { // #NTS static linking issues
+      if (data.contains(name)) {
+        return RestProfile(name, homedir);
+      }
+    }
+    return std::nullopt;
+  }
+
   /* ****************************** */
   /*              API               */
   /* ****************************** */
@@ -115,6 +155,14 @@ class RestProfile {
    */
   inline const std::string& name() const {
     return name_;
+  }
+
+  inline const std::map<std::string, std::string>& param_values() const {
+    return param_values_;
+  }
+
+  inline std::optional<bool> get_verify_ssl() const {
+    return verify_ssl_;
   }
 
   /**
@@ -205,6 +253,16 @@ class RestProfile {
       std::make_pair(
           "rest.server_address", RestProfile::DEFAULT_SERVER_ADDRESS),
       std::make_pair("rest.username", RestProfile::DEFAULT_USERNAME)};
+
+  /**
+   * Flag which tracks the `Config::verify_ssl` parameter inherited from
+   * `cloud.json`.
+   *
+   * @note This is a temporary workaround, to be removed once the cloud API
+   * is updated to no longer use `cloud.json`. The config parameter will
+   * still be stored in `Config`, inheriting this value as a third fallback.
+   */
+  std::optional<bool> verify_ssl_{std::nullopt};
 };
 
 }  // namespace tiledb::sm

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "tiledb/common/filesystem/home_directory.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/config/config.h"
 
@@ -217,6 +218,8 @@ void check_save_to_file() {
   rc = tiledb_config_save_to_file(config, "test_config.txt", &error);
   REQUIRE(rc == TILEDB_OK);
 
+  auto homedir = tiledb::common::filesystem::home_directory();
+
   std::stringstream ss;
   // Items here need to be assigned to 'ss' in alphabetical order as
   // an std::[ordered_]map is where the comparison values saved to file
@@ -229,6 +232,8 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "filestore.buffer_size 104857600\n";
+  ss << "profile_homedir " << homedir << "\n";
+  ss << "profile_name default\n";
   ss << "rest.capnp_traversal_limit 2147483648\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.retry_errors true\n";
@@ -605,6 +610,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["config.logging_level"] = "2";
   all_param_values["config.logging_format"] = "JSON";
   all_param_values["filestore.buffer_size"] = "104857600";
+  all_param_values["profile_homedir"] =
+      tiledb::common::filesystem::home_directory();
+  all_param_values["profile_name"] = "default";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
