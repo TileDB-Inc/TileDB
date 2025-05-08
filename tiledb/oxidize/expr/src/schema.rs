@@ -53,10 +53,10 @@ where
         Ok(ArrowField::new(field_name, arrow_type, f.nullable()))
     });
 
-    dbg!(DFSchema::from_unqualified_fields(
+    DFSchema::from_unqualified_fields(
         fields.collect::<Result<ArrowFields, Error>>()?,
         Default::default(),
-    ))
+    )
     .map_err(Error::DFSchema)
 }
 

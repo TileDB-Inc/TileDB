@@ -79,7 +79,7 @@ pub fn to_record_batch(
     // since it assumes that the written tile data satisifes this condition, AND that our
     // to-arrow implementation preserves it. If either of these is not true then it is not a
     // recoverable error from the user perspective
-    let arrow = dbg!(arrow.unwrap());
+    let arrow = arrow.unwrap();
 
     Ok(Box::new(ArrowRecordBatch { arrow }))
 }
