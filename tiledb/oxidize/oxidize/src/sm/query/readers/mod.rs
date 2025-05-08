@@ -13,8 +13,12 @@ mod ffi {
         fn has_var_tile(&self) -> bool;
         fn has_validity_tile(&self) -> bool;
         fn fixed_tile(&self) -> &Tile;
-        fn var_tile(&self) -> &Tile;
-        fn validity_tile(&self) -> &Tile;
+
+        #[cxx_name = "var_tile"]
+        unsafe fn var_tile_unchecked(&self) -> &Tile;
+
+        #[cxx_name = "validity_tile"]
+        unsafe fn validity_tile_unchecked(&self) -> &Tile;
     }
 
     #[namespace = "tiledb::sm"]
@@ -32,17 +36,23 @@ pub use ffi::{ResultTile, TileTuple};
 use crate::sm::tile::Tile;
 
 impl TileTuple {
-    pub fn validity(&self) -> Option<&Tile> {
+    pub fn validity_tile(&self) -> Option<&Tile> {
         if self.has_validity_tile() {
-            Some(self.validity_tile())
+            Some(unsafe {
+                // SAFETY: we checked
+                self.validity_tile_unchecked()
+            })
         } else {
             None
         }
     }
 
-    pub fn offsets(&self) -> Option<&Tile> {
+    pub fn var_tile(&self) -> Option<&Tile> {
         if self.has_var_tile() {
-            Some(self.var_tile())
+            Some(unsafe {
+                // SAFETY: we checked
+                self.var_tile_unchecked()
+            })
         } else {
             None
         }

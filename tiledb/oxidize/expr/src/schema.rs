@@ -26,9 +26,24 @@ pub enum FieldError {
     InternalInvalidDatatype(u8),
 }
 
+pub struct DataFusionSchema(pub DFSchema);
+
+pub fn to_datafusion_cxx(
+    array_schema: &ArraySchema,
+    select: &cxx::Vector<cxx::String>,
+) -> Result<Box<DataFusionSchema>, Error> {
+    Ok(Box::new(DataFusionSchema(to_datafusion(
+        array_schema,
+        |field| select.iter().find(|s| *s == field.name_cxx()).is_some(),
+    )?)))
+}
+
 /// Returns a [DFSchema] which represents the physical field types of `array_schema`.
-pub fn to_datafusion(array_schema: &ArraySchema) -> Result<DFSchema, Error> {
-    let fields = array_schema.fields().map(|f| {
+pub fn to_datafusion<F>(array_schema: &ArraySchema, select: F) -> Result<DFSchema, Error>
+where
+    F: Fn(&Field) -> bool,
+{
+    let fields = array_schema.fields().filter(select).map(|f| {
         let field_name = f
             .name()
             .map_err(|e| Error::NameNotUtf8(f.name_cxx().as_bytes().to_vec(), e))?;
@@ -38,15 +53,15 @@ pub fn to_datafusion(array_schema: &ArraySchema) -> Result<DFSchema, Error> {
         Ok(ArrowField::new(field_name, arrow_type, f.nullable()))
     });
 
-    DFSchema::from_unqualified_fields(
+    dbg!(DFSchema::from_unqualified_fields(
         fields.collect::<Result<ArrowFields, Error>>()?,
         Default::default(),
-    )
+    ))
     .map_err(Error::DFSchema)
 }
 
 /// Returns an [ArrowDataType] which represents the physical data type of `field`.
-fn field_arrow_datatype(field: &Field) -> Result<ArrowDataType, FieldError> {
+pub fn field_arrow_datatype(field: &Field) -> Result<ArrowDataType, FieldError> {
     match field.cell_val_num() {
         CellValNum::Single => Ok(arrow_datatype(field.datatype())?),
         CellValNum::Fixed(nz) => {
@@ -71,7 +86,7 @@ fn field_arrow_datatype(field: &Field) -> Result<ArrowDataType, FieldError> {
 }
 
 /// Returns an [ArrowDataType] which represents the physical type of a single value of `datatype`.
-fn arrow_datatype(datatype: Datatype) -> Result<ArrowDataType, FieldError> {
+pub fn arrow_datatype(datatype: Datatype) -> Result<ArrowDataType, FieldError> {
     Ok(match datatype {
         Datatype::INT8 => ArrowDataType::Int8,
         Datatype::INT16 => ArrowDataType::Int16,
