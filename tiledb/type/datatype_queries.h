@@ -1,11 +1,11 @@
 /**
- * @file test/support/rapidcheck/show.h
+ * @file tiledb/type/datatype_queries.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,50 +27,30 @@
  *
  * @section DESCRIPTION
  *
- * This file provides forward declarations of `rc::detail::showValue`
- * overloads, which seemingly must be included prior to the rapidcheck
- * header files.
+ * This file provides functions which answer queries about Datatype
  */
 
-#ifndef TILEDB_RAPIDCHECK_SHOW_H_
-#define TILEDB_RAPIDCHECK_SHOW_H_
+#ifndef TILEDB_DATATYPE_QUERIES_H
+#define TILEDB_DATATYPE_QUERIES_H
 
-#include <test/support/stdx/optional.h>
+#include "tiledb/type/apply_with_type.h"
+#include "tiledb/type/datatype_traits.h"
 
-#include <ostream>
+namespace tiledb::type {
 
-#include "tiledb/sm/enums/datatype.h"
-
-namespace tiledb {
-namespace sm {
-class ASTNode;
-}  // namespace sm
-}  // namespace tiledb
-
-// forward declarations of `showValue` overloads
-// (these must be declared prior to including `rapidcheck/Show.hpp` for some
-// reason)
-namespace rc::detail {
+using tiledb::sm::Datatype;
 
 /**
- * Specializes `show` for `std::optional<T>` to print the final test case after
- * shrinking
+ * @return whether the `value_type` for a given `Datatype` is signed
  */
-template <stdx::is_optional_v T>
-void showValue(const T& value, std::ostream& os);
+static bool has_signed_value_type(Datatype dt) {
+  return apply_with_type(
+      [](auto value_type) -> bool {
+        return std::is_signed_v<decltype(value_type)>;
+      },
+      dt);
+}
 
-/**
- * Specializes `show` for Datatype.
- *
- * Requires adding `show_datatype.cc` to source list.
- */
-void showValue(const tiledb::sm::Datatype& value, std::ostream& os);
-
-/**
- * Specializes `show` for query ASTNode
- */
-void showValue(const tiledb::sm::ASTNode& value, std::ostream& os);
-
-}  // namespace rc::detail
+}  // namespace tiledb::type
 
 #endif

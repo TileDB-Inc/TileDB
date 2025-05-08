@@ -844,40 +844,14 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
       // Pos-delta would (correctly) return error after e.g. compression.
       []() { return tdb_new(PositiveDeltaFilter, Datatype::UINT64); }};
 
-  // Create tile data generator.
-  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
-      100);
-  for (int i = 0; i < 100; i++) {
+  auto doit = [&](const FilterPipeline& pipeline) {
+    // Create tile data generator.
+    IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+        100);
+
     // Create fresh input tiles.
     auto&& [tile, offsets_tile] =
         tile_data_generator.create_writer_tiles(tracker);
-
-    // Construct a random pipeline
-    FilterPipeline pipeline;
-    const unsigned max_num_filters = 6;
-    std::random_device rd;
-    auto pipeline_seed = rd();
-    std::mt19937 gen(pipeline_seed);
-    std::uniform_int_distribution<> rng_num_filters(0, max_num_filters),
-        rng_bool(0, 1), rng_constructors(0, (int)(constructors.size() - 1)),
-        rng_constructors_first(0, (int)(constructors_first.size() - 1));
-
-    INFO("Random pipeline seed: " << pipeline_seed);
-
-    auto num_filters = (unsigned)rng_num_filters(gen);
-    for (unsigned j = 0; j < num_filters; j++) {
-      if (j == 0 && rng_bool(gen) == 1) {
-        auto idx = (unsigned)rng_constructors_first(gen);
-        tiledb::sm::Filter* filter = constructors_first[idx]();
-        pipeline.add_filter(*filter);
-        tdb_delete(filter);
-      } else {
-        auto idx = (unsigned)rng_constructors(gen);
-        tiledb::sm::Filter* filter = constructors[idx]();
-        pipeline.add_filter(*filter);
-        tdb_delete(filter);
-      }
-    }
 
     // Check the pipelines run forward and backward without error and return the
     // input data.
@@ -890,6 +864,50 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
         pipeline,
         &tile_data_generator,
         tracker);
+  };
+
+  SECTION("Random pipeline") {
+    for (int i = 0; i < 100; i++) {
+      // Construct a random pipeline
+      FilterPipeline pipeline;
+      const unsigned max_num_filters = 6;
+      std::random_device rd;
+      auto pipeline_seed = rd();
+      std::mt19937 gen(pipeline_seed);
+      std::uniform_int_distribution<> rng_num_filters(0, max_num_filters),
+          rng_bool(0, 1), rng_constructors(0, (int)(constructors.size() - 1)),
+          rng_constructors_first(0, (int)(constructors_first.size() - 1));
+
+      INFO("Random pipeline seed: " << pipeline_seed);
+
+      auto num_filters = (unsigned)rng_num_filters(gen);
+      for (unsigned j = 0; j < num_filters; j++) {
+        if (j == 0 && rng_bool(gen) == 1) {
+          auto idx = (unsigned)rng_constructors_first(gen);
+          tiledb::sm::Filter* filter = constructors_first[idx]();
+          pipeline.add_filter(*filter);
+          tdb_delete(filter);
+        } else {
+          auto idx = (unsigned)rng_constructors(gen);
+          tiledb::sm::Filter* filter = constructors[idx]();
+          pipeline.add_filter(*filter);
+          tdb_delete(filter);
+        }
+      }
+
+      doit(pipeline);
+    }
+  }
+
+  SECTION("Example") {
+    FilterPipeline pipeline;
+    pipeline.add_filter(Add1IncludingMetadataFilter(Datatype::UINT64));
+    pipeline.add_filter(Add1IncludingMetadataFilter(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::BZIP2, -1, Datatype::UINT64));
+    pipeline.add_filter(BitWidthReductionFilter(Datatype::UINT64));
+
+    doit(pipeline);
   }
 }
 
