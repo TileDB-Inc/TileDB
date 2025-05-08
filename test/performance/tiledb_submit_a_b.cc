@@ -86,6 +86,21 @@
  *           "end": {
  *             "%": 50
  *           }
+ *         },
+ *         "condition": {
+ *           "operator": "&&",
+ *           "args": [
+ *             {
+ *               "operator": "<"
+ *               "field": "a",
+ *               "value": 5
+ *             },
+ *             {
+ *               "operator": "<>"
+ *               "field": "b",
+ *               "value": 10
+ *             }
+ *           ]
  *         }
  *       ]
  *     }
@@ -124,6 +139,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/stats/duration_instrument.h"
 #include "tiledb/type/apply_with_type.h"
@@ -293,10 +309,128 @@ struct SubarrayDimension {
   }
 };
 
+/**
+ * A node of a query condition syntax tree.
+ */
+class QueryCondition {
+  struct Intermediate {
+    tiledb::sm::QueryConditionCombinationOp operator_;
+    std::vector<QueryCondition> children_;
+
+    tiledb::QueryCondition build(const tiledb::Query& query) const {
+      std::optional<tiledb::QueryCondition> combinator;
+      for (const auto& arg : children_) {
+        if (!combinator.has_value()) {
+          combinator.emplace(arg.build(query));
+        } else {
+          combinator->combine(
+              arg.build(query),
+              static_cast<tiledb_query_condition_combination_op_t>(operator_));
+        }
+      }
+      return combinator.value();
+    }
+  };
+
+  struct Atom {
+    tiledb::sm::QueryConditionOp operator_;
+    std::string field_;
+    json value_;
+
+    tiledb::QueryCondition build(const tiledb::Query& query) const {
+      const auto& schema = query.array().schema();
+      tiledb_datatype_t dt =
+          (schema.has_attribute(field_) ?
+               schema.attribute(field_).type() :
+               schema.domain().dimension(field_).type());
+
+      tiledb::QueryCondition condition(query.ctx());
+      auto do_init = [&](auto arg) {
+        const decltype(arg) value = value_.get<decltype(arg)>();
+        condition.init(
+            field_,
+            static_cast<const void*>(&value),
+            sizeof(value),
+            static_cast<tiledb_query_condition_op_t>(operator_));
+      };
+      tiledb::type::apply_with_type(
+          do_init, static_cast<tiledb::sm::Datatype>(dt));
+      return condition;
+    }
+  };
+
+  std::optional<Intermediate> intermediate_;
+  std::optional<Atom> atom_;
+
+ public:
+  static QueryCondition from_json(const json& json) {
+    const std::string op = json["operator"].get<std::string>();
+    if (op == "&&") {
+      return intermediate_from_json(
+          json, tiledb::sm::QueryConditionCombinationOp::AND);
+    } else if (op == "||") {
+      return intermediate_from_json(
+          json, tiledb::sm::QueryConditionCombinationOp::OR);
+    } else if (op == "!") {
+      return intermediate_from_json(
+          json, tiledb::sm::QueryConditionCombinationOp::NOT);
+    } else if (op == "<") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::LT);
+    } else if (op == "<=") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::LE);
+    } else if (op == "==") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::EQ);
+    } else if (op == ">=") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::GE);
+    } else if (op == ">") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::GT);
+    } else if (op == "<>") {
+      return atom_from_json(json, tiledb::sm::QueryConditionOp::NE);
+    } else {
+      throw std::runtime_error("Invalid 'operator' for query condition: " + op);
+    }
+  }
+
+  tiledb::QueryCondition build(const tiledb::Query& query) const {
+    if (intermediate_.has_value()) {
+      return intermediate_->build(query);
+    } else {
+      return atom_->build(query);
+    }
+  }
+
+ private:
+  static QueryCondition intermediate_from_json(
+      const json& json, tiledb::sm::QueryConditionCombinationOp op) {
+    Intermediate node;
+    node.operator_ = op;
+    for (const auto& arg : json["args"]) {
+      node.children_.push_back(from_json(arg));
+    }
+
+    QueryCondition wrapper;
+    wrapper.intermediate_ = node;
+    return wrapper;
+  }
+
+  static QueryCondition atom_from_json(
+      const json& json, tiledb::sm::QueryConditionOp op) {
+    Atom atom;
+    atom.operator_ = op;
+    atom.field_ = json["field"].get<std::string>();
+    atom.value_ = json["value"];
+
+    QueryCondition wrapper;
+    wrapper.atom_ = atom;
+    return wrapper;
+  }
+};
+
 struct Query {
   std::string label_;
   tiledb_layout_t layout_;
   std::vector<std::optional<SubarrayDimension>> subarray_;
+  std::optional<QueryCondition> condition_;
 
   static Query from_json(const json& jq) {
     Query q;
@@ -352,8 +486,11 @@ struct Query {
           subarray_[d].value().apply(array, d, subarray);
         }
       }
-
       query.set_subarray(subarray);
+
+      if (condition_) {
+        query.set_condition(condition_->build(query));
+      }
     }
   }
 };
