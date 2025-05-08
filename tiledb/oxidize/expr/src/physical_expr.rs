@@ -33,11 +33,11 @@ impl PhysicalExpr {
         &self,
         records: &ArrowRecordBatch,
     ) -> Result<Box<PhysicalExprOutput>, PhysicalExprError> {
-        Ok(Box::new(PhysicalExprOutput(dbg!(
+        Ok(Box::new(PhysicalExprOutput(
             self.0
                 .evaluate(&records.arrow)
-                .map_err(PhysicalExprError::Evaluate)?
-        ))))
+                .map_err(PhysicalExprError::Evaluate)?,
+        )))
     }
 }
 
@@ -48,7 +48,7 @@ pub fn create_physical_expr(
     let dfexpr =
         datafusion::physical_expr::create_physical_expr(&expr.0, &schema.0, &ExecutionProps::new())
             .map_err(PhysicalExprError::Create)?;
-    Ok(Box::new(PhysicalExpr(dbg!(dfexpr))))
+    Ok(Box::new(PhysicalExpr(dfexpr)))
 }
 
 pub struct PhysicalExprOutput(ColumnarValue);
