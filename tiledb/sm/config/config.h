@@ -246,6 +246,9 @@ class Config {
   /** Which reader to use for sparse unordered with dups queries. */
   static const std::string SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER;
 
+  /** How to evaluate query conditions */
+  static const std::string SM_QUERY_CONDITION_EVALUATOR;
+
   /** Should malloc_trim be called on query/ctx destructors. */
   static const std::string SM_MEM_MALLOC_TRIM;
 
