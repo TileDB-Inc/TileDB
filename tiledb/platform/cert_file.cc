@@ -32,11 +32,42 @@
 
 #include "tiledb/platform/cert_file.h"
 
-namespace tiledb::platform {
-
 #if defined(__linux__)
-std::once_flag CertFileTraits<LinuxOS>::cert_file_initialized_;
-std::string CertFileTraits<LinuxOS>::cert_file_;
+#include <array>
+#include <filesystem>
 #endif
 
-}  // namespace tiledb::platform
+namespace tiledb::platform::PlatformCertFile {
+
+#if defined(__linux__)
+std::string get() {
+  // This will execute only once since C++11.
+  static auto cert_file = []() -> std::string {
+    const std::array<std::string, 6> cert_files = {
+        "/etc/ssl/certs/ca-certificates.crt",  // Debian/Ubuntu/Gentoo etc.
+        "/etc/pki/tls/certs/ca-bundle.crt",    // Fedora/RHEL 6
+        "/etc/ssl/ca-bundle.pem",              // OpenSUSE
+        "/etc/pki/tls/cacert.pem",             // OpenELEC
+        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",  // CentOS/RHEL 7
+        "/etc/ssl/cert.pem"                                   // Alpine Linux
+    };
+
+    for (const std::string& cert : cert_files) {
+      std::error_code ec;
+      // Do not throw on errors.
+      if (std::filesystem::exists(cert, ec)) {
+        return cert;
+      }
+    }
+    return "";
+  }();
+
+  return cert_file;
+}
+#else
+std::string get() {
+  return "";
+}
+#endif
+
+}  // namespace tiledb::platform::PlatformCertFile
