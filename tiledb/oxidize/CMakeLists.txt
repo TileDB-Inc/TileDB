@@ -14,7 +14,10 @@ add_crate(
         src/lib.rs
     SOURCES
         Cargo.toml
+        src/logical_expr.rs
+        src/physical_expr.rs
         src/record_batch.rs
+        src/schema.rs
 )
 
 add_crate(

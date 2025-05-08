@@ -595,7 +595,7 @@ int32_t tiledb_query_get_condition_string(
   }
 
   try {
-    const auto s = tiledb::rust::to_datafusion(
+    const auto s = tiledb::oxidize::datafusion::logical_expr::create(
         query->query_->array_schema(), *condition.value().ast().get());
     *desc_condition = tiledb_string_t::make_handle(std::string(s->to_string()));
     return TILEDB_OK;

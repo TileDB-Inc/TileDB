@@ -2,8 +2,8 @@
 resolver = "2"
 members = [
   "arithmetic",
+  "expr",
   "oxidize",
-  "expr"
 ]
 
 [workspace.package]

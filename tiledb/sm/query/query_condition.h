@@ -36,12 +36,20 @@
 #include <span>
 #include <unordered_set>
 
+#include "build/tiledb/oxidize/target/cxxbridge/rust/cxx.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 
 using namespace tiledb::common;
+
+namespace tiledb::oxidize::datafusion::schema {
+class DataFusionSchema;
+}
+namespace tiledb::oxidize::datafusion::physical_expr {
+class PhysicalExpr;
+}
 
 namespace tiledb {
 namespace sm {
@@ -375,6 +383,22 @@ class QueryCondition {
 
   /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};
+
+  /** Datafusion expression evaluation */
+  struct Datafusion {
+    using BoxSchema =
+        ::rust::Box<tiledb::oxidize::datafusion::schema::DataFusionSchema>;
+    using BoxExpr =
+        ::rust::Box<tiledb::oxidize::datafusion::physical_expr::PhysicalExpr>;
+    BoxSchema schema_;
+    BoxExpr expr_;
+
+    Datafusion(BoxSchema&& schema, BoxExpr&& expr)
+        : schema_(std::move(schema))
+        , expr_(std::move(expr)) {
+    }
+  };
+  std::optional<Datafusion> datafusion_;
 
   /** Caches all field names in the value nodes of the AST.  */
   mutable std::unordered_set<std::string> field_names_;

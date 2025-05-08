@@ -6,4 +6,3 @@ TEST_CASE(
     "Query condition AST to datafusion expr",
     "[QueryCondition][ast][datafusion]") {
 }
- 

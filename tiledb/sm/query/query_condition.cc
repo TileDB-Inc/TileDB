@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/query_condition.h"
+#include "build/tiledb/oxidize/target/cxxbridge/expr/src/lib.rs.h"
 #include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
@@ -160,6 +161,25 @@ void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
   }
 
   tree_->rewrite_for_schema(array_schema);
+
+  if (!datafusion_.has_value()) {
+    std::vector<std::string> select(field_names().begin(), field_names().end());
+
+    try {
+      auto logical_expr = tiledb::oxidize::datafusion::logical_expr::create(
+          array_schema, *tree_.get());
+      auto dfschema =
+          tiledb::oxidize::datafusion::schema::create(array_schema, select);
+      auto physical_expr =
+          std::move(tiledb::oxidize::datafusion::physical_expr::create(
+              *dfschema, std::move(logical_expr)));
+
+      datafusion_.emplace(std::move(dfschema), std::move(physical_expr));
+    } catch (const ::rust::Error& e) {
+      throw std::logic_error(
+          "Unexpected error compiling expression: " + std::string(e.what()));
+    }
+  }
 }
 
 Status QueryCondition::check(const ArraySchema& array_schema) const {
@@ -2890,8 +2910,58 @@ Status QueryCondition::apply_sparse(
     const QueryCondition::Params& params,
     ResultTile& result_tile,
     tdb::pmr::vector<BitmapType>& result_bitmap) {
-  apply_tree_sparse<BitmapType>(
-      tree_, params, result_tile, std::multiplies<BitmapType>(), result_bitmap);
+  if (datafusion_.has_value()) {
+    try {
+      const auto arrow = tiledb::oxidize::arrow::to_record_batch(
+          *datafusion_.value().schema_, result_tile);
+      const auto predicate_eval = datafusion_.value().expr_->evaluate(*arrow);
+      static_assert(
+          std::is_same_v<BitmapType, uint8_t> ||
+          std::is_same_v<BitmapType, uint64_t>);
+      if constexpr (std::is_same_v<BitmapType, uint8_t>) {
+        const auto predicate_out_u8 = predicate_eval->cast_to(Datatype::UINT8);
+        const auto bitmap = predicate_out_u8->values_u8();
+        if (predicate_out_u8->is_scalar() && bitmap.empty()) {
+          // all NULLs
+          result_bitmap.assign(result_bitmap.size(), 0);
+        } else if (predicate_out_u8->is_scalar()) {
+          // all the same value
+          result_bitmap.assign(result_bitmap.size(), bitmap[0]);
+        } else if (bitmap.size() == result_bitmap.size()) {
+          result_bitmap.assign(bitmap.begin(), bitmap.end());
+        } else {
+          throw std::logic_error(
+              "Expression evaluation bitmap has unexpected size");
+        }
+      } else {
+        const auto predicate_out_u64 =
+            predicate_eval->cast_to(Datatype::UINT64);
+        const auto bitmap = predicate_out_u64->values_u64();
+        if (predicate_out_u64->is_scalar() && bitmap.empty()) {
+          // all NULLs
+          result_bitmap.assign(result_bitmap.size(), 0);
+        } else if (predicate_out_u64->is_scalar()) {
+          // all the same value
+          result_bitmap.assign(result_bitmap.size(), bitmap[0]);
+        } else if (bitmap.size() == result_bitmap.size()) {
+          result_bitmap.assign(bitmap.begin(), bitmap.end());
+        } else {
+          throw std::logic_error(
+              "Expression evaluation bitmap has unexpected size");
+        }
+      }
+    } catch (const ::rust::Error& e) {
+      throw std::logic_error(
+          "Unexpected error evaluating expression: " + std::string(e.what()));
+    }
+  } else {
+    apply_tree_sparse<BitmapType>(
+        tree_,
+        params,
+        result_tile,
+        std::multiplies<BitmapType>(),
+        result_bitmap);
+  }
 
   return Status::Ok();
 }
@@ -2918,3 +2988,4 @@ template Status QueryCondition::apply_sparse<uint8_t>(
 template Status QueryCondition::apply_sparse<uint64_t>(
     const QueryCondition::Params&, ResultTile&, tdb::pmr::vector<uint64_t>&);
 }  // namespace tiledb::sm
+                          
