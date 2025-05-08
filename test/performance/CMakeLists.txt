@@ -111,5 +111,6 @@ target_include_directories(
 target_link_libraries(tiledb_submit_a_b
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
+    TILEDB_CORE_OBJECTS
     tiledb_test_support_lib
 )
