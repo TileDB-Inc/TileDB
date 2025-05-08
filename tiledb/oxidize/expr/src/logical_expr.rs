@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use datafusion::common::arrow::array::{ArrayData, GenericListArray};
+use datafusion::common::arrow::datatypes::DataType as ArrowDataType;
 use datafusion::common::{Column, ScalarValue};
 use datafusion::logical_expr::expr::InList;
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator};
@@ -64,7 +68,55 @@ fn leaf_ast_to_binary_expr(
                     .chunks(value_type.value_size())
                     .map(value_to_scalar)
                     .collect::<Vec<ScalarValue>>();
-                ScalarValue::LargeList(ScalarValue::new_large_list(&values, &values[0].data_type()))
+
+                // NB: we cannot just use `ScalarValue::new_large_list` because
+                // datafusion does not handle non-nullable fields of lists well.
+                // We have to manually rewrite the array to have a non-nullable
+                // field.
+
+                let list = {
+                    let l = Arc::try_unwrap(ScalarValue::new_large_list(
+                        &values,
+                        &values[0].data_type(),
+                    ));
+
+                    // SAFETY: the only reference is created within this scope
+                    l.unwrap()
+                };
+
+                let adata = ArrayData::from(list);
+                assert_eq!(1, adata.child_data().len());
+                assert_eq!(0, adata.child_data()[0].null_count());
+
+                let non_nullable_child = {
+                    // SAFETY: TODO
+                    let maybe = ArrayData::builder(adata.child_data()[0].data_type().clone())
+                        .len(adata.child_data()[0].len())
+                        .add_buffers(adata.child_data()[0].buffers().to_vec())
+                        .build();
+                    maybe.unwrap()
+                };
+
+                let non_null_field_list_type =
+                    ArrowDataType::new_large_list(non_nullable_child.data_type().clone(), false);
+
+                let non_null_field_adata = {
+                    let maybe = ArrayData::try_new(
+                        non_null_field_list_type,
+                        adata.len(),
+                        adata.nulls().map(|n| n.buffer().clone()),
+                        adata.offset(),
+                        adata.buffers().to_vec(),
+                        vec![non_nullable_child],
+                    );
+
+                    // SAFETY: TODO
+                    maybe.unwrap()
+                };
+
+                ScalarValue::LargeList(Arc::new(GenericListArray::<i64>::from(
+                    non_null_field_adata,
+                )))
             }
         };
         Ok(Expr::BinaryExpr(BinaryExpr {
