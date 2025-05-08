@@ -21,15 +21,11 @@ impl LogicalExpr {
 macro_rules! from_le_bytes {
     ($primitive:ty, $arraylen:literal) => {{
         |bytes| {
-            if bytes.len() == 0 {
-                ScalarValue::from(None::<$primitive>)
-            } else {
-                type ArrayType = [u8; $arraylen];
-                // SAFETY: this macro is invoked after a type and size check
-                let array = ArrayType::try_from(bytes).unwrap();
-                let primitive = <$primitive>::from_le_bytes(array);
-                ScalarValue::from(Some(primitive))
-            }
+            type ArrayType = [u8; $arraylen];
+            // SAFETY: this macro is invoked after a type and size check
+            let array = ArrayType::try_from(bytes).unwrap();
+            let primitive = <$primitive>::from_le_bytes(array);
+            ScalarValue::from(Some(primitive))
         }
     }};
 }
@@ -227,6 +223,18 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> an
     }
 }
 
+fn leaf_ast_to_null_test(schema: &ArraySchema, ast: &ASTNode) -> anyhow::Result<Expr> {
+    let Some(field) = schema.field_cxx(ast.get_field_name()) else {
+        todo!()
+    };
+    let column = Expr::Column(Column::from_name(field.name()?));
+    if *ast.get_op() == QueryConditionOp::EQ {
+        Ok(Expr::IsNull(Box::new(column)))
+    } else {
+        Ok(Expr::IsNotNull(Box::new(column)))
+    }
+}
+
 fn combination_ast_to_binary_expr(
     schema: &ArraySchema,
     query_condition: &ASTNode,
@@ -276,6 +284,8 @@ fn to_datafusion_impl(schema: &ArraySchema, query_condition: &ASTNode) -> anyhow
             QueryConditionCombinationOp::NOT => todo!(),
             _ => todo!(),
         }
+    } else if query_condition.is_null_test() {
+        leaf_ast_to_null_test(schema, query_condition)
     } else {
         match *query_condition.get_op() {
             QueryConditionOp::LT => leaf_ast_to_binary_expr(schema, query_condition, Operator::Lt),

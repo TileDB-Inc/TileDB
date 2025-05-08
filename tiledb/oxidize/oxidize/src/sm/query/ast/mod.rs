@@ -24,11 +24,21 @@ mod ffi {
 
 pub use ffi::ASTNode;
 
+use crate::sm::enums::QueryConditionOp;
+
 impl ASTNode {
     pub fn children(&self) -> impl Iterator<Item = &ASTNode> {
         (0..self.num_children()).map(|i| {
             // SAFETY: `i` should be valid due to range
             unsafe { &*self.get_child(i) }
         })
+    }
+
+    pub fn is_null_test(&self) -> bool {
+        self.get_data().size() == 0
+            && !matches!(
+                *self.get_op(),
+                QueryConditionOp::IN | QueryConditionOp::NOT_IN
+            )
     }
 }
