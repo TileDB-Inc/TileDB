@@ -839,7 +839,7 @@ Status Query::process() {
           return Status::Ok();
         }));
 
-    condition_->rewrite_for_schema(array_schema());
+    condition_->rewrite_for_schema(config_, array_schema());
   }
 
   if (type_ == QueryType::READ) {

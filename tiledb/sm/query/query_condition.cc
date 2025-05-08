@@ -154,14 +154,16 @@ Status QueryCondition::init(
   return Status::Ok();
 }
 
-void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
+void QueryCondition::rewrite_for_schema(
+    const Config& config, const ArraySchema& array_schema) {
   if (!tree_) {
     return;
   }
 
   tree_->rewrite_for_schema(array_schema);
 
-  if (!datafusion_.has_value()) {
+  if (config.get<std::string>("sm.query.condition_evaluator") == "datafusion" &&
+      !datafusion_.has_value()) {
     std::vector<std::string> select(field_names().begin(), field_names().end());
 
     try {
