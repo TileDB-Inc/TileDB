@@ -147,7 +147,7 @@ inline Status filter_type_enum(
 
 /** Throws error if the input Filtertype enum is not between 0 and 19. */
 inline void ensure_filtertype_is_valid(uint8_t type) {
-  if (type > 19) {
+  if (type > 19 || filter_type_str(FilterType(type)) == constants::empty_str) {
     throw std::runtime_error(
         "Invalid FilterType (" + std::to_string(type) + ")");
   }
