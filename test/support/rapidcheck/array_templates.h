@@ -180,13 +180,17 @@ Gen<Fragment1D<D, Att...>> make_fragment_1d(
                          gen::uniqueBy<std::vector<Cell>>(cell, uniqueCoords));
 
   return gen::map(cells, [](std::vector<Cell> cells) {
-    std::vector<D> coords;
-    std::tuple<std::vector<Att>...> atts;
+    query_buffers<D> coords;
+    std::tuple<query_buffers<Att>...> atts;
 
     std::apply(
         [&](std::vector<D> tup_d1, auto... tup_atts) {
-          coords = tup_d1;
-          atts = std::make_tuple(tup_atts...);
+          coords.fixed_ = tup_d1;
+          atts = std::apply(
+              [&atts]<typename... Ts>(std::vector<Ts>... att) {
+                return std::make_tuple(query_buffers<Ts>(att)...);
+              },
+              std::forward_as_tuple(tup_atts...));
         },
         stdx::transpose(cells));
 

@@ -107,13 +107,13 @@ concept DimensionType = requires(const D& coord) {
  * readability, and someday we might want it do require something.
  */
 template <typename T>
-concept AttributeType = true;
+concept AttributeType = std::is_fundamental_v<T>;
 
 /**
  * Constrains types which can be used as columnar data fragment input.
  *
  * Methods `dimensions` and `attributes` return tuples whose fields are each
- * `std::vector<DimensionType>` and `std::vector<AttributeType>`
+ * `query_buffers<DimensionType>` and `query_buffers<AttributeType>`
  * respectively.
  */
 template <typename T>
@@ -121,7 +121,7 @@ concept FragmentType = requires(const T& fragment) {
   { fragment.size() } -> std::convertible_to<uint64_t>;
 
   // not sure how to specify "returns any tuple whose elements decay to
-  // std::vector"
+  // query_buffers"
   fragment.dimensions();
   fragment.attributes();
 } and requires(T& fragment) {
@@ -284,6 +284,91 @@ struct QueryConditionEvalSchema {
   }
 };
 
+template <typename T>
+struct query_buffers {
+  using value_type = T;
+
+  std::vector<T> fixed_;
+
+  query_buffers() {
+  }
+
+  query_buffers(std::vector<T> cells)
+      : fixed_(cells) {
+  }
+
+  size_t num_cells() const {
+    return fixed_.size();
+  }
+
+  size_t size() const {
+    return num_cells();
+  }
+
+  void reserve(size_t num_cells) {
+    fixed_.reserve(num_cells);
+  }
+
+  void resize(size_t num_cells, T value = 0) {
+    fixed_.resize(num_cells, value);
+  }
+
+  void* fixed_ptr(size_t cell_offset = 0) const {
+    return const_cast<void*>(
+        static_cast<const void*>(&fixed_.data()[cell_offset]));
+  }
+
+  const value_type& operator[](int64_t index) const {
+    return fixed_[index];
+  }
+
+  value_type& operator[](int64_t index) {
+    return fixed_[index];
+  }
+
+  auto begin() {
+    return fixed_.begin();
+  }
+
+  auto end() {
+    return fixed_.end();
+  }
+
+  auto begin() const {
+    return fixed_.begin();
+  }
+
+  auto end() const {
+    return fixed_.end();
+  }
+
+  void push_back(T value) {
+    fixed_.push_back(value);
+  }
+
+  bool operator==(const query_buffers<T>&) const = default;
+
+  query_buffers<T>& operator=(const query_buffers<T>&) = default;
+
+  query_buffers<T>& operator=(const std::vector<T>& values) {
+    fixed_ = values;
+    return *this;
+  }
+
+  template <typename... Args>
+  void insert(Args... args) {
+    fixed_.insert(std::forward<Args>(args)...);
+  }
+
+  operator std::span<const T>() const {
+    return std::span(fixed_);
+  }
+
+  operator std::span<T>() {
+    return std::span(fixed_);
+  }
+};
+
 /**
  * Data for a one-dimensional array
  */
@@ -291,33 +376,33 @@ template <DimensionType D, AttributeType... Att>
 struct Fragment1D {
   using DimensionType = D;
 
-  std::vector<D> dim_;
-  std::tuple<std::vector<Att>...> atts_;
+  query_buffers<D> dim_;
+  std::tuple<query_buffers<Att>...> atts_;
 
   uint64_t size() const {
-    return dim_.size();
+    return dim_.num_cells();
   }
 
-  std::tuple<const std::vector<D>&> dimensions() const {
-    return std::tuple<const std::vector<D>&>(dim_);
+  std::tuple<const query_buffers<D>&> dimensions() const {
+    return std::tuple<const query_buffers<D>&>(dim_);
   }
 
-  std::tuple<const std::vector<Att>&...> attributes() const {
+  std::tuple<const query_buffers<Att>&...> attributes() const {
     return std::apply(
-        [](const std::vector<Att>&... attribute) {
-          return std::tuple<const std::vector<Att>&...>(attribute...);
+        [](const query_buffers<Att>&... attribute) {
+          return std::tuple<const query_buffers<Att>&...>(attribute...);
         },
         atts_);
   }
 
-  std::tuple<std::vector<D>&> dimensions() {
-    return std::tuple<std::vector<D>&>(dim_);
+  std::tuple<query_buffers<D>&> dimensions() {
+    return std::tuple<query_buffers<D>&>(dim_);
   }
 
-  std::tuple<std::vector<Att>&...> attributes() {
+  std::tuple<query_buffers<Att>&...> attributes() {
     return std::apply(
-        [](std::vector<Att>&... attribute) {
-          return std::tuple<std::vector<Att>&...>(attribute...);
+        [](query_buffers<Att>&... attribute) {
+          return std::tuple<query_buffers<Att>&...>(attribute...);
         },
         atts_);
   }
@@ -328,35 +413,36 @@ struct Fragment1D {
  */
 template <DimensionType D1, DimensionType D2, AttributeType... Att>
 struct Fragment2D {
-  std::vector<D1> d1_;
-  std::vector<D2> d2_;
-  std::tuple<std::vector<Att>...> atts_;
+  query_buffers<D1> d1_;
+  query_buffers<D2> d2_;
+  std::tuple<query_buffers<Att>...> atts_;
 
   uint64_t size() const {
-    return d1_.size();
+    return d1_.num_cells();
   }
 
-  std::tuple<const std::vector<D1>&, const std::vector<D2>&> dimensions()
+  std::tuple<const query_buffers<D1>&, const query_buffers<D2>&> dimensions()
       const {
-    return std::tuple<const std::vector<D1>&, const std::vector<D2>&>(d1_, d2_);
+    return std::tuple<const query_buffers<D1>&, const query_buffers<D2>&>(
+        d1_, d2_);
   }
 
-  std::tuple<std::vector<D1>&, std::vector<D2>&> dimensions() {
-    return std::tuple<std::vector<D1>&, std::vector<D2>&>(d1_, d2_);
+  std::tuple<query_buffers<D1>&, query_buffers<D2>&> dimensions() {
+    return std::tuple<query_buffers<D1>&, query_buffers<D2>&>(d1_, d2_);
   }
 
-  std::tuple<const std::vector<Att>&...> attributes() const {
+  std::tuple<const query_buffers<Att>&...> attributes() const {
     return std::apply(
-        [](const std::vector<Att>&... attribute) {
-          return std::tuple<const std::vector<Att>&...>(attribute...);
+        [](const query_buffers<Att>&... attribute) {
+          return std::tuple<const query_buffers<Att>&...>(attribute...);
         },
         atts_);
   }
 
-  std::tuple<std::vector<Att>&...> attributes() {
+  std::tuple<query_buffers<Att>&...> attributes() {
     return std::apply(
-        [](std::vector<Att>&... attribute) {
-          return std::tuple<std::vector<Att>&...>(attribute...);
+        [](query_buffers<Att>&... attribute) {
+          return std::tuple<query_buffers<Att>&...>(attribute...);
         },
         atts_);
   }
@@ -374,9 +460,9 @@ struct query_applicator {
       const std::tuple<std::decay_t<Ts>&...> fields,
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
     std::optional<uint64_t> num_cells;
-    auto make_field_size = [&]<typename T>(const std::vector<T>& field) {
+    auto make_field_size = [&]<typename T>(const query_buffers<T>& field) {
       const uint64_t field_cells =
-          std::min(cell_limit, static_cast<uint64_t>(field.size()));
+          std::min(cell_limit, static_cast<uint64_t>(field.num_cells()));
       const uint64_t field_size = field_cells * sizeof(T);
       if (num_cells.has_value()) {
         // precondition: each field must have the same number of cells
@@ -406,8 +492,7 @@ struct query_applicator {
       uint64_t cell_offset = 0) {
     auto set_data_buffer =
         [&](const std::string& name, auto& field, uint64_t& field_size) {
-          auto ptr = const_cast<void*>(
-              static_cast<const void*>(&field.data()[cell_offset]));
+          auto ptr = field.fixed_ptr(cell_offset);
           auto rc = tiledb_query_set_data_buffer(
               ctx, query, name.c_str(), ptr, &field_size);
           ASSERTER(std::optional<std::string>() == error_if_any(ctx, rc));
@@ -432,9 +517,9 @@ struct query_applicator {
     std::optional<uint64_t> num_cells;
 
     auto check_field = [&]<typename T>(
-                           const std::vector<T>& field, uint64_t field_size) {
+                           const query_buffers<T>& field, uint64_t field_size) {
       ASSERTER(field_size % sizeof(T) == 0);
-      ASSERTER(field_size <= field.size() * sizeof(T));
+      ASSERTER(field_size <= field.num_cells() * sizeof(T));
       if (num_cells.has_value()) {
         ASSERTER(num_cells.value() == field_size / sizeof(T));
       } else {

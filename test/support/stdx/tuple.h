@@ -122,14 +122,14 @@ struct split_tuple {
  * Given two tuples of vectors, extends each of the fields of `dst`
  * with the corresponding field of `src`.
  */
-template <typename... Ts>
+template <template <typename T> typename Container, typename... Ts>
 void extend(
-    std::tuple<std::vector<Ts>&...>& dest,
-    std::tuple<const std::vector<Ts>&...> src) {
+    std::tuple<Container<Ts>&...>& dest,
+    std::tuple<const Container<Ts>&...> src) {
   std::apply(
-      [&](std::vector<Ts>&... dest_col) {
+      [&](Container<Ts>&... dest_col) {
         std::apply(
-            [&](const std::vector<Ts>&... src_col) {
+            [&](const Container<Ts>&... src_col) {
               (dest_col.reserve(dest_col.size() + src_col.size()), ...);
               (dest_col.insert(dest_col.end(), src_col.begin(), src_col.end()),
                ...);
@@ -145,14 +145,14 @@ void extend(
  *
  * @return a new tuple containing just the selected positions
  */
-template <typename... Ts>
-std::tuple<std::vector<Ts>...> select(
-    std::tuple<const std::vector<Ts>&...> records,
+template <template <typename T> typename Container, typename... Ts>
+std::tuple<Container<Ts>...> select(
+    std::tuple<const Container<Ts>&...> records,
     std::span<const uint64_t> idxs) {
-  std::tuple<std::vector<Ts>...> selected;
+  std::tuple<Container<Ts>...> selected;
 
   auto select_into = [&idxs]<typename T>(
-                         std::vector<T>& dest, std::span<const T> src) {
+                         Container<T>& dest, const Container<T>& src) {
     dest.reserve(idxs.size());
     for (auto i : idxs) {
       dest.push_back(src[i]);
@@ -160,10 +160,10 @@ std::tuple<std::vector<Ts>...> select(
   };
 
   std::apply(
-      [&](std::vector<Ts>&... sel) {
+      [&](Container<Ts>&... sel) {
         std::apply(
-            [&](const std::vector<Ts>&... col) {
-              (select_into.template operator()<Ts>(sel, std::span(col)), ...);
+            [&](const Container<Ts>&... col) {
+              (select_into.template operator()<Ts>(sel, col), ...);
             },
             records);
       },

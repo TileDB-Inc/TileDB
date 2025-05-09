@@ -70,6 +70,7 @@ using tiledb::sm::Datatype;
 using tiledb::test::templates::AttributeType;
 using tiledb::test::templates::DimensionType;
 using tiledb::test::templates::FragmentType;
+using tiledb::test::templates::query_buffers;
 
 template <typename D>
 using Subarray1DType = std::vector<templates::Domain<D>>;
@@ -1328,20 +1329,20 @@ TEST_CASE_METHOD(
     // Write a fragment F1 with lots of duplicates
     // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
     templates::Fragment1D<int, int> fragment1;
-    fragment1.dim_.resize(fragment0.dim_.size());
-    for (size_t i = 0; i < fragment1.dim_.size(); i++) {
+    fragment1.dim_.resize(fragment0.dim_.num_cells());
+    for (size_t i = 0; i < fragment1.dim_.num_cells(); i++) {
       fragment1.dim_[i] =
-          static_cast<int>((i / 10) + (fragment0.dim_.size() / 2));
+          static_cast<int>((i / 10) + (fragment0.dim_.num_cells() / 2));
     }
 
     // atts are whatever
     auto& f0atts = std::get<0>(fragment0.atts_);
-    f0atts.resize(fragment0.dim_.size());
+    f0atts.resize(fragment0.dim_.num_cells());
     std::iota(f0atts.begin(), f0atts.end(), 0);
 
     auto& f1atts = std::get<0>(fragment1.atts_);
-    f1atts.resize(fragment1.dim_.size());
-    std::iota(f1atts.begin(), f1atts.end(), int(fragment0.dim_.size()));
+    f1atts.resize(fragment1.dim_.num_cells());
+    std::iota(f1atts.begin(), f1atts.end(), int(fragment0.dim_.num_cells()));
 
     FxRun1D instance;
     instance.fragments.push_back(fragment0);
@@ -1429,24 +1430,24 @@ TEST_CASE_METHOD(
     // Write a fragment F0 with tiles [1,3][3,5][5,7][7,9]...
     fragment0.dim_.resize(fragment_size);
     fragment0.dim_[0] = 1;
-    for (size_t i = 1; i < fragment0.dim_.size(); i++) {
+    for (size_t i = 1; i < fragment0.dim_.num_cells(); i++) {
       fragment0.dim_[i] = static_cast<int>(1 + 2 * ((i + 1) / 2));
     }
 
     // Write a fragment F1 with tiles [2,4][4,6][6,8][8,10]...
-    fragment1.dim_.resize(fragment0.dim_.size());
-    for (size_t i = 0; i < fragment1.dim_.size(); i++) {
+    fragment1.dim_.resize(fragment0.dim_.num_cells());
+    for (size_t i = 0; i < fragment1.dim_.num_cells(); i++) {
       fragment1.dim_[i] = fragment0.dim_[i] + 1;
     }
 
     // atts don't really matter
     auto& f0atts = std::get<0>(fragment0.atts_);
-    f0atts.resize(fragment0.dim_.size());
+    f0atts.resize(fragment0.dim_.num_cells());
     std::iota(f0atts.begin(), f0atts.end(), 0);
 
     auto& f1atts = std::get<0>(fragment1.atts_);
-    f1atts.resize(fragment1.dim_.size());
-    std::iota(f1atts.begin(), f1atts.end(), int(f0atts.size()));
+    f1atts.resize(fragment1.dim_.num_cells());
+    std::iota(f1atts.begin(), f1atts.end(), int(f0atts.num_cells()));
 
     FxRun1D instance;
     instance.fragments.push_back(fragment0);
@@ -2137,17 +2138,17 @@ TEST_CASE_METHOD(
           fragment.dim_.end(),
           dimension.domain.lower_bound);
 
-      std::get<0>(fragment.atts_).resize(fragment.dim_.size());
+      std::get<0>(fragment.atts_).resize(fragment.dim_.num_cells());
       std::iota(
           std::get<0>(fragment.atts_).begin(),
           std::get<0>(fragment.atts_).end(),
           0);
 
-      std::get<1>(fragment.atts_).resize(fragment.dim_.size());
+      std::get<1>(fragment.atts_).resize(fragment.dim_.num_cells());
       std::iota(
           std::get<1>(fragment.atts_).begin(),
           std::get<1>(fragment.atts_).end(),
-          static_cast<uint16_t>(f * fragment.dim_.size()));
+          static_cast<uint16_t>(f * fragment.dim_.num_cells()));
 
       instance.fragments.push_back(fragment);
     }
@@ -3080,7 +3081,7 @@ TEST_CASE_METHOD(
         FxRun2D::FragmentType fragment;
         fragment.d1_ = {1, 2 + static_cast<int>(t)};
         fragment.d2_ = {1, 2 + static_cast<int>(f)};
-        std::get<0>(fragment.atts_) = {
+        std::get<0>(fragment.atts_) = std::vector<int>{
             static_cast<int>(instance.fragments.size()),
             static_cast<int>(instance.fragments.size())};
 
@@ -3345,7 +3346,8 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
     auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
       return std::apply(
-          [&globalcmp, ia, ib]<typename... Ts>(const std::vector<Ts>&... dims) {
+          [&globalcmp, ia, ib]<typename... Ts>(
+              const query_buffers<Ts>&... dims) {
             const auto l = std::make_tuple(dims[ia]...);
             const auto r = std::make_tuple(dims[ib]...);
             return globalcmp(

@@ -370,12 +370,12 @@ tiledb::common::Status assertGlobalOrder(
 
   for (uint64_t i = start + 1; i < end; i++) {
     const auto prevtuple = std::apply(
-        [&]<typename... Ts>(const std::vector<Ts>&... dims) {
+        [&]<typename... Ts>(const query_buffers<Ts>&... dims) {
           return global_cell_cmp_std_tuple(std::make_tuple(dims[i - 1]...));
         },
         data.dimensions());
     const auto nexttuple = std::apply(
-        [&]<typename... Ts>(const std::vector<Ts>&... dims) {
+        [&]<typename... Ts>(const query_buffers<Ts>&... dims) {
           return global_cell_cmp_std_tuple(std::make_tuple(dims[i]...));
         },
         data.dimensions());
@@ -438,7 +438,7 @@ static void check_compatibility(const tiledb::Array& array) {
 
   unsigned d = 0;
   std::apply(
-      [&]<typename... Ts>(std::vector<Ts>...) {
+      [&]<typename... Ts>(query_buffers<Ts>...) {
         (require_type<Ts>::dimension(*schema.domain().shared_dimension(d++)),
          ...);
       },
@@ -446,7 +446,7 @@ static void check_compatibility(const tiledb::Array& array) {
 
   unsigned a = 0;
   std::apply(
-      [&]<typename... Ts>(std::vector<Ts>...) {
+      [&]<typename... Ts>(query_buffers<Ts>...) {
         (require_type<Ts>::attribute(*schema.attribute(a++)), ...);
       },
       stdx::decay_tuple<AttributeTuple>());
