@@ -75,6 +75,16 @@
  *       }
  *     },
  *   ],
+ *   "metrics": [
+ *      "loop_num",
+ *      "internal_loop_num",
+ *      ...
+ *   ],
+ *   "timers": [
+ *      "preprocess_result_tile_order_compute",
+ *      "preprocess_result_tile_order_await",
+ *      ...
+ *   ]
  *   "queries": [
  *     {
  *       "label": "my_query",
@@ -122,6 +132,10 @@
  * - The "memory_budget" field sets the query memory budget.
  * - The "config" field is a list of key-value pairs which are
  *   passed to the query configuration options.
+ *
+ * The "metrics" and "timers" fields indicate the list of statistics
+ * to collect for each query. For "timers" the timer sum is
+ * reported.
  *
  * Each item in "queries" specifies a query to run the comparison for.
  *
@@ -647,7 +661,9 @@ static void run(
     StatKeeper& stat_keeper,
     const char* array_uri,
     const Query& query_config,
-    const std::span<Configuration> configs) {
+    const std::span<Configuration> configs,
+    const std::span<std::string> metrics,
+    const std::span<std::string> timers) {
   std::vector<uint64_t> num_user_cells;
   for (const auto& config : configs) {
     num_user_cells.push_back(
@@ -812,24 +828,14 @@ static void run(
     const tiledb::sm::Query& query_internal = *queries[q].ptr().get()->query_;
     const auto& stats = *query_internal.stats();
 
-    stat_keeper.report_metric(
-        keys[q], "loop_num", optional_json(stats.find_counter("loop_num")));
-    stat_keeper.report_metric(
-        keys[q],
-        "internal_loop_num",
-        optional_json(stats.find_counter("internal_loop_num")));
-
-    // record parallel merge timers
-    stat_keeper.report_timer(
-        keys[q],
-        "preprocess_result_tile_order_compute",
-        optional_json(
-            stats.find_timer("preprocess_result_tile_order_compute.sum")));
-    stat_keeper.report_timer(
-        keys[q],
-        "preprocess_result_tile_order_await",
-        optional_json(
-            stats.find_timer("preprocess_result_tile_order_await.sum")));
+    for (const auto& metric : metrics) {
+      stat_keeper.report_metric(
+          keys[q], metric, optional_json(stats.find_counter(metric)));
+    }
+    for (const auto& timer : timers) {
+      stat_keeper.report_timer(
+          keys[q], timer, optional_json(stats.find_timer(timer + ".sum")));
+    }
   }
 }
 
@@ -881,6 +887,19 @@ int main(int argc, char** argv) {
     qconfs.push_back(cfg);
   }
 
+  std::vector<std::string> metrics;
+  if (config.find("metrics") != config.end()) {
+    for (const auto& jmetric : config["metrics"]) {
+      metrics.push_back(jmetric.get<std::string>());
+    }
+  }
+  std::vector<std::string> timers;
+  if (config.find("timers") != config.end()) {
+    for (const auto& jtimer : config["timers"]) {
+      timers.push_back(jtimer.get<std::string>());
+    }
+  }
+
   StatKeeper stat_keeper;
 
   std::span<const char* const> array_uris(
@@ -891,7 +910,7 @@ int main(int argc, char** argv) {
 
     for (const auto& array_uri : array_uris) {
       try {
-        run<Fragment>(stat_keeper, array_uri, qq, qconfs);
+        run<Fragment>(stat_keeper, array_uri, qq, qconfs, metrics, timers);
       } catch (const std::exception& e) {
         std::cerr << "Error on array \"" << array_uri << "\": " << e.what()
                   << std::endl;
