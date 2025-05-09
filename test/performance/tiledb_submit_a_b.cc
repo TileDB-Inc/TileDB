@@ -77,7 +77,13 @@
  *   ],
  *   "queries": [
  *     {
+ *       "label": "my_query",
  *       "layout": "global_order",
+ *       "select": [
+ *          "a",
+ *          "b",
+ *          ...
+ *       ]
  *       "subarray": [
  *         {
  *           "start": {
@@ -119,7 +125,13 @@
  *
  * Each item in "queries" specifies a query to run the comparison for.
  *
+ * The "label" query identifies the query in the output.
+ *
  * The "layout" field is required and sets the results order.
+ *
+ * The "select" field is a list of attributes to select
+ * (in addition to the dimensions). If this key is not provided
+ * then all attributes are selected.
  *
  * The "subarray" path is an optional list of range specifications on
  * each dimension. Currently the only supported specification is
@@ -429,12 +441,20 @@ class QueryCondition {
 struct Query {
   std::string label_;
   tiledb_layout_t layout_;
+  std::optional<std::vector<std::string>> select_;
   std::vector<std::optional<SubarrayDimension>> subarray_;
   std::optional<QueryCondition> condition_;
 
   static Query from_json(const json& jq) {
     Query q;
     q.label_ = jq["label"].get<std::string>();
+
+    if (jq.find("select") != jq.end()) {
+      q.select_.emplace(std::vector<std::string>());
+      for (const auto& field : jq["select"]) {
+        q.select_->push_back(field.get<std::string>());
+      }
+    }
 
     const auto layout = jq["layout"].get<std::string>();
     if (layout == "global_order") {
@@ -553,7 +573,8 @@ struct require_type {
 };
 
 template <FragmentType Fragment>
-static void check_compatibility(const tiledb::Array& array) {
+static void check_compatibility(
+    const tiledb::Array& array, const Query& query_config) {
   using DimensionTuple = decltype(std::declval<Fragment>().dimensions());
   using AttributeTuple = decltype(std::declval<Fragment>().attributes());
 
@@ -581,12 +602,37 @@ static void check_compatibility(const tiledb::Array& array) {
       },
       stdx::decay_tuple<DimensionTuple>());
 
-  unsigned a = 0;
-  std::apply(
-      [&]<typename... Ts>(std::vector<Ts>...) {
-        (require_type<Ts>::attribute(*schema.attribute(a++)), ...);
-      },
-      stdx::decay_tuple<AttributeTuple>());
+  if (query_config.select_.has_value()) {
+    unsigned a = 0;
+    auto get_attribute = [&](unsigned a) {
+      if (a >= query_config.select_.value().size()) {
+        throw std::runtime_error(
+            "FragmentType and select list do not match: too few "
+            "attributes "
+            "selected");
+      } else {
+        return *schema.attribute(query_config.select_.value()[a++]);
+      }
+    };
+    std::apply(
+        [&]<typename... Ts>(std::vector<Ts>...) {
+          (require_type<Ts>::attribute(get_attribute(a++)), ...);
+        },
+        stdx::decay_tuple<AttributeTuple>());
+    if (a != query_config.select_.value().size()) {
+      throw std::runtime_error(
+          "FragmentType and select list do not match: too many attributes "
+          "selected");
+    }
+  } else {
+    // select all attributes, or at least the first N based on fragment
+    unsigned a = 0;
+    std::apply(
+        [&]<typename... Ts>(std::vector<Ts>...) {
+          (require_type<Ts>::attribute(*schema.attribute(a++)), ...);
+        },
+        stdx::decay_tuple<AttributeTuple>());
+  }
 }
 
 template <FragmentType Fragment>
@@ -616,14 +662,19 @@ static void run(
 
   // Open array for reading.
   tiledb::Array array(ctx, array_uri, TILEDB_READ);
-  check_compatibility<Fragment>(array);
+  check_compatibility<Fragment>(array, query_config);
 
   auto dimension_name = [&](unsigned d) -> std::string {
     return std::string(
         array.ptr()->array_schema_latest().domain().dimension_ptr(d)->name());
   };
   auto attribute_name = [&](unsigned a) -> std::string {
-    return std::string(array.ptr()->array_schema_latest().attribute(a)->name());
+    if (query_config.select_.has_value()) {
+      return query_config.select_.value()[a];
+    } else {
+      return std::string(
+          array.ptr()->array_schema_latest().attribute(a)->name());
+    }
   };
 
   std::vector<tiledb::Query> queries;
