@@ -732,10 +732,12 @@ static void run(
 
     const uint64_t dim_num_cells = templates::query::num_cells<Asserter>(
         outdata.dimensions(), dimension_sizes);
-    const uint64_t att_num_cells = templates::query::num_cells<Asserter>(
-        outdata.attributes(), attribute_sizes);
+    if constexpr (std::tuple_size_v<decltype(attribute_sizes)> != 0) {
+      const uint64_t att_num_cells = templates::query::num_cells<Asserter>(
+          outdata.attributes(), attribute_sizes);
 
-    ASSERTER(dim_num_cells == att_num_cells);
+      ASSERTER(dim_num_cells == att_num_cells);
+    }
 
     if (dim_num_cells < outdata.size()) {
       // since the user buffer did not fill up the query must be complete
