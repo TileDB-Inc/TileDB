@@ -358,7 +358,8 @@ class QueryCondition {
 
       tiledb::QueryCondition condition(query.ctx());
       auto do_init = [&](auto arg) {
-        const decltype(arg) value = value_.get<decltype(arg)>();
+        using value_type = std::decay_t<std::remove_pointer_t<decltype(arg)>>;
+        const value_type value = value_.get<value_type>();
         condition.init(
             field_,
             static_cast<const void*>(&value),
@@ -390,13 +391,13 @@ class QueryCondition {
       return atom_from_json(json, tiledb::sm::QueryConditionOp::LT);
     } else if (op == "<=") {
       return atom_from_json(json, tiledb::sm::QueryConditionOp::LE);
-    } else if (op == "==") {
+    } else if (op == "=" || op == "==") {
       return atom_from_json(json, tiledb::sm::QueryConditionOp::EQ);
     } else if (op == ">=") {
       return atom_from_json(json, tiledb::sm::QueryConditionOp::GE);
     } else if (op == ">") {
       return atom_from_json(json, tiledb::sm::QueryConditionOp::GT);
-    } else if (op == "<>") {
+    } else if (op == "!=" || op == "<>") {
       return atom_from_json(json, tiledb::sm::QueryConditionOp::NE);
     } else {
       throw std::runtime_error("Invalid 'operator' for query condition: " + op);
@@ -486,6 +487,12 @@ struct Query {
         }
       }
     }
+
+    if (jq.find("condition") != jq.end()) {
+      const auto& jcondition = jq["condition"];
+      q.condition_.emplace(QueryCondition::from_json(jcondition));
+    }
+
     return q;
   }
 
@@ -507,10 +514,10 @@ struct Query {
         }
       }
       query.set_subarray(subarray);
+    }
 
-      if (condition_) {
-        query.set_condition(condition_->build(query));
-      }
+    if (condition_.has_value()) {
+      query.set_condition(condition_->build(query));
     }
   }
 };
@@ -836,8 +843,10 @@ tiledb::Config json2config(const json& j) {
   const json jconf = j["config"];
   for (auto it = jconf.begin(); it != jconf.end(); ++it) {
     const auto key = it.key();
-    const auto value = nlohmann::to_string(it.value());
-    params[key] = nlohmann::to_string(it.value());
+    const auto value =
+        (it.value().is_string() ? it.value().get<std::string>() :
+                                  nlohmann::to_string(it.value()));
+    params[key] = value;
   }
 
   return tiledb::Config(params);
