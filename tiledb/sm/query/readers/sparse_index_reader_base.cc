@@ -646,7 +646,6 @@ void SparseIndexReaderBase::apply_query_condition(
             QueryCondition::Params params(
                 query_memory_tracker_, *(frag_meta->array_schema().get()));
             {
-              auto timer_se = stats_->start_timer("apply_query_condition");
               throw_if_not_ok(condition_->apply_sparse<BitmapType>(
                   params, *rt, rt->post_dedup_bitmap()));
             }
