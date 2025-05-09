@@ -43,6 +43,7 @@
 #include <test/support/assert_helpers.h>
 #include <test/support/src/error_helpers.h>
 #include <test/support/stdx/fold.h>
+#include <test/support/stdx/traits.h>
 #include <test/support/stdx/tuple.h>
 
 #include <algorithm>
@@ -285,7 +286,10 @@ struct QueryConditionEvalSchema {
 };
 
 template <typename T>
-struct query_buffers {
+struct query_buffers {};
+
+template <stdx::is_fundamental T>
+struct query_buffers<T> {
   using value_type = T;
   using cell_type = value_type;
   using query_field_size_type = uint64_t;
@@ -293,6 +297,10 @@ struct query_buffers {
   std::vector<T> values_;
 
   query_buffers() {
+  }
+
+  query_buffers(const query_buffers<T>& other)
+      : values_(other.values_) {
   }
 
   query_buffers(std::vector<T> cells)
@@ -329,7 +337,10 @@ struct query_buffers {
 
   bool operator==(const query_buffers<T>&) const = default;
 
-  query_buffers<T>& operator=(const query_buffers<T>&) = default;
+  query_buffers<T>& operator=(const query_buffers<T>& other) {
+    values_ = other.values_;
+    return *this;
+  }
 
   query_buffers<T>& operator=(const std::vector<T>& values) {
     values_ = values;
