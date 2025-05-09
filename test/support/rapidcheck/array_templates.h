@@ -164,14 +164,14 @@ Gen<templates::Domain<D>> make_range(const templates::Domain<D>& domain) {
       make_coordinate<D>(domain));
 }
 
-template <DimensionType D, AttributeType... Att>
-Gen<Fragment1D<D, Att...>> make_fragment_1d(
+template <DimensionType D, typename... Att>
+Gen<Fragment1D<D, typename Att::cell_type...>> make_fragment_1d(
     bool allow_duplicates, const Domain<D>& d) {
   auto coord = make_coordinate(d);
 
-  auto cell = gen::tuple(coord, gen::arbitrary<Att>()...);
+  auto cell = gen::tuple(coord, gen::arbitrary<typename Att::cell_type>()...);
 
-  using Cell = std::tuple<D, Att...>;
+  using Cell = std::tuple<D, typename Att::cell_type...>;
 
   auto uniqueCoords = [](const Cell& cell) { return std::get<0>(cell); };
 
@@ -181,7 +181,7 @@ Gen<Fragment1D<D, Att...>> make_fragment_1d(
 
   return gen::map(cells, [](std::vector<Cell> cells) {
     query_buffers<D> coords;
-    std::tuple<query_buffers<Att>...> atts;
+    std::tuple<query_buffers<typename Att::cell_type>...> atts;
 
     std::apply(
         [&](std::vector<D> tup_d1, auto... tup_atts) {
@@ -194,7 +194,8 @@ Gen<Fragment1D<D, Att...>> make_fragment_1d(
         },
         stdx::transpose(cells));
 
-    return Fragment1D<D, Att...>{.dim_ = coords, .atts_ = atts};
+    return Fragment1D<D, typename Att::cell_type...>{
+        .dim_ = coords, .atts_ = atts};
   });
 }
 

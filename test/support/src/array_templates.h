@@ -195,6 +195,39 @@ struct Dimension {
   value_type extent;
 };
 
+template <Datatype DATATYPE, uint32_t CELL_VAL_NUM, bool NULLABLE>
+struct static_attribute {};
+
+template <Datatype DATATYPE>
+struct static_attribute<DATATYPE, 1, false> {
+  static constexpr Datatype datatype = DATATYPE;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool nullable = false;
+
+  using value_type =
+      typename tiledb::type::datatype_traits<DATATYPE>::value_type;
+  using cell_type = value_type;
+};
+
+template <Datatype DATATYPE>
+struct static_attribute<DATATYPE, tiledb::sm::cell_val_num_var, false> {
+  static constexpr Datatype datatype = DATATYPE;
+  static constexpr uint32_t cell_val_num = tiledb::sm::cell_val_num_var;
+  static constexpr bool nullable = false;
+
+  using value_type =
+      typename tiledb::type::datatype_traits<DATATYPE>::value_type;
+  using cell_type = std::vector<value_type>;
+};
+
+template <typename static_attribute>
+constexpr std::tuple<Datatype, uint32_t, bool> attribute_properties() {
+  return {
+      static_attribute::datatype,
+      static_attribute::cell_val_num,
+      static_attribute::nullable};
+}
+
 /**
  * Schema of named fields for simple evaluation of a query condition
  */
@@ -445,7 +478,7 @@ struct Fragment1D {
 /**
  * Data for a two-dimensional array
  */
-template <DimensionType D1, DimensionType D2, AttributeType... Att>
+template <DimensionType D1, DimensionType D2, typename... Att>
 struct Fragment2D {
   query_buffers<D1> d1_;
   query_buffers<D2> d2_;

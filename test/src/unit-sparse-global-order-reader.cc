@@ -71,6 +71,7 @@ using tiledb::test::templates::AttributeType;
 using tiledb::test::templates::DimensionType;
 using tiledb::test::templates::FragmentType;
 using tiledb::test::templates::query_buffers;
+using tiledb::test::templates::static_attribute;
 
 template <typename D>
 using Subarray1DType = std::vector<templates::Domain<D>>;
@@ -125,15 +126,15 @@ struct DefaultArray1DConfig {
  */
 template <
     Datatype DIMENSION_TYPE = Datatype::INT32,
-    Datatype ATTR_TYPE = Datatype::INT32,
-    Datatype... ATTR_TYPES>
+    typename ATTR_TYPE = static_attribute<Datatype::INT32, 1, false>,
+    typename... ATTR_TYPES>
 struct FxRun1D {
   using CoordType = tiledb::type::datatype_traits<DIMENSION_TYPE>::value_type;
 
   using FragmentType = templates::Fragment1D<
       CoordType,
-      typename tiledb::type::datatype_traits<ATTR_TYPE>::value_type,
-      typename tiledb::type::datatype_traits<ATTR_TYPES>::value_type...>;
+      typename ATTR_TYPE::cell_type,
+      typename ATTR_TYPES::cell_type...>;
 
   static constexpr Datatype DimensionType = DIMENSION_TYPE;
 
@@ -235,9 +236,11 @@ struct FxRun1D {
         array.dimension_);
   }
 
-  std::vector<Datatype> attributes() const {
-    std::vector<Datatype> a = {ATTR_TYPE};
-    (a.push_back(ATTR_TYPES), ...);
+  std::vector<std::tuple<Datatype, uint32_t, bool>> attributes() const {
+    std::vector<std::tuple<Datatype, uint32_t, bool>> a = {
+        tiledb::test::templates::attribute_properties<ATTR_TYPE>()};
+    (a.push_back(tiledb::test::templates::attribute_properties<ATTR_TYPES>()),
+     ...);
     return a;
   }
 };
@@ -245,7 +248,9 @@ struct FxRun1D {
 struct FxRun2D {
   using Coord0Type = int;
   using Coord1Type = int;
-  using FragmentType = templates::Fragment2D<Coord0Type, Coord1Type, int>;
+  using Attribute = static_attribute<Datatype::INT32, 1, false>;
+  using FragmentType =
+      templates::Fragment2D<Coord0Type, Coord1Type, Attribute::cell_type>;
 
   std::vector<FragmentType> fragments;
   std::vector<std::pair<
@@ -411,8 +416,10 @@ struct FxRun2D {
     return CoordsRefType(d1, d2);
   }
 
-  std::vector<Datatype> attributes() const {
-    return {Datatype::INT32};
+  std::vector<std::tuple<Datatype, uint32_t, bool>> attributes() const {
+    std::vector<std::tuple<Datatype, uint32_t, bool>> a = {
+        tiledb::test::templates::attribute_properties<Attribute>()};
+    return a;
   }
 };
 
@@ -2108,7 +2115,10 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment full copy 1d",
     "[sparse-global-order][rest][rapidcheck]") {
-  using FxRunType = FxRun1D<Datatype::INT64, Datatype::INT64, Datatype::UINT16>;
+  using FxRunType = FxRun1D<
+      Datatype::INT64,
+      static_attribute<Datatype::INT64, 1, false>,
+      static_attribute<Datatype::UINT16, 1, false>>;
   auto doit = [this]<typename Asserter>(
                   size_t num_fragments,
                   templates::Dimension<Datatype::INT64> dimension,
@@ -3219,15 +3229,19 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
   std::vector<std::string> attribute_names;
   std::vector<tiledb_datatype_t> attribute_types;
   std::vector<uint32_t> attribute_cell_val_nums;
+  std::vector<bool> attribute_nullables;
   std::vector<std::pair<tiledb_filter_type_t, int>> attribute_compressors;
-  auto add_attribute = [&](Datatype attribute) {
+  auto add_attribute = [&](Datatype datatype,
+                           uint32_t cell_val_num,
+                           bool nullable) {
     attribute_names.push_back("a" + std::to_string(attribute_names.size() + 1));
-    attribute_types.push_back(static_cast<tiledb_datatype_t>(attribute));
-    attribute_cell_val_nums.push_back(1);
+    attribute_types.push_back(static_cast<tiledb_datatype_t>(datatype));
+    attribute_cell_val_nums.push_back(cell_val_num);
+    attribute_nullables.push_back(nullable);
     attribute_compressors.push_back(std::make_pair(TILEDB_FILTER_NONE, -1));
   };
-  for (const Datatype atype : attributes) {
-    add_attribute(atype);
+  for (const auto& [datatype, cell_val_num, nullable] : attributes) {
+    add_attribute(datatype, cell_val_num, nullable);
   }
 
   tiledb::test::create_array(
@@ -3245,7 +3259,9 @@ void CSparseGlobalOrderFx::create_array(const Instance& instance) {
       instance.tile_order(),
       instance.cell_order(),
       instance.tile_capacity(),
-      instance.allow_duplicates());
+      instance.allow_duplicates(),
+      false,
+      {attribute_nullables});
 }
 
 /**
@@ -3631,7 +3647,7 @@ Gen<std::vector<templates::Domain<D>>> make_subarray_1d(
   });
 }
 
-template <Datatype DIMENSION_TYPE, Datatype... ATTR_TYPES>
+template <Datatype DIMENSION_TYPE, typename... ATTR_TYPES>
 struct Arbitrary<FxRun1D<DIMENSION_TYPE, ATTR_TYPES...>> {
   using value_type = FxRun1D<DIMENSION_TYPE, ATTR_TYPES...>;
 
@@ -3659,10 +3675,9 @@ struct Arbitrary<FxRun1D<DIMENSION_TYPE, ATTR_TYPES...>> {
           templates::Dimension<DIMENSION_TYPE> dimension;
           std::tie(allow_dups, dimension) = arg;
 
-          auto fragment = rc::make_fragment_1d<
-              typename value_type::CoordType,
-              typename tiledb::type::datatype_traits<
-                  ATTR_TYPES>::value_type...>(allow_dups, dimension.domain);
+          auto fragment = rc::
+              make_fragment_1d<typename value_type::CoordType, ATTR_TYPES...>(
+                  allow_dups, dimension.domain);
 
           auto fragments = gen::nonEmpty(
               gen::container<std::vector<typename value_type::FragmentType>>(
