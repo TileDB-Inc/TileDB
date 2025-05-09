@@ -287,18 +287,20 @@ struct QueryConditionEvalSchema {
 template <typename T>
 struct query_buffers {
   using value_type = T;
+  using cell_type = value_type;
+  using query_field_size_type = uint64_t;
 
-  std::vector<T> fixed_;
+  std::vector<T> values_;
 
   query_buffers() {
   }
 
   query_buffers(std::vector<T> cells)
-      : fixed_(cells) {
+      : values_(cells) {
   }
 
   size_t num_cells() const {
-    return fixed_.size();
+    return values_.size();
   }
 
   size_t size() const {
@@ -306,44 +308,23 @@ struct query_buffers {
   }
 
   void reserve(size_t num_cells) {
-    fixed_.reserve(num_cells);
+    values_.reserve(num_cells);
   }
 
   void resize(size_t num_cells, T value = 0) {
-    fixed_.resize(num_cells, value);
+    values_.resize(num_cells, value);
   }
 
-  void* fixed_ptr(size_t cell_offset = 0) const {
-    return const_cast<void*>(
-        static_cast<const void*>(&fixed_.data()[cell_offset]));
+  const cell_type& operator[](int64_t index) const {
+    return values_[index];
   }
 
-  const value_type& operator[](int64_t index) const {
-    return fixed_[index];
+  cell_type& operator[](int64_t index) {
+    return values_[index];
   }
 
-  value_type& operator[](int64_t index) {
-    return fixed_[index];
-  }
-
-  auto begin() {
-    return fixed_.begin();
-  }
-
-  auto end() {
-    return fixed_.end();
-  }
-
-  auto begin() const {
-    return fixed_.begin();
-  }
-
-  auto end() const {
-    return fixed_.end();
-  }
-
-  void push_back(T value) {
-    fixed_.push_back(value);
+  void push_back(cell_type value) {
+    values_.push_back(value);
   }
 
   bool operator==(const query_buffers<T>&) const = default;
@@ -351,21 +332,63 @@ struct query_buffers {
   query_buffers<T>& operator=(const query_buffers<T>&) = default;
 
   query_buffers<T>& operator=(const std::vector<T>& values) {
-    fixed_ = values;
+    values_ = values;
     return *this;
   }
 
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    return sizeof(T) * std::min(cell_limit, values_.size());
+  }
+
+  int32_t attach_to_query(
+      tiledb_ctx_t* ctx,
+      tiledb_query_t* query,
+      query_field_size_type& field_size,
+      const std::string& name,
+      uint64_t cell_offset) const {
+    void* ptr = const_cast<void*>(
+        static_cast<const void*>(&values_.data()[cell_offset]));
+    return tiledb_query_set_data_buffer(
+        ctx, query, name.c_str(), ptr, &field_size);
+  }
+
+  template <typename Asserter>
+  uint64_t query_num_cells(const query_field_size_type& field_size) const {
+    ASSERTER(field_size % sizeof(T) == 0);
+    ASSERTER(field_size <= num_cells() * sizeof(T));
+    return field_size / sizeof(T);
+  }
+
+  /*
+   * Specializations for what amounts to a std::vector
+   */
   template <typename... Args>
   void insert(Args... args) {
-    fixed_.insert(std::forward<Args>(args)...);
+    values_.insert(std::forward<Args>(args)...);
+  }
+
+  auto begin() {
+    return values_.begin();
+  }
+
+  auto end() {
+    return values_.end();
+  }
+
+  auto begin() const {
+    return values_.begin();
+  }
+
+  auto end() const {
+    return values_.end();
   }
 
   operator std::span<const T>() const {
-    return std::span(fixed_);
+    return std::span(values_);
   }
 
   operator std::span<T>() {
-    return std::span(fixed_);
+    return std::span(values_);
   }
 };
 
@@ -461,9 +484,8 @@ struct query_applicator {
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
     std::optional<uint64_t> num_cells;
     auto make_field_size = [&]<typename T>(const query_buffers<T>& field) {
-      const uint64_t field_cells =
-          std::min(cell_limit, static_cast<uint64_t>(field.num_cells()));
-      const uint64_t field_size = field_cells * sizeof(T);
+      const uint64_t field_cells = std::min(cell_limit, field.num_cells());
+      const auto field_size = field.make_field_size(cell_limit);
       if (num_cells.has_value()) {
         // precondition: each field must have the same number of cells
         ASSERTER(field_cells == num_cells.value());
@@ -491,10 +513,9 @@ struct query_applicator {
       std::function<std::string(unsigned)> fieldname,
       uint64_t cell_offset = 0) {
     auto set_data_buffer =
-        [&](const std::string& name, auto& field, uint64_t& field_size) {
-          auto ptr = field.fixed_ptr(cell_offset);
-          auto rc = tiledb_query_set_data_buffer(
-              ctx, query, name.c_str(), ptr, &field_size);
+        [&](const std::string& name, auto& field, auto& field_size) {
+          const auto rc =
+              field.attach_to_query(ctx, query, field_size, name, cell_offset);
           ASSERTER(std::optional<std::string>() == error_if_any(ctx, rc));
         };
 
@@ -517,13 +538,13 @@ struct query_applicator {
     std::optional<uint64_t> num_cells;
 
     auto check_field = [&]<typename T>(
-                           const query_buffers<T>& field, uint64_t field_size) {
-      ASSERTER(field_size % sizeof(T) == 0);
-      ASSERTER(field_size <= field.num_cells() * sizeof(T));
+                           const query_buffers<T>& field, auto field_size) {
+      const uint64_t field_num_cells =
+          field.template query_num_cells<Asserter>(field_size);
       if (num_cells.has_value()) {
-        ASSERTER(num_cells.value() == field_size / sizeof(T));
+        ASSERTER(num_cells.value() == field_num_cells);
       } else {
-        num_cells.emplace(field_size / sizeof(T));
+        num_cells.emplace(field_num_cells);
       }
     };
 

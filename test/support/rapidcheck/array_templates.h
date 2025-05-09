@@ -185,7 +185,7 @@ Gen<Fragment1D<D, Att...>> make_fragment_1d(
 
     std::apply(
         [&](std::vector<D> tup_d1, auto... tup_atts) {
-          coords.fixed_ = tup_d1;
+          coords.values_ = tup_d1;
           atts = std::apply(
               [&atts]<typename... Ts>(std::vector<Ts>... att) {
                 return std::make_tuple(query_buffers<Ts>(att)...);
