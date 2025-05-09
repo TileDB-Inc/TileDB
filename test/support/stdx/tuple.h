@@ -33,6 +33,9 @@
 #ifndef TILEDB_TEST_SUPPORT_TUPLE_H
 #define TILEDB_TEST_SUPPORT_TUPLE_H
 
+#include <utility>
+#include <vector>
+
 namespace stdx {
 
 template <typename... Ts>
@@ -88,6 +91,32 @@ constexpr std::tuple<typename Ts::value_type...> value_type_tuple_f(
  */
 template <typename Tuple>
 using value_type_tuple_t = decltype(value_type_tuple_f(std::declval<Tuple>()));
+
+/**
+ * Provides types and definitions for splitting a tuple into
+ * left and right tuples at field N.
+ */
+template <typename Tuple, size_t N>
+struct split_tuple {
+ private:
+  template <size_t... iprefix, size_t... isuffix>
+  static auto impl(
+      Tuple& tuple,
+      std::index_sequence<iprefix...>,
+      std::index_sequence<isuffix...>) {
+    return std::make_pair(
+        std::forward_as_tuple(std::get<iprefix>(tuple)...),
+        std::forward_as_tuple(std::get<N + isuffix>(tuple)...));
+  }
+
+ public:
+  static auto value(Tuple& tuple) {
+    return impl(
+        tuple,
+        std::make_index_sequence<N>{},
+        std::make_index_sequence<std::tuple_size_v<Tuple> - N>{});
+  }
+};
 
 /**
  * Given two tuples of vectors, extends each of the fields of `dst`

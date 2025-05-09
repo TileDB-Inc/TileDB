@@ -642,15 +642,6 @@ void CSparseGlobalOrderFx::write_fragment(
 
   CApiArray& array = *existing;
 
-  const auto dimensions = fragment.dimensions();
-  const auto attributes = fragment.attributes();
-
-  // make field size locations
-  auto dimension_sizes =
-      templates::query::make_field_sizes<Asserter>(dimensions);
-  auto attribute_sizes =
-      templates::query::make_field_sizes<Asserter>(attributes);
-
   // Create the query.
   tiledb_query_t* query;
   auto rc = tiledb_query_alloc(context(), array, TILEDB_WRITE, &query);
@@ -658,17 +649,14 @@ void CSparseGlobalOrderFx::write_fragment(
   rc = tiledb_query_set_layout(context(), query, TILEDB_UNORDERED);
   ASSERTER(rc == TILEDB_OK);
 
-  // add dimensions to query
+  auto field_sizes = templates::query::make_field_sizes<Asserter>(fragment);
   templates::query::set_fields<Asserter>(
-      context(), query, dimension_sizes, dimensions, [](unsigned d) {
-        return "d" + std::to_string(d + 1);
-      });
-
-  // add attributes to query
-  templates::query::set_fields<Asserter>(
-      context(), query, attribute_sizes, attributes, [](unsigned a) {
-        return "a" + std::to_string(a + 1);
-      });
+      context(),
+      query,
+      field_sizes,
+      fragment,
+      [](unsigned d) { return "d" + std::to_string(d + 1); },
+      [](unsigned a) { return "a" + std::to_string(a + 1); });
 
   // Submit query.
   rc = tiledb_query_submit(context(), query);
@@ -676,13 +664,10 @@ void CSparseGlobalOrderFx::write_fragment(
 
   // check that sizes match what we expect
   const uint64_t expect_num_cells = fragment.size();
-  const uint64_t dim_num_cells =
-      templates::query::num_cells<Asserter>(dimensions, dimension_sizes);
-  const uint64_t att_num_cells =
-      templates::query::num_cells<Asserter>(attributes, attribute_sizes);
+  const uint64_t num_cells =
+      templates::query::num_cells<Asserter>(fragment, field_sizes);
 
-  ASSERTER(dim_num_cells == expect_num_cells);
-  ASSERTER(att_num_cells == expect_num_cells);
+  ASSERTER(num_cells == expect_num_cells);
 
   // Clean up.
   tiledb_query_free(&query);
@@ -3449,24 +3434,16 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   uint64_t outcursor = 0;
   while (true) {
     // make field size locations
-    auto dimension_sizes = templates::query::make_field_sizes<Asserter>(
-        outdims, instance.num_user_cells);
-    auto attribute_sizes = templates::query::make_field_sizes<Asserter>(
-        outatts, instance.num_user_cells);
+    auto field_sizes = templates::query::make_field_sizes<Asserter>(
+        out, instance.num_user_cells);
 
     // add fields to query
     templates::query::set_fields<Asserter>(
         context(),
         query,
-        dimension_sizes,
-        outdims,
+        field_sizes,
+        out,
         [](unsigned d) { return "d" + std::to_string(d + 1); },
-        outcursor);
-    templates::query::set_fields<Asserter>(
-        context(),
-        query,
-        attribute_sizes,
-        outatts,
         [](unsigned a) { return "a" + std::to_string(a + 1); },
         outcursor);
 
@@ -3527,22 +3504,18 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
     rc = tiledb_query_get_status(context(), query, &status);
     ASSERTER(rc == TILEDB_OK);
 
-    const uint64_t dim_num_cells =
-        templates::query::num_cells<Asserter>(outdims, dimension_sizes);
-    const uint64_t att_num_cells =
-        templates::query::num_cells<Asserter>(outatts, attribute_sizes);
-
-    ASSERTER(dim_num_cells == att_num_cells);
+    const uint64_t num_cells =
+        templates::query::num_cells<Asserter>(out, field_sizes);
 
     const uint64_t num_cells_bound =
         std::min<uint64_t>(instance.num_user_cells, expect.size());
-    if (dim_num_cells < num_cells_bound) {
+    if (num_cells < num_cells_bound) {
       ASSERTER(status == TILEDB_COMPLETED);
     } else {
-      ASSERTER(dim_num_cells == num_cells_bound);
+      ASSERTER(num_cells == num_cells_bound);
     }
 
-    outcursor += dim_num_cells;
+    outcursor += num_cells;
     ASSERTER(outcursor <= expect.size());
 
     if (status == TILEDB_COMPLETED) {
