@@ -2118,7 +2118,7 @@ TEST_CASE_METHOD(
   using FxRunType = FxRun1D<
       Datatype::INT64,
       static_attribute<Datatype::INT64, 1, false>,
-      static_attribute<Datatype::UINT16, 1, false>>;
+      static_attribute<Datatype::UINT16, tiledb::sm::cell_val_num_var, false>>;
   auto doit = [this]<typename Asserter>(
                   size_t num_fragments,
                   templates::Dimension<Datatype::INT64> dimension,
@@ -2154,11 +2154,14 @@ TEST_CASE_METHOD(
           std::get<0>(fragment.atts_).end(),
           0);
 
-      std::get<1>(fragment.atts_).resize(fragment.dim_.num_cells());
-      std::iota(
-          std::get<1>(fragment.atts_).begin(),
-          std::get<1>(fragment.atts_).end(),
-          static_cast<uint16_t>(f * fragment.dim_.num_cells()));
+      std::get<1>(fragment.atts_).resize(0);
+      for (uint64_t i = 0; i < fragment_size; i++) {
+        std::vector<uint16_t> values;
+        for (uint64_t j = 0; j < (i * i) % 11; j++) {
+          values.push_back(f * fragment_size + i + (j * j) % 13);
+        }
+        std::get<1>(fragment.atts_).push_back(values);
+      }
 
       instance.fragments.push_back(fragment);
     }

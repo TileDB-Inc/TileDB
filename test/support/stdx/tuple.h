@@ -130,9 +130,7 @@ void extend(
       [&](Container<Ts>&... dest_col) {
         std::apply(
             [&](const Container<Ts>&... src_col) {
-              (dest_col.reserve(dest_col.size() + src_col.size()), ...);
-              (dest_col.insert(dest_col.end(), src_col.begin(), src_col.end()),
-               ...);
+              (dest_col.extend(src_col), ...);
             },
             src);
       },

@@ -43,6 +43,7 @@
 #include <test/support/assert_helpers.h>
 #include <test/support/src/error_helpers.h>
 #include <test/support/stdx/fold.h>
+#include <test/support/stdx/span.h>
 #include <test/support/stdx/traits.h>
 #include <test/support/stdx/tuple.h>
 
@@ -92,6 +93,13 @@ struct global_cell_cmp_std_tuple {
 };
 
 /**
+ * Forward declaration of query_buffers
+ * which will be specialized.
+ */
+template <typename T>
+struct query_buffers {};
+
+/**
  * Constrains types which can be used as the physical type of a dimension.
  */
 template <typename D>
@@ -108,7 +116,7 @@ concept DimensionType = requires(const D& coord) {
  * readability, and someday we might want it do require something.
  */
 template <typename T>
-concept AttributeType = std::is_fundamental_v<T>;
+concept AttributeType = requires(T) { typename query_buffers<T>::cell_type; };
 
 /**
  * Constrains types which can be used as columnar data fragment input.
@@ -253,24 +261,22 @@ struct QueryConditionEvalSchema {
     std::apply([&](const auto... att) { (add_attribute(att), ...); }, atts);
   }
 
-  /**
-   * @return true if a value passes a simple condition
-   */
-  template <AttributeType T>
-  static bool test(const T& value, const tiledb::sm::ASTNode& condition) {
-    switch (condition.get_op()) {
+  template <typename T, typename Cmp>
+  static bool test(
+      const T& value, const T& atom, Cmp cmp, tiledb::sm::QueryConditionOp op) {
+    switch (op) {
       case tiledb::sm::QueryConditionOp::LT:
-        return value < *static_cast<const T*>(condition.get_value_ptr());
+        return cmp(value, atom);
       case tiledb::sm::QueryConditionOp::LE:
-        return value <= *static_cast<const T*>(condition.get_value_ptr());
+        return cmp(value, atom) || !cmp(atom, value);
       case tiledb::sm::QueryConditionOp::GT:
-        return value > *static_cast<const T*>(condition.get_value_ptr());
+        return cmp(atom, value);
       case tiledb::sm::QueryConditionOp::GE:
-        return value >= *static_cast<const T*>(condition.get_value_ptr());
+        return cmp(atom, value) || !cmp(value, atom);
       case tiledb::sm::QueryConditionOp::EQ:
-        return value == *static_cast<const T*>(condition.get_value_ptr());
+        return !cmp(value, atom) && !cmp(atom, value);
       case tiledb::sm::QueryConditionOp::NE:
-        return value != *static_cast<const T*>(condition.get_value_ptr());
+        return cmp(value, atom) || cmp(atom, value);
       case tiledb::sm::QueryConditionOp::IN:
       case tiledb::sm::QueryConditionOp::NOT_IN:
       case tiledb::sm::QueryConditionOp::ALWAYS_TRUE:
@@ -279,6 +285,28 @@ struct QueryConditionEvalSchema {
         // not implemented here, lazy
         stdx::unreachable();
     }
+  }
+
+  /**
+   * @return true if a value passes a simple condition
+   */
+  template <AttributeType T>
+  static bool test(const T& value, const tiledb::sm::ASTNode& condition) {
+    const T atom = *static_cast<const T*>(condition.get_value_ptr());
+    return test<T>(value, atom, std::less<T>{}, condition.get_op());
+  }
+
+  template <AttributeType T>
+  static bool test(
+      std::span<const T> value, const tiledb::sm::ASTNode& condition) {
+    std::span<const T> atom(
+        static_cast<const T*>(condition.get_value_ptr()),
+        condition.get_value_size() / sizeof(T));
+    auto cmp = [](std::span<const T> left, std::span<const T> right) -> bool {
+      return std::lexicographical_compare(
+          left.begin(), left.end(), right.begin(), right.end());
+    };
+    return test<std::span<const T>>(value, atom, cmp, condition.get_op());
   }
 
   /**
@@ -318,9 +346,6 @@ struct QueryConditionEvalSchema {
   }
 };
 
-template <typename T>
-struct query_buffers {};
-
 template <stdx::is_fundamental T>
 struct query_buffers<T> {
   using value_type = T;
@@ -340,6 +365,8 @@ struct query_buffers<T> {
       : values_(cells) {
   }
 
+  bool operator==(const query_buffers<T>&) const = default;
+
   size_t num_cells() const {
     return values_.size();
   }
@@ -356,11 +383,11 @@ struct query_buffers<T> {
     values_.resize(num_cells, value);
   }
 
-  const cell_type& operator[](int64_t index) const {
+  const cell_type& operator[](uint64_t index) const {
     return values_[index];
   }
 
-  cell_type& operator[](int64_t index) {
+  cell_type& operator[](uint64_t index) {
     return values_[index];
   }
 
@@ -368,7 +395,10 @@ struct query_buffers<T> {
     values_.push_back(value);
   }
 
-  bool operator==(const query_buffers<T>&) const = default;
+  void extend(const query_buffers<T>& from) {
+    reserve(num_cells() + from.num_cells());
+    values_.insert(values_.end(), from.begin(), from.end());
+  }
 
   query_buffers<T>& operator=(const query_buffers<T>& other) {
     values_ = other.values_;
@@ -433,6 +463,126 @@ struct query_buffers<T> {
 
   operator std::span<T>() {
     return std::span(values_);
+  }
+};
+
+template <stdx::is_fundamental T>
+struct query_buffers<std::vector<T>> {
+  using value_type = T;
+  using cell_type = std::span<const value_type>;
+  using query_field_size_type = std::pair<uint64_t, uint64_t>;
+
+  std::vector<T> values_;
+  std::vector<uint64_t> offsets_;
+
+  query_buffers() {
+  }
+
+  query_buffers(const query_buffers<std::vector<T>>& other) = default;
+
+  query_buffers(std::vector<std::vector<T>> cells) {
+    uint64_t offset = 0;
+    for (const auto& cell : cells) {
+      values_.insert(values_.end(), cell.begin(), cell.end());
+      offsets_.push_back(offset);
+      offset += cell.size() * sizeof(T);
+    }
+  }
+
+  bool operator==(const query_buffers<std::vector<T>>&) const = default;
+
+  size_t num_cells() const {
+    return offsets_.size();
+  }
+
+  size_t size() const {
+    return num_cells();
+  }
+
+  void reserve(size_t num_cells) {
+    values_.reserve(16 * num_cells);
+    offsets_.reserve(num_cells);
+  }
+
+  void resize(size_t num_cells, T value = 0) {
+    values_.resize(16 * num_cells, value);
+    offsets_.resize(num_cells, 0);
+  }
+
+  std::span<const T> operator[](uint64_t index) const {
+    if (index + 1 < num_cells()) {
+      return std::span(
+          values_.begin() + (offsets_[index] / sizeof(T)),
+          values_.begin() + (offsets_[index + 1] / sizeof(T)));
+    } else {
+      return std::span(
+          values_.begin() + (offsets_[index] / sizeof(T)), values_.end());
+    }
+  }
+
+  void push_back(cell_type value) {
+    if (offsets_.empty()) {
+      offsets_.push_back(0);
+    } else {
+      offsets_.push_back(values_.size() * sizeof(T));
+    }
+    values_.insert(values_.end(), value.begin(), value.end());
+  }
+
+  void extend(const query_buffers<std::vector<T>>& from) {
+    reserve(num_cells() + from.num_cells());
+
+    const size_t offset_base = values_.size() * sizeof(T);
+    for (size_t o : from.offsets_) {
+      offsets_.push_back(offset_base + o);
+    }
+
+    values_.insert(values_.end(), from.values_.begin(), from.values_.end());
+  }
+
+  query_buffers<std::vector<T>>& operator=(
+      const query_buffers<std::vector<T>>& other) {
+    values_ = other.values_;
+    return *this;
+  }
+
+  query_buffers<std::vector<T>>& operator=(const std::vector<T>& values) {
+    values_ = values;
+    return *this;
+  }
+
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    const uint64_t values_size = sizeof(T) * values_.size();
+    const uint64_t offsets_size =
+        sizeof(uint64_t) * std::min(cell_limit, offsets_.size());
+    return std::make_pair(values_size, offsets_size);
+  }
+
+  int32_t attach_to_query(
+      tiledb_ctx_t* ctx,
+      tiledb_query_t* query,
+      query_field_size_type& field_size,
+      const std::string& name,
+      uint64_t cell_offset) const {
+    void* ptr = const_cast<void*>(
+        static_cast<const void*>(&values_.data()[cell_offset]));
+    RETURN_IF_ERR(tiledb_query_set_data_buffer(
+        ctx, query, name.c_str(), ptr, &std::get<0>(field_size)));
+    RETURN_IF_ERR(tiledb_query_set_offsets_buffer(
+        ctx,
+        query,
+        name.c_str(),
+        const_cast<uint64_t*>(offsets_.data()),
+        &std::get<1>(field_size)));
+    return TILEDB_OK;
+  }
+
+  template <typename Asserter>
+  uint64_t query_num_cells(const query_field_size_type& field_size) const {
+    const uint64_t offsets_size = std::get<1>(field_size);
+    ASSERTER(offsets_size % sizeof(uint64_t) == 0);
+    ASSERTER(offsets_size <= num_cells() * sizeof(uint64_t));
+    return offsets_size / sizeof(uint64_t);
   }
 };
 
