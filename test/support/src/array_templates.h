@@ -218,6 +218,17 @@ struct static_attribute<DATATYPE, 1, false> {
 };
 
 template <Datatype DATATYPE>
+struct static_attribute<DATATYPE, 1, true> {
+  static constexpr Datatype datatype = DATATYPE;
+  static constexpr uint32_t cell_val_num = 1;
+  static constexpr bool nullable = true;
+
+  using value_type = std::optional<
+      typename tiledb::type::datatype_traits<DATATYPE>::value_type>;
+  using cell_type = value_type;
+};
+
+template <Datatype DATATYPE>
 struct static_attribute<DATATYPE, tiledb::sm::cell_val_num_var, false> {
   static constexpr Datatype datatype = DATATYPE;
   static constexpr uint32_t cell_val_num = tiledb::sm::cell_val_num_var;
@@ -290,10 +301,35 @@ struct QueryConditionEvalSchema {
   /**
    * @return true if a value passes a simple condition
    */
-  template <AttributeType T>
+  template <stdx::is_fundamental T>
   static bool test(const T& value, const tiledb::sm::ASTNode& condition) {
     const T atom = *static_cast<const T*>(condition.get_value_ptr());
     return test<T>(value, atom, std::less<T>{}, condition.get_op());
+  }
+
+  template <AttributeType T>
+  static bool test(
+      const std::optional<T>& value, const tiledb::sm::ASTNode& condition) {
+    if (condition.get_value_size() == 0) {
+      // null test
+      switch (condition.get_op()) {
+        case tiledb::sm::QueryConditionOp::EQ:
+          // `field IS NULL`
+          return !value.has_value();
+        default:
+          // `field IS NOT NULL`
+          return value.has_value();
+      }
+    } else {
+      // normal comparison
+      if (value.has_value()) {
+        const T atom = *static_cast<const T*>(condition.get_value_ptr());
+        return test<T>(value.value(), atom, std::less<T>{}, condition.get_op());
+      } else {
+        // `null` compared against not null
+        return false;
+      }
+    }
   }
 
   template <AttributeType T>
@@ -463,6 +499,192 @@ struct query_buffers<T> {
 
   operator std::span<T>() {
     return std::span(values_);
+  }
+};
+
+template <stdx::is_fundamental T>
+struct query_buffers<std::optional<T>> {
+  using value_type = T;
+  using cell_type = std::optional<T>;
+  using query_field_size_type = std::pair<uint64_t, uint64_t>;
+
+  std::vector<T> values_;
+  std::vector<uint8_t> validity_;
+
+  query_buffers() {
+  }
+
+  query_buffers(const query_buffers<std::optional<T>>& other) = default;
+
+  bool operator==(const query_buffers<std::optional<T>>& other) const = default;
+
+  size_t num_cells() const {
+    return values_.size();
+  }
+
+  size_t size() const {
+    return num_cells();
+  }
+
+  void reserve(size_t num_cells) {
+    values_.reserve(num_cells);
+    validity_.reserve(num_cells);
+  }
+
+  void resize(size_t num_cells, T value = 0) {
+    values_.resize(num_cells, value);
+    validity_.resize(num_cells, 0);
+  }
+
+  struct cell_handle {
+    cell_handle(T& cell, uint8_t& validity)
+        : cell_(cell)
+        , validity_(validity) {
+    }
+
+    operator std::optional<T>() const {
+      if (validity_) {
+        return cell_;
+      } else {
+        return std::nullopt;
+      }
+    }
+
+    cell_handle& operator=(std::optional<T> value) {
+      if (value.has_value()) {
+        validity_ = 1;
+        cell_ = value.value();
+      } else {
+        validity_ = 0;
+      }
+      return *this;
+    }
+
+    T& cell_;
+    uint8_t& validity_;
+  };
+
+  struct iterator {
+    using iterator_category =
+        std::forward_iterator_tag;  // NB: could be random access, but lazy
+    using difference_type = std::ptrdiff_t;
+    using value_type = cell_handle;
+    using pointer = value_type*;
+    using reference = value_type&;
+
+    iterator(query_buffers<std::optional<T>>& buffers, uint64_t idx)
+        : buffers_(buffers)
+        , idx_(idx) {
+    }
+
+    value_type operator*() {
+      return buffers_[idx_];
+    }
+
+    iterator operator++() {
+      idx_++;
+      return *this;
+    }
+
+    iterator operator++(int) {
+      auto tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+
+    friend bool operator==(const iterator& a, const iterator& b) {
+      return (&a.buffers_) == (&b.buffers_) && a.idx_ == b.idx_;
+    }
+
+    friend bool operator!=(const iterator& a, const iterator& b) {
+      return !(a == b);
+    }
+
+   private:
+    query_buffers<std::optional<T>>& buffers_;
+    uint64_t idx_;
+  };
+
+  std::optional<T> operator[](uint64_t index) const {
+    if (validity_[index]) {
+      return values_[index];
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  cell_handle operator[](uint64_t index) {
+    return cell_handle(values_[index], validity_[index]);
+  }
+
+  iterator begin() {
+    return iterator(*this, 0);
+  }
+
+  iterator end() {
+    return iterator(*this, values_.size());
+  }
+
+  void push_back(cell_type value) {
+    if (value.has_value()) {
+      values_.push_back(value.value());
+      validity_.push_back(1);
+    } else {
+      values_.push_back(0);
+      validity_.push_back(1);
+    }
+  }
+
+  void extend(const query_buffers<std::optional<T>>& from) {
+    reserve(num_cells() + from.num_cells());
+    values_.insert(values_.end(), from.values_.begin(), from.values_.end());
+    validity_.insert(
+        validity_.end(), from.validity_.begin(), from.validity_.end());
+  }
+
+  query_buffers<T>& operator=(const query_buffers<T>& other) {
+    values_ = other.values_;
+    validity_ = other.validity_;
+    return *this;
+  }
+
+  query_field_size_type make_field_size(uint64_t cell_limit) const {
+    const uint64_t values_size =
+        sizeof(T) * std::min(cell_limit, values_.size());
+    const uint64_t validity_size =
+        sizeof(uint8_t) * std::min(cell_limit, validity_.size());
+    return std::make_pair(values_size, validity_size);
+  }
+
+  int32_t attach_to_query(
+      tiledb_ctx_t* ctx,
+      tiledb_query_t* query,
+      query_field_size_type& field_size,
+      const std::string& name,
+      uint64_t cell_offset) const {
+    void* ptr = const_cast<void*>(
+        static_cast<const void*>(&values_.data()[cell_offset]));
+    RETURN_IF_ERR(tiledb_query_set_data_buffer(
+        ctx, query, name.c_str(), ptr, &std::get<0>(field_size)));
+    RETURN_IF_ERR(tiledb_query_set_validity_buffer(
+        ctx,
+        query,
+        name.c_str(),
+        const_cast<uint8_t*>(validity_.data()),
+        &std::get<1>(field_size)));
+    return TILEDB_OK;
+  }
+
+  template <typename Asserter>
+  uint64_t query_num_cells(const query_field_size_type& field_size) const {
+    const uint64_t values_size = std::get<0>(field_size);
+    const uint64_t validity_size = std::get<1>(field_size);
+    ASSERTER(values_size % sizeof(T) == 0);
+    ASSERTER(validity_size % sizeof(uint8_t) == 0);
+    ASSERTER(values_size <= num_cells() * sizeof(T));
+    ASSERTER(validity_size <= num_cells() * sizeof(uint8_t));
+    ASSERTER(values_size / sizeof(T) == validity_size / sizeof(uint8_t));
+    return validity_size / sizeof(uint8_t);
   }
 };
 

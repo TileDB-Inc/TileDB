@@ -2117,7 +2117,7 @@ TEST_CASE_METHOD(
     "[sparse-global-order][rest][rapidcheck]") {
   using FxRunType = FxRun1D<
       Datatype::INT64,
-      static_attribute<Datatype::INT64, 1, false>,
+      static_attribute<Datatype::INT64, 1, true>,
       static_attribute<
           Datatype::STRING_ASCII,
           tiledb::sm::cell_val_num_var,
