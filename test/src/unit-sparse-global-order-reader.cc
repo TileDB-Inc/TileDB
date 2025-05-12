@@ -2118,7 +2118,10 @@ TEST_CASE_METHOD(
   using FxRunType = FxRun1D<
       Datatype::INT64,
       static_attribute<Datatype::INT64, 1, false>,
-      static_attribute<Datatype::UINT16, tiledb::sm::cell_val_num_var, false>>;
+      static_attribute<
+          Datatype::STRING_ASCII,
+          tiledb::sm::cell_val_num_var,
+          false>>;
   auto doit = [this]<typename Asserter>(
                   size_t num_fragments,
                   templates::Dimension<Datatype::INT64> dimension,
@@ -2156,9 +2159,9 @@ TEST_CASE_METHOD(
 
       std::get<1>(fragment.atts_).resize(0);
       for (uint64_t i = 0; i < fragment_size; i++) {
-        std::vector<uint16_t> values;
+        std::vector<char> values;
         for (uint64_t j = 0; j < (i * i) % 11; j++) {
-          values.push_back(f * fragment_size + i + (j * j) % 13);
+          values.push_back(static_cast<char>((0x41 + i + (j * j) % 26)));
         }
         std::get<1>(fragment.atts_).push_back(values);
       }
@@ -2197,11 +2200,7 @@ TEST_CASE_METHOD(
       const auto domains = std::make_tuple(
           dimension.domain,
           templates::Domain<int64_t>(0, dimension.domain.upper_bound),
-          templates::Domain<uint16_t>(
-              0,
-              static_cast<uint16_t>(std::min<int64_t>(
-                  std::numeric_limits<uint16_t>::max(),
-                  dimension.domain.upper_bound * num_fragments))));
+          templates::Domain<char>('A', 'Z'));
       auto condition =
           *rc::make_query_condition<FxRunType::FragmentType>(domains);
 
