@@ -321,7 +321,7 @@ struct QueryConditionEvalSchema {
     return test<T>(value, atom, std::less<T>{}, condition.get_op());
   }
 
-  template <AttributeType T>
+  template <stdx::is_fundamental T>
   static bool test(
       const std::optional<T>& value, const tiledb::sm::ASTNode& condition) {
     if (condition.get_value_size() == 0) {
