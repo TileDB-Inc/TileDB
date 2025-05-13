@@ -41,6 +41,9 @@ jobs:
           python -m pip install --upgrade pip virtualenv
           pip install pyarrow pybind11[global] numpy
 
+      - name: Install Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Setup MSVC toolset
         uses: TheMrMilchmann/setup-msvc-dev@v3
         if: ${{ startsWith(matrix.os, 'windows-') }}
@@ -67,7 +70,12 @@ jobs:
         shell: bash
         if: ${{ !startsWith(matrix.os, 'windows-') }}
 
-      - name: 'Build standalone unit tests'
+      - name: 'Print path'
+        run: |
+          where link.exe
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+
+      - name: 'Configure build'
         run: |
           cmake -S . \
             -B build \
@@ -75,9 +83,42 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_ASSERTIONS=ON \
-            -DTILEDB_ARROW_TESTS=ON
-          # Build all unit tests
+            -DTILEDB_ARROW_TESTS=ON \
+            -DTILEDB_RUST=ON
+        if: ${{ !startsWith(matrix.os, 'windows-') }}
+
+      - name: 'Build standalone unit tests'
+        run: |
           cmake --build build --target tests -j4
+        if: ${{ !startsWith(matrix.os, 'windows-') }}
+
+      #
+      # Rust's `rustc` will invoke `link.exe` without full qualification.
+      # If the wrong `link.exe` occurs prior in `$PATH`, then the build will fail.
+      # Here we fix up the `$PATH` to ensure that the correct `link.exe` is used.
+      #
+      - name: 'Configure build (windows)'
+        shell: pwsh
+        run: |
+          $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
+          $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
+          $Env:PATH = $PATH_FOR_BUILD
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Debug `
+            -DTILEDB_SERIALIZATION=ON `
+            -DTILEDB_ASSERTIONS=ON `
+            -DTILEDB_ARROW_TESTS=ON `
+            -DTILEDB_RUST=ON
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+
+      - name: 'Build standalone unit tests (Windows)'
+        shell: pwsh
+        run: |
+          $PATH_COMPONENTS_FOR_BUILD = $Env:PATH -split ";" | Where-Object { $_ -notMatch "\\Git\\" }
+          $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
+          $Env:PATH = $PATH_FOR_BUILD
+          cmake --build build --target tests -j4
+        if: ${{ startsWith(matrix.os, 'windows-') }}
 
       - name: 'Run standalone unit tests'
         run: |
