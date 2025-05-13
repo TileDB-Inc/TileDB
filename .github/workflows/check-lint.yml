@@ -40,7 +40,7 @@ jobs:
           printenv
         shell: bash
 
-      - name: Check formatting
+      - name: Check Clang Formatting
         run: $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
 
       - name: Run custom linters
@@ -48,3 +48,19 @@ jobs:
           set -e pipefail
           python scripts/linter.py $GITHUB_WORKSPACE/tiledb
         shell: bash
+
+      - name: Install Rust Stable
+        if: ${{ inputs.rust }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Check Rust Formatting
+        run: |
+          cd $GITHUB_WORKSPACE/tiledb/oxidize
+          cargo fmt --quiet --check
+
+      - name: Rust Lint
+        run: |
+          cd $GITHUB_WORKSPACE/tiledb/oxidize
+          cargo clippy --no-deps --all-targets --all-features -- -Dwarnings
