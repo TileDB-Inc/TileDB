@@ -52,7 +52,7 @@ function(add_crate)
         endif ()
         list(APPEND ADD_CRATE_BRIDGES_CC_OUT "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/${bridge}.cc")
         list(APPEND ADD_CRATE_BRIDGES_H_OUT "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/${bridge}.h")
-        list(APPEND ADD_CRATE_BRIDGES_H_DST "${TILEDB_OXIDIZE_INCLUDE}/tiledb/oxidize/${bridge_out}.h")
+        list(APPEND ADD_CRATE_BRIDGES_H_DST "${TILEDB_OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/${bridge_out}.h")
     endforeach ()
     list(TRANSFORM ADD_CRATE_BRIDGES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_CRATE_NAME}/)
     list(TRANSFORM ADD_CRATE_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_CRATE_NAME}/)
@@ -100,7 +100,7 @@ function(add_crate)
         ${ADD_CRATE_NAME}_rs
         PUBLIC
             ${CMAKE_SOURCE_DIR}
-            ${CMAKE_BINARY_DIR}/tiledb/
+            ${TILEDB_OXIDIZE_INCLUDE_DIR}
     )
     target_include_directories(
         ${ADD_CRATE_NAME}_rs
