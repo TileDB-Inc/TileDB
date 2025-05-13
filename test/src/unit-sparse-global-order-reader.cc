@@ -658,7 +658,7 @@ void CSparseGlobalOrderFx::write_fragment(
   ASSERTER(rc == TILEDB_OK);
 
   auto field_sizes = templates::query::make_field_sizes<Asserter>(fragment);
-  templates::query::set_fields<Asserter>(
+  templates::query::set_fields<Asserter, Fragment>(
       context(),
       query,
       field_sizes,
@@ -975,6 +975,10 @@ static std::optional<bool> can_complete_in_memory_budget(
         if (!array_schema.is_dim(field)) {
           data_size += tiledb::sm::ReaderBase::get_attribute_tile_size(
               array_schema, fragment_metadata, field, f, t);
+        }
+        if (array_schema.is_nullable(field)) {
+          data_size += fragment_metadata[f]->cell_num(t) *
+                       tiledb::sm::constants::cell_validity_size;
         }
       }
 
@@ -1321,6 +1325,14 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: fragment skew",
     "[sparse-global-order][rest][rapidcheck]") {
+  using InstanceType = FxRun1D<
+      Datatype::INT32,
+      static_attribute<Datatype::INT32, 1, false>,
+      static_attribute<
+          Datatype::STRING_UTF8,
+          tiledb::sm::cell_val_num_var,
+          true>>;
+
   auto doit = [this]<typename Asserter>(
                   size_t fragment_size,
                   size_t num_user_cells,
@@ -1329,29 +1341,51 @@ TEST_CASE_METHOD(
                       std::vector<templates::Domain<int>>(),
                   tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
     // Write a fragment F0 with unique coordinates
-    templates::Fragment1D<int, int> fragment0;
+    InstanceType::FragmentType fragment0;
     fragment0.dim_.resize(fragment_size);
     std::iota(fragment0.dim_.begin(), fragment0.dim_.end(), 1);
 
     // Write a fragment F1 with lots of duplicates
     // [100,100,100,100,100,101,101,101,101,101,102,102,102,102,102,...]
-    templates::Fragment1D<int, int> fragment1;
+    InstanceType::FragmentType fragment1;
     fragment1.dim_.resize(fragment0.dim_.num_cells());
     for (size_t i = 0; i < fragment1.dim_.num_cells(); i++) {
       fragment1.dim_[i] =
           static_cast<int>((i / 10) + (fragment0.dim_.num_cells() / 2));
     }
 
-    // atts are whatever
+    // atts are whatever, used just for query condition and correctness check
     auto& f0atts = std::get<0>(fragment0.atts_);
     f0atts.resize(fragment0.dim_.num_cells());
     std::iota(f0atts.begin(), f0atts.end(), 0);
+    for (uint64_t i = 0; i < fragment0.dim_.num_cells(); i++) {
+      if ((i * i) % 7 == 0) {
+        std::get<1>(fragment0.atts_).push_back(std::nullopt);
+      } else {
+        std::vector<char> f0str;
+        for (uint64_t j = 0; j < (i * i) % 11; j++) {
+          f0str.push_back(static_cast<char>(0x41 + ((i + (j * j)) % 26)));
+        }
+        std::get<1>(fragment0.atts_).push_back(f0str);
+      }
+    }
 
     auto& f1atts = std::get<0>(fragment1.atts_);
     f1atts.resize(fragment1.dim_.num_cells());
     std::iota(f1atts.begin(), f1atts.end(), int(fragment0.dim_.num_cells()));
+    for (uint64_t i = 0; i < fragment1.dim_.num_cells(); i++) {
+      if ((i * i) % 11 == 0) {
+        std::get<1>(fragment1.atts_).push_back(std::nullopt);
+      } else {
+        std::vector<char> f1str;
+        for (uint64_t j = 0; j < (i * i) % 11; j++) {
+          f1str.push_back(static_cast<char>(0x61 + ((i + (j * j)) % 26)));
+        }
+        std::get<1>(fragment1.atts_).push_back(f1str);
+      }
+    }
 
-    FxRun1D instance;
+    InstanceType instance;
     instance.fragments.push_back(fragment0);
     instance.fragments.push_back(fragment1);
     instance.num_user_cells = num_user_cells;
@@ -1359,7 +1393,7 @@ TEST_CASE_METHOD(
     instance.array.dimension_.extent = extent;
     instance.array.allow_dups_ = true;
 
-    instance.memory.total_budget_ = "20000";
+    instance.memory.total_budget_ = "30000";
     instance.memory.ratio_array_data_ = "0.5";
 
     instance.subarray = subarray;
@@ -2161,7 +2195,7 @@ TEST_CASE_METHOD(
       for (uint64_t i = 0; i < fragment_size; i++) {
         std::vector<char> values;
         for (uint64_t j = 0; j < (i * i) % 11; j++) {
-          values.push_back(static_cast<char>((0x41 + i + (j * j) % 26)));
+          values.push_back(static_cast<char>((0x41 + i + (j * j)) % 26));
         }
         std::get<1>(fragment.atts_).push_back(values);
       }
@@ -3450,11 +3484,14 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
       },
       std::tuple_cat(outdims, outatts));
 
+  using field_sizes_type =
+      templates::query::fragment_field_sizes_t<decltype(out)>;
+
   // Query loop
-  uint64_t outcursor = 0;
+  field_sizes_type outcursor;
   while (true) {
     // make field size locations
-    auto field_sizes = templates::query::make_field_sizes<Asserter>(
+    field_sizes_type field_sizes = templates::query::make_field_sizes<Asserter>(
         out, instance.num_user_cells);
 
     // add fields to query
@@ -3535,8 +3572,38 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
       ASSERTER(num_cells == num_cells_bound);
     }
 
-    outcursor += num_cells;
-    ASSERTER(outcursor <= expect.size());
+    std::apply(
+        [&](auto&... field) {
+          std::apply(
+              [&](const auto&... field_cursor) {
+                std::apply(
+                    [&](const auto&... field_size) {
+                      (field.apply_cursor(field_cursor, field_size), ...);
+                    },
+                    field_sizes);
+              },
+              outcursor);
+        },
+        std::tuple_cat(outdims, outatts));
+
+    const uint64_t cursor_cells =
+        templates::query::num_cells<Asserter>(out, outcursor);
+    ASSERTER(cursor_cells + num_cells <= expect.size());
+
+    // accumulate
+    std::apply(
+        [&](auto&... field) {
+          std::apply(
+              [&](auto&... field_cursor) {
+                std::apply(
+                    [&](const auto&... field_size) {
+                      (field.accumulate_cursor(field_cursor, field_size), ...);
+                    },
+                    field_sizes);
+              },
+              outcursor);
+        },
+        std::tuple_cat(outdims, outatts));
 
     if (status == TILEDB_COMPLETED) {
       break;
@@ -3547,7 +3614,13 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   tiledb_query_free(&query);
 
   std::apply(
-      [outcursor](auto&... outfield) { (outfield.resize(outcursor), ...); },
+      [outcursor](auto&... outfield) {
+        std::apply(
+            [&](const auto&... field_cursor) {
+              (outfield.finish_multipart_read(field_cursor), ...);
+            },
+            outcursor);
+      },
       std::tuple_cat(outdims, outatts));
 
   ASSERTER(expect.dimensions() == outdims);
@@ -3592,7 +3665,8 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
       // at least all the attributes will come from the same fragment
       if (out != viewtuple(expect.attributes(), i)) {
-        // the found attribute values should match at least one of the fragments
+        // the found attribute values should match at least one of the
+        // fragments
         bool matched = false;
         for (size_t f = 0; !matched && f < instance.fragments.size(); f++) {
           for (size_t ic = 0; !matched && ic < instance.fragments[f].size();
