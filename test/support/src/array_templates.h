@@ -95,6 +95,9 @@ struct global_cell_cmp_std_tuple {
 /**
  * Forward declaration of query_buffers
  * which will be specialized.
+ *
+ * The type `T` is a user-level type which logically represents
+ * the contents of a cell.
  */
 template <typename T>
 struct query_buffers {};
@@ -405,18 +408,27 @@ struct QueryConditionEvalSchema {
   }
 };
 
+/**
+ * Specialization of `query_buffers` for single-valued non-nullable cells.
+ * The template parameter `T` is a "fundamental type" (i.e. int32_t, float,
+ * etc).
+ *
+ * This scenario requires just one `std::vector<T>` buffer.
+ */
 template <stdx::is_fundamental T>
 struct query_buffers<T> {
   using value_type = T;
   using cell_type = value_type;
   using query_field_size_type = uint64_t;
 
+  using self_type = query_buffers<T>;
+
   std::vector<T> values_;
 
   query_buffers() {
   }
 
-  query_buffers(const query_buffers<T>& other)
+  query_buffers(const self_type& other)
       : values_(other.values_) {
   }
 
@@ -424,7 +436,7 @@ struct query_buffers<T> {
       : values_(cells) {
   }
 
-  bool operator==(const query_buffers<T>&) const = default;
+  bool operator==(const self_type&) const = default;
 
   size_t num_cells() const {
     return values_.size();
@@ -454,17 +466,17 @@ struct query_buffers<T> {
     values_.push_back(value);
   }
 
-  void extend(const query_buffers<T>& from) {
+  void extend(const self_type& from) {
     reserve(num_cells() + from.num_cells());
     values_.insert(values_.end(), from.begin(), from.end());
   }
 
-  query_buffers<T>& operator=(const query_buffers<T>& other) {
+  self_type& operator=(const self_type& other) {
     values_ = other.values_;
     return *this;
   }
 
-  query_buffers<T>& operator=(const std::vector<T>& values) {
+  self_type& operator=(const std::vector<T>& values) {
     values_ = values;
     return *this;
   }
@@ -543,11 +555,22 @@ struct query_buffers<T> {
   }
 };
 
+/**
+ * Specialization of `query_buffers` for single-valued nullable cells.
+ * The specialization template parameter `T` is a "fundamental type" (i.e.
+ * int32_t, float, etc). The `query_buffers` template parameter is
+ * `std::optional<T>` representing a cell which optionally has a value.
+ *
+ * This scenario requires the values buffer `std::vector<T>` and the validity
+ * buffer `std::vector<uint8_t>`.
+ */
 template <stdx::is_fundamental T>
 struct query_buffers<std::optional<T>> {
   using value_type = T;
   using cell_type = std::optional<T>;
   using query_field_size_type = std::pair<uint64_t, uint64_t>;
+
+  using self_type = query_buffers<std::optional<T>>;
 
   std::vector<T> values_;
   std::vector<uint8_t> validity_;
@@ -555,9 +578,9 @@ struct query_buffers<std::optional<T>> {
   query_buffers() {
   }
 
-  query_buffers(const query_buffers<std::optional<T>>& other) = default;
+  query_buffers(const self_type& other) = default;
 
-  bool operator==(const query_buffers<std::optional<T>>& other) const = default;
+  bool operator==(const self_type& other) const = default;
 
   size_t num_cells() const {
     return values_.size();
@@ -577,6 +600,11 @@ struct query_buffers<std::optional<T>> {
     validity_.resize(num_cells, 0);
   }
 
+  /**
+   * Mutable handle for a cell in the buffers.
+   * Used to enable assignment of `std::optional<T>` to a position
+   * in the columnar buffers.
+   */
   struct cell_handle {
     cell_handle(T& cell, uint8_t& validity)
         : cell_(cell)
@@ -605,6 +633,9 @@ struct query_buffers<std::optional<T>> {
     uint8_t& validity_;
   };
 
+  /**
+   * Iterator over the `std::optional<T>` values in the buffer.
+   */
   struct iterator {
     using iterator_category =
         std::forward_iterator_tag;  // NB: could be random access, but lazy
@@ -613,7 +644,7 @@ struct query_buffers<std::optional<T>> {
     using pointer = value_type*;
     using reference = value_type&;
 
-    iterator(query_buffers<std::optional<T>>& buffers, uint64_t idx)
+    iterator(self_type& buffers, uint64_t idx)
         : buffers_(buffers)
         , idx_(idx) {
     }
@@ -642,7 +673,7 @@ struct query_buffers<std::optional<T>> {
     }
 
    private:
-    query_buffers<std::optional<T>>& buffers_;
+    self_type& buffers_;
     uint64_t idx_;
   };
 
@@ -676,14 +707,14 @@ struct query_buffers<std::optional<T>> {
     }
   }
 
-  void extend(const query_buffers<std::optional<T>>& from) {
+  void extend(const self_type& from) {
     reserve(num_cells() + from.num_cells());
     values_.insert(values_.end(), from.values_.begin(), from.values_.end());
     validity_.insert(
         validity_.end(), from.validity_.begin(), from.validity_.end());
   }
 
-  query_buffers<T>& operator=(const query_buffers<T>& other) {
+  self_type& operator=(const self_type& other) {
     values_ = other.values_;
     validity_ = other.validity_;
     return *this;
@@ -748,11 +779,25 @@ struct query_buffers<std::optional<T>> {
   }
 };
 
+/**
+ * Specialization of `query_buffers` for variable-length non-nullable cells.
+ * The specialization template parameter `T` is a fundamental type.
+ * The `query_buffers` template parameter is `std::vector<T>` representing
+ * a cell which has a variable number of values.
+ *
+ * This scenario requires the values buffer `std::vector<T>` and the offsets
+ * buffer `std::vector<uint64_t>`. The offsets buffer contains one value
+ * per cell whereas the values buffer contains a variable number of values
+ * per cell. As such, methods which attach to a query need to treat the
+ * size of both buffers separately.
+ */
 template <stdx::is_fundamental T>
 struct query_buffers<std::vector<T>> {
   using value_type = T;
   using cell_type = std::span<const value_type>;
   using query_field_size_type = std::pair<uint64_t, uint64_t>;
+
+  using self_type = query_buffers<std::vector<T>>;
 
   std::vector<T> values_;
   std::vector<uint64_t> offsets_;
@@ -760,7 +805,7 @@ struct query_buffers<std::vector<T>> {
   query_buffers() {
   }
 
-  query_buffers(const query_buffers<std::vector<T>>& other) = default;
+  query_buffers(const self_type& other) = default;
 
   query_buffers(std::vector<std::vector<T>> cells) {
     uint64_t offset = 0;
@@ -771,7 +816,7 @@ struct query_buffers<std::vector<T>> {
     }
   }
 
-  bool operator==(const query_buffers<std::vector<T>>&) const = default;
+  bool operator==(const self_type&) const = default;
 
   size_t num_cells() const {
     return offsets_.size();
@@ -811,7 +856,7 @@ struct query_buffers<std::vector<T>> {
     values_.insert(values_.end(), value.begin(), value.end());
   }
 
-  void extend(const query_buffers<std::vector<T>>& from) {
+  void extend(const self_type& from) {
     reserve(num_cells() + from.num_cells());
 
     const size_t offset_base = values_.size() * sizeof(T);
@@ -822,8 +867,7 @@ struct query_buffers<std::vector<T>> {
     values_.insert(values_.end(), from.values_.begin(), from.values_.end());
   }
 
-  query_buffers<std::vector<T>>& operator=(
-      const query_buffers<std::vector<T>>& other) {
+  self_type& operator=(const self_type& other) {
     offsets_ = other.offsets_;
     values_ = other.values_;
     return *this;
@@ -896,6 +940,19 @@ struct query_buffers<std::vector<T>> {
   }
 };
 
+/**
+ * Specialization of `query_buffers` for variable-length nullable cells.
+ * The specialization template parameter `T` is a fundamental type.
+ * The `query_buffers` template parameter is `std::optional<std::vector<T>>`
+ * representing a cell which may or may not contain a variable number of values.
+ *
+ * This scenario requires the values buffer `std::vector<T>`, the offsets
+ * buffer `std::vector<uint64_t>`, and the validity buffer
+ * `std::vector<uint8_t>`. The offsets and validity buffers contain one value
+ * per cell whereas the values buffer contains a variable number of values per
+ * cell. As such, methods which attach to a query need to treat the size of each
+ * buffer separately.
+ */
 template <stdx::is_fundamental T>
 struct query_buffers<std::optional<std::vector<T>>> {
   using value_type = T;
