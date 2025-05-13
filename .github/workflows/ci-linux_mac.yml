@@ -46,6 +46,11 @@ on:
         description: 'Enable Address Sanitizer'
         required: false
         type: boolean
+      rust:
+        default: false
+        description: 'Enable Rust'
+        required: false
+        type: boolean
       manylinux:
         default: false
         description: 'Enable manylinux builds'
@@ -103,6 +108,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Install Rust Stable
+        if: ${{ inputs.rust }}
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Prevent vpckg from building debug variants
         run: python3 ./scripts/ci/patch_vcpkg_triplets.py
