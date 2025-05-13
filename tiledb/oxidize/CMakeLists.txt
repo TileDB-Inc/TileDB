@@ -61,7 +61,7 @@ function(add_crate)
         OUTPUT
             ${ADD_CRATE_BRIDGES_CC_OUT}
             ${ADD_CRATE_BRIDGES_H_OUT}
-            "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            "${CARGO_LIB_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
         COMMAND
             ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
             ${CARGO}
@@ -110,13 +110,13 @@ function(add_crate)
     if (WIN32)
         target_link_libraries(
             ${ADD_CRATE_NAME}_rs
-            ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+            ${CARGO_LIB_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
             ws2_32.lib
         )
     else ()
         target_link_libraries(
             ${ADD_CRATE_NAME}_rs
-            ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+            ${CARGO_LIB_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
         )
     endif ()
     add_dependencies(${ADD_CRATE_NAME}_rs ${ADD_CRATE_NAME}_h)
