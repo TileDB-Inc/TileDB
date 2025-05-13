@@ -96,5 +96,5 @@ cmake_path(APPEND TILEDB_SOURCE_ROOT "external/include" OUTPUT_VARIABLE TILEDB_E
 #
 # Add Rust-generated header files to the include path
 #
-set(TILEDB_OXIDIZE_INCLUDE ${CMAKE_BINARY_DIR}/tiledb/oxidize/include PARENT_SCOPE)
-include_directories(${TILEDB_OXIDIZE_INCLUDE})
+set(TILEDB_OXIDIZE_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tiledb/oxidize/include PARENT_SCOPE)
+include_directories(${TILEDB_OXIDIZE_INCLUDE_DIR})
