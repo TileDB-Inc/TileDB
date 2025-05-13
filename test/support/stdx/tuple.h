@@ -109,10 +109,27 @@ struct split_tuple {
         std::forward_as_tuple(std::get<N + isuffix>(tuple)...));
   }
 
+  template <size_t... iprefix, size_t... isuffix>
+  static auto impl(
+      const Tuple& tuple,
+      std::index_sequence<iprefix...>,
+      std::index_sequence<isuffix...>) {
+    return std::make_pair(
+        std::forward_as_tuple(std::get<iprefix>(tuple)...),
+        std::forward_as_tuple(std::get<N + isuffix>(tuple)...));
+  }
+
  public:
   static auto value(Tuple& tuple) {
     return impl(
         tuple,
+        std::make_index_sequence<N>{},
+        std::make_index_sequence<std::tuple_size_v<Tuple> - N>{});
+  }
+
+  static auto value(const Tuple& value) {
+    return impl(
+        value,
         std::make_index_sequence<N>{},
         std::make_index_sequence<std::tuple_size_v<Tuple> - N>{});
   }
