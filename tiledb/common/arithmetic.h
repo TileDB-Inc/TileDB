@@ -34,6 +34,7 @@
 
 #include "tiledb/common/unreachable.h"
 
+#include <cstdint>
 #include <limits>
 #include <optional>
 
@@ -77,13 +78,16 @@ struct extended_integral_type<uint32_t> {
   using type = uint64_t;
 };
 
+template <typename T>
+using extended_integral_type_t = typename extended_integral_type<T>::type;
+
 /**
  * Provides the member typedef `type` which is the 64-bit integral type
  * with the same signed-ness as the integral type `T`.
  */
 template <typename T>
 struct integral_64 {
-  using type = extended_integral_type<T>::type;
+  using type = extended_integral_type_t<T>;
 };
 
 template <>
@@ -107,9 +111,9 @@ struct checked_arithmetic {
    * otherwise.
    */
   static std::optional<T> add(T a, T b) {
-    const typename extended_integral_type<T>::type a64 = a;
-    const typename extended_integral_type<T>::type b64 = b;
-    const typename extended_integral_type<T>::type c64 = a64 + b64;
+    const extended_integral_type_t<T> a64 = a;
+    const extended_integral_type_t<T> b64 = b;
+    const extended_integral_type_t<T> c64 = a64 + b64;
 
     if (std::numeric_limits<T>::lowest() <= c64 &&
         c64 <= std::numeric_limits<T>::max()) {
@@ -124,9 +128,9 @@ struct checked_arithmetic {
    * otherwise.
    */
   static std::optional<T> sub(T a, T b) {
-    const typename extended_integral_type<T>::type a64 = a;
-    const typename extended_integral_type<T>::type b64 = b;
-    const typename extended_integral_type<T>::type c64 = a64 - b64;
+    const extended_integral_type_t<T> a64 = a;
+    const extended_integral_type_t<T> b64 = b;
+    const extended_integral_type_t<T> c64 = a64 - b64;
 
     if (std::numeric_limits<T>::lowest() <= c64 &&
         c64 <= std::numeric_limits<T>::max()) {

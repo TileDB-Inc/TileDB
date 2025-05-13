@@ -142,32 +142,7 @@ class Enumeration {
       const void* offsets,
       uint64_t offsets_size,
       shared_ptr<MemoryTracker> memory_tracker) {
-    struct EnableMakeShared : public Enumeration {
-      EnableMakeShared(
-          const std::string& name,
-          const std::string& path_name,
-          Datatype type,
-          uint32_t cell_val_num,
-          bool ordered,
-          const void* data,
-          uint64_t data_size,
-          const void* offsets,
-          uint64_t offsets_size,
-          shared_ptr<MemoryTracker> memory_tracker)
-          : Enumeration(
-                name,
-                path_name,
-                type,
-                cell_val_num,
-                ordered,
-                data,
-                data_size,
-                offsets,
-                offsets_size,
-                memory_tracker) {
-      }
-    };
-    return make_shared<EnableMakeShared>(
+    return make_shared_enumeration(
         HERE(),
         name,
         path_name,
@@ -178,6 +153,42 @@ class Enumeration {
         data_size,
         offsets,
         offsets_size,
+        memory_tracker);
+  }
+
+  /** Create a new Enumeration
+   *
+   * @param name The name of this Enumeration as referenced by attributes.
+   * @param path_name The last URI path component of the Enumeration.
+   * @param type The datatype of the enumeration values.
+   * @param cell_val_num The cell_val_num of the enumeration.
+   * @param ordered Whether the enumeration should be considered as ordered.
+   *        If false, prevents inequality operators in QueryConditons from
+   *        being used with this enumeration.
+   * @param data A pointer to the enumerations values.
+   * @param offsets If cell_var_num is constants::var_num a pointer to the
+   *        offsets buffer. Must be null if cell_var_num is not var_num.
+   * @param memory_tracker The memory tracker associated with this Enumeration.
+   * @return shared_ptr<Enumeration> The created enumeration.
+   */
+  static shared_ptr<const Enumeration> create(
+      const std::string& name,
+      const std::string& path_name,
+      Datatype type,
+      uint32_t cell_val_num,
+      bool ordered,
+      Buffer&& data,
+      Buffer&& offsets,
+      shared_ptr<MemoryTracker> memory_tracker) {
+    return make_shared_enumeration(
+        HERE(),
+        name,
+        path_name,
+        type,
+        cell_val_num,
+        ordered,
+        std::move(data),
+        std::move(offsets),
         memory_tracker);
   }
 
@@ -388,6 +399,31 @@ class Enumeration {
       uint64_t offsets_size,
       shared_ptr<MemoryTracker> memory_tracker);
 
+  /** Constructor
+   *
+   * @param name The name of this Enumeration as referenced by attributes.
+   * @param path_name The last URI path component of the Enumeration.
+   * @param type The datatype of the enumeration values.
+   * @param cell_val_num The cell_val_num of the enumeration.
+   * @param ordered Whether the enumeration should be considered as ordered.
+   *        If false, prevents inequality operators in QueryConditons from
+   *        being used with this enumeration.
+   * @param data An rvalue reference to a Buffer containing the enumerations
+   * values.
+   * @param offsets An rvalue reference to a Buffer containing the enumerations
+   * value offsets. Must be empty if cell_var_num is not var_num.
+   * @param memory_tracker The memory tracker.
+   */
+  Enumeration(
+      const std::string& name,
+      const std::string& path_name,
+      Datatype type,
+      uint32_t cell_val_num,
+      bool ordered,
+      Buffer&& data,
+      Buffer&& offsets,
+      shared_ptr<MemoryTracker> memory_tracker);
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -425,6 +461,25 @@ class Enumeration {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+  /**
+   * Helper function to create shared_ptr<Enumeration> objects.
+   * @tparam Args Argument types for the Enumeration constructor
+   * @param origin A string containing the palce from where this function is
+   * called
+   * @param args Arguments for the Enumeration constructor
+   */
+  template <typename... Args>
+  static std::shared_ptr<Enumeration> make_shared_enumeration(
+      const std::string_view& origin, Args&&... args) {
+    struct shared_helper : public Enumeration {
+      shared_helper(Args&&... args)
+          : Enumeration(std::forward<Args>(args)...) {
+      }
+    };
+
+    return make_shared<shared_helper>(origin, std::forward<Args>(args)...);
+  }
+
   /** Populate the value_map_ */
   void generate_value_map();
 
@@ -435,6 +490,15 @@ class Enumeration {
    * @param index The index of the data in the Enumeration.
    */
   void add_value_to_map(std::string_view& sv, uint64_t index);
+
+  /**
+   * Validate input data.
+   */
+  void validate(
+      const void* data,
+      uint64_t data_size,
+      const void* offsets,
+      uint64_t offsets_size);
 };
 
 }  // namespace tiledb::sm

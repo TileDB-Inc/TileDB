@@ -285,8 +285,7 @@ uint32_t DoubleDelta::compute_bitsize(const T* in, uint64_t num) {
       if (!dd.has_value()) {
         throw DoubleDeltaException(
             "Cannot compress with DoubleDelta; Some negative double delta is "
-            "out "
-            "of bounds");
+            "out of bounds");
       }
       max_delta =
           std::max(static_cast<uint64_t>(std::abs(dd.value())), max_delta);

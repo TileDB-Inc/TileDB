@@ -30,7 +30,6 @@
  * This file tests arithmetic functions defined in `arithmetic.h`.
  */
 
-#include "build/tiledb/oxidize/arithmetic.h"
 #include "tiledb/common/arithmetic.h"
 
 #include <test/support/assert_helpers.h>
@@ -41,264 +40,235 @@ using namespace tiledb::common;
 
 TEST_CASE(
     "Arithmetic checked_arithmetic uint32_t add", "[arithmetic][rapidcheck]") {
-  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint32_t a, uint32_t b)
-                  ->std::optional<uint32_t> {
-    const auto cpp = checked_arithmetic<uint32_t>::add(a, b);
-    std::optional<uint32_t> rs;
-    {
-      uint32_t value;
-      if (tiledb::rust::arithmetic::u32_checked_add(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
+  SECTION("Example") {
+    CHECK(checked_arithmetic<uint32_t>::add(0, 0) == 0);
+  }
 
-    return cpp;
-  };
+  SECTION("Boundary") {
+    const uint32_t max = std::numeric_limits<uint32_t>::max();
+    CHECK(checked_arithmetic<uint32_t>::add(0, max) == max);
+    CHECK(checked_arithmetic<uint32_t>::add(max, 0) == max);
+    CHECK(checked_arithmetic<uint32_t>::add(10, max - 10) == max);
+    CHECK(checked_arithmetic<uint32_t>::add(max - 10, 10) == max);
+  }
 
-  SECTION("Rapidcheck") {
-    rc::prop(
-        "checked_arithmetic<uint32_t>::add", [doit](uint32_t a, uint32_t b) {
-          doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-        });
+  SECTION("Overflow") {
+    const uint32_t max = std::numeric_limits<uint32_t>::max();
+    CHECK(checked_arithmetic<uint32_t>::add(1, max) == std::nullopt);
+    CHECK(checked_arithmetic<uint32_t>::add(max, 1) == std::nullopt);
+    CHECK(checked_arithmetic<uint32_t>::add(10, max - 9) == std::nullopt);
+    CHECK(checked_arithmetic<uint32_t>::add(max - 9, 10) == std::nullopt);
   }
 }
 
-TEST_CASE(
-    "Arithmetic checked_arithmetic int32_t add", "[arithmetic][rapidcheck]") {
-  auto doit =
-      []<typename Asserter = tiledb::test::AsserterCatch>(int32_t a, int32_t b)
-          ->std::optional<int32_t> {
-    const auto cpp = checked_arithmetic<int32_t>::add(a, b);
-    std::optional<int32_t> rs;
-    {
-      int32_t value;
-      if (tiledb::rust::arithmetic::i32_checked_add(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
+TEST_CASE("Arithmetic checked_arithmetic int32_t add", "[arithmetic]") {
+  SECTION("Example") {
+    CHECK(checked_arithmetic<int32_t>::add(0, 0) == 0);
+    CHECK(checked_arithmetic<int32_t>::add(0, 1) == 1);
+    CHECK(checked_arithmetic<int32_t>::add(-1, 0) == -1);
+  }
 
-    return cpp;
-  };
+  const int32_t max = std::numeric_limits<int32_t>::max();
+  const int32_t min = std::numeric_limits<int32_t>::min();
 
-  SECTION("Rapidcheck") {
-    rc::prop("checked_arithmetic<int32_t>::add", [doit](int32_t a, int32_t b) {
-      doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-    });
+  SECTION("Boundary") {
+    CHECK(checked_arithmetic<int32_t>::add(max, min) == -1);
+    CHECK(checked_arithmetic<int32_t>::add(max, 0) == max);
+    CHECK(checked_arithmetic<int32_t>::add(0, max) == max);
+    CHECK(checked_arithmetic<int32_t>::add(min, 0) == min);
+    CHECK(checked_arithmetic<int32_t>::add(0, min) == min);
+    CHECK(checked_arithmetic<int32_t>::add(max - 10, 10) == max);
+    CHECK(checked_arithmetic<int32_t>::add(10, max - 10) == max);
+    CHECK(checked_arithmetic<int32_t>::add(min + 10, -10) == min);
+    CHECK(checked_arithmetic<int32_t>::add(-10, min + 10) == min);
+  }
+
+  SECTION("Overflow") {
+    CHECK(checked_arithmetic<int32_t>::add(max, 1) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(1, max) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(min, -1) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(-1, min) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(max - 9, 10) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(10, max - 9) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(min + 9, -10) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(-10, min + 9) == std::nullopt);
   }
 }
 
-TEST_CASE(
-    "Arithmetic checked_arithmetic uint64_t add", "[arithmetic][rapidcheck]") {
-  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint64_t a, uint64_t b)
-                  ->std::optional<uint64_t> {
-    const auto cpp = checked_arithmetic<uint64_t>::add(a, b);
-    std::optional<uint64_t> rs;
-    {
-      uint64_t value;
-      if (tiledb::rust::arithmetic::u64_checked_add(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
+TEST_CASE("Arithmetic checked_arithmetic uint64_t add", "[arithmetic]") {
+  SECTION("Example") {
+    CHECK(checked_arithmetic<uint64_t>::add(0, 0) == 0);
+  }
 
-    return cpp;
-  };
+  SECTION("Boundary") {
+    const uint64_t max = std::numeric_limits<uint64_t>::max();
+    CHECK(checked_arithmetic<uint64_t>::add(0, max) == max);
+    CHECK(checked_arithmetic<uint64_t>::add(max, 0) == max);
+    CHECK(checked_arithmetic<uint64_t>::add(10, max - 10) == max);
+    CHECK(checked_arithmetic<uint64_t>::add(max - 10, 10) == max);
+  }
 
-  SECTION("Rapidcheck") {
-    rc::prop(
-        "checked_arithmetic<uint64_t>::add", [doit](uint64_t a, uint64_t b) {
-          doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-        });
+  SECTION("Overflow") {
+    const uint64_t max = std::numeric_limits<uint64_t>::max();
+    CHECK(checked_arithmetic<uint64_t>::add(1, max) == std::nullopt);
+    CHECK(checked_arithmetic<uint64_t>::add(max, 1) == std::nullopt);
+    CHECK(checked_arithmetic<uint64_t>::add(10, max - 9) == std::nullopt);
+    CHECK(checked_arithmetic<uint64_t>::add(max - 9, 10) == std::nullopt);
   }
 }
 
-TEST_CASE(
-    "Arithmetic checked_arithmetic int64_t add", "[arithmetic][rapidcheck]") {
-  auto doit =
-      []<typename Asserter = tiledb::test::AsserterCatch>(int64_t a, int64_t b)
-          ->std::optional<int64_t> {
-    const auto cpp = checked_arithmetic<int64_t>::add(a, b);
-    std::optional<int64_t> rs;
-    {
-      int64_t value;
-      if (tiledb::rust::arithmetic::i64_checked_add(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
+TEST_CASE("Arithmetic checked_arithmetic int64_t add", "[arithmetic]") {
+  SECTION("Example") {
+    CHECK(checked_arithmetic<int32_t>::add(0, 0) == 0);
+    CHECK(checked_arithmetic<int32_t>::add(0, 1) == 1);
+    CHECK(checked_arithmetic<int32_t>::add(-1, 0) == -1);
+  }
 
-    return cpp;
-  };
+  const int32_t max = std::numeric_limits<int32_t>::max();
+  const int32_t min = std::numeric_limits<int32_t>::min();
 
-  SECTION("Rapidcheck") {
-    rc::prop("checked_arithmetic<int64_t>::add", [doit](int64_t a, int64_t b) {
-      doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-    });
+  SECTION("Boundary") {
+    CHECK(checked_arithmetic<int32_t>::add(max, min) == -1);
+    CHECK(checked_arithmetic<int32_t>::add(max, 0) == max);
+    CHECK(checked_arithmetic<int32_t>::add(0, max) == max);
+    CHECK(checked_arithmetic<int32_t>::add(min, 0) == min);
+    CHECK(checked_arithmetic<int32_t>::add(0, min) == min);
+    CHECK(checked_arithmetic<int32_t>::add(max - 10, 10) == max);
+    CHECK(checked_arithmetic<int32_t>::add(10, max - 10) == max);
+    CHECK(checked_arithmetic<int32_t>::add(min + 10, -10) == min);
+    CHECK(checked_arithmetic<int32_t>::add(-10, min + 10) == min);
+  }
+
+  SECTION("Overflow") {
+    CHECK(checked_arithmetic<int32_t>::add(max, 1) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(1, max) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(min, -1) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(-1, min) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(max - 9, 10) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(10, max - 9) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(min + 9, -10) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::add(-10, min + 9) == std::nullopt);
   }
 }
 
-TEST_CASE(
-    "Arithmetic checked_arithmetic uint32_t sub", "[arithmetic][rapidcheck]") {
-  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint32_t a, uint32_t b)
-                  ->std::optional<uint32_t> {
-    const std::optional<uint32_t> cpp = checked_arithmetic<uint32_t>::sub(a, b);
+TEST_CASE("Arithmetic checked_arithmetic uint32_t sub", "[arithmetic]") {
+  rc::prop("a < b", [](uint32_t a) {
+    const uint32_t max = std::numeric_limits<uint32_t>::max();
+    RC_PRE(a != max);
+    const uint32_t b = *rc::gen::inRange<uint32_t>(a + 1, max);
+    const std::optional<uint32_t> c = checked_arithmetic<uint32_t>::sub(a, b);
+    RC_ASSERT(c == std::nullopt);
+  });
 
-    std::optional<uint32_t> rs;
-    {
-      uint32_t value;
-      if (tiledb::rust::arithmetic::u32_checked_sub(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
-
-    return cpp;
-  };
-
-  SECTION("Rapidcheck") {
-    rc::prop(
-        "checked_arithmetic<uint32_t>::sub", [doit](uint32_t a, uint32_t b) {
-          doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-        });
-  }
+  rc::prop("a >= b", [](int32_t a) {
+    const uint32_t b = *rc::gen::inRange<uint32_t>(0, a);
+    const std::optional<uint32_t> c = checked_arithmetic<uint32_t>::sub(a, b);
+    RC_ASSERT(c == a - b);
+  });
 }
 
-TEST_CASE(
-    "Arithmetic checked_arithmetic int32_t sub", "[arithmetic][rapidcheck]") {
-  auto doit =
-      []<typename Asserter = tiledb::test::AsserterCatch>(int32_t a, int32_t b)
-          ->std::optional<int32_t> {
-    const std::optional<int32_t> cpp = checked_arithmetic<int32_t>::sub(a, b);
-
-    std::optional<int32_t> rs;
-    {
-      int32_t value;
-      if (tiledb::rust::arithmetic::i32_checked_sub(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
-
-    return cpp;
-  };
-
-  SECTION("Rapidcheck") {
-    rc::prop("checked_arithmetic<int32_t>::sub", [doit](int32_t a, int32_t b) {
-      doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-    });
-  }
-}
-
-TEST_CASE(
-    "Arithmetic checked_arithmetic uint64_t sub", "[arithmetic][rapidcheck]") {
-  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint64_t a, uint64_t b)
-                  ->std::optional<int64_t> {
-    const std::optional<int64_t> cpp = checked_arithmetic<uint64_t>::sub(a, b);
-
-    std::optional<uint64_t> rs;
-    {
-      uint64_t value;
-      if (tiledb::rust::arithmetic::u64_checked_sub(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
-
-    return cpp;
-  };
-
-  SECTION("Rapidcheck") {
-    rc::prop(
-        "checked_arithmetic<uint64_t>::sub", [doit](uint64_t a, uint64_t b) {
-          doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-        });
-  }
-}
-
-TEST_CASE(
-    "Arithmetic checked_arithmetic uint64_t sub_signed",
-    "[arithmetic][rapidcheck]") {
-  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
-                  uint64_t a, uint64_t b)
-                  ->std::optional<int64_t> {
-    const std::optional<int64_t> cpp =
-        checked_arithmetic<uint64_t>::sub_signed(a, b);
-
-    std::optional<int64_t> rs;
-    {
-      int64_t value;
-      if (tiledb::rust::arithmetic::u64_checked_sub_signed(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
-
-    return cpp;
-  };
+TEST_CASE("Arithmetic checked_arithmetic int32_t sub", "[arithmetic]") {
+  const int32_t max = std::numeric_limits<int32_t>::max();
+  const int32_t min = std::numeric_limits<int32_t>::min();
 
   SECTION("Example") {
-    CHECK(doit(0, 0) == 0);
-    CHECK(doit(0, 1) == -1);
-    CHECK(doit(0, 0x7FFFFFFFFFFFFFFF) == 0x8000000000000001);
-    CHECK(doit(0, 0x8000000000000000) == 0x8000000000000000);
-    CHECK(doit(0, 0x8000000000000001) == std::nullopt);
-    CHECK(doit(0xFFFFFFFFFFFFFFFF, 0) == std::nullopt);
-    CHECK(doit(0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFE) == std::nullopt);
-    CHECK(doit(0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF) == std::nullopt);
-    CHECK(doit(0xFFFFFFFFFFFFFFFF, 0x8000000000000000) == 0x7FFFFFFFFFFFFFFF);
+    CHECK(checked_arithmetic<int32_t>::sub(max, 0) == max);
+    CHECK(checked_arithmetic<int32_t>::sub(0, max) == min + 1);
+    CHECK(checked_arithmetic<int32_t>::sub(0, min + 1) == max);
   }
 
-  SECTION("Rapidcheck") {
-    rc::prop(
-        "checked_arithmetic<uint64_t>::sub_signed",
-        [doit](uint64_t a, uint64_t b) {
-          doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-        });
+  SECTION("Overflow") {
+    CHECK(checked_arithmetic<int32_t>::sub(max, -1) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::sub(1, -max) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::sub(min, 1) == std::nullopt);
+    CHECK(checked_arithmetic<int32_t>::sub(0, min) == std::nullopt);
   }
 }
 
-TEST_CASE(
-    "Arithmetic checked_arithmetic int64_t sub", "[arithmetic][rapidcheck]") {
-  auto doit =
-      []<typename Asserter = tiledb::test::AsserterCatch>(int64_t a, int64_t b)
-          ->std::optional<int64_t> {
-    const std::optional<int64_t> cpp = checked_arithmetic<int64_t>::sub(a, b);
+TEST_CASE("Arithmetic checked_arithmetic uint64_t sub", "[arithmetic]") {
+  rc::prop("a < b", [](uint64_t a) {
+    const uint64_t max = std::numeric_limits<uint64_t>::max();
+    RC_PRE(a != max);
+    const uint64_t b = *rc::gen::inRange<uint64_t>(a + 1, max);
+    const std::optional<uint64_t> c = checked_arithmetic<uint64_t>::sub(a, b);
+    RC_ASSERT(c == std::nullopt);
+  });
 
-    std::optional<int64_t> rs;
-    {
-      int64_t value;
-      if (tiledb::rust::arithmetic::i64_checked_sub(a, b, value)) {
-        rs.emplace(value);
-      }
-    }
-    ASSERTER(cpp == rs);
+  rc::prop("a >= b", [](int32_t a) {
+    const uint64_t b = *rc::gen::inRange<uint64_t>(0, a);
+    const std::optional<uint64_t> c = checked_arithmetic<uint64_t>::sub(a, b);
+    RC_ASSERT(c == a - b);
+  });
+}
 
-    return cpp;
-  };
-
+TEST_CASE("Arithmetic checked_arithmetic uint64_t sub_signed", "[arithmetic]") {
   SECTION("Example") {
-    CHECK(doit(0, 0) == 0);
-    CHECK(doit(0, 1) == -1);
-    CHECK(doit(0, 0x7FFFFFFFFFFFFFFF) == 0x8000000000000001);
-    CHECK(doit(0, 0x8000000000000000) == std::nullopt);
-    CHECK(doit(0, 0x8000000000000001) == 0x7FFFFFFFFFFFFFFF);
-    CHECK(doit(-1, 0) == -1);
-    CHECK(doit(-1, 0x7FFFFFFFFFFFFFFE) == 0x8000000000000001);
-    CHECK(doit(-1, 0x7FFFFFFFFFFFFFFF) == 0x8000000000000000);
-    CHECK(doit(-1, 0x8000000000000000) == 0x7FFFFFFFFFFFFFFF);
-    CHECK(doit(0x7FFFFFFFFFFFFFFF, 0) == 0x7FFFFFFFFFFFFFFF);
-    CHECK(doit(0x7FFFFFFFFFFFFFFF, -1) == std::nullopt);
+    CHECK(checked_arithmetic<uint64_t>::sub_signed(0, 0) == 0);
+    CHECK(checked_arithmetic<uint64_t>::sub_signed(0, 1) == -1);
   }
 
-  SECTION("Rapidcheck") {
-    rc::prop("checked_arithmetic<int64_t>::sub", [doit](int64_t a, int64_t b) {
-      doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
-    });
+  SECTION("Boundary") {
+    CHECK(
+        checked_arithmetic<uint64_t>::sub_signed(0, 0x7FFFFFFFFFFFFFFF) ==
+        0x8000000000000001);
+    CHECK(
+        checked_arithmetic<uint64_t>::sub_signed(0, 0x8000000000000000) ==
+        0x8000000000000000);
+    CHECK(
+        checked_arithmetic<uint64_t>::sub_signed(
+            0xFFFFFFFFFFFFFFFF, 0x8000000000000000) == 0x7FFFFFFFFFFFFFFF);
+  }
+
+  SECTION("Overflow") {
+    CHECK(
+        checked_arithmetic<uint64_t>::sub_signed(0, 0x8000000000000001) ==
+        std::nullopt);
+    CHECK(
+        checked_arithmetic<uint64_t>::sub_signed(0xFFFFFFFFFFFFFFFF, 0) ==
+        std::nullopt);
+    CHECK(
+        checked_arithmetic<uint64_t>::sub_signed(
+            0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFE) == std::nullopt);
+    CHECK(
+        checked_arithmetic<uint64_t>::sub_signed(
+            0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF) == std::nullopt);
+  }
+}
+
+TEST_CASE("Arithmetic checked_arithmetic int64_t sub", "[arithmetic]") {
+  SECTION("Example") {
+    CHECK(checked_arithmetic<int64_t>::sub(0, 0) == 0);
+    CHECK(checked_arithmetic<int64_t>::sub(0, 1) == -1);
+    CHECK(checked_arithmetic<int64_t>::sub(-1, 0) == -1);
+  }
+
+  SECTION("Boundary") {
+    CHECK(
+        checked_arithmetic<int64_t>::sub(0, 0x7FFFFFFFFFFFFFFF) ==
+        0x8000000000000001);
+    CHECK(
+        checked_arithmetic<int64_t>::sub(0, 0x8000000000000001) ==
+        0x7FFFFFFFFFFFFFFF);
+    CHECK(
+        checked_arithmetic<int64_t>::sub(-1, 0x7FFFFFFFFFFFFFFE) ==
+        0x8000000000000001);
+    CHECK(
+        checked_arithmetic<int64_t>::sub(-1, 0x7FFFFFFFFFFFFFFF) ==
+        0x8000000000000000);
+    CHECK(
+        checked_arithmetic<int64_t>::sub(-1, 0x8000000000000000) ==
+        0x7FFFFFFFFFFFFFFF);
+    CHECK(
+        checked_arithmetic<int64_t>::sub(0x7FFFFFFFFFFFFFFF, 0) ==
+        0x7FFFFFFFFFFFFFFF);
+  }
+
+  SECTION("Overflow") {
+    CHECK(
+        checked_arithmetic<int64_t>::sub(0, 0x8000000000000000) ==
+        std::nullopt);
+    CHECK(
+        checked_arithmetic<int64_t>::sub(0x7FFFFFFFFFFFFFFF, -1) ==
+        std::nullopt);
   }
 }

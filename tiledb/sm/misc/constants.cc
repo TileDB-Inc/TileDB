@@ -295,7 +295,7 @@ const uint32_t path_max_len = PATH_MAX;
 #endif
 
 /** Special value indicating a variable number of elements. */
-const uint32_t var_num = std::numeric_limits<unsigned int>::max();
+const uint32_t var_num = cell_val_num_var;
 
 /** String describing no compression. */
 const std::string no_compression_str = "NO_COMPRESSION";

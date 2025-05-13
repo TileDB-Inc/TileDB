@@ -1,11 +1,11 @@
-/*
- * @file   version.h
+/**
+ * @file test/support/stdx/tuple.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,8 +24,32 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines type traits similar to those in the standard library
+ * header <type_traits>.
  */
 
-#define TILEDB_VERSION_MAJOR 2
-#define TILEDB_VERSION_MINOR 29
-#define TILEDB_VERSION_PATCH 0
+#ifndef TILEDB_TEST_SUPPORT_TYPE_TRAITS_H
+#define TILEDB_TEST_SUPPORT_TYPE_TRAITS_H
+
+#include <type_traits>
+
+namespace stdx {
+
+template <typename T>
+concept is_fundamental = std::is_fundamental_v<T>;
+
+template <typename T>
+struct is_vector : std::false_type {};
+
+template <typename T>
+struct is_vector<std::vector<T>> : std::true_type {};
+
+template <typename T>
+using is_vector_v = is_vector<T>::value;
+
+}  // namespace stdx
+
+#endif
