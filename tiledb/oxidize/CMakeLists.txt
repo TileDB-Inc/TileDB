@@ -99,9 +99,13 @@ function(add_crate)
     target_include_directories(
         ${ADD_CRATE_NAME}_rs
         PUBLIC
-            ${CARGO_INCLUDE_DIR}
             ${CMAKE_SOURCE_DIR}
             ${CMAKE_BINARY_DIR}/tiledb/
+    )
+    target_include_directories(
+        ${ADD_CRATE_NAME}_rs
+        PRIVATE
+            ${CARGO_INCLUDE_DIR}
     )
     target_link_libraries(
         ${ADD_CRATE_NAME}_rs
