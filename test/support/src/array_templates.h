@@ -438,7 +438,7 @@ struct query_buffers<T> {
 
   bool operator==(const self_type&) const = default;
 
-  size_t num_cells() const {
+  uint64_t num_cells() const {
     return values_.size();
   }
 
@@ -482,7 +482,7 @@ struct query_buffers<T> {
   }
 
   query_field_size_type make_field_size(uint64_t cell_limit) const {
-    return sizeof(T) * std::min(cell_limit, values_.size());
+    return sizeof(T) * std::min<uint64_t>(cell_limit, values_.size());
   }
 
   int32_t attach_to_query(
@@ -582,7 +582,7 @@ struct query_buffers<std::optional<T>> {
 
   bool operator==(const self_type& other) const = default;
 
-  size_t num_cells() const {
+  uint64_t num_cells() const {
     return values_.size();
   }
 
@@ -818,7 +818,7 @@ struct query_buffers<std::vector<T>> {
 
   bool operator==(const self_type&) const = default;
 
-  size_t num_cells() const {
+  uint64_t num_cells() const {
     return offsets_.size();
   }
 
@@ -972,7 +972,7 @@ struct query_buffers<std::optional<std::vector<T>>> {
 
   bool operator==(const self_type&) const = default;
 
-  size_t num_cells() const {
+  uint64_t num_cells() const {
     return offsets_.size();
   }
 
@@ -1044,9 +1044,9 @@ struct query_buffers<std::optional<std::vector<T>>> {
   query_field_size_type make_field_size(uint64_t cell_limit) const {
     const uint64_t values_size = sizeof(T) * values_.size();
     const uint64_t offsets_size =
-        sizeof(uint64_t) * std::min(cell_limit, offsets_.size());
+        sizeof(uint64_t) * std::min<uint64_t>(cell_limit, offsets_.size());
     const uint64_t validity_size =
-        sizeof(uint8_t) * std::min(cell_limit, validity_.size());
+        sizeof(uint8_t) * std::min<uint64_t>(cell_limit, validity_.size());
     return std::make_tuple(values_size, offsets_size, validity_size);
   }
 
@@ -1340,21 +1340,31 @@ void set_fields(
     std::function<std::string(unsigned)> attribute_name,
     const fragment_field_sizes_t<F>& field_cursors =
         fragment_field_sizes_t<F>()) {
-  auto [dimension_sizes, attribute_sizes] = stdx::split_tuple<
+  auto split_sizes = stdx::split_tuple<
       std::decay_t<decltype(field_sizes)>,
       std::tuple_size_v<decltype(fragment.dimensions())>>::value(field_sizes);
 
-  auto [dimension_cursors, attribute_cursors] = stdx::split_tuple<
+  auto split_cursors = stdx::split_tuple<
       std::decay_t<decltype(field_cursors)>,
       std::tuple_size_v<decltype(fragment.dimensions())>>::value(field_cursors);
 
   [&]<typename... Ts>(std::tuple<Ts...> fields) {
     query_applicator<Asserter, Ts...>::set(
-        ctx, query, dimension_sizes, fields, dimension_name, dimension_cursors);
+        ctx,
+        query,
+        split_sizes.first,
+        fields,
+        dimension_name,
+        split_cursors.first);
   }(fragment.dimensions());
   [&]<typename... Ts>(std::tuple<Ts...> fields) {
     query_applicator<Asserter, Ts...>::set(
-        ctx, query, attribute_sizes, fields, attribute_name, attribute_cursors);
+        ctx,
+        query,
+        split_sizes.second,
+        fields,
+        attribute_name,
+        split_cursors.second);
   }(fragment.attributes());
 }
 
