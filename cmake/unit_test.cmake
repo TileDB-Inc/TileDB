@@ -179,8 +179,6 @@ macro(TileDB_Environment_unit_test_end)
         target_compile_definitions(${TileDB_Environment_unit_test_end_Unit_Test} PUBLIC ${Compile_Definition})
     endforeach()
 
-    target_link_libraries(${TileDB_Environment_unit_test_end_Unit_Test} INTERFACE TILEDB_CORE_OBJECTS_ILIB)
-
     # test declaration
     add_test(
         NAME "${TileDB_Environment_unit_test_end_Unit_Test}"
