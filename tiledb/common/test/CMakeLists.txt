@@ -29,6 +29,7 @@ include(unit_test)
 commence(unit_test arithmetic)
     this_target_sources(main.cc unit_arithmetic.cc)
     this_target_link_libraries(rapidcheck)
+    this_target_object_libraries(arithmetic_rs)
 conclude(unit_test)
 
 commence(unit_test experimental)
