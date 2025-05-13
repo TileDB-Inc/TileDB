@@ -107,10 +107,18 @@ function(add_crate)
         PRIVATE
             ${CARGO_INCLUDE_DIR}
     )
-    target_link_libraries(
-        ${ADD_CRATE_NAME}_rs
-        ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
-    )
+    if (WIN32)
+        target_link_libraries(
+            ${ADD_CRATE_NAME}_rs
+            ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+            ws2_32.lib
+        )
+    else ()
+        target_link_libraries(
+            ${ADD_CRATE_NAME}_rs
+            ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+        )
+    endif ()
     add_dependencies(${ADD_CRATE_NAME}_rs ${ADD_CRATE_NAME}_h)
 endfunction ()
 
