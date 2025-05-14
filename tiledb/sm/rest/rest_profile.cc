@@ -143,6 +143,20 @@ RestProfile::RestProfile(const std::string& name) {
 /*              API               */
 /* ****************************** */
 
+RestProfile RestProfile::load_profile(
+    const std::string& name, const std::string& homedir) {
+  // create a profile object
+  RestProfile profile(name, homedir);
+  // use load_from_file to load the profile
+  try {
+    profile.load_from_file(false);
+    return profile;
+  } catch (const RestProfileException& e) {
+    throw RestProfileException(
+        "Failed to load profile \'" + name + "\': " + e.what());
+  }
+}
+
 void RestProfile::set_param(
     const std::string& param, const std::string& value) {
   // Validate incoming parameter name
@@ -212,11 +226,11 @@ void RestProfile::save_to_file() {
   write_file(data, filepath_);
 }
 
-void RestProfile::load_from_file() {
+void RestProfile::load_from_file(const bool check_old_filepath) {
   if (std::filesystem::exists(filepath_)) {
     // If the local file exists, load the profile with the given name.
     load_from_json_file(filepath_);
-  } else if (std::filesystem::exists(old_filepath_)) {
+  } else if (check_old_filepath && std::filesystem::exists(old_filepath_)) {
     // If the old version of the file exists, load the profile from there
     load_from_json_file(old_filepath_);
   } else {
@@ -283,6 +297,7 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   // Load the file into a json object.
   json data = read_file(filename);
 
+  // change priority
   if (filename.c_str() == old_filepath_.c_str()) {
     // Update any written-parameters from the loaded json object without
     // considering name.

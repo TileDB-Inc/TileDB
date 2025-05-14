@@ -232,8 +232,8 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "filestore.buffer_size 104857600\n";
-  ss << "profile_homedir " << homedir << "\n";
-  ss << "profile_name default\n";
+  ss << "profile_homedir \n";
+  ss << "profile_name \n";
   ss << "rest.capnp_traversal_limit 2147483648\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.retry_errors true\n";
@@ -610,9 +610,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["config.logging_level"] = "2";
   all_param_values["config.logging_format"] = "JSON";
   all_param_values["filestore.buffer_size"] = "104857600";
-  all_param_values["profile_homedir"] =
-      tiledb::common::filesystem::home_directory();
-  all_param_values["profile_name"] = "default";
+  all_param_values["profile_homedir"] = "";
+  all_param_values["profile_name"] = "";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";

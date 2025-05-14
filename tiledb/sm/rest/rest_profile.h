@@ -149,6 +149,20 @@ class RestProfile {
   /* ****************************** */
 
   /**
+   * Factory function to load a profile from the local file.
+   *
+   * @note This API will _not_ parse the `cloud.json` path. This method is
+   * expected to be used _primarily_ by a `Config` object inheriting
+   * written-parameters off of a `RestProfile`.
+   *
+   * @param name The name of the profile to load.
+   * @param homedir The user's $HOME directory, or desired in-test path.
+   * @return The RestProfile.
+   */
+  static RestProfile load_profile(
+      const std::string& name, const std::string& homedir);
+
+  /**
    * Returns the name of this profile.
    *
    * @return std::string The name of this profile.
@@ -193,8 +207,13 @@ class RestProfile {
   /** Saves this profile to the local file. */
   void save_to_file();
 
-  /** Loads this profile from the local file. */
-  void load_from_file();
+  /**
+   * Loads this profile from the local file.
+   *
+   * @param check_old_filepath If true, check the old filepath for the
+   * profile.
+   */
+  void load_from_file(const bool check_old_filepath = true);
 
   /** Removes this profile from the local file. */
   void remove_from_file();

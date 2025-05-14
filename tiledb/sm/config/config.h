@@ -80,11 +80,11 @@ class Config {
   /*        CONFIG DEFAULTS         */
   /* ****************************** */
 
-  /** The default Profile name to be used by REST. */
-  static const std::string PROFILE_NAME;
-
   /** The default Profile directory to be used by REST. */
   static const std::string PROFILE_HOMEDIR;
+
+  /** The default Profile name to be used by REST. */
+  static const std::string PROFILE_NAME;
 
   /** The default address for rest server. */
   static const std::string REST_SERVER_DEFAULT_ADDRESS;
@@ -821,8 +821,9 @@ class Config {
    * Get a configuration parameter from config object or a fallback
    * (environmental variables or profiles).
    *
-   * @pre When using the third fallback, the profile to be parsed has been
-   * `save_to_file()`, and its name set on the config as `"profile_name"`.
+   * @pre When using the profiles fallback, the profile to be parsed has been
+   * `save_to_file()`, and its name and directory set on the config as
+   * `"profile_name"` and `"profile_homedir"` respectively.
    *
    * The order we look for values are
    * 1. user-set config parameters

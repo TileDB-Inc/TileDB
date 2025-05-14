@@ -79,8 +79,8 @@ const std::string Config::CONFIG_LOGGING_LEVEL = "1";
 const std::string Config::CONFIG_LOGGING_LEVEL = "0";
 #endif
 const std::string Config::CONFIG_LOGGING_DEFAULT_FORMAT = "DEFAULT";
-const std::string Config::PROFILE_NAME = "";
 const std::string Config::PROFILE_HOMEDIR = "";
+const std::string Config::PROFILE_NAME = "";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -246,8 +246,8 @@ const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
 const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
-    std::make_pair("profile_name", Config::PROFILE_NAME),
     std::make_pair("profile_homedir", Config::PROFILE_HOMEDIR),
+    std::make_pair("profile_name", Config::PROFILE_NAME),
     std::make_pair("rest.server_address", Config::REST_SERVER_DEFAULT_ADDRESS),
     std::make_pair(
         "rest.server_serialization_format",
@@ -944,14 +944,16 @@ const char* Config::get_from_config_or_fallback(
     return value_env;
 
   // [3. user-set profiles]
-  auto profile = RestProfile::load_if_exists(
-      param_values_.at("profile_name"), param_values_.at("profile_homedir"));
-  if (profile.has_value()) {
+  try {
+    auto profile = RestProfile::load_profile(
+        param_values_.at("profile_name"), param_values_.at("profile_homedir"));
+
     // The "s3.verify_ssl" parameter _may or may not_ be set on the profile.
     // If that's the param to be fetched, see if it's set on the profile,
     // and return its value (if it has one).
+
     if (strcmp(param.c_str(), "s3.verify_ssl") == 0) {
-      auto verify_ssl = profile->get_verify_ssl();
+      auto verify_ssl = profile.get_verify_ssl();
       if (verify_ssl.has_value()) {
         *found = true;
         return verify_ssl.value() ? "true" : "false";
@@ -959,13 +961,15 @@ const char* Config::get_from_config_or_fallback(
     } else {
       // Fetch all other params from the profile normally.
       try {
-        const char* value = std::move(profile->get_param(param).c_str());
+        const char* value = std::move(profile.get_param(param).c_str());
         *found = true;
         return value;
       } catch (...) {
         throw;
       }
     }
+  } catch (const std::exception& e) {
+    // be silent - don't throw
   }
 
   // [4. default config value]
