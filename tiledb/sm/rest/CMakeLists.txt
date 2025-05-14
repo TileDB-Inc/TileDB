@@ -31,7 +31,7 @@ include(object_library)
 #
 commence(object_library rest_profile)
   this_target_sources(rest_profile.cc)
-  this_target_object_libraries(config home_directory seedable_global_PRNG)
+  this_target_object_libraries(constants home_directory seedable_global_PRNG)
 conclude(object_library)
 
 #
@@ -39,7 +39,7 @@ conclude(object_library)
 #
 commence(object_library rest_client)
   this_target_sources(rest_client.cc)
-  this_target_object_libraries(rest_profile)
+  this_target_object_libraries(config rest_profile)
 conclude(object_library)
 
 #

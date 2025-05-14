@@ -34,7 +34,6 @@
 
 #include "rest_profile.h"
 #include "tiledb/common/random/random_label.h"
-#include "tiledb/sm/misc/constants.h"
 
 using namespace tiledb::common;
 using namespace tiledb::common::filesystem;
@@ -58,7 +57,7 @@ static json read_file(const std::string& filepath) {
     try {
       file >> data;
     } catch (...) {
-      throw RestProfileException("Error parsing file \'" + filepath + "\'.");
+      throw RestProfileException("Error parsing file '" + filepath + "'.");
     }
   }
   return data;
@@ -112,9 +111,9 @@ const std::string RestProfile::DEFAULT_USERNAME{""};
 RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     : version_(constants::rest_profile_version)
     , name_(name)
-    , homedir_(homedir)
-    , filepath_(homedir + constants::rest_profile_filepath)
-    , old_filepath_(homedir + constants::cloud_profile_filepath) {
+    , homedir_(homedir.empty() ? home_directory() : homedir)
+    , filepath_(homedir_ + constants::rest_profile_filepath)
+    , old_filepath_(homedir_ + constants::cloud_profile_filepath) {
   if (name_.empty()) {
     throw RestProfileException(
         "Failed to create RestProfile: name cannot be empty.");
@@ -144,22 +143,36 @@ RestProfile::RestProfile(const std::string& name) {
 /*              API               */
 /* ****************************** */
 
+RestProfile RestProfile::load_profile(
+    const std::string& name, const std::string& homedir) {
+  // create a profile object
+  RestProfile profile(name, homedir);
+
+  // load the profile
+  try {
+    profile.load_from_file(false);
+    return profile;
+  } catch (const RestProfileException& e) {
+    throw RestProfileException(
+        "Failed to load profile '" + name + "': " + e.what());
+  }
+}
+
 void RestProfile::set_param(
     const std::string& param, const std::string& value) {
   // Validate incoming parameter name
   auto it = param_values_.find(param);
   if (it == param_values_.end()) {
     throw RestProfileException(
-        "Failed to set parameter of invalid name \'" + param + "\'");
+        "Failed to set parameter of invalid name '" + param + "'");
   }
   param_values_[param] = value;
 }
 
-std::string RestProfile::get_param(const std::string& param) const {
+const std::string& RestProfile::get_param(const std::string& param) const {
   auto it = param_values_.find(param);
   if (it == param_values_.end()) {
-    throw RestProfileException(
-        "Failed to retrieve parameter \'" + param + "\'");
+    throw RestProfileException("Failed to retrieve parameter '" + param + "'");
   }
   return it->second;
 }
@@ -170,7 +183,7 @@ std::string RestProfile::get_param(const std::string& param) const {
  * json object, but rather sorts its elements alphabetically.
  * See issue [#727](https://github.com/nlohmann/json/issues/727) for details.
  */
-void RestProfile::save_to_file() {
+void RestProfile::save_to_file(const bool overwrite) {
   // Validate that the profile is complete (if username is set, so is password)
   if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
       (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
@@ -194,12 +207,18 @@ void RestProfile::save_to_file() {
           "The version of your local profile.json file is out of date.");
     }
 
-    // RestProfiles are immutable, so disallow overwrites.
+    // Check that this profile hasn't already been saved.
     if (data.contains(name_)) {
-      throw RestProfileException(
-          "Failed to save \'" + name_ +
-          "\'; This profile already exists and "
-          "must be explicitly removed in order to be replaced.");
+      if (overwrite) {
+        // If the user wants to overwrite, remove the old profile.
+        data.erase(name_);
+      } else {
+        // If the user doesn't want to overwrite, throw an error.
+        throw RestProfileException(
+            "Failed to save '" + name_ +
+            "'; This profile has already been saved "
+            " and must be explicitly removed in order to be replaced.");
+      }
     }
   } else {
     // Write the version number iff this is the first time opening the file.
@@ -213,11 +232,11 @@ void RestProfile::save_to_file() {
   write_file(data, filepath_);
 }
 
-void RestProfile::load_from_file() {
+void RestProfile::load_from_file(const bool check_old_filepath) {
   if (std::filesystem::exists(filepath_)) {
     // If the local file exists, load the profile with the given name.
     load_from_json_file(filepath_);
-  } else if (std::filesystem::exists(old_filepath_)) {
+  } else if (check_old_filepath && std::filesystem::exists(old_filepath_)) {
     // If the old version of the file exists, load the profile from there
     load_from_json_file(old_filepath_);
   } else {
@@ -273,17 +292,18 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   if (filename.empty() ||
       (filename != filepath_ && filename != old_filepath_)) {
     throw RestProfileException(
-        "Cannot load from \'" + filename + "\'; invalid filename.");
+        "Cannot load from '" + filename + "'; invalid filename.");
   }
 
   if (!std::filesystem::exists(filename)) {
     throw RestProfileException(
-        "Cannot load from \'" + filename + "\'; file does not exist.");
+        "Cannot load from '" + filename + "'; file does not exist.");
   }
 
   // Load the file into a json object.
   json data = read_file(filename);
 
+  // change priority
   if (filename.c_str() == old_filepath_.c_str()) {
     // Update any written-parameters from the loaded json object without
     // considering name.
@@ -300,6 +320,9 @@ void RestProfile::load_from_json_file(const std::string& filename) {
     if (data.contains("username")) {
       param_values_["rest.username"] = data["username"];
     }
+    if (data.contains("verify_ssl")) {
+      verify_ssl_ = data["verify_ssl"];
+    }
   } else {
     // Consider the name of the profile to load.
     json profile = data[name_];
@@ -309,7 +332,7 @@ void RestProfile::load_from_json_file(const std::string& filename) {
       }
     } else {
       throw RestProfileException(
-          "Failed to load profile; profile \'" + name_ + "\' does not exist.");
+          "Failed to load profile; profile '" + name_ + "' does not exist.");
     }
   }
 }
