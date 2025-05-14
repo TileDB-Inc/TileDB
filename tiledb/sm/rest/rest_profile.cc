@@ -111,9 +111,9 @@ const std::string RestProfile::DEFAULT_USERNAME{""};
 RestProfile::RestProfile(const std::string& name, const std::string& homedir)
     : version_(constants::rest_profile_version)
     , name_(name)
-    , homedir_(homedir)
-    , filepath_(homedir + constants::rest_profile_filepath)
-    , old_filepath_(homedir + constants::cloud_profile_filepath) {
+    , homedir_(homedir.empty() ? home_directory() : homedir)
+    , filepath_(homedir_ + constants::rest_profile_filepath)
+    , old_filepath_(homedir_ + constants::cloud_profile_filepath) {
   if (name_.empty()) {
     throw RestProfileException(
         "Failed to create RestProfile: name cannot be empty.");

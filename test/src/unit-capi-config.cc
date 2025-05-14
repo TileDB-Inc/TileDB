@@ -31,7 +31,6 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/common/filesystem/home_directory.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/config/config.h"
 
@@ -215,8 +214,6 @@ void check_save_to_file() {
 
   rc = tiledb_config_save_to_file(config, "test_config.txt", &error);
   REQUIRE(rc == TILEDB_OK);
-
-  auto homedir = tiledb::common::filesystem::home_directory();
 
   std::stringstream ss;
   // Items here need to be assigned to 'ss' in alphabetical order as

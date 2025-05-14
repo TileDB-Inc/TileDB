@@ -944,32 +944,34 @@ const char* Config::get_from_config_or_fallback(
     return value_env;
 
   // [3. user-set profiles]
-  try {
-    auto profile = RestProfile::load_profile(
-        param_values_.at("profile_name"), param_values_.at("profile_homedir"));
+  if (!param_values_.at("profile_name").empty()) {
+    try {
+      auto profile = RestProfile::load_profile(
+          param_values_.at("profile_name"),
+          param_values_.at("profile_homedir"));
 
-    // The "s3.verify_ssl" parameter _may or may not_ be set on the profile.
-    // If that's the param to be fetched, see if it's set on the profile,
-    // and return its value (if it has one).
-
-    if (strcmp(param.c_str(), "s3.verify_ssl") == 0) {
-      auto verify_ssl = profile.get_verify_ssl();
-      if (verify_ssl.has_value()) {
-        *found = true;
-        return verify_ssl.value() ? "true" : "false";
+      // The "s3.verify_ssl" parameter _may or may not_ be set on the profile.
+      // If that's the param to be fetched, see if it's set on the profile,
+      // and return its value (if it has one).
+      if (strcmp(param.c_str(), "s3.verify_ssl") == 0) {
+        auto verify_ssl = profile.get_verify_ssl();
+        if (verify_ssl.has_value()) {
+          *found = true;
+          return verify_ssl.value() ? "true" : "false";
+        }
+      } else {
+        // Fetch all other params from the profile normally.
+        try {
+          const char* value = std::move(profile.get_param(param).c_str());
+          *found = true;
+          return value;
+        } catch (...) {
+          throw;
+        }
       }
-    } else {
-      // Fetch all other params from the profile normally.
-      try {
-        const char* value = std::move(profile.get_param(param).c_str());
-        *found = true;
-        return value;
-      } catch (...) {
-        throw;
-      }
+    } catch (const std::exception& e) {
+      // be silent - don't throw
     }
-  } catch (const std::exception& e) {
-    // be silent - don't throw
   }
 
   // [4. default config value]
