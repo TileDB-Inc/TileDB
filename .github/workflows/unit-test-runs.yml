@@ -68,7 +68,7 @@ jobs:
         shell: bash
         if: ${{ !startsWith(matrix.os, 'windows-') }}
 
-      - name: 'Build standalone unit tests'
+      - name: 'Configure build'
         run: |
           cmake -S . \
             -B build \
@@ -77,6 +77,9 @@ jobs:
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_ARROW_TESTS=ON
+
+      - name: 'Build standalone unit tests'
+        run: |
           # Build all unit tests
           cmake --build build --target tests -j4
 
