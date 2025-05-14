@@ -12,4 +12,4 @@ num-traits = { workspace = true }
 cxx-build = { workspace = true }
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["staticlib"]
