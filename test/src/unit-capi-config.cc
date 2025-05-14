@@ -102,9 +102,7 @@ void check_load_incorrect_file_cannot_open() {
   rc = tiledb_config_load_from_file(config, "non_existent_file", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
-  check_error(
-      error,
-      "[TileDB::Config] Error: Failed to open config file 'non_existent_file'");
+  check_error(error, "Config: Failed to open config file 'non_existent_file'");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
   CHECK(config == nullptr);
@@ -131,7 +129,7 @@ void check_load_incorrect_file_missing_value() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Missing parameter value (line: 1)");
   tiledb_error_free(&error);
   CHECK(error == nullptr);
@@ -161,7 +159,7 @@ void check_load_incorrect_file_extra_word() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Invalid line format (line: 3)");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
@@ -232,8 +230,6 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "filestore.buffer_size 104857600\n";
-  ss << "profile_homedir \n";
-  ss << "profile_name \n";
   ss << "rest.capnp_traversal_limit 2147483648\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.retry_errors true\n";
