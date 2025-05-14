@@ -90,7 +90,7 @@ jobs:
           $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
           $Env:PATH = $PATH_FOR_BUILD
           cmake -S . -B build -G Ninja `
-            -DCMAKE_BUILD_TYPE=Debug `
+            -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" `
             -DTILEDB_SERIALIZATION=ON `
             -DTILEDB_ASSERTIONS=ON `
             -DTILEDB_ARROW_TESTS=ON `
