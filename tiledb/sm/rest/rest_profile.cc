@@ -31,6 +31,7 @@
  */
 
 #include <iostream>
+#include <filesystem>
 
 #include "rest_profile.h"
 #include "tiledb/common/random/random_label.h"
