@@ -172,8 +172,15 @@ where
     if !(prefix.is_empty() && suffix.is_empty()) {
         return Err(FieldError::InternalUnalignedValues);
     }
+    let tile_buffer = if let Some(ptr) = std::ptr::NonNull::new(values.as_ptr() as *mut u8) {
+        // SAFETY: dependent upon this Array out-living the tile
+        unsafe { Buffer::from_custom_allocation(ptr, tile.size() as usize, Arc::new(())) }
+    } else {
+        Buffer::from_vec(Vec::<T::Native>::new())
+    };
+
     Ok(Arc::new(PrimitiveArray::<T>::new(
-        ScalarBuffer::from(Buffer::from_slice_ref::<T::Native, _>(values)),
+        ScalarBuffer::from(tile_buffer),
         validity,
     )) as Arc<dyn ArrowArray>)
 }
