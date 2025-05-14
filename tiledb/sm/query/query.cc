@@ -839,6 +839,7 @@ Status Query::process() {
           return Status::Ok();
         }));
 
+    auto timer_se = stats_->start_timer("query_condition_rewrite_for_schema");
     condition_->rewrite_for_schema(config_, array_schema());
   }
 
