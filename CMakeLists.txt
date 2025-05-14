@@ -382,6 +382,10 @@ if (TILEDB_S3)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
 
+if (TILEDB_RUST)
+    add_compile_definitions("HAVE_RUST")
+endif ()
+
 ##################################
 # Local install
 ##################################
