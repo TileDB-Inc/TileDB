@@ -1,4 +1,4 @@
-name: check-formatting
+name: check-lint
 on:
   push:
     paths-ignore:
@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
-    name: Check Clang Format
+    name: Check Lint
     steps:
       - uses: actions/checkout@v3
       - name: 'Print env'
@@ -38,3 +38,10 @@ jobs:
 
       - name: Check formatting
         run: $GITHUB_WORKSPACE/scripts/ci/check_formatting_linux.sh
+
+      - name: Run custom linters
+        run: |
+          set -e pipefail
+          python scripts/linter.py $GITHUB_WORKSPACE/tiledb
+        shell: bash
+        if: ${{ runner.os == 'Linux' }}
