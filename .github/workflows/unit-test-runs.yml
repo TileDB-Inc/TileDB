@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        build_type: [Debug, Release]
       fail-fast: false
     name: Build - ${{ matrix.os }}
     timeout-minutes: 90
@@ -80,7 +81,7 @@ jobs:
           cmake -S . \
             -B build \
             -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_ARROW_TESTS=ON \
@@ -104,7 +105,7 @@ jobs:
           $PATH_FOR_BUILD = $PATH_COMPONENTS_FOR_BUILD -join ";"
           $Env:PATH = $PATH_FOR_BUILD
           cmake -S . -B build -G Ninja `
-            -DCMAKE_BUILD_TYPE=Debug `
+            -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" `
             -DTILEDB_SERIALIZATION=ON `
             -DTILEDB_ASSERTIONS=ON `
             -DTILEDB_ARROW_TESTS=ON `
