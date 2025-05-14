@@ -108,7 +108,7 @@ jobs:
 
       - name: 'Run standalone unit tests'
         run: |
-          ctest --test-dir build -R '(^unit_|test_assert)' --no-tests=error
+          ctest --test-dir build -R '(^unit_|test_assert)' --no-tests=error --verbose
           ctest --test-dir build -R 'test_ci_asserts'
 
       - name: "Print log files (failed build only)"
