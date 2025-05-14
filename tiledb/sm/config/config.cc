@@ -958,7 +958,7 @@ const char* Config::get_from_config_or_fallback(
       } else {
         // Fetch all other params from the profile normally.
         try {
-          const char* value = std::move(profile.get_param(param).c_str());
+          const char* value = profile.get_param(param).c_str();
           *found = true;
           return value;
         } catch (const RestProfileException& e) {

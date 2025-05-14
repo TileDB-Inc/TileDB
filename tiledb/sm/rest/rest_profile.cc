@@ -169,7 +169,7 @@ void RestProfile::set_param(
   param_values_[param] = value;
 }
 
-std::string RestProfile::get_param(const std::string& param) const {
+const std::string& RestProfile::get_param(const std::string& param) const {
   auto it = param_values_.find(param);
   if (it == param_values_.end()) {
     throw RestProfileException("Failed to retrieve parameter '" + param + "'");

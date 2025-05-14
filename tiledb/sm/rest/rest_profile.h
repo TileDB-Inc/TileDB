@@ -202,7 +202,7 @@ class RestProfile {
    * @param param The parameter to fetch.
    * @return The value of the given parameter.
    */
-  std::string get_param(const std::string& param) const;
+  const std::string& get_param(const std::string& param) const;
 
   /**
    * Saves this profile to the local file.
