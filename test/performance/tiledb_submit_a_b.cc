@@ -102,23 +102,23 @@
  *           "end": {
  *             "%": 50
  *           }
- *         },
- *         "condition": {
- *           "operator": "&&",
- *           "args": [
- *             {
- *               "operator": "<"
- *               "field": "a",
- *               "value": 5
- *             },
- *             {
- *               "operator": "<>"
- *               "field": "b",
- *               "value": 10
- *             }
- *           ]
  *         }
- *       ]
+ *       ],
+ *       "condition": {
+ *         "operator": "&&",
+ *         "args": [
+ *           {
+ *             "operator": "<"
+ *             "field": "a",
+ *             "value": 5
+ *           },
+ *           {
+ *             "operator": "<>"
+ *             "field": "b",
+ *             "value": 10
+ *           }
+ *         ]
+ *       }
  *     }
  *   ]
  * }
