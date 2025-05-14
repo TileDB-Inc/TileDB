@@ -569,7 +569,7 @@ Config::~Config() = default;
 Status Config::load_from_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
-    throw ConfigException("Cannot load from file; Invalid filename");
+    throw ConfigException("Cannot load from file; File path is empty");
 
   std::ifstream ifs(filename);
   if (!ifs.is_open()) {
@@ -619,7 +619,7 @@ Status Config::load_from_file(const std::string& filename) {
 Status Config::save_to_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
-    throw ConfigException("Cannot save to file; Invalid filename");
+    throw ConfigException("Cannot load from file; File path is empty");
 
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
@@ -965,8 +965,11 @@ const char* Config::get_from_config_or_fallback(
           const char* value = std::move(profile.get_param(param).c_str());
           *found = true;
           return value;
-        } catch (...) {
-          throw;
+        } catch (const RestProfileException& e) {
+          throw ConfigException(
+              "Failed to get config value for key '" + param +
+              "' from profile '" + param_values_.at("profile_name") +
+              "'. Reason: " + e.what());
         }
       }
     } catch (const std::exception& e) {

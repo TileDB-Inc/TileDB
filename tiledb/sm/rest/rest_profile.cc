@@ -57,7 +57,7 @@ static json read_file(const std::string& filepath) {
     try {
       file >> data;
     } catch (...) {
-      throw RestProfileException("Error parsing file \'" + filepath + "\'.");
+      throw RestProfileException("Error parsing file '" + filepath + "'.");
     }
   }
   return data;
@@ -153,7 +153,7 @@ RestProfile RestProfile::load_profile(
     return profile;
   } catch (const RestProfileException& e) {
     throw RestProfileException(
-        "Failed to load profile \'" + name + "\': " + e.what());
+        "Failed to load profile '" + name + "': " + e.what());
   }
 }
 
@@ -163,7 +163,7 @@ void RestProfile::set_param(
   auto it = param_values_.find(param);
   if (it == param_values_.end()) {
     throw RestProfileException(
-        "Failed to set parameter of invalid name \'" + param + "\'");
+        "Failed to set parameter of invalid name '" + param + "'");
   }
   param_values_[param] = value;
 }
@@ -171,8 +171,7 @@ void RestProfile::set_param(
 std::string RestProfile::get_param(const std::string& param) const {
   auto it = param_values_.find(param);
   if (it == param_values_.end()) {
-    throw RestProfileException(
-        "Failed to retrieve parameter \'" + param + "\'");
+    throw RestProfileException("Failed to retrieve parameter '" + param + "'");
   }
   return it->second;
 }
@@ -210,8 +209,8 @@ void RestProfile::save_to_file() {
     // Check that this profile hasn't already been saved.
     if (data.contains(name_)) {
       throw RestProfileException(
-          "Failed to save \'" + name_ +
-          "\'; This profile has already been saved "
+          "Failed to save '" + name_ +
+          "'; This profile has already been saved "
           " and must be explicitly removed in order to be replaced.");
     }
   } else {
@@ -286,12 +285,12 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   if (filename.empty() ||
       (filename != filepath_ && filename != old_filepath_)) {
     throw RestProfileException(
-        "Cannot load from \'" + filename + "\'; invalid filename.");
+        "Cannot load from '" + filename + "'; invalid filename.");
   }
 
   if (!std::filesystem::exists(filename)) {
     throw RestProfileException(
-        "Cannot load from \'" + filename + "\'; file does not exist.");
+        "Cannot load from '" + filename + "'; file does not exist.");
   }
 
   // Load the file into a json object.
@@ -326,7 +325,7 @@ void RestProfile::load_from_json_file(const std::string& filename) {
       }
     } else {
       throw RestProfileException(
-          "Failed to load profile; profile \'" + name_ + "\' does not exist.");
+          "Failed to load profile; profile '" + name_ + "' does not exist.");
     }
   }
 }
