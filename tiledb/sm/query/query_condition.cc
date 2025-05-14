@@ -162,8 +162,8 @@ void QueryCondition::rewrite_for_schema(
 
   tree_->rewrite_for_schema(array_schema);
 
-  if (config.get<std::string>("sm.query.condition_evaluator") == "datafusion" &&
-      !datafusion_.has_value()) {
+  const auto eval = config.get<std::string>("sm.query.condition_evaluator");
+  if (eval == "datafusion" && !datafusion_.has_value()) {
     std::vector<std::string> select(field_names().begin(), field_names().end());
 
     try {
@@ -180,6 +180,8 @@ void QueryCondition::rewrite_for_schema(
       throw std::logic_error(
           "Unexpected error compiling expression: " + std::string(e.what()));
     }
+  } else if (eval.has_value() && eval != "ast") {
+    throw std::runtime_error("TODO bad config");
   }
 }
 
