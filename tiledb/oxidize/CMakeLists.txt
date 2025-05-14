@@ -8,10 +8,32 @@ else ()
     set(CARGO_TARGET "release")
 endif ()
 
+message(NOTICE "BUILD_TYPE = ${CMAKE_BUILD_TYPE}, PROFILE = ${CARGO_PROFILE}, TARGET = ${CARGO_TARGET}")
+
 set(CARGO_MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
 
 set(CARGO_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/target")
 set(CARGO_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/target/${CARGO_TARGET}")
+
+set(CARGO_VERBOSITY "-q")
+
+
+# Declare platform-specific parameters
+if (WIN32)
+    # A Rust deficiency is that it only links with the release CRT.
+    # Fortunately it is possible to work around this by linking the debug runtime library
+    # using CFLAGS and CXXFLAGS.
+    #
+    # https://github.com/rust-lang/rust/issues/39016#issuecomment-853964918
+    set(TILEDB_OXIDIZE_CFLAGS "-MDd")
+
+    # It is also necessary for some reason to specify the system libraries we need
+    # to link with.  This should probably be obtained more scientfically
+    # (see `corrosion`'s use of `cargo rustc` for example) but this does the job.
+    #
+    # https://github.com/corrosion-rs/corrosion/blob/715c235daef4b8ee67278f12256334ad3dd4c4ae/cmake/FindRust.cmake#L155
+    set(TILEDB_OXIDIZE_LINK_LIBS "kernel32.lib;advapi32.lib;ws2_32.lib;ntdll.lib;userenv.lib")
+endif ()
 
 
 # Declares targets for building a Rust crate.
@@ -61,12 +83,12 @@ function(add_crate)
         OUTPUT
             ${ADD_CRATE_BRIDGES_CC_OUT}
             ${ADD_CRATE_BRIDGES_H_OUT}
-            "${CARGO_LIB_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+            "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
         COMMAND
-            ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
+            ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target" "CFLAGS=${TILEDB_OXIDIZE_CFLAGS}" "CXXFLAGS=${TILEDB_OXIDIZE_CFLAGS}"
             ${CARGO}
             build
-            "-q"
+            ${CARGO_VERBOSITY}
             "--profile" ${CARGO_PROFILE}
             "--manifest-path" ${CARGO_MANIFEST_PATH}
             "-p" ${ADD_CRATE_NAME}
@@ -107,18 +129,11 @@ function(add_crate)
         PRIVATE
             ${CARGO_INCLUDE_DIR}
     )
-    if (WIN32)
-        target_link_libraries(
-            ${ADD_CRATE_NAME}_rs
-            ${CARGO_LIB_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
-            ws2_32.lib
-        )
-    else ()
-        target_link_libraries(
-            ${ADD_CRATE_NAME}_rs
-            ${CARGO_LIB_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}
-        )
-    endif ()
+    target_link_libraries(
+        ${ADD_CRATE_NAME}_rs
+        ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
+        ${TILEDB_OXIDIZE_LINK_LIBS}
+    )
     add_dependencies(${ADD_CRATE_NAME}_rs ${ADD_CRATE_NAME}_h)
 endfunction ()
 
