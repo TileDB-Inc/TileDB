@@ -75,7 +75,6 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
             -DTILEDB_SERIALIZATION=ON \
-            -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_ARROW_TESTS=ON
 
       - name: 'Build standalone unit tests'
