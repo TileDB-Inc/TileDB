@@ -147,7 +147,8 @@ RestProfile RestProfile::load_profile(
     const std::string& name, const std::string& homedir) {
   // create a profile object
   RestProfile profile(name, homedir);
-  // use load_from_file to load the profile
+
+  // load the profile
   try {
     profile.load_from_file(false);
     return profile;
@@ -182,7 +183,7 @@ std::string RestProfile::get_param(const std::string& param) const {
  * json object, but rather sorts its elements alphabetically.
  * See issue [#727](https://github.com/nlohmann/json/issues/727) for details.
  */
-void RestProfile::save_to_file() {
+void RestProfile::save_to_file(const bool overwrite) {
   // Validate that the profile is complete (if username is set, so is password)
   if ((param_values_["rest.username"] == RestProfile::DEFAULT_USERNAME) !=
       (param_values_["rest.password"] == RestProfile::DEFAULT_PASSWORD)) {
@@ -208,10 +209,16 @@ void RestProfile::save_to_file() {
 
     // Check that this profile hasn't already been saved.
     if (data.contains(name_)) {
-      throw RestProfileException(
-          "Failed to save '" + name_ +
-          "'; This profile has already been saved "
-          " and must be explicitly removed in order to be replaced.");
+      if (overwrite) {
+        // If the user wants to overwrite, remove the old profile.
+        data.erase(name_);
+      } else {
+        // If the user doesn't want to overwrite, throw an error.
+        throw RestProfileException(
+            "Failed to save '" + name_ +
+            "'; This profile has already been saved "
+            " and must be explicitly removed in order to be replaced.");
+      }
     }
   } else {
     // Write the version number iff this is the first time opening the file.

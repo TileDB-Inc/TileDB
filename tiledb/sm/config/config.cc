@@ -747,10 +747,6 @@ Status Config::sanity_check(
   int64_t vint64 = 0;
   int chkno = -1;
 
-  // Check for RestProfile-specific parameters and warn users accordingly.
-  // Note: users are allowed to _fetch_ these parameters, but they must
-  // first be set on an immutable RestProfile.
-
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
     RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));

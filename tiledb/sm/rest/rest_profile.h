@@ -204,8 +204,13 @@ class RestProfile {
    */
   std::string get_param(const std::string& param) const;
 
-  /** Saves this profile to the local file. */
-  void save_to_file();
+  /**
+   * Saves this profile to the local file.
+   *
+   * @param overwrite If true, overwrite the existing profile with the same
+   * name.
+   */
+  void save_to_file(const bool overwrite = false);
 
   /**
    * Loads this profile from the local file.
