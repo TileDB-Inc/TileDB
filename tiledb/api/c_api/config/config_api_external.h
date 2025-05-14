@@ -207,6 +207,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
  *    Only for `fragments` and `array_meta` consolidation mode. <br>
  *    **Default**: UINT64_MAX
+ * - `sm.consolidation.with_timestamps` <br>
+ *    Consolidation with timestamps will include, for each cells, the
+ *    timestamp at which the cell was written. <br>
+ *    **Default**: "true"
  * - `sm.encryption_key` <br>
  *    The key for encrypted arrays. <br>
  *    **Default**: ""
