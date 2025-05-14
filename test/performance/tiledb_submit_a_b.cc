@@ -159,6 +159,7 @@
 #include <test/support/stdx/tuple.h>
 
 #include "tiledb/api/c_api/array/array_api_internal.h"
+#include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -371,17 +372,27 @@ class QueryCondition {
                schema.domain().dimension(field_).type());
 
       tiledb::QueryCondition condition(query.ctx());
-      auto do_init = [&](auto arg) {
-        using value_type = std::decay_t<std::remove_pointer_t<decltype(arg)>>;
-        const value_type value = value_.get<value_type>();
+
+      if (schema.ptr()->array_schema()->cell_val_num(field_) ==
+              tiledb::sm::constants::var_num &&
+          (dt == TILEDB_STRING_ASCII || dt == TILEDB_STRING_UTF8)) {
         condition.init(
             field_,
-            static_cast<const void*>(&value),
-            sizeof(value),
+            value_.get<std::string>(),
             static_cast<tiledb_query_condition_op_t>(operator_));
-      };
-      tiledb::type::apply_with_type(
-          do_init, static_cast<tiledb::sm::Datatype>(dt));
+      } else {
+        auto do_init = [&](auto arg) {
+          using value_type = std::decay_t<std::remove_pointer_t<decltype(arg)>>;
+          const value_type value = value_.get<value_type>();
+          condition.init(
+              field_,
+              static_cast<const void*>(&value),
+              sizeof(value),
+              static_cast<tiledb_query_condition_op_t>(operator_));
+        };
+        tiledb::type::apply_with_type(
+            do_init, static_cast<tiledb::sm::Datatype>(dt));
+      }
       return condition;
     }
   };
