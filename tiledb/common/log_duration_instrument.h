@@ -37,6 +37,7 @@
 
 #include <spdlog/fmt/chrono.h>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 
 namespace tiledb::common {
@@ -66,7 +67,7 @@ class LogDurationInstrument {
       // weird constexpr-related compile errors.
       const std::string& fmt,
       Args&&... args) {
-    assert(logger);
+    passert(logger);
 
     if (logger->should_log(DefaultLevel)) {
       logger_ = logger;

@@ -34,6 +34,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/heap_profiler.h"
 
 namespace tiledb::common {
@@ -246,7 +247,7 @@ const std::string* HeapProfiler::fetch_label_ptr(const std::string& label) {
 
   std::pair<std::unordered_map<std::string, uint64_t>::iterator, bool> ret =
       labels_cache_.emplace(label, 1);
-  assert(ret.second);
+  iassert(ret.second);
 
   return &ret.first->first;
 }
@@ -256,9 +257,9 @@ void HeapProfiler::release_label_ptr(const std::string* label) {
     return;
 
   // Fetch the cache entry.
-  assert(!label->empty());
+  iassert(!label->empty());
   auto iter = labels_cache_.find(*label);
-  assert(iter != labels_cache_.end());
+  iassert(iter != labels_cache_.end());
 
   // Decrement the reference counter. If the referene count
   // reaches 0, free the label and delete its entry in the
