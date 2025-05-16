@@ -33,6 +33,7 @@
 #ifndef TILEDB_DICT_COMPRESSOR_H
 #define TILEDB_DICT_COMPRESSOR_H
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/misc/endian.h"
 
@@ -193,7 +194,11 @@ class DictEncoding {
     while (in_index < input.size()) {
       word_id = utils::endianness::decode_be<T>(&input[in_index]);
       in_index += sizeof(T);
-      assert(word_id < dict.size());
+      iassert(
+          word_id < dict.size(),
+          "word_id = {}, dict.size() = {}",
+          word_id,
+          dict.size());
       const auto& word = dict[word_id];
       if (word.size() > 0) {
         memcpy(&output[out_index], word.data(), word.size());

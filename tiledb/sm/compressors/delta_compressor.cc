@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/compressors/delta_compressor.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -225,7 +226,12 @@ void Delta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Calculate number of values and handle trivial case
   uint64_t value_size = sizeof(T);
   uint64_t num = input_buffer->size() / value_size;
-  assert(num > 0 && (input_buffer->size() % value_size == 0));
+  iassert(
+      num > 0 && (input_buffer->size() % value_size == 0),
+      "num = {}, input_buffer->size() = {}, value_size = {}",
+      num,
+      input_buffer->size(),
+      value_size);
 
   auto in = (T*)input_buffer->data();
 
