@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -331,7 +332,7 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
   // Special zipped coordinates attribute
   if (name == constants::coords) {
     auto dim_num = domain_->dim_num();
-    assert(dim_num > 0);
+    passert(dim_num > 0);
     auto coord_size{domain_->dimension_ptr(0)->coord_size()};
     return dim_num * coord_size;
   }
@@ -355,7 +356,7 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
 
   // Dimension
   auto dim_it = dim_map_.find(name);
-  assert(dim_it != dim_map_.end());
+  iassert(dim_it != dim_map_.end(), "name = {}", name);
   auto dim = dim_it->second;
   auto cell_val_num = dim->cell_val_num();
   return (cell_val_num == constants::var_num) ?
@@ -377,7 +378,7 @@ unsigned int ArraySchema::cell_val_num(const std::string& name) const {
 
   // Dimension
   auto dim_it = dim_map_.find(name);
-  assert(dim_it != dim_map_.end());
+  iassert(dim_it != dim_map_.end(), "name = {}", name);
   return dim_it->second->cell_val_num();
 }
 
@@ -627,7 +628,7 @@ const FilterPipeline& ArraySchema::filters(const std::string& name) const {
 
   // Dimension (if filters not set, return default coordinate filters)
   auto dim_it = dim_map_.find(name);
-  assert(dim_it != dim_map_.end());
+  iassert(dim_it != dim_map_.end(), "name = {}", name);
   const auto& ret = dim_it->second->filters();
   return ret;
 }
@@ -764,7 +765,7 @@ Datatype ArraySchema::type(const std::string& name) const {
 
   // Dimension
   auto dim_it = dim_map_.find(name);
-  assert(dim_it != dim_map_.end());
+  iassert(dim_it != dim_map_.end(), "name = {}", name);
   return dim_it->second->type();
 }
 
@@ -788,13 +789,8 @@ bool ArraySchema::var_size(const std::string& name) const {
 
   // Dimension label
   auto dim_label_ref_it = dimension_label_map_.find(name);
-  if (dim_label_ref_it != dimension_label_map_.end()) {
-    return dim_label_ref_it->second->is_var();
-  }
-
-  // Name is not an attribute or dimension
-  assert(false);
-  return false;
+  iassert(dim_label_ref_it != dimension_label_map_.end(), "name = {}", name);
+  return dim_label_ref_it->second->is_var();
 }
 
 Status ArraySchema::add_attribute(

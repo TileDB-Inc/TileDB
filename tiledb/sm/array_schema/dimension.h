@@ -41,6 +41,7 @@
 #include <sstream>
 #include <string>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/blank.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
@@ -834,7 +835,7 @@ class Dimension {
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
   Status check_domain() const {
-    assert(!domain_.empty());
+    passert(!domain_.empty());
     auto domain = (const T*)domain_.data();
 
     // Upper bound should not be smaller than lower
@@ -862,7 +863,7 @@ class Dimension {
       typename T,
       typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
   Status check_domain() const {
-    assert(!domain_.empty());
+    passert(!domain_.empty());
     auto domain = (const T*)domain_.data();
 
     // Check for NAN and INF
