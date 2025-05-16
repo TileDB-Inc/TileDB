@@ -30,6 +30,7 @@
  * This file implements class FloatScalingFilter.
  */
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/filter/filter_buffer.h"
@@ -72,7 +73,11 @@ void FloatScalingFilter::run_forward(
   // Iterate through all the input buffers.
   for (auto& i : input_parts) {
     uint32_t s = i.size();
-    assert(s % sizeof(T) == 0);
+    iassert(
+        s % sizeof(T) == 0,
+        "i.size() = {}, sizeof(T) = {}",
+        i.size(),
+        sizeof(T));
     uint32_t num_elems_in_part = (s / sizeof(T));
     uint32_t new_size = num_elems_in_part * sizeof(W);
     throw_if_not_ok(output_metadata->write(&new_size, sizeof(uint32_t)));
