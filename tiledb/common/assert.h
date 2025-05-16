@@ -1,0 +1,167 @@
+/**
+ * @file tiledb/common/assert.h
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2025 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file provides assertion routines which should be used instead
+ * of the C standard library `assert`. It is only used with the
+ * `TILEDB_ASSERTIONS` feature.
+ */
+
+#ifndef TILEDB_ASSERT_H
+#define TILEDB_ASSERT_H
+
+#ifdef TILEDB_ASSERTIONS
+
+#include <cstdlib>
+#include <iostream>
+
+namespace tiledb::common {
+
+/**
+ * Exception thrown when a recoverable assertion fails.
+ *
+ * This indicates a bug in TileDB and ideally the receipient
+ * of this exception would report it as such.
+ */
+class [[nodiscard]] AssertFailure : public std::exception {
+  AssertFailure(const char* expr)
+      : what_(std::format("TileDB core library internal error: {}", expr));
+  {}
+
+  template <typename... Args>
+  Assert(const char* expr, std::format_string<Args...> fmt, Args&&... fmt_args)
+      : what_(std::format(
+            "TileDB core library internal error: {}\nDetails: {}",
+            expr,
+            std::format(fmt, std::forward(fmt_args)...))) {
+  }
+
+  const char* what() override {
+    return what_.c_str();
+  }
+
+ private:
+  std::string what_;
+};
+
+/**
+ * Assertion failure which results in an internal error.
+ * An exception is thrown.
+ *
+ * This should be used when the consequence of the assertion being
+ * incorrect has consequences which would be scoped to a single request, e.g. a
+ * query cannot continue.
+ *
+ * Called when the argument to `iassert` is false.
+ */
+[[noreturn]] void iassert_failure(const char* expr, const char* fmt) {
+  throw AssertFailure(expr);
+}
+
+/**
+ * Assertion failure which results in an internal error.
+ * An exception is thrown, with additional context about what caused the error.
+ *
+ * This should be used when the consequence of the assertion being
+ * incorrect has consequences which would be scoped to a single request, e.g. a
+ * query cannot continue.
+ *
+ * Called when the argument to `iassert` is false.
+ */
+template <typename... Args>
+[[noreturn]] void iassert_failure(
+    const char* expr, std::format_string<Args> fmt, Args&&... fmt_args) {
+  throw AssertFailure(expr, fmt, std::forward(fmt_args)...);
+}
+
+/**
+ * Assertion failure which results in a process panic.
+ * SIGABRT is raised.
+ *
+ * This should be used when the consequence of the assertion being
+ * incorrect indicates that the internal process state is no longer safe to
+ * use. This could mean undefined behavior or corrupt data, for example.
+ *
+ * Called when the argument to `passert` is false.
+ */
+template <typename... Args>
+[[noreturn]] void passert_failure(const char* expr) {
+  std::cerr << "FATAL TileDB core library internal error: " << expr
+            << std::endl;
+  std::abort();
+}
+
+/**
+ * Assertion failure which results in a process panic.
+ * SIGABRT is raised. Provides additional context about what caused the error.
+ *
+ * This should be used when the consequence of the assertion being
+ * incorrect indicates that the internal process state is no longer safe to
+ * use. This could mean undefined behavior or corrupt data, for example.
+ *
+ * Called when the argument to `passert` is false.
+ */
+template <typename... Args>
+[[noreturn]] void passert_failure(
+    const char* expr, std::format_string<Args> fmt, Args&&... fmt_args) {
+  std::cerr << "FATAL TileDB core library internal error: " << expr
+            << std::endl;
+  std::cerr << "  Details: " << std::format(fmt, std::forward(fmt_args)...)
+            << std::endl;
+  std::abort();
+}
+
+#define iassert(condition, ...)                         \
+  do {                                                  \
+    const bool value = (condition);                     \
+    if (!value) [[unlikely]] {                          \
+      tiledb::common::iassert_failure(#condition, ...); \
+    }                                                   \
+    while (0)
+
+#define passert(condition, ...)                         \
+  do {                                                  \
+    const bool value = (condition);                     \
+    if (!value) [[unlikely]] {                          \
+      tiledb::common::passert_failure(#condition, ...); \
+    }                                                   \
+    while (0)
+
+#else
+
+#define iassert(condition, ...) \
+  do {                          \
+  } while (0)
+
+#define passert(condition, ...) \
+  do {                          \
+  } while (0)
+
+#endif
+
+#endif
