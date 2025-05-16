@@ -35,6 +35,7 @@
 
 #include <vector>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 
 using namespace tiledb::common;
@@ -111,14 +112,14 @@ class FilteredBuffer {
   /** Converts the data at an offset to a specific type. */
   template <class T>
   inline T value_at_as(uint64_t offset) const {
-    assert(offset + sizeof(T) <= filtered_buffer_.size());
+    iassert(offset + sizeof(T) <= filtered_buffer_.size());
     return *static_cast<const T*>(
         static_cast<const void*>(&filtered_buffer_.data()[offset]));
   }
 
   /** Expands the size of the underlying container. */
   inline void expand(size_t size) {
-    assert(size >= filtered_buffer_.size());
+    iassert(size >= filtered_buffer_.size());
     filtered_buffer_.resize(size);
   }
 
