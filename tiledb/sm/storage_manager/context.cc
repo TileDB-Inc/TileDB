@@ -32,6 +32,7 @@
 
 #include "tiledb/common/common.h"
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/storage_manager/context.h"
 
@@ -180,17 +181,8 @@ size_t Context::get_compute_thread_count(const Config& config) {
     throw std::logic_error("Cannot get compute thread count");
   }
 
-  bool found{false};
-  uint64_t compute_concurrency_level{0};
-  if (!config
-           .get<uint64_t>(
-               "sm.compute_concurrency_level",
-               &compute_concurrency_level,
-               &found)
-           .ok()) {
-    throw std::logic_error("Cannot get compute concurrency level");
-  }
-  assert(found);
+  const uint64_t compute_concurrency_level =
+      config.get<uint64_t>("sm.compute_concurrency_level", Config::must_find);
 
   return static_cast<size_t>(
       std::max(config_thread_count, compute_concurrency_level));
@@ -202,17 +194,9 @@ size_t Context::get_io_thread_count(const Config& config) {
     throw std::logic_error("Cannot get config thread count");
   }
 
-  bool found = false;
-  uint64_t io_concurrency_level{0};
-  if (!config
-           .get<uint64_t>(
-               "sm.io_concurrency_level", &io_concurrency_level, &found)
-           .ok()) {
-    throw std::logic_error("Cannot get io concurrency level");
-  }
-  assert(found);
-
-  io_concurrency_level = std::max(config_thread_count, io_concurrency_level);
+  const uint64_t io_concurrency_level = std::max(
+      config_thread_count,
+      config.get<uint64_t>("sm.io_concurrency_level", Config::must_find));
 
   return static_cast<size_t>(
       std::max(config_thread_count, io_concurrency_level));
@@ -225,7 +209,7 @@ void Context::init_loggers(const Config& config) {
 
   const char* format_conf;
   throw_if_not_ok(config.get("config.logging_format", &format_conf));
-  assert(format_conf != nullptr);
+  iassert(format_conf != nullptr);
   Logger::Format format = Logger::Format::DEFAULT;
   throw_if_not_ok(logger_format_from_string(format_conf, &format));
 
@@ -233,10 +217,8 @@ void Context::init_loggers(const Config& config) {
   logger_->set_format(static_cast<Logger::Format>(format));
 
   // set logging level from config
-  bool found = false;
-  uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
-  throw_if_not_ok(config.get<uint32_t>("config.logging_level", &level, &found));
-  assert(found);
+  const uint32_t level =
+      config.get<uint32_t>("config.logging_level", Config::must_find);
   if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
     throw ContextException(
         "Cannot set logger level; Unsupported level:" + std::to_string(level) +

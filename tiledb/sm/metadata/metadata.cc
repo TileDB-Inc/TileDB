@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
@@ -214,7 +215,7 @@ void Metadata::store(
 }
 
 void Metadata::del(const char* key) {
-  assert(key != nullptr);
+  iassert(key != nullptr);
 
   std::unique_lock<std::mutex> lck(mtx_);
 
@@ -229,8 +230,8 @@ void Metadata::put(
     Datatype value_type,
     uint32_t value_num,
     const void* value) {
-  assert(key != nullptr);
-  assert(value_type != Datatype::ANY);
+  iassert(key != nullptr);
+  iassert(value_type != Datatype::ANY);
 
   if (value == nullptr)
     value_num = 0;
@@ -255,7 +256,7 @@ void Metadata::get(
     Datatype* value_type,
     uint32_t* value_num,
     const void** value) const {
-  assert(key != nullptr);
+  iassert(key != nullptr);
 
   auto it = metadata_map_.find(key);
   if (it == metadata_map_.end()) {
@@ -309,7 +310,7 @@ void Metadata::get(
 }
 
 std::optional<Datatype> Metadata::metadata_type(const char* key) {
-  assert(key != nullptr);
+  iassert(key != nullptr);
 
   auto it = metadata_map_.find(key);
   if (it == metadata_map_.end()) {

@@ -651,7 +651,7 @@ tiledb::sm::SparseIndexReaderBase::ReadState index_read_state_from_capnp(
     const ArraySchema& schema,
     const capnp::ReadStateIndex::Reader& read_state_reader) {
   bool done_reading = read_state_reader.getDoneAddingResultTiles();
-  assert(read_state_reader.hasFragTileIdx());
+  iassert(read_state_reader.hasFragTileIdx());
   std::vector<FragIdx> fragment_indexes;
   for (const auto rcs : read_state_reader.getFragTileIdx()) {
     auto tile_idx = rcs.getTileIdx();
@@ -831,7 +831,7 @@ Status condition_to_capnp(
     const QueryCondition& condition,
     capnp::Condition::Builder* condition_builder) {
   const tdb_unique_ptr<ASTNode>& ast = condition.ast();
-  assert(!condition.empty());
+  iassert(!condition.empty());
 
   // Validate and store the query condition AST.
   auto ast_builder = condition_builder->initTree();
@@ -1075,7 +1075,7 @@ QueryCondition condition_from_capnp(
     }
 
     // Constructing the tree from the list of AST nodes.
-    assert(ast_nodes.size() > 0);
+    iassert(ast_nodes.size() > 0);
     if (ast_nodes.size() == 1) {
       return QueryCondition(std::move(ast_nodes[0]));
     } else {
