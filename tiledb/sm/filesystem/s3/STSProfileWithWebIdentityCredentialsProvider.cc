@@ -49,6 +49,7 @@
 #include <aws/sts/STSClient.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/model/AssumeRoleWithWebIdentityRequest.h>
+#include "tiledb/common/assert.h"
 
 #include <utility>
 
@@ -370,7 +371,7 @@ void STSProfileWithWebIdentityCredentialsProvider::Reload() {
       stsCreds = GetCredentialsFromWebIdentity(profile);
     } else {
       if (profile.GetCredentialProcess().empty()) {
-        assert(!profile.GetCredentials().IsEmpty());
+        passert(!profile.GetCredentials().IsEmpty());
         stsCreds = profile.GetCredentials();
       } else {
         stsCreds = GetCredentialsFromProcess(profile.GetCredentialProcess());
@@ -386,8 +387,8 @@ void STSProfileWithWebIdentityCredentialsProvider::Reload() {
   }
 
   if (!sourceProfiles.empty()) {
-    assert(profileIt == sourceProfiles.back());
-    assert(!profileIt->second.GetCredentials().IsEmpty());
+    passert(profileIt == sourceProfiles.back());
+    passert(!profileIt->second.GetCredentials().IsEmpty());
   }
 
   m_credentials = profileIt->second.GetCredentials();
