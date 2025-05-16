@@ -49,14 +49,22 @@ namespace tiledb::common {
  * of this exception would report it as such.
  */
 class [[nodiscard]] AssertFailure : public std::exception {
-  AssertFailure(const char* expr)
-      : what_(std::format("TileDB core library internal error: {}", expr));
+  AssertFailure(const char* file, uint64_t line, const char* expr)
+      : what_(std::format(
+            "TileDB core library internal error: {}:{}: {}", file, line, expr));
   {}
 
   template <typename... Args>
-  Assert(const char* expr, std::format_string<Args...> fmt, Args&&... fmt_args)
+  Assert(
+      const char* file,
+      uint64_t line,
+      const char* expr,
+      std::format_string<Args...> fmt,
+      Args&&... fmt_args)
       : what_(std::format(
-            "TileDB core library internal error: {}\nDetails: {}",
+            "TileDB core library internal error: {}:{}: {}\nDetails: {}",
+            file,
+            line,
             expr,
             std::format(fmt, std::forward(fmt_args)...))) {
   }
@@ -79,8 +87,9 @@ class [[nodiscard]] AssertFailure : public std::exception {
  *
  * Called when the argument to `iassert` is false.
  */
-[[noreturn]] void iassert_failure(const char* expr, const char* fmt) {
-  throw AssertFailure(expr);
+[[noreturn]] void iassert_failure(
+    const char* file, uint64_t line, const char* expr, const char* fmt) {
+  throw AssertFailure(file, line, expr);
 }
 
 /**
@@ -95,8 +104,12 @@ class [[nodiscard]] AssertFailure : public std::exception {
  */
 template <typename... Args>
 [[noreturn]] void iassert_failure(
-    const char* expr, std::format_string<Args> fmt, Args&&... fmt_args) {
-  throw AssertFailure(expr, fmt, std::forward(fmt_args)...);
+    const char* file,
+    uint64_t line,
+    const char* expr,
+    std::format_string<Args> fmt,
+    Args&&... fmt_args) {
+  throw AssertFailure(file, line, expr, fmt, std::forward(fmt_args)...);
 }
 
 /**
@@ -110,7 +123,8 @@ template <typename... Args>
  * Called when the argument to `passert` is false.
  */
 template <typename... Args>
-[[noreturn]] void passert_failure(const char* expr) {
+[[noreturn]] void passert_failure(
+    const char* file, uint64_t line, const char* expr) {
   std::cerr << "FATAL TileDB core library internal error: " << expr
             << std::endl;
   std::abort();
@@ -128,7 +142,11 @@ template <typename... Args>
  */
 template <typename... Args>
 [[noreturn]] void passert_failure(
-    const char* expr, std::format_string<Args> fmt, Args&&... fmt_args) {
+    const char* file,
+    uint64_t line,
+    const char* expr,
+    std::format_string<Args> fmt,
+    Args&&... fmt_args) {
   std::cerr << "FATAL TileDB core library internal error: " << expr
             << std::endl;
   std::cerr << "  Details: " << std::format(fmt, std::forward(fmt_args)...)
@@ -136,20 +154,20 @@ template <typename... Args>
   std::abort();
 }
 
-#define iassert(condition, ...)                         \
-  do {                                                  \
-    const bool value = (condition);                     \
-    if (!value) [[unlikely]] {                          \
-      tiledb::common::iassert_failure(#condition, ...); \
-    }                                                   \
+#define iassert(condition, ...)                                             \
+  do {                                                                      \
+    const bool value = (condition);                                         \
+    if (!value) [[unlikely]] {                                              \
+      tiledb::common::iassert_failure(__FILE__, __LINE__, #condition, ...); \
+    }                                                                       \
     while (0)
 
-#define passert(condition, ...)                         \
-  do {                                                  \
-    const bool value = (condition);                     \
-    if (!value) [[unlikely]] {                          \
-      tiledb::common::passert_failure(#condition, ...); \
-    }                                                   \
+#define passert(condition, ...)                                             \
+  do {                                                                      \
+    const bool value = (condition);                                         \
+    if (!value) [[unlikely]] {                                              \
+      tiledb::common::passert_failure(__FILE__, __LINE__, #condition, ...); \
+    }                                                                       \
     while (0)
 
 #else
