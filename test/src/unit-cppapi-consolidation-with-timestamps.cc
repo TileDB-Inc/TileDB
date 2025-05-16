@@ -95,6 +95,7 @@ struct ConsolidationWithTimestampsFx {
 ConsolidationWithTimestampsFx::ConsolidationWithTimestampsFx()
     : vfs_(ctx_) {
   Config config;
+  config.set("sm.consolidation.with_timestamps", "true");
   config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
   resources_ = &ctx_.ptr().get()->resources();
@@ -106,6 +107,7 @@ ConsolidationWithTimestampsFx::~ConsolidationWithTimestampsFx() {
 
 void ConsolidationWithTimestampsFx::set_legacy() {
   Config config;
+  config.set("sm.consolidation.with_timestamps", "true");
   config.set("sm.consolidation.buffer_size", "1000");
   config.set("sm.query.sparse_global_order.reader", "legacy");
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
@@ -1231,6 +1233,7 @@ TEST_CASE_METHOD(
   // test that the feature functions properly until we do so. Once support is
   // fully removed for overlapping ranges, this test case can be deleted.
   tiledb::Config cfg;
+  cfg.set("sm.consolidation.with_timestamps", "true");
   cfg.set("sm.merge_overlapping_ranges_experimental", "false");
   cfg["sm.mem.consolidation.buffers_weight"] = "1";
   cfg["sm.mem.consolidation.reader_weight"] = "5000";

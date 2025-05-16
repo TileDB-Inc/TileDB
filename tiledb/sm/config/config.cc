@@ -156,7 +156,7 @@ const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
 const std::string Config::SM_CONSOLIDATION_TIMESTAMP_START = "0";
 const std::string Config::SM_CONSOLIDATION_TIMESTAMP_END =
     std::to_string(UINT64_MAX);
-const std::string Config::SM_CONSOLIDATION_WITH_TIMESTAMPS = "true";
+const std::string Config::SM_CONSOLIDATION_WITH_TIMESTAMPS = "false";
 const std::string Config::SM_VACUUM_MODE = "fragments";
 const std::string Config::SM_VACUUM_TIMESTAMP_START = "0";
 const std::string Config::SM_VACUUM_TIMESTAMP_END = std::to_string(UINT64_MAX);
