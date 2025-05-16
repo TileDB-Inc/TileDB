@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/fragment/fragment_info.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
@@ -272,7 +273,7 @@ Status FragmentInfo::get_non_empty_domain(
         "Cannot get non-empty domain; Dimension is variable-sized");
   }
 
-  assert(!non_empty_domain[did].empty());
+  iassert(!non_empty_domain[did].empty());
   std::memcpy(
       domain, non_empty_domain[did].data(), non_empty_domain[did].size());
 
@@ -1202,7 +1203,12 @@ Status FragmentInfo::replace(
 
   single_fragment_info_vec_ = std::move(updated_single_fragment_info_vec);
 
-  assert(fragment_num() == old_fragment_num - to_replace.size() + 1);
+  iassert(
+      fragment_num() == old_fragment_num - to_replace.size() + 1,
+      "fragment_num = {}, old_fragment_num = {}, to_replace.size() = {}",
+      fragment_num(),
+      old_fragment_num,
+      to_replace.size());
   (void)old_fragment_num;  // When running in release mode, this is not used
 
   return Status::Ok();

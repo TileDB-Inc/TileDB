@@ -1014,15 +1014,10 @@ Status FragmentConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
   Config merged_config = resources_.config();
   merged_config.inherit(config);
-  bool found = false;
-  config_.amplification_ = 0.0f;
-  throw_if_not_ok(merged_config.get<float>(
-      "sm.consolidation.amplification", &config_.amplification_, &found));
-  assert(found);
-  config_.steps_ = 0;
-  throw_if_not_ok(merged_config.get<uint32_t>(
-      "sm.consolidation.steps", &config_.steps_, &found));
-  assert(found);
+  config_.amplification_ = merged_config.get<float>(
+      "sm.consolidation.amplification", Config::must_find);
+  config_.steps_ =
+      merged_config.get<uint32_t>("sm.consolidation.steps", Config::must_find);
   config_.buffer_size_ = 0;
   // Only set the buffer_size_ if the user specified a value. Otherwise, we use
   // the new sm.mem.consolidation.buffers_weight instead.
@@ -1031,59 +1026,33 @@ Status FragmentConsolidator::set_config(const Config& config) {
         "The `sm.consolidation.buffer_size configuration setting has been "
         "deprecated. Set consolidation buffer sizes using the newer "
         "`sm.mem.consolidation.buffers_weight` setting.");
-    throw_if_not_ok(merged_config.get<uint64_t>(
-        "sm.consolidation.buffer_size", &config_.buffer_size_, &found));
-    assert(found);
+    config_.buffer_size_ = merged_config.get<uint64_t>(
+        "sm.consolidation.buffer_size", Config::must_find);
   }
-  config_.total_budget_ = 0;
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.mem.total_budget", &config_.total_budget_, &found));
-  assert(found);
-  config_.buffers_weight_ = 0;
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.mem.consolidation.buffers_weight", &config_.buffers_weight_, &found));
-  assert(found);
-  config_.reader_weight_ = 0;
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.mem.consolidation.reader_weight", &config_.reader_weight_, &found));
-  assert(found);
-  config_.writer_weight_ = 0;
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.mem.consolidation.writer_weight", &config_.writer_weight_, &found));
-  assert(found);
-  config_.max_fragment_size_ = 0;
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.consolidation.max_fragment_size",
-      &config_.max_fragment_size_,
-      &found));
-  assert(found);
-  config_.size_ratio_ = 0.0f;
-  throw_if_not_ok(merged_config.get<float>(
-      "sm.consolidation.step_size_ratio", &config_.size_ratio_, &found));
-  assert(found);
-  config_.purge_deleted_cells_ = false;
-  throw_if_not_ok(merged_config.get<bool>(
-      "sm.consolidation.purge_deleted_cells",
-      &config_.purge_deleted_cells_,
-      &found));
-  assert(found);
-  config_.min_frags_ = 0;
-  throw_if_not_ok(merged_config.get<uint32_t>(
-      "sm.consolidation.step_min_frags", &config_.min_frags_, &found));
-  assert(found);
-  config_.max_frags_ = 0;
-  throw_if_not_ok(merged_config.get<uint32_t>(
-      "sm.consolidation.step_max_frags", &config_.max_frags_, &found));
-  assert(found);
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
-  assert(found);
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
-  assert(found);
-  std::string reader =
-      merged_config.get("sm.query.sparse_global_order.reader", &found);
-  assert(found);
+  config_.total_budget_ =
+      merged_config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+  config_.buffers_weight_ = merged_config.get<uint64_t>(
+      "sm.mem.consolidation.buffers_weight", Config::must_find);
+  config_.reader_weight_ = merged_config.get<uint64_t>(
+      "sm.mem.consolidation.reader_weight", Config::must_find);
+  config_.writer_weight_ = merged_config.get<uint64_t>(
+      "sm.mem.consolidation.writer_weight", Config::must_find);
+  config_.max_fragment_size_ = merged_config.get<uint64_t>(
+      "sm.consolidation.max_fragment_size", Config::must_find);
+  config_.size_ratio_ = merged_config.get<float>(
+      "sm.consolidation.step_size_ratio", Config::must_find);
+  config_.purge_deleted_cells_ = merged_config.get<bool>(
+      "sm.consolidation.purge_deleted_cells", Config::must_find);
+  config_.min_frags_ = merged_config.get<uint32_t>(
+      "sm.consolidation.step_min_frags", Config::must_find);
+  config_.max_frags_ = merged_config.get<uint32_t>(
+      "sm.consolidation.step_max_frags", Config::must_find);
+  config_.timestamp_start_ = merged_config.get<uint64_t>(
+      "sm.consolidation.timestamp_start", Config::must_find);
+  config_.timestamp_end_ = merged_config.get<uint64_t>(
+      "sm.consolidation.timestamp_end", Config::must_find);
+  std::string reader = merged_config.get<std::string>(
+      "sm.query.sparse_global_order.reader", Config::must_find);
   config_.use_refactored_reader_ = reader.compare("refactored") == 0;
   config_.with_timestamps_ = true;
   config_.with_delete_meta_ = false;

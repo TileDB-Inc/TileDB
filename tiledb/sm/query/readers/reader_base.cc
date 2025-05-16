@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/reader_base.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/indexed_list.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -798,7 +799,7 @@ ReaderBase::load_tile_chunk_data(
     ChunkData& tile_chunk_data,
     ChunkData& tile_chunk_var_data,
     ChunkData& tile_chunk_validity_data) const {
-  assert(tile);
+  iassert(tile);
 
   if (skip_field(tile->frag_idx(), name)) {
     return {Status::Ok(), 0, 0, 0};
@@ -866,7 +867,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     ResultTile* const tile,
     const bool var_size,
     const bool nullable) const {
-  assert(tile);
+  iassert(tile);
 
   if (skip_field(tile->frag_idx(), name)) {
     return Status::Ok();
@@ -1008,7 +1009,7 @@ Status ReaderBase::unfilter_tile(
     const ChunkData& tile_chunk_fixed_data,
     const ChunkData& tile_chunk_var_data,
     const ChunkData& tile_chunk_validity_data) const {
-  assert(tile);
+  iassert(tile);
 
   if (skip_field(tile->frag_idx(), name)) {
     return Status::Ok();

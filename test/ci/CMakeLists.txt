@@ -1,5 +1,3 @@
-include(TileDBAssertions)
-
 add_executable(
   test_assert
   test_assert.cc

@@ -30,6 +30,7 @@
  * This file implements class SparseUnorderedWithDupsReader.
  */
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
@@ -73,16 +74,8 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
 
   // Get the setting that allows to partially load tile offsets. This is
   // done for this reader only for now.
-  bool found = false;
-  if (!config_
-           .get<bool>(
-               "sm.partial_tile_offsets_loading",
-               &partial_tile_offsets_loading_,
-               &found)
-           .ok()) {
-    throw SparseUnorderedWithDupsReaderException("Cannot get setting");
-  }
-  assert(found);
+  partial_tile_offsets_loading_ =
+      config_.get<bool>("sm.partial_tile_offsets_loading", Config::must_find);
 }
 
 /* ****************************** */
@@ -135,7 +128,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   get_dim_attr_stats();
 
   // This reader assumes ranges are sorted.
-  assert(subarray_.ranges_sorted());
+  iassert(subarray_.ranges_sorted());
 
   // Start with out buffer sizes as zero.
   zero_out_buffer_sizes();
@@ -173,7 +166,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
       // No more tiles to process, done.
       if (result_tiles.empty()) {
-        assert(read_state_.done_adding_result_tiles());
+        iassert(read_state_.done_adding_result_tiles());
         break;
       }
 
@@ -2018,8 +2011,8 @@ void SparseUnorderedWithDupsReader<BitmapType>::end_iteration(
 
   // Validate memory usage.
   if (!incomplete()) {
-    assert(memory_used_for_coords_total_ == 0);
-    assert(tmp_read_state_.memory_used_tile_ranges() == 0);
+    iassert(memory_used_for_coords_total_ == 0);
+    iassert(tmp_read_state_.memory_used_tile_ranges() == 0);
   }
 
   logger_->debug(

@@ -43,6 +43,8 @@
 #ifndef ARROW_C_DATA_INTERFACE
 #define ARROW_C_DATA_INTERFACE
 
+#include "tiledb/common/assert.h"
+
 #define ARROW_FLAG_DICTIONARY_ORDERED 1
 #define ARROW_FLAG_NULLABLE 2
 #define ARROW_FLAG_MAP_KEYS_SORTED 4
@@ -276,11 +278,11 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
   bool large = false;
   if (fmt == "+l") {
     large = false;
-    assert(arw_schema->n_children == 1);
+    iassert(arw_schema->n_children == 1);
     arw_schema = arw_schema->children[0];
   } else if (fmt == "+L") {
     large = true;
-    assert(arw_schema->n_children == 1);
+    iassert(arw_schema->n_children == 1);
     arw_schema = arw_schema->children[0];
   }
 
@@ -418,19 +420,19 @@ struct CPPArrowSchema {
 
     // Release callback
     schema_->release = ([](ArrowSchema* schema_p) {
-      assert(schema_p->release != nullptr);
+      passert(schema_p->release != nullptr);
 
       // Release children
       for (int64_t i = 0; i < schema_p->n_children; i++) {
         ArrowSchema* child_schema = schema_p->children[i];
         child_schema->release(child_schema);
-        assert(child_schema->release == nullptr);
+        passert(child_schema->release == nullptr);
       }
       // Release dictionary struct
       struct ArrowSchema* dict = schema_p->dictionary;
       if (dict != nullptr && dict->release != nullptr) {
         dict->release(dict);
-        assert(dict->release == nullptr);
+        passert(dict->release == nullptr);
       }
 
       // mark the ArrowSchema struct as released
@@ -471,19 +473,19 @@ struct CPPArrowSchema {
    * CPPArrowSchema structure (via ArrowSchema.private_data).
    */
   void export_ptr(ArrowSchema* out_schema) {
-    assert(out_schema != nullptr);
+    iassert(out_schema != nullptr);
     memcpy(out_schema, schema_, sizeof(ArrowSchema));
     std::free(schema_);
     schema_ = nullptr;
   }
 
   ArrowSchema* mutable_ptr() {
-    assert(schema_ != nullptr);
+    passert(schema_ != nullptr);
     return schema_;
   }
 
   ArrowSchema* ptr() const {
-    assert(schema_ != nullptr);
+    passert(schema_ != nullptr);
     return schema_;
   }
 
@@ -529,20 +531,20 @@ struct CPPArrowArray {
     array_->dictionary = nullptr;
     // Bookkeeping
     array_->release = ([](ArrowArray* array_p) {
-      assert(array_p->release != nullptr);
+      passert(array_p->release != nullptr);
 
       // Release children
       for (int64_t i = 0; i < array_p->n_children; i++) {
         ArrowArray* child_array = array_p->children[i];
         child_array->release(child_array);
-        assert(child_array->release == nullptr);
+        passert(child_array->release == nullptr);
       }
 
       // Release dictionary
       struct ArrowArray* dict = array_p->dictionary;
       if (dict != nullptr && dict->release != nullptr) {
         dict->release(dict);
-        assert(dict->release == nullptr);
+        passert(dict->release == nullptr);
       }
 
       // mark the ArrowArray struct as released
@@ -570,19 +572,19 @@ struct CPPArrowArray {
   }
 
   void export_ptr(ArrowArray* out_array) {
-    assert(out_array != nullptr);
+    iassert(out_array != nullptr);
     memcpy(out_array, array_, sizeof(ArrowArray));
     std::free(array_);
     array_ = nullptr;
   }
 
   ArrowArray* ptr() const {
-    assert(array_ != nullptr);
+    passert(array_ != nullptr);
     return array_;
   }
 
   ArrowArray* mutable_ptr() {
-    assert(array_ != nullptr);
+    passert(array_ != nullptr);
     return array_;
   }
 
@@ -637,7 +639,7 @@ void ArrowImporter::import_(
   // buffer conversion
 
   if (typeinfo.cell_val_num == TILEDB_VAR_NUM) {
-    assert(arw_array->n_buffers == 3);
+    iassert(arw_array->n_buffers == 3);
 
     void* p_offsets = const_cast<void*>(arw_array->buffers[1]);
     void* p_data = const_cast<void*>(arw_array->buffers[2]);
@@ -659,7 +661,7 @@ void ArrowImporter::import_(
 
   } else {
     // fixed-size attribute (not TILEDB_VAR_NUM)
-    assert(arw_array->n_buffers == 2);
+    iassert(arw_array->n_buffers == 2);
 
     void* p_data = const_cast<void*>(arw_array->buffers[1]);
     uint64_t data_num = arw_array->length;

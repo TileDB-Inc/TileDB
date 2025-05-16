@@ -41,6 +41,7 @@
 
 #include "filesystem_base.h"
 #include "ls_scanner.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
@@ -910,7 +911,7 @@ class VFS : private VFSBase,
         void* const buffer,
         const uint64_t nbytes,
         bool* const success) {
-      assert(success);
+      iassert(success);
       *success = false;
 
       // Store the URI's string representation.

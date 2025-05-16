@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/common/algorithm/parallel_merge.h"
+#include "tiledb/common/assert.h"
 
 using namespace tiledb::common;
 
@@ -79,7 +80,7 @@ ParallelMergeFuture::~ParallelMergeFuture() {
 
     // however we definitely do want to avoid an infinite loop here,
     // so we had better have made progress.
-    assert(merge_cursor_ > m);
+    iassert(merge_cursor_ > m, "merge_cursor = {}, m = {}", merge_cursor_, m);
   }
 }
 
@@ -101,7 +102,8 @@ std::optional<uint64_t> ParallelMergeFuture::await() {
     const auto m = merge_cursor_++;
 
     // we must have FIFO
-    assert(m == maybe_task->p_);
+    iassert(
+        m == maybe_task->p_, "m = {}, maybe_task->p = {}", m, maybe_task->p_);
 
     throw_if_not_ok(maybe_task->task_.wait());
     return merge_bounds_[m].output_end();

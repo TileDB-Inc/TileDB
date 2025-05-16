@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/query.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -128,7 +129,7 @@ Query::Query(
     , memory_budget_(memory_budget)
     , query_remote_buffer_storage_(std::nullopt)
     , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
-  assert(array->is_open());
+  passert(array->is_open());
 
   if (array->get_query_type() == QueryType::READ) {
     query_memory_tracker_->set_type(MemoryTrackerType::QUERY_READ);
@@ -1596,7 +1597,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
       sub.add_range_unsafe(d, subarray[d]);
   }
 
-  assert(layout_ == sub.layout());
+  passert(layout_ == sub.layout());
   subarray_ = sub;
 
   return Status::Ok();
@@ -1688,15 +1689,14 @@ shared_ptr<Buffer> Query::rest_scratch() const {
 bool Query::use_refactored_dense_reader(
     const ArraySchema& array_schema, bool all_dense) {
   bool use_refactored_reader = false;
-  bool found = false;
 
   // If the query comes from a client using the legacy reader.
   if (force_legacy_reader_) {
     return false;
   }
 
-  const std::string& val = config_.get("sm.query.dense.reader", &found);
-  assert(found);
+  const std::string& val =
+      config_.get<std::string>("sm.query.dense.reader", Config::must_find);
   use_refactored_reader = val == "refactored";
 
   return use_refactored_reader && array_schema.dense() && all_dense;
@@ -1705,16 +1705,14 @@ bool Query::use_refactored_dense_reader(
 bool Query::use_refactored_sparse_global_order_reader(
     Layout layout, const ArraySchema& array_schema) {
   bool use_refactored_reader = false;
-  bool found = false;
 
   // If the query comes from a client using the legacy reader.
   if (force_legacy_reader_) {
     return false;
   }
 
-  const std::string& val =
-      config_.get("sm.query.sparse_global_order.reader", &found);
-  assert(found);
+  const std::string& val = config_.get<std::string>(
+      "sm.query.sparse_global_order.reader", Config::must_find);
   use_refactored_reader = val == "refactored";
   return use_refactored_reader && !array_schema.dense() &&
          (layout == Layout::GLOBAL_ORDER || layout == Layout::UNORDERED);
@@ -1723,16 +1721,14 @@ bool Query::use_refactored_sparse_global_order_reader(
 bool Query::use_refactored_sparse_unordered_with_dups_reader(
     Layout layout, const ArraySchema& array_schema) {
   bool use_refactored_reader = false;
-  bool found = false;
 
   // If the query comes from a client using the legacy reader.
   if (force_legacy_reader_) {
     return false;
   }
 
-  const std::string& val =
-      config_.get("sm.query.sparse_unordered_with_dups.reader", &found);
-  assert(found);
+  const std::string& val = config_.get<std::string>(
+      "sm.query.sparse_unordered_with_dups.reader", Config::must_find);
   use_refactored_reader = val == "refactored";
 
   return use_refactored_reader && !array_schema.dense() &&

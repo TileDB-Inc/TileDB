@@ -33,6 +33,7 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/filesystem/posix.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
@@ -71,7 +72,7 @@ class PosixDIR {
     if (dir_.has_value() && dir_.value() != nullptr) {
       // The only possible error is EBADF, which should not happen here.
       [[maybe_unused]] auto status = closedir(dir_.value());
-      assert(status == 0);
+      passert(status == 0);
     }
   }
 
@@ -114,7 +115,7 @@ class PosixDIR {
    */
   PosixDIR(optional<DIR*> dir = nullopt)
       : dir_(dir) {
-    assert(dir != nullptr);
+    passert(dir != nullptr);
   }
 
   /** The wrapped directory pointer. */
@@ -262,7 +263,7 @@ void Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
       for (auto& path : child_paths)
         path_queue.emplace(std::move(path));
     } else {
-      assert(is_file(URI(file_name_abs)));
+      passert(is_file(URI(file_name_abs)), "file_name_abs = {}", file_name_abs);
       copy_file(
           URI(old_path + "/" + file_name), URI(new_path + "/" + file_name));
     }
@@ -458,7 +459,7 @@ std::string Posix::current_dir() {
 }
 
 void Posix::adjacent_slashes_dedup(std::string* path) {
-  assert(utils::parse::starts_with(*path, "file://"));
+  iassert(utils::parse::starts_with(*path, "file://"));
   path->erase(
       std::unique(
           path->begin() + std::string("file://").size(),
@@ -518,7 +519,7 @@ void Posix::purge_dots_from_path(std::string* path) {
   if (path_size == 0 || *path == "file:///")
     return;
 
-  assert(utils::parse::starts_with(*path, "file:///"));
+  iassert(utils::parse::starts_with(*path, "file:///"));
 
   // Tokenize
   const char* token_c_str = path->c_str() + 8;
