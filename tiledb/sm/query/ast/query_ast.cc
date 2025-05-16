@@ -31,6 +31,7 @@
  */
 
 #include "query_ast.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/misc/integral_type_casts.h"
 #include "tiledb/sm/query/query_condition.h"
@@ -293,9 +294,11 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
     // we get here. If this ever escapes then we need to update
     // the condition evaluator.
     if (!nullable) {
-      assert(
+      iassert(
           op_ == QueryConditionOp::ALWAYS_TRUE ||
-          op_ == QueryConditionOp::ALWAYS_FALSE);
+              op_ == QueryConditionOp::ALWAYS_FALSE,
+          "op = {}",
+          query_condition_op_str(op_));
     }
   }
 

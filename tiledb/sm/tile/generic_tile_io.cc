@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
@@ -130,9 +131,9 @@ shared_ptr<Tile> GenericTileIO::read_generic(
       header.persisted_size));
 
   // Unfilter
-  assert(tile->filtered());
+  iassert(tile->filtered());
   header.filters.run_reverse_generic_tile(&resources_.stats(), *tile, config);
-  assert(!tile->filtered());
+  iassert(!tile->filtered());
 
   return tile;
 }
@@ -195,11 +196,11 @@ void GenericTileIO::write_generic(
   init_generic_tile_header(tile.get(), &header, encryption_key);
 
   // Filter tile
-  assert(!tile->filtered());
+  iassert(!tile->filtered());
   header.filters.run_forward(
       &resources_.stats(), tile.get(), nullptr, &resources_.compute_tp());
   header.persisted_size = tile->filtered_buffer().size();
-  assert(tile->filtered());
+  iassert(tile->filtered());
 
   write_generic_tile_header(&header);
 

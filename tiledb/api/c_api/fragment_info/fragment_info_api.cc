@@ -36,6 +36,7 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/assert.h"
 
 namespace tiledb::api {
 
@@ -389,7 +390,7 @@ capi_return_t tiledb_fragment_info_get_array_schema_name(
   ensure_fragment_info_is_valid(fragment_info);
   ensure_output_pointer_is_valid(schema_name);
   throw_if_not_ok(fragment_info->get_array_schema_name(fid, schema_name));
-  assert(schema_name != nullptr);
+  passert(*schema_name != nullptr);
   return TILEDB_OK;
 }
 

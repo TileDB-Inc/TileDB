@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -652,7 +653,8 @@ void QueryCondition::apply_ast_node(
           (!frag_meta->has_delete_meta() ||
            frag_meta->loaded_metadata()->get_processed_conditions_set().count(
                condition_marker_) != 0)) {
-        assert(Op == QueryConditionOp::GT);
+        iassert(
+            Op == QueryConditionOp::GT, "op = {}", query_condition_op_str(Op));
         for (size_t c = starting_index; c < starting_index + length; ++c) {
           result_cell_bitmap[c] = 1;
         }

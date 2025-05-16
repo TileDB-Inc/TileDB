@@ -33,6 +33,7 @@
 #ifndef TILEDB_LRU_CACHE_H
 #define TILEDB_LRU_CACHE_H
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/macros.h"
 
 #include <list>
@@ -211,7 +212,7 @@ class LRUCache {
    * @return V* A pointer to the item instance.
    */
   const V* get_item(const K& key) {
-    assert(item_map_.count(key) == 1);
+    passert(item_map_.count(key) == 1, "count = {}", item_map_.count(key));
     return &item_map_.at(key)->object_;
   }
 
@@ -300,7 +301,7 @@ class LRUCache {
 
   /** Evicts the next object. */
   void evict() {
-    assert(!item_ll_.empty());
+    passert(!item_ll_.empty());
 
     auto& item = item_ll_.front();
     item_map_.erase(item.key_);

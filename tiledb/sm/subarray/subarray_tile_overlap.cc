@@ -30,6 +30,7 @@
  * This file implements class SubarrayTileOverlap.
  */
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
@@ -132,7 +133,7 @@ bool SubarrayTileOverlap::contains_range(
 
 void SubarrayTileOverlap::update_range(
     const uint64_t range_idx_start, const uint64_t range_idx_end) {
-  assert(contains_range(range_idx_start, range_idx_end));
+  iassert(contains_range(range_idx_start, range_idx_end));
 
   range_idx_start_offset_ = range_idx_start - range_idx_start_;
   range_idx_end_offset_ = range_idx_end_ - range_idx_end;

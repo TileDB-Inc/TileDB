@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/bitshuffle_filter.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -68,7 +69,7 @@ void BitshuffleFilter::run_forward(
   // Output size does not change with this filter.
   throw_if_not_ok(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
-  assert(output_buf != nullptr);
+  passert(output_buf != nullptr);
 
   // Compute the list of parts to shuffle
   std::vector<ConstBuffer> parts;
@@ -173,7 +174,7 @@ Status BitshuffleFilter::run_reverse(
 
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
-  assert(output_buf != nullptr);
+  passert(output_buf != nullptr);
 
   for (uint32_t i = 0; i < num_parts; i++) {
     uint32_t part_size;

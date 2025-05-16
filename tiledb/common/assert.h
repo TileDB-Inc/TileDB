@@ -83,8 +83,11 @@
 
 #ifdef TILEDB_ASSERTIONS
 
+#include <spdlog/fmt/fmt.h>
 #include <cstdlib>
 #include <iostream>
+
+#define __SOURCE__ (&__FILE__[__SOURCE_DIR_PATH_SIZE__])
 
 namespace tiledb::common {
 
@@ -95,27 +98,31 @@ namespace tiledb::common {
  * of this exception would report it as such.
  */
 class [[nodiscard]] AssertFailure : public std::exception {
+ public:
   AssertFailure(const char* file, uint64_t line, const char* expr)
-      : what_(std::format(
-            "TileDB core library internal error: {}:{}: {}", file, line, expr));
-  {}
+      : what_(fmt::format(
+            "TileDB core library internal error: {}:{}: {}",
+            file,
+            line,
+            expr)) {
+  }
 
   template <typename... Args>
-  Assert(
+  AssertFailure(
       const char* file,
       uint64_t line,
       const char* expr,
-      std::format_string<Args...> fmt,
+      fmt::format_string<Args...> fmt,
       Args&&... fmt_args)
-      : what_(std::format(
+      : what_(fmt::format(
             "TileDB core library internal error: {}:{}: {}\nDetails: {}",
             file,
             line,
             expr,
-            std::format(fmt, std::forward(fmt_args)...))) {
+            fmt::format(fmt, std::forward<Args>(fmt_args)...))) {
   }
 
-  const char* what() override {
+  const char* what() const noexcept override {
     return what_.c_str();
   }
 
@@ -133,8 +140,8 @@ class [[nodiscard]] AssertFailure : public std::exception {
  *
  * Called when the argument to `iassert` is false.
  */
-[[noreturn]] void iassert_failure(
-    const char* file, uint64_t line, const char* expr, const char* fmt) {
+[[noreturn]] [[maybe_unused]] static void iassert_failure(
+    const char* file, uint64_t line, const char* expr) {
   throw AssertFailure(file, line, expr);
 }
 
@@ -149,13 +156,13 @@ class [[nodiscard]] AssertFailure : public std::exception {
  * Called when the argument to `iassert` is false.
  */
 template <typename... Args>
-[[noreturn]] void iassert_failure(
+[[noreturn]] [[maybe_unused]] static void iassert_failure(
     const char* file,
     uint64_t line,
     const char* expr,
-    std::format_string<Args> fmt,
+    fmt::format_string<Args...> fmt,
     Args&&... fmt_args) {
-  throw AssertFailure(file, line, expr, fmt, std::forward(fmt_args)...);
+  throw AssertFailure(file, line, expr, fmt, std::forward<Args>(fmt_args)...);
 }
 
 /**
@@ -169,10 +176,11 @@ template <typename... Args>
  * Called when the argument to `passert` is false.
  */
 template <typename... Args>
-[[noreturn]] void passert_failure(
+[[noreturn]] [[maybe_unused]] static void passert_failure(
     const char* file, uint64_t line, const char* expr) {
   std::cerr << "FATAL TileDB core library internal error: " << expr
             << std::endl;
+  std::cerr << "  " << file << ":" << line << std::endl;
   std::abort();
 }
 
@@ -187,34 +195,39 @@ template <typename... Args>
  * Called when the argument to `passert` is false.
  */
 template <typename... Args>
-[[noreturn]] void passert_failure(
+[[noreturn]] [[maybe_unused]] static void passert_failure(
     const char* file,
     uint64_t line,
     const char* expr,
-    std::format_string<Args> fmt,
+    fmt::format_string<Args...> fmt,
     Args&&... fmt_args) {
   std::cerr << "FATAL TileDB core library internal error: " << expr
             << std::endl;
-  std::cerr << "  Details: " << std::format(fmt, std::forward(fmt_args)...)
-            << std::endl;
+  std::cerr << "  " << file << ":" << line << std::endl;
+  std::cerr << "  Details: "
+            << fmt::format(fmt, std::forward<Args>(fmt_args)...) << std::endl;
   std::abort();
 }
 
-#define iassert(condition, ...)                                             \
-  do {                                                                      \
-    const bool value = (condition);                                         \
-    if (!value) [[unlikely]] {                                              \
-      tiledb::common::iassert_failure(__FILE__, __LINE__, #condition, ...); \
-    }                                                                       \
-    while (0)
+}  // namespace tiledb::common
 
-#define passert(condition, ...)                                             \
-  do {                                                                      \
-    const bool value = (condition);                                         \
-    if (!value) [[unlikely]] {                                              \
-      tiledb::common::passert_failure(__FILE__, __LINE__, #condition, ...); \
-    }                                                                       \
-    while (0)
+#define iassert(condition, ...)                             \
+  do {                                                      \
+    const bool __iassert_value(condition);                  \
+    if (!__iassert_value) [[unlikely]] {                    \
+      tiledb::common::iassert_failure(                      \
+          __SOURCE__, __LINE__, #condition, ##__VA_ARGS__); \
+    }                                                       \
+  } while (0)
+
+#define passert(condition, ...)                             \
+  do {                                                      \
+    const bool __passert_value(condition);                  \
+    if (!__passert_value) [[unlikely]] {                    \
+      tiledb::common::passert_failure(                      \
+          __SOURCE__, __LINE__, #condition, ##__VA_ARGS__); \
+    }                                                       \
+  } while (0)
 
 #else
 

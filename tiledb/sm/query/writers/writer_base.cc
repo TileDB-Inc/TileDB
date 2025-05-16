@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/writers/writer_base.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -125,7 +126,7 @@ WriterBase::WriterBase(
     throw WriterBaseException("Cannot get setting");
   }
 
-  assert(check_coord_dups != nullptr && dedup_coords != nullptr);
+  iassert(check_coord_dups != nullptr && dedup_coords != nullptr);
   check_coord_dups_ =
       disable_checks_consolidation_ ? false : !strcmp(check_coord_dups, "true");
   check_coord_oob_ = !strcmp(check_coord_oob, "true");
@@ -133,28 +134,18 @@ WriterBase::WriterBase(
                             false :
                             !strcmp(check_global_order, "true");
   dedup_coords_ = !strcmp(dedup_coords, "true");
-  bool found = false;
-  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
-  assert(found);
+  offsets_format_mode_ =
+      config_.get<std::string>("sm.var_offsets.mode", Config::must_find);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     throw WriterBaseException(
         "Cannot initialize writer; Unsupported offsets format in "
         "configuration");
   }
-  if (!config_
-           .get<bool>(
-               "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
-           .ok()) {
-    throw WriterBaseException("Cannot get setting");
-  }
-  assert(found);
+  offsets_extra_element_ =
+      config_.get<bool>("sm.var_offsets.extra_element", Config::must_find);
 
-  if (!config_
-           .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
-           .ok()) {
-    throw WriterBaseException("Cannot get setting");
-  }
-  assert(found);
+  offsets_bitsize_ =
+      config_.get<uint32_t>("sm.var_offsets.bitsize", Config::must_find);
 
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     throw WriterBaseException(
@@ -324,7 +315,7 @@ Status WriterBase::calculate_hilbert_values(
   auto max_bucket_val = ((uint64_t)1 << bits) - 1;
 
   // Calculate Hilbert values in parallel
-  assert(hilbert_values.size() >= coords_info_.coords_num_);
+  iassert(hilbert_values.size() >= coords_info_.coords_num_);
   auto status = parallel_for(
       &resources_.compute_tp(), 0, coords_info_.coords_num_, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
@@ -644,7 +635,7 @@ std::vector<NDRange> WriterBase::compute_mbrs(
           auto dim{array_schema_.dimension_ptr(d)};
           const auto& dim_name = dim->name();
           auto tiles_it = tiles.find(dim_name);
-          assert(tiles_it != tiles.end());
+          iassert(tiles_it != tiles.end());
           mbrs[i][d] = dim->var_size() ?
                            dim->compute_mbr_var(
                                tiles_it->second[i].offset_tile(),
@@ -870,7 +861,7 @@ Status WriterBase::filter_tile(
   // Get a copy of the appropriate filter pipeline.
   FilterPipeline filters;
   if (offsets) {
-    assert(!nullable);
+    iassert(!nullable);
     filters = array_schema_.cell_var_offsets_filters();
   } else if (nullable) {
     filters = array_schema_.cell_validity_filters();
@@ -898,10 +889,10 @@ Status WriterBase::filter_tile(
   bool use_chunking = filters.use_tile_chunking(
       array_schema_.var_size(name), array_schema_.version(), tile->type());
 
-  assert(!tile->filtered());
+  iassert(!tile->filtered());
   filters.run_forward(
       stats_, tile, offsets_tile, &resources_.compute_tp(), use_chunking);
-  assert(tile->filtered());
+  iassert(tile->filtered());
 
   return Status::Ok();
 }
@@ -1037,7 +1028,7 @@ Status WriterBase::write_tiles(
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
   auto timer_se = stats_->start_timer("write_num_tiles");
 
-  assert(!tiles->empty());
+  iassert(!tiles->empty());
 
   std::vector<ThreadPool::Task> tasks;
   for (auto& it : *tiles) {
