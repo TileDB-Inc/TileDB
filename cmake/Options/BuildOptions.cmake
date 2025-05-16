@@ -54,5 +54,3 @@ endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(TILEDB_ASSERTIONS TRUE)
 endif()
-
-include(TileDBAssertions)
