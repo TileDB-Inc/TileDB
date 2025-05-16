@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -605,7 +606,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   // Current came from retrieving a multi-range partition from subarray
   if (current_.start_ < current_.end_) {
     auto range_num = (current_.end_ - current_.start_ + 1);
-    assert(1 - constants::multi_range_reduction_in_split <= 1);
+    iassert(1 - constants::multi_range_reduction_in_split <= 1);
     auto new_range_num =
         range_num * (1 - constants::multi_range_reduction_in_split);
     current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
@@ -677,7 +678,7 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Special case of single range and global layout
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
-    assert(current_.start_ == current_.end_);
+    iassert(current_.start_ == current_.end_);
     return Status::Ok();
   }
 
@@ -696,7 +697,10 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   auto cell_order = subarray_.array()->array_schema_latest().cell_order();
   cell_order = (cell_order == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order;
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
-  assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
+  iassert(
+      layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR,
+      "layout = {}",
+      layout);
 
   for (unsigned d = 0; d < dim_num - 1; ++d) {
     unsigned major_dim = (layout == Layout::ROW_MAJOR) ? d : dim_num - d - 1;
@@ -791,8 +795,8 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       state_.start_, state_.end_, config_, compute_tp_);
   const SubarrayTileOverlap* const tile_overlap =
       subarray_.subarray_tile_overlap();
-  assert(tile_overlap->range_idx_start() == state_.start_);
-  assert(tile_overlap->range_idx_end() <= state_.end_);
+  iassert(tile_overlap->range_idx_start() == state_.start_);
+  iassert(tile_overlap->range_idx_end() <= state_.end_);
 
   // Preparation
   auto array = subarray_.array();

@@ -35,6 +35,7 @@
 
 #include <cassert>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/macros.h"
 
 using namespace tiledb::common;
@@ -108,7 +109,7 @@ class UnitTestConfig {
      * @return T the internal attribute value.
      */
     T get() const {
-      assert(set_);
+      passert(set_);
       return attr_;
     }
 
