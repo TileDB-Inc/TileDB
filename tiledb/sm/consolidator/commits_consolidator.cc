@@ -86,7 +86,8 @@ Status CommitsConsolidator::consolidate(
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
-      ArrayDirectoryMode::COMMITS);
+      ArrayDirectoryMode::COMMITS,
+      false);
 
   // Don't try to consolidate empty array
   if (array_dir.commit_uris_to_consolidate().size() == 0) {
@@ -113,7 +114,8 @@ void CommitsConsolidator::vacuum(const char* array_name) {
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
-      ArrayDirectoryMode::COMMITS);
+      ArrayDirectoryMode::COMMITS,
+      false);
 
   // Delete the commits and vacuum files
   auto& vfs = resources_.vfs();

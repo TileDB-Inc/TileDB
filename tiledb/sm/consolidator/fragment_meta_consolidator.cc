@@ -186,7 +186,13 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
 
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
-  ArrayDirectory array_dir(resources_, URI(array_name), 0, UINT64_MAX);
+  ArrayDirectory array_dir(
+      resources_,
+      URI(array_name),
+      0,
+      UINT64_MAX,
+      ArrayDirectoryMode::READ,
+      false);
   const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
 
   // Get the latest timestamp
