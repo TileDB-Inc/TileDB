@@ -1,14 +1,28 @@
+use std::str::Utf8Error;
 use std::sync::Arc;
 
-use datafusion::common::arrow::array::{ArrayData, GenericListArray};
-use datafusion::common::arrow::datatypes::DataType as ArrowDataType;
+use datafusion::common::arrow::array::{
+    self as aa, Array as ArrowArray, FixedSizeListArray, GenericListArray,
+};
+use datafusion::common::arrow::buffer::OffsetBuffer;
+use datafusion::common::arrow::datatypes::Field as ArrowField;
 use datafusion::common::{Column, ScalarValue};
 use datafusion::logical_expr::expr::InList;
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator};
 use itertools::Itertools;
+use num_traits::FromBytes;
 use oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
 use oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
+use oxidize::sm::misc::ByteVecValue;
 use oxidize::sm::query::ast::ASTNode;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Unknown dimension or attribute: {0}")]
+    UnknownField(String),
+    #[error("")]
+    FieldNameNotUtf8(Utf8Error),
+}
 
 pub struct LogicalExpr(pub Expr);
 
@@ -18,103 +32,102 @@ impl LogicalExpr {
     }
 }
 
-macro_rules! from_le_bytes {
-    ($primitive:ty, $arraylen:literal) => {{
-        |bytes| {
-            type ArrayType = [u8; $arraylen];
-            // SAFETY: this macro is invoked after a type and size check
-            let array = ArrayType::try_from(bytes).unwrap();
-            let primitive = <$primitive>::from_le_bytes(array);
-            ScalarValue::from(Some(primitive))
-        }
-    }};
+fn values_iter<T>(
+    datatype: Datatype,
+    cell_val_num: CellValNum,
+    bytes: &ByteVecValue,
+) -> Result<impl Iterator<Item = T>, Error>
+where
+    T: FromBytes,
+    <T as FromBytes>::Bytes: for<'a> TryFrom<&'a [u8]>,
+{
+    if bytes.size() % datatype.value_size() != 0 {
+        todo!()
+    }
+
+    type B<T> = <T as FromBytes>::Bytes;
+
+    Ok(bytes.as_slice().chunks(datatype.value_size()).map(|slice| {
+        let array = match B::<T>::try_from(slice) {
+            Ok(array) => array,
+            Err(_) => {
+                // SAFETY: we assume that `B` is a fixed-length array type whose length is equal to
+                // `value_type.value_size()`. We know that `slice.len()` is equal to that length.
+                //
+                // NB: we do this instead of `unwrap()` to avoid a `Debug` trait bound
+                // which we expect not to use.
+                unreachable!()
+            }
+        };
+
+        T::from_ne_bytes(&array)
+    }))
 }
 
 fn leaf_ast_to_binary_expr(
     schema: &ArraySchema,
     ast: &ASTNode,
     op: Operator,
-) -> anyhow::Result<Expr> {
+) -> Result<Expr, Error> {
     let Some(field) = schema.field_cxx(ast.get_field_name()) else {
-        todo!()
+        return Err(Error::UnknownField(
+            ast.get_field_name().to_string_lossy().into_owned(),
+        ));
     };
 
-    fn apply<F>(
-        field: Field,
-        ast: &ASTNode,
-        operator: Operator,
-        value_to_scalar: F,
-    ) -> anyhow::Result<Expr>
+    fn apply<T, A>(field: Field, ast: &ASTNode, operator: Operator) -> Result<Expr, Error>
     where
-        F: Fn(&[u8]) -> ScalarValue,
+        T: FromBytes,
+        <T as FromBytes>::Bytes: for<'a> TryFrom<&'a [u8]>,
+        ScalarValue: From<Option<T>>,
+        A: ArrowArray + From<Vec<T>> + 'static,
     {
-        let column = Expr::Column(Column::from_name(field.name()?));
-        let value_type = field.datatype();
-        let bytes = ast.get_data();
-        if bytes.size() % value_type.value_size() != 0 {
-            todo!()
-        }
+        let column = Expr::Column(Column::from_name(
+            field.name().map_err(Error::FieldNameNotUtf8)?,
+        ));
+
+        let mut values = values_iter::<T>(field.datatype(), field.cell_val_num(), ast.get_data())?;
+
         let right = match field.cell_val_num() {
-            CellValNum::Single => value_to_scalar(ast.get_data().as_slice()),
-            CellValNum::Fixed(_) => todo!(),
+            CellValNum::Single => ScalarValue::from(values.next()),
+            CellValNum::Fixed(nz) => {
+                let values = values.collect::<Vec<T>>();
+                if values.len() != nz.get() as usize {
+                    todo!()
+                }
+                let Ok(fixed_size) = i32::try_from(nz.get()) else {
+                    todo!()
+                };
+                let arrow_values = A::from(values);
+                let element_field =
+                    ArrowField::new_list_field(arrow_values.data_type().clone(), false);
+                ScalarValue::FixedSizeList(
+                    FixedSizeListArray::new(
+                        element_field.into(),
+                        fixed_size,
+                        Arc::new(arrow_values) as Arc<dyn ArrowArray>,
+                        None,
+                    )
+                    .into(),
+                )
+            }
             CellValNum::Var => {
-                let values = ast
-                    .get_data()
-                    .as_slice()
-                    .chunks(value_type.value_size())
-                    .map(value_to_scalar)
-                    .collect::<Vec<ScalarValue>>();
-
-                // NB: we cannot just use `ScalarValue::new_large_list` because
-                // datafusion does not handle non-nullable fields of lists well.
-                // We have to manually rewrite the array to have a non-nullable
-                // field.
-
-                let list = {
-                    let l = Arc::try_unwrap(ScalarValue::new_large_list(
-                        &values,
-                        &values[0].data_type(),
-                    ));
-
-                    // SAFETY: the only reference is created within this scope
-                    l.unwrap()
-                };
-
-                let adata = ArrayData::from(list);
-                assert_eq!(1, adata.child_data().len());
-                assert_eq!(0, adata.child_data()[0].null_count());
-
-                let non_nullable_child = {
-                    // SAFETY: TODO
-                    let maybe = ArrayData::builder(adata.child_data()[0].data_type().clone())
-                        .len(adata.child_data()[0].len())
-                        .add_buffers(adata.child_data()[0].buffers().to_vec())
-                        .build();
-                    maybe.unwrap()
-                };
-
-                let non_null_field_list_type =
-                    ArrowDataType::new_large_list(non_nullable_child.data_type().clone(), false);
-
-                let non_null_field_adata = {
-                    let maybe = ArrayData::try_new(
-                        non_null_field_list_type,
-                        adata.len(),
-                        adata.nulls().map(|n| n.buffer().clone()),
-                        adata.offset(),
-                        adata.buffers().to_vec(),
-                        vec![non_nullable_child],
-                    );
-
-                    // SAFETY: TODO
-                    maybe.unwrap()
-                };
-
-                ScalarValue::LargeList(Arc::new(GenericListArray::<i64>::from(
-                    non_null_field_adata,
-                )))
+                let values = values.collect::<Vec<T>>();
+                let arrow_values = A::from(values);
+                let element_field =
+                    ArrowField::new_list_field(arrow_values.data_type().clone(), false);
+                ScalarValue::LargeList(
+                    GenericListArray::<i64>::new(
+                        element_field.into(),
+                        OffsetBuffer::<i64>::from_lengths(std::iter::once(arrow_values.len())),
+                        Arc::new(arrow_values) as Arc<dyn ArrowArray>,
+                        None,
+                    )
+                    .into(),
+                )
             }
         };
+
         Ok(Expr::BinaryExpr(BinaryExpr {
             left: Box::new(column),
             op: operator,
@@ -125,9 +138,9 @@ fn leaf_ast_to_binary_expr(
     let value_type = field.datatype();
 
     match value_type {
-        Datatype::INT8 => apply(field, ast, op, from_le_bytes!(i8, 1)),
-        Datatype::INT16 => apply(field, ast, op, from_le_bytes!(i16, 2)),
-        Datatype::INT32 => apply(field, ast, op, from_le_bytes!(i32, 4)),
+        Datatype::INT8 => apply::<i8, aa::Int8Array>(field, ast, op),
+        Datatype::INT16 => apply::<i16, aa::Int16Array>(field, ast, op),
+        Datatype::INT32 => apply::<i32, aa::Int32Array>(field, ast, op),
         Datatype::INT64
         | Datatype::DATETIME_YEAR
         | Datatype::DATETIME_MONTH
@@ -150,7 +163,7 @@ fn leaf_ast_to_binary_expr(
         | Datatype::TIME_NS
         | Datatype::TIME_PS
         | Datatype::TIME_FS
-        | Datatype::TIME_AS => apply(field, ast, op, from_le_bytes!(i64, 8)),
+        | Datatype::TIME_AS => apply::<i64, aa::Int64Array>(field, ast, op),
         Datatype::UINT8
         | Datatype::STRING_ASCII
         | Datatype::STRING_UTF8
@@ -158,17 +171,24 @@ fn leaf_ast_to_binary_expr(
         | Datatype::BLOB
         | Datatype::BOOL
         | Datatype::GEOM_WKB
-        | Datatype::GEOM_WKT => apply(field, ast, op, from_le_bytes!(u8, 1)),
+        | Datatype::GEOM_WKT => apply::<u8, aa::UInt8Array>(field, ast, op),
         Datatype::UINT16 | Datatype::STRING_UTF16 | Datatype::STRING_UCS2 => {
-            apply(field, ast, op, from_le_bytes!(u16, 2))
+            apply::<u16, aa::UInt16Array>(field, ast, op)
         }
         Datatype::UINT32 | Datatype::STRING_UTF32 | Datatype::STRING_UCS4 => {
-            apply(field, ast, op, from_le_bytes!(u32, 4))
+            apply::<u32, aa::UInt32Array>(field, ast, op)
         }
-        Datatype::UINT64 => apply(field, ast, op, from_le_bytes!(u64, 8)),
-        Datatype::FLOAT32 => apply(field, ast, op, from_le_bytes!(f32, 4)),
-        Datatype::FLOAT64 => apply(field, ast, op, from_le_bytes!(f64, 8)),
-        Datatype::CHAR => apply(field, ast, op, from_le_bytes!(std::ffi::c_char, 1)),
+        Datatype::UINT64 => apply::<u64, aa::UInt64Array>(field, ast, op),
+        Datatype::FLOAT32 => apply::<f32, aa::Float32Array>(field, ast, op),
+        Datatype::FLOAT64 => apply::<f64, aa::Float64Array>(field, ast, op),
+        Datatype::CHAR => {
+            // CHAR requires signed/unsigned check due to platform differences
+            if std::ffi::c_char::MIN == 0 {
+                apply::<u8, aa::UInt8Array>(field, ast, op)
+            } else {
+                apply::<i8, aa::Int8Array>(field, ast, op)
+            }
+        }
         _ => todo!(),
     }
 }
@@ -178,28 +198,19 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> an
         todo!()
     };
 
-    fn apply<F>(
-        field: Field,
-        ast: &ASTNode,
-        negated: bool,
-        value_to_scalar: F,
-    ) -> anyhow::Result<Expr>
+    fn apply<T>(field: Field, ast: &ASTNode, negated: bool) -> anyhow::Result<Expr>
     where
-        F: Fn(&[u8]) -> ScalarValue,
+        T: FromBytes,
+        <T as FromBytes>::Bytes: for<'a> TryFrom<&'a [u8]>,
+        ScalarValue: From<T>,
     {
         let column = Expr::Column(Column::from_name(field.name()?));
-        let value_type = field.datatype();
-        let bytes = ast.get_data();
-        if bytes.size() % value_type.value_size() != 0 {
-            todo!()
-        }
 
-        let in_list = bytes
-            .as_slice()
-            .chunks(value_type.value_size())
-            .map(value_to_scalar)
+        let in_list = values_iter::<T>(field.datatype(), field.cell_val_num(), ast.get_data())?
+            .map(ScalarValue::from)
             .map(Expr::Literal)
             .collect::<Vec<_>>();
+
         Ok(Expr::InList(InList {
             expr: Box::new(column),
             list: in_list,
@@ -209,16 +220,16 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> an
 
     let value_type = field.datatype();
     match value_type {
-        Datatype::INT8 => apply(field, ast, negated, from_le_bytes!(i8, 1)),
-        Datatype::INT16 => apply(field, ast, negated, from_le_bytes!(i16, 2)),
-        Datatype::INT32 => apply(field, ast, negated, from_le_bytes!(i32, 4)),
-        Datatype::INT64 => apply(field, ast, negated, from_le_bytes!(i64, 8)),
-        Datatype::UINT8 => apply(field, ast, negated, from_le_bytes!(u8, 1)),
-        Datatype::UINT16 => apply(field, ast, negated, from_le_bytes!(u16, 2)),
-        Datatype::UINT32 => apply(field, ast, negated, from_le_bytes!(u32, 4)),
-        Datatype::UINT64 => apply(field, ast, negated, from_le_bytes!(u64, 8)),
-        Datatype::FLOAT32 => apply(field, ast, negated, from_le_bytes!(f32, 4)),
-        Datatype::FLOAT64 => apply(field, ast, negated, from_le_bytes!(f64, 8)),
+        Datatype::INT8 => apply::<i8>(field, ast, negated),
+        Datatype::INT16 => apply::<i16>(field, ast, negated),
+        Datatype::INT32 => apply::<i32>(field, ast, negated),
+        Datatype::INT64 => apply::<i64>(field, ast, negated),
+        Datatype::UINT8 => apply::<u8>(field, ast, negated),
+        Datatype::UINT16 => apply::<u16>(field, ast, negated),
+        Datatype::UINT32 => apply::<u32>(field, ast, negated),
+        Datatype::UINT64 => apply::<u64>(field, ast, negated),
+        Datatype::FLOAT32 => apply::<f32>(field, ast, negated),
+        Datatype::FLOAT64 => apply::<f64>(field, ast, negated),
         _ => todo!(),
     }
 }
@@ -281,25 +292,50 @@ fn to_datafusion_impl(schema: &ArraySchema, query_condition: &ASTNode) -> anyhow
             QueryConditionCombinationOp::OR => {
                 combination_ast_to_binary_expr(schema, query_condition, Operator::Or)
             }
-            QueryConditionCombinationOp::NOT => todo!(),
+            QueryConditionCombinationOp::NOT => {
+                let children = query_condition.children().collect::<Vec<_>>();
+                if children.len() != 1 {
+                    todo!()
+                }
+                let negate_arg = to_datafusion_impl(schema, &children[0])?;
+                Ok(!negate_arg)
+            }
             _ => todo!(),
         }
     } else if query_condition.is_null_test() {
         leaf_ast_to_null_test(schema, query_condition)
     } else {
         match *query_condition.get_op() {
-            QueryConditionOp::LT => leaf_ast_to_binary_expr(schema, query_condition, Operator::Lt),
-            QueryConditionOp::LE => {
-                leaf_ast_to_binary_expr(schema, query_condition, Operator::LtEq)
-            }
-            QueryConditionOp::GT => leaf_ast_to_binary_expr(schema, query_condition, Operator::Gt),
-            QueryConditionOp::GE => {
-                leaf_ast_to_binary_expr(schema, query_condition, Operator::GtEq)
-            }
-            QueryConditionOp::EQ => leaf_ast_to_binary_expr(schema, query_condition, Operator::Eq),
-            QueryConditionOp::NE => {
-                leaf_ast_to_binary_expr(schema, query_condition, Operator::NotEq)
-            }
+            QueryConditionOp::LT => Ok(leaf_ast_to_binary_expr(
+                schema,
+                query_condition,
+                Operator::Lt,
+            )?),
+            QueryConditionOp::LE => Ok(leaf_ast_to_binary_expr(
+                schema,
+                query_condition,
+                Operator::LtEq,
+            )?),
+            QueryConditionOp::GT => Ok(leaf_ast_to_binary_expr(
+                schema,
+                query_condition,
+                Operator::Gt,
+            )?),
+            QueryConditionOp::GE => Ok(leaf_ast_to_binary_expr(
+                schema,
+                query_condition,
+                Operator::GtEq,
+            )?),
+            QueryConditionOp::EQ => Ok(leaf_ast_to_binary_expr(
+                schema,
+                query_condition,
+                Operator::Eq,
+            )?),
+            QueryConditionOp::NE => Ok(leaf_ast_to_binary_expr(
+                schema,
+                query_condition,
+                Operator::NotEq,
+            )?),
             QueryConditionOp::IN => leaf_ast_to_in_list(schema, query_condition, false),
             QueryConditionOp::NOT_IN => leaf_ast_to_in_list(schema, query_condition, true),
             QueryConditionOp::ALWAYS_TRUE => Ok(Expr::Literal(ScalarValue::Boolean(Some(true)))),
