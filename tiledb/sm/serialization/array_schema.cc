@@ -179,6 +179,7 @@ Status filter_to_capnp(
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
     case FilterType::FILTER_XOR:
     case FilterType::FILTER_DEPRECATED:
+    case FilterType::INTERNAL_FILTER_COUNT:
       break;
   }
 
