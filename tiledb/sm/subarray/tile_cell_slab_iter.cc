@@ -259,7 +259,7 @@ void TileCellSlabIter<T>::advance_row() {
 
 template <class T>
 void TileCellSlabIter<T>::init_cell_slab_lengths() {
-  if (layout_ == Layout::ROW_MAJOR) {
+  if (layout_ == Layout::ROW_MAJOR || layout_ == Layout::UNORDERED) {
     auto range_num = ranges_[dim_num_ - 1].size();
     cell_slab_lengths_.resize(range_num);
     for (size_t i = 0; i < range_num; ++i) {
