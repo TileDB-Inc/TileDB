@@ -685,8 +685,8 @@ class Config {
    *                     exists.
    */
   Config(
-      const std::optional<std::string> profile_name = std::nullopt,
-      const std::optional<std::string> profile_homedir = std::nullopt);
+      const std::optional<std::string>& profile_name = std::nullopt,
+      const std::optional<std::string>& profile_homedir = std::nullopt);
 
   /** Destructor. */
   ~Config();

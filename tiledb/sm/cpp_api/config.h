@@ -167,8 +167,8 @@ class Config {
   /* ********************************* */
 
   Config(
-      const std::optional<std::string> profile_name,
-      const std::optional<std::string> profile_homedir) {
+      const std::optional<std::string>& profile_name,
+      const std::optional<std::string>& profile_homedir) {
     create_config(profile_name, profile_homedir);
   }
 
@@ -1105,8 +1105,8 @@ class Config {
 
   /** Creates the TileDB C config object. */
   void create_config(
-      const std::optional<std::string> profile_name = std::nullopt,
-      const std::optional<std::string> profile_homedir = std::nullopt) {
+      const std::optional<std::string>& profile_name = std::nullopt,
+      const std::optional<std::string>& profile_homedir = std::nullopt) {
     tiledb_config_t* config;
     tiledb_error_t* err;
     tiledb_config_alloc_with_profile(

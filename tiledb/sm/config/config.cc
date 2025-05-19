@@ -552,8 +552,8 @@ const std::set<std::string> Config::unserialized_params_ = {
 /* ****************************** */
 
 Config::Config(
-    const std::optional<std::string> profile_name,
-    const std::optional<std::string> profile_homedir) {
+    const std::optional<std::string>& profile_name,
+    const std::optional<std::string>& profile_homedir) {
   param_values_ = default_config_values;
 
   try {

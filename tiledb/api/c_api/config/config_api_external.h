@@ -71,6 +71,31 @@ TILEDB_EXPORT capi_return_t tiledb_config_alloc(
     tiledb_config_t** config, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
+ * Creates a TileDB config based on a profile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_config_t* config;
+ * tiledb_error_t* error = NULL;
+ * tiledb_config_alloc_with_profile(
+ *    &config, "my_name", "my_homedir", &error);
+ * @endcode
+ *
+ * @param config The config to be created.
+ * @param profile_name The name of the profile to be used.
+ * @param profile_homedir The home directory of the profile.
+ * @param error Error object returned upon error (`NULL` if there is
+ *    no error).
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_config_alloc_with_profile(
+    tiledb_config_t** config,
+    const char* profile_name,
+    const char* profile_homedir,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
+
+/**
  * Frees a TileDB config.
  *
  * **Example:**

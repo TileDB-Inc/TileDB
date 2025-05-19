@@ -54,8 +54,18 @@ capi_return_t tiledb_config_alloc_with_profile(
     const char* profile_name,
     const char* profile_homedir) {
   ensure_output_pointer_is_valid(config);
+
+  // Convert profile_name and profile_homedir to std::optional<std::string>
+  std::optional<std::string> profile_name_opt =
+      (profile_name != nullptr) ? std::optional<std::string>(profile_name) :
+                                  std::nullopt;
+  std::optional<std::string> profile_homedir_opt =
+      (profile_homedir != nullptr) ?
+          std::optional<std::string>(profile_homedir) :
+          std::nullopt;
+
   *config = tiledb_config_handle_t::make_handle(
-      tiledb::sm::Config(profile_name, profile_homedir));
+      tiledb::sm::Config(profile_name_opt, profile_homedir_opt));
   return TILEDB_OK;
 }
 
