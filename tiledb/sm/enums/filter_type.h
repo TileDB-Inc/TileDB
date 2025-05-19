@@ -145,17 +145,18 @@ inline Status filter_type_enum(
   return Status::Ok();
 }
 
-/** Throws error if the input Filtertype enum is not between 0 and 19. */
-inline void ensure_filtertype_is_valid(uint8_t type) {
-  if (type > 19 || filter_type_str(FilterType(type)) == constants::empty_str) {
+/** Throws error if the input FilterType is not a valid filter type. */
+inline void ensure_filtertype_is_valid(FilterType type) {
+  if (type >= FilterType::INTERNAL_FILTER_COUNT) {
     throw std::runtime_error(
-        "Invalid FilterType (" + std::to_string(type) + ")");
+        "Invalid FilterType (" + std::to_string(::stdx::to_underlying(type)) +
+        ")");
   }
 }
 
-/** Throws error if the input Filtertype's enum is not between 0 and 19. */
-inline void ensure_filtertype_is_valid(FilterType type) {
-  ensure_filtertype_is_valid(::stdx::to_underlying(type));
+/** Throws error if the input FilterType enum is not a valid filter type. */
+inline void ensure_filtertype_is_valid(uint8_t type) {
+  ensure_filtertype_is_valid(FilterType(type));
 }
 
 }  // namespace tiledb::sm

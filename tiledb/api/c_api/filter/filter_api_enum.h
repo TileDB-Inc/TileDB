@@ -65,6 +65,8 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_TYPE_ENUM(FILTER_WEBP) = 18,
     /** Delta filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_DELTA) = 19,
+    /** The number of filter type enums. Must always be the last enum value. */
+    TILEDB_FILTER_TYPE_ENUM(INTERNAL_FILTER_COUNT) = 20,
 #endif
 
 #ifdef TILEDB_FILTER_OPTION_ENUM

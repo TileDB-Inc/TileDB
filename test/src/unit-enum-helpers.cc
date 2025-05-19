@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@
 
 #include "test/support/tdb_catch.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
 
 using namespace tiledb::sm;
 
@@ -70,4 +71,28 @@ TEST_CASE("Test datatype_is_byte", "[enums][datatype][datatype_is_byte]") {
 
   CHECK(datatype_is_byte(datatype));
   CHECK(!datatype_is_byte(Datatype::BOOL));
+}
+
+TEST_CASE(
+    "Test ensure_filtertype_is_valid",
+    "[enums][filter_type][ensure_filtertype_is_valid]") {
+  auto filter_deprecated = ::stdx::to_underlying(FilterType::FILTER_DEPRECATED);
+  auto filter_internal =
+      ::stdx::to_underlying(FilterType::INTERNAL_FILTER_AES_256_GCM);
+  auto filter_max = ::stdx::to_underlying(FilterType::INTERNAL_FILTER_COUNT);
+
+  for (auto filter_type = 0; filter_type <= filter_max; filter_type++) {
+    if (filter_type_str(FilterType(filter_type)) == constants::empty_str) {
+      if (filter_type == filter_deprecated || filter_type == filter_internal) {
+        // filter_[deprecated, internal] have valid enums but empty strings.
+        CHECK_NOTHROW(ensure_filtertype_is_valid(filter_type));
+      } else {
+        // invalid enums (>= filter_max) will throw.
+        CHECK_THROWS(ensure_filtertype_is_valid(filter_type));
+      }
+    } else {
+      // all other filter types have valid enums and strings.
+      CHECK_NOTHROW(ensure_filtertype_is_valid(filter_type));
+    }
+  }
 }
