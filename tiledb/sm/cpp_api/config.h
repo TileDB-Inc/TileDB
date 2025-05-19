@@ -167,8 +167,8 @@ class Config {
   /* ********************************* */
 
   Config(
-      const std::optional<std::string>& profile_name,
-      const std::optional<std::string>& profile_homedir) {
+      const std::optional<std::string>& profile_name = std::nullopt,
+      const std::optional<std::string>& profile_homedir = std::nullopt) {
     create_config(profile_name, profile_homedir);
   }
 
