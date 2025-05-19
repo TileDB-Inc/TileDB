@@ -105,45 +105,6 @@ class RestProfile {
   /** Destructor. */
   ~RestProfile() = default;
 
-  /**
-   * Returns an optional RestProfile with the given name, which has value _iff_
-   * it has been saved to the local file; `std::nullopt` otherwise.
-   *
-   * @note This API will _not_ parse the `cloud.json` path. This method is
-   * expected to be used _primarily_ by a `Config` object inheriting
-   * written-parameters off of a `RestProfile`. Because a `RestProfile` is
-   * immutable, this method will guarantee its state (validity) at loadtime
-   * (the top of its usage stack).
-   *
-   * @param name The name of the profile to load.
-   * @param homedir The user's $HOME directory, or desired in-test path.
-   * @return The RestProfile with the given name, iff it's been saved.
-   */
-  static inline std::optional<RestProfile> load_if_exists(
-      const std::string& name, const std::string& homedir) {
-    auto filepath = homedir + constants::rest_profile_filepath;
-
-    // If the local file exists, return the profile of the given name, if
-    // exists.
-    if (std::filesystem::exists(filepath)) {
-      json data;
-      {
-        std::ifstream file(filepath);
-        try {
-          file >> data;
-        } catch (...) {
-          throw RestProfileException(
-              "Error parsing file \'" + filepath + "\'.");
-        }
-      }
-      // if (read_data(filepath).contains(name)) { // #NTS static linking issues
-      if (data.contains(name)) {
-        return RestProfile(name, homedir);
-      }
-    }
-    return std::nullopt;
-  }
-
   /* ****************************** */
   /*              API               */
   /* ****************************** */
@@ -160,7 +121,8 @@ class RestProfile {
    * @return The RestProfile.
    */
   static RestProfile load_profile(
-      const std::string& name, const std::string& homedir);
+      const std::optional<std::string>& name = std::nullopt,
+      const std::optional<std::string>& homedir = std::nullopt);
 
   /**
    * Returns the name of this profile.

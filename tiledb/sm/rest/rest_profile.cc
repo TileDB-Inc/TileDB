@@ -144,9 +144,13 @@ RestProfile::RestProfile(const std::string& name) {
 /* ****************************** */
 
 RestProfile RestProfile::load_profile(
-    const std::string& name, const std::string& homedir) {
+    const std::optional<std::string>& name,
+    const std::optional<std::string>& homedir) {
   // create a profile object
-  RestProfile profile(name, homedir);
+  RestProfile profile =
+      !name.has_value()   ? RestProfile(RestProfile::DEFAULT_NAME) :
+      homedir.has_value() ? RestProfile(name.value(), homedir.value()) :
+                            RestProfile(name.value());
 
   // load the profile
   try {
@@ -154,7 +158,7 @@ RestProfile RestProfile::load_profile(
     return profile;
   } catch (const RestProfileException& e) {
     throw RestProfileException(
-        "Failed to load profile '" + name + "': " + e.what());
+        "Failed to load profile '" + name.value() + "': " + e.what());
   }
 }
 

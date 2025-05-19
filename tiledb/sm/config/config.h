@@ -673,8 +673,20 @@ class Config {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Config();
+  /**
+   * Constructor.
+   *
+   * @param profile_name The name of the profile which will be used to load
+   *                     the default parameters. If `nullopt`, the default
+   *                     profile will be used if it exists.
+   * @param profile_homedir The home directory of the profile which will be
+   *                     used to load the default parameters. If `nullopt`,
+   *                     the default profile home directory will be used if it
+   *                     exists.
+   */
+  Config(
+      const std::optional<std::string> profile_name = std::nullopt,
+      const std::optional<std::string> profile_homedir = std::nullopt);
 
   /** Destructor. */
   ~Config();
