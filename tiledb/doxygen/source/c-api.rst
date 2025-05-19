@@ -173,6 +173,8 @@ Config
 ------
 .. doxygenfunction:: tiledb_config_alloc
     :project: TileDB-C
+.. doxygenfunction:: tiledb_config_alloc_with_profile
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_config_free
     :project: TileDB-C
 .. doxygenfunction:: tiledb_config_set

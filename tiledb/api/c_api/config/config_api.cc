@@ -49,6 +49,16 @@ capi_return_t tiledb_config_alloc(tiledb_config_handle_t** config) {
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_config_alloc_with_profile(
+    tiledb_config_handle_t** config,
+    const char* profile_name,
+    const char* profile_homedir) {
+  ensure_output_pointer_is_valid(config);
+  *config = tiledb_config_handle_t::make_handle(
+      tiledb::sm::Config(profile_name, profile_homedir));
+  return TILEDB_OK;
+}
+
 void tiledb_config_free(tiledb_config_handle_t** config) {
   ensure_output_pointer_is_valid(config);
   ensure_config_is_valid(*config);
@@ -176,6 +186,16 @@ using tiledb::api::api_entry_error;
 
 CAPI_INTERFACE(config_alloc, tiledb_config_t** config, tiledb_error_t** error) {
   return api_entry_error<tiledb::api::tiledb_config_alloc>(error, config);
+}
+
+CAPI_INTERFACE(
+    config_alloc_with_profile,
+    tiledb_config_t** config,
+    const char* profile_name,
+    const char* profile_homedir,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_alloc_with_profile>(
+      error, config, profile_name, profile_homedir);
 }
 
 /*
