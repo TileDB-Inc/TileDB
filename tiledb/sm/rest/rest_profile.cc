@@ -30,8 +30,8 @@
  * This file implements class RestProfile.
  */
 
-#include <iostream>
 #include <filesystem>
+#include <iostream>
 
 #include "rest_profile.h"
 #include "tiledb/common/random/random_label.h"
