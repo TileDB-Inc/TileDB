@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -166,8 +166,10 @@ class Config {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Config() {
-    create_config();
+  Config(
+      const std::optional<std::string>& profile_name = std::nullopt,
+      const std::optional<std::string>& profile_homedir = std::nullopt) {
+    create_config(profile_name, profile_homedir);
   }
 
   /**
@@ -869,6 +871,12 @@ class Config {
    * - `config.logging_format` <br>
    *    The logging format configured (DEFAULT or JSON)
    *    **Default**: "DEFAULT"
+   * - `profile_homedir` <br>
+   *    The local directory where the user profiles are saved. <br>
+   *    **Default**: ""
+   * - `profile_name` <br>
+   *    The name of the Profile to be used for REST transactions. <br>
+   *    **Default**: ""
    * - `rest.server_address` <br>
    *    URL for REST server to use for remote arrays. <br>
    *    **Default**: "https://api.tiledb.com"
@@ -1096,10 +1104,16 @@ class Config {
   /* ********************************* */
 
   /** Creates the TileDB C config object. */
-  void create_config() {
+  void create_config(
+      const std::optional<std::string>& profile_name = std::nullopt,
+      const std::optional<std::string>& profile_homedir = std::nullopt) {
     tiledb_config_t* config;
     tiledb_error_t* err;
-    tiledb_config_alloc(&config, &err);
+    tiledb_config_alloc_with_profile(
+        &config,
+        profile_name ? profile_name->c_str() : nullptr,
+        profile_homedir ? profile_homedir->c_str() : nullptr,
+        &err);
     impl::check_config_error(err);
 
     config_ = std::shared_ptr<tiledb_config_t>(config, Config::free);

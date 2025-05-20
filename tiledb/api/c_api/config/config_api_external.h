@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This file declares the configuration section of the C API for TileDB. It
- * include both configurations and their iterators.
+ * includes both configurations and their iterators.
  */
 
 #ifndef TILEDB_CAPI_CONFIG_EXTERNAL_H
@@ -69,6 +69,31 @@ typedef struct tiledb_config_iter_handle_t tiledb_config_iter_t;
  */
 TILEDB_EXPORT capi_return_t tiledb_config_alloc(
     tiledb_config_t** config, tiledb_error_t** error) TILEDB_NOEXCEPT;
+
+/**
+ * Creates a TileDB config based on a profile.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_config_t* config;
+ * tiledb_error_t* error = NULL;
+ * tiledb_config_alloc_with_profile(
+ *    &config, "my_name", "my_homedir", &error);
+ * @endcode
+ *
+ * @param config The config to be created.
+ * @param profile_name The name of the profile to be used.
+ * @param profile_homedir The home directory of the profile.
+ * @param error Error object returned upon error (`NULL` if there is
+ *    no error).
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_config_alloc_with_profile(
+    tiledb_config_t** config,
+    const char* profile_name,
+    const char* profile_homedir,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Frees a TileDB config.
@@ -697,6 +722,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `config.logging_format` <br>
  *    The logging format configured (DEFAULT or JSON)
  *    **Default**: "DEFAULT"
+ * - `profile_homedir` <br>
+ *    The local directory where the user profiles are saved. <br>
+ *    **Default**: ""
+ * - `profile_name` <br>
+ *    The name of the Profile to be used for REST transactions. <br>
+ *    **Default**: ""
  * - `rest.server_address` <br>
  *    URL for REST server to use for remote arrays. <br>
  *    **Default**: "https://api.tiledb.com"

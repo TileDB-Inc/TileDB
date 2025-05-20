@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -79,6 +79,12 @@ class Config {
   /* ****************************** */
   /*        CONFIG DEFAULTS         */
   /* ****************************** */
+
+  /** The default Profile directory to be used by REST. */
+  static const std::string PROFILE_HOMEDIR;
+
+  /** The default Profile name to be used by REST. */
+  static const std::string PROFILE_NAME;
 
   /** The default address for rest server. */
   static const std::string REST_SERVER_DEFAULT_ADDRESS;
@@ -667,8 +673,20 @@ class Config {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Config();
+  /**
+   * Constructor.
+   *
+   * @param profile_name The name of the profile which will be used to load
+   *                     the default parameters. If `nullopt`, the default
+   *                     profile will be used if it exists.
+   * @param profile_homedir The home directory of the profile which will be
+   *                     used to load the default parameters. If `nullopt`,
+   *                     the default profile home directory will be used if it
+   *                     exists.
+   */
+  Config(
+      const std::optional<std::string>& profile_name = std::nullopt,
+      const std::optional<std::string>& profile_homedir = std::nullopt);
 
   /** Destructor. */
   ~Config();
@@ -812,18 +830,24 @@ class Config {
   const char* get_from_config(const std::string& param, bool* found) const;
 
   /**
-   * Get a configuration parameter from config object or environmental variables
+   * Get a configuration parameter from config object or a fallback
+   * (environmental variables or profiles).
+   *
+   * @pre When using the profiles fallback, the profile to be parsed has been
+   * `save_to_file()`, and its name and directory set on the config as
+   * `"profile_name"` and `"profile_homedir"` respectively.
    *
    * The order we look for values are
-   * 1. user set config parameters
+   * 1. user-set config parameters
    * 2. env variables
-   * 3. default config value
+   * 3. user-set profiles
+   * 4. default config value
    *
    * @param param parameter to fetch
    * @param found pointer to bool to set if parameter was found or not
    * @return parameter value if found or empty string if not
    */
-  const char* get_from_config_or_env(
+  const char* get_from_config_or_fallback(
       const std::string& param, bool* found) const;
 
   template <class T, bool must_find_>

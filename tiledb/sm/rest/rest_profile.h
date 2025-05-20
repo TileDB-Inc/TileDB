@@ -41,6 +41,7 @@
 #include "external/include/nlohmann/json.hpp"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/filesystem/home_directory.h"
+#include "tiledb/sm/misc/constants.h"
 
 using json = nlohmann::json;
 using namespace tiledb::common;
@@ -109,12 +110,35 @@ class RestProfile {
   /* ****************************** */
 
   /**
+   * Factory function to load a profile from the local file.
+   *
+   * @note This API will _not_ parse the `cloud.json` path. This method is
+   * expected to be used _primarily_ by a `Config` object inheriting
+   * written-parameters off of a `RestProfile`.
+   *
+   * @param name The name of the profile to load.
+   * @param homedir The user's $HOME directory, or desired in-test path.
+   * @return The RestProfile.
+   */
+  static RestProfile load_profile(
+      const std::optional<std::string>& name = std::nullopt,
+      const std::optional<std::string>& homedir = std::nullopt);
+
+  /**
    * Returns the name of this profile.
    *
    * @return std::string The name of this profile.
    */
   inline const std::string& name() const {
     return name_;
+  }
+
+  inline const std::map<std::string, std::string>& param_values() const {
+    return param_values_;
+  }
+
+  inline std::optional<bool> get_verify_ssl() const {
+    return verify_ssl_;
   }
 
   /**
@@ -140,13 +164,23 @@ class RestProfile {
    * @param param The parameter to fetch.
    * @return The value of the given parameter.
    */
-  std::string get_param(const std::string& param) const;
+  const std::string& get_param(const std::string& param) const;
 
-  /** Saves this profile to the local file. */
-  void save_to_file();
+  /**
+   * Saves this profile to the local file.
+   *
+   * @param overwrite If true, overwrite the existing profile with the same
+   * name.
+   */
+  void save_to_file(const bool overwrite = false);
 
-  /** Loads this profile from the local file. */
-  void load_from_file();
+  /**
+   * Loads this profile from the local file.
+   *
+   * @param check_old_filepath If true, check the old filepath for the
+   * profile.
+   */
+  void load_from_file(const bool check_old_filepath = true);
 
   /** Removes this profile from the local file. */
   void remove_from_file();
@@ -205,6 +239,16 @@ class RestProfile {
       std::make_pair(
           "rest.server_address", RestProfile::DEFAULT_SERVER_ADDRESS),
       std::make_pair("rest.username", RestProfile::DEFAULT_USERNAME)};
+
+  /**
+   * Flag which tracks the `Config::verify_ssl` parameter inherited from
+   * `cloud.json`.
+   *
+   * @note This is a temporary workaround, to be removed once the cloud API
+   * is updated to no longer use `cloud.json`. The config parameter will
+   * still be stored in `Config`, inheriting this value as a third fallback.
+   */
+  std::optional<bool> verify_ssl_{std::nullopt};
 };
 
 }  // namespace tiledb::sm

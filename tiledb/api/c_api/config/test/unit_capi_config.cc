@@ -54,6 +54,42 @@ TEST_CASE("C API: tiledb_config_alloc argument validation", "[capi][config]") {
   }
 }
 
+TEST_CASE(
+    "C API: tiledb_config_alloc_with_profile argument validation",
+    "[capi][config][agis]") {
+  tiledb_error_handle_t* error{nullptr};
+  tiledb_config_handle_t* config{nullptr};
+
+  SECTION("success") {
+    capi_return_t rc{
+        tiledb_config_alloc_with_profile(&config, "foo", "bar", &error)};
+    CHECK(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(config != nullptr);
+    CHECK(error == nullptr);
+    tiledb_config_free(&config);
+  }
+  SECTION("null config pointer") {
+    capi_return_t rc{
+        tiledb_config_alloc_with_profile(nullptr, "foo", "bar", &error)};
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null profile name") {
+    capi_return_t rc{
+        tiledb_config_alloc_with_profile(&config, nullptr, "bar", &error)};
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null profile homedir") {
+    capi_return_t rc{
+        tiledb_config_alloc_with_profile(&config, "foo", nullptr, &error)};
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null profile name and homedir") {
+    capi_return_t rc{
+        tiledb_config_alloc_with_profile(&config, nullptr, nullptr, &error)};
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  }
+}
+
 struct ordinary_config {
   tiledb_config_handle_t* config;
   tiledb_error_handle_t* error;
