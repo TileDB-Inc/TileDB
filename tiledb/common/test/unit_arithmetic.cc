@@ -36,10 +36,13 @@
 #include <test/support/tdb_catch.h>
 #include <test/support/tdb_rapidcheck.h>
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/arithmetic.h"
+#endif
+
 using namespace tiledb::common;
 
-TEST_CASE(
-    "Arithmetic checked_arithmetic uint32_t add", "[arithmetic][rapidcheck]") {
+TEST_CASE("Arithmetic checked_arithmetic uint32_t add", "[arithmetic]") {
   SECTION("Example") {
     CHECK(checked_arithmetic<uint32_t>::add(0, 0) == 0);
   }
@@ -60,6 +63,35 @@ TEST_CASE(
     CHECK(checked_arithmetic<uint32_t>::add(max - 9, 10) == std::nullopt);
   }
 }
+
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic uint32_t add rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  SECTION("Rapidcheck") {
+    auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                    uint32_t a, uint32_t b)
+                    ->std::optional<uint32_t> {
+      const auto cpp = checked_arithmetic<uint32_t>::add(a, b);
+      std::optional<uint32_t> rs;
+      {
+        uint32_t value;
+        if (tiledb::oxidize::arithmetic::u32_checked_add(a, b, value)) {
+          rs.emplace(value);
+        }
+      }
+      ASSERTER(cpp == rs);
+
+      return cpp;
+    };
+
+    rc::prop(
+        "checked_arithmetic<uint32_t>::add", [doit](uint32_t a, uint32_t b) {
+          doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+        });
+  }
+}
+#endif
 
 TEST_CASE("Arithmetic checked_arithmetic int32_t add", "[arithmetic]") {
   SECTION("Example") {
@@ -95,6 +127,32 @@ TEST_CASE("Arithmetic checked_arithmetic int32_t add", "[arithmetic]") {
   }
 }
 
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic int32_t add rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  auto doit =
+      []<typename Asserter = tiledb::test::AsserterCatch>(int32_t a, int32_t b)
+          ->std::optional<int32_t> {
+    const auto cpp = checked_arithmetic<int32_t>::add(a, b);
+    std::optional<int32_t> rs;
+    {
+      int32_t value;
+      if (tiledb::oxidize::arithmetic::i32_checked_add(a, b, value)) {
+        rs.emplace(value);
+      }
+    }
+    ASSERTER(cpp == rs);
+
+    return cpp;
+  };
+
+  rc::prop("checked_arithmetic<int32_t>::add", [doit](int32_t a, int32_t b) {
+    doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+  });
+}
+#endif
+
 TEST_CASE("Arithmetic checked_arithmetic uint64_t add", "[arithmetic]") {
   SECTION("Example") {
     CHECK(checked_arithmetic<uint64_t>::add(0, 0) == 0);
@@ -116,6 +174,32 @@ TEST_CASE("Arithmetic checked_arithmetic uint64_t add", "[arithmetic]") {
     CHECK(checked_arithmetic<uint64_t>::add(max - 9, 10) == std::nullopt);
   }
 }
+
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic uint64_t add rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  uint64_t a, uint64_t b)
+                  ->std::optional<uint64_t> {
+    const auto cpp = checked_arithmetic<uint64_t>::add(a, b);
+    std::optional<uint64_t> rs;
+    {
+      uint64_t value;
+      if (tiledb::oxidize::arithmetic::u64_checked_add(a, b, value)) {
+        rs.emplace(value);
+      }
+    }
+    ASSERTER(cpp == rs);
+
+    return cpp;
+  };
+
+  rc::prop("checked_arithmetic<uint64_t>::add", [doit](uint64_t a, uint64_t b) {
+    doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+  });
+}
+#endif
 
 TEST_CASE("Arithmetic checked_arithmetic int64_t add", "[arithmetic]") {
   SECTION("Example") {
@@ -151,6 +235,32 @@ TEST_CASE("Arithmetic checked_arithmetic int64_t add", "[arithmetic]") {
   }
 }
 
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic int64_t add rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  auto doit =
+      []<typename Asserter = tiledb::test::AsserterCatch>(int64_t a, int64_t b)
+          ->std::optional<int64_t> {
+    const auto cpp = checked_arithmetic<int64_t>::add(a, b);
+    std::optional<int64_t> rs;
+    {
+      int64_t value;
+      if (tiledb::oxidize::arithmetic::i64_checked_add(a, b, value)) {
+        rs.emplace(value);
+      }
+    }
+    ASSERTER(cpp == rs);
+
+    return cpp;
+  };
+
+  rc::prop("checked_arithmetic<int64_t>::add", [doit](int64_t a, int64_t b) {
+    doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+  });
+}
+#endif
+
 TEST_CASE("Arithmetic checked_arithmetic uint32_t sub", "[arithmetic]") {
   rc::prop("a < b", [](uint32_t a) {
     const uint32_t max = std::numeric_limits<uint32_t>::max();
@@ -166,6 +276,33 @@ TEST_CASE("Arithmetic checked_arithmetic uint32_t sub", "[arithmetic]") {
     RC_ASSERT(c == a - b);
   });
 }
+
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic uint32_t sub rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  uint32_t a, uint32_t b)
+                  ->std::optional<uint32_t> {
+    const std::optional<uint32_t> cpp = checked_arithmetic<uint32_t>::sub(a, b);
+
+    std::optional<uint32_t> rs;
+    {
+      uint32_t value;
+      if (tiledb::oxidize::arithmetic::u32_checked_sub(a, b, value)) {
+        rs.emplace(value);
+      }
+    }
+    ASSERTER(cpp == rs);
+
+    return cpp;
+  };
+
+  rc::prop("checked_arithmetic<uint32_t>::sub", [doit](uint32_t a, uint32_t b) {
+    doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+  });
+}
+#endif
 
 TEST_CASE("Arithmetic checked_arithmetic int32_t sub", "[arithmetic]") {
   const int32_t max = std::numeric_limits<int32_t>::max();
@@ -185,6 +322,33 @@ TEST_CASE("Arithmetic checked_arithmetic int32_t sub", "[arithmetic]") {
   }
 }
 
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic int32_t sub rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  auto doit =
+      []<typename Asserter = tiledb::test::AsserterCatch>(int32_t a, int32_t b)
+          ->std::optional<int32_t> {
+    const std::optional<int32_t> cpp = checked_arithmetic<int32_t>::sub(a, b);
+
+    std::optional<int32_t> rs;
+    {
+      int32_t value;
+      if (tiledb::oxidize::arithmetic::i32_checked_sub(a, b, value)) {
+        rs.emplace(value);
+      }
+    }
+    ASSERTER(cpp == rs);
+
+    return cpp;
+  };
+
+  rc::prop("checked_arithmetic<int32_t>::sub", [doit](int32_t a, int32_t b) {
+    doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+  });
+}
+#endif
+
 TEST_CASE("Arithmetic checked_arithmetic uint64_t sub", "[arithmetic]") {
   rc::prop("a < b", [](uint64_t a) {
     const uint64_t max = std::numeric_limits<uint64_t>::max();
@@ -200,6 +364,33 @@ TEST_CASE("Arithmetic checked_arithmetic uint64_t sub", "[arithmetic]") {
     RC_ASSERT(c == a - b);
   });
 }
+
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic uint64_t sub rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  uint64_t a, uint64_t b)
+                  ->std::optional<int64_t> {
+    const std::optional<int64_t> cpp = checked_arithmetic<uint64_t>::sub(a, b);
+
+    std::optional<uint64_t> rs;
+    {
+      uint64_t value;
+      if (tiledb::oxidize::arithmetic::u64_checked_sub(a, b, value)) {
+        rs.emplace(value);
+      }
+    }
+    ASSERTER(cpp == rs);
+
+    return cpp;
+  };
+
+  rc::prop("checked_arithmetic<uint64_t>::sub", [doit](uint64_t a, uint64_t b) {
+    doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+  });
+}
+#endif
 
 TEST_CASE("Arithmetic checked_arithmetic uint64_t sub_signed", "[arithmetic]") {
   SECTION("Example") {
@@ -234,6 +425,36 @@ TEST_CASE("Arithmetic checked_arithmetic uint64_t sub_signed", "[arithmetic]") {
             0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF) == std::nullopt);
   }
 }
+
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic uint64_t sub_signed rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  auto doit = []<typename Asserter = tiledb::test::AsserterCatch>(
+                  uint64_t a, uint64_t b)
+                  ->std::optional<int64_t> {
+    const std::optional<int64_t> cpp =
+        checked_arithmetic<uint64_t>::sub_signed(a, b);
+
+    std::optional<int64_t> rs;
+    {
+      int64_t value;
+      if (tiledb::oxidize::arithmetic::u64_checked_sub_signed(a, b, value)) {
+        rs.emplace(value);
+      }
+    }
+    ASSERTER(cpp == rs);
+
+    return cpp;
+  };
+
+  rc::prop(
+      "checked_arithmetic<uint64_t>::sub_signed",
+      [doit](uint64_t a, uint64_t b) {
+        doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+      });
+}
+#endif
 
 TEST_CASE("Arithmetic checked_arithmetic int64_t sub", "[arithmetic]") {
   SECTION("Example") {
@@ -272,3 +493,30 @@ TEST_CASE("Arithmetic checked_arithmetic int64_t sub", "[arithmetic]") {
         std::nullopt);
   }
 }
+
+#ifdef HAVE_RUST
+TEST_CASE(
+    "Arithmetic checked_arithmetic int64_t sub rapidcheck",
+    "[arithmetic][rapidcheck]") {
+  auto doit =
+      []<typename Asserter = tiledb::test::AsserterCatch>(int64_t a, int64_t b)
+          ->std::optional<int64_t> {
+    const std::optional<int64_t> cpp = checked_arithmetic<int64_t>::sub(a, b);
+
+    std::optional<int64_t> rs;
+    {
+      int64_t value;
+      if (tiledb::oxidize::arithmetic::i64_checked_sub(a, b, value)) {
+        rs.emplace(value);
+      }
+    }
+    ASSERTER(cpp == rs);
+
+    return cpp;
+  };
+
+  rc::prop("checked_arithmetic<int64_t>::sub", [doit](int64_t a, int64_t b) {
+    doit.operator()<tiledb::test::AsserterRapidcheck>(a, b);
+  });
+}
+#endif
