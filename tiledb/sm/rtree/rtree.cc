@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/rtree/rtree.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -81,10 +82,10 @@ void RTree::build_tree() {
     return;
   }
 
-  assert(levels_.size() == 1);
+  iassert(levels_.size() == 1, "levels.size() = {}", levels_.size());
 
   auto leaf_num = levels_[0].size();
-  assert(leaf_num >= 1);
+  iassert(leaf_num >= 1);
   if (leaf_num == 1) {
     return;
   }
@@ -143,7 +144,7 @@ TileOverlap RTree::get_tile_overlap(
       // If there is full overlap
       if (ratio == 1.0) {
         auto subtree_leaf_num = this->subtree_leaf_num(entry.level_);
-        assert(subtree_leaf_num > 0);
+        iassert(subtree_leaf_num > 0);
         uint64_t start = entry.mbr_idx_ * subtree_leaf_num;
         uint64_t end = start + std::min(subtree_leaf_num, leaf_num - start) - 1;
         auto tile_range = std::pair<uint64_t, uint64_t>(start, end);
@@ -191,7 +192,7 @@ void RTree::compute_tile_bitmap(
       // If there is full overlap
       if (domain_->dimension_ptr(d)->covered(mbr[d], range)) {
         auto subtree_leaf_num = this->subtree_leaf_num(entry.level_);
-        assert(subtree_leaf_num > 0);
+        iassert(subtree_leaf_num > 0);
         uint64_t start = entry.mbr_idx_ * subtree_leaf_num;
         uint64_t end = start + std::min(subtree_leaf_num, leaf_num - start);
         for (uint64_t i = start; i < end; i++) {
@@ -218,12 +219,12 @@ unsigned RTree::height() const {
 }
 
 const NDRange& RTree::leaf(uint64_t leaf_idx) const {
-  assert(leaf_idx < levels_.back().size());
+  iassert(leaf_idx < levels_.back().size());
   return levels_.back()[leaf_idx];
 }
 
 const tdb::pmr::vector<NDRange>& RTree::leaves() const {
-  assert(!levels_.empty());
+  iassert(!levels_.empty());
   return levels_.back();
 }
 

@@ -30,6 +30,7 @@
  * This file implements class XORFilter.
  */
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/filter/filter_buffer.h"
@@ -124,7 +125,7 @@ void XORFilter::run_forward(
   // Output size does not change with this filter.
   throw_if_not_ok(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
-  assert(output_buf != nullptr);
+  passert(output_buf != nullptr);
 
   // Write the metadata
   auto parts = input->buffers();
@@ -147,7 +148,11 @@ template <
     typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::xor_part(const ConstBuffer* part, Buffer* output) const {
   uint32_t s = part->size();
-  assert(s % sizeof(T) == 0);
+  iassert(
+      s % sizeof(T) == 0,
+      "part->size() = {}, sizeof(T) = {}",
+      part->size(),
+      sizeof(T));
   uint32_t num_elems_in_part = s / sizeof(T);
 
   if (num_elems_in_part == 0) {
@@ -223,7 +228,7 @@ Status XORFilter::run_reverse(
 
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
-  assert(output_buf != nullptr);
+  passert(output_buf != nullptr);
 
   for (uint32_t i = 0; i < num_parts; i++) {
     uint32_t part_size;
@@ -254,7 +259,11 @@ template <
     typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::unxor_part(const ConstBuffer* part, Buffer* output) const {
   uint32_t s = part->size();
-  assert(s % sizeof(T) == 0);
+  iassert(
+      s % sizeof(T) == 0,
+      "part->size() = {}, sizeof(T) = {}",
+      part->size(),
+      sizeof(T));
   uint32_t num_elems_in_part = s / sizeof(T);
 
   if (num_elems_in_part == 0) {

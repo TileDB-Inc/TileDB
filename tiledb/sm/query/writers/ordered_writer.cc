@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/writers/ordered_writer.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -154,8 +155,11 @@ void OrderedWriter::clean_up() {
 
 Status OrderedWriter::ordered_write() {
   // Applicable only to ordered write on dense arrays
-  assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
-  assert(array_schema_.dense());
+  iassert(
+      layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR,
+      "layout = {}",
+      layout_str(layout_));
+  iassert(array_schema_.dense());
 
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
 
@@ -303,7 +307,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
 
   // Initialization
   auto tile_num = dense_tiler->tile_num();
-  assert(tile_num > 0);
+  iassert(tile_num > 0);
   uint64_t batch_num = tile_num / thread_num;
   uint64_t last_batch_size = tile_num % thread_num;
   batch_num += (last_batch_size > 0);
@@ -316,7 +320,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   std::optional<ThreadPool::SharedTask> write_task = nullopt;
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
-    assert(batch_size > 0);
+    iassert(batch_size > 0);
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
       tile_batches[b].emplace_back(

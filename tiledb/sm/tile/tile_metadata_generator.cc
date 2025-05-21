@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/tile_metadata_generator.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
@@ -525,7 +526,7 @@ void TileMetadataGenerator::process_cell_range(
 
 void TileMetadataGenerator::process_cell_range_var(
     const WriterTileTuple& tile, uint64_t start, uint64_t end) {
-  assert(tile.var_size());
+  iassert(tile.var_size());
 
   const auto& offset_tile = tile.offset_tile();
   const auto& var_tile = tile.var_tile();
@@ -588,7 +589,7 @@ void TileMetadataGenerator::process_cell_range_var(
 
 inline void TileMetadataGenerator::min_max_var(
     const char* value, const uint64_t size) {
-  assert(value != nullptr);
+  iassert(value != nullptr);
 
   // Process min.
   size_t min_size = std::min<size_t>(min_size_, size);

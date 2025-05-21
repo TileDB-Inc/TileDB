@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/subarray/subarray_partitioner.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -91,17 +92,11 @@ SubarrayPartitioner::SubarrayPartitioner(
   auto range_num = subarray_.range_num();
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
 
-  bool found = false;
-  throw_if_not_ok(config_->get<bool>(
-      "sm.skip_est_size_partitioning", &skip_split_on_est_size_, &found));
-  assert(found);
+  skip_split_on_est_size_ =
+      config_->get<bool>("sm.skip_est_size_partitioning", Config::must_find);
 
-  throw_if_not_ok(config_->get<bool>(
-      "sm.skip_unary_partitioning_budget_check",
-      &skip_unary_partitioning_budget_check_,
-      &found));
-  (void)found;
-  assert(found);
+  skip_unary_partitioning_budget_check_ = config_->get<bool>(
+      "sm.skip_unary_partitioning_budget_check", Config::must_find);
 }
 
 SubarrayPartitioner::~SubarrayPartitioner() = default;
@@ -611,7 +606,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   // Current came from retrieving a multi-range partition from subarray
   if (current_.start_ < current_.end_) {
     auto range_num = (current_.end_ - current_.start_ + 1);
-    assert(1 - constants::multi_range_reduction_in_split <= 1);
+    iassert(1 - constants::multi_range_reduction_in_split <= 1);
     auto new_range_num =
         range_num * (1 - constants::multi_range_reduction_in_split);
     current_.end_ = current_.start_ + (uint64_t)new_range_num - 1;
@@ -683,7 +678,7 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
 
   // Special case of single range and global layout
   if (subarray_.layout() == Layout::GLOBAL_ORDER) {
-    assert(current_.start_ == current_.end_);
+    iassert(current_.start_ == current_.end_);
     return Status::Ok();
   }
 
@@ -702,7 +697,10 @@ Status SubarrayPartitioner::calibrate_current_start_end(bool* must_split_slab) {
   auto cell_order = subarray_.array()->array_schema_latest().cell_order();
   cell_order = (cell_order == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order;
   layout = (layout == Layout::UNORDERED) ? cell_order : layout;
-  assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
+  iassert(
+      layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR,
+      "layout = {}",
+      layout_str(layout));
 
   for (unsigned d = 0; d < dim_num - 1; ++d) {
     unsigned major_dim = (layout == Layout::ROW_MAJOR) ? d : dim_num - d - 1;
@@ -797,8 +795,8 @@ Status SubarrayPartitioner::compute_current_start_end(bool* found) {
       state_.start_, state_.end_, config_, compute_tp_);
   const SubarrayTileOverlap* const tile_overlap =
       subarray_.subarray_tile_overlap();
-  assert(tile_overlap->range_idx_start() == state_.start_);
-  assert(tile_overlap->range_idx_end() <= state_.end_);
+  iassert(tile_overlap->range_idx_start() == state_.start_);
+  iassert(tile_overlap->range_idx_end() <= state_.end_);
 
   // Preparation
   auto array = subarray_.array();
@@ -905,7 +903,10 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
     unsigned* splitting_dim,
     ByteVecValue* splitting_value,
     bool* unsplittable) {
-  assert(range.layout() == Layout::GLOBAL_ORDER);
+  iassert(
+      range.layout() == Layout::GLOBAL_ORDER,
+      "layout = {}",
+      layout_str(range.layout()));
   *unsplittable = true;
 
   // Inapplicable to Hilbert cell order
@@ -970,7 +971,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   const auto& array_schema = subarray_.array()->array_schema_latest();
   auto dim_num = array_schema.dim_num();
   auto cell_order = array_schema.cell_order();
-  assert(!range.is_unary());
+  iassert(!range.is_unary());
   auto layout = subarray_.layout();
   if (layout == Layout::UNORDERED && cell_order == Layout::HILBERT) {
     cell_order = Layout::ROW_MAJOR;
@@ -989,7 +990,10 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   }
 
   // Cell order is either row- or col-major
-  assert(cell_order == Layout::ROW_MAJOR || cell_order == Layout::COL_MAJOR);
+  iassert(
+      cell_order == Layout::ROW_MAJOR || cell_order == Layout::COL_MAJOR,
+      "cell_order = {}",
+      layout_str(cell_order));
 
   std::vector<unsigned> dims;
   if (layout == Layout::ROW_MAJOR) {
@@ -1017,7 +1021,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
     }
   }
 
-  assert(*splitting_dim != UINT32_MAX);
+  iassert(*splitting_dim != UINT32_MAX);
 }
 
 void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
@@ -1112,7 +1116,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
     // Check if we need to split the multiple ranges
     partition.get_range_num(d, &range_num);
     if (range_num > 1) {
-      assert(d == dims.back());
+      iassert(d == dims.back());
       *splitting_dim = d;
       *splitting_range = (range_num - 1) / 2;
       *unsplittable = false;
@@ -1129,7 +1133,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
     }
   }
 
-  assert(*splitting_dim != UINT32_MAX);
+  iassert(*splitting_dim != UINT32_MAX);
   return Status::Ok();
 }
 
@@ -1389,7 +1393,7 @@ void SubarrayPartitioner::compute_range_uint64(
               dim->map_to_uint64(r->end_fixed(), 0, bits, max_bucket_val);
     }
 
-    assert((*range_uint64)[d][0] <= (*range_uint64)[d][1]);
+    iassert((*range_uint64)[d][0] <= (*range_uint64)[d][1]);
 
     if ((*range_uint64)[d][0] != (*range_uint64)[d][1])
       *unsplittable = false;
@@ -1455,7 +1459,7 @@ void SubarrayPartitioner::compute_splitting_dim_hilbert(
   auto next_coords = range_grid[0].second;
   size_t c = 1;
   while (splitting_dims.size() != 1) {
-    assert(c < range_grid.size());
+    iassert(c < range_grid.size());
     for (uint32_t d = 0; d < dim_num; ++d) {
       if (range_grid[c].second[d] != next_coords[d]) {  // Exclude dimension
         splitting_dims.erase(d);
@@ -1466,7 +1470,7 @@ void SubarrayPartitioner::compute_splitting_dim_hilbert(
   }
 
   // The remaining dimension is the splitting dimension
-  assert(splitting_dims.size() == 1);
+  iassert(splitting_dims.size() == 1);
   *splitting_dim = *(splitting_dims.begin());
 }
 
@@ -1483,7 +1487,7 @@ void SubarrayPartitioner::compute_splitting_value_hilbert(
     // Compute left and right (2^i-1) enclosing the uint64 range
     left_p2_m1 = utils::math::left_p2_m1(range_uint64[0]);
     right_p2_m1 = utils::math::right_p2_m1(range_uint64[1]);
-    assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
+    iassert(left_p2_m1 != right_p2_m1);  // Cannot be unary
 
     // Compute splitting value
     uint64_t splitting_offset = 0;
@@ -1504,7 +1508,7 @@ void SubarrayPartitioner::compute_splitting_value_hilbert(
         splitting_offset += (left_p2_m1 + 1);
         left_p2_m1 = utils::math::left_p2_m1(range_uint64_start);
         right_p2_m1 = utils::math::right_p2_m1(range_uint64_end);
-        assert(left_p2_m1 != right_p2_m1);  // Cannot be unary
+        iassert(left_p2_m1 != right_p2_m1);  // Cannot be unary
       }
     }
   }

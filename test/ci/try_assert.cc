@@ -1,6 +1,8 @@
 #include <cassert>
 #include <iostream>
 
+#include "tiledb/common/assert.h"
+
 int main(int, char**) {
 #if defined(_MSC_VER)
   // We disable the following events on abort:
@@ -10,7 +12,7 @@ int main(int, char**) {
   // the value of these flags.
   _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
-  assert(false);
+  passert(false);
 
   std::cout << "Assert did not exit!" << std::endl;
   return 0;

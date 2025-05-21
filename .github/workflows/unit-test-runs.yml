@@ -12,8 +12,9 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        build_type: [Release]
       fail-fast: false
-    name: Build - ${{ matrix.os }}
+    name: Build - ${{ matrix.os }} (${{ matrix.build_type }})
     timeout-minutes: 90
     defaults:
       run:
@@ -67,15 +68,17 @@ jobs:
         shell: bash
         if: ${{ !startsWith(matrix.os, 'windows-') }}
 
-      - name: 'Build standalone unit tests'
+      - name: 'Configure build'
         run: |
           cmake -S . \
             -B build \
             -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
             -DTILEDB_SERIALIZATION=ON \
-            -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_ARROW_TESTS=ON
+
+      - name: 'Build standalone unit tests'
+        run: |
           # Build all unit tests
           cmake --build build --target tests -j4
 

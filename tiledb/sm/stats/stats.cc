@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/stdx_string.h"
 
 #include <algorithm>
@@ -135,7 +136,7 @@ std::string Stats::dump(
       auto stat = timer.first.substr(
           0, timer.first.size() - std::string(".sum").size());
       auto it = flattened_counters.find(stat + ".timer_count");
-      assert(it != flattened_counters.end());
+      iassert(it != flattened_counters.end());
       auto avg = timer.second / it->second;
       ss << l_indent << indent << indent << "\"" << stat + ".avg"
          << "\": " << avg;

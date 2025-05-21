@@ -2,13 +2,19 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Collection, Iterable, Mapping, Pattern
+from typing import Collection, FrozenSet, Iterable, Mapping, Pattern
 
-# Do not check for violations in these directories.
+# Internal heap memory APIs must be used for memory tracking purposes
+LINT_HEAP_MEMORY = 'Heap Memory'
+# Custom assert routines must be used so the TILEDB_ASSERTIONS build option
+# can cleanly turn them on in optimized CI runs.
+LINT_ASSERT = 'Assert'
+
+# Do not check for lint in these directories.
 ignored_dirs = frozenset(["c_api", "cpp_api", "experimental"])
 
-# Do not check for violations in these files.
-ignored_files = frozenset(
+# Do not check for lint in these files.
+heap_memory_ignored_files = frozenset(
     [
         "allocate_unique.h",
         "dynamic_memory.h",
@@ -107,9 +113,11 @@ unique_ptr_exceptions = {
     "pmr.h": ["std::unique_ptr", "unique_ptr<Tp> make_unique(", "unique_ptr<Tp> emplace_unique("],
 }
 
+regex_assert = re.compile(r"^assert\(")
+
 
 @dataclass
-class ViolationChecker:
+class RegexLinter:
     substr: str
     regex: Pattern[str]
     exceptions: Mapping[str, Collection[str]] = field(default_factory=dict)
@@ -125,44 +133,76 @@ class ViolationChecker:
 
         return self.regex.search(line) is not None
 
+@dataclass
+class HeapMemoryLinter(RegexLinter):
+    lint_kind: int = LINT_HEAP_MEMORY
+
+    def accept_path(self, file_name: str) -> bool:
+        return os.path.basename(file_name) not in heap_memory_ignored_files
+
 
 @dataclass
-class Violation:
+class AssertLinter(RegexLinter):
+    lint_kind: int = LINT_ASSERT
+
+    def accept_path(self, file_name: str) -> bool:
+        return True
+
+
+@dataclass
+class Lint:
     file_path: str
     line_num: int
     line: str
-    checker: ViolationChecker
+    kind: int
 
 
-violation_checkers = [
-    ViolationChecker("malloc", regex_malloc, malloc_exceptions),
-    ViolationChecker("calloc", regex_calloc, calloc_exceptions),
-    ViolationChecker("realloc", regex_realloc, realloc_exceptions),
-    ViolationChecker("free", regex_free, free_exceptions),
-    ViolationChecker("new", regex_new),
-    ViolationChecker("delete", regex_delete),
-    ViolationChecker("make_shared<", regex_make_shared, make_shared_exceptions),
-    ViolationChecker("unique_ptr<", regex_unique_ptr, unique_ptr_exceptions),
+linters = [
+    HeapMemoryLinter("malloc", regex_malloc, malloc_exceptions),
+    HeapMemoryLinter("calloc", regex_calloc, calloc_exceptions),
+    HeapMemoryLinter("realloc", regex_realloc, realloc_exceptions),
+    HeapMemoryLinter("free", regex_free, free_exceptions),
+    HeapMemoryLinter("new", regex_new),
+    HeapMemoryLinter("delete", regex_delete),
+    HeapMemoryLinter("make_shared<", regex_make_shared, make_shared_exceptions),
+    HeapMemoryLinter("unique_ptr<", regex_unique_ptr, unique_ptr_exceptions),
+    AssertLinter("assert", regex_assert)
 ]
 
 
-def iter_file_violations(file_path: str) -> Iterable[Violation]:
+def iter_file_lints(file_path: str) -> Iterable[Lint]:
+    this_file_linters = [linter for linter in linters if linter.accept_path(file_path)]
     with open(file_path, encoding="utf-8") as f:
         for line_num, line in enumerate(f):
             line = line.strip()
-            for checker in violation_checkers:
-                if checker(file_path, line):
-                    yield Violation(file_path, line_num, line, checker)
+            for linter in this_file_linters:
+                if linter(file_path, line):
+                    yield Lint(file_path, line_num, line, linter.lint_kind)
 
 
-def iter_dir_violations(dir_path: str) -> Iterable[Violation]:
+def iter_dir_lints(dir_path: str) -> Iterable[Lint]:
     for directory, subdirlist, file_names in os.walk(dir_path):
         if os.path.basename(directory) in ignored_dirs:
             subdirlist.clear()
         else:
             for file_name in file_names:
-                if file_name not in ignored_files and file_name.endswith((".h", ".cc")):
-                    yield from iter_file_violations(os.path.join(directory, file_name))
+                if file_name.endswith(('.h', '.cc')):
+                    yield from iter_file_lints(os.path.join(directory, file_name))
+
+
+def explain_lint(kind):
+    if kind == LINT_HEAP_MEMORY:
+        print('  Source files within TileDB must use heap memory APIs\n'
+              '  defined in tiledb/common/heap_memory.h.\n'
+              '  This is important for tracking memory usage.\n'
+              '  Correct your usage or add an exception.', file = sys.stderr)
+    elif kind == LINT_ASSERT:
+        print('  Source files within TileDB must use an assert routine\n'
+              '  defined in `tiledb/common/assert.h`.\n'
+              '  This allows all assertions to toggle with the\n'
+              '  TILEDB_ASSERTIONS build configuration.\n'
+              '  See `tiledb/common/assert.h` for more details about this lint.\n'
+              '  Use iassert or passert instead, or add an exception.', file = sys.stderr)
 
 
 if __name__ == "__main__":
@@ -170,21 +210,29 @@ if __name__ == "__main__":
         sys.exit("Usage: <root dir>")
 
     root_dir = os.path.abspath(sys.argv[1])
-    print(f"Checking for heap memory API violations in {root_dir}")
-    violations = list(iter_dir_violations(root_dir))
-    if violations:
+    print(f"Checking for lint in {root_dir}")
+
+    all_lint = {}
+    for lint in iter_dir_lints(root_dir):
+        if lint.kind not in all_lint:
+            all_lint[lint.kind] = [lint]
+        else:
+            all_lint[lint.kind].append(lint)
+
+    if all_lint:
         this_filename = os.path.basename(__file__)
-        for violation in violations:
+        for kind in all_lint.keys():
+            print(f'{kind} lint detected!', file = sys.stderr)
+            explain_lint(kind)
+
+        for (kind, lint) in all_lint.items():
             print(
-                f"[{this_filename}]: Detected {violation.checker.substr!r} heap memory API violation:"
+                f"[{this_filename}]: Detected {kind} lint:"
             )
-            print(f"  {violation.file_path}:{violation.line_num}")
-            print(f"  {violation.line}")
-        sys.exit(
-            "Detected heap memory API violations!\n"
-            "Source files within TileDB must use the heap memory APIs "
-            "defined in tiledb/common/heap_memory.h\n"
-            "Either correct your changes or add an exception within " + __file__
-        )
+            for l in lint:
+                print(f"  {l.file_path}:{l.line_num}")
+                print(f"  {l.line}")
+
+        sys.exit(1)
     else:
-        print("Did not detect heap memory API violations.")
+        print("No lint found.")

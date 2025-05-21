@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/layout.h"
@@ -90,7 +91,10 @@ class TileDomain {
       , domain_slice_(domain_slice)
       , tile_extents_(tile_extents.begin(), tile_extents.end())
       , layout_(layout) {
-    assert(layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR);
+    iassert(
+        layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR,
+        "layout = {}",
+        layout_str(layout));
     compute_tile_domain(domain, domain_slice, tile_extents);
     if (layout == Layout::ROW_MAJOR)
       compute_tile_offsets_row();
@@ -214,8 +218,8 @@ class TileDomain {
 
     auto tile_overlap_1 = this->tile_overlap(tile_coords);
     auto tile_overlap_2 = tile_domain.tile_overlap(tile_coords);
-    assert(tile_overlap_1.size() == tile_overlap_2.size());
-    assert(tile_overlap_1.size() == 2 * dim_num_);
+    iassert(tile_overlap_1.size() == tile_overlap_2.size());
+    iassert(tile_overlap_1.size() == 2 * dim_num_);
     for (unsigned i = 0; i < dim_num_; ++i) {
       if (tile_overlap_2[2 * i] < tile_overlap_1[2 * i] ||
           tile_overlap_2[2 * i + 1] > tile_overlap_1[2 * i + 1])
@@ -311,8 +315,8 @@ class TileDomain {
       auto ds = (const T*)domain_slice[d].data();
       auto dim_dom = (const T*)domain[d].data();
       auto tile_extent = *(const T*)tile_extents[d].data();
-      assert(ds[0] <= ds[1]);
-      assert(ds[0] >= dim_dom[0] && ds[1] <= dim_dom[1]);
+      iassert(ds[0] <= ds[1]);
+      iassert(ds[0] >= dim_dom[0] && ds[1] <= dim_dom[1]);
       tile_domain_[2 * d] = Dimension::tile_idx(ds[0], dim_dom[0], tile_extent);
       tile_domain_[2 * d + 1] =
           Dimension::tile_idx(ds[1], dim_dom[0], tile_extent);
@@ -324,7 +328,7 @@ class TileDomain {
    * a col-major order for the tiles in the tile domain.
    */
   void compute_tile_offsets_col() {
-    assert(std::is_integral<T>::value);
+    iassert(std::is_integral<T>::value);
 
     tile_offsets_.reserve(dim_num_);
     tile_offsets_.push_back(1);
@@ -340,7 +344,7 @@ class TileDomain {
    * a row-major order for the tiles in the tile domain.
    */
   void compute_tile_offsets_row() {
-    assert(std::is_integral<T>::value);
+    iassert(std::is_integral<T>::value);
 
     tile_offsets_.reserve(dim_num_);
     tile_offsets_.push_back(1);

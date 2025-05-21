@@ -46,6 +46,7 @@
 #pragma warning(pop)
 #endif
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
@@ -96,7 +97,7 @@ GCS::GCS(ThreadPool* thread_pool, const Config& config)
     , ssl_cfg_(SSLConfig(config))
     , thread_pool_(thread_pool)
     , write_cache_max_size_(0) {
-  assert(thread_pool);
+  passert(thread_pool);
   write_cache_max_size_ =
       gcs_params_.use_multi_part_upload_ ?
           gcs_params_.max_parallel_ops_ * gcs_params_.multi_part_size_ :
@@ -191,7 +192,7 @@ std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
 }
 
 Status GCS::init_client() const {
-  assert(state_ == State::INITIALIZED);
+  passert(state_ == State::INITIALIZED);
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
@@ -278,7 +279,7 @@ Status GCS::empty_bucket(const URI& uri) const {
 
 Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
   RETURN_NOT_OK(init_client());
-  assert(is_empty);
+  iassert(is_empty);
 
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
@@ -308,7 +309,7 @@ Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
 
 Status GCS::is_bucket(const URI& uri, bool* const is_bucket) const {
   RETURN_NOT_OK(init_client());
-  assert(is_bucket);
+  iassert(is_bucket);
 
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
@@ -345,7 +346,7 @@ Status GCS::is_bucket(
 
 Status GCS::is_dir(const URI& uri, bool* const exists) const {
   RETURN_NOT_OK(init_client());
-  assert(exists);
+  iassert(exists);
 
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
@@ -449,7 +450,7 @@ Status GCS::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     const int max_paths) const {
-  assert(paths);
+  iassert(paths);
 
   for (auto& fs : ls_with_sizes(uri, delimiter, max_paths)) {
     paths->emplace_back(fs.path().native());
@@ -766,7 +767,7 @@ Status GCS::touch(const URI& uri) const {
 
 Status GCS::is_object(const URI& uri, bool* const is_object) const {
   RETURN_NOT_OK(init_client());
-  assert(is_object);
+  iassert(is_object);
 
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
@@ -783,7 +784,7 @@ Status GCS::is_object(
     const std::string& bucket_name,
     const std::string& object_path,
     bool* const is_object) const {
-  assert(is_object);
+  iassert(is_object);
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->GetObjectMetadata(bucket_name, object_path);
@@ -857,14 +858,14 @@ Status GCS::write(
     }
   }
 
-  assert(offset == length);
+  passert(offset == length, "offset = {}, length = {}", offset, length);
 
   return Status::Ok();
 }
 
 Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
   RETURN_NOT_OK(init_client());
-  assert(nbytes);
+  iassert(nbytes);
 
   if (!uri.is_gcs()) {
     throw GCSException("URI is not a GCS URI: " + uri.to_string());
@@ -904,9 +905,9 @@ Status GCS::fill_write_cache(
     const void* const buffer,
     const uint64_t length,
     uint64_t* const nbytes_filled) {
-  assert(write_cache_buffer);
-  assert(buffer);
-  assert(nbytes_filled);
+  iassert(write_cache_buffer);
+  iassert(buffer);
+  iassert(nbytes_filled);
 
   *nbytes_filled =
       std::min(write_cache_max_size_ - write_cache_buffer->size(), length);
@@ -920,7 +921,7 @@ Status GCS::fill_write_cache(
 
 Status GCS::flush_write_cache(
     const URI& uri, Buffer* const write_cache_buffer, const bool last_part) {
-  assert(write_cache_buffer);
+  iassert(write_cache_buffer);
 
   if (write_cache_buffer->size() > 0) {
     const Status st = write_parts(
@@ -1299,12 +1300,12 @@ Status GCS::parse_gcs_uri(
     const URI& uri,
     std::string* const bucket_name,
     std::string* const object_path) const {
-  assert(uri.is_gcs());
+  iassert(uri.is_gcs());
   const std::string uri_str = uri.to_string();
 
   const std::string gcs_prefix =
       (uri_str.rfind("gcs://", 0) == 0) ? "gcs://" : "gs://";
-  assert(uri_str.rfind(gcs_prefix, 0) == 0);
+  iassert(uri_str.rfind(gcs_prefix, 0) == 0);
 
   if (uri_str.size() == gcs_prefix.size()) {
     if (bucket_name)

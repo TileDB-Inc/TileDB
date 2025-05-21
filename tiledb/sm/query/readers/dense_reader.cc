@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
@@ -118,15 +119,12 @@ QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
 
 void DenseReader::refresh_config() {
   // Get config values.
-  bool found = false;
   if (!memory_budget_from_query_.has_value()) {
-    throw_if_not_ok(
-        config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
-    assert(found);
+    memory_budget_ =
+        config_.get<uint64_t>("sm.mem.total_budget", Config::must_find);
   }
-  throw_if_not_ok(config_.get<uint64_t>(
-      "sm.mem.tile_upper_memory_limit", &tile_upper_memory_limit_, &found));
-  assert(found);
+  tile_upper_memory_limit_ = config_.get<uint64_t>(
+      "sm.mem.tile_upper_memory_limit", Config::must_find);
 
   // Set the memory budget for the array
   if (!array_memory_tracker_->set_budget(memory_budget_)) {
@@ -608,9 +606,8 @@ void DenseReader::init_read_state() {
   }
 
   // Get config values.
-  bool found = false;
-  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
-  assert(found);
+  offsets_format_mode_ =
+      config_.get<std::string>("sm.var_offsets.mode", Config::must_find);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     throw DenseReaderException(
         "Cannot initialize reader; Unsupported offsets format in "
@@ -618,32 +615,19 @@ void DenseReader::init_read_state() {
   }
   elements_mode_ = offsets_format_mode_ == "elements";
 
-  if (!config_
-           .get<bool>(
-               "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
-           .ok()) {
-    throw DenseReaderException("Cannot get setting");
-  }
-  assert(found);
+  offsets_extra_element_ =
+      config_.get<bool>("sm.var_offsets.extra_element", Config::must_find);
 
-  if (!config_
-           .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
-           .ok()) {
-    throw DenseReaderException("Cannot get setting");
-  }
+  offsets_bitsize_ =
+      config_.get<uint32_t>("sm.var_offsets.bitsize", Config::must_find);
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     throw DenseReaderException(
         "Cannot initialize reader; Unsupported offsets bitsize in "
         "configuration");
   }
-  assert(found);
 
-  if (!config_
-           .get<bool>("sm.query.dense.qc_coords_mode", &qc_coords_mode_, &found)
-           .ok()) {
-    throw DenseReaderException("Cannot get setting");
-  }
-  assert(found);
+  qc_coords_mode_ =
+      config_.get<bool>("sm.query.dense.qc_coords_mode", Config::must_find);
 
   if (qc_coords_mode_ && !condition_.has_value()) {
     throw DenseReaderException(
@@ -2272,7 +2256,10 @@ void DenseReader::fill_dense_coords(
     fill_dense_coords_global<T>(
         subarray, qc_results, qc_results_index, dim_idx, buffers, offsets);
   } else {
-    assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
+    iassert(
+        layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR,
+        "layout = {}",
+        layout_str(layout_));
     fill_dense_coords_row_col<T>(
         subarray, qc_results, qc_results_index, dim_idx, buffers, offsets);
   }

@@ -33,6 +33,7 @@
 #ifndef TILEDB_RANGE_H
 #define TILEDB_RANGE_H
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/pmr.h"
@@ -276,8 +277,8 @@ class Range {
    */
   template <typename T>
   inline const T* typed_data() const {
-    assert(!var_size_);
-    assert(range_.empty() || (range_.size() == 2 * sizeof(T)));
+    iassert(!var_size_);
+    iassert(range_.empty() || (range_.size() == 2 * sizeof(T)));
     return range_.empty() ?
                nullptr :
                static_cast<const T*>(static_cast<const void*>(range_.data()));
@@ -285,8 +286,8 @@ class Range {
 
   /** Returns a pointer to the start of the range. */
   inline const void* start_fixed() const {
-    assert(!var_size_);
-    assert(range_.size() != 0);
+    iassert(!var_size_);
+    iassert(range_.size() != 0);
     return range_.data();
   }
 
@@ -315,7 +316,7 @@ class Range {
   std::string_view end_str() const {
     // Must be variable
     // or have no data if 'fixed' (primarily default construction)
-    assert(var_size_ || !range_.size());
+    iassert(var_size_ || !range_.size());
     auto size = range_.size() - range_start_size_;
     if (size == 0) {
       return {nullptr, 0};
@@ -347,8 +348,8 @@ class Range {
 
   /** Returns a pointer to the end of the range. */
   const void* end_fixed() const {
-    assert(!var_size_);
-    assert(range_.size() != 0);
+    iassert(!var_size_);
+    iassert(range_.size() != 0);
     auto end_pos = range_.size() / 2;
     return &range_[end_pos];
   }
@@ -390,16 +391,16 @@ class Range {
   /** Returns the start range as the requested type. */
   template <typename T>
   inline T start_as() const {
-    assert(!var_size_);
-    assert(!range_.empty());
+    iassert(!var_size_);
+    iassert(!range_.empty());
     return *static_cast<const T*>(static_cast<const void*>(range_.data()));
   }
 
   /** Returns the end range as the requested type. */
   template <typename T>
   inline T end_as() const {
-    assert(!var_size_);
-    assert(!range_.empty());
+    iassert(!var_size_);
+    iassert(!range_.empty());
     auto end_pos = range_.size() / 2;
     return *static_cast<const T*>(
         static_cast<const void*>(range_.data() + end_pos));

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_operations.h"
@@ -626,7 +627,7 @@ Status Reader::compute_range_result_coords(
       for (uint64_t i = tr->first; i <= tr->second; ++i) {
         auto pair = std::pair<unsigned, uint64_t>(fragment_idx, i);
         auto tile_it = result_tile_map.find(pair);
-        assert(tile_it != result_tile_map.end());
+        iassert(tile_it != result_tile_map.end());
         auto tile_idx = tile_it->second;
 
         auto tile = result_tiles.begin();
@@ -642,7 +643,7 @@ Status Reader::compute_range_result_coords(
       // Handle single tile
       auto pair = std::pair<unsigned, uint64_t>(fragment_idx, t->first);
       auto tile_it = result_tile_map.find(pair);
-      assert(tile_it != result_tile_map.end());
+      iassert(tile_it != result_tile_map.end());
       auto tile_idx = tile_it->second;
       auto tile = result_tiles.begin();
       std::advance(tile, tile_idx);
@@ -1019,7 +1020,7 @@ Status Reader::copy_partitioned_fixed_cells(
     const std::vector<ResultCellSlab>& result_cell_slabs,
     const std::vector<uint64_t>* cs_offsets,
     const std::vector<size_t>* cs_partitions) {
-  assert(name);
+  iassert(name);
 
   // For easy reference.
   auto nullable = array_schema_.is_nullable(*name);
@@ -1323,7 +1324,7 @@ Status Reader::copy_partitioned_var_cells(
     const std::vector<uint64_t>* const offset_offsets_per_cs,
     const std::vector<uint64_t>* const var_offsets_per_cs,
     const std::vector<std::pair<size_t, size_t>>* const cs_partitions) {
-  assert(name);
+  iassert(name);
 
   auto it = buffers_.find(*name);
   auto nullable = array_schema_.is_nullable(*name);
@@ -1558,6 +1559,13 @@ Status Reader::compute_result_cell_slabs(
   auto timer_se = stats_->start_timer("compute_sparse_result_cell_slabs_dense");
 
   auto layout = subarray.layout();
+
+  iassert(
+      layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR ||
+          layout == Layout::GLOBAL_ORDER,
+      "layout = {}",
+      layout_str(layout));
+
   if (layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR) {
     uint64_t result_coords_pos = 0;
     std::set<std::pair<unsigned, uint64_t>> frag_tile_set;
@@ -1569,15 +1577,13 @@ Status Reader::compute_result_cell_slabs(
         result_tiles,
         frag_tile_set,
         result_cell_slabs);
-  } else if (layout == Layout::GLOBAL_ORDER) {
+  } else {
     return compute_result_cell_slabs_global<T>(
         subarray,
         result_space_tiles,
         result_coords,
         result_tiles,
         result_cell_slabs);
-  } else {  // UNORDERED
-    assert(false);
   }
 
   return Status::Ok();
@@ -1792,7 +1798,7 @@ Status Reader::dense_read() {
 template <class T>
 Status Reader::dense_read() {
   // Sanity checks
-  assert(std::is_integral<T>::value);
+  iassert(std::is_integral<T>::value);
 
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of
@@ -1901,49 +1907,28 @@ void Reader::init_read_state() {
   }
 
   // Get config
-  bool found = false;
-  uint64_t memory_budget = 0;
-  if (!config_.get<uint64_t>("sm.memory_budget", &memory_budget, &found).ok()) {
-    throw ReaderException("Cannot get setting");
-  }
-  assert(found);
-
-  uint64_t memory_budget_var = 0;
-  if (!config_.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found)
-           .ok()) {
-    throw ReaderException("Cannot get setting");
-  }
-  assert(found);
-
-  offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
-  assert(found);
+  const uint64_t memory_budget =
+      config_.get<uint64_t>("sm.memory_budget", Config::must_find);
+  const uint64_t memory_budget_var =
+      config_.get<uint64_t>("sm.memory_budget_var", Config::must_find);
+  offsets_format_mode_ =
+      config_.get<std::string>("sm.var_offsets.mode", Config::must_find);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
     throw ReaderException(
         "Cannot initialize reader; Unsupported offsets"
         " format in configuration");
   }
 
-  if (!config_
-           .get<bool>(
-               "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
-           .ok()) {
-    throw ReaderException("Cannot get setting");
-  }
-  assert(found);
-
-  if (!config_
-           .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
-           .ok()) {
-    throw ReaderException("Cannot get setting");
-  }
-  assert(found);
+  offsets_extra_element_ =
+      config_.get<bool>("sm.var_offsets.extra_element", Config::must_find);
+  offsets_bitsize_ =
+      config_.get<uint32_t>("sm.var_offsets.bitsize", Config::must_find);
 
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
     throw ReaderException(
         "Cannot initialize reader; Unsupported offsets"
         " bitsize in configuration");
   }
-  assert(found);
 
   // Consider the validity memory budget to be identical to `sm.memory_budget`
   // because the validity vector is currently a bytemap. When converted to a
@@ -2019,13 +2004,19 @@ Status Reader::sort_result_coords(
   auto timer_se = stats_->start_timer("sort_result_coords");
   auto& domain{array_schema_.domain()};
 
+  iassert(
+      layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR ||
+          layout == Layout::GLOBAL_ORDER,
+      "layout = {}",
+      layout_str(layout));
+
   if (layout == Layout::ROW_MAJOR) {
     parallel_sort(
         &resources_.compute_tp(), iter_begin, iter_end, RowCmp(domain));
   } else if (layout == Layout::COL_MAJOR) {
     parallel_sort(
         &resources_.compute_tp(), iter_begin, iter_end, ColCmp(domain));
-  } else if (layout == Layout::GLOBAL_ORDER) {
+  } else {
     if (array_schema_.cell_order() == Layout::HILBERT) {
       std::vector<std::pair<uint64_t, uint64_t>> hilbert_values(coords_num);
       RETURN_NOT_OK(calculate_hilbert_values(iter_begin, &hilbert_values));
@@ -2039,8 +2030,6 @@ Status Reader::sort_result_coords(
       parallel_sort(
           &resources_.compute_tp(), iter_begin, iter_end, GlobalCmp(domain));
     }
-  } else {
-    assert(false);
   }
 
   return Status::Ok();
@@ -2096,7 +2085,7 @@ Status Reader::add_extra_offset() {
       continue;
 
     // The buffer should always be 0 or divisible by the bytesize.
-    assert(!(*it.second.buffer_size_ < offsets_bytesize()));
+    iassert(!(*it.second.buffer_size_ < offsets_bytesize()));
 
     auto buffer = static_cast<unsigned char*>(it.second.buffer_);
     if (offsets_format_mode_ == "bytes") {
@@ -2123,7 +2112,7 @@ Status Reader::add_extra_offset() {
 bool Reader::sparse_tile_overwritten(
     unsigned frag_idx, uint64_t tile_idx) const {
   const auto& mbr = fragment_metadata_[frag_idx]->mbr(tile_idx);
-  assert(!mbr.empty());
+  iassert(!mbr.empty());
   auto fragment_num = (unsigned)fragment_metadata_.size();
   auto& domain{array_schema_.domain()};
 
@@ -2287,7 +2276,7 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords(
     RETURN_NOT_OK_TUPLE(st, std::nullopt);
     overflowed = *of;
   } else {
-    assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
+    iassert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
     auto&& [st, of] =
         fill_dense_coords_row_col<T>(subarray, dim_idx, buffers, offsets);
     RETURN_NOT_OK_TUPLE(st, std::nullopt);

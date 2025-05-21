@@ -51,6 +51,7 @@
 #include <cassert>
 #include <ranges>
 #include "proxy_sort.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/util/detail/iterator_facade.h"
 
 /**
@@ -105,7 +106,7 @@ class permutation_view : public std::ranges::view_interface<
       , index_begin_(std::ranges::begin(permutation))
       , index_end_(std::ranges::end(permutation)) {
     // @todo Should this throw an exception instead?
-    assert(
+    iassert(
         static_cast<unsigned long>(std::ranges::size(data)) ==
         std::ranges::size(permutation));
   }

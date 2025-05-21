@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/result_tile.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -303,7 +304,7 @@ uint64_t ResultTile::coord_size(unsigned dim_idx) const {
   }
 
   // Handle separate coordinate tiles
-  assert(dim_idx < coord_tiles_.size());
+  iassert(dim_idx < coord_tiles_.size());
   return coord_tiles_[dim_idx].second->fixed_tile().cell_size();
 }
 
@@ -395,7 +396,7 @@ Status ResultTile::read(
     // Special case where zipped coordinates are requested, but the
     // result tile stores separate coordinates
     auto dim_num = coord_tiles_.size();
-    assert(!coords_tile_.has_value());
+    passert(!coords_tile_.has_value());
     auto buff = static_cast<unsigned char*>(buffer);
     auto buff_offset = 0;
     for (uint64_t c = 0; c < len; ++c) {
@@ -417,8 +418,8 @@ Status ResultTile::read(
   } else {
     // Last case which is zipped coordinates but split buffers
     // This is only for backwards compatibility of pre format 5 (v2.0) arrays
-    assert(coords_tile_.has_value());
-    assert(name != constants::coords);
+    passert(coords_tile_.has_value());
+    iassert(name != constants::coords, "name = {}", name);
     int dim_offset = 0;
     for (uint32_t i = 0; i < domain_->dim_num(); ++i) {
       if (domain_->dimension_ptr(i)->name() == name) {
@@ -472,13 +473,13 @@ bool ResultTile::stores_zipped_coords() const {
 }
 
 const Tile& ResultTile::zipped_coords_tile() const {
-  assert(stores_zipped_coords());
+  iassert(stores_zipped_coords());
   return coords_tile_->fixed_tile();
 }
 
 const ResultTile::TileTuple& ResultTile::coord_tile(unsigned dim_idx) const {
-  assert(!stores_zipped_coords());
-  assert(!coord_tiles_.empty());
+  iassert(!stores_zipped_coords());
+  iassert(!coord_tiles_.empty());
   return coord_tiles_[dim_idx].second.value();
 }
 
@@ -546,7 +547,7 @@ void ResultTile::compute_results_dense(
   }
 
   // Handle zipped coordinates tile
-  assert(stores_zipped_coords);
+  iassert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
   auto coords = coords_tile.data_as<const T>();
   T c;
@@ -609,7 +610,7 @@ void ResultTile::compute_results_sparse<char>(
   auto& r_bitmap = (*result_bitmap);
 
   // Sanity check.
-  assert(coords_num != 0);
+  iassert(coords_num != 0);
   if (coords_num == 0)
     return;
 
@@ -663,7 +664,7 @@ void ResultTile::compute_results_sparse<char>(
       // in this partition.
       const uint64_t first_c_pos = p * c_partition_size_div;
       const uint64_t last_c_pos = first_c_pos + c_partition_size - 1;
-      assert(first_c_pos < last_c_pos);
+      iassert(first_c_pos < last_c_pos);
 
       // The coordinate values are determined by their offset and size
       // within `buff_str`. Calculate the offset and size for the
@@ -682,7 +683,7 @@ void ResultTile::compute_results_sparse<char>(
       // string value.
       if (first_c_size == last_c_size &&
           strncmp(first_c_coord, second_coord, first_c_size) == 0) {
-        assert(r_bitmap[first_c_pos] == 1);
+        iassert(r_bitmap[first_c_pos] == 1);
         const uint8_t intersects = str_coord_intersects(
             first_c_offset, first_c_size, buff_str, range_start, range_end);
         memset(&r_bitmap[first_c_pos], intersects, c_partition_size);
@@ -784,7 +785,7 @@ void ResultTile::compute_results_sparse(
   }
 
   // Handle zipped coordinates tile
-  assert(stores_zipped_coords);
+  iassert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
   const T* const coords = coords_tile.data_as<const T>();
   for (uint64_t pos = 0; pos < coords_num; ++pos) {
@@ -875,7 +876,7 @@ void ResultTile::compute_results_count_sparse_string(
   auto dim_num = result_tile->domain()->dim_num();
 
   // Sanity check.
-  assert(coords_num != 0);
+  iassert(coords_num != 0);
   if (coords_num == 0)
     return;
 
@@ -937,7 +938,7 @@ void ResultTile::compute_results_count_sparse_string(
       // in this partition.
       const uint64_t first_c_pos = min_cell + p * c_partition_size_div;
       const uint64_t last_c_pos = first_c_pos + c_partition_size - 1;
-      assert(first_c_pos < last_c_pos);
+      iassert(first_c_pos < last_c_pos);
 
       // The coordinate values are determined by their offset and size
       // within `buff_str`. Calculate the offset and size for the
@@ -1108,7 +1109,7 @@ void ResultTile::compute_results_count_sparse(
   }
 
   // Handle zipped coordinates tile.
-  assert(stores_zipped_coords);
+  iassert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
   const T* const coords = coords_tile.data_as<const T>();
   {
@@ -1135,7 +1136,7 @@ Status ResultTile::compute_results_dense(
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) const {
-  assert(compute_results_dense_func_[dim_idx] != nullptr);
+  iassert(compute_results_dense_func_[dim_idx] != nullptr);
   compute_results_dense_func_[dim_idx](
       this,
       dim_idx,
@@ -1152,7 +1153,7 @@ Status ResultTile::compute_results_sparse(
     const Range& range,
     tdb::pmr::vector<uint8_t>* result_bitmap,
     const Layout& cell_order) const {
-  assert(compute_results_sparse_func_[dim_idx] != nullptr);
+  iassert(compute_results_sparse_func_[dim_idx] != nullptr);
   compute_results_sparse_func_[dim_idx](
       this, dim_idx, range, result_bitmap, cell_order);
   return Status::Ok();
@@ -1167,7 +1168,7 @@ Status ResultTile::compute_results_count_sparse<uint8_t>(
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) const {
-  assert(compute_results_count_sparse_uint8_t_func_[dim_idx] != nullptr);
+  iassert(compute_results_count_sparse_uint8_t_func_[dim_idx] != nullptr);
   compute_results_count_sparse_uint8_t_func_[dim_idx](
       this,
       dim_idx,
@@ -1189,7 +1190,7 @@ Status ResultTile::compute_results_count_sparse<uint64_t>(
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) const {
-  assert(compute_results_count_sparse_uint64_t_func_[dim_idx] != nullptr);
+  iassert(compute_results_count_sparse_uint64_t_func_[dim_idx] != nullptr);
   compute_results_count_sparse_uint64_t_func_[dim_idx](
       this,
       dim_idx,

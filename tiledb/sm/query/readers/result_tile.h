@@ -39,6 +39,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -897,7 +898,7 @@ class ResultTileWithBitmap : public ResultTile {
    * Allocate the bitmap.
    */
   void alloc_bitmap() {
-    assert(bitmap_.size() == 0);
+    iassert(bitmap_.size() == 0);
     bitmap_.resize(cell_num_, 1);
   }
 

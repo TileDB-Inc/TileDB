@@ -31,7 +31,9 @@
  */
 
 #include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -85,7 +87,7 @@ Status ReadCellSlabIter<T>::begin() {
 
 template <class T>
 ResultCellSlab ReadCellSlabIter<T>::result_cell_slab() const {
-  assert(result_cell_slabs_pos_ < result_cell_slabs_.size());
+  passert(result_cell_slabs_pos_ < result_cell_slabs_.size());
   return result_cell_slabs_[result_cell_slabs_pos_];
 }
 
@@ -109,9 +111,11 @@ void ReadCellSlabIter<T>::compute_cell_offsets() {
   if (domain_ == nullptr)
     return;
 
-  assert(
+  iassert(
       domain_->cell_order() == Layout::ROW_MAJOR ||
-      domain_->cell_order() == Layout::COL_MAJOR);
+          domain_->cell_order() == Layout::COL_MAJOR,
+      "cell_order = {}",
+      layout_str(domain_->cell_order()));
 
   if (domain_->cell_order() == Layout::ROW_MAJOR)
     compute_cell_offsets_row();
@@ -121,7 +125,7 @@ void ReadCellSlabIter<T>::compute_cell_offsets() {
 
 template <class T>
 void ReadCellSlabIter<T>::compute_cell_offsets_col() {
-  assert(std::is_integral<T>::value);
+  iassert(std::is_integral<T>::value);
   auto dim_num = domain_->dim_num();
   cell_offsets_.reserve(dim_num);
 
@@ -135,7 +139,7 @@ void ReadCellSlabIter<T>::compute_cell_offsets_col() {
 
 template <class T>
 void ReadCellSlabIter<T>::compute_cell_offsets_row() {
-  assert(std::is_integral<T>::value);
+  iassert(std::is_integral<T>::value);
   auto dim_num = domain_->dim_num();
   cell_offsets_.reserve(dim_num);
 
@@ -174,7 +178,7 @@ void ReadCellSlabIter<T>::compute_cell_slab_overlap(
     uint64_t* overlap_length,
     unsigned* overlap_type) {
   auto dim_num = domain_->dim_num();
-  assert(slab_overlap->size() == dim_num);
+  iassert(slab_overlap->size() == dim_num);
   unsigned slab_dim = (layout_ == Layout::ROW_MAJOR) ? dim_num - 1 : 0;
   T slab_end, slab_start;
   slab_start = cell_slab.coords_[slab_dim];
@@ -211,7 +215,7 @@ void ReadCellSlabIter<T>::compute_result_cell_slabs(
     const CellSlab<T>& cell_slab) {
   // Find the result space tile
   auto it = result_space_tiles_->find(cell_slab.tile_coords_);
-  assert(it != result_space_tiles_->end());
+  iassert(it != result_space_tiles_->end());
   auto& result_space_tile = it->second;
 
   // Note: this functions assumes that `result_coords_` are certain
@@ -409,7 +413,7 @@ void ReadCellSlabIter<T>::split_cell_slab(
   }
 
   // All the possible cases are covered above
-  assert(false);
+  stdx::unreachable();
 }
 
 template <class T>

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
@@ -141,7 +142,10 @@ ArrayDirectory::load_array_schemas(
   const auto& array_schema_latest_name =
       latest_array_schema_uri().last_path_part();
   auto it = array_schemas.find(array_schema_latest_name);
-  assert(it != array_schemas.end());
+  passert(
+      it != array_schemas.end(),
+      "Cannot locate array schema '{}'",
+      array_schema_latest_name);
 
   return {it->second, array_schemas};
 }
@@ -331,7 +335,7 @@ void ArrayDirectory::delete_fragments_list(
 }
 
 Status ArrayDirectory::load() {
-  assert(!loaded_);
+  passert(!loaded_);
 
   std::vector<ThreadPool::Task> tasks;
   std::vector<URI> root_dir_uris;
@@ -402,7 +406,10 @@ Status ArrayDirectory::load() {
     }
 
     latest_array_schema_uri_ = select_latest_array_schema_uri();
-    assert(!latest_array_schema_uri_.is_invalid());
+    passert(
+        !latest_array_schema_uri_.is_invalid(),
+        "uri = {}",
+        latest_array_schema_uri_.to_string());
   }
 
   // Process the rest of the data that has dependencies between each other

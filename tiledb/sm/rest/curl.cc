@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/rest/curl.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -299,30 +300,20 @@ Status Curl::init(
 
   curl_easy_setopt(curl_.get(), CURLOPT_TCP_KEEPALIVE, tcp_keepalive ? 1L : 0L);
 
-  bool found;
-  RETURN_NOT_OK(
-      config_->get<uint64_t>("rest.retry_count", &retry_count_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get<double>(
-      "rest.retry_delay_factor", &retry_delay_factor_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get<uint64_t>(
-      "rest.retry_initial_delay_ms", &retry_initial_delay_ms_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get_vector<uint32_t>(
-      "rest.retry_http_codes", &retry_http_codes_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get<bool>("rest.curl.verbose", &verbose_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get<uint64_t>(
-      "rest.curl.buffer_size", &curl_buffer_size_, &found));
-  assert(found);
-
+  retry_count_ = config_->get<uint64_t>("rest.retry_count", Config::must_find);
+  retry_delay_factor_ =
+      config_->get<double>("rest.retry_delay_factor", Config::must_find);
+  retry_initial_delay_ms_ =
+      config_->get<uint64_t>("rest.retry_initial_delay_ms", Config::must_find);
+  {
+    bool found;
+    RETURN_NOT_OK(config_->get_vector<uint32_t>(
+        "rest.retry_http_codes", &retry_http_codes_, &found));
+    passert(found);
+  }
+  verbose_ = config_->get<bool>("rest.curl.verbose", Config::must_find);
+  curl_buffer_size_ =
+      config_->get<uint64_t>("rest.curl.buffer_size", Config::must_find);
   retry_curl_errors_ =
       config_->get<bool>("rest.curl.retry_errors", Config::must_find);
 

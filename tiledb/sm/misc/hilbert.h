@@ -39,6 +39,8 @@
 #include <cstdlib>
 #include <iostream>
 
+#include "tiledb/common/assert.h"
+
 namespace tiledb {
 namespace sm {
 
@@ -127,8 +129,12 @@ class Hilbert {
   Hilbert(int bits, int dim_num)
       : bits_(bits)
       , dim_num_(dim_num) {
-    assert(dim_num >= 0 && dim_num < HC_MAX_DIM);
-    assert(bits * dim_num <= int(sizeof(uint64_t) * 8 - 1));
+    iassert(dim_num >= 0 && dim_num < HC_MAX_DIM, "dim_num = {}", dim_num);
+    iassert(
+        bits * dim_num <= int(sizeof(uint64_t) * 8 - 1),
+        "bits = {}, dim_num = {}",
+        bits,
+        dim_num);
   }
 
   /**
@@ -139,7 +145,7 @@ class Hilbert {
    */
   Hilbert(int dim_num)
       : dim_num_(dim_num) {
-    assert(dim_num >= 0 && dim_num < HC_MAX_DIM);
+    iassert(dim_num >= 0 && dim_num < HC_MAX_DIM, "dim_num = {}", dim_num);
     bits_ = (sizeof(uint64_t) * 8 - 1) / dim_num_;
   }
 
@@ -167,7 +173,7 @@ class Hilbert {
    * @return The output Hilbert value.
    */
   uint64_t coords_to_hilbert(uint64_t* coords) {
-    assert(coords != nullptr);
+    iassert(coords != nullptr);
     uint64_t ret = 0;
 
     // Convert coords to the transpose form of the hilbert value
@@ -194,7 +200,7 @@ class Hilbert {
    * @return void
    */
   void hilbert_to_coords(uint64_t hilbert, uint64_t* coords) {
-    assert(coords != nullptr);
+    iassert(coords != nullptr);
 
     // Initialization
     for (int i = 0; i < dim_num_; ++i)

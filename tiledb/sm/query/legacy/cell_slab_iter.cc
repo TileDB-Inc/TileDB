@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -219,7 +220,7 @@ void CellSlabIter<T>::init_cell_slab_lengths() {
       cell_slab_lengths_[i] =
           ranges_[dim_num - 1][i].end_ - ranges_[dim_num - 1][i].start_ + 1;
   } else {
-    assert(layout == Layout::COL_MAJOR);
+    iassert(layout == Layout::COL_MAJOR, "layout = {}", layout_str(layout));
     auto range_num = ranges_[0].size();
     cell_slab_lengths_.resize(range_num);
     for (size_t i = 0; i < range_num; ++i)
@@ -268,7 +269,7 @@ Status CellSlabIter<T>::init_ranges() {
 
 template <class T>
 Status CellSlabIter<T>::sanity_check() const {
-  assert(subarray_ != nullptr);
+  iassert(subarray_ != nullptr);
 
   // Check layout
   auto layout = subarray_->layout();

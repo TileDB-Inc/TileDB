@@ -34,6 +34,7 @@
 
 #include <cassert>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/s3_thread_pool_executor.h"
 
@@ -46,12 +47,12 @@ S3ThreadPoolExecutor::S3ThreadPoolExecutor(ThreadPool* const thread_pool)
     : thread_pool_(thread_pool)
     , state_(State::RUNNING)
     , outstanding_tasks_(0) {
-  assert(thread_pool_);
+  passert(thread_pool_);
 }
 
 S3ThreadPoolExecutor::~S3ThreadPoolExecutor() {
-  assert(state_ == State::STOPPED);
-  assert(outstanding_tasks_ == 0);
+  passert(state_ == State::STOPPED);
+  passert(outstanding_tasks_ == 0);
 }
 
 void S3ThreadPoolExecutor::Stop() {
