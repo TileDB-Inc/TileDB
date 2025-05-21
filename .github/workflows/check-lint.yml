@@ -44,4 +44,3 @@ jobs:
           set -e pipefail
           python scripts/linter.py $GITHUB_WORKSPACE/tiledb
         shell: bash
-        if: ${{ runner.os == 'Linux' }}
