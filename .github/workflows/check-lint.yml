@@ -1,6 +1,10 @@
 name: check-lint
 on:
   push:
+    branches:
+      - main
+      - release-*
+      - refs/tags/*
     paths-ignore:
       - '_quarto.yml'
       - 'quarto-materials/*'
