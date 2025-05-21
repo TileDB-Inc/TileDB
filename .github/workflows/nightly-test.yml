@@ -13,7 +13,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         build_type: [Debug, Release]
-        experimental: [OFF, ON]
+        experimental: [OFF]
         assertions: [ON]
         sanitizer: [OFF]
         include:
@@ -21,6 +21,10 @@ jobs:
             sanitizer: "address"
             assertions: ON
             base_triplet: "arm64-osx"
+          - os: macos-latest # Arbitrary job to run EXPERIMENTAL=ON
+            build_type: Debug
+            sanitizer: OFF
+            experimental: ON
           - os: windows-latest
             build_type: "Debug"
             # Insufficient space on default D:/ for debug build
