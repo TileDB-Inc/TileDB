@@ -377,6 +377,11 @@ class Config {
    *    `sm.consolidation.timestamp_start` and this value (inclusive). <br>
    *    Only for `fragments` and `array_meta` consolidation mode. <br>
    *    **Default**: UINT64_MAX
+   * - `sm.consolidation.with_timestamps` <br>
+   *    Consolidation with timestamps will include, for each cells, the
+   *    timestamp at which the cell was written, allowing post-consolidation
+   *    time travel. <br>
+   *    **Default**: "true"
    * - `sm.encryption_key` <br>
    *    The key for encrypted arrays. <br>
    *    **Default**: ""

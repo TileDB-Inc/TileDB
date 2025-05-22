@@ -156,6 +156,7 @@ const std::string Config::SM_CONSOLIDATION_MODE = "fragments";
 const std::string Config::SM_CONSOLIDATION_TIMESTAMP_START = "0";
 const std::string Config::SM_CONSOLIDATION_TIMESTAMP_END =
     std::to_string(UINT64_MAX);
+const std::string Config::SM_CONSOLIDATION_WITH_TIMESTAMPS = "true";
 const std::string Config::SM_VACUUM_MODE = "fragments";
 const std::string Config::SM_VACUUM_TIMESTAMP_START = "0";
 const std::string Config::SM_VACUUM_TIMESTAMP_END = std::to_string(UINT64_MAX);
@@ -386,6 +387,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.consolidation.timestamp_end",
         Config::SM_CONSOLIDATION_TIMESTAMP_END),
+    std::make_pair(
+        "sm.consolidation.with_timestamps",
+        Config::SM_CONSOLIDATION_WITH_TIMESTAMPS),
     std::make_pair("sm.vacuum.mode", Config::SM_VACUUM_MODE),
     std::make_pair("sm.var_offsets.bitsize", Config::SM_OFFSETS_BITSIZE),
     std::make_pair(

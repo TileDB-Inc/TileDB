@@ -303,13 +303,17 @@ class ArrayDirectory {
    *    [`timestamp_start`, `timestamp_end`] will be considered when
    *     fetching URIs.
    * @param mode The mode to load the array directory in.
+   * @param allow_partial_fragment_overlap If we want to allow matching
+   * fragments that overlap only partially with the timestamp range. This
+   * applies in some cases of consolidated fragments with timestamps.
    */
   ArrayDirectory(
       ContextResources& resources,
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
-      ArrayDirectoryMode mode = ArrayDirectoryMode::READ);
+      ArrayDirectoryMode mode = ArrayDirectoryMode::READ,
+      bool allow_partial_fragment_overlap = true);
 
   /** Destructor. */
   ~ArrayDirectory() = default;
@@ -643,6 +647,10 @@ class ArrayDirectory {
 
   /** Mode for the array directory. */
   ArrayDirectoryMode mode_;
+
+  /** True if we allow matching fragments with partial timestamp range overlap
+   */
+  bool allow_partial_fragment_overlap_;
 
   /** True if `load` has been run. */
   bool loaded_;
