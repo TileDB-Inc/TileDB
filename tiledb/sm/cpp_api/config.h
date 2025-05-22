@@ -379,7 +379,8 @@ class Config {
    *    **Default**: UINT64_MAX
    * - `sm.consolidation.with_timestamps` <br>
    *    Consolidation with timestamps will include, for each cells, the
-   *    timestamp at which the cell was written. <br>
+   *    timestamp at which the cell was written, allowing post-consolidation
+   *    time travel. <br>
    *    **Default**: "true"
    * - `sm.encryption_key` <br>
    *    The key for encrypted arrays. <br>
