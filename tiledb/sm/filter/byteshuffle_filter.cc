@@ -36,7 +36,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include "blosc/tiledb-shuffle.h"
+#include "external/include/blosc/tiledb-shuffle.h"
 
 using namespace tiledb::common;
 
