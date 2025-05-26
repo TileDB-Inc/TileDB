@@ -39,7 +39,6 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/rest/rest_profile.h"
 
 using namespace tiledb::common;
 
@@ -79,9 +78,6 @@ const std::string Config::CONFIG_LOGGING_LEVEL = "1";
 const std::string Config::CONFIG_LOGGING_LEVEL = "0";
 #endif
 const std::string Config::CONFIG_LOGGING_DEFAULT_FORMAT = "DEFAULT";
-const std::string Config::PROFILE_HOMEDIR =
-    tiledb::common::filesystem::home_directory();
-const std::string Config::PROFILE_NAME = "default";
 const std::string Config::REST_SERVER_DEFAULT_ADDRESS =
     "https://api.tiledb.com";
 const std::string Config::REST_SERIALIZATION_DEFAULT_FORMAT = "CAPNP";
@@ -247,8 +243,6 @@ const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
 const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
-    std::make_pair("profile_homedir", Config::PROFILE_NAME),
-    std::make_pair("profile_name", Config::PROFILE_NAME),
     std::make_pair("rest.server_address", Config::REST_SERVER_DEFAULT_ADDRESS),
     std::make_pair(
         "rest.server_serialization_format",
@@ -557,8 +551,13 @@ const std::set<std::string> Config::unserialized_params_ = {
 /* ****************************** */
 
 Config::Config() {
-  // Set config values
   param_values_ = default_config_values;
+  try {
+    // Attempt to load the default profile, if present.
+    rest_profile_ = RestProfile::load_profile();
+  } catch (const std::exception& e) {
+    // Be silent in case the default profile is not found
+  }
 }
 
 Config::~Config() = default;
@@ -570,7 +569,7 @@ Config::~Config() = default;
 Status Config::load_from_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
-    throw ConfigException("Cannot load from file; Invalid filename");
+    throw ConfigException("Cannot load from file; File path is empty");
 
   std::ifstream ifs(filename);
   if (!ifs.is_open()) {
@@ -620,7 +619,7 @@ Status Config::load_from_file(const std::string& filename) {
 Status Config::save_to_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
-    throw ConfigException("Cannot save to file; Invalid filename");
+    throw ConfigException("Cannot load from file; File path is empty");
 
   std::ofstream ofs(filename);
   if (!ofs.is_open()) {
@@ -721,6 +720,17 @@ void Config::inherit(const Config& config) {
   }
 }
 
+Status Config::set_profile(
+    const std::optional<std::string>& profile_name,
+    const std::optional<std::string>& profile_homedir) {
+  try {
+    rest_profile_ = RestProfile::load_profile(profile_name, profile_homedir);
+    return Status::Ok();
+  } catch (const std::exception& e) {
+    throw ConfigException(e.what());
+  }
+}
+
 bool Config::operator==(const Config& rhs) const {
   if (param_values_.size() != rhs.param_values_.size())
     return false;
@@ -747,20 +757,6 @@ Status Config::sanity_check(
   float vf = 0.0f;
   int64_t vint64 = 0;
   int chkno = -1;
-
-  // Check for RestProfile-specific parameters and warn users accordingly.
-  // Note: users are allowed to _fetch_ these parameters, but they must
-  // first be set on an immutable RestProfile.
-
-  // What happens if the user creates the Profile but doesn't save it?
-  // Maybe add a bool saved_ flag in RP to track if the profile's been saved.
-  if (param == "rest.password" || param == "rest.payer_namespace" ||
-      param == "rest.token" || param == "rest.server_address" ||
-      param == "rest.username") {
-    throw ConfigException(
-        "Parameter \'' + param + '\' is no longer set directly on the Config. "
-        "Instead, create a RestProfile and set \'profile_name\' accordingly.");
-  }
 
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
@@ -955,14 +951,12 @@ const char* Config::get_from_config_or_fallback(
     return value_env;
 
   // [3. user-set profiles]
-  auto profile = RestProfile::load_if_exists(
-      param_values_.at("profile_name"), param_values_.at("profile_homedir"));
-  if (profile.has_value()) {
+  if (rest_profile_.has_value()) {
     // The "s3.verify_ssl" parameter _may or may not_ be set on the profile.
     // If that's the param to be fetched, see if it's set on the profile,
     // and return its value (if it has one).
     if (strcmp(param.c_str(), "s3.verify_ssl") == 0) {
-      auto verify_ssl = profile->get_verify_ssl();
+      auto verify_ssl = rest_profile_.value().get_verify_ssl();
       if (verify_ssl.has_value()) {
         *found = true;
         return verify_ssl.value() ? "true" : "false";
@@ -970,11 +964,11 @@ const char* Config::get_from_config_or_fallback(
     } else {
       // Fetch all other params from the profile normally.
       try {
-        const char* value = std::move(profile->get_param(param).c_str());
+        const char* value = rest_profile_.value().get_param(param).c_str();
         *found = true;
         return value;
-      } catch (...) {
-        throw;
+      } catch (const RestProfileException& e) {
+        // Be silent if the parameter is not found in the profile.
       }
     }
   }

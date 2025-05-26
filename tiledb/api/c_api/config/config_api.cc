@@ -103,6 +103,22 @@ capi_return_t tiledb_config_save_to_file(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_config_set_profile(
+    tiledb_config_t* config,
+    const char* profile_name,
+    const char* profile_homedir) {
+  ensure_config_is_valid(config);
+  std::optional<std::string> profile_name_opt = (profile_name == nullptr)
+      ? std::nullopt
+      : std::make_optional(std::string(profile_name));
+  std::optional<std::string> profile_homedir_opt = (profile_homedir == nullptr)
+      ? std::nullopt
+      : std::make_optional(std::string(profile_homedir));
+  throw_if_not_ok(config->config().set_profile(
+      profile_name_opt, profile_homedir_opt));
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_config_compare(
     tiledb_config_t* lhs, tiledb_config_t* rhs, uint8_t* equal) {
   ensure_config_is_valid(lhs);
@@ -232,6 +248,16 @@ CAPI_INTERFACE(
     tiledb_error_t** error) {
   return api_entry_error<tiledb::api::tiledb_config_save_to_file>(
       error, config, filename);
+}
+
+CAPI_INTERFACE(
+    config_set_profile,
+    tiledb_config_t* config,
+    const char* profile_name,
+    const char* profile_homedir,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_set_profile>(
+      error, config, profile_name, profile_homedir);
 }
 
 /*
