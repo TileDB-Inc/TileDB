@@ -215,7 +215,7 @@ TEST_CASE(
   /*
    * No "success" sections here; too much overhead to set up.
    */
-  SECTION("all arguments valid - load failuire") {
+  SECTION("all arguments valid - load failure") {
     auto rc{tiledb_config_set_profile(x.config, "foo", "bar", &x.error)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
