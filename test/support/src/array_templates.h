@@ -722,9 +722,9 @@ struct query_buffers<std::optional<T>> {
 
   query_field_size_type make_field_size(uint64_t cell_limit) const {
     const uint64_t values_size =
-        sizeof(T) * std::min(cell_limit, values_.size());
+        sizeof(T) * std::min<uint64_t>(cell_limit, values_.size());
     const uint64_t validity_size =
-        sizeof(uint8_t) * std::min(cell_limit, validity_.size());
+        sizeof(uint8_t) * std::min<uint64_t>(cell_limit, validity_.size());
     return std::make_pair(values_size, validity_size);
   }
 
@@ -876,7 +876,7 @@ struct query_buffers<std::vector<T>> {
   query_field_size_type make_field_size(uint64_t cell_limit) const {
     const uint64_t values_size = sizeof(T) * values_.size();
     const uint64_t offsets_size =
-        sizeof(uint64_t) * std::min(cell_limit, offsets_.size());
+        sizeof(uint64_t) * std::min<uint64_t>(cell_limit, offsets_.size());
     return std::make_pair(values_size, offsets_size);
   }
 
@@ -1217,7 +1217,8 @@ struct query_applicator {
       uint64_t cell_limit = std::numeric_limits<uint64_t>::max()) {
     std::optional<uint64_t> num_cells;
     auto make_field_size = [&]<typename T>(const query_buffers<T>& field) {
-      const uint64_t field_cells = std::min(cell_limit, field.num_cells());
+      const uint64_t field_cells =
+          std::min<uint64_t>(cell_limit, field.num_cells());
       const auto field_size = field.make_field_size(cell_limit);
       if (num_cells.has_value()) {
         // precondition: each field must have the same number of cells
