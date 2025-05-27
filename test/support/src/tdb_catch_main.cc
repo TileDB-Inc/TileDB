@@ -12,6 +12,10 @@
 
 #include <cstdlib>
 
+#if defined(_MSC_VER)
+#include <crtdbg.h>
+#endif
+
 namespace Catch {
 CATCH_INTERNAL_START_WARNINGS_SUPPRESSION
 CATCH_INTERNAL_SUPPRESS_GLOBALS_WARNINGS
@@ -39,6 +43,9 @@ int main(int argc, char* argv[]) {
   // the value of these flags.
   if (std::getenv("CI") != nullptr) {
     _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    // Configures assert() failures to write message to stderr and fail-fast.
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
   }
 #endif
 
