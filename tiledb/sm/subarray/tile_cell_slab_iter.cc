@@ -267,7 +267,6 @@ void TileCellSlabIter<T>::init_cell_slab_lengths() {
           ranges_[dim_num_ - 1][i].end_ - ranges_[dim_num_ - 1][i].start_ + 1;
     }
   } else {
-    assert(layout_ == Layout::COL_MAJOR);
     auto range_num = ranges_[0].size();
     cell_slab_lengths_.resize(range_num);
     for (size_t i = 0; i < range_num; ++i) {
