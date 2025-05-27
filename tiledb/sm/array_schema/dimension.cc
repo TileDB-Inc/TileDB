@@ -31,6 +31,7 @@
  */
 
 #include "dimension.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
@@ -334,9 +335,9 @@ const std::string& Dimension::name() const {
 template <class T>
 void Dimension::ceil_to_tile(
     const Dimension* dim, const Range& r, uint64_t tile_num, ByteVecValue* v) {
-  assert(dim != nullptr);
-  assert(!r.empty());
-  assert(dim->tile_extent());
+  passert(dim != nullptr);
+  passert(dim->tile_extent());
+  iassert(!r.empty());
 
   auto tile_extent = *(const T*)dim->tile_extent().data();
   auto dim_dom = (const T*)dim->domain().data();
@@ -345,7 +346,7 @@ void Dimension::ceil_to_tile(
   T mid = tile_coord_low(tile_num + 1, r_t[0], tile_extent);
   uint64_t div = tile_idx(mid, dim_dom[0], tile_extent);
   T floored_mid = tile_coord_low(div, dim_dom[0], tile_extent);
-  assert(v != nullptr);
+  iassert(v != nullptr);
   v->assign_as<T>(
       (std::is_integral<T>::value) ?
           floored_mid - 1 :
@@ -360,9 +361,8 @@ void Dimension::ceil_to_tile(
 
 template <class T>
 bool Dimension::coincides_with_tiles(const Dimension* dim, const Range& r) {
-  assert(dim != nullptr);
-  assert(!r.empty());
-  assert(dim->tile_extent());
+  passert(dim != nullptr);
+  iassert(!r.empty());
 
   auto dim_domain = (const T*)dim->domain().data();
   auto tile_extent = *(const T*)dim->tile_extent().data();
@@ -380,10 +380,10 @@ bool Dimension::coincides_with_tiles(const Range& r) const {
 template <class T>
 Range Dimension::compute_mbr(const WriterTile& tile) {
   auto cell_num = tile.cell_num();
-  assert(cell_num > 0);
+  passert(cell_num > 0);
 
   void* tile_buffer = tile.data();
-  assert(tile_buffer != nullptr);
+  iassert(tile_buffer != nullptr);
 
   // Initialize MBR with the first tile values
   const T* const data = static_cast<T*>(tile_buffer);
@@ -406,13 +406,13 @@ Range Dimension::compute_mbr_var<char>(
     const WriterTile& tile_off, const WriterTile& tile_val) {
   auto d_val_size = tile_val.size();
   auto cell_num = tile_off.cell_num();
-  assert(cell_num > 0);
+  iassert(cell_num > 0);
 
   offsets_t* d_off = tile_off.data_as<offsets_t>();
-  assert(d_off != nullptr);
+  iassert(d_off != nullptr);
 
   char* d_val = tile_val.data_as<char>();
-  assert(d_val != nullptr);
+  iassert(d_val != nullptr);
 
   // Initialize MBR with the first tile values
   auto size_0 = (cell_num == 1) ? d_val_size : d_off[1];
@@ -435,7 +435,7 @@ Range Dimension::compute_mbr_var(
 
 template <class T>
 uint64_t Dimension::domain_range(const Range& range) {
-  assert(!range.empty());
+  iassert(!range.empty());
 
   // Inapplicable to real domains
   if (!std::is_integral<T>::value)
@@ -456,9 +456,9 @@ uint64_t Dimension::domain_range(const Range& range) const {
 
 template <class T>
 void Dimension::expand_range_v(const void* v, Range* r) {
-  assert(v != nullptr);
-  assert(r != nullptr);
-  assert(!r->empty());
+  iassert(v != nullptr);
+  iassert(r != nullptr);
+  iassert(!r->empty());
   auto rt = (const T*)r->data();
   auto vt = (const T*)v;
   T res[2] = {std::min(rt[0], *vt), std::max(rt[1], *vt)};
@@ -470,8 +470,8 @@ void Dimension::expand_range_v(const void* v, Range* r) const {
 }
 
 void Dimension::expand_range_var_v(const char* v, uint64_t v_size, Range* r) {
-  assert(v != nullptr);
-  assert(r != nullptr);
+  iassert(v != nullptr);
+  iassert(r != nullptr);
 
   std::string start(r->start_str());
   std::string end(r->end_str());
@@ -483,8 +483,8 @@ void Dimension::expand_range_var_v(const char* v, uint64_t v_size, Range* r) {
 
 template <class T>
 void Dimension::expand_range(const Range& r1, Range* r2) {
-  assert(!r1.empty());
-  assert(!r2->empty());
+  iassert(!r1.empty());
+  iassert(!r2->empty());
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2->data();
   T res[2] = {std::min(d1[0], d2[0]), std::max(d1[1], d2[1])};
@@ -496,7 +496,7 @@ void Dimension::expand_range(const Range& r1, Range* r2) const {
 }
 
 void Dimension::expand_range_var(const Range& r1, Range* r2) const {
-  assert(type_ == Datatype::STRING_ASCII);
+  iassert(type_ == Datatype::STRING_ASCII);
 
   auto r1_start = r1.start_str();
   auto r1_end = r1.end_str();
@@ -512,8 +512,8 @@ void Dimension::expand_range_var(const Range& r1, Range* r2) const {
 
 template <class T>
 void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
-  assert(dim != nullptr);
-  assert(!range->empty());
+  iassert(dim != nullptr);
+  iassert(!range->empty());
 
   // Applicable only to regular tiles and integral domains
   if (!dim->tile_extent() || !std::is_integral<T>::value)
@@ -582,13 +582,13 @@ bool Dimension::covered<char>(const Range& r1, const Range& r2) {
 
 template <class T>
 bool Dimension::covered(const Range& r1, const Range& r2) {
-  assert(!r1.empty());
-  assert(!r2.empty());
+  iassert(!r1.empty());
+  iassert(!r2.empty());
 
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2.data();
-  assert(d1[0] <= d1[1]);
-  assert(d2[0] <= d2[1]);
+  iassert(d1[0] <= d1[1]);
+  iassert(d2[0] <= d2[1]);
 
   return d1[0] >= d2[0] && d1[1] <= d2[1];
 }
@@ -612,8 +612,8 @@ bool Dimension::overlap<char>(const Range& r1, const Range& r2) {
 
 template <class T>
 bool Dimension::overlap(const Range& r1, const Range& r2) {
-  assert(!r1.empty());
-  assert(!r2.empty());
+  iassert(!r1.empty());
+  iassert(!r2.empty());
 
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2.data();
@@ -641,7 +641,7 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
   } else {
     pref_size = stdx::string::common_prefix_size(r2_start, r2_end);
     auto r2_start_c = (r2_start.size() == pref_size) ? 0 : r2_start[pref_size];
-    assert(r2_end.size() > pref_size);
+    iassert(r2_end.size() > pref_size);
     r2_range = r2_end[pref_size] - r2_start_c + 1;
   }
 
@@ -652,7 +652,7 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
   if (o_start == o_end) {
     o_range = 1;
   } else {
-    assert(o_end.size() > pref_size);
+    iassert(o_end.size() > pref_size);
     auto o_start_c = (o_start.size() == pref_size) ? 0 : o_start[pref_size];
     o_range = o_end[pref_size] - o_start_c + 1;
   }
@@ -669,16 +669,16 @@ double Dimension::overlap_ratio<char>(const Range& r1, const Range& r2) {
 template <class T>
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
   // Verify that we have two intervals
-  assert(!r1.empty());
-  assert(!r2.empty());
+  iassert(!r1.empty());
+  iassert(!r2.empty());
   auto d1 = (const T*)r1.data();
   auto d2 = (const T*)r2.data();
   const auto r1_low = d1[0];
   const auto r1_high = d1[1];
   auto r2_low = d2[0];
   auto r2_high = d2[1];
-  assert(r1_low <= r1_high);
-  assert(r2_low <= r2_high);
+  iassert(r1_low <= r1_high);
+  iassert(r2_low <= r2_high);
 
   // Special case: No overlap, intervals are disjoint
   if (r1_low > r2_high || r1_high < r2_low)
@@ -758,7 +758,7 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
   } else if (ratio == 1.0) {
     ratio = std::nextafter(1, 0);
   }
-  assert(0.0 < ratio && ratio < 1.0);
+  iassert(0.0 < ratio && ratio < 1.0, "ratio={}", ratio);
   return ratio;
 }
 
@@ -915,9 +915,8 @@ std::vector<bool> Dimension::covered_vec(
 template <>
 void Dimension::split_range<char>(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
-  assert(v);
-  assert(r1 != nullptr);
-  assert(r2 != nullptr);
+  iassert(r1 != nullptr);
+  iassert(r2 != nullptr);
 
   // First range
   auto min_string = std::string("\x0", 1);
@@ -932,7 +931,7 @@ void Dimension::split_range<char>(
       break;
     }
   }
-  assert(pos < new_r1_end_size);  // One negative char must be present
+  iassert(pos < new_r1_end_size);  // One negative char must be present
   r1->set_str_range(new_r1_start, new_r1_end);
 
   // Second range
@@ -943,7 +942,7 @@ void Dimension::split_range<char>(
       break;
   }
   do {
-    assert(pos != 0);
+    iassert(pos != 0);
     new_r2_start[pos] = 0;
     new_r2_start[--pos]++;
   } while (pos >= 0 && (int)(signed char)new_r2_start[pos] < 0);
@@ -952,8 +951,16 @@ void Dimension::split_range<char>(
   auto max_string = std::string("\x7F", 1);
   std::string new_r2_end(!r.end_str().empty() ? r.end_str() : max_string);
 
-  assert(new_r2_start > new_r1_end);
-  assert(new_r2_start <= new_r2_end);
+  iassert(
+      new_r2_start > new_r1_end,
+      "new_r2_start={}, new_r1_end={}",
+      new_r2_start,
+      new_r1_end);
+  iassert(
+      new_r2_start <= new_r2_end,
+      "new_r2_start={}, new_r2_end={}",
+      new_r2_start,
+      new_r2_end);
   r2->set_str_range(new_r2_start, new_r2_end);
 
   // Set the depth of the split ranges to +1 the depth of
@@ -965,17 +972,17 @@ void Dimension::split_range<char>(
 template <class T>
 void Dimension::split_range(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) {
-  assert(!r.empty());
-  assert(v);
-  assert(r1 != nullptr);
-  assert(r2 != nullptr);
+  iassert(!r.empty());
+  iassert(v);
+  iassert(r1 != nullptr);
+  iassert(r2 != nullptr);
 
   auto max = std::numeric_limits<T>::max();
   bool int_domain = std::is_integral<T>::value;
   auto r_t = (const T*)r.data();
   auto v_t = *(const T*)(v.data());
-  assert(v_t >= r_t[0]);
-  assert(v_t < r_t[1]);
+  iassert(v_t >= r_t[0]);
+  iassert(v_t < r_t[1]);
 
   T ret[2];
   ret[0] = r_t[0];
@@ -999,9 +1006,9 @@ void Dimension::split_range(
 template <>
 void Dimension::splitting_value<char>(
     const Range& r, ByteVecValue* v, bool* unsplittable) {
-  assert(!r.empty());
-  assert(v != nullptr);
-  assert(unsplittable != nullptr);
+  iassert(!r.empty());
+  iassert(v != nullptr);
+  iassert(unsplittable != nullptr);
 
   // Check unsplittable
   if (!r.empty() && r.unary()) {
@@ -1037,7 +1044,7 @@ void Dimension::splitting_value<char>(
   std::string split_str(start.substr(0, pref_size));
   split_str += (char)(start_c + split_v);
   split_str += "\x80";
-  assert(split_str >= start);
+  iassert(split_str >= start);
 
   v->resize(split_str.size());
   std::memcpy(v->data(), split_str.data(), split_str.size());
@@ -1046,9 +1053,9 @@ void Dimension::splitting_value<char>(
 template <class T>
 void Dimension::splitting_value(
     const Range& r, ByteVecValue* v, bool* unsplittable) {
-  assert(!r.empty());
-  assert(v != nullptr);
-  assert(unsplittable != nullptr);
+  iassert(!r.empty());
+  iassert(v != nullptr);
+  iassert(unsplittable != nullptr);
 
   auto r_t = (const T*)r.data();
 
@@ -1095,9 +1102,9 @@ void Dimension::splitting_value(
 template <>
 void Dimension::splitting_value<float>(
     const Range& r, ByteVecValue* v, bool* unsplittable) {
-  assert(!r.empty());
-  assert(v != nullptr);
-  assert(unsplittable != nullptr);
+  iassert(!r.empty());
+  iassert(v != nullptr);
+  iassert(unsplittable != nullptr);
 
   auto r_t = (const float*)r.data();
 
@@ -1112,9 +1119,9 @@ void Dimension::splitting_value<float>(
 template <>
 void Dimension::splitting_value<double>(
     const Range& r, ByteVecValue* v, bool* unsplittable) {
-  assert(!r.empty());
-  assert(v != nullptr);
-  assert(unsplittable != nullptr);
+  iassert(!r.empty());
+  iassert(v != nullptr);
+  iassert(unsplittable != nullptr);
 
   auto r_t = (const double*)r.data();
   const double sp = r_t[0] + (r_t[1] / 2 - r_t[0] / 2);
@@ -1135,8 +1142,8 @@ uint64_t Dimension::tile_num<char>(const Dimension*, const Range&) {
 
 template <class T>
 uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
-  assert(dim != nullptr);
-  assert(!range.empty());
+  iassert(dim != nullptr);
+  iassert(!range.empty());
 
   // Trivial cases
   if (!dim->tile_extent())
@@ -1170,9 +1177,9 @@ uint64_t Dimension::map_to_uint64_2(
     uint64_t,  // coord_size
     int,       // bits
     uint64_t max_bucket_val) {
-  assert(dim != nullptr);
-  assert(coord != nullptr);
-  assert(!dim->domain().empty());
+  iassert(dim != nullptr);
+  iassert(coord != nullptr);
+  iassert(!dim->domain().empty());
 
   double dom_start_T = *(const T*)dim->domain().start_fixed();
   double dom_end_T = *(const T*)dim->domain().end_fixed();
@@ -1188,7 +1195,7 @@ uint64_t Dimension::map_to_uint64_2<char>(
     uint64_t coord_size,
     int bits,
     uint64_t) {
-  assert(coord != nullptr);
+  iassert(coord != nullptr);
 
   auto v_str = (const char*)coord;
   auto v_str_size = coord_size;
@@ -1215,8 +1222,8 @@ ByteVecValue Dimension::map_from_uint64(
 template <class T>
 ByteVecValue Dimension::map_from_uint64(
     const Dimension* dim, uint64_t value, int, uint64_t max_bucket_val) {
-  assert(dim != nullptr);
-  assert(!dim->domain().empty());
+  iassert(dim != nullptr);
+  iassert(!dim->domain().empty());
 
   ByteVecValue ret(sizeof(T));
 
@@ -1276,9 +1283,9 @@ bool Dimension::smaller_than(
 template <class T>
 bool Dimension::smaller_than(
     const Dimension* dim, const ByteVecValue& value, const Range& range) {
-  assert(dim != nullptr);
+  iassert(dim != nullptr);
   (void)dim;
-  assert(value);
+  iassert(value);
 
   auto value_T = *(const T*)(value.data());
   auto range_start_T = *(const T*)range.start_fixed();
@@ -1317,7 +1324,7 @@ bool Dimension::smaller_than<char>(
 void Dimension::serialize(Serializer& serializer, uint32_t version) const {
   // Sanity check
   auto is_str = datatype_is_string(type_);
-  assert(is_str || !domain_.empty());
+  iassert(is_str || !domain_.empty());
 
   // Write dimension name
   auto dimension_name_size = (uint32_t)name_.size();
@@ -1620,7 +1627,7 @@ void Dimension::set_dimension_dispatch() {
   if (var_size()) {
     dispatch_ =
         tdb_unique_ptr<DimensionDispatch>(tdb_new(DimensionVarSize, *this));
-    assert(type_ == Datatype::STRING_ASCII);
+    passert(type_ == Datatype::STRING_ASCII, "type_ = {}", datatype_str(type_));
   } else {
     // Fixed-sized
     auto set = [&](auto T) {

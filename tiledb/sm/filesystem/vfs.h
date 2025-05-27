@@ -41,6 +41,7 @@
 
 #include "filesystem_base.h"
 #include "ls_scanner.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
@@ -66,10 +67,6 @@
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
 #endif  // HAVE_S3
-
-#ifdef HAVE_HDFS
-#include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#endif  // HAVE_HDFS
 
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
@@ -135,12 +132,6 @@ static constexpr bool s3_enabled = true;
 #else
 static constexpr bool s3_enabled = false;
 #endif  // HAVE_S3
-
-#ifdef HAVE_HDFS
-static constexpr bool hdfs_enabled = true;
-#else
-static constexpr bool hdfs_enabled = false;
-#endif  // HAVE_HDFS
 
 #ifdef HAVE_AZURE
 static constexpr bool azure_enabled = true;
@@ -642,14 +633,6 @@ class VFS : private VFSBase,
         throw filesystem::VFSException(
             "TileDB was built without Azure support");
 #endif
-      } else if (parent.is_hdfs()) {
-#ifdef HAVE_HDFS
-        throw filesystem::VFSException(
-            "Recursive ls over " + parent.backend_name() +
-            " storage backend is not supported.");
-#else
-        throw filesystem::VFSException("TileDB was built without HDFS support");
-#endif
       } else {
         throw filesystem::VFSException(
             "Recursive ls over " + parent.backend_name() +
@@ -928,7 +911,7 @@ class VFS : private VFSBase,
         void* const buffer,
         const uint64_t nbytes,
         bool* const success) {
-      assert(success);
+      iassert(success);
       *success = false;
 
       // Store the URI's string representation.
@@ -1008,10 +991,6 @@ class VFS : private VFSBase,
   Win win_;
 #else
   Posix posix_;
-#endif
-
-#ifdef HAVE_HDFS
-  tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
   /** The in-memory filesystem which is always supported */

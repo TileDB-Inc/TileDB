@@ -138,7 +138,7 @@ int main(const int argc, char** const argv) {
   Catch::Session session;
 
   // Define acceptable VFS values.
-  const std::vector<std::string> vfs_fs = {"native", "s3", "hdfs", "azure"};
+  const std::vector<std::string> vfs_fs = {"native", "s3", "gcs", "azure"};
 
   // Build a pipe-separated string of acceptable VFS values.
   std::ostringstream vfs_fs_oss;

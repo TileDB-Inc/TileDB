@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -80,13 +81,13 @@ class ArraySchemaException : public StatusException {
 /* ****************************** */
 
 ArraySchema::ArraySchema(
-    ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker)
+    ArrayType array_type,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const std::optional<std::pair<uint64_t, uint64_t>>& timestamp_range)
     : memory_tracker_(memory_tracker)
     , uri_(URI())
     , array_uri_(URI())
     , version_(constants::format_version)
-    , timestamp_range_(std::make_pair(
-          utils::time::timestamp_now_ms(), utils::time::timestamp_now_ms()))
     , name_("")
     , array_type_(array_type)
     , allows_dups_(false)
@@ -106,6 +107,11 @@ ArraySchema::ArraySchema(
           memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , current_domain_(make_shared<CurrentDomain>(
           memory_tracker, constants::current_domain_version)) {
+  // Set timestamp to the user passed-in range, otherwise set to the current
+  // time
+  uint64_t now = utils::time::timestamp_now_ms();
+  timestamp_range_ = timestamp_range.value_or(std::make_pair(now, now));
+
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -121,7 +127,7 @@ ArraySchema::ArraySchema(
       Datatype::UINT8));
 
   // Generate URI and name for ArraySchema
-  generate_uri();
+  generate_uri(timestamp_range);
 }
 
 ArraySchema::ArraySchema(
@@ -326,7 +332,7 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
   // Special zipped coordinates attribute
   if (name == constants::coords) {
     auto dim_num = domain_->dim_num();
-    assert(dim_num > 0);
+    passert(dim_num > 0);
     auto coord_size{domain_->dimension_ptr(0)->coord_size()};
     return dim_num * coord_size;
   }
@@ -350,7 +356,7 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
 
   // Dimension
   auto dim_it = dim_map_.find(name);
-  assert(dim_it != dim_map_.end());
+  iassert(dim_it != dim_map_.end(), "name = {}", name);
   auto dim = dim_it->second;
   auto cell_val_num = dim->cell_val_num();
   return (cell_val_num == constants::var_num) ?
@@ -372,7 +378,7 @@ unsigned int ArraySchema::cell_val_num(const std::string& name) const {
 
   // Dimension
   auto dim_it = dim_map_.find(name);
-  assert(dim_it != dim_map_.end());
+  iassert(dim_it != dim_map_.end(), "name = {}", name);
   return dim_it->second->cell_val_num();
 }
 
@@ -622,7 +628,7 @@ const FilterPipeline& ArraySchema::filters(const std::string& name) const {
 
   // Dimension (if filters not set, return default coordinate filters)
   auto dim_it = dim_map_.find(name);
-  assert(dim_it != dim_map_.end());
+  iassert(dim_it != dim_map_.end(), "name = {}", name);
   const auto& ret = dim_it->second->filters();
   return ret;
 }
@@ -759,7 +765,7 @@ Datatype ArraySchema::type(const std::string& name) const {
 
   // Dimension
   auto dim_it = dim_map_.find(name);
-  assert(dim_it != dim_map_.end());
+  iassert(dim_it != dim_map_.end(), "name = {}", name);
   return dim_it->second->type();
 }
 
@@ -783,13 +789,8 @@ bool ArraySchema::var_size(const std::string& name) const {
 
   // Dimension label
   auto dim_label_ref_it = dimension_label_map_.find(name);
-  if (dim_label_ref_it != dimension_label_map_.end()) {
-    return dim_label_ref_it->second->is_var();
-  }
-
-  // Name is not an attribute or dimension
-  assert(false);
-  return false;
+  iassert(dim_label_ref_it != dimension_label_map_.end(), "name = {}", name);
+  return dim_label_ref_it->second->is_var();
 }
 
 Status ArraySchema::add_attribute(

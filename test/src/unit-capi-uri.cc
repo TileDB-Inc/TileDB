@@ -103,12 +103,4 @@ TEST_CASE("C API: Test URI", "[capi][uri]") {
   CHECK(path[path_length] == '\0');
   CHECK(strlen(path) == path_length);
   CHECK(strcmp(path, "s3://my/path") == 0);
-
-  path_length = PLATFORM_PATH_MAX;
-  rc = tiledb_uri_to_path(ctx, "hdfs://my/path", path, &path_length);
-  CHECK(rc == TILEDB_OK);
-  CHECK(path_length == 14);
-  CHECK(path[path_length] == '\0');
-  CHECK(strlen(path) == path_length);
-  CHECK(strcmp(path, "hdfs://my/path") == 0);
 }

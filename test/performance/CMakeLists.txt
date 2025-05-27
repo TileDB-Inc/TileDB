@@ -78,10 +78,6 @@ target_link_libraries(tiledb_explore_msys_handle_leakage
     tiledb_test_support_lib
 )
 
-# need to properly link the signal chaining library for catch to work with the jni hdfs interface
-# see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
-
-
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
 target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE -Dtiledb_EXPORTS)

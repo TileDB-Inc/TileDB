@@ -326,7 +326,8 @@ Status group_update_from_capnp(
 Status group_create_details_to_capnp(
     const Group* group,
     capnp::GroupCreate::GroupCreateDetails::Builder*
-        group_create_details_builder) {
+        group_create_details_builder,
+    bool legacy) {
   if (group == nullptr) {
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
@@ -336,7 +337,7 @@ Status group_create_details_to_capnp(
   if (group_uri.is_tiledb()) {
     std::string group_ns, group_uri_component;
     RETURN_NOT_OK(group->group_uri().get_rest_components(
-        &group_ns, &group_uri_component));
+        &group_ns, &group_uri_component, legacy));
     group_create_details_builder->setUri(group_uri_component);
   } else {
     group_create_details_builder->setUri(group_uri.to_string());
@@ -346,7 +347,9 @@ Status group_create_details_to_capnp(
 }
 
 Status group_create_to_capnp(
-    const Group* group, capnp::GroupCreate::Builder* group_create_builder) {
+    const Group* group,
+    capnp::GroupCreate::Builder* group_create_builder,
+    bool legacy) {
   if (group == nullptr) {
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
@@ -357,8 +360,8 @@ Status group_create_to_capnp(
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
   auto group_create_details_builder = group_create_builder->initGroupDetails();
-  RETURN_NOT_OK(
-      group_create_details_to_capnp(group, &group_create_details_builder));
+  RETURN_NOT_OK(group_create_details_to_capnp(
+      group, &group_create_details_builder, legacy));
 
   return Status::Ok();
 }
@@ -663,12 +666,13 @@ Status group_update_deserialize(
 Status group_create_serialize(
     const Group* group,
     SerializationType serialize_type,
-    SerializationBuffer& serialized_buffer) {
+    SerializationBuffer& serialized_buffer,
+    bool legacy) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::GroupCreate::Builder group_create_builder =
         message.initRoot<capnp::GroupCreate>();
-    RETURN_NOT_OK(group_create_to_capnp(group, &group_create_builder));
+    RETURN_NOT_OK(group_create_to_capnp(group, &group_create_builder, legacy));
 
     switch (serialize_type) {
       case SerializationType::JSON: {

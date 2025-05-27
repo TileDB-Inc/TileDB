@@ -507,13 +507,11 @@ void create_subarray(
  * Supports VFS override via "--vfs" command line argument.
  *
  * @param s3_supported Set to `true` if S3 is supported.
- * @param hdfs_supported Set to `true` if HDFS is supported.
  * @param azure_supported Set to `true` if Azure is supported.
  * @param gcs_supported Set to `true` if GCS is supported.
  */
 void get_supported_fs(
     bool* s3_supported,
-    bool* hdfs_supported,
     bool* azure_supported,
     bool* gcs_supported,
     bool* rest_s3_supported);

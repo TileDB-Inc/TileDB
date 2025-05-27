@@ -235,7 +235,7 @@ bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
   } else {
     [[maybe_unused]] const size_t mem_for_tile_order =
         sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
-    assert(memory_used_for_coords_total_ >= mem_for_tile_order);
+    iassert(memory_used_for_coords_total_ >= mem_for_tile_order);
     return memory_used_for_coords_total_ > mem_for_tile_order;
   }
 }
@@ -353,6 +353,9 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       clean_tile_list(result_tiles);
     }
 
+    // save current mem usage for progress check
+    const size_t current_coords_mem = memory_used_for_coords_total_;
+
     // For fragments with timestamps, check first and last cell of every tiles
     // and if they have the same coordinates, only keep the cell with the
     // greater timestamp.
@@ -373,12 +376,6 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       result_cell_slabs = std::move(rcs);
     }
 
-    if (created_tiles.empty() && result_cell_slabs.empty() && incomplete()) {
-      throw SparseGlobalOrderReaderException(
-          "Cannot load enough tiles to emit results from all fragments in "
-          "global order");
-    }
-
     // No more tiles to process, done.
     if (!result_cell_slabs.empty()) {
       // Copy cell slabs.
@@ -389,15 +386,25 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
       }
     }
 
-    if (preprocess_future.has_value() && !incomplete()) {
-      // clean up gracefully and let the merge finish, freeing input etc
-      // (this also helps simplify assertions about memory usage)
-      preprocess_future->block();
-      preprocess_future.reset();
-    }
-
     // End the iteration.
     end_iteration(result_tiles);
+
+    // We need to ensure that progress is made each iteration.
+    // If we filled the user buffers, then we made progress (or the user needs
+    // to re-size). If we un-loaded any tiles, then we made progress.
+    if (!user_buffers_full &&
+        current_coords_mem == memory_used_for_coords_total_) {
+      // But if we did neither, then progress is still observable
+      // if we advanced the state of any tile.
+      // - If we created a result tile, that is progress
+      // - If we created at least one result slab, that is progress
+      // - If we are complete, that is progress
+      if (created_tiles.empty() && result_cell_slabs.empty() && incomplete()) {
+        throw SparseGlobalOrderReaderException(
+            "Cannot load enough tiles to emit results from all fragments in "
+            "global order");
+      }
+    }
   } while (!user_buffers_full && incomplete());
 
   result_tiles_leftover_ = std::move(result_tiles);
@@ -3027,11 +3034,11 @@ void SparseGlobalOrderReader<BitmapType>::end_iteration(
     if (preprocess_tile_order_.enabled_) {
       [[maybe_unused]] const size_t mem_for_tile_order =
           sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
-      assert(memory_used_for_coords_total_ == mem_for_tile_order);
+      iassert(memory_used_for_coords_total_ == mem_for_tile_order);
     } else {
-      assert(memory_used_for_coords_total_ == 0);
+      iassert(memory_used_for_coords_total_ == 0);
     }
-    assert(tmp_read_state_.memory_used_tile_ranges() == 0);
+    iassert(tmp_read_state_.memory_used_tile_ranges() == 0);
   }
 
   uint64_t num_rt = 0;

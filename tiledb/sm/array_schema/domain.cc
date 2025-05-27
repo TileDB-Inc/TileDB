@@ -36,6 +36,7 @@
 #include "domain_data_ref.h"
 #include "domain_typed_data_view.h"
 #include "ndrectangle.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/blank.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -254,7 +255,6 @@ int Domain::cell_order_cmp(
   }
 
   if (cell_order_cmp_func_2_[dim_idx] == nullptr) {
-    assert(cell_order_cmp_func_2_[dim_idx] != nullptr);
     throw std::logic_error("comparison function not initialized");
   }
   return cell_order_cmp_func_2_[dim_idx](a.content(), b.content());
@@ -347,7 +347,7 @@ shared_ptr<Domain> Domain::deserialize(
 }
 
 const Range& Domain::domain(unsigned i) const {
-  assert(i < dim_num_);
+  iassert(i < dim_num_, "i = {}, dim_num_ = {}", i, dim_num_);
   return dimension_ptrs_[i]->domain();
 }
 
@@ -374,7 +374,7 @@ shared_ptr<Dimension> Domain::shared_dimension(const std::string& name) const {
 }
 
 void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
-  assert(r2 != nullptr);
+  iassert(r2 != nullptr);
 
   // Assign r1 to r2 if r2 is empty
   if (r2->empty()) {
@@ -414,25 +414,29 @@ void Domain::get_tile_coords(const T* coords, T* tile_coords) const {
 
 template <class T>
 void Domain::get_next_tile_coords(const T* domain, T* tile_coords) const {
-  // Invoke the proper function based on the tile order
-  if (tile_order_ == Layout::ROW_MAJOR)
+  passert(
+      tile_order_ == Layout::ROW_MAJOR || tile_order_ == Layout::COL_MAJOR,
+      "tile_order = {}",
+      layout_str(tile_order_));
+  if (tile_order_ == Layout::ROW_MAJOR) {
     get_next_tile_coords_row(domain, tile_coords);
-  else if (tile_order_ == Layout::COL_MAJOR)
+  } else {
     get_next_tile_coords_col(domain, tile_coords);
-  else  // Sanity check
-    assert(0);
+  }
 }
 
 template <class T>
 void Domain::get_next_tile_coords(
     const T* domain, T* tile_coords, bool* in) const {
-  // Invoke the proper function based on the tile order
-  if (tile_order_ == Layout::ROW_MAJOR)
+  passert(
+      tile_order_ == Layout::ROW_MAJOR || tile_order_ == Layout::COL_MAJOR,
+      "tile_order = {}",
+      layout_str(tile_order_));
+  if (tile_order_ == Layout::ROW_MAJOR) {
     get_next_tile_coords_row(domain, tile_coords, in);
-  else if (tile_order_ == Layout::COL_MAJOR)
+  } else {
     get_next_tile_coords_col(domain, tile_coords, in);
-  else  // Sanity check
-    assert(0);
+  }
 }
 
 template <class T>
@@ -558,7 +562,7 @@ uint64_t Domain::stride(Layout subarray_layout) const {
 }
 
 const ByteVecValue& Domain::tile_extent(unsigned i) const {
-  assert(i < dim_num_);
+  iassert(i < dim_num_, "i = {}, dim_num_ = {}", i, dim_num_);
   return dimension_ptrs_[i]->tile_extent();
 }
 
@@ -580,7 +584,7 @@ uint64_t Domain::tile_num(const NDRange& ndrange) const {
 }
 
 uint64_t Domain::cell_num(const NDRange& ndrange) const {
-  assert(!ndrange.empty());
+  iassert(!ndrange.empty());
   uint64_t cell_num = 1, range;
   for (unsigned d = 0; d < dim_num_; ++d) {
     range = dimension_ptrs_[d]->domain_range(ndrange[d]);
@@ -596,8 +600,8 @@ uint64_t Domain::cell_num(const NDRange& ndrange) const {
 }
 
 bool Domain::covered(const NDRange& r1, const NDRange& r2) const {
-  assert(r1.size() == dim_num_);
-  assert(r2.size() == dim_num_);
+  iassert(r1.size() == dim_num_);
+  iassert(r2.size() == dim_num_);
 
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (!dimension_ptrs_[d]->covered(r1[d], r2[d]))
@@ -608,8 +612,8 @@ bool Domain::covered(const NDRange& r1, const NDRange& r2) const {
 }
 
 bool Domain::overlap(const NDRange& r1, const NDRange& r2) const {
-  assert(r1.size() == dim_num_);
-  assert(r2.size() == dim_num_);
+  iassert(r1.size() == dim_num_);
+  iassert(r2.size() == dim_num_);
 
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (!dimension_ptrs_[d]->overlap(r1[d], r2[d]))
@@ -624,8 +628,8 @@ double Domain::overlap_ratio(
     const std::vector<bool>& r1_default,
     const NDRange& r2) const {
   double ratio = 1.0;
-  assert(dim_num_ == r1.size());
-  assert(dim_num_ == r2.size());
+  iassert(dim_num_ == r1.size());
+  iassert(dim_num_ == r2.size());
 
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (r1_default[d])

@@ -97,7 +97,9 @@ void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
 
 std::string vfs_array_uri(
-    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name);
+    const std::unique_ptr<SupportedFs>& fs,
+    const std::string& array_name,
+    tiledb_ctx_t* ctx);
 
 /**
  * This class defines and manipulates
@@ -254,83 +256,6 @@ class SupportedFsS3 : public SupportedFs {
 
   /** If the filesystem is accessed via REST. */
   bool rest_;
-};
-
-/**
- * This class provides support for
- * the HDFS filesystem.
- */
-class SupportedFsHDFS : public SupportedFs {
- public:
-  SupportedFsHDFS()
-      : temp_dir_("hdfs:///tiledb_test/") {
-  }
-
-  ~SupportedFsHDFS() = default;
-
-  /* ********************************* */
-  /*               API                 */
-  /* ********************************* */
-
-  /**
-   * No-op
-   *
-   * @param config Configuration parameters
-   * @param error Error parameter
-   * @return Status OK if successful
-   */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
-
-  /**
-   * No-op
-   *
-   * @param ctx The TileDB context.
-   * @param vfs The VFS object.
-   * @return Status OK if successful
-   */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
-
-  /**
-   * No-op
-   *
-   * @param ctx The TileDB context.
-   * @param vfs The VFS object.
-   * @return Status OK if successful
-   */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
-
-  /**
-   * Get the name of the filesystem's directory
-   *
-   * @return string directory name
-   */
-  virtual std::string temp_dir();
-
-  /**
-   * Checks if the filesystem is accessed via REST
-   *
-   * @return true if REST, false if not
-   */
-  inline bool is_rest() {
-    return false;
-  }
-
-  /**
-   * Checks if the filesystem is local or remote
-   *
-   * @return true if local, false if not
-   */
-  inline bool is_local() {
-    return false;
-  }
-
- private:
-  /* ********************************* */
-  /*           ATTRIBUTES              */
-  /* ********************************* */
-
-  /** The directory name of the HDFS filesystem. */
-  std::string temp_dir_;
 };
 
 /**
@@ -767,6 +692,8 @@ struct VFSTestContext {
     return fs_vec[0]->is_rest();
   }
 
+  bool is_legacy_rest() const;
+
   bool is_local() const {
     return fs_vec[0]->is_local();
   }
@@ -788,11 +715,18 @@ struct VFSTempDir {
   ~VFSTempDir();
 
   std::string array_uri(
-      const std::string& array_name, bool strip_tiledb_prefix = false) const {
-    auto uri = (context_->fs_vec[0]->is_rest() && !strip_tiledb_prefix) ?
-                   ("tiledb://unit/" + temp_dir_ + array_name) :
-                   (temp_dir_ + array_name);
-    return uri;
+      const std::string& array_name, bool strip_tiledb_prefix = false) {
+    // The order allows for stripping prefix from a REST URI.
+    if (strip_tiledb_prefix || !context_->is_rest()) {
+      return temp_dir_ + array_name;
+    }
+
+    // Non-REST case is handled above.
+    if (context_->is_legacy_rest()) {
+      return "tiledb://unit/" + temp_dir_ + array_name;
+    } else {
+      return "tiledb://workspace/unit/" + temp_dir_ + array_name;
+    }
   }
 
   std::shared_ptr<const VFSTestContext> context_;
@@ -1113,14 +1047,6 @@ class GSTest : public VFSTestBase {
  public:
   explicit GSTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "gs://") {
-  }
-};
-
-/** Stub test object for tiledb::sm::HDFS functionality. */
-class HDFSTest : public VFSTestBase {
- public:
-  explicit HDFSTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "hdfs:///") {
   }
 };
 

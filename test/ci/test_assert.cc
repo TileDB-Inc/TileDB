@@ -44,6 +44,7 @@ std::vector<int> assert_exit_codes{3};
 #else
 std::vector<int> assert_exit_codes{
     0x6,   /* SIGABRT */
+    0x86,  /* also SIGABRT */
     0x8600 /* core dump, which may be caused by SIGABRT */
 };
 #endif

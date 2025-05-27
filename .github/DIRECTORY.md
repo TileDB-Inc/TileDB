@@ -23,7 +23,7 @@ The `unit-test-runs.yml` workflow runs all `unit_*` tests in the directory tree.
 
 ### Backward compatibility tests
 
-Backward compatibility tests are run by the workflow `workflows/build-ubuntu20.04-backwards-compatibility.yml`. To reduce CI load, this workflow uses a single job to build `tiledb_unit`, then stores that artifact. The next step creates build jobs for each compatibility
+Backward compatibility tests are run by the workflow `workflows/build-backwards-compatibility.yml`. To reduce CI load, this workflow uses a single job to build `tiledb_unit`, then stores that artifact. The next step creates build jobs for each compatibility
 array version. The pre-built `tiledb_unit` is downloaded from artifact storage and used to execute
 the version-specific tests. This fan-out setup reduces the runtime of each job from ~25 minutes to
 10.

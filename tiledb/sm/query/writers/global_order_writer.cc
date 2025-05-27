@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/writers/global_order_writer.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -622,7 +623,7 @@ Status GlobalOrderWriter::compute_coord_dups(
 }
 
 Status GlobalOrderWriter::finalize_global_write_state() {
-  assert(layout_ == Layout::GLOBAL_ORDER);
+  iassert(layout_ == Layout::GLOBAL_ORDER, "layout = {}", layout_str(layout_));
   auto meta = global_write_state_->frag_meta_;
   const auto& uri = meta->fragment_uri();
 
@@ -720,7 +721,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
 
 Status GlobalOrderWriter::global_write() {
   // Applicable only to global write on dense/sparse arrays
-  assert(layout_ == Layout::GLOBAL_ORDER);
+  iassert(layout_ == Layout::GLOBAL_ORDER, "layout = {}", layout_str(layout_));
 
   // Initialize the global write state if this is the first invocation
   if (!global_write_state_) {

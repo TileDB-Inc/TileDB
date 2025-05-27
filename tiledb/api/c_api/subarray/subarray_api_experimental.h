@@ -66,6 +66,40 @@ TILEDB_EXPORT capi_return_t tiledb_subarray_add_point_ranges(
     const void* start,
     uint64_t count) TILEDB_NOEXCEPT;
 
+/**
+ * Adds variable-sized point ranges to the given dimension index of the
+ * subarray. Effectively `add_range(x_i, x_i)` for all points in the
+ * target array, but set in bulk to amortize expensive steps.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* buffer = "aabcccddee";
+ * uint64_t buffer_size = 10;
+ * uint64_t offsets[] = {0, 2, 3, 6, 8};
+ * uint64_t offsets_size = 5;
+ * tiledb_subarray_add_point_ranges_var(ctx, subarray, 0, buffer,
+ * buffer_size, offsets, offsets_size);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] subarray The subarray.
+ * @param[in] dim_idx The index of the dimension to add the range to.
+ * @param[in] start Pointer to start of the array.
+ * @param[in] start_size Size of the buffer in bytes.
+ * @param[in] start_offsets Pointer to the start of the offsets array.
+ * @param[in] start_offsets_size Number of offsets in the offsets array.
+ *
+ */
+TILEDB_EXPORT capi_return_t tiledb_subarray_add_point_ranges_var(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const void* start,
+    uint64_t start_size,
+    const uint64_t* start_offsets,
+    uint64_t start_offsets_size) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2024 TileDB, Inc.
+# Copyright (c) 2017-2025 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -99,8 +99,9 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/fragment_info.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/group.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/log.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/profile_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_channel.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition_experimental.h
@@ -133,6 +134,7 @@ endif()
 set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/filesystem/home_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/platform/cert_file.cc
@@ -180,8 +182,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/curl/curl_init.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/gcs.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/local.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/mem_filesystem.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/path_win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
@@ -279,6 +281,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/writer_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query_plan/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_profile.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_directory.cc
@@ -542,15 +545,6 @@ if (TILEDB_SERIALIZATION)
     )
 endif()
 
-# HDFS dependencies
-if (TILEDB_HDFS)
-  if(WIN32)
-    message(FATAL_ERROR "TileDB HDFS backend is not supported for Windows builds currently")
-  else()
-    message(STATUS "The TileDB library is compiled with HDFS support.")
-  endif()
-endif()
-
 # Sanitizer linker flags
 if (TILEDB_SANITIZER)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -578,7 +572,7 @@ find_package(BZip2 REQUIRED)
 find_package(LZ4 MODULE REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(Zstd MODULE REQUIRED)
+find_package(zstd CONFIG REQUIRED)
 find_package(LibMagic MODULE REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
@@ -586,7 +580,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     lz4::lz4
     spdlog::spdlog
     ZLIB::ZLIB
-    ${ZSTD_TARGET}
+    zstd::libzstd
     libmagic
 )
 
@@ -753,10 +747,9 @@ endif()
 # Link the dependencies specified earlier
 target_link_libraries(tiledb
   PRIVATE
-    # ZSTD_TARGET might be a generator expression. We need to evaluate it here again.
     # TODO: TILEDB_CORE_OBJECTS_ILIB should be removed and dependencies should be specified
     # without directly getting target_properties.
-    $<GENEX_EVAL:$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>>
+    $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
     $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
 )
 

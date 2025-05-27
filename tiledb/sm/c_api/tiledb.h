@@ -1205,7 +1205,7 @@ TILEDB_EXPORT int32_t tiledb_query_condition_negate(
  *
  * @code{.c}
  * tiledb_array_consolidate(
- *     ctx, "hdfs:///tiledb_arrays/my_array", nullptr);
+ *     ctx, "s3:///tiledb_arrays/my_array", nullptr);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -1231,7 +1231,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_consolidate(
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_vacuum(ctx, "hdfs:///tiledb_arrays/my_array");
+ * tiledb_array_vacuum(ctx, "s3:///tiledb_arrays/my_array");
  * @endcode
  *
  * @param[in] ctx The TileDB context.

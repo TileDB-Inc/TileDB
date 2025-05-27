@@ -129,12 +129,6 @@ TEST_CASE(
   CHECK(x["gcs"]["enabled"] == false);
 #endif  // HAVE_GCS
 
-#ifdef HAVE_HDFS
-  CHECK(x["hdfs"]["enabled"] == true);
-#else
-  CHECK(x["hdfs"]["enabled"] == false);
-#endif  // HAVE_HDFS
-
 #ifdef HAVE_S3
   CHECK(x["s3"]["enabled"] == true);
 #else

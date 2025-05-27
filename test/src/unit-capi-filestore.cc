@@ -380,12 +380,6 @@ TEST_CASE_METHOD(
   // Check correctness
   CHECK(!std::memcmp(buffer, file_content.data(), file_content.size()));
 
-  // Exporting to a non-existent directory should return an error, not abort
-  // (SC-19240)
-  REQUIRE(
-      tiledb_filestore_uri_export(
-          ctx_, "/dir/not/exists/hello.txt", array_name.c_str()) == TILEDB_ERR);
-
   // Clean up
   tiledb_vfs_close(ctx_, fh);
   tiledb_array_close(ctx_, array);

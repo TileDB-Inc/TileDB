@@ -145,10 +145,6 @@ TEST_CASE("URI: Test URI to path", "[uri]") {
   CHECK(uri.to_path() == "azure://path/on/azure");
   uri = URI("azure://relative/../path/on/azure");
   CHECK(uri.to_path() == "azure://relative/../path/on/azure");
-  uri = URI("hdfs://path/on/hdfs");
-  CHECK(uri.to_path() == "hdfs://path/on/hdfs");
-  uri = URI("hdfs://relative/../path/on/hdfs");
-  CHECK(uri.to_path() == "hdfs://relative/../path/on/hdfs");
 
   uri = URI("C:\\my\\path");
 #ifdef _WIN32
@@ -179,36 +175,21 @@ TEST_CASE("URI: Test schemes", "[uri]") {
 
   CHECK(URI("azure://container/dir").is_azure());
 
-  CHECK(URI("hdfs://namenode/dir").is_hdfs());
-
   CHECK(URI("tiledb://namespace/array").is_tiledb());
 }
 
 TEST_CASE("URI: Test REST components, valid", "[uri]") {
+  bool legacy = GENERATE(true, false);
+  const std::string ns_component = legacy ? "namespace" : "workspace/teampsace";
+  const std::string array_component = GENERATE(
+      "array", "array/uri", "s3://bucket/dir", "azure://container/dir");
+  const std::string uri{"tiledb://" + ns_component + "/" + array_component};
   std::string ns, array;
-
-  struct test_vector {
-    std::string uri;
-    std::string ns;
-    std::string array;
-  };
-  const test_vector valid_rest_uri[] = {
-      {"tiledb://namespace/array", "namespace", "array"},
-      {"tiledb://namespace/array/uri", "namespace", "array/uri"},
-      {"tiledb://namespace/s3://bucket/dir", "namespace", "s3://bucket/dir"},
-      {"tiledb://namespace/azure://container/dir",
-       "namespace",
-       "azure://container/dir"}};
-  constexpr size_t N = sizeof(valid_rest_uri) / sizeof(test_vector);
-
-  for (size_t j = 0; j < N; ++j) {
-    auto x{valid_rest_uri[j]};
-    auto uri{x.uri};
-    DYNAMIC_SECTION("\"" << uri << "\" valid") {
-      CHECK(URI(uri).get_rest_components(&ns, &array).ok());
-      CHECK(ns == x.ns);
-      CHECK(array == x.array);
-    }
+  DYNAMIC_SECTION(
+      (legacy ? "legacy " : "TileDB-Server ") << "\"" << uri << "\" valid") {
+    CHECK(URI(uri).get_rest_components(&ns, &array, legacy).ok());
+    CHECK(ns == ns_component);
+    CHECK(array == array_component);
   }
 }
 
@@ -225,7 +206,6 @@ TEST_CASE("URI: Test REST components, invalid", "[uri]") {
       "azure://container/dir",
       "http://bucket/dir",
       "https://bucket/dir",
-      "hdfs://namenode/dir",
       "tiledb:///array",
       "tiledb://ns",
       "tiledb://ns/",
@@ -233,10 +213,12 @@ TEST_CASE("URI: Test REST components, invalid", "[uri]") {
       "tiledb:///"};
   constexpr size_t N{sizeof(invalid_rest_uri) / sizeof(std::string)};
 
+  bool legacy = GENERATE(true, false);
   for (size_t j = 0; j < N; ++j) {
     std::string x{invalid_rest_uri[j]};
-    DYNAMIC_SECTION("\"" << x << "\" invalid") {
-      CHECK(!URI(x).get_rest_components(&ns, &array).ok());
+    DYNAMIC_SECTION(
+        (legacy ? "legacy " : "TileDB-Server ") << "\"" << x << "\" invalid") {
+      CHECK(!URI(x).get_rest_components(&ns, &array, legacy).ok());
     }
   }
 }
@@ -261,6 +243,35 @@ TEST_CASE("URI: Test get_fragment_name", "[uri][get_fragment_name]") {
 
   for (auto& test : cases) {
     REQUIRE(test.first.get_fragment_name() == test.second);
+  }
+}
+
+TEST_CASE("URI: Get REST components", "[uri]") {
+  std::string arr = GENERATE(
+      "8f039466-6e90-42ea-af53-dc0ba47d00c2",
+      "a",
+      "array_name",
+      "s3://bucket/arrays/array_name",
+      "s3://b/d/a");
+
+  std::string array_namespace, array_uri;
+  SECTION("Legacy REST URI components") {
+    std::string ns = GENERATE("demo", "d");
+    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, true).ok());
+    REQUIRE(array_namespace == ns);
+    REQUIRE(array_uri == arr);
+  }
+
+  SECTION("TileDB-Server REST URI components") {
+    std::string ns = GENERATE(
+        "workspace/teamspace",
+        "ws_cvsj3li97ng28m60nhj0/ts_cvsj4ei97ng28m60nhkg",
+        "w/t");
+    tiledb::sm::URI uri("tiledb://" + ns + "/" + arr);
+    REQUIRE(uri.get_rest_components(&array_namespace, &array_uri, false).ok());
+    REQUIRE(array_namespace == ns);
+    REQUIRE(array_uri == arr);
   }
 }
 

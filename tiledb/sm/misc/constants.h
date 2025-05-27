@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -762,6 +762,15 @@ extern const std::string redirection_header_key;
 
 /** The REST custom headers config key prefix. */
 extern const std::string rest_header_prefix;
+
+/** The current RestProfile API version. */
+extern const format_version_t rest_profile_version;
+
+/** Filepath for the special local cloud profile files used in TileDB. */
+extern const std::string cloud_profile_filepath;
+
+/** Filepath for the special local RestProfile files used in TileDB. */
+extern const std::string rest_profile_filepath;
 
 /** Delimiter for lists passed as config parameter */
 extern const std::string config_delimiter;

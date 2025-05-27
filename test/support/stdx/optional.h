@@ -33,6 +33,8 @@
 #ifndef TILEDB_TEST_SUPPORT_OPTIONAL_H
 #define TILEDB_TEST_SUPPORT_OPTIONAL_H
 
+#include <optional>
+
 namespace stdx {
 
 template <typename T>

@@ -512,14 +512,15 @@ struct CSparseGlobalOrderFx {
   void run(Instance& instance);
 
   template <typename CAPIReturn>
-  std::string error_if_any(CAPIReturn apirc) const;
+  std::optional<std::string> error_if_any(CAPIReturn apirc) const;
 
   CSparseGlobalOrderFx();
   ~CSparseGlobalOrderFx();
 };
 
 template <typename CAPIReturn>
-std::string CSparseGlobalOrderFx::error_if_any(CAPIReturn apirc) const {
+std::optional<std::string> CSparseGlobalOrderFx::error_if_any(
+    CAPIReturn apirc) const {
   return tiledb::test::error_if_any(context(), apirc);
 }
 
@@ -620,7 +621,7 @@ void CSparseGlobalOrderFx::write_1d_fragment(
 
   // Submit query.
   rc = tiledb_query_submit(context(), query);
-  ASSERTER("" == error_if_any(rc));
+  ASSERTER(std::optional<std::string>() == error_if_any(rc));
 
   // Clean up.
   tiledb_query_free(&query);
@@ -671,7 +672,7 @@ void CSparseGlobalOrderFx::write_fragment(
 
   // Submit query.
   rc = tiledb_query_submit(context(), query);
-  ASSERTER("" == error_if_any(rc));
+  ASSERTER(std::optional<std::string>() == error_if_any(rc));
 
   // check that sizes match what we expect
   const uint64_t expect_num_cells = fragment.size();
@@ -946,6 +947,7 @@ static std::optional<bool> can_complete_in_memory_budget(
 
   CApiArray array(ctx, array_uri, TILEDB_READ);
 
+  const auto& array_schema = array->array()->array_schema_latest();
   const auto& fragment_metadata = array->array()->fragment_metadata();
 
   for (const auto& fragment : fragment_metadata) {
@@ -958,6 +960,8 @@ static std::optional<bool> can_complete_in_memory_budget(
     using BitmapType = uint8_t;
 
     size_t data_size = 0;
+    size_t bitmap_size = 0;
+
     for (size_t d = 0;
          d < std::tuple_size<decltype(instance.dimensions())>::value;
          d++) {
@@ -965,15 +969,30 @@ static std::optional<bool> can_complete_in_memory_budget(
           fragment_metadata[f]->tile_size("d" + std::to_string(d + 1), t);
     }
 
+    if (!instance.subarray.empty()) {
+      bitmap_size += fragment_metadata[f]->cell_num(t) * sizeof(BitmapType);
+    }
+
+    if (instance.condition.has_value()) {
+      // query condition fields are eagerly materialized
+      std::unordered_set<std::string> fields;
+      instance.condition.value()->get_field_names(fields);
+
+      for (const auto& field : fields) {
+        if (!array_schema.is_dim(field)) {
+          data_size += tiledb::sm::ReaderBase::get_attribute_tile_size(
+              array_schema, fragment_metadata, field, f, t);
+        }
+      }
+
+      bitmap_size += fragment_metadata[f]->cell_num(t) * sizeof(BitmapType);
+    }
+
     const size_t rt_size = sizeof(sm::GlobalOrderResultTile<BitmapType>);
-    const size_t subarray_size =
-        (instance.subarray.empty() ?
-             0 :
-             fragment_metadata[f]->cell_num(t) * sizeof(BitmapType));
-    return data_size + rt_size + subarray_size;
+    return data_size + rt_size + bitmap_size;
   };
 
-  const auto& domain = array->array()->array_schema_latest().domain();
+  const auto& domain = array_schema.domain();
   sm::GlobalCellCmp globalcmp(domain);
   stdx::reverse_comparator<sm::GlobalCellCmp> reverseglobalcmp(globalcmp);
 
@@ -1561,6 +1580,19 @@ TEST_CASE_METHOD(
     doit.operator()<tiledb::test::AsserterCatch>(16, 100, 64, true);
   }
 
+  SECTION("Condition") {
+    const int value = 3;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "d1", &value, sizeof(int), tiledb::sm::QueryConditionOp::LE));
+    doit.operator()<tiledb::test::AsserterCatch>(
+        10,
+        21,
+        1024,
+        false,
+        Subarray1DType<int>{templates::Domain<int>(3, 22)},
+        std::move(qc));
+  }
+
   SECTION("Shrink", "Some examples found by rapidcheck") {
     doit.operator()<tiledb::test::AsserterCatch>(
         10, 2, 64, false, Subarray1DType<int>{templates::Domain<int>(1, 3)});
@@ -1660,6 +1692,47 @@ TEST_CASE_METHOD(
 
   SECTION("Example") {
     doit.operator()<tiledb::test::AsserterCatch>(16, 16, 1024, 16, false);
+  }
+
+  SECTION("Condition") {
+    int value = 1;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
+    doit.operator()<tiledb::test::AsserterCatch>(
+        4,
+        12,
+        1024,
+        1024,
+        false,
+        std::vector<templates::Domain<int>>{templates::Domain<int>(0, 11)},
+        std::move(qc));
+  }
+
+  SECTION("Shrink", "Some examples found by rapidcheck") {
+    int value = 1329;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "a1", &value, sizeof(int), tiledb::sm::QueryConditionOp::EQ));
+    doit.operator()<tiledb::test::AsserterCatch>(
+        21,
+        133,
+        1024,
+        1024,
+        false,
+        std::vector<templates::Domain<int>>{templates::Domain<int>(397, 1320)},
+        std::move(qc));
+
+    value = 1;
+    qc.reset(new tiledb::sm::ASTNodeVal(
+        "d1", &value, sizeof(value), tiledb::sm::QueryConditionOp::LT));
+
+    doit.operator()<tiledb::test::AsserterCatch>(
+        17,
+        160,
+        1024,
+        1,
+        false,
+        Subarray1DType<int>{templates::Domain<int>(0, 1908)},
+        std::move(qc));
   }
 
   SECTION("Rapidcheck") {
@@ -2786,7 +2859,7 @@ TEST_CASE_METHOD(
 
   while (status == TILEDB_INCOMPLETE) {
     rc = tiledb_query_submit(context(), query);
-    CHECK("" == error_if_any(rc));
+    CHECK(std::optional<std::string>() == error_if_any(rc));
     tiledb_query_get_status(context(), query, &status);
     CHECK(4 == data_r_size);
     CHECK(4 == coords_r_size);
@@ -3232,13 +3305,21 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
   ASSERTER(instance.num_user_cells > 0);
 
   std::decay_t<decltype(instance.fragments[0])> expect;
-  for (const auto& fragment : instance.fragments) {
+
+  // for de-duplicating, track the fragment that each coordinate came from
+  // we will use this to select the coordinate from the most recent fragment
+  std::vector<uint64_t> expect_fragment;
+
+  for (uint64_t f = 0; f < instance.fragments.size(); f++) {
+    const auto& fragment = instance.fragments[f];
+
     auto expect_dimensions = expect.dimensions();
     auto expect_attributes = expect.attributes();
 
     if (instance.subarray.empty() && !instance.condition.has_value()) {
       stdx::extend(expect_dimensions, fragment.dimensions());
       stdx::extend(expect_attributes, fragment.attributes());
+      expect_fragment.insert(expect_fragment.end(), fragment.size(), f);
     } else {
       std::vector<uint64_t> accept;
       std::optional<
@@ -3251,29 +3332,30 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
         if (!instance.pass_subarray(fragment, i)) {
           continue;
         }
-        if (eval.has_value() &&
-            !eval->test(fragment, i, *instance.condition.value().get())) {
-          continue;
-        }
         accept.push_back(i);
       }
+
       const auto fdimensions =
           stdx::select(fragment.dimensions(), std::span(accept));
       const auto fattributes =
           stdx::select(fragment.attributes(), std::span(accept));
       stdx::extend(expect_dimensions, stdx::reference_tuple(fdimensions));
       stdx::extend(expect_attributes, stdx::reference_tuple(fattributes));
+
+      expect_fragment.insert(expect_fragment.end(), accept.size(), f);
     }
   }
 
   // Open array for reading.
   CApiArray array(context(), array_name_.c_str(), TILEDB_READ);
 
-  // sort for naive comparison
+  // finish preparing expected results - arrange in global order, dedup, and
+  // apply query condition
   {
     std::vector<uint64_t> idxs(expect.size());
     std::iota(idxs.begin(), idxs.end(), 0);
 
+    // sort in global order
     sm::GlobalCellCmp globalcmp(array->array()->array_schema_latest().domain());
 
     auto icmp = [&](uint64_t ia, uint64_t ib) -> bool {
@@ -3290,14 +3372,37 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
     std::sort(idxs.begin(), idxs.end(), icmp);
 
+    // de-duplicate coordinates
     if (!instance.allow_duplicates()) {
-      std::set<uint64_t, decltype(icmp)> dedup(icmp);
+      std::map<uint64_t, uint64_t, decltype(icmp)> dedup(icmp);
       for (const auto& idx : idxs) {
-        dedup.insert(idx);
+        auto it = dedup.find(idx);
+        if (it == dedup.end()) {
+          dedup[idx] = expect_fragment[idx];
+        } else if (expect_fragment[idx] > it->second) {
+          // NB: looks weird but we need this value of `idx`
+          dedup.erase(it);
+          dedup[idx] = expect_fragment[idx];
+        }
       }
 
       idxs.clear();
-      idxs.insert(idxs.end(), dedup.begin(), dedup.end());
+      idxs.reserve(dedup.size());
+      for (const auto& idx : dedup) {
+        idxs.push_back(idx.first);
+      }
+    }
+
+    // apply query condition
+    if (instance.condition.has_value()) {
+      std::vector<uint64_t> accept;
+      templates::QueryConditionEvalSchema<typename Instance::FragmentType> eval;
+      for (uint64_t i = 0; i < idxs.size(); i++) {
+        if (eval.test(expect, idxs[i], *instance.condition.value().get())) {
+          accept.push_back(idxs[i]);
+        }
+      }
+      idxs = accept;
     }
 
     expect.dimensions() = stdx::select(
@@ -3368,37 +3473,54 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
     rc = tiledb_query_submit(context(), query);
     {
       const auto err = error_if_any(rc);
-      if (err.find("Cannot load enough tiles to emit results from all "
-                   "fragments in global order") != std::string::npos) {
-        if (!vfs_test_setup_->is_rest()) {
-          // skip for REST since we will not have access to tile sizes
-          const auto can_complete =
-              can_complete_in_memory_budget<Asserter, Instance>(
-                  context(), array_name_.c_str(), instance);
-          if (can_complete.has_value()) {
-            ASSERTER(!can_complete.value());
+      if (err.has_value()) {
+        if (err->find("Cannot load enough tiles to emit results from all "
+                      "fragments in global order") != std::string::npos) {
+          if (!vfs_test_setup_->is_rest()) {
+            // skip for REST since we will not have access to tile sizes
+            const auto can_complete =
+                can_complete_in_memory_budget<Asserter, Instance>(
+                    context(), array_name_.c_str(), instance);
+            if (can_complete.has_value()) {
+              ASSERTER(!can_complete.value());
+            }
+          }
+          tiledb_query_free(&query);
+          return;
+        }
+        if (err->find("Cannot set array memory budget") != std::string::npos) {
+          if (!vfs_test_setup_->is_rest()) {
+            // skip for REST since we will not have accurate array memory
+            const uint64_t array_usage =
+                array->array()->memory_tracker()->get_memory_usage();
+            const uint64_t array_budget =
+                std::stod(instance.memory.ratio_array_data_) *
+                std::stol(instance.memory.total_budget_);
+            ASSERTER(array_usage > array_budget);
+          }
+          tiledb_query_free(&query);
+          return;
+        }
+        if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
+          if (err->find(
+                  "Cannot allocate space for preprocess result tile ID list") !=
+              std::string::npos) {
+            // not enough memory to determine tile order
+            // we can probably make some assertions about what this should have
+            // looked like but for now we'll let it go
+            tiledb_query_free(&query);
+            return;
+          }
+          if (err->find("Cannot load tile offsets") != std::string::npos) {
+            // not enough memory budget for tile offsets, don't bother asserting
+            // about it (for now?)
+            tiledb_query_free(&query);
+            return;
           }
         }
-        tiledb_query_free(&query);
-        return;
       }
-      if constexpr (std::is_same_v<Asserter, AsserterRapidcheck>) {
-        if (err.find(
-                "Cannot allocate space for preprocess result tile ID list")) {
-          // not enough memory to determine tile order
-          // we can probably make some assertions about what this should have
-          // looked like but for now we'll let it go
-          tiledb_query_free(&query);
-          return;
-        }
-        if (err.find("Cannot load tile offsets") != std::string::npos) {
-          // not enough memory budget for tile offsets, don't bother asserting
-          // about it (for now?)
-          tiledb_query_free(&query);
-          return;
-        }
-      }
-      ASSERTER("" == err);
+      // other errors we do not expect, this fails deterministically
+      ASSERTER(std::optional<std::string>() == err);
     }
 
     tiledb_query_status_t status;

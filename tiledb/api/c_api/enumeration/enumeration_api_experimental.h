@@ -293,6 +293,37 @@ TILEDB_EXPORT capi_return_t tiledb_enumeration_get_offsets(
     const void** offsets,
     uint64_t* offsets_size) TILEDB_NOEXCEPT;
 
+/**
+ * Return the index of the given value in the enumeration
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * int32_t value = 10;
+ * int exist;
+ * uint64_t index;
+ * tiledb_enumeration_get_value_index(ctx, enumeration, &value, sizeof(int32_t),
+ * &exist, &index);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param enumeration The enumeration.
+ * @param value A pointer to the enumeration value data to check if is
+ * contained.
+ * @param value_size The length of the value buffer provided.
+ * @param exist The return pointer storing whether the value exists.
+ * @param index The return pointer storing the index of the value in the
+ * enumration if it exists.
+ * @return `TILEDB_OK` or `TILEDB_ERR`.
+ */
+TILEDB_EXPORT capi_return_t tiledb_enumeration_get_value_index(
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_t* enumeration,
+    const void* value,
+    uint64_t value_size,
+    int* exist,
+    uint64_t* index) TILEDB_NOEXCEPT;
+
 #ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Dumps the contents of an Enumeration in ASCII form to some output (e.g.,

@@ -71,7 +71,13 @@ class QueryCondition {
 
     Params() = delete;
 
-    /** Constructor setting all parameters. */
+    /**
+     * Constructor setting all parameters.
+     *
+     * @param memory_tracker The MemoryTracker to use for this class.
+     * @param array_schema The array schema associated with the
+     *      `result_cell_slabs` being processed by the QueryCondition.
+     */
     Params(
         shared_ptr<MemoryTracker> memory_tracker,
         const ArraySchema& array_schema)

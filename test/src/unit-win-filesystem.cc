@@ -119,7 +119,6 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows][filesystem]") {
   CHECK(!is_win_path("file:\\\\\\c:path"));
   CHECK(!is_win_path("file:\\\\\\c:path1\\path2"));
   CHECK(!is_win_path("file:///path1/path2"));
-  CHECK(!is_win_path("hdfs:///path1/path2"));
 
   CHECK(Win::abs_path(test_dir_path) == test_dir_path);
   CHECK(Win::abs_path(test_file_path) == test_file_path);

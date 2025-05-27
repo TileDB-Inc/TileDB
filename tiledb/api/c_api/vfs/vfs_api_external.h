@@ -232,7 +232,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_is_bucket(
  * **Example:**
  *
  * @code{.c}
- * tiledb_vfs_create_dir(ctx, vfs, "hdfs:///temp/my_dir");
+ * tiledb_vfs_create_dir(ctx, vfs, "s3://my_bucket/my_dir");
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -250,7 +250,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_create_dir(
  *
  * @code{.c}
  * int32_t exists;
- * tiledb_vfs_is_dir(ctx, vfs, "hdfs:///temp/my_dir", &exists);
+ * tiledb_vfs_is_dir(ctx, vfs, "s3://my_bucket/my_dir", &exists);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -274,7 +274,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_is_dir(
  * **Example:**
  *
  * @code{.c}
- * tiledb_vfs_remove_dir(ctx, vfs, "hdfs:///temp/my_dir");
+ * tiledb_vfs_remove_dir(ctx, vfs, "s3://my_bucket/my_dir");
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -292,7 +292,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_remove_dir(
  *
  * @code{.c}
  * int32_t exists;
- * tiledb_vfs_is_file(ctx, vfs, "hdfs:///temp/my_file", &is_file);
+ * tiledb_vfs_is_file(ctx, vfs, "s3://my_bucket/my_file", &is_file);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -311,7 +311,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_is_file(
  * **Example:**
  *
  * @code{.c}
- * tiledb_vfs_remove_file(ctx, vfs, "hdfs:///temp/my_file");
+ * tiledb_vfs_remove_file(ctx, vfs, "s3://my_bucket/my_file");
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -330,7 +330,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_remove_file(
  *
  * @code{.c}
  * uint64_t dir_size;
- * tiledb_vfs_dir_size(ctx, vfs, "hdfs:///temp/my_dir", &dir_size);
+ * tiledb_vfs_dir_size(ctx, vfs, "s3://my_bucket/my_dir", &dir_size);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -350,7 +350,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_dir_size(
  *
  * @code{.c}
  * uint64_t file_size;
- * tiledb_vfs_file_size(ctx, vfs, "hdfs:///temp/my_file", &file_size);
+ * tiledb_vfs_file_size(ctx, vfs, "s3://my_bucket/my_file", &file_size);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -370,7 +370,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_file_size(
  *
  * @code{.c}
  * tiledb_vfs_move_file(
- * ctx, vfs, "hdfs:///temp/my_file", "hdfs::///new_file");
+ * ctx, vfs, "s3://my_bucket/my_file", "s3://new_bucket/new_file");
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -391,7 +391,8 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_move_file(
  * **Example:**
  *
  * @code{.c}
- * tiledb_vfs_move_dir(ctx, vfs, "hdfs:///temp/my_dir", "hdfs::///new_dir");
+ * tiledb_vfs_move_dir(ctx, vfs, "s3://my_bucket/my_dir",
+ * "s3://new_bucket/new_dir");
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -413,7 +414,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_move_dir(
  *
  * @code{.c}
  * tiledb_vfs_copy_file(
- * ctx, vfs, "hdfs:///temp/my_file", "hdfs::///new_file");
+ * ctx, vfs, "s3://my_bucket/my_file", "s3://new_bucket/new_file");
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -436,7 +437,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_copy_file(
  *
  * @code{.c}
  * tiledb_vfs_copy_dir(
- *  ctx, vfs, "hdfs:///temp/my_dir", "hdfs::///new_dir");
+ *  ctx, vfs, "s3://my_bucket/my_dir", "s3://new_bucket/new_dir");
  * @endcode
  *
  * @param[in] ctx The TileDB context.

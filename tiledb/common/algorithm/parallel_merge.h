@@ -91,6 +91,7 @@
 #ifndef TILEDB_PARALLEL_MERGE_H
 #define TILEDB_PARALLEL_MERGE_H
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
@@ -362,7 +363,7 @@ class ParallelMerge {
       tournament.pop();
 
       // empty streams are not put on the priority queue
-      assert(!stream.empty());
+      iassert(!stream.empty());
 
       output[o++] = stream.front();
 
@@ -483,7 +484,7 @@ class ParallelMerge {
       } else if (num_split_point_items < remaining_items_) {
         // the split point has too few tuples
         // we will include everything we found and advance
-        assert(search_bounds_.num_items() > 0);
+        iassert(search_bounds_.num_items() > 0);
 
         if (search_bounds_.num_items() == 0) {
           throw ParallelMergeException(

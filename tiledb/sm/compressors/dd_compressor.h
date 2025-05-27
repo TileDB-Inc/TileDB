@@ -134,10 +134,10 @@ class DoubleDelta {
    * @tparam The datatype of the values.
    * @param in The input buffer.
    * @param num The number of values in the buffer.
-   * @param bitsize The bitsize of the double deltas to be retrieved.
+   * @return The bitsize of the double deltas to be retrieved.
    */
   template <class T>
-  static void compute_bitsize(T* in, uint64_t num, unsigned int* bitsize);
+  static uint32_t compute_bitsize(const T* in, uint64_t num);
 
   /**
    * Decompression function.

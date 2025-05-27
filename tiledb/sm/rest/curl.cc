@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/rest/curl.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -299,30 +300,20 @@ Status Curl::init(
 
   curl_easy_setopt(curl_.get(), CURLOPT_TCP_KEEPALIVE, tcp_keepalive ? 1L : 0L);
 
-  bool found;
-  RETURN_NOT_OK(
-      config_->get<uint64_t>("rest.retry_count", &retry_count_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get<double>(
-      "rest.retry_delay_factor", &retry_delay_factor_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get<uint64_t>(
-      "rest.retry_initial_delay_ms", &retry_initial_delay_ms_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get_vector<uint32_t>(
-      "rest.retry_http_codes", &retry_http_codes_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get<bool>("rest.curl.verbose", &verbose_, &found));
-  assert(found);
-
-  RETURN_NOT_OK(config_->get<uint64_t>(
-      "rest.curl.buffer_size", &curl_buffer_size_, &found));
-  assert(found);
-
+  retry_count_ = config_->get<uint64_t>("rest.retry_count", Config::must_find);
+  retry_delay_factor_ =
+      config_->get<double>("rest.retry_delay_factor", Config::must_find);
+  retry_initial_delay_ms_ =
+      config_->get<uint64_t>("rest.retry_initial_delay_ms", Config::must_find);
+  {
+    bool found;
+    RETURN_NOT_OK(config_->get_vector<uint32_t>(
+        "rest.retry_http_codes", &retry_http_codes_, &found));
+    passert(found);
+  }
+  verbose_ = config_->get<bool>("rest.curl.verbose", Config::must_find);
+  curl_buffer_size_ =
+      config_->get<uint64_t>("rest.curl.buffer_size", Config::must_find);
   retry_curl_errors_ =
       config_->get<bool>("rest.curl.retry_errors", Config::must_find);
 
@@ -833,6 +824,51 @@ Status Curl::check_curl_errors(
   return Status::Ok();
 }
 
+void Curl::check_curl_errors_v2(
+    CURLcode curl_code,
+    const std::string& operation,
+    const Buffer* returned_data) const {
+  CURL* curl = curl_.get();
+  if (curl == nullptr) {
+    throw CurlException(
+        "Error checking curl error; curl instance is null.", curl_code);
+  }
+
+  if (curl_code != CURLE_OK) {
+    std::stringstream msg;
+    msg << "Error in libcurl " << operation
+        << " operation: libcurl error message '" << get_curl_errstr(curl_code)
+        << "; ";
+    throw CurlException(msg.str(), curl_code);
+  }
+
+  long http_code = 0;
+  if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) != CURLE_OK) {
+    throw CurlException(
+        "Error checking curl error; could not get HTTP code.", curl_code);
+  }
+
+  if (http_code >= 400) {
+    // TODO: Should see if message has error data object
+    std::stringstream msg;
+    msg << "Error in libcurl " << operation
+        << " operation: libcurl error message '" << get_curl_errstr(curl_code)
+        << "'; HTTP code " << http_code << "; ";
+    if (returned_data) {
+      if (returned_data->size() > 0) {
+        msg << "server response data '"
+            << std::string(
+                   reinterpret_cast<const char*>(returned_data->data()),
+                   returned_data->size())
+            << "'.";
+      } else {
+        msg << "server response was empty.";
+      }
+    }
+    throw CurlException(msg.str(), curl_code, http_code);
+  }
+}
+
 std::string Curl::get_curl_errstr(CURLcode curl_code) const {
   if (curl_code == CURLE_OK)
     return "CURLE_OK";
@@ -936,37 +972,37 @@ Status Curl::post_data_common(
   return Status::Ok();
 }
 
-Status Curl::get_data(
+void Curl::get_data(
     stats::Stats* const stats,
     const std::string& url,
     SerializationType serialization_type,
     Buffer* returned_data,
     const std::string& res_ns_uri) {
   CURL* curl = curl_.get();
-  if (curl == nullptr)
-    return LOG_STATUS(
-        Status_RestError("Error getting data; curl instance is null."));
+  if (curl == nullptr) {
+    throw CurlException("Error getting data; curl instance is null.");
+  }
 
   // Set auth and content-type for request
   struct curl_slist* headers = nullptr;
-  RETURN_NOT_OK_ELSE(set_headers(&headers), curl_slist_free_all(headers));
-  RETURN_NOT_OK_ELSE(
-      set_content_type(serialization_type, &headers),
-      curl_slist_free_all(headers));
-
-  /* pass our list of custom made headers */
-  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
   CURLcode ret;
-  headerData.uri = &res_ns_uri;
-  auto st = make_curl_request(stats, url.c_str(), &ret, nullptr, returned_data);
-  curl_slist_free_all(headers);
-  RETURN_NOT_OK(st);
+  try {
+    throw_if_not_ok(set_headers(&headers));
+    throw_if_not_ok(set_content_type(serialization_type, &headers));
 
-  // Check for errors
-  RETURN_NOT_OK(check_curl_errors(ret, "GET", returned_data));
+    // Pass our list of custom-made headers.
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-  return Status::Ok();
+    headerData.uri = &res_ns_uri;
+    throw_if_not_ok(
+        make_curl_request(stats, url.c_str(), &ret, nullptr, returned_data));
+  } catch (...) {
+    curl_slist_free_all(headers);
+    throw;
+  }
+
+  // Throws CurlException containing the error, if any is found.
+  check_curl_errors_v2(ret, "GET", returned_data);
 }
 
 Status Curl::options(

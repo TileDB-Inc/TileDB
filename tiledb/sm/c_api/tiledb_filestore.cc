@@ -784,12 +784,8 @@ std::pair<std::string, std::string> strip_file_extension(const char* file_uri) {
 
 uint64_t get_buffer_size_from_config(
     const tiledb::sm::Config& config, uint64_t tile_extent) {
-  bool found = false;
-  uint64_t buffer_size;
-  auto st = config.get<uint64_t>("filestore.buffer_size", &buffer_size, &found);
-
-  throw_if_not_ok(st);
-  assert(found);
+  uint64_t buffer_size = config.get<uint64_t>(
+      "filestore.buffer_size", tiledb::sm::Config::must_find);
 
   if (buffer_size < tile_extent) {
     throw api::CAPIStatusException(

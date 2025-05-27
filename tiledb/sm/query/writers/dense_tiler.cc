@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/writers/dense_tiler.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -68,10 +69,10 @@ DenseTiler<T>::DenseTiler(
     , offsets_bytesize_(offsets_bitsize / 8)
     , offsets_extra_element_(offsets_extra_element) {
   // Assertions
-  assert(subarray != nullptr);
-  assert(buffers != nullptr);
+  iassert(subarray != nullptr);
+  iassert(buffers != nullptr);
   for (const auto& buff : *buffers) {
-    assert(array_schema_.is_attr(buff.first));
+    iassert(array_schema_.is_attr(buff.first));
     (void)buff;
   }
 
@@ -93,7 +94,7 @@ DenseTiler<T>::~DenseTiler() {
 template <class T>
 const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
     uint64_t id) const {
-  assert(id < tile_num_);
+  iassert(id < tile_num_);
 
   // For easy reference
   CopyPlan ret;
@@ -211,7 +212,7 @@ Status DenseTiler<T>::get_tile(
     auto type = array_schema_.type(name);
     auto tile_off_size = constants::cell_var_offset_size * cell_num_in_tile;
     auto buff_it = buffers_->find(name);
-    assert(buff_it != buffers_->end());
+    iassert(buff_it != buffers_->end());
     auto buff_var = (uint8_t*)buff_it->second.buffer_var_;
     auto div = (offsets_bytesize_ == 8) ? 1 : 2;
     uint64_t buff_off_size = *(buff_it->second.buffer_size_) / div;
@@ -279,7 +280,7 @@ Status DenseTiler<T>::get_tile(
     auto cell_size = array_schema_.cell_size(name);
     auto tile_size = cell_size * cell_num_in_tile;
     auto buff = (uint8_t*)buffers_->find(name)->second.buffer_;
-    assert(buff != nullptr);
+    iassert(buff != nullptr);
 
     memset(tile.fixed_tile().data(), 0, tile_size);
 
@@ -292,7 +293,7 @@ Status DenseTiler<T>::get_tile(
     auto tile_size = cell_size * cell_num_in_tile;
     auto buff =
         (uint8_t*)buffers_->find(name)->second.validity_vector_.buffer();
-    assert(buff != nullptr);
+    iassert(buff != nullptr);
 
     memset(tile.validity_tile().data(), 0, tile_size);
 
@@ -387,7 +388,10 @@ template <class T>
 void DenseTiler<T>::calculate_tile_and_subarray_strides() {
   // For easy reference
   auto sub_layout = subarray_->layout();
-  assert(sub_layout == Layout::ROW_MAJOR || sub_layout == Layout::COL_MAJOR);
+  iassert(
+      sub_layout == Layout::ROW_MAJOR || sub_layout == Layout::COL_MAJOR,
+      "sub_layout = {}",
+      layout_str(sub_layout));
   auto tile_layout = array_schema_.cell_order();
   auto dim_num = (int32_t)array_schema_.dim_num();
   auto& domain{array_schema_.domain()};
@@ -400,7 +404,7 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
     if (dim_num > 1) {
       for (auto d = dim_num - 2; d >= 0; --d) {
         auto tile_extent = (const T*)(domain.tile_extent(d + 1).data());
-        assert(tile_extent != nullptr);
+        iassert(tile_extent != nullptr);
         tile_strides_el_[d] = Dimension::tile_extent_mult<T>(
             tile_strides_el_[d + 1], *tile_extent);
       }
@@ -410,7 +414,7 @@ void DenseTiler<T>::calculate_tile_and_subarray_strides() {
     if (dim_num > 1) {
       for (auto d = 1; d < dim_num; ++d) {
         auto tile_extent = (const T*)(domain.tile_extent(d - 1).data());
-        assert(tile_extent != nullptr);
+        iassert(tile_extent != nullptr);
         tile_strides_el_[d] = Dimension::tile_extent_mult<T>(
             tile_strides_el_[d - 1], *tile_extent);
       }
@@ -521,7 +525,7 @@ Status DenseTiler<T>::copy_tile(
   const auto& dim_ranges = copy_plan.dim_ranges_;
   auto first_d = copy_plan.first_d_;
   auto dim_num = (int64_t)dim_ranges.size();
-  assert(dim_num > 0);
+  iassert(dim_num > 0);
 
   // Auxiliary information needed in the copy loop
   std::vector<uint64_t> tile_offsets(dim_num);
@@ -594,7 +598,7 @@ void DenseTiler<T>::compute_tile_metadata(
   const auto& dim_ranges = copy_plan.dim_ranges_;
   auto first_d = copy_plan.first_d_;
   auto dim_num = (int64_t)dim_ranges.size();
-  assert(dim_num > 0);
+  iassert(dim_num > 0);
 
   // Auxiliary information needed in the copy loop
   std::vector<uint64_t> tile_offsets(dim_num);

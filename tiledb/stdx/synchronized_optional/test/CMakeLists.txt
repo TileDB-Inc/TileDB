@@ -30,4 +30,5 @@ commence(unit_test synchronized_optional)
       unit_synchronized_optional.cc
       unit_synchronized_optional_comparisons.cc
       unit_synchronized_optional_swap.cc)
+  this_target_link_libraries(Threads::Threads)
 conclude(unit_test)

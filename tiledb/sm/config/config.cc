@@ -35,6 +35,7 @@
 #include <sstream>
 
 #include "config.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
@@ -242,9 +243,6 @@ const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
 const std::string Config::VFS_S3_INSTALL_SIGPIPE_HANDLER = "true";
-const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
-const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
-const std::string Config::VFS_HDFS_USERNAME = "";
 const std::string Config::FILESTORE_BUFFER_SIZE = "104857600";
 
 const std::map<std::string, std::string> default_config_values = {
@@ -521,11 +519,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.s3.install_sigpipe_handler",
         Config::VFS_S3_INSTALL_SIGPIPE_HANDLER),
-    std::make_pair("vfs.hdfs.name_node_uri", Config::VFS_HDFS_NAME_NODE_URI),
-    std::make_pair("vfs.hdfs.username", Config::VFS_HDFS_USERNAME),
-    std::make_pair(
-        "vfs.hdfs.kerb_ticket_cache_path",
-        Config::VFS_HDFS_KERB_TICKET_CACHE_PATH),
     std::make_pair("filestore.buffer_size", Config::FILESTORE_BUFFER_SIZE),
 };  // namespace tiledb::sm
 
@@ -722,7 +715,7 @@ void Config::inherit(const Config& config) {
   auto set_params = config.set_params();
   for (const auto& p : set_params) {
     auto v = config.get(p, &found);
-    assert(found);
+    passert(found);
     throw_if_not_ok(set(p, v));
   }
 }
