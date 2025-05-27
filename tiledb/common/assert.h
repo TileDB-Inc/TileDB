@@ -98,9 +98,11 @@ namespace tiledb::common {
  * of this exception would report it as such.
  */
 class [[nodiscard]] AssertFailure : public std::exception {
+  AssertFailure(const std::string& what);
+
  public:
   AssertFailure(const char* file, uint64_t line, const char* expr)
-      : what_(fmt::format(
+      : AssertFailure(fmt::format(
             "TileDB core library internal error: {}:{}: {}",
             file,
             line,
@@ -114,7 +116,7 @@ class [[nodiscard]] AssertFailure : public std::exception {
       const char* expr,
       fmt::format_string<Args...> fmt,
       Args&&... fmt_args)
-      : what_(fmt::format(
+      : AssertFailure(fmt::format(
             "TileDB core library internal error: {}:{}: {}\nDetails: {}",
             file,
             line,
@@ -140,10 +142,8 @@ class [[nodiscard]] AssertFailure : public std::exception {
  *
  * Called when the argument to `iassert` is false.
  */
-[[noreturn]] [[maybe_unused]] static void iassert_failure(
-    const char* file, uint64_t line, const char* expr) {
-  throw AssertFailure(file, line, expr);
-}
+[[noreturn]] void iassert_failure(
+    const char* file, uint64_t line, const char* expr);
 
 /**
  * Assertion failure which results in an internal error.
@@ -175,14 +175,8 @@ template <typename... Args>
  *
  * Called when the argument to `passert` is false.
  */
-template <typename... Args>
-[[noreturn]] [[maybe_unused]] static void passert_failure(
-    const char* file, uint64_t line, const char* expr) {
-  std::cerr << "FATAL TileDB core library internal error: " << expr
-            << std::endl;
-  std::cerr << "  " << file << ":" << line << std::endl;
-  std::abort();
-}
+[[noreturn]] void passert_failure(
+    const char* file, uint64_t line, const char* expr);
 
 /**
  * Assertion failure which results in a process panic.
