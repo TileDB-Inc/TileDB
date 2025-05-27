@@ -86,13 +86,12 @@ bool check_result(
 
 struct SerializationFx {
   test::VFSTempDir vfs_test_setup_;
-  tiledb_ctx_t* ctx_;
   Context ctx;
+  tiledb_ctx_t* ctx_;
   const std::string array_uri;
 
   SerializationFx()
-      : ctx_{vfs_test_setup_->ctx_c}
-      , ctx{vfs_test_setup_->ctx()}
+      : ctx_(ctx.ptr().get())
       , array_uri{vfs_test_setup_.array_uri("testarray")} {
   }
 
