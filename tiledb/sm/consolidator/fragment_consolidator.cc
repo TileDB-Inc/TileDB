@@ -1081,11 +1081,13 @@ Status FragmentConsolidator::set_config(const Config& config) {
   throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
+  RETURN_NOT_OK(merged_config.get<bool>(
+      "sm.consolidation.with_timestamps", &config_.with_timestamps_, &found));
+  assert(found);
   std::string reader =
       merged_config.get("sm.query.sparse_global_order.reader", &found);
   assert(found);
   config_.use_refactored_reader_ = reader.compare("refactored") == 0;
-  config_.with_timestamps_ = true;
   config_.with_delete_meta_ = false;
 
   // Sanity checks
@@ -1101,6 +1103,10 @@ Status FragmentConsolidator::set_config(const Config& config) {
     throw FragmentConsolidatorException(
         "Invalid configuration; Amplification config parameter must be "
         "non-negative");
+  if (config_.with_timestamps_ && !config_.use_refactored_reader_)
+    throw FragmentConsolidatorException(
+        ("Invalid configuration; Consolidation with timestamps requires "
+         "refactored reader"));
 
   return Status::Ok();
 }

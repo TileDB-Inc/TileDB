@@ -71,13 +71,15 @@ ArrayDirectory::ArrayDirectory(
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
-    ArrayDirectoryMode mode)
+    ArrayDirectoryMode mode,
+    bool allow_partial_fragment_overlap)
     : resources_(resources)
     , uri_(uri.add_trailing_slash())
     , stats_(resources_.get().vfs().stats()->create_child("ArrayDirectory"))
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
     , mode_(mode)
+    , allow_partial_fragment_overlap_(allow_partial_fragment_overlap)
     , loaded_(false) {
   auto st = load();
   if (!st.ok()) {
@@ -1312,11 +1314,15 @@ Status ArrayDirectory::is_fragment(
 
 bool ArrayDirectory::consolidation_with_timestamps_supported(
     const URI& uri) const {
+  auto consolidation_with_timestamps = resources_.get().config().get<bool>(
+      "sm.consolidation.with_timestamps", Config::must_find);
+
   // FragmentID::array_format_version() returns UINT32_MAX for versions <= 2
   // so we should explicitly exclude this case when checking if consolidation
   // with timestamps is supported on a fragment
   FragmentID fragment_id{uri};
-  return mode_ == ArrayDirectoryMode::READ &&
+  return allow_partial_fragment_overlap_ && consolidation_with_timestamps &&
+         mode_ == ArrayDirectoryMode::READ &&
          fragment_id.array_format_version() >=
              constants::consolidation_with_timestamps_min_version;
 }
