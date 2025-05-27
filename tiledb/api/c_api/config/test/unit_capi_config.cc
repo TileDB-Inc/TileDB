@@ -212,23 +212,20 @@ TEST_CASE(
 TEST_CASE(
     "C API: tiledb_config_set_profile argument validation", "[capi][config]") {
   ordinary_config x;
-  /*
-   * No "success" sections here; too much overhead to set up.
-   */
-  SECTION("all arguments valid - load failure") {
+  SECTION("success") {
     auto rc{tiledb_config_set_profile(x.config, "foo", "bar", &x.error)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
-  }
-  SECTION("null config") {
-    auto rc{tiledb_config_set_profile(nullptr, "foo", "bar", &x.error)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
+    CHECK(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null profile name") {
     auto rc{tiledb_config_set_profile(x.config, nullptr, "bar", &x.error)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
+    CHECK(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null profile homedir") {
     auto rc{tiledb_config_set_profile(x.config, "foo", nullptr, &x.error)};
+    CHECK(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null config") {
+    auto rc{tiledb_config_set_profile(nullptr, "foo", "bar", &x.error)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null error") {

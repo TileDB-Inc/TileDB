@@ -120,8 +120,13 @@ TEST_CASE("Config::set_profile - not found", "[config]") {
   Config c{};
   std::string profile_name = "test_profile";
   std::string profile_homedir(tempdir_.path());
-  // Attempt to set a profile that does not exist
-  CHECK_THROWS(c.set_profile(profile_name, profile_homedir));
+  // Set a profile that does not exist
+  CHECK(c.set_profile(profile_name, profile_homedir).ok());
+  // Attempt to get a parameter from the config
+  // This will trigger a profile load attempt
+  // And cause an exception to be thrown
+  bool found;
+  CHECK_THROWS(c.get("rest.username", &found));
 }
 
 TEST_CASE("Config::set_profile - found", "[config]") {
