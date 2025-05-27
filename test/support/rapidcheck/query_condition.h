@@ -45,7 +45,7 @@ namespace tiledb::test::templates {
 
 // Helper function used for `domain_type_t`.
 // This is not intended to be evaluated.
-template <AttributeType... Ts>
+template <typename... Ts>
 std::tuple<Domain<typename Ts::value_type>...> domain_type_f(
     const std::tuple<Ts...>&);
 
@@ -160,14 +160,14 @@ namespace tiledb::test::templates {
 template <FragmentType Fragment>
 typename query_condition_domain<Fragment>::value_type field_domains(
     const Fragment& fragment) {
-  auto make_domain = []<AttributeType T>(const std::vector<T>& field) {
+  auto make_domain = []<AttributeType T>(const query_buffers<T>& field) {
     return Domain<T>(
         *std::min_element(field.begin(), field.end()),
         *std::max_element(field.begin(), field.end()));
   };
 
   return std::apply(
-      [make_domain]<AttributeType... Ts>(const std::vector<Ts>&... fields) {
+      [make_domain]<AttributeType... Ts>(const query_buffers<Ts>&... fields) {
         return std::make_tuple(make_domain(fields)...);
       },
       std::tuple_cat(fragment.dimensions(), fragment.attributes()));
