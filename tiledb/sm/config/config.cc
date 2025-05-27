@@ -705,6 +705,7 @@ Status Config::unset(const std::string& param) {
   } else {
     param_values_.erase(param);
   }
+  set_params_.erase(param);
 
   return Status::Ok();
 }
