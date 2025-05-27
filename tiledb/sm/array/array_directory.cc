@@ -1315,15 +1315,8 @@ Status ArrayDirectory::is_fragment(
 bool ArrayDirectory::consolidation_with_timestamps_supported(
     const URI& uri) const {
   auto found = false;
-  auto consolidation_with_timestamps = false;
-  auto status = resources_.get().config().get<bool>(
-      "sm.consolidation.with_timestamps",
-      &consolidation_with_timestamps,
-      &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get with_timestamps configuration option from config");
-  }
+  auto consolidation_with_timestamps = resources_.get().config().get<bool>(
+      "sm.consolidation.with_timestamps", Config::must_find);
 
   // FragmentID::array_format_version() returns UINT32_MAX for versions <= 2
   // so we should explicitly exclude this case when checking if consolidation
