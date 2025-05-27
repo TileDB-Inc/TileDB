@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        build_type: [Release]
+        build_type: [Release, Debug]
       fail-fast: false
     name: Build - ${{ matrix.os }} (${{ matrix.build_type }})
     timeout-minutes: 90
