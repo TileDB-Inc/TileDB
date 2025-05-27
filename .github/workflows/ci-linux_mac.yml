@@ -77,7 +77,7 @@ env:
   CC: ${{ inputs.matrix_compiler_cc }}
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
   CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
-  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'arm64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
+  bootstrap_args: "--enable-assertions --enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'arm64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 
@@ -205,7 +205,9 @@ jobs:
 
           # Run rapidcheck tests as their own process so we can see the random seed for each
           ./test/tiledb_unit --list-tests "[rapidcheck]" --verbosity quiet | while IFS= read -r testname; do
+            echo "START $testname"
             ./test/tiledb_unit "$testname"
+            echo "END $testname"
           done
 
           ctest -R tiledb_timing_unit | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'

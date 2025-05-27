@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/memory_tracker.h"
@@ -206,7 +207,7 @@ void TileBase::write(const void* data, uint64_t offset, uint64_t nbytes) {
 }
 
 void Tile::zip_coordinates() {
-  assert(zipped_coords_dim_num_ > 0);
+  iassert(zipped_coords_dim_num_ > 0);
 
   // For easy reference
   const uint64_t tile_size = size_;
@@ -215,7 +216,7 @@ void Tile::zip_coordinates() {
 
   // Create a tile clone
   char* const tile_tmp = static_cast<char*>(tdb_malloc(tile_size));
-  assert(tile_tmp);
+  iassert(tile_tmp);
   std::memcpy(tile_tmp, data_.get(), tile_size);
 
   // Zip coordinates
@@ -278,7 +279,7 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
 
 uint64_t Tile::load_chunk_data(
     ChunkData& unfiltered_tile, uint64_t expected_original_size) {
-  assert(filtered());
+  iassert(filtered());
 
   Deserializer deserializer(filtered_data(), filtered_size());
 

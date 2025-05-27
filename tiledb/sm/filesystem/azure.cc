@@ -38,6 +38,7 @@
 #include <azure/identity.hpp>
 #include <azure/storage/blobs.hpp>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger_public.h"
@@ -110,7 +111,7 @@ AzureParameters::AzureParameters(const Config& config)
 Azure::Azure(ThreadPool* const thread_pool, const Config& config)
     : azure_params_(AzureParameters(config))
     , thread_pool_(thread_pool) {
-  assert(thread_pool);
+  passert(thread_pool);
 }
 
 Azure::~Azure() {
@@ -799,7 +800,7 @@ void Azure::write(
     }
   }
 
-  assert(offset == length);
+  iassert(offset == length, "offset = {}, length = {}", offset, length);
 }
 
 Buffer* Azure::get_write_cache_buffer(const std::string& uri) {
@@ -816,9 +817,9 @@ void Azure::fill_write_cache(
     const void* const buffer,
     const uint64_t length,
     uint64_t* const nbytes_filled) {
-  assert(write_cache_buffer);
-  assert(buffer);
-  assert(nbytes_filled);
+  iassert(write_cache_buffer);
+  iassert(buffer);
+  iassert(nbytes_filled);
 
   *nbytes_filled = std::min(
       azure_params_.write_cache_max_size_ - write_cache_buffer->size(), length);
@@ -830,7 +831,7 @@ void Azure::fill_write_cache(
 
 void Azure::flush_write_cache(
     const URI& uri, Buffer* const write_cache_buffer, const bool last_block) {
-  assert(write_cache_buffer);
+  iassert(write_cache_buffer);
   if (write_cache_buffer->size() > 0) {
     Status st;
     try {
@@ -892,7 +893,7 @@ void Azure::write_blocks(
           bool>
           emplaced = block_list_upload_states_.emplace(
               uri.to_string(), std::move(state));
-      assert(emplaced.second);
+      passert(emplaced.second);
       state_iter = emplaced.first;
     }
 
@@ -1025,10 +1026,10 @@ Status Azure::upload_block(
 }
 
 std::tuple<std::string, std::string> Azure::parse_azure_uri(const URI& uri) {
-  assert(uri.is_azure());
+  iassert(uri.is_azure());
   const std::string uri_str = uri.to_string();
   const static std::string azure_prefix = "azure://";
-  assert(uri_str.rfind(azure_prefix, 0) == 0);
+  iassert(uri_str.rfind(azure_prefix, 0) == 0);
   if (uri_str.size() == azure_prefix.size()) {
     return std::make_tuple("", "");
   }

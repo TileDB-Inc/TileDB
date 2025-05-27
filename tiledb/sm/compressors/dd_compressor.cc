@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/compressors/dd_compressor.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -121,9 +122,9 @@ void DoubleDelta::compress(
           "DoubleDelta tile compression is not yet supported for float types.");
   }
 
-  assert(false);
   throw DoubleDeltaException(
-      "Cannot compress tile with DoubleDelta; Unsupported datatype");
+      "Cannot compress tile with DoubleDelta; Unsupported datatype: " +
+      datatype_str(type));
 }
 
 void DoubleDelta::decompress(
@@ -192,9 +193,9 @@ void DoubleDelta::decompress(
           "types.");
   }
 
-  assert(false);
   throw DoubleDeltaException(
-      "Cannot decompress tile with DoubleDelta; Unupported datatype");
+      "Cannot decompress tile with DoubleDelta; Unupported datatype: " +
+      datatype_str(type));
 }
 
 uint64_t DoubleDelta::overhead(uint64_t) {
@@ -211,13 +212,17 @@ void DoubleDelta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Calculate number of values and handle trivial case
   uint64_t value_size = sizeof(T);
   uint64_t num = input_buffer->size() / value_size;
-  assert(num > 0 && (input_buffer->size() % value_size == 0));
+  iassert(
+      num > 0 && (input_buffer->size() % value_size == 0),
+      "input_buffer->size() = {}, value_size = {}",
+      input_buffer->size(),
+      value_size);
 
   // Calculate bitsize (ignoring the sign bit)
   auto in = (T*)input_buffer->data();
   unsigned int bitsize;
   compute_bitsize(in, num, &bitsize);
-  assert(bitsize <= std::numeric_limits<uint8_t>::max());
+  iassert(bitsize <= std::numeric_limits<uint8_t>::max());
   auto bitsize_c = static_cast<uint8_t>(bitsize);
 
   // Write bitsize and number of values
@@ -467,3 +472,4 @@ template void DoubleDelta::decompress<uint64_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
 }  // namespace tiledb::sm
+

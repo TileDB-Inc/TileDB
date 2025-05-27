@@ -46,6 +46,8 @@
 #include <numeric>
 #include <ranges>
 
+#include "tiledb/common/assert.h"
+
 /**
  * @brief Convert a vector of lengths to a vector of offsets, in place.
  * Arrow format.  In the arrow format, the length of the offsets array is
@@ -87,7 +89,7 @@ template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range S>
 void offsets_to_lengths(const R& offsets, S& lengths) {
-  assert(std::size(offsets) == std::size(lengths) + 1);
+  passert(std::size(offsets) == std::size(lengths) + 1);
   std::adjacent_difference(
       std::begin(offsets) + 1, std::end(offsets), std::begin(lengths));
 }
@@ -108,7 +110,7 @@ template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range S>
 void offsets_to_lengths(const R& offsets, S& lengths, size_t total_length) {
-  assert(std::size(offsets) == std::size(lengths));
+  passert(std::size(offsets) == std::size(lengths));
   std::adjacent_difference(
       std::begin(offsets) + 1, std::end(offsets), std::begin(lengths));
   lengths.back() =

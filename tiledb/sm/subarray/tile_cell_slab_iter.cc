@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/subarray/tile_cell_slab_iter.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -259,7 +260,7 @@ void TileCellSlabIter<T>::advance_row() {
 
 template <class T>
 void TileCellSlabIter<T>::init_cell_slab_lengths() {
-  if (layout_ == Layout::ROW_MAJOR) {
+  if (layout_ == Layout::ROW_MAJOR || layout_ == Layout::UNORDERED) {
     auto range_num = ranges_[dim_num_ - 1].size();
     cell_slab_lengths_.resize(range_num);
     for (size_t i = 0; i < range_num; ++i) {
@@ -267,7 +268,7 @@ void TileCellSlabIter<T>::init_cell_slab_lengths() {
           ranges_[dim_num_ - 1][i].end_ - ranges_[dim_num_ - 1][i].start_ + 1;
     }
   } else {
-    assert(layout_ == Layout::COL_MAJOR);
+    iassert(layout_ == Layout::COL_MAJOR, "layout = {}", layout_str(layout_));
     auto range_num = ranges_[0].size();
     cell_slab_lengths_.resize(range_num);
     for (size_t i = 0; i < range_num; ++i) {

@@ -10,7 +10,7 @@ env:
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableAssert'
 
 jobs:
   build:

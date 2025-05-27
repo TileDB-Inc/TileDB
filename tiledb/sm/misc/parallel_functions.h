@@ -33,6 +33,7 @@
 #ifndef TILEDB_PARALLEL_FUNCTIONS_H
 #define TILEDB_PARALLEL_FUNCTIONS_H
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/global_state/global_state.h"
 
@@ -66,7 +67,7 @@ void parallel_sort(
   //
   // To parallelize the algorithm, step #3 is modified to execute
   // the recursion on the thread pool.
-  assert(tp);
+  passert(tp);
 
   // Calculate the maximum height of the recursive call stack tree
   // where each leaf node can be assigned to a single level of
@@ -170,13 +171,13 @@ void parallel_sort(
 template <typename FuncT>
 Status parallel_for(
     ThreadPool* const tp, uint64_t begin, uint64_t end, const FuncT& F) {
-  assert(begin <= end);
+  iassert(begin <= end, "begin = {}, end = {}", begin, end);
 
   const uint64_t range_len = end - begin;
   if (range_len == 0)
     return Status::Ok();
 
-  assert(tp);
+  passert(tp);
 
   /*
    * Mutex protects atomicity of `failed*` local variables together. The first
@@ -303,10 +304,10 @@ Status parallel_for_2d(
     uint64_t j0,
     uint64_t j1,
     const FuncT& F) {
-  assert(i0 <= i1);
-  assert(j0 <= j1);
+  passert(i0 <= i1);
+  passert(j0 <= j1);
 
-  assert(tp);
+  passert(tp);
 
   const uint64_t range_len_i = i1 - i0;
   const uint64_t range_len_j = j1 - j0;

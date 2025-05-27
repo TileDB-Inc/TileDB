@@ -49,6 +49,7 @@
 
 #ifdef HAVE_S3
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 
@@ -270,7 +271,7 @@ S3::S3(
     , bucket_canned_acl_(
           S3_BucketCannedACL_from_str(s3_params_.bucket_acl_str_))
     , ssl_config_(S3SSLConfig(config)) {
-  assert(thread_pool);
+  passert(thread_pool);
   options_.loggingOptions.logLevel =
       aws_log_name_to_level(s3_params_.logging_level_);
 
@@ -335,7 +336,7 @@ S3::~S3() {
   if (!st.ok()) {
     LOG_STATUS_NO_RETURN_VALUE(st);
   } else {
-    assert(state_ == State::DISCONNECTED);
+    passert(state_ == State::DISCONNECTED);
     for (auto& buff : file_buffers_)
       tdb_delete(buff.second);
   }
@@ -652,7 +653,7 @@ void S3::write(
         new_length -= nbytes_filled;
       }
     }
-    assert(offset == length);
+    passert(offset == length, "offset = {}, length = {}", offset, length);
   }
 }
 
@@ -1357,7 +1358,7 @@ std::string S3::remove_trailing_slash(const std::string& path) {
 /* ********************************* */
 
 Status S3::init_client() const {
-  assert(state_ == State::INITIALIZED);
+  passert(state_ == State::INITIALIZED);
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
@@ -1543,7 +1544,7 @@ Status S3::init_client() const {
   static std::mutex static_client_init_mtx;
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
-    assert(credentials_provider);
+    passert(credentials_provider);
     client_ = make_shared<TileDBS3Client>(
         HERE(), s3_params_, credentials_provider, client_config);
   }
@@ -1891,7 +1892,7 @@ Status S3::write_multipart(
       std::string path(aws_uri.GetPath());
       MultiPartUploadState new_state;
 
-      assert(multipart_upload_states_.count(path) == 0);
+      passert(multipart_upload_states_.count(path_str) == 0);
       multipart_upload_states_.emplace(std::move(path), std::move(new_state));
       state = &multipart_upload_states_.at(uri_path);
 
@@ -2106,3 +2107,4 @@ URI S3::generate_chunk_uri(
 }  // namespace tiledb::sm
 
 #endif
+

@@ -37,6 +37,8 @@
 #include <tuple>
 #include <vector>
 
+#include "tiledb/common/assert.h"
+
 /**
  * @brief Partition a list of sizes into bins that are less than or equal to a
  * given number of bytes.  The sizes are the number of elements in each cell,
@@ -56,9 +58,12 @@ auto bin_partition(
     size_t num_cells,
     size_t fixed_bytes_per_cell,
     std::list<std::vector<uint64_t>::iterator>& sizes) {
-  assert(bin_size > 0);
-  assert(num_cells > 0);
-  assert(fixed_bytes_per_cell > 0);
+  iassert(bin_size > 0, "bin_size = {}", bin_size);
+  iassert(num_cells > 0, "num_cells = {}", num_cells);
+  iassert(
+      fixed_bytes_per_cell > 0,
+      "fixed_bytes_per_cell = {}",
+      fixed_bytes_per_cell);
 
   size_t current_index{0};
   // size_t next_index{0};
