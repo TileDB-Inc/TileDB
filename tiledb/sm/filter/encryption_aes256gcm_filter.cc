@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/encryption_aes256gcm_filter.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
@@ -87,7 +88,7 @@ void EncryptionAES256GCMFilter::run_forward(
   // Allocate an initial output buffer.
   throw_if_not_ok(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
-  assert(output_buf != nullptr);
+  passert(output_buf != nullptr);
 
   // Compute and write the metadata
   std::vector<ConstBuffer> data_parts = input->buffers(),
@@ -161,10 +162,10 @@ Status EncryptionAES256GCMFilter::run_reverse(
   // Get buffers for output.
   RETURN_NOT_OK(output->prepend_buffer(0));
   Buffer* data_buffer = output->buffer_ptr(0);
-  assert(data_buffer != nullptr);
+  passert(data_buffer != nullptr);
   RETURN_NOT_OK(output_metadata->prepend_buffer(0));
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
-  assert(metadata_buffer != nullptr);
+  passert(metadata_buffer != nullptr);
 
   // Decrypt all parts
   for (uint32_t i = 0; i < num_metadata_parts; i++)

@@ -32,6 +32,7 @@
 
 #include "vfs.h"
 #include "path_win.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/log_duration_instrument.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -72,8 +73,8 @@ VFS::VFS(
     , io_tp_(io_tp)
     , vfs_params_(VFSParameters(config)) {
   Status st;
-  assert(compute_tp);
-  assert(io_tp);
+  passert(compute_tp);
+  passert(io_tp);
 
   // Construct the read-ahead cache.
   read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
@@ -480,21 +481,15 @@ void VFS::remove_files(
 }
 
 Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
-  bool found;
   *ops = 0;
 
   if (uri.is_s3()) {
-    RETURN_NOT_OK(
-        config_.get<uint64_t>("vfs.s3.max_parallel_ops", ops, &found));
-    assert(found);
+    *ops = config_.get<uint64_t>("vfs.s3.max_parallel_ops", Config::must_find);
   } else if (uri.is_azure()) {
-    RETURN_NOT_OK(
-        config_.get<uint64_t>("vfs.azure.max_parallel_ops", ops, &found));
-    assert(found);
+    *ops =
+        config_.get<uint64_t>("vfs.azure.max_parallel_ops", Config::must_find);
   } else if (uri.is_gcs()) {
-    RETURN_NOT_OK(
-        config_.get<uint64_t>("vfs.gcs.max_parallel_ops", ops, &found));
-    assert(found);
+    *ops = config_.get<uint64_t>("vfs.gcs.max_parallel_ops", Config::must_find);
   } else {
     *ops = 1;
   }
@@ -1174,7 +1169,11 @@ Status VFS::read_ahead_impl(
       read_fn(uri, offset, ra_buffer.data(), nbytes, ra_nbytes, &nbytes_read));
 
   // Copy the requested read range back into the caller's output `buffer`.
-  assert(nbytes_read >= nbytes);
+  iassert(
+      nbytes_read >= nbytes,
+      "nbytes_read = {}, nbytes = {}",
+      nbytes_read,
+      nbytes);
   std::memcpy(buffer, ra_buffer.data(), nbytes);
 
   // Cache `ra_buffer` at `offset`.

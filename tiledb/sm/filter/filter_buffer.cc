@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/filter_buffer.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -271,7 +272,7 @@ uint64_t FilterBuffer::num_buffers() const {
 }
 
 Buffer* FilterBuffer::buffer_ptr(unsigned index) const {
-  assert(!read_only_);  // Just to be safe
+  passert(!read_only_);  // Just to be safe
 
   for (auto it = buffers_.cbegin(), ite = buffers_.cend(); it != ite; ++it) {
     if (index == 0) {
@@ -470,7 +471,7 @@ void FilterBuffer::set_offset(uint64_t offset) {
   auto list_node = buffers_.cend();
   uint64_t relative_offset = 0;
   auto st = get_relative_offset(offset, &list_node, &relative_offset);
-  assert(st.ok());
+  iassert(st.ok());
   offset_ = offset;
   current_buffer_ = list_node;
   current_relative_offset_ = relative_offset;
@@ -497,7 +498,7 @@ void FilterBuffer::advance_offset(uint64_t nbytes) {
     uint64_t relative_offset = 0;
     auto st =
         get_relative_offset(offset_ + nbytes, &list_node, &relative_offset);
-    assert(st.ok());
+    iassert(st.ok());
     current_buffer_ = list_node;
     current_relative_offset_ = relative_offset;
     offset_ += nbytes;
@@ -522,7 +523,7 @@ Status FilterBuffer::prepend_buffer(uint64_t nbytes) {
     // Fixed allocation case: prepend is a no-op because the fixed allocation
     // memory region must be used. That is why only one prepend/append is
     // allowed.
-    assert(!buffers_.empty());
+    passert(!buffers_.empty());
 
     // Check for errors
     if (!fixed_allocation_op_allowed_)
@@ -555,7 +556,7 @@ Status FilterBuffer::append_view(
 
   // Check for fixed-allocation errors first.
   if (fixed_allocation_data_ != nullptr) {
-    assert(!buffers_.empty());
+    passert(!buffers_.empty());
     if (!fixed_allocation_op_allowed_)
       return LOG_STATUS(Status_FilterError(
           "FilterBuffer error; cannot append view: fixed allocation set."));

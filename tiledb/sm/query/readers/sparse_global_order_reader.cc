@@ -235,7 +235,7 @@ bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
   } else {
     [[maybe_unused]] const size_t mem_for_tile_order =
         sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
-    assert(memory_used_for_coords_total_ >= mem_for_tile_order);
+    iassert(memory_used_for_coords_total_ >= mem_for_tile_order);
     return memory_used_for_coords_total_ > mem_for_tile_order;
   }
 }
@@ -3034,11 +3034,11 @@ void SparseGlobalOrderReader<BitmapType>::end_iteration(
     if (preprocess_tile_order_.enabled_) {
       [[maybe_unused]] const size_t mem_for_tile_order =
           sizeof(ResultTileId) * preprocess_tile_order_.tiles_.size();
-      assert(memory_used_for_coords_total_ == mem_for_tile_order);
+      iassert(memory_used_for_coords_total_ == mem_for_tile_order);
     } else {
-      assert(memory_used_for_coords_total_ == 0);
+      iassert(memory_used_for_coords_total_ == 0);
     }
-    assert(tmp_read_state_.memory_used_tile_ranges() == 0);
+    iassert(tmp_read_state_.memory_used_tile_ranges() == 0);
   }
 
   uint64_t num_rt = 0;

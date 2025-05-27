@@ -47,6 +47,7 @@
 
 #include <ranges>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/util/detail/iterator_facade.h"
 
 /**
@@ -130,8 +131,8 @@ class var_length_view : public std::ranges::view_base {
       , index_begin_(index_begin)
       , index_end_(index_begin + n_index)
       , num_subranges_(index_end_ - index_begin_ - 1) {
-    assert(data_end - data_begin >= n_data);
-    assert(index_end - index_begin >= n_index);
+    iassert(data_end - data_begin >= n_data);
+    iassert(index_end - index_begin >= n_index);
   }
 
   /** Constructor taking ranges for the data and index ranges */
@@ -156,8 +157,8 @@ class var_length_view : public std::ranges::view_base {
       , index_begin_(std::ranges::cbegin(index))
       , index_end_(std::ranges::cbegin(index) + n_index)
       , num_subranges_(n_index - 1) {
-    assert(data_end_ - data_begin_ >= n_data);
-    assert(index_end_ - index_begin_ >= n_index);
+    iassert(data_end_ - data_begin_ >= n_data);
+    iassert(index_end_ - index_begin_ >= n_index);
   }
 
   /** Return iterator to the beginning of the var length view */

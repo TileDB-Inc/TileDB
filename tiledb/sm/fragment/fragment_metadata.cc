@@ -33,6 +33,7 @@
 
 #include "tiledb/common/common.h"
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
@@ -136,10 +137,10 @@ void FragmentMetadata::set_tile_index_base(uint64_t tile_base) {
 void FragmentMetadata::set_tile_offset(
     const std::string& name, uint64_t tid, uint64_t step) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < loaded_metadata_ptr_->tile_offsets()[idx].size());
+  iassert(tid < loaded_metadata_ptr_->tile_offsets()[idx].size());
   loaded_metadata_ptr_->tile_offsets()[idx][tid] = file_sizes_[idx];
   file_sizes_[idx] += step;
 }
@@ -147,10 +148,10 @@ void FragmentMetadata::set_tile_offset(
 void FragmentMetadata::set_tile_var_offset(
     const std::string& name, uint64_t tid, uint64_t step) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < loaded_metadata_ptr_->tile_var_offsets()[idx].size());
+  iassert(tid < loaded_metadata_ptr_->tile_var_offsets()[idx].size());
   loaded_metadata_ptr_->tile_var_offsets()[idx][tid] = file_var_sizes_[idx];
   file_var_sizes_[idx] += step;
 }
@@ -158,20 +159,20 @@ void FragmentMetadata::set_tile_var_offset(
 void FragmentMetadata::set_tile_var_size(
     const std::string& name, uint64_t tid, uint64_t size) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < loaded_metadata_ptr_->tile_var_sizes()[idx].size());
+  iassert(tid < loaded_metadata_ptr_->tile_var_sizes()[idx].size());
   loaded_metadata_ptr_->tile_var_sizes()[idx][tid] = size;
 }
 
 void FragmentMetadata::set_tile_validity_offset(
     const std::string& name, uint64_t tid, uint64_t step) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < loaded_metadata_ptr_->tile_validity_offsets()[idx].size());
+  iassert(tid < loaded_metadata_ptr_->tile_validity_offsets()[idx].size());
   loaded_metadata_ptr_->tile_validity_offsets()[idx][tid] =
       file_validity_sizes_[idx];
   file_validity_sizes_[idx] += step;
@@ -181,11 +182,11 @@ void FragmentMetadata::set_tile_min(
     const std::string& name, uint64_t tid, const ByteVec& min) {
   const auto size = min.size();
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * size;
-  assert(tid < loaded_metadata_ptr_->tile_min_buffer()[idx].size() / size);
+  iassert(tid < loaded_metadata_ptr_->tile_min_buffer()[idx].size() / size);
   memcpy(
       &loaded_metadata_ptr_->tile_min_buffer()[idx][buff_offset],
       min.data(),
@@ -195,11 +196,11 @@ void FragmentMetadata::set_tile_min(
 void FragmentMetadata::set_tile_min_var_size(
     const std::string& name, uint64_t tid, uint64_t size) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * sizeof(uint64_t);
-  assert(
+  iassert(
       tid <
       loaded_metadata_ptr_->tile_min_buffer()[idx].size() / sizeof(uint64_t));
 
@@ -211,11 +212,11 @@ void FragmentMetadata::set_tile_min_var_size(
 void FragmentMetadata::set_tile_min_var(
     const std::string& name, uint64_t tid, const ByteVec& min) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * sizeof(uint64_t);
-  assert(
+  iassert(
       tid <
       loaded_metadata_ptr_->tile_min_buffer()[idx].size() / sizeof(uint64_t));
 
@@ -240,11 +241,11 @@ void FragmentMetadata::set_tile_max(
     const std::string& name, uint64_t tid, const ByteVec& max) {
   const auto size = max.size();
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * size;
-  assert(tid < loaded_metadata_ptr_->tile_max_buffer()[idx].size() / size);
+  iassert(tid < loaded_metadata_ptr_->tile_max_buffer()[idx].size() / size);
   memcpy(
       &loaded_metadata_ptr_->tile_max_buffer()[idx][buff_offset],
       max.data(),
@@ -254,11 +255,11 @@ void FragmentMetadata::set_tile_max(
 void FragmentMetadata::set_tile_max_var_size(
     const std::string& name, uint64_t tid, uint64_t size) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * sizeof(uint64_t);
-  assert(
+  iassert(
       tid <
       loaded_metadata_ptr_->tile_max_buffer()[idx].size() / sizeof(uint64_t));
 
@@ -270,11 +271,11 @@ void FragmentMetadata::set_tile_max_var_size(
 void FragmentMetadata::set_tile_max_var(
     const std::string& name, uint64_t tid, const ByteVec& max) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * sizeof(uint64_t);
-  assert(
+  iassert(
       tid <
       loaded_metadata_ptr_->tile_max_buffer()[idx].size() / sizeof(uint64_t));
 
@@ -298,7 +299,7 @@ void FragmentMetadata::set_tile_max_var(
 void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
     const std::string& name) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
 
   // Fix the min offsets.
@@ -340,10 +341,10 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
 void FragmentMetadata::set_tile_sum(
     const std::string& name, uint64_t tid, const ByteVec& sum) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(
+  iassert(
       tid * sizeof(uint64_t) < loaded_metadata_ptr_->tile_sums()[idx].size());
   memcpy(
       &loaded_metadata_ptr_->tile_sums()[idx][tid * sizeof(uint64_t)],
@@ -354,10 +355,10 @@ void FragmentMetadata::set_tile_sum(
 void FragmentMetadata::set_tile_null_count(
     const std::string& name, uint64_t tid, uint64_t null_count) {
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < loaded_metadata_ptr_->tile_null_counts()[idx].size());
+  iassert(tid < loaded_metadata_ptr_->tile_null_counts()[idx].size());
   loaded_metadata_ptr_->tile_null_counts()[idx][tid] = null_count;
 }
 
@@ -475,7 +476,7 @@ void FragmentMetadata::set_array_schema(
 
 uint64_t FragmentMetadata::cell_num() const {
   auto tile_num = this->tile_num();
-  assert(tile_num != 0);
+  iassert(tile_num != 0);
   if (dense_) {  // Dense fragment
     return tile_num * array_schema_->domain().cell_num_per_tile();
   } else {  // Sparse fragment
@@ -682,7 +683,7 @@ uint64_t FragmentMetadata::fragment_size() const {
   }
   // Validate that the meta_file_size is not zero, either preloaded or fetched
   // above
-  assert(meta_file_size != 0);
+  iassert(meta_file_size != 0);
 
   // Add fragment metadata file size
   size += meta_file_size;
@@ -694,9 +695,9 @@ void FragmentMetadata::init_domain(const NDRange& non_empty_domain) {
   auto& domain{array_schema_->domain()};
 
   // Sanity check
-  assert(!non_empty_domain.empty());
-  assert(non_empty_domain_.empty());
-  assert(domain_.empty());
+  iassert(!non_empty_domain.empty());
+  iassert(non_empty_domain_.empty());
+  iassert(domain_.empty());
 
   // Set non-empty domain for dense arrays (for sparse it will be calculated
   // via the MBRs)
@@ -1197,7 +1198,7 @@ void FragmentMetadata::store_v15_or_higher(
 void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   for (auto& it : idx_map_) {
     auto i = it.second;
-    assert(num_tiles >= loaded_metadata_ptr_->tile_offsets()[i].size());
+    iassert(num_tiles >= loaded_metadata_ptr_->tile_offsets()[i].size());
 
     // Get the fixed cell size
     const auto is_dim = array_schema_->is_dim(it.first);
@@ -1298,7 +1299,7 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
     return percent_encoded_name.str();
   }
 
-  assert(version_ > 8);
+  iassert(version_ > 8);
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end()) {
     throw FragmentMetadataStatusException("Name " + name + " not in idx_map_");
@@ -1389,7 +1390,7 @@ T FragmentMetadata::get_tile_min_as(
   }
 
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_ptr_->loaded_metadata().tile_min_[idx]) {
     throw FragmentMetadataStatusException(
@@ -1426,7 +1427,7 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
   }
 
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_ptr_->loaded_metadata().tile_min_[idx]) {
     throw FragmentMetadataStatusException(
@@ -1478,7 +1479,7 @@ T FragmentMetadata::get_tile_max_as(
   }
 
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_ptr_->loaded_metadata().tile_max_[idx]) {
     throw FragmentMetadataStatusException(
@@ -1515,7 +1516,7 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
   }
 
   auto it = idx_map_.find(name);
-  assert(it != idx_map_.end());
+  iassert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_ptr_->loaded_metadata().tile_max_[idx]) {
     throw FragmentMetadataStatusException(
@@ -1722,7 +1723,7 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
     // would not be empty. For reading the footer from storage, the footer
     // size is explicitly stored to and retrieved from storage, so this
     // function is not called then.
-    assert(array_schema_->domain().all_dims_fixed());
+    iassert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
       domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
   } else {
@@ -1763,7 +1764,7 @@ uint64_t FragmentMetadata::footer_size_v7_v9() const {
     // would not be empty. For reading the footer from storage, the footer
     // size is explicitly stored to and retrieved from storage, so this
     // function is not called then.
-    assert(array_schema_->domain().all_dims_fixed());
+    iassert(array_schema_->domain().all_dims_fixed());
     for (unsigned d = 0; d < dim_num; ++d)
       domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
   } else {
@@ -1798,7 +1799,7 @@ uint64_t FragmentMetadata::footer_size_v7_v9() const {
 template <class T>
 std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     const T* subarray) const {
-  assert(dense_);
+  iassert(dense_);
   std::vector<uint64_t> tids;
   auto dim_num = array_schema_->dim_num();
 
@@ -1846,7 +1847,7 @@ std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
 template <class T>
 std::vector<std::pair<uint64_t, double>>
 FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
-  assert(dense_);
+  iassert(dense_);
   std::vector<std::pair<uint64_t, double>> tids;
   auto dim_num = array_schema_->dim_num();
 
@@ -1886,7 +1887,7 @@ FragmentMetadata::compute_overlapping_tile_ids_cov(const T* subarray) const {
     domain.get_tile_subarray(metadata_domain, tile_coords, tile_subarray);
     rectangle::overlap(
         subarray, tile_subarray, dim_num, tile_overlap, &overlap);
-    assert(overlap);
+    iassert(overlap);
     cov = rectangle::coverage(tile_overlap, tile_subarray, dim_num);
     tile_pos = domain.get_tile_pos(metadata_domain, tile_coords);
     tids.emplace_back(tile_pos, cov);
@@ -2710,8 +2711,8 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
   auto dim_num = domain.dim_num();
   if (non_empty_domain_.empty()) {
     // Applicable only to homogeneous domains with fixed-sized types
-    assert(domain.all_dims_fixed());
-    assert(domain.all_dims_same_type());
+    iassert(domain.all_dims_fixed());
+    iassert(domain.all_dims_same_type());
     auto domain_size{2 * dim_num * domain.dimension_ptr(0)->coord_size()};
 
     // Write domain (dummy values)

@@ -35,7 +35,7 @@ commence(object_library compressors)
         bzip_compressor.cc dd_compressor.cc delta_compressor.cc
         dict_compressor.cc gzip_compressor.cc lz4_compressor.cc
         rle_compressor.cc zstd_compressor.cc)
-    this_target_object_libraries(baseline buffer)
+    this_target_object_libraries(baseline buffer constants)
     find_package(BZip2 REQUIRED)
     find_package(LZ4 MODULE REQUIRED)
     find_package(ZLIB REQUIRED)

@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/data_order.h"
@@ -140,7 +141,7 @@ Attribute Attribute::deserialize(
   ByteVecValue fill_value;
   if (version >= 6) {
     fill_value_size = deserializer.read<uint64_t>();
-    assert(fill_value_size > 0);
+    iassert(fill_value_size > 0);
     fill_value.resize(fill_value_size);
     fill_value.shrink_to_fit();
     deserializer.read(fill_value.data(), fill_value_size);
@@ -223,7 +224,7 @@ void Attribute::serialize(
   // Write fill value
   if (version >= 6) {
     auto fill_value_size = static_cast<uint64_t>(fill_value_.size());
-    assert(fill_value_size != 0);
+    iassert(fill_value_size != 0);
     serializer.write<uint64_t>(fill_value_size);
     serializer.write(fill_value_.data(), fill_value_.size());
   }

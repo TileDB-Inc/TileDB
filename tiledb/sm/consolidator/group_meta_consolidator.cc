@@ -142,13 +142,10 @@ Status GroupMetaConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
   Config merged_config = resources_.config();
   merged_config.inherit(config);
-  bool found = false;
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
-  assert(found);
-  throw_if_not_ok(merged_config.get<uint64_t>(
-      "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
-  assert(found);
+  config_.timestamp_start_ = merged_config.get<uint64_t>(
+      "sm.consolidation.timestamp_start", Config::must_find);
+  config_.timestamp_end_ = merged_config.get<uint64_t>(
+      "sm.consolidation.timestamp_end", Config::must_find);
 
   return Status::Ok();
 }

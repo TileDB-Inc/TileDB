@@ -39,6 +39,7 @@
 #include <map>
 #include <vector>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 
@@ -134,7 +135,7 @@ class ResultSpaceTile {
   /** Sets the input result tile for the given fragment. */
   void set_result_tile(
       unsigned frag_idx, uint64_t tile_idx, FragmentMetadata& frag_md) {
-    assert(result_tiles_.count(frag_idx) == 0);
+    iassert(result_tiles_.count(frag_idx) == 0);
     result_tiles_.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(frag_idx),
@@ -144,7 +145,7 @@ class ResultSpaceTile {
   /** Returns the result tile for the input fragment. */
   ResultTile* result_tile(unsigned frag_idx) {
     auto it = result_tiles_.find(frag_idx);
-    assert(it != result_tiles_.end());
+    iassert(it != result_tiles_.end());
     return &(it->second);
   }
 

@@ -122,7 +122,7 @@ const std::vector<TimestampedURI>& GroupDirectory::group_detail_uris() const {
 }
 
 Status GroupDirectory::load() {
-  assert(!loaded_);
+  passert(!loaded_);
   std::vector<ThreadPool::Task> tasks;
   std::vector<URI> root_dir_uris;
   std::vector<URI> commits_dir_uris;
@@ -235,7 +235,10 @@ Status GroupDirectory::load_group_detail_uris() {
   // Set the latest array schema URI
   if (!group_detail_uris_.empty()) {
     latest_group_details_uri_ = group_detail_uris_.back().uri_;
-    assert(!latest_group_details_uri_.is_invalid());
+    passert(
+        !latest_group_details_uri_.is_invalid(),
+        "uri = {}",
+        latest_group_details_uri_.to_string());
   }
 
   return Status::Ok();

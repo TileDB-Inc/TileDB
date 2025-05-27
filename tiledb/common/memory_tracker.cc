@@ -35,6 +35,7 @@
 
 #include "external/include/nlohmann/json.hpp"
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
@@ -186,7 +187,7 @@ bool MemoryTrackerResource::do_is_equal(
 }
 
 MemoryTracker::~MemoryTracker() {
-  assert(
+  passert(
       total_counter_.fetch_add(0) == 0 &&
       "MemoryTracker destructed with outstanding allocations.");
 }
@@ -205,7 +206,11 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
     counters_.emplace(type, 0);
   } else {
     // There's no outstanding memory resource for this type, so it must be zero.
-    assert(counters_[type] == 0 && "Invalid memory tracking state.");
+    passert(
+        counters_[type] == 0,
+        "Invalid memory tracking state: counters[{}] = {}",
+        memory_type_to_str(type),
+        counters_[type].load());
   }
 
   // Create and track a shared_ptr to the new memory resource.
