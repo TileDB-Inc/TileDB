@@ -34,9 +34,11 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/temporary_local_directory.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 
 using namespace tiledb::sm;
 
@@ -126,6 +128,40 @@ TEST_CASE(
   config[key] = value3;
   const std::string result3 = config[key];
   CHECK(result3 == value3);
+}
+
+TEST_CASE(
+    "C++ API: Config Environment Variables with Profile", "[cppapi][config]") {
+  tiledb::Config config;
+  const std::string key = "rest.server_address";
+  const std::string config_value = "test_config_localhost:8080";
+  const std::string profile_value = "test_profile_localhost:8080";
+
+  // Set the config value
+  config[key] = config_value;
+  // Check the config value
+  CHECK(config.get(key) == config_value);
+
+  // Create a profile
+  const std::string profile_name = "test_profile";
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
+  const std::string profile_homedir = tempdir_.path();
+  auto profile = tiledb::Profile(profile_name, profile_homedir);
+
+  // Set the profile value
+  profile.set_param(key, profile_value);
+  // Check the profile value
+  CHECK(profile.get_param(key) == profile_value);
+  // Save the profile to disk
+  profile.save();
+  // Set the profile in the config
+  config.set_profile(profile_name, profile_homedir);
+  // Check the config value after setting the profile
+  CHECK(config.get(key) == config_value);
+  // Unset the config value
+  config.unset(key);
+  // Check the config value after unsetting
+  CHECK(config.get(key) == profile_value);
 }
 
 TEST_CASE("C++ API: Config Equality", "[cppapi][config]") {

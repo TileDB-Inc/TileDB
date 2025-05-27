@@ -31,7 +31,6 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/common/filesystem/home_directory.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/config/config.h"
 
@@ -102,9 +101,7 @@ void check_load_incorrect_file_cannot_open() {
   rc = tiledb_config_load_from_file(config, "non_existent_file", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
-  check_error(
-      error,
-      "[TileDB::Config] Error: Failed to open config file 'non_existent_file'");
+  check_error(error, "Config: Failed to open config file 'non_existent_file'");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
   CHECK(config == nullptr);
@@ -131,7 +128,7 @@ void check_load_incorrect_file_missing_value() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Missing parameter value (line: 1)");
   tiledb_error_free(&error);
   CHECK(error == nullptr);
@@ -161,7 +158,7 @@ void check_load_incorrect_file_extra_word() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Invalid line format (line: 3)");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
@@ -218,8 +215,6 @@ void check_save_to_file() {
   rc = tiledb_config_save_to_file(config, "test_config.txt", &error);
   REQUIRE(rc == TILEDB_OK);
 
-  auto homedir = tiledb::common::filesystem::home_directory();
-
   std::stringstream ss;
   // Items here need to be assigned to 'ss' in alphabetical order as
   // an std::[ordered_]map is where the comparison values saved to file
@@ -232,8 +227,6 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "filestore.buffer_size 104857600\n";
-  ss << "profile_homedir " << homedir << "\n";
-  ss << "profile_name default\n";
   ss << "rest.capnp_traversal_limit 2147483648\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.retry_errors true\n";
@@ -610,9 +603,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["config.logging_level"] = "2";
   all_param_values["config.logging_format"] = "JSON";
   all_param_values["filestore.buffer_size"] = "104857600";
-  all_param_values["profile_homedir"] =
-      tiledb::common::filesystem::home_directory();
-  all_param_values["profile_name"] = "default";
   all_param_values["rest.server_address"] = "https://api.tiledb.com";
   all_param_values["rest.server_serialization_format"] = "CAPNP";
   all_param_values["rest.http_compressor"] = "any";
