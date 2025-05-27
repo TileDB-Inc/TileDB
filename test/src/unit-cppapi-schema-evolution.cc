@@ -1106,7 +1106,7 @@ void test_schema_evolution_drop_fixed_add_var(
 
   // Evolve schema to drop attribute "a"
   ArraySchemaEvolution schema_evolution = ArraySchemaEvolution(ctx);
-  uint64_t now = tiledb_timestamp_now_ms() + 1;
+  uint64_t now = fragment_write_ts + 1;
   schema_evolution.set_timestamp_range(std::make_pair(now, now));
   schema_evolution.drop_attribute("a");
   schema_evolution.array_evolve(array_uri);
@@ -1114,7 +1114,7 @@ void test_schema_evolution_drop_fixed_add_var(
 
   // Evolve schema to add back attribute "a" as a string
   auto a_new = Attribute::create<std::string>(ctx, "a");
-  now = tiledb_timestamp_now_ms() + 1;
+  now++;
   schema_evolution.set_timestamp_range(std::make_pair(now, now));
   schema_evolution.add_attribute(a_new);
   schema_evolution.array_evolve(array_uri);
