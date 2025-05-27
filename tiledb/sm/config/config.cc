@@ -944,37 +944,39 @@ const char* Config::get_from_config_or_fallback(
   if (*found)
     return value_env;
 
-  // [3. profiles]
-  if (!rest_profile_.has_value() && !rest_profile_fetch_failed_) {
-    try {
-      rest_profile_ =
-          RestProfile::load_profile(rest_profile_name_, rest_profile_homedir_);
-    } catch (const std::exception&) {
-      rest_profile_fetch_failed_ = true;
-      // Throw if the profile to be fetched is explicitly set.
-      if (rest_profile_name_.has_value() || rest_profile_homedir_.has_value()) {
-        throw ConfigException("Failed to load profile");
+  // [3. profiles] -- only for rest.* params
+  if (param.rfind("rest.", 0) == 0) {
+    // If the profile is not loaded yet, and there was no previous attempt to
+    // load it, try to load it now.
+    if (!rest_profile_.has_value() && !rest_profile_fetch_failed_) {
+      try {
+        rest_profile_ = RestProfile::load_profile(
+            rest_profile_name_, rest_profile_homedir_);
+      } catch (const std::exception&) {
+        rest_profile_fetch_failed_ = true;
+        // Throw if the profile to be fetched is explicitly set.
+        if (rest_profile_name_.has_value() ||
+            rest_profile_homedir_.has_value()) {
+          throw ConfigException("Failed to load profile");
+        }
       }
     }
-  }
-  if (rest_profile_.has_value()) {
-    // The "s3.verify_ssl" parameter _may or may not_ be set on the profile.
-    // If that's the param to be fetched, see if it's set on the profile,
-    // and return its value (if it has one).
-    if (strcmp(param.c_str(), "s3.verify_ssl") == 0) {
-      auto verify_ssl = rest_profile_.value().get_verify_ssl();
-      if (verify_ssl.has_value()) {
-        *found = true;
-        return verify_ssl.value() ? "true" : "false";
-      }
-    } else {
-      // Fetch all other params from the profile normally.
-      try {
-        const char* value = rest_profile_.value().get_param(param).c_str();
-        *found = true;
-        return value;
-      } catch (const RestProfileException&) {
-        // Be silent if the parameter is not found in the profile.
+    // If the profile was loaded successfully, try to get the parameter from it.
+    if (rest_profile_.has_value()) {
+      if (strcmp(param.c_str(), "s3.verify_ssl") == 0) {
+        auto verify_ssl = rest_profile_.value().get_verify_ssl();
+        if (verify_ssl.has_value()) {
+          *found = true;
+          return verify_ssl.value() ? "true" : "false";
+        }
+      } else {
+        try {
+          const char* value = rest_profile_.value().get_param(param).c_str();
+          *found = true;
+          return value;
+        } catch (const RestProfileException&) {
+          // Be silent if the parameter is not found in the profile.
+        }
       }
     }
   }
