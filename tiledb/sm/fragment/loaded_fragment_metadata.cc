@@ -30,6 +30,7 @@
  * This file implements the LoadedFragmentMetadata class.
  */
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 
 #include "tiledb/common/memory_tracker.h"
@@ -90,7 +91,7 @@ shared_ptr<LoadedFragmentMetadata> LoadedFragmentMetadata::create(
 uint64_t LoadedFragmentMetadata::persisted_tile_size(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_offsets_[idx]) {
     throw std::logic_error(
@@ -191,7 +192,7 @@ void LoadedFragmentMetadata::free_tile_offsets() {
 uint64_t LoadedFragmentMetadata::file_offset(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_offsets_[idx]) {
     throw std::logic_error(
@@ -239,7 +240,7 @@ void LoadedFragmentMetadata::resize_offsets(uint64_t size) {
 uint64_t LoadedFragmentMetadata::file_var_offset(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_var_offsets_[idx]) {
     throw std::logic_error(
@@ -252,7 +253,7 @@ uint64_t LoadedFragmentMetadata::file_var_offset(
 uint64_t LoadedFragmentMetadata::persisted_tile_var_size(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
 
   if (!loaded_metadata_.tile_var_offsets_[idx]) {
@@ -274,7 +275,7 @@ uint64_t LoadedFragmentMetadata::persisted_tile_var_size(
 uint64_t LoadedFragmentMetadata::tile_var_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_var_sizes_[idx]) {
     throw FragmentMetadataStatusException(
@@ -287,7 +288,7 @@ uint64_t LoadedFragmentMetadata::tile_var_size(
 void LoadedFragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   load_tile_var_sizes(encryption_key, idx);
 }
@@ -305,8 +306,8 @@ void LoadedFragmentMetadata::sort_names_by_index(
       names.begin(),
       names.end(),
       [&](const std::string& lhs, const std::string& rhs) {
-        assert(parent_fragment_.idx_map_.count(lhs) > 0);
-        assert(parent_fragment_.idx_map_.count(rhs) > 0);
+        iassert(parent_fragment_.idx_map_.count(lhs) > 0);
+        iassert(parent_fragment_.idx_map_.count(rhs) > 0);
         return parent_fragment_.idx_map_[lhs] < parent_fragment_.idx_map_[rhs];
       });
 }
@@ -371,7 +372,7 @@ LoadedFragmentMetadata::get_processed_conditions_set() {
 
 std::vector<uint8_t>& LoadedFragmentMetadata::get_min(const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
     throw FragmentMetadataStatusException(
@@ -393,7 +394,7 @@ std::vector<uint8_t>& LoadedFragmentMetadata::get_min(const std::string& name) {
 
 std::vector<uint8_t>& LoadedFragmentMetadata::get_max(const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
     throw FragmentMetadataStatusException(
@@ -415,7 +416,7 @@ std::vector<uint8_t>& LoadedFragmentMetadata::get_max(const std::string& name) {
 
 void* LoadedFragmentMetadata::get_sum(const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
     throw FragmentMetadataStatusException(
@@ -435,7 +436,7 @@ void* LoadedFragmentMetadata::get_sum(const std::string& name) {
 
 uint64_t LoadedFragmentMetadata::get_null_count(const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
     throw FragmentMetadataStatusException(
@@ -453,7 +454,7 @@ uint64_t LoadedFragmentMetadata::get_null_count(const std::string& name) {
 uint64_t LoadedFragmentMetadata::get_tile_null_count(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_null_count_[idx]) {
     throw FragmentMetadataStatusException(
@@ -471,7 +472,7 @@ uint64_t LoadedFragmentMetadata::get_tile_null_count(
 const void* LoadedFragmentMetadata::get_tile_sum(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_sum_[idx]) {
     throw FragmentMetadataStatusException(
@@ -498,7 +499,7 @@ void LoadedFragmentMetadata::resize_tile_validity_offsets_vectors(
 uint64_t LoadedFragmentMetadata::file_validity_offset(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_validity_offsets_[idx]) {
     throw std::logic_error(
@@ -511,7 +512,7 @@ uint64_t LoadedFragmentMetadata::file_validity_offset(
 uint64_t LoadedFragmentMetadata::persisted_tile_validity_size(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
-  assert(it != parent_fragment_.idx_map_.end());
+  iassert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_validity_offsets_[idx]) {
     throw std::logic_error(

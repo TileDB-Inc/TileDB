@@ -32,6 +32,7 @@
  */
 
 #include "parse_argument.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/serialization_type.h"
 
@@ -330,7 +331,7 @@ std::string to_str(const void* value, Datatype type) {
       ss << *(const bool*)value;
       break;
     default:
-      assert(false);
+      stdx::unreachable();
   }
 
   return ss.str();

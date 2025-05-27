@@ -134,9 +134,11 @@ void Group::open(
     if (query_type == QueryType::READ) {
       timestamp_end = utils::time::timestamp_now_ms();
     } else {
-      assert(
+      iassert(
           query_type == QueryType::WRITE ||
-          query_type == QueryType::MODIFY_EXCLUSIVE);
+              query_type == QueryType::MODIFY_EXCLUSIVE,
+          "query_type = {}",
+          query_type_str(query_type));
       timestamp_end = 0;
     }
   }
@@ -145,10 +147,8 @@ void Group::open(
   timestamp_end_ = timestamp_end;
 
   // Get encryption key from config
-  std::string encryption_key_from_cfg;
-  bool found = false;
-  encryption_key_from_cfg = config_.get("sm.encryption_key", &found);
-  assert(found);
+  const std::string encryption_key_from_cfg =
+      config_.get<std::string>("sm.encryption_key", Config::must_find);
 
   EncryptionType encryption_type = EncryptionType::NO_ENCRYPTION;
   const void* encryption_key = nullptr;
@@ -157,9 +157,8 @@ void Group::open(
   if (!encryption_key_from_cfg.empty()) {
     encryption_key = encryption_key_from_cfg.c_str();
     key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-    std::string encryption_type_from_cfg;
-    encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
-    assert(found);
+    const std::string encryption_type_from_cfg =
+        config_.get<std::string>("sm.encryption_type", Config::must_find);
     auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
     throw_if_not_ok(st);
     encryption_type = et.value();
@@ -828,7 +827,7 @@ void Group::load_metadata() {
     throw_if_not_ok(
         rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
-    assert(group_dir_->loaded());
+    passert(group_dir_->loaded());
     load_metadata_from_storage(group_dir_, *encryption_key_);
   }
   metadata_loaded_ = true;

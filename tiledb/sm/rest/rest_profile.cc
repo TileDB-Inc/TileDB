@@ -30,6 +30,7 @@
  * This file implements class RestProfile.
  */
 
+#include <filesystem>
 #include <iostream>
 
 #include "rest_profile.h"

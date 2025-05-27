@@ -33,6 +33,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/random/random_label.h"
 
@@ -455,8 +456,8 @@ void Enumeration::serialize(Serializer& serializer) const {
       serializer.write(offsets_.data(), offsets_.size());
     }
   } else {
-    assert(cell_val_num_ < constants::var_num);
-    assert(offsets_.size() == 0);
+    passert(cell_val_num_ < constants::var_num);
+    iassert(offsets_.size() == 0);
   }
 }
 
