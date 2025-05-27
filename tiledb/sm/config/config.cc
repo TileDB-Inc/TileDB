@@ -552,12 +552,6 @@ const std::set<std::string> Config::unserialized_params_ = {
 
 Config::Config() {
   param_values_ = default_config_values;
-  try {
-    // Attempt to load the default profile, if present.
-    rest_profile_ = RestProfile::load_profile();
-  } catch (const std::exception& e) {
-    // Be silent in case the default profile is not found
-  }
 }
 
 Config::~Config() = default;
@@ -724,12 +718,11 @@ void Config::inherit(const Config& config) {
 Status Config::set_profile(
     const std::optional<std::string>& profile_name,
     const std::optional<std::string>& profile_homedir) {
-  try {
-    rest_profile_ = RestProfile::load_profile(profile_name, profile_homedir);
-    return Status::Ok();
-  } catch (const std::exception& e) {
-    throw ConfigException(e.what());
-  }
+  rest_profile_name_ = profile_name;
+  rest_profile_homedir_ = profile_homedir;
+  rest_profile_.reset();
+  rest_profile_fetch_failed_ = false;
+  return Status::Ok();
 }
 
 bool Config::operator==(const Config& rhs) const {
@@ -951,7 +944,19 @@ const char* Config::get_from_config_or_fallback(
   if (*found)
     return value_env;
 
-  // [3. user-set profiles]
+  // [3. profiles]
+  if (!rest_profile_.has_value() && !rest_profile_fetch_failed_) {
+    try {
+      rest_profile_ =
+          RestProfile::load_profile(rest_profile_name_, rest_profile_homedir_);
+    } catch (const std::exception&) {
+      rest_profile_fetch_failed_ = true;
+      // Throw if the profile to be fetched is explicitly set.
+      if (rest_profile_name_.has_value() || rest_profile_homedir_.has_value()) {
+        throw ConfigException("Failed to load profile");
+      }
+    }
+  }
   if (rest_profile_.has_value()) {
     // The "s3.verify_ssl" parameter _may or may not_ be set on the profile.
     // If that's the param to be fetched, see if it's set on the profile,
@@ -968,7 +973,7 @@ const char* Config::get_from_config_or_fallback(
         const char* value = rest_profile_.value().get_param(param).c_str();
         *found = true;
         return value;
-      } catch (const RestProfileException& e) {
+      } catch (const RestProfileException&) {
         // Be silent if the parameter is not found in the profile.
       }
     }

@@ -779,8 +779,20 @@ class Config {
   /** Stores the parameters set by the user. */
   std::set<std::string> set_params_;
 
+  /** Stores the REST Profile name set by the user. */
+  std::optional<std::string> rest_profile_name_;
+
+  /** Stores the REST Profile home directory set by the user. */
+  std::optional<std::string> rest_profile_homedir_;
+
   /** Stores the RestProfile loaded. */
-  std::optional<RestProfile> rest_profile_ = std::nullopt;
+  mutable std::optional<RestProfile> rest_profile_;
+
+  /** Stores whether the REST profile was previously attempted to be
+   * fetched and failed. This is used to avoid repeatedly trying to
+   * fetch the profile if it has already failed once.
+   */
+  mutable bool rest_profile_fetch_failed_ = false;
 
   /* ********************************* */
   /*          PRIVATE CONSTANTS        */
