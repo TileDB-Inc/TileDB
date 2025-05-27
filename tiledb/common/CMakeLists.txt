@@ -55,6 +55,13 @@ get_gathered(COMMON_SOURCES)
 set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
 
 #
+# `assert` object library
+#
+add_library(assert OBJECT assert.cc)
+find_package(fmt REQUIRED)
+target_link_libraries(assert PUBLIC fmt::fmt)   # can be removed when c++20 `<format>` is consistently supported
+
+#
 # `baseline` object library
 #
 commence(object_library baseline)
@@ -74,7 +81,7 @@ commence(object_library baseline)
     endif()
     find_package(spdlog REQUIRED)
     target_link_libraries(baseline PUBLIC spdlog::spdlog)
-    target_link_libraries(baseline PUBLIC common)
+    target_link_libraries(baseline PUBLIC assert common)
 conclude(object_library)
 
 #
