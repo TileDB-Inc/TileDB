@@ -1314,7 +1314,6 @@ Status ArrayDirectory::is_fragment(
 
 bool ArrayDirectory::consolidation_with_timestamps_supported(
     const URI& uri) const {
-  auto found = false;
   auto consolidation_with_timestamps = resources_.get().config().get<bool>(
       "sm.consolidation.with_timestamps", Config::must_find);
 
