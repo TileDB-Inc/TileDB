@@ -95,10 +95,14 @@ class RestProfile {
   /**
    * Constructor.
    *
-   * @param name The name of the RestProfile.
-   * @param dir The path to the local file that stores all profiles.
+   * @param name The name of the RestProfile. If `std::nullopt`, the default
+   * name is used.
+   * @param dir The path to the local file that stores all profiles. If
+   * `std::nullopt`, the home directory is used.
    */
-  RestProfile(const std::string& name, const std::string& dir);
+  RestProfile(
+      const std::optional<std::string>& name,
+      const std::optional<std::string>& dir);
 
   /** Destructor. */
   ~RestProfile() = default;
@@ -133,14 +137,6 @@ class RestProfile {
     return name_;
   }
 
-  inline const std::map<std::string, std::string>& param_values() const {
-    return param_values_;
-  }
-
-  inline std::optional<bool> get_verify_ssl() const {
-    return verify_ssl_;
-  }
-
   /**
    * Returns the path to the local file that stores all profiles.
    *
@@ -166,6 +162,14 @@ class RestProfile {
    */
   const std::string& get_param(const std::string& param) const;
 
+  inline const std::map<std::string, std::string>& param_values() const {
+    return param_values_;
+  }
+
+  inline std::optional<bool> get_verify_ssl() const {
+    return verify_ssl_;
+  }
+
   /**
    * Saves this profile to the local file.
    *
@@ -177,10 +181,8 @@ class RestProfile {
   /**
    * Loads this profile from the local file.
    *
-   * @param check_old_filepath If true, check the old filepath for the
-   * profile.
    */
-  void load_from_file(const bool check_old_filepath = true);
+  void load_from_file();
 
   /** Removes this profile from the local file. */
   void remove_from_file();
@@ -250,7 +252,6 @@ class RestProfile {
    */
   std::optional<bool> verify_ssl_{std::nullopt};
 };
-
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_REST_PROFILE_H

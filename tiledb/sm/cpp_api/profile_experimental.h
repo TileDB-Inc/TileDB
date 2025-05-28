@@ -133,7 +133,7 @@ class Profile {
   }
 
   /** Retrieves the name of the profile. */
-  std::string get_name() const {
+  std::string name() const {
     tiledb_error_t* capi_error = nullptr;
     tiledb_string_t* name;
 
@@ -159,7 +159,7 @@ class Profile {
   }
 
   /** Retrieves the directory of the profile. */
-  std::string get_dir() const {
+  std::string dir() const {
     tiledb_error_t* capi_error = nullptr;
     tiledb_string_t* dir;
     int rc = tiledb_profile_get_dir(profile_.get(), &dir, &capi_error);

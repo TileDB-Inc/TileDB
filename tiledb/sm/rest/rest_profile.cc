@@ -108,17 +108,19 @@ const std::string RestProfile::DEFAULT_USERNAME{""};
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-RestProfile::RestProfile(const std::string& name, const std::string& dir)
+RestProfile::RestProfile(
+    const std::optional<std::string>& name,
+    const std::optional<std::string>& dir)
     : version_(constants::rest_profile_version)
-    , name_(name)
-    , dir_(dir.empty() ? home_directory() : dir)
+    , name_(
+          name.has_value() && !name.value().empty() ?
+              name.value() :
+              RestProfile::DEFAULT_PROFILE_NAME)
+    , dir_(
+          dir.has_value() && !dir.value().empty() ? dir.value() :
+                                                    home_directory())
     , filepath_(dir_ + constants::rest_profile_filepath)
-    , old_filepath_(dir_ + constants::cloud_profile_filepath) {
-  if (name_.empty()) {
-    throw RestProfileException(
-        "Failed to create RestProfile: name cannot be empty.");
-  }
-}
+    , old_filepath_(dir_ + constants::cloud_profile_filepath){};
 
 RestProfile::RestProfile(const std::string& name) {
   /**
@@ -148,13 +150,13 @@ RestProfile RestProfile::load_profile(
     const std::optional<std::string>& dir) {
   // Create a profile object
   RestProfile profile =
-      !name.has_value() ? RestProfile(RestProfile::DEFAULT_PROFILE_NAME) :
+      !name.has_value() ? RestProfile() :
       dir.has_value()   ? RestProfile(name.value(), dir.value()) :
                           RestProfile(name.value());
 
   // Load the profile
   try {
-    profile.load_from_file(false);
+    profile.load_from_file();
     return profile;
   } catch (const RestProfileException& e) {
     throw RestProfileException(
@@ -164,6 +166,11 @@ RestProfile RestProfile::load_profile(
 
 void RestProfile::set_param(
     const std::string& param, const std::string& value) {
+  if (param.empty()) {
+    throw RestProfileException(
+        "Failed to retrieve parameter; parameter name must not be empty.");
+  }
+
   // Validate incoming parameter name
   auto it = param_values_.find(param);
   if (it == param_values_.end()) {
@@ -174,6 +181,11 @@ void RestProfile::set_param(
 }
 
 const std::string& RestProfile::get_param(const std::string& param) const {
+  if (param.empty()) {
+    throw RestProfileException(
+        "Failed to retrieve parameter; parameter name must not be empty.");
+  }
+
   auto it = param_values_.find(param);
   if (it == param_values_.end()) {
     throw RestProfileException("Failed to retrieve parameter '" + param + "'");
@@ -215,8 +227,11 @@ void RestProfile::save_to_file(const bool overwrite) {
     // Check that this profile hasn't already been saved.
     if (data.contains(name_)) {
       if (overwrite) {
-        // If the user wants to overwrite, remove the old profile.
-        data.erase(name_);
+        // If a profile of the given name exists, remove it.
+        auto it = data.find(name_);
+        if (it != data.end()) {
+          data.erase(it);
+        }
       } else {
         // If the user doesn't want to overwrite, throw an error.
         throw RestProfileException(
@@ -237,11 +252,11 @@ void RestProfile::save_to_file(const bool overwrite) {
   write_file(data, filepath_);
 }
 
-void RestProfile::load_from_file(const bool check_old_filepath) {
+void RestProfile::load_from_file() {
   if (std::filesystem::exists(filepath_)) {
     // If the local file exists, load the profile with the given name.
     load_from_json_file(filepath_);
-  } else if (check_old_filepath && std::filesystem::exists(old_filepath_)) {
+  } else if (std::filesystem::exists(old_filepath_)) {
     // If the old version of the file exists, load the profile from there
     load_from_json_file(old_filepath_);
   } else {
@@ -250,6 +265,7 @@ void RestProfile::load_from_file(const bool check_old_filepath) {
   }
 }
 
+// This will only work for the new format.
 void RestProfile::remove_from_file() {
   if (!std::filesystem::exists(filepath_)) {
     throw RestProfileException(
@@ -309,8 +325,8 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   json data = read_file(filename);
 
   if (filename.c_str() == old_filepath_.c_str()) {
-    // Update any written-parameters from the loaded json object without
-    // considering name.
+    // Read the old profile format which doesn't use profile names.
+    // Only one profile is expected in the file.
     if (data.contains("api_key") &&
         data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
       param_values_["rest.token"] = data["api_key"]["X-TILEDB-REST-API-KEY"];
@@ -328,7 +344,8 @@ void RestProfile::load_from_json_file(const std::string& filename) {
       verify_ssl_ = data["verify_ssl"];
     }
   } else {
-    // Consider the name of the profile to load.
+    // Consider the name of the profile to load for the new format.
+    // Multiple profiles can be stored in that file.
     json profile = data[name_];
     if (!profile.is_null()) {
       for (auto it = profile.begin(); it != profile.end(); ++it) {

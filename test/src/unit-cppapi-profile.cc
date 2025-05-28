@@ -72,7 +72,7 @@ struct expected_values_t {
 };
 
 bool is_expected(const Profile& p, const expected_values_t& e) {
-  return p.get_name() == e.profile_name &&
+  return p.name() == e.profile_name &&
          p.get_param("rest.username") == e.username &&
          p.get_param("rest.password") == e.password &&
          p.get_param("rest.payer_namespace") == e.payer_namespace &&
@@ -86,16 +86,16 @@ TEST_CASE_METHOD(
     "[cppapi][profile][get_name]") {
   SECTION("default, explicitly passed") {
     Profile p(name_, tempdir_.path());
-    REQUIRE(p.get_name() == name_);
+    REQUIRE(p.name() == name_);
   }
   SECTION("default, inherited from nullptr") {
     Profile p(std::nullopt, tempdir_.path());
-    REQUIRE(p.get_name() == name_);
+    REQUIRE(p.name() == name_);
   }
   SECTION("non-default") {
     const char* name = "non_default";
     Profile p(name, tempdir_.path());
-    REQUIRE(p.get_name() == name);
+    REQUIRE(p.name() == name);
   }
 }
 
@@ -105,11 +105,11 @@ TEST_CASE_METHOD(
     "[cppapi][profile][get_dir]") {
   SECTION("explicitly passed") {
     Profile p(name_, tempdir_.path());
-    REQUIRE(p.get_dir() == tempdir_.path());
+    REQUIRE(p.dir() == tempdir_.path());
   }
   SECTION("inherited from nullptr") {
     Profile p(name_, std::nullopt);
-    REQUIRE(p.get_dir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p.dir() == tiledb::common::filesystem::home_directory());
   }
 }
 
@@ -240,7 +240,7 @@ TEST_CASE_METHOD(
     // check that the other profile is saved
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        p1.get_name()));
+        p1.name()));
   }
 }
 
@@ -289,17 +289,17 @@ TEST_CASE_METHOD(
     // check that the other profile is saved
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        p2.get_name()));
+        p2.name()));
     // attempt remove the tested profile
     REQUIRE_THROWS(p1.remove());
     // check that the other profile still exists
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        p2.get_name()));
+        p2.name()));
     // check that the tested profile still does not exist
     REQUIRE(!profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        p1.get_name()));
+        p1.name()));
   }
 }
 
@@ -333,11 +333,11 @@ TEST_CASE_METHOD(
     expected_values_t expected;
 
     Profile p1;
-    REQUIRE(p1.get_name() == expected.profile_name);
-    REQUIRE(p1.get_dir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p1.name() == expected.profile_name);
+    REQUIRE(p1.dir() == tiledb::common::filesystem::home_directory());
 
     Profile p2(std::nullopt, std::nullopt);
-    REQUIRE(p2.get_name() == expected.profile_name);
-    REQUIRE(p2.get_dir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p2.name() == expected.profile_name);
+    REQUIRE(p2.dir() == tiledb::common::filesystem::home_directory());
   }
 }

@@ -40,28 +40,11 @@ namespace tiledb::api {
 capi_return_t tiledb_profile_alloc(
     const char* name, const char* dir, tiledb_profile_t** profile) {
   ensure_output_pointer_is_valid(profile);
-  std::string name_str;
-  if (!name) {
-    // Passing nullptr resolves to the default case.
-    name_str = tiledb::sm::RestProfile::DEFAULT_PROFILE_NAME;
-  } else {
-    name_str = name;
-    if (name_str.empty()) {
-      throw CAPIException("[tiledb_profile_alloc] Name cannot be empty.");
-    }
-  }
 
-  std::string dir_str;
-  if (!dir) {
-    // Passing nullptr resolves to the default case.
-    dir_str = tiledb::common::filesystem::home_directory();
-  } else {
-    dir_str = dir;
-    if (dir_str.empty()) {
-      throw CAPIException(
-          "[tiledb_profile_alloc] profile_dir cannot be empty.");
-    }
-  }
+  std::optional<std::string> name_str =
+      name ? std::make_optional(name) : std::nullopt;
+  std::optional<std::string> dir_str =
+      dir ? std::make_optional(dir) : std::nullopt;
 
   *profile = tiledb_profile_t::make_handle(name_str, dir_str);
 
@@ -93,11 +76,10 @@ capi_return_t tiledb_profile_get_dir(
 capi_return_t tiledb_profile_set_param(
     tiledb_profile_t* profile, const char* param, const char* value) {
   ensure_profile_is_valid(profile);
-  if (!param || !value) {
-    throw CAPIException(
-        "[tiledb_profile_set_param] Parameter or value cannot be null.");
+  if (!param) {
+    throw CAPIException("[tiledb_profile_set_param] Parameter cannot be null.");
   }
-  profile->profile()->set_param(param, value);
+  profile->profile()->set_param(param, value ? value : "");
   return TILEDB_OK;
 }
 
@@ -137,9 +119,7 @@ capi_return_t tiledb_profile_dump_str(
     tiledb_profile_t* profile, tiledb_string_handle_t** out) {
   ensure_profile_is_valid(profile);
   ensure_output_pointer_is_valid(out);
-
   *out = tiledb_string_handle_t::make_handle(profile->profile()->dump());
-
   return TILEDB_OK;
 }
 

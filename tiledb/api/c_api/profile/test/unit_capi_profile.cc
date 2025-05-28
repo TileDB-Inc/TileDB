@@ -63,7 +63,7 @@ TEST_CASE_METHOD(
   }
   SECTION("empty name") {
     rc = tiledb_profile_alloc("", profile_dir_, &profile, &err);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null name") {
     rc = tiledb_profile_alloc(nullptr, profile_dir_, &profile, &err);
@@ -73,7 +73,7 @@ TEST_CASE_METHOD(
   }
   SECTION("empty profile_dir") {
     rc = tiledb_profile_alloc(name_, "", &profile, &err);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null profile_dir") {
     // Normal expected use-case. Internally resolves to default directory.
@@ -170,7 +170,7 @@ TEST_CASE_METHOD(
   }
   SECTION("null value") {
     rc = tiledb_profile_set_param(profile, "rest.username", nullptr, &err);
-    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null param and value") {
     rc = tiledb_profile_set_param(profile, nullptr, nullptr, &err);

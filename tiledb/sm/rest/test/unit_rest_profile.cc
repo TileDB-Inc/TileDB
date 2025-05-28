@@ -246,12 +246,27 @@ TEST_CASE_METHOD(
     "[rest_profile][get_set_invalid]") {
   RestProfile p = create_profile();
 
-  // Try to get a parameter with an invalid name.
+  // Try to get a parameter with an empty name.
+  REQUIRE_THROWS_WITH(
+      p.get_param(""),
+      Catch::Matchers::ContainsSubstring(
+          "Failed to retrieve parameter; parameter name must not be empty."));
+
+  // Try to set a parameter with an empty name.
+  REQUIRE_THROWS_WITH(
+      p.set_param("", "value"),
+      Catch::Matchers::ContainsSubstring(
+          "Failed to retrieve parameter; parameter name must not be empty."));
+
+  // Try to set a parameter with an empty value.
+  p.set_param("rest.username", "");
+
+  // Try to get a parameter with an invalid name (not starting with "rest.").
   REQUIRE_THROWS_WITH(
       p.get_param("username"),
       Catch::Matchers::ContainsSubstring("Failed to retrieve parameter"));
 
-  // Try to set a parameter with an invalid name.
+  // Try to set a parameter with an invalid name (not starting with "rest.").
   REQUIRE_THROWS_WITH(
       p.set_param("username", "failed_username"),
       Catch::Matchers::ContainsSubstring(
