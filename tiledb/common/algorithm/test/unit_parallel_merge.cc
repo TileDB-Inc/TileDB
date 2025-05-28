@@ -1447,7 +1447,3 @@ TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
     CHECK(output == expect);
   }
 }
-
-TEST_CASE("parallel merge assert", "[algorithm][parallel_merge]") {
-  iassert(false, "Oops");
-}
