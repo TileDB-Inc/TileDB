@@ -309,7 +309,9 @@ struct VerifyParallelMerge {
     std::optional<uint64_t> bound;
     while ((bound = future->await()).has_value()) {
       if (prev_bound.has_value()) {
-        ASSERTER(*prev_bound < *bound);
+        // NB: <= allows for a unit of size 0, which is unlikely but not
+        // impossible
+        ASSERTER(*prev_bound <= *bound);
         ASSERTER(std::equal(
             inputcmp.begin() + *prev_bound,
             inputcmp.begin() + *bound,
@@ -1312,6 +1314,16 @@ TEST_CASE(
          8907676047014618471, 8913855313747888928});
 
     instance.verify();
+  }
+
+  SECTION("Empty merge unit") {
+    VerifyParallelMerge<uint64_t> instance;
+    instance.streams.push_back({0, 0, 0, 0});
+    instance.options.parallel_factor = 3;
+    instance.options.min_merge_items = 1;
+    instance.pool_concurrency = 1;
+
+    instance.verify<tiledb::test::AsserterCatch>();
   }
 
   SECTION("Rapidcheck") {
