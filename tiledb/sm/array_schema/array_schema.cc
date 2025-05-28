@@ -1734,9 +1734,9 @@ std::ostream& operator<<(
      << "- Validity filters: " << schema.cell_validity_filters().size();
 
   os << schema.cell_validity_filters();
-  os << std::endl;
 
   if (schema.shared_domain() != nullptr) {
+    os << std::endl;
     os << *schema.shared_domain();
   }
 
