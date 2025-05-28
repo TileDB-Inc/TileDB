@@ -684,4 +684,36 @@ tdb::pmr::unique_ptr<ParallelMergeFuture> parallel_merge(
 
 }  // namespace tiledb::algorithm
 
+namespace stdx {
+
+/**
+ * Wrapper for `ParallelMergeOutputBuffer` types with a `size()` method
+ * whose index operator asserts that indices are in bounds.
+ */
+template <typename T>
+struct strict_index {
+  T value_;
+
+ public:
+  strict_index(T&& value)
+      : value_(std::move(value)) {
+  }
+
+  template <typename IndexType>
+  decltype(value_[std::declval<IndexType>()]) operator[](IndexType i) {
+    assert(i < value_.size());
+    return value_[i];
+  }
+
+  template <typename IndexType>
+  decltype(std::declval<
+           std::add_const<decltype(value_)>>()[std::declval<IndexType>()])
+  operator[](IndexType i) const {
+    assert(i < value_.size());
+    return value_[i];
+  }
+};
+
+}  // namespace stdx
+
 #endif
