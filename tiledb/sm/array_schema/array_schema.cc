@@ -1761,6 +1761,7 @@ std::ostream& operator<<(
     os << *label;
   }
 
+  os << std::endl;
   os << *schema.get_current_domain();
 
   return os;
