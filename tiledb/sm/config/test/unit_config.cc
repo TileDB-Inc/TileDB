@@ -115,10 +115,13 @@ TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
   TestConfig<std::string>::check_expected(expected_value, c, key);
 }
 
-TEST_CASE("Config::set_profile - not found", "[config]") {
-  tiledb::sm::TemporaryLocalDirectory tempdir_;
+TEST_CASE("Config::set_profile - failures", "[config]") {
   Config c{};
+  // Check that setting a profile without parameters throws an exception
+  CHECK_THROWS(c.set_profile());
+
   std::string profile_name = "test_profile";
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
   std::string profile_homedir(tempdir_.path());
   // Set a profile that does not exist
   CHECK(c.set_profile(profile_name, profile_homedir).ok());

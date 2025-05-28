@@ -718,6 +718,14 @@ void Config::inherit(const Config& config) {
 Status Config::set_profile(
     const std::optional<std::string>& profile_name,
     const std::optional<std::string>& profile_homedir) {
+  // Neither profile name nor home directory is required, to allow full
+  // flexibility in setting the profile. However, at least one of them must be
+  // set.
+  if (!profile_name.has_value() && !profile_homedir.has_value()) {
+    throw ConfigException(
+        "At least one of `profile_name` or `profile_homedir` must be set");
+  }
+
   rest_profile_name_ = profile_name;
   rest_profile_homedir_ = profile_homedir;
   rest_profile_.reset();

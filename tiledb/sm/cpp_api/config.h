@@ -240,10 +240,16 @@ class Config {
    *
    */
   void set_profile(
-      const std::string& profile_name, const std::string& profile_homedir) {
+      const std::optional<std::string>& profile_name = std::nullopt,
+      const std::optional<std::string>& profile_homedir = std::nullopt) {
     tiledb_error_t* err;
+
     tiledb_config_set_profile(
-        config_.get(), profile_name.c_str(), profile_homedir.c_str(), &err);
+        config_.get(),
+        profile_name.has_value() ? profile_name->c_str() : nullptr,
+        profile_homedir.has_value() ? profile_homedir->c_str() : nullptr,
+        &err);
+
     impl::check_config_error(err);
   }
 
