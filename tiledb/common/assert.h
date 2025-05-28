@@ -76,12 +76,15 @@
  * state. If the claim is false, is there any path whatsoever to
  * recovery (including "don't do that again")? If not, then `passert`
  * is a good choice.
+ *
+ * For simplicity, the routines which implement `iassert` and `passert`
+ * are compiled whether or not `TILEDB_ASSERTIONS` is enabled;
+ * the feature merely toggles what the `passert` and `iassert`
+ * macros expand to.
  */
 
 #ifndef TILEDB_ASSERT_H
 #define TILEDB_ASSERT_H
-
-#ifdef TILEDB_ASSERTIONS
 
 #include <fmt/format.h>
 #include <cstdlib>
@@ -204,6 +207,8 @@ template <typename... Args>
 }
 
 }  // namespace tiledb::common
+
+#ifdef TILEDB_ASSERTIONS
 
 #define iassert(condition, ...)                             \
   do {                                                      \
