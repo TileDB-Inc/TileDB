@@ -232,10 +232,12 @@ template <typename... Args>
 
 #define iassert(condition, ...) \
   do {                          \
+    (void)(sizeof(condition));  \
   } while (0)
 
 #define passert(condition, ...) \
   do {                          \
+    (void)(sizeof(condition));  \
   } while (0)
 
 #endif
