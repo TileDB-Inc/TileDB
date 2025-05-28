@@ -34,4 +34,3 @@ int main(int, char**) {
   passert(i == 0, "Fatal error: i = {}", i);
   return 0;
 }
-
