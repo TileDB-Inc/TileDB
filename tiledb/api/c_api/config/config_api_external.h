@@ -903,6 +903,10 @@ TILEDB_EXPORT capi_return_t tiledb_config_save_to_file(
 
 /**
  * Sets the profile to use for the current config object.
+ * By default the config object uses the default profile stored in the
+ * default location, if any. This API allows to set a named profile
+ * instead or a profile stored in a different location that the home
+ * directory.
  *
  * **Example:**
  *

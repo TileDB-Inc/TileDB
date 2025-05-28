@@ -131,7 +131,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Config Environment Variables with Profile", "[cppapi][config]") {
+    "C++ API: Config with Environment Variables and Profile Overrides",
+    "[cppapi][config]") {
   tiledb::Config config;
   const std::string key = "rest.server_address";
   const std::string config_value = "test_config_localhost:8080";
@@ -157,10 +158,29 @@ TEST_CASE(
   // Set the profile in the config
   config.set_profile(profile_name, profile_dir);
   // Check the config value after setting the profile
+  // This should be coming from the config since it has priority over the
+  // profile
   CHECK(config.get(key) == config_value);
+
+  // set an env variable using setenv_local("TILEDB_REST_SERVER_ADDRESS",
+  // "test") to check the priority
+  setenv_local("TILEDB_REST_SERVER_ADDRESS", "test_env_localhost:8080");
+  // Check the config value after setting the env variable
+  // This should be still coming from the config since it has priority over both
+  // the profile and the env variable
+  CHECK(config.get(key) == config_value);
+
   // Unset the config value
   config.unset(key);
   // Check the config value after unsetting
+  // This should now be coming from the env variable since it has priority over
+  // the profile
+  CHECK(config.get(key) == "test_env_localhost:8080");
+
+  // Unset the env variable
+  unsetenv("TILEDB_REST_SERVER_ADDRESS");
+  // Check the config value after unsetting the env variable
+  // This should now be coming from the profile
   CHECK(config.get(key) == profile_value);
 }
 

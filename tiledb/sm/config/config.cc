@@ -726,10 +726,7 @@ Status Config::set_profile(
         "At least one of `profile_name` or `profile_dir` must be set");
   }
 
-  rest_profile_name_ = profile_name;
-  rest_profile_dir_ = profile_dir;
-  rest_profile_.reset();
-  rest_profile_fetch_failed_ = false;
+  rest_profile_ = RestProfile::load_profile(profile_name, profile_dir);
   return Status::Ok();
 }
 
@@ -954,18 +951,13 @@ const char* Config::get_from_config_or_fallback(
 
   // [3. profiles] -- only for rest.* params
   if (param.rfind("rest.", 0) == 0) {
-    // If the profile is not loaded yet, and there was no previous attempt to
-    // load it, try to load it now.
-    if (!rest_profile_.has_value() && !rest_profile_fetch_failed_) {
+    // If the there is no set profile and there was no previous attempt to
+    // load the default profile, attempt to load it.
+    if (!rest_profile_.has_value() && !default_rest_profile_not_found_) {
       try {
-        rest_profile_ =
-            RestProfile::load_profile(rest_profile_name_, rest_profile_dir_);
+        rest_profile_ = RestProfile::load_profile(std::nullopt, std::nullopt);
       } catch (const std::exception&) {
-        // Throw if the profile to be fetched is explicitly set.
-        if (rest_profile_name_.has_value() || rest_profile_dir_.has_value()) {
-          throw ConfigException("Failed to load profile");
-        }
-        rest_profile_fetch_failed_ = true;
+        default_rest_profile_not_found_ = true;
       }
     }
     // If the profile was loaded successfully, try to get the parameter from it.

@@ -123,13 +123,8 @@ TEST_CASE("Config::set_profile - failures", "[config]") {
   std::string profile_name = "test_profile";
   tiledb::sm::TemporaryLocalDirectory tempdir_;
   std::string profile_dir(tempdir_.path());
-  // Set a profile that does not exist
-  CHECK(c.set_profile(profile_name, profile_dir).ok());
-  // Attempt to get a parameter from the config
-  // This will trigger a profile load attempt
-  // And cause an exception to be thrown
-  bool found;
-  CHECK_THROWS(c.get("rest.username", &found));
+  // Set a profile that does not exist. This will throw an exception.
+  CHECK_THROWS(c.set_profile(profile_name, profile_dir).ok());
 }
 
 TEST_CASE("Config::set_profile - found", "[config]") {
