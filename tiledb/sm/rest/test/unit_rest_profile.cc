@@ -43,7 +43,7 @@ std::string cloudtoken_ = "abc123def456";  // Token used by in-test cloud.json.
 
 /* Tracks the expected name and parameter values for a RestProfile. */
 struct expected_values_t {
-  std::string name = RestProfile::DEFAULT_NAME;
+  std::string name = RestProfile::DEFAULT_PROFILE_NAME;
   std::string password = RestProfile::DEFAULT_PASSWORD;
   std::string payer_namespace = RestProfile::DEFAULT_PAYER_NAMESPACE;
   std::string token = RestProfile::DEFAULT_TOKEN;
@@ -53,16 +53,14 @@ struct expected_values_t {
 
 struct RestProfileFx {
  public:
-  TemporaryLocalDirectory tempdir_;  // A temporary working directory.
-  std::string homedir_;              // The temporary in-test $HOME directory.
-  std::string cloudpath_;            // The in-test path to the cloud.json file.
+  std::string dir_;        // The temporary in-test directory.
+  std::string cloudpath_;  // The in-test path to the cloud.json file.
 
   RestProfileFx()
-      : tempdir_(TemporaryLocalDirectory("unit_rest_profile"))
-      , homedir_(tempdir_.path())
-      , cloudpath_(homedir_ + ".tiledb/cloud.json") {
+      : dir_(TemporaryLocalDirectory("unit_rest_profile").path())
+      , cloudpath_(dir_ + ".tiledb/cloud.json") {
     // Fstream cannot create directories, only files, so create the .tiledb dir.
-    std::filesystem::create_directories(homedir_ + ".tiledb");
+    std::filesystem::create_directories(dir_ + ".tiledb");
 
     // Write to the cloud path.
     json j = {
@@ -81,10 +79,11 @@ struct RestProfileFx {
 
   ~RestProfileFx() = default;
 
-  /** Returns a new RestProfile with the given name, at the in-test $HOME. */
+  /** Returns a new RestProfile with the given name, at the in-test directory.
+   */
   RestProfile create_profile(
-      const std::string& name = RestProfile::DEFAULT_NAME) {
-    return RestProfile(name, homedir_);
+      const std::string& name = RestProfile::DEFAULT_PROFILE_NAME) {
+    return RestProfile(name, dir_);
   }
 
   /** Returns true iff the profile's parameter values match the expected. */
@@ -136,7 +135,7 @@ TEST_CASE_METHOD(
     "REST Profile: Default profile, empty directory",
     "[rest_profile][default][empty_directory]") {
   // Remove the .tiledb directory to ensure the cloud.json file isn't inherited.
-  std::filesystem::remove_all(homedir_ + ".tiledb");
+  std::filesystem::remove_all(dir_ + ".tiledb");
 
   // Create and validate a default RestProfile.
   RestProfile profile = create_profile();
@@ -172,12 +171,12 @@ TEST_CASE_METHOD(
 
   // Load the profile from the local file and validate.
   RestProfile p2 =
-      RestProfile::load_profile(RestProfile::DEFAULT_NAME, homedir_);
+      RestProfile::load_profile(RestProfile::DEFAULT_PROFILE_NAME, dir_);
   CHECK(is_expected(p2, e));
 
   // Attempt to load a non-existent profile.
   CHECK_THROWS(
-      RestProfile::load_profile("non-existent", homedir_),
+      RestProfile::load_profile("non-existent", dir_),
       Catch::Matchers::ContainsSubstring("Failed to load profile"));
 }
 
@@ -187,7 +186,7 @@ TEST_CASE_METHOD(
     "[rest_profile][save][remove]") {
   // Create a default RestProfile.
   RestProfile p = create_profile();
-  std::string filepath = homedir_ + ".tiledb/profiles.json";
+  std::string filepath = dir_ + ".tiledb/profiles.json";
   CHECK(profile_from_file_to_json(filepath, std::string(p.name())).empty());
 
   // Validate.
@@ -339,5 +338,5 @@ TEST_CASE_METHOD(
   CHECK(is_expected(p2, e));
 
   // Ensure the default profile is unchanged.
-  CHECK(p.name() == RestProfile::DEFAULT_NAME);
+  CHECK(p.name() == RestProfile::DEFAULT_PROFILE_NAME);
 }

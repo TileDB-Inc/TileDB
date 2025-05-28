@@ -97,7 +97,7 @@ static void write_file(json data, const std::string& filepath) {
 /*       PARAMETER DEFAULTS       */
 /* ****************************** */
 
-const std::string RestProfile::DEFAULT_NAME{"default"};
+const std::string RestProfile::DEFAULT_PROFILE_NAME{"default"};
 const std::string RestProfile::DEFAULT_PASSWORD{""};
 const std::string RestProfile::DEFAULT_PAYER_NAMESPACE{""};
 const std::string RestProfile::DEFAULT_TOKEN{""};
@@ -108,12 +108,12 @@ const std::string RestProfile::DEFAULT_USERNAME{""};
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-RestProfile::RestProfile(const std::string& name, const std::string& homedir)
+RestProfile::RestProfile(const std::string& name, const std::string& dir)
     : version_(constants::rest_profile_version)
     , name_(name)
-    , homedir_(homedir.empty() ? home_directory() : homedir)
-    , filepath_(homedir_ + constants::rest_profile_filepath)
-    , old_filepath_(homedir_ + constants::cloud_profile_filepath) {
+    , dir_(dir.empty() ? home_directory() : dir)
+    , filepath_(dir_ + constants::rest_profile_filepath)
+    , old_filepath_(dir_ + constants::cloud_profile_filepath) {
   if (name_.empty()) {
     throw RestProfileException(
         "Failed to create RestProfile: name cannot be empty.");
@@ -122,21 +122,21 @@ RestProfile::RestProfile(const std::string& name, const std::string& homedir)
 
 RestProfile::RestProfile(const std::string& name) {
   /**
-   * Ensure the user's $HOME is found.
+   * Ensure the user's home directory is found.
    * There's an edge case in which `sudo` does not always preserve the path to
-   * `$HOME`. In this case, the home_directory() API does not throw, but instead
-   * returns an empty string. As such, we can check for a value in the returned
-   * path of the home_directory and throw an error to the user accordingly,
-   * so they may decide the proper course of action: set the $HOME path,
-   * or perhaps stop using `sudo`.
+   * home directory. In this case, the home_directory() API does not throw, but
+   * instead returns an empty string. As such, we can check for a value in the
+   * returned path of the home_directory and throw an error to the user
+   * accordingly, so they may decide the proper course of action:
+   * set the $HOME path, or perhaps stop using `sudo`.
    */
-  auto homedir = home_directory();
-  if (homedir.empty()) {
+  auto dir = home_directory();
+  if (dir.empty()) {
     throw RestProfileException(
         "Failed to create RestProfile; $HOME is not set.");
   }
 
-  RestProfile(name, homedir);
+  RestProfile(name, dir);
 }
 
 /* ****************************** */
@@ -145,12 +145,12 @@ RestProfile::RestProfile(const std::string& name) {
 
 RestProfile RestProfile::load_profile(
     const std::optional<std::string>& name,
-    const std::optional<std::string>& homedir) {
+    const std::optional<std::string>& dir) {
   // Create a profile object
   RestProfile profile =
-      !name.has_value()   ? RestProfile(RestProfile::DEFAULT_NAME) :
-      homedir.has_value() ? RestProfile(name.value(), homedir.value()) :
-                            RestProfile(name.value());
+      !name.has_value() ? RestProfile(RestProfile::DEFAULT_PROFILE_NAME) :
+      dir.has_value()   ? RestProfile(name.value(), dir.value()) :
+                          RestProfile(name.value());
 
   // Load the profile
   try {
@@ -196,8 +196,9 @@ void RestProfile::save_to_file(const bool overwrite) {
         "either both be set or both remain unset. Mixing a default username "
         "with a custom password (or vice versa) is not allowed.");
   }
-  // Fstream cannot create directories. If `homedir/.tiledb/` DNE, create it.
-  std::filesystem::create_directories(homedir_ + ".tiledb");
+  // Fstream cannot create directories. If `profile_dir/.tiledb/` DNE, create
+  // it.
+  std::filesystem::create_directories(dir_ + ".tiledb");
 
   // If the file already exists, load it into a json object.
   json data;

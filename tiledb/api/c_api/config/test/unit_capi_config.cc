@@ -220,7 +220,7 @@ TEST_CASE(
     auto rc{tiledb_config_set_profile(x.config, nullptr, "bar", &x.error)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
   }
-  SECTION("null profile homedir") {
+  SECTION("null profile dir") {
     auto rc{tiledb_config_set_profile(x.config, "foo", nullptr, &x.error)};
     CHECK(tiledb_status(rc) == TILEDB_OK);
   }

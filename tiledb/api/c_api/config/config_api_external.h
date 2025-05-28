@@ -912,16 +912,16 @@ TILEDB_EXPORT capi_return_t tiledb_config_save_to_file(
  * @endcode
  *
  * @param config The config object.
- * @param profile_name The name of the profile to set.
- * @param profile_homedir The home directory of the profile.
+ * @param name The name of the profile to set.
+ * @param dir The directory of the profile to set.
  * @param error Error object returned upon error (`NULL` if there is
  *    no error).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_config_set_profile(
     tiledb_config_t* config,
-    const char* profile_name,
-    const char* profile_homedir,
+    const char* name,
+    const char* dir,
     tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**

@@ -60,19 +60,19 @@ class Profile {
   /**
    * Default Constructor.
    *
-   * @note Use of `homedir` is intended primarily for testing purposes, to
+   * @note Use of `dir` is intended primarily for testing purposes, to
    * preserve local files from in-test changes. Users may pass their own
-   * `homedir`, but are encouraged to use `nullptr`, the default case.
+   * `profile_dir`, but are encouraged to use `nullptr`, the default case.
    *
    * @param name The profile name if you want to override the default.
-   * @param homedir The local $HOME directory path if you want to override the
-   * default.
+   * @param dir The directory path for the profile, or `nullptr` for the default
+   * @throws ProfileException if the profile cannot be allocated.
    */
   explicit Profile(
       std::optional<std::string> name = std::nullopt,
-      std::optional<std::string> homedir = std::nullopt) {
+      std::optional<std::string> dir = std::nullopt) {
     const char* n = name.has_value() ? name->c_str() : nullptr;
-    const char* h = homedir.has_value() ? homedir->c_str() : nullptr;
+    const char* h = dir.has_value() ? dir->c_str() : nullptr;
 
     tiledb_profile_t* capi_profile;
     tiledb_error_t* capi_error = nullptr;
@@ -105,14 +105,14 @@ class Profile {
    * Factory function to load a profile from the local file.
    *
    * @param name The profile name if you want to override the default.
-   * @param homedir The local $HOME directory path if you want to override the
+   * @param dir The local directory path that contains the profiles file.
    * @return A Profile object loaded from the file.
    */
   static Profile load(
       std::optional<std::string> name = std::nullopt,
-      std::optional<std::string> homedir = std::nullopt) {
+      std::optional<std::string> dir = std::nullopt) {
     // create a profile object
-    Profile profile(name, homedir);
+    Profile profile(name, dir);
 
     // load the profile
     tiledb_error_t* capi_error = nullptr;
@@ -158,11 +158,11 @@ class Profile {
     return ret;
   }
 
-  /** Retrieves the homedir of the profile. */
-  std::string get_homedir() const {
+  /** Retrieves the directory of the profile. */
+  std::string get_dir() const {
     tiledb_error_t* capi_error = nullptr;
-    tiledb_string_t* homedir;
-    int rc = tiledb_profile_get_homedir(profile_.get(), &homedir, &capi_error);
+    tiledb_string_t* dir;
+    int rc = tiledb_profile_get_dir(profile_.get(), &dir, &capi_error);
     if (rc != TILEDB_OK) {
       const char* msg_cstr;
       tiledb_error_message(capi_error, &msg_cstr);
@@ -172,13 +172,13 @@ class Profile {
     }
 
     // Convert string handle to a std::string
-    const char* homedir_ptr;
-    size_t homedir_length;
-    tiledb_string_view(homedir, &homedir_ptr, &homedir_length);
-    std::string ret(homedir_ptr, homedir_length);
+    const char* dir_ptr;
+    size_t dir_length;
+    tiledb_string_view(dir, &dir_ptr, &dir_length);
+    std::string ret(dir_ptr, dir_length);
 
     // Release the string handle
-    tiledb_string_free(&homedir);
+    tiledb_string_free(&dir);
 
     return ret;
   }

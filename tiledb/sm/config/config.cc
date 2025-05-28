@@ -717,17 +717,17 @@ void Config::inherit(const Config& config) {
 
 Status Config::set_profile(
     const std::optional<std::string>& profile_name,
-    const std::optional<std::string>& profile_homedir) {
+    const std::optional<std::string>& profile_dir) {
   // Neither profile name nor home directory is required, to allow full
   // flexibility in setting the profile. However, at least one of them must be
   // set.
-  if (!profile_name.has_value() && !profile_homedir.has_value()) {
+  if (!profile_name.has_value() && !profile_dir.has_value()) {
     throw ConfigException(
-        "At least one of `profile_name` or `profile_homedir` must be set");
+        "At least one of `profile_name` or `profile_dir` must be set");
   }
 
   rest_profile_name_ = profile_name;
-  rest_profile_homedir_ = profile_homedir;
+  rest_profile_dir_ = profile_dir;
   rest_profile_.reset();
   rest_profile_fetch_failed_ = false;
   return Status::Ok();
@@ -958,15 +958,14 @@ const char* Config::get_from_config_or_fallback(
     // load it, try to load it now.
     if (!rest_profile_.has_value() && !rest_profile_fetch_failed_) {
       try {
-        rest_profile_ = RestProfile::load_profile(
-            rest_profile_name_, rest_profile_homedir_);
+        rest_profile_ =
+            RestProfile::load_profile(rest_profile_name_, rest_profile_dir_);
       } catch (const std::exception&) {
-        rest_profile_fetch_failed_ = true;
         // Throw if the profile to be fetched is explicitly set.
-        if (rest_profile_name_.has_value() ||
-            rest_profile_homedir_.has_value()) {
+        if (rest_profile_name_.has_value() || rest_profile_dir_.has_value()) {
           throw ConfigException("Failed to load profile");
         }
+        rest_profile_fetch_failed_ = true;
       }
     }
     // If the profile was loaded successfully, try to get the parameter from it.

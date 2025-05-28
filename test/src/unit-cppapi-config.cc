@@ -145,8 +145,8 @@ TEST_CASE(
   // Create a profile
   const std::string profile_name = "test_profile";
   tiledb::sm::TemporaryLocalDirectory tempdir_;
-  const std::string profile_homedir = tempdir_.path();
-  auto profile = tiledb::Profile(profile_name, profile_homedir);
+  const std::string profile_dir = tempdir_.path();
+  auto profile = tiledb::Profile(profile_name, profile_dir);
 
   // Set the profile value
   profile.set_param(key, profile_value);
@@ -155,7 +155,7 @@ TEST_CASE(
   // Save the profile to disk
   profile.save();
   // Set the profile in the config
-  config.set_profile(profile_name, profile_homedir);
+  config.set_profile(profile_name, profile_dir);
   // Check the config value after setting the profile
   CHECK(config.get(key) == config_value);
   // Unset the config value

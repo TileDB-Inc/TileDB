@@ -104,19 +104,14 @@ capi_return_t tiledb_config_save_to_file(
 }
 
 capi_return_t tiledb_config_set_profile(
-    tiledb_config_t* config,
-    const char* profile_name,
-    const char* profile_homedir) {
+    tiledb_config_t* config, const char* name, const char* dir) {
   ensure_config_is_valid(config);
   std::optional<std::string> profile_name_opt =
-      (profile_name == nullptr) ? std::nullopt :
-                                  std::make_optional(std::string(profile_name));
-  std::optional<std::string> profile_homedir_opt =
-      (profile_homedir == nullptr) ?
-          std::nullopt :
-          std::make_optional(std::string(profile_homedir));
+      (name == nullptr) ? std::nullopt : std::make_optional(std::string(name));
+  std::optional<std::string> profile_dir_opt =
+      (dir == nullptr) ? std::nullopt : std::make_optional(std::string(dir));
   throw_if_not_ok(
-      config->config().set_profile(profile_name_opt, profile_homedir_opt));
+      config->config().set_profile(profile_name_opt, profile_dir_opt));
   return TILEDB_OK;
 }
 
@@ -254,11 +249,11 @@ CAPI_INTERFACE(
 CAPI_INTERFACE(
     config_set_profile,
     tiledb_config_t* config,
-    const char* profile_name,
-    const char* profile_homedir,
+    const char* name,
+    const char* dir,
     tiledb_error_t** error) {
   return api_entry_error<tiledb::api::tiledb_config_set_profile>(
-      error, config, profile_name, profile_homedir);
+      error, config, name, dir);
 }
 
 /*

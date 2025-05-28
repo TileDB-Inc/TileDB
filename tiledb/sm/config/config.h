@@ -750,13 +750,13 @@ class Config {
    * Sets the profile to use for the config.
    *
    * @param profile_name The name of the profile to set.
-   * @param profile_homedir The home directory of the profile to set.
+   * @param profile_dir The home directory of the profile to set.
    *
    * Throws ConfigException if the profile is not found.
    */
   Status set_profile(
       const std::optional<std::string>& profile_name = std::nullopt,
-      const std::optional<std::string>& profile_homedir = std::nullopt);
+      const std::optional<std::string>& profile_dir = std::nullopt);
 
   /** Inherits the **set** parameters of the input `config`. */
   void inherit(const Config& config);
@@ -783,7 +783,7 @@ class Config {
   std::optional<std::string> rest_profile_name_;
 
   /** Stores the REST Profile home directory set by the user. */
-  std::optional<std::string> rest_profile_homedir_;
+  std::optional<std::string> rest_profile_dir_;
 
   /** Stores the RestProfile loaded. */
   mutable std::optional<RestProfile> rest_profile_;
