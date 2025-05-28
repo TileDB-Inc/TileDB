@@ -83,7 +83,8 @@ commence(object_library baseline)
       this_target_sources(polymorphic_allocator/polymorphic_allocator.cc)
     endif()
     find_package(spdlog REQUIRED)
-    target_link_libraries(baseline PUBLIC spdlog::spdlog common)
+    target_link_libraries(baseline PUBLIC spdlog::spdlog)
+    target_link_libraries(baseline PUBLIC common)
 conclude(object_library)
 
 #
