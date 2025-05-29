@@ -211,22 +211,28 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
     where
         T: FromBytes,
         <T as FromBytes>::Bytes: for<'a> TryFrom<&'a [u8]>,
-        ScalarValue: From<T>,
+        ScalarValue: From<T> + From<Option<T>>,
     {
         let column = Expr::Column(Column::from_name(
             field.name().map_err(UserError::FieldNameNotUtf8)?,
         ));
 
-        let scalars = values_iter::<T>(field.datatype(), ast.get_data())?.map(ScalarValue::from);
+        let mut scalars = values_iter::<T>(field.datatype(), ast.get_data())?.peekable();
 
         let in_list = match field.cell_val_num() {
-            CellValNum::Single => scalars.map(Expr::Literal).collect::<Vec<_>>(),
+            CellValNum::Single => scalars
+                .map(ScalarValue::from)
+                .map(Expr::Literal)
+                .collect::<Vec<_>>(),
             CellValNum::Fixed(nz) => {
                 let fixed_size = nz.get() as usize;
-                let array_values = {
+                let array_values = if scalars.peek().is_none() {
+                    let value_data_type = ScalarValue::from(scalars.next()).data_type();
+                    aa::make_array(ArrayData::new_empty(&value_data_type))
+                } else {
                     // SAFETY: `values_iter` produces all the same native type
-                    // FIXME: what if empty?
-                    ScalarValue::iter_to_array(scalars).unwrap()
+                    // `scalars` is also non-empty per `peek`
+                    ScalarValue::iter_to_array(scalars.map(ScalarValue::from)).unwrap()
                 };
                 if array_values.len() % fixed_size != 0 {
                     return Err(UserError::InListCellValNumMismatch(
@@ -260,10 +266,13 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
                     .collect::<Vec<_>>()
             }
             CellValNum::Var => {
-                let array_values = {
+                let array_values = if scalars.peek().is_none() {
+                    let value_data_type = ScalarValue::from(scalars.next()).data_type();
+                    aa::make_array(ArrayData::new_empty(&value_data_type))
+                } else {
                     // SAFETY: `values_iter` produces all the same native type
                     // FIXME: what if empty?
-                    ScalarValue::iter_to_array(scalars).unwrap()
+                    ScalarValue::iter_to_array(scalars.map(ScalarValue::from)).unwrap()
                 };
                 assert!(!array_values.is_nullable());
 
