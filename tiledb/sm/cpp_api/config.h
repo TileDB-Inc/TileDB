@@ -238,6 +238,10 @@ class Config {
 
   /** Sets the profile to use for the current config object.
    *
+   * @param profile_name The name of the profile to use. If not provided,
+   *                     the default profile will be used.
+   * @param profile_dir The directory where the profile is located. If not
+   *                    provided, the home directory will be used.
    */
   void set_profile(
       const std::optional<std::string>& profile_name = std::nullopt,
