@@ -240,10 +240,19 @@ fn leaf_ast_to_null_test(schema: &ArraySchema, ast: &ASTNode) -> Result<Expr, Er
     let column = Expr::Column(Column::from_name(
         field.name().map_err(UserError::FieldNameNotUtf8)?,
     ));
-    if *ast.get_op() == QueryConditionOp::EQ {
-        Ok(Expr::IsNull(Box::new(column)))
-    } else {
-        Ok(Expr::IsNotNull(Box::new(column)))
+    match *ast.get_op() {
+        QueryConditionOp::EQ => Ok(Expr::IsNull(Box::new(column))),
+        QueryConditionOp::NE => Ok(Expr::IsNotNull(Box::new(column))),
+        QueryConditionOp::ALWAYS_TRUE => Ok(Expr::Literal(ScalarValue::Boolean(Some(true)))),
+        QueryConditionOp::ALWAYS_FALSE => Ok(Expr::Literal(ScalarValue::Boolean(Some(false)))),
+        QueryConditionOp::LT
+        | QueryConditionOp::LE
+        | QueryConditionOp::GT
+        | QueryConditionOp::GE => {
+            // TODO: are these invalid?
+            Ok(Expr::Literal(ScalarValue::Boolean(Some(false))))
+        }
+        invalid => return Err(InternalError::InvalidOp(invalid.repr.into()).into()),
     }
 }
 
