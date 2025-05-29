@@ -53,6 +53,8 @@ pub enum UserError {
     CellValNumMismatch(CellValNum, usize),
     #[error("Cell val num out of range: {0}")]
     CellValNumOutOfRange(CellValNum),
+    #[error("In list values mismatch: expected a multiple of {0} values, found {1} values")]
+    InListCellValNumMismatch(CellValNum, usize),
     #[error("Variable-length data offsets: ")]
     InListVarOffsets(#[from] OffsetsError),
 }
@@ -219,14 +221,48 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
 
         let in_list = match field.cell_val_num() {
             CellValNum::Single => scalars.map(Expr::Literal).collect::<Vec<_>>(),
-            CellValNum::Fixed(_) => {
-                // SAFETY: well unknown to be honest, has anyone ever tried query conditions on
-                // these?
-                unreachable!()
+            CellValNum::Fixed(nz) => {
+                let fixed_size = nz.get() as usize;
+                let array_values = {
+                    // SAFETY: `values_iter` produces all the same native type
+                    // FIXME: what if empty?
+                    ScalarValue::iter_to_array(scalars).unwrap()
+                };
+                if array_values.len() % fixed_size != 0 {
+                    return Err(UserError::InListCellValNumMismatch(
+                        field.cell_val_num(),
+                        array_values.len(),
+                    )
+                    .into());
+                }
+
+                let Ok(fixed_size_i32) = i32::try_from(fixed_size) else {
+                    return Err(UserError::CellValNumOutOfRange(field.cell_val_num()).into());
+                };
+                let element_field = Arc::new(ArrowField::new_list_field(
+                    array_values.data_type().clone(),
+                    false,
+                ));
+
+                (0..array_values.len())
+                    .step_by(fixed_size)
+                    .map(|offset| {
+                        let elts = array_values.slice(offset, fixed_size);
+                        Arc::new(FixedSizeListArray::new(
+                            Arc::clone(&element_field),
+                            fixed_size_i32,
+                            elts,
+                            None,
+                        ))
+                    })
+                    .map(ScalarValue::FixedSizeList)
+                    .map(Expr::Literal)
+                    .collect::<Vec<_>>()
             }
             CellValNum::Var => {
                 let array_values = {
                     // SAFETY: `values_iter` produces all the same native type
+                    // FIXME: what if empty?
                     ScalarValue::iter_to_array(scalars).unwrap()
                 };
                 assert!(!array_values.is_nullable());
