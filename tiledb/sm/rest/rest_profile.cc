@@ -57,7 +57,8 @@ static json read_file(const std::string& filepath) {
     try {
       file >> data;
     } catch (...) {
-      throw RestProfileException("Error parsing file '" + filepath + "'.");
+      std::throw_with_nested(
+          RestProfileException("Error parsing file '" + filepath + "'."));
     }
   }
   return data;
@@ -80,8 +81,8 @@ static void write_file(json data, const std::string& filepath) {
     file.flush();
     file.close();
   } catch (...) {
-    throw RestProfileException(
-        "Failed to write file due to an internal error during write.");
+    std::throw_with_nested(RestProfileException(
+        "Failed to write file '" + temp_filepath + "' due to an error."));
   }
 
   // Remove the random label from the filepath.
