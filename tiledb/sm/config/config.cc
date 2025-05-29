@@ -718,15 +718,17 @@ void Config::inherit(const Config& config) {
 Status Config::set_profile(
     const std::optional<std::string>& profile_name,
     const std::optional<std::string>& profile_dir) {
-  // Neither profile name nor home directory is required, to allow full
-  // flexibility in setting the profile. However, at least one of them must be
-  // set.
-  if (!profile_name.has_value() && !profile_dir.has_value()) {
-    throw ConfigException(
-        "At least one of `profile_name` or `profile_dir` must be set");
+  // Create a Profile object
+  rest_profile_ = RestProfile(profile_name, profile_dir);
+
+  // Load the Profile
+  try {
+    rest_profile_.value().load_from_file();
+  } catch (const RestProfileException& e) {
+    throw RestProfileException(
+        "Failed to load profile; " + std::string(e.what()));
   }
 
-  rest_profile_ = RestProfile::load_profile(profile_name, profile_dir);
   return Status::Ok();
 }
 
@@ -955,7 +957,9 @@ const char* Config::get_from_config_or_fallback(
     // load the default profile, attempt to load it.
     if (!rest_profile_.has_value() && !default_rest_profile_not_found_) {
       try {
-        rest_profile_ = RestProfile::load_profile(std::nullopt, std::nullopt);
+        // Create a Profile object and load the default profile
+        rest_profile_ = RestProfile();
+        rest_profile_.value().load_from_file();
       } catch (const std::exception&) {
         default_rest_profile_not_found_ = true;
       }

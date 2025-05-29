@@ -145,25 +145,6 @@ RestProfile::RestProfile(const std::string& name) {
 /*              API               */
 /* ****************************** */
 
-RestProfile RestProfile::load_profile(
-    const std::optional<std::string>& name,
-    const std::optional<std::string>& dir) {
-  // Create a profile object
-  RestProfile profile =
-      !name.has_value() ? RestProfile() :
-      dir.has_value()   ? RestProfile(name.value(), dir.value()) :
-                          RestProfile(name.value());
-
-  // Load the profile
-  try {
-    profile.load_from_file();
-    return profile;
-  } catch (const RestProfileException& e) {
-    throw RestProfileException(
-        "Failed to load profile; " + std::string(e.what()));
-  }
-}
-
 void RestProfile::set_param(
     const std::string& param, const std::string& value) {
   if (param.empty()) {
