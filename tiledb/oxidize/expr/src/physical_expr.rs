@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use datafusion::common::arrow::datatypes::DataType as ArrowDataType;
 use datafusion::common::arrow::{array as aa, compute, datatypes as adt};
 use datafusion::common::{DataFusionError, ScalarValue};
 use datafusion::execution::context::ExecutionProps;
@@ -24,6 +25,8 @@ pub enum PhysicalExprOutputError {
     TypeUnavailable(#[source] schema::FieldError),
     #[error("Cast expression result: {0}")]
     Cast(#[source] DataFusionError),
+    #[error("Cannot read array as static datatype '{0}': found '{1}'")]
+    InvalidStaticType(&'static str, ArrowDataType),
 }
 
 pub struct PhysicalExpr(Arc<dyn DatafusionPhysicalExpr>);
@@ -101,7 +104,10 @@ impl PhysicalExprOutput {
         match &self.0 {
             ColumnarValue::Scalar(s) => match s {
                 ScalarValue::UInt8(maybe_byte) => Ok(maybe_byte.as_slice()),
-                _ => todo!(),
+                _ => Err(PhysicalExprOutputError::InvalidStaticType(
+                    "u8",
+                    s.data_type().clone(),
+                )),
             },
             ColumnarValue::Array(a) => {
                 if *a.data_type() == adt::DataType::UInt8 {
@@ -109,7 +115,10 @@ impl PhysicalExprOutput {
                     let primitive_array = a.as_any().downcast_ref::<aa::UInt8Array>().unwrap();
                     Ok(primitive_array.values().as_ref())
                 } else {
-                    todo!()
+                    Err(PhysicalExprOutputError::InvalidStaticType(
+                        "u8",
+                        a.data_type().clone(),
+                    ))
                 }
             }
         }
@@ -119,7 +128,10 @@ impl PhysicalExprOutput {
         match &self.0 {
             ColumnarValue::Scalar(s) => match s {
                 ScalarValue::UInt64(maybe_value) => Ok(maybe_value.as_slice()),
-                _ => todo!(),
+                _ => Err(PhysicalExprOutputError::InvalidStaticType(
+                    "u64",
+                    s.data_type().clone(),
+                )),
             },
             ColumnarValue::Array(a) => {
                 if *a.data_type() == adt::DataType::UInt64 {
@@ -127,7 +139,10 @@ impl PhysicalExprOutput {
                     let primitive_array = a.as_any().downcast_ref::<aa::UInt64Array>().unwrap();
                     Ok(primitive_array.values().as_ref())
                 } else {
-                    todo!()
+                    Err(PhysicalExprOutputError::InvalidStaticType(
+                        "u64",
+                        a.data_type().clone(),
+                    ))
                 }
             }
         }
