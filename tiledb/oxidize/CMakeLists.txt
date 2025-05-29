@@ -124,6 +124,7 @@ add_crate(
     SOURCES
         Cargo.toml
         src/logical_expr.rs
+        src/offsets.rs
         src/physical_expr.rs
         src/record_batch.rs
         src/schema.rs
