@@ -8,6 +8,7 @@ version = { workspace = true }
 anyhow = { workspace = true }
 cxx = { workspace = true }
 datafusion = { workspace = true }
+datatype = { workspace = true }
 itertools = { workspace = true }
 num-traits = { workspace = true }
 oxidize = { workspace = true }
