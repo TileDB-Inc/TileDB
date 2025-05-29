@@ -2917,44 +2917,7 @@ Status QueryCondition::apply_sparse(
     tdb::pmr::vector<BitmapType>& result_bitmap) {
   if (datafusion_.has_value()) {
     try {
-      const auto arrow = tiledb::oxidize::arrow::to_record_batch(
-          *datafusion_.value().schema_, result_tile);
-      const auto predicate_eval = datafusion_.value().expr_->evaluate(*arrow);
-      static_assert(
-          std::is_same_v<BitmapType, uint8_t> ||
-          std::is_same_v<BitmapType, uint64_t>);
-      if constexpr (std::is_same_v<BitmapType, uint8_t>) {
-        const auto predicate_out_u8 = predicate_eval->cast_to(Datatype::UINT8);
-        const auto bitmap = predicate_out_u8->values_u8();
-        if (predicate_out_u8->is_scalar() && bitmap.empty()) {
-          // all NULLs
-          result_bitmap.assign(result_bitmap.size(), 0);
-        } else if (predicate_out_u8->is_scalar()) {
-          // all the same value
-          result_bitmap.assign(result_bitmap.size(), bitmap[0]);
-        } else if (bitmap.size() == result_bitmap.size()) {
-          result_bitmap.assign(bitmap.begin(), bitmap.end());
-        } else {
-          throw std::logic_error(
-              "Expression evaluation bitmap has unexpected size");
-        }
-      } else {
-        const auto predicate_out_u64 =
-            predicate_eval->cast_to(Datatype::UINT64);
-        const auto bitmap = predicate_out_u64->values_u64();
-        if (predicate_out_u64->is_scalar() && bitmap.empty()) {
-          // all NULLs
-          result_bitmap.assign(result_bitmap.size(), 0);
-        } else if (predicate_out_u64->is_scalar()) {
-          // all the same value
-          result_bitmap.assign(result_bitmap.size(), bitmap[0]);
-        } else if (bitmap.size() == result_bitmap.size()) {
-          result_bitmap.assign(bitmap.begin(), bitmap.end());
-        } else {
-          throw std::logic_error(
-              "Expression evaluation bitmap has unexpected size");
-        }
-      }
+      datafusion_.value().apply(params, result_tile, result_bitmap);
     } catch (const ::rust::Error& e) {
       throw std::logic_error(
           "Unexpected error evaluating expression: " + std::string(e.what()));
@@ -2985,6 +2948,52 @@ const std::string& QueryCondition::condition_marker() const {
 
 uint64_t QueryCondition::condition_index() const {
   return condition_index_;
+}
+
+template <typename BitmapType>
+void QueryCondition::Datafusion::apply(
+    const QueryCondition::Params&,
+    ResultTile& result_tile,
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+  // FIXME: this needs to do combination op with existing bitmap
+  // see line 2514
+  const auto arrow =
+      tiledb::oxidize::arrow::to_record_batch(*schema_, result_tile);
+  const auto predicate_eval = expr_->evaluate(*arrow);
+  static_assert(
+      std::is_same_v<BitmapType, uint8_t> ||
+      std::is_same_v<BitmapType, uint64_t>);
+  if constexpr (std::is_same_v<BitmapType, uint8_t>) {
+    const auto predicate_out_u8 = predicate_eval->cast_to(Datatype::UINT8);
+    const auto bitmap = predicate_out_u8->values_u8();
+    if (predicate_out_u8->is_scalar() && bitmap.empty()) {
+      // all NULLs
+      result_bitmap.assign(result_bitmap.size(), 0);
+    } else if (predicate_out_u8->is_scalar()) {
+      // all the same value
+      result_bitmap.assign(result_bitmap.size(), bitmap[0]);
+    } else if (bitmap.size() == result_bitmap.size()) {
+      result_bitmap.assign(bitmap.begin(), bitmap.end());
+    } else {
+      throw std::logic_error(
+          "Expression evaluation bitmap has unexpected size");
+    }
+  } else {
+    const auto predicate_out_u64 = predicate_eval->cast_to(Datatype::UINT64);
+    const auto bitmap = predicate_out_u64->values_u64();
+    if (predicate_out_u64->is_scalar() && bitmap.empty()) {
+      // all NULLs
+      result_bitmap.assign(result_bitmap.size(), 0);
+    } else if (predicate_out_u64->is_scalar()) {
+      // all the same value
+      result_bitmap.assign(result_bitmap.size(), bitmap[0]);
+    } else if (bitmap.size() == result_bitmap.size()) {
+      result_bitmap.assign(bitmap.begin(), bitmap.end());
+    } else {
+      throw std::logic_error(
+          "Expression evaluation bitmap has unexpected size");
+    }
+  }
 }
 
 // Explicit template instantiations.

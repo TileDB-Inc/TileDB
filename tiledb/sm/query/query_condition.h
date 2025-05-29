@@ -398,6 +398,12 @@ class QueryCondition {
         : schema_(std::move(schema))
         , expr_(std::move(expr)) {
     }
+
+    template <typename BitmapType>
+    void apply(
+        const QueryCondition::Params& params,
+        ResultTile& result_tile,
+        tdb::pmr::vector<BitmapType>& result_bitmap) const;
   };
   std::optional<Datafusion> datafusion_;
 
