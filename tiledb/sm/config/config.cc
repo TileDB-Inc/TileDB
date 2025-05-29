@@ -966,20 +966,12 @@ const char* Config::get_from_config_or_fallback(
     }
     // If the profile was loaded successfully, try to get the parameter from it.
     if (rest_profile_.has_value()) {
-      if (strcmp(param.c_str(), "s3.verify_ssl") == 0) {
-        auto verify_ssl = rest_profile_.value().get_verify_ssl();
-        if (verify_ssl.has_value()) {
-          *found = true;
-          return verify_ssl.value() ? "true" : "false";
-        }
-      } else {
-        try {
-          const char* value = rest_profile_.value().get_param(param).c_str();
-          *found = true;
-          return value;
-        } catch (const RestProfileException&) {
-          // Be silent if the parameter is not found in the profile.
-        }
+      try {
+        const char* value = rest_profile_.value().get_param(param).c_str();
+        *found = true;
+        return value;
+      } catch (const RestProfileException&) {
+        // Be silent if the parameter is not found in the profile.
       }
     }
   }

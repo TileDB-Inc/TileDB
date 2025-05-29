@@ -149,10 +149,6 @@ class RestProfile {
     return param_values_;
   }
 
-  inline std::optional<bool> get_verify_ssl() const {
-    return verify_ssl_;
-  }
-
   /**
    * Saves this profile to the local file.
    *
@@ -212,9 +208,6 @@ class RestProfile {
   /** The path to the local file which stores all profiles. */
   std::string filepath_;
 
-  /** The path to the old local file which previously stored a profile. */
-  std::string old_filepath_;
-
   /** Stores a map of <param, value> for the set-parameters. */
   std::map<std::string, std::string> param_values_ = {
       std::make_pair("rest.password", RestProfile::DEFAULT_PASSWORD),
@@ -224,16 +217,6 @@ class RestProfile {
       std::make_pair(
           "rest.server_address", RestProfile::DEFAULT_SERVER_ADDRESS),
       std::make_pair("rest.username", RestProfile::DEFAULT_USERNAME)};
-
-  /**
-   * Flag which tracks the `Config::verify_ssl` parameter inherited from
-   * `cloud.json`.
-   *
-   * @note This is a temporary workaround, to be removed once the cloud API
-   * is updated to no longer use `cloud.json`. The config parameter will
-   * still be stored in `Config`, inheriting this value as a third fallback.
-   */
-  std::optional<bool> verify_ssl_{std::nullopt};
 };
 }  // namespace tiledb::sm
 

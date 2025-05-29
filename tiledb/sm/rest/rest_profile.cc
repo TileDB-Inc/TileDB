@@ -120,8 +120,7 @@ RestProfile::RestProfile(
     , dir_(
           dir.has_value() && !dir.value().empty() ? dir.value() :
                                                     home_directory())
-    , filepath_(dir_ + constants::rest_profile_filepath)
-    , old_filepath_(dir_ + constants::cloud_profile_filepath){};
+    , filepath_(dir_ + constants::rest_profile_filepath){};
 
 RestProfile::RestProfile(const std::string& name) {
   /**
@@ -238,16 +237,12 @@ void RestProfile::load_from_file() {
   if (std::filesystem::exists(filepath_)) {
     // If the local file exists, load the profile with the given name.
     load_from_json_file(filepath_);
-  } else if (std::filesystem::exists(old_filepath_)) {
-    // If the old version of the file exists, load the profile from there
-    load_from_json_file(old_filepath_);
   } else {
     // If the file does not exist, throw an error.
     throw RestProfileException("Failed to load profile; file does not exist.");
   }
 }
 
-// This will only work for the new format.
 void RestProfile::remove_from_file() {
   if (!std::filesystem::exists(filepath_)) {
     throw RestProfileException(
@@ -292,8 +287,7 @@ std::string RestProfile::dump() {
 /* ****************************** */
 
 void RestProfile::load_from_json_file(const std::string& filename) {
-  if (filename.empty() ||
-      (filename != filepath_ && filename != old_filepath_)) {
+  if (filename.empty() || filename != filepath_) {
     throw RestProfileException(
         "Cannot load from '" + filename + "'; invalid filename.");
   }
@@ -306,37 +300,20 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   // Load the file into a json object.
   json data = read_file(filename);
 
-  if (filename.c_str() == old_filepath_.c_str()) {
-    // Read the old profile format which doesn't use profile names.
-    // Only one profile is expected in the file.
-    if (data.contains("api_key") &&
-        data["api_key"].contains("X-TILEDB-REST-API-KEY")) {
-      param_values_["rest.token"] = data["api_key"]["X-TILEDB-REST-API-KEY"];
-    }
-    if (data.contains("host")) {
-      param_values_["rest.server_address"] = data["host"];
-    }
-    if (data.contains("password")) {
-      param_values_["rest.password"] = data["password"];
-    }
-    if (data.contains("username")) {
-      param_values_["rest.username"] = data["username"];
-    }
-    if (data.contains("verify_ssl")) {
-      verify_ssl_ = data["verify_ssl"];
+  auto it = data.find(name_);
+  if (it == data.end()) {
+    throw RestProfileException(
+        "Failed to load profile; profile '" + name_ + "' does not exist.");
+  }
+  json profile = it.value();
+
+  if (!profile.is_null()) {
+    for (auto it = profile.begin(); it != profile.end(); ++it) {
+      param_values_[it.key()] = profile[it.key()];
     }
   } else {
-    // Consider the name of the profile to load for the new format.
-    // Multiple profiles can be stored in that file.
-    json profile = data[name_];
-    if (!profile.is_null()) {
-      for (auto it = profile.begin(); it != profile.end(); ++it) {
-        param_values_[it.key()] = profile[it.key()];
-      }
-    } else {
-      throw RestProfileException(
-          "Failed to load profile; profile '" + name_ + "' does not exist.");
-    }
+    throw RestProfileException(
+        "Failed to load profile; profile '" + name_ + "' does not exist.");
   }
 }
 
