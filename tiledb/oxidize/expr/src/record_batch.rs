@@ -37,6 +37,12 @@ pub enum FieldError {
     InternalUnalignedOffsets,
     #[error("Internal error: unaligned tile data values")]
     InternalUnalignedValues,
+    #[error("Internal error: negative variable-length data offset: {0}")]
+    InternalNegativeOffset(i64),
+    #[error(
+        "Internal error: non-descending offsets for variable length data found at cell {0}: {1}, {2}"
+    )]
+    InternalDescendingOffsets(usize, i64, i64),
 }
 
 pub struct ArrowRecordBatch {
@@ -154,7 +160,10 @@ fn to_arrow_array(
                 null_buffer,
             )))
         }
-        _ => todo!(),
+        _ => {
+            // SAFETY: ensured by limited range of return values of `crate::schema::arrow_datatype`
+            unreachable!()
+        }
     }
 }
 
@@ -214,7 +223,11 @@ fn to_offsets_buffer(value_field: &Field, tile: &Tile) -> Result<OffsetBuffer<i6
     // we nonetheless have to dynamically allocate the offsets.
 
     let Some(value_size) = value_field.data_type().primitive_width().map(|s| s as i64) else {
-        todo!()
+        // SAFETY: all list types have primitive element
+        unreachable!(
+            "Unexpected list field element type: {}",
+            value_field.data_type()
+        )
     };
     let try_element_offset = |o: i64| {
         if o % value_size == 0 {
@@ -229,9 +242,15 @@ fn to_offsets_buffer(value_field: &Field, tile: &Tile) -> Result<OffsetBuffer<i6
         Buffer::try_from_trusted_len_iter(offsets.iter().map(|o| try_element_offset(*o)))?
     });
     if sbuf[0] < 0 {
-        todo!()
+        return Err(FieldError::InternalNegativeOffset(sbuf[0]));
     } else if !sbuf.windows(2).all(|w| w[0] <= w[1]) {
-        todo!()
+        for (i, w) in sbuf.windows(2).enumerate() {
+            if w[0] > w[1] {
+                return Err(FieldError::InternalDescendingOffsets(i, w[0], w[1]));
+            }
+        }
+        // SAFETY: `all` was false, therefore `any` is true
+        unreachable!()
     }
 
     Ok(OffsetBuffer::<i64>::new(sbuf))
