@@ -2957,8 +2957,6 @@ void QueryCondition::Datafusion::apply(
     const QueryCondition::Params&,
     ResultTile& result_tile,
     tdb::pmr::vector<BitmapType>& result_bitmap) const {
-  // FIXME: this needs to do combination op with existing bitmap
-  // see line 2514
   const auto arrow =
       tiledb::oxidize::arrow::to_record_batch(*schema_, result_tile);
   const auto predicate_eval = expr_->evaluate(*arrow);
@@ -2973,9 +2971,13 @@ void QueryCondition::Datafusion::apply(
       result_bitmap.assign(result_bitmap.size(), 0);
     } else if (predicate_out_u8->is_scalar()) {
       // all the same value
-      result_bitmap.assign(result_bitmap.size(), bitmap[0]);
+      for (auto& result : result_bitmap) {
+        result = result * bitmap[0];
+      }
     } else if (bitmap.size() == result_bitmap.size()) {
-      result_bitmap.assign(bitmap.begin(), bitmap.end());
+      for (uint64_t i = 0; i < bitmap.size(); i++) {
+        result_bitmap[i] *= bitmap[i];
+      }
     } else {
       throw std::logic_error(
           "Expression evaluation bitmap has unexpected size");
