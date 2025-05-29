@@ -65,20 +65,6 @@ impl PhysicalExprOutput {
         matches!(self.0, ColumnarValue::Array(_))
     }
 
-    pub fn raw_values(&self) -> *const u8 {
-        match &self.0 {
-            ColumnarValue::Scalar(s) => todo!(),
-            ColumnarValue::Array(a) => todo!(),
-        }
-    }
-
-    pub fn raw_size(&self) -> usize {
-        match &self.0 {
-            ColumnarValue::Scalar(s) => todo!(),
-            ColumnarValue::Array(a) => todo!(),
-        }
-    }
-
     /// Cast `self` to a target datatype.
     pub fn cast_to(
         &self,
