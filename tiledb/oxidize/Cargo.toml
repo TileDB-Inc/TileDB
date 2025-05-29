@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "arithmetic",
+  "datatype",
   "expr",
   "oxidize",
 ]
@@ -16,6 +17,7 @@ anyhow = "1"
 cxx = "1"
 cxx-build = "1"
 datafusion = { version = "47", features = [] }
+datatype = { path = "datatype" }
 itertools = { version = "0.14" }
 num-traits = "0.2"
 oxidize = { path = "oxidize" }

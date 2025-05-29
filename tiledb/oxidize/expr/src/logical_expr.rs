@@ -1,14 +1,14 @@
 use std::str::Utf8Error;
-use std::sync::Arc;
 
 use datafusion::common::arrow::array::{
-    self as aa, Array as ArrowArray, FixedSizeListArray, GenericListArray,
+    self as aa, Array as ArrowArray, ArrayData, FixedSizeListArray, GenericListArray,
 };
 use datafusion::common::arrow::buffer::OffsetBuffer;
 use datafusion::common::arrow::datatypes::Field as ArrowField;
 use datafusion::common::{Column, ScalarValue};
 use datafusion::logical_expr::expr::InList;
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator};
+use datatype::apply_physical_type;
 use itertools::Itertools;
 use num_traits::FromBytes;
 use oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
@@ -34,6 +34,8 @@ pub enum InternalError {
     InvalidCombinationOp(u64),
     #[error("Invalid number of arguments to NOT expression: expected 1, found {0}")]
     NotTree(usize),
+    #[error("Error in field '{0}': {1}")]
+    SchemaField(String, crate::schema::FieldError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -100,23 +102,47 @@ fn leaf_ast_to_binary_expr(
         );
     };
 
-    fn apply<T, A>(field: Field, ast: &ASTNode, operator: Operator) -> Result<Expr, Error>
+    fn apply<T>(field: &Field, ast: &ASTNode, operator: Operator) -> Result<Expr, Error>
     where
         T: FromBytes,
         <T as FromBytes>::Bytes: for<'a> TryFrom<&'a [u8]>,
-        ScalarValue: From<Option<T>>,
-        A: ArrowArray + From<Vec<T>> + 'static,
+        ScalarValue: From<T> + From<Option<T>>,
     {
         let column = Expr::Column(Column::from_name(
             field.name().map_err(UserError::FieldNameNotUtf8)?,
         ));
 
-        let mut values = values_iter::<T>(field.datatype(), ast.get_data())?;
+        let mut values = values_iter::<T>(field.datatype(), ast.get_data())?
+            .map(ScalarValue::from)
+            .peekable();
+
+        let expect_datatype = crate::schema::field_arrow_datatype(field).map_err(|e| {
+            InternalError::SchemaField(field.name_cxx().to_string_lossy().into_owned(), e)
+        })?;
 
         let right = match field.cell_val_num() {
-            CellValNum::Single => ScalarValue::from(values.next()),
+            CellValNum::Single => {
+                let Some(r) = values.next() else {
+                    return Err(UserError::CellValNumMismatch(field.cell_val_num(), 0).into());
+                };
+                if values.peek().is_some() {
+                    return Err(UserError::CellValNumMismatch(
+                        field.cell_val_num(),
+                        1 + values.count(),
+                    )
+                    .into());
+                } else {
+                    r
+                }
+            }
             CellValNum::Fixed(nz) => {
-                let values = values.collect::<Vec<T>>();
+                let values = if values.peek().is_none() {
+                    aa::make_array(ArrayData::new_empty(&expect_datatype))
+                } else {
+                    // SAFETY: `values` produces a static type, so all will match.
+                    // `values` is also non-empty per `peek`.
+                    ScalarValue::iter_to_array(values).unwrap()
+                };
                 if values.len() != nz.get() as usize {
                     return Err(
                         UserError::CellValNumMismatch(field.cell_val_num(), values.len()).into(),
@@ -125,29 +151,25 @@ fn leaf_ast_to_binary_expr(
                 let Ok(fixed_size) = i32::try_from(nz.get()) else {
                     return Err(UserError::CellValNumOutOfRange(field.cell_val_num()).into());
                 };
-                let arrow_values = A::from(values);
-                let element_field =
-                    ArrowField::new_list_field(arrow_values.data_type().clone(), false);
+                let element_field = ArrowField::new_list_field(values.data_type().clone(), false);
                 ScalarValue::FixedSizeList(
-                    FixedSizeListArray::new(
-                        element_field.into(),
-                        fixed_size,
-                        Arc::new(arrow_values) as Arc<dyn ArrowArray>,
-                        None,
-                    )
-                    .into(),
+                    FixedSizeListArray::new(element_field.into(), fixed_size, values, None).into(),
                 )
             }
             CellValNum::Var => {
-                let values = values.collect::<Vec<T>>();
-                let arrow_values = A::from(values);
-                let element_field =
-                    ArrowField::new_list_field(arrow_values.data_type().clone(), false);
+                let values = if values.peek().is_none() {
+                    aa::make_array(ArrayData::new_empty(&expect_datatype))
+                } else {
+                    // SAFETY: `values` produces a static type, so all will match.
+                    // `values` is also non-empty per `peek`.
+                    ScalarValue::iter_to_array(values).unwrap()
+                };
+                let element_field = ArrowField::new_list_field(values.data_type().clone(), false);
                 ScalarValue::LargeList(
                     GenericListArray::<i64>::new(
                         element_field.into(),
-                        OffsetBuffer::<i64>::from_lengths(std::iter::once(arrow_values.len())),
-                        Arc::new(arrow_values) as Arc<dyn ArrowArray>,
+                        OffsetBuffer::<i64>::from_lengths(std::iter::once(values.len())),
+                        values,
                         None,
                     )
                     .into(),
@@ -163,61 +185,12 @@ fn leaf_ast_to_binary_expr(
     }
 
     let value_type = field.datatype();
-
-    match value_type {
-        Datatype::INT8 => apply::<i8, aa::Int8Array>(field, ast, op),
-        Datatype::INT16 => apply::<i16, aa::Int16Array>(field, ast, op),
-        Datatype::INT32 => apply::<i32, aa::Int32Array>(field, ast, op),
-        Datatype::INT64
-        | Datatype::DATETIME_YEAR
-        | Datatype::DATETIME_MONTH
-        | Datatype::DATETIME_WEEK
-        | Datatype::DATETIME_DAY
-        | Datatype::DATETIME_HR
-        | Datatype::DATETIME_MIN
-        | Datatype::DATETIME_SEC
-        | Datatype::DATETIME_MS
-        | Datatype::DATETIME_US
-        | Datatype::DATETIME_NS
-        | Datatype::DATETIME_PS
-        | Datatype::DATETIME_FS
-        | Datatype::DATETIME_AS
-        | Datatype::TIME_HR
-        | Datatype::TIME_MIN
-        | Datatype::TIME_SEC
-        | Datatype::TIME_MS
-        | Datatype::TIME_US
-        | Datatype::TIME_NS
-        | Datatype::TIME_PS
-        | Datatype::TIME_FS
-        | Datatype::TIME_AS => apply::<i64, aa::Int64Array>(field, ast, op),
-        Datatype::UINT8
-        | Datatype::STRING_ASCII
-        | Datatype::STRING_UTF8
-        | Datatype::ANY
-        | Datatype::BLOB
-        | Datatype::BOOL
-        | Datatype::GEOM_WKB
-        | Datatype::GEOM_WKT => apply::<u8, aa::UInt8Array>(field, ast, op),
-        Datatype::UINT16 | Datatype::STRING_UTF16 | Datatype::STRING_UCS2 => {
-            apply::<u16, aa::UInt16Array>(field, ast, op)
-        }
-        Datatype::UINT32 | Datatype::STRING_UTF32 | Datatype::STRING_UCS4 => {
-            apply::<u32, aa::UInt32Array>(field, ast, op)
-        }
-        Datatype::UINT64 => apply::<u64, aa::UInt64Array>(field, ast, op),
-        Datatype::FLOAT32 => apply::<f32, aa::Float32Array>(field, ast, op),
-        Datatype::FLOAT64 => apply::<f64, aa::Float64Array>(field, ast, op),
-        Datatype::CHAR => {
-            // CHAR requires signed/unsigned check due to platform differences
-            if std::ffi::c_char::MIN == 0 {
-                apply::<u8, aa::UInt8Array>(field, ast, op)
-            } else {
-                apply::<i8, aa::Int8Array>(field, ast, op)
-            }
-        }
-        invalid => return Err(InternalError::InvalidDatatype(invalid.repr.into()).into()),
-    }
+    apply_physical_type!(
+        value_type,
+        NativeType,
+        apply::<NativeType>(&field, ast, op),
+        |invalid: Datatype| Err(InternalError::InvalidDatatype(invalid.repr.into()).into())
+    )
 }
 
 fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Result<Expr, Error> {
@@ -227,7 +200,7 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
         );
     };
 
-    fn apply<T>(field: Field, ast: &ASTNode, negated: bool) -> Result<Expr, Error>
+    fn apply<T>(field: &Field, ast: &ASTNode, negated: bool) -> Result<Expr, Error>
     where
         T: FromBytes,
         <T as FromBytes>::Bytes: for<'a> TryFrom<&'a [u8]>,
@@ -250,19 +223,12 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
     }
 
     let value_type = field.datatype();
-    match value_type {
-        Datatype::INT8 => apply::<i8>(field, ast, negated),
-        Datatype::INT16 => apply::<i16>(field, ast, negated),
-        Datatype::INT32 => apply::<i32>(field, ast, negated),
-        Datatype::INT64 => apply::<i64>(field, ast, negated),
-        Datatype::UINT8 => apply::<u8>(field, ast, negated),
-        Datatype::UINT16 => apply::<u16>(field, ast, negated),
-        Datatype::UINT32 => apply::<u32>(field, ast, negated),
-        Datatype::UINT64 => apply::<u64>(field, ast, negated),
-        Datatype::FLOAT32 => apply::<f32>(field, ast, negated),
-        Datatype::FLOAT64 => apply::<f64>(field, ast, negated),
-        _ => todo!(),
-    }
+    apply_physical_type!(
+        value_type,
+        NativeType,
+        apply::<NativeType>(&field, ast, negated),
+        |invalid: Datatype| Err(InternalError::InvalidDatatype(invalid.repr.into()).into())
+    )
 }
 
 fn leaf_ast_to_null_test(schema: &ArraySchema, ast: &ASTNode) -> Result<Expr, Error> {

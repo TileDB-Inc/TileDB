@@ -1,0 +1,8 @@
+[package]
+name = "datatype"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+oxidize = { workspace = true }
