@@ -1,6 +1,7 @@
 #[cxx::bridge]
 mod ffi {
     #[namespace = "tiledb::sm"]
+    #[derive(Debug)]
     enum Datatype {
         INT32,
         INT64,
@@ -55,6 +56,7 @@ mod ffi {
 
         fn datatype_size(datatype: Datatype) -> u64;
         fn datatype_is_valid(datatype: Datatype) -> bool;
+        fn datatype_str(datatype: Datatype) -> &'static CxxString;
     }
 
     #[namespace = "tiledb::sm"]
@@ -81,6 +83,8 @@ mod ffi {
 
 pub use ffi::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
 
+use std::fmt::{Display, Formatter, Result as FmtResult};
+
 impl Datatype {
     pub fn is_valid(&self) -> bool {
         ffi::datatype_is_valid(*self)
@@ -88,5 +92,21 @@ impl Datatype {
 
     pub fn value_size(&self) -> usize {
         ffi::datatype_size(*self) as usize
+    }
+}
+
+impl Display for Datatype {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        let s = {
+            let cxx = ffi::datatype_str(*self);
+            // SAFETY: all variants are UTF-8 constants.
+            // Invalid variants are empty string.
+            cxx.to_str().unwrap()
+        };
+        if s.is_empty() {
+            write!(f, "<INVALID DATATYPE: {}>", self.repr)
+        } else {
+            write!(f, "{}", s)
+        }
     }
 }
