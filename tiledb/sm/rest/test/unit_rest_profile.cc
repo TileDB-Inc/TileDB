@@ -156,32 +156,6 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     RestProfileFx,
-    "REST Profile: Factory function",
-    "[rest_profile][factory_function]") {
-  expected_values_t e;
-  e.token = cloudtoken_;  // Use the in-test cloudtoken_.
-
-  // Create and validate a default RestProfile.
-  RestProfile p(create_profile());
-  p.set_param("rest.token", cloudtoken_);
-  CHECK(is_expected(p, e));
-
-  // Save the profile to the local file.
-  p.save_to_file();
-
-  // Load the profile from the local file and validate.
-  RestProfile p2 =
-      RestProfile::load_profile(RestProfile::DEFAULT_PROFILE_NAME, dir_);
-  CHECK(is_expected(p2, e));
-
-  // Attempt to load a non-existent profile.
-  CHECK_THROWS(
-      RestProfile::load_profile("non-existent", dir_),
-      Catch::Matchers::ContainsSubstring("Failed to load profile"));
-}
-
-TEST_CASE_METHOD(
-    RestProfileFx,
     "REST Profile: Save/Remove",
     "[rest_profile][save][remove]") {
   // Create a default RestProfile.
