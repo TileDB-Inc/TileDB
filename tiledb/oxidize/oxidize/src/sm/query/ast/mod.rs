@@ -17,6 +17,7 @@ mod ffi {
         fn get_op(&self) -> &QueryConditionOp;
         fn get_combination_op(&self) -> &QueryConditionCombinationOp;
         fn get_data(&self) -> &ByteVecValue;
+        fn get_offsets(&self) -> &ByteVecValue;
         fn num_children(&self) -> u64;
         fn get_child(&self, i: u64) -> *const ASTNode;
     }

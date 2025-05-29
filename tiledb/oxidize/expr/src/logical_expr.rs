@@ -1,4 +1,5 @@
 use std::str::Utf8Error;
+use std::sync::Arc;
 
 use datafusion::common::arrow::array::{
     self as aa, Array as ArrowArray, ArrayData, FixedSizeListArray, GenericListArray,
@@ -15,6 +16,8 @@ use oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
 use oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
 use oxidize::sm::misc::ByteVecValue;
 use oxidize::sm::query::ast::ASTNode;
+
+use crate::offsets::Error as OffsetsError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -50,6 +53,8 @@ pub enum UserError {
     CellValNumMismatch(CellValNum, usize),
     #[error("Cell val num out of range: {0}")]
     CellValNumOutOfRange(CellValNum),
+    #[error("Variable-length data offsets: ")]
+    InListVarOffsets(#[from] OffsetsError),
 }
 
 pub struct LogicalExpr(pub Expr);
@@ -210,10 +215,50 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
             field.name().map_err(UserError::FieldNameNotUtf8)?,
         ));
 
-        let in_list = values_iter::<T>(field.datatype(), ast.get_data())?
-            .map(ScalarValue::from)
-            .map(Expr::Literal)
-            .collect::<Vec<_>>();
+        let scalars = values_iter::<T>(field.datatype(), ast.get_data())?.map(ScalarValue::from);
+
+        let in_list = match field.cell_val_num() {
+            CellValNum::Single => scalars.map(Expr::Literal).collect::<Vec<_>>(),
+            CellValNum::Fixed(_) => {
+                // SAFETY: well unknown to be honest, has anyone ever tried query conditions on
+                // these?
+                unreachable!()
+            }
+            CellValNum::Var => {
+                let array_values = {
+                    // SAFETY: `values_iter` produces all the same native type
+                    ScalarValue::iter_to_array(scalars).unwrap()
+                };
+                assert!(!array_values.is_nullable());
+
+                let array_offsets = crate::offsets::try_from_bytes_and_num_values(
+                    field.datatype().value_size(),
+                    ast.get_offsets().as_slice(),
+                    ast.get_data().len(),
+                )
+                .map_err(UserError::from)?;
+
+                let element_field = Arc::new(ArrowField::new_list_field(
+                    array_values.data_type().clone(),
+                    false,
+                ));
+
+                array_offsets
+                    .windows(2)
+                    .map(|w| {
+                        let elts = array_values.slice(w[0] as usize, (w[1] - w[0]) as usize);
+                        Arc::new(GenericListArray::new(
+                            Arc::clone(&element_field),
+                            OffsetBuffer::from_lengths(std::iter::once(elts.len())),
+                            elts,
+                            None,
+                        ))
+                    })
+                    .map(ScalarValue::LargeList)
+                    .map(Expr::Literal)
+                    .collect::<Vec<_>>()
+            }
+        };
 
         Ok(Expr::InList(InList {
             expr: Box::new(column),

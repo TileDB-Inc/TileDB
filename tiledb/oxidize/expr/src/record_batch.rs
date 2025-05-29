@@ -10,6 +10,7 @@ use oxidize::sm::query::readers::{ResultTile, TileTuple};
 use oxidize::sm::tile::Tile;
 
 use super::*;
+use crate::offsets::Error as OffsetsError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -31,18 +32,10 @@ pub enum FieldError {
     UnexpectedVarTile,
     #[error("Expected offsets tile for field with variable cell val num")]
     ExpectedVarTile,
-    #[error("Internal error: variable-length data offsets index a non-integral cell")]
-    InternalNonIntegralOffsets,
-    #[error("Internal error: unaligned variable-length data offsets")]
-    InternalUnalignedOffsets,
     #[error("Internal error: unaligned tile data values")]
     InternalUnalignedValues,
-    #[error("Internal error: negative variable-length data offset: {0}")]
-    InternalNegativeOffset(i64),
-    #[error(
-        "Internal error: non-descending offsets for variable length data found at cell {0}: {1}, {2}"
-    )]
-    InternalDescendingOffsets(usize, i64, i64),
+    #[error("Internal error: invalid variable-length data offsets: {0}")]
+    InternalOffsets(#[from] OffsetsError),
 }
 
 pub struct ArrowRecordBatch {
@@ -194,64 +187,15 @@ where
     )) as Arc<dyn ArrowArray>)
 }
 
-fn to_offsets_buffer(value_field: &Field, tile: &Tile) -> Result<OffsetBuffer<i64>, FieldError> {
-    let (prefix, offsets, suffix) = unsafe {
-        // SAFETY: transmuting u8 to i64 is safe
-        tile.as_slice().align_to::<i64>()
-    };
-    if !prefix.is_empty() || !suffix.is_empty() {
-        return Err(FieldError::InternalUnalignedOffsets);
-    }
-
-    // TileDB storage format (as of this writing) uses byte offsets.
-    // Arrow uses element offsets.
-    // Those must be converted.
-    //
-    // There's also a reasonable question about the number of offsets.
-    // In Arrow there are `n + 1` offsets for `n` cells, such that each
-    //   cell `i` is delineated by offsets `i, i + 1`.
-    // In TileDB write and read queries there are just `n` offsets,
-    //   and the last cell is delineated by the end of the var data.
-    //
-    // However, it appears that the actual tile contents follow the
-    // `n + 1` offsets format.  This is undoubtedly a good thing
-    // for our use here (and subjectively so otherwise).
-    // uses the fixed data length to implicitly indicate the length of the last
-    // element, so as to have `n` offsets for `n` cells.
-    //
-    // But because we have to change from bytes to elements
-    // we nonetheless have to dynamically allocate the offsets.
-
-    let Some(value_size) = value_field.data_type().primitive_width().map(|s| s as i64) else {
+fn to_offsets_buffer(value_field: &Field, tile: &Tile) -> Result<OffsetBuffer<i64>, OffsetsError> {
+    let Some(value_size) = value_field.data_type().primitive_width() else {
         // SAFETY: all list types have primitive element
+        // FIXME: this is true for schema fields, not generally true,
+        // so either do proper error handling or refactor
         unreachable!(
             "Unexpected list field element type: {}",
             value_field.data_type()
         )
     };
-    let try_element_offset = |o: i64| {
-        if o % value_size == 0 {
-            Ok(o / value_size)
-        } else {
-            Err(FieldError::InternalNonIntegralOffsets)
-        }
-    };
-
-    let sbuf = ScalarBuffer::<i64>::from(unsafe {
-        // SAFETY: slice has a trusted upper length
-        Buffer::try_from_trusted_len_iter(offsets.iter().map(|o| try_element_offset(*o)))?
-    });
-    if sbuf[0] < 0 {
-        return Err(FieldError::InternalNegativeOffset(sbuf[0]));
-    } else if !sbuf.windows(2).all(|w| w[0] <= w[1]) {
-        for (i, w) in sbuf.windows(2).enumerate() {
-            if w[0] > w[1] {
-                return Err(FieldError::InternalDescendingOffsets(i, w[0], w[1]));
-            }
-        }
-        // SAFETY: `all` was false, therefore `any` is true
-        unreachable!()
-    }
-
-    Ok(OffsetBuffer::<i64>::new(sbuf))
+    crate::offsets::try_from_bytes(value_size, tile.as_slice())
 }

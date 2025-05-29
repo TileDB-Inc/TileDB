@@ -75,6 +75,7 @@ mod ffi {
 }
 
 mod logical_expr;
+mod offsets;
 mod physical_expr;
 mod record_batch;
 mod schema;
