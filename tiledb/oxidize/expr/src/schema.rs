@@ -50,7 +50,8 @@ where
         let arrow_type =
             field_arrow_datatype(&f).map_err(|e| Error::FieldError(field_name.to_owned(), e))?;
 
-        Ok(ArrowField::new(field_name, arrow_type, f.nullable()))
+        // NB: fields can always be null due to schema evolution
+        Ok(ArrowField::new(field_name, arrow_type, true))
     });
 
     DFSchema::from_unqualified_fields(

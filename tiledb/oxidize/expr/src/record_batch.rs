@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use datafusion::common::arrow::array::{
-    Array as ArrowArray, FixedSizeListArray, GenericListArray, PrimitiveArray,
+    self as aa, Array as ArrowArray, FixedSizeListArray, GenericListArray, PrimitiveArray,
 };
 use datafusion::common::arrow::buffer::{Buffer, NullBuffer, OffsetBuffer, ScalarBuffer};
 use datafusion::common::arrow::datatypes::{self as adt, ArrowPrimitiveType, Field};
@@ -14,8 +14,6 @@ use crate::offsets::Error as OffsetsError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Tile data is unavailable for field '{0}'")]
-    NoData(String),
     #[error("Cannot process field '{0}': {1}")]
     FieldError(String, #[source] FieldError),
 }
@@ -26,8 +24,6 @@ pub enum FieldError {
     ArrowDataType(#[from] crate::schema::FieldError),
     #[error("Unexpected validity tile for non-nullable field")]
     UnexpectedValidityTile,
-    #[error("Expected validity tile for nullable field")]
-    ExpectedValidityTile,
     #[error("Unexpected offsets tile for fixed-length field")]
     UnexpectedVarTile,
     #[error("Expected offsets tile for field with variable cell val num")]
@@ -51,12 +47,13 @@ pub fn to_record_batch(
         .fields()
         .iter()
         .map(|f| {
+            // FIXME: see is_special_attribute case
             let ptr_tile = {
                 cxx::let_cxx_string!(fname = f.name());
                 tile.tile_tuple(&fname)
             };
             if ptr_tile.is_null() {
-                return Err(Error::NoData(f.name().to_owned()));
+                return Ok(aa::new_null_array(f.data_type(), tile.cell_num() as usize));
             }
 
             let tile = unsafe {
@@ -105,7 +102,7 @@ fn to_arrow_array(
                 .collect::<NullBuffer>(),
         )
     } else if f.is_nullable() {
-        return Err(FieldError::ExpectedValidityTile);
+        None
     } else {
         None
     };
