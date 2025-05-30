@@ -382,6 +382,12 @@ if (TILEDB_S3)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
 
+if (TILEDB_ASSERTIONS)
+  string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_DIR_PATH_SIZE)
+  add_compile_definitions(TILEDB_ASSERTIONS)
+  add_compile_definitions("__SOURCE_DIR_PATH_SIZE__=${SOURCE_DIR_PATH_SIZE}")
+endif ()
+
 ##################################
 # Local install
 ##################################

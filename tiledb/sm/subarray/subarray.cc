@@ -36,6 +36,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -778,9 +779,15 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
     return cell_num;
   }
 
+  // GLOBAL_ORDER handled above
+  iassert(
+      layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR,
+      "layout = {}",
+      layout_str(layout));
+
   // Non-unary case (range_offsets_ must be computed)
   if (layout == Layout::ROW_MAJOR) {
-    assert(!range_offsets_.empty());
+    iassert(!range_offsets_.empty());
     for (unsigned d = 0; d < dim_num; ++d) {
       range_cell_num = domain.dimension_ptr(d)->domain_range(
           range_subset_[d][tmp_idx / range_offsets_[d]]);
@@ -792,8 +799,8 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
       if (cell_num == std::numeric_limits<uint64_t>::max())  // Overflow
         return cell_num;
     }
-  } else if (layout == Layout::COL_MAJOR) {
-    assert(!range_offsets_.empty());
+  } else {
+    iassert(!range_offsets_.empty());
     for (unsigned d = dim_num - 1;; --d) {
       range_cell_num = domain.dimension_ptr(d)->domain_range(
           range_subset_[d][tmp_idx / range_offsets_[d]]);
@@ -808,8 +815,6 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
       if (d == 0)
         break;
     }
-  } else {  // GLOBAL_ORDER handled above
-    assert(false);
   }
 
   return cell_num;
@@ -818,7 +823,7 @@ uint64_t Subarray::cell_num(uint64_t range_idx) const {
 uint64_t Subarray::cell_num(const std::vector<uint64_t>& range_coords) const {
   const auto& array_schema = array_->array_schema_latest();
   auto dim_num = array_->array_schema_latest().dim_num();
-  assert(dim_num == range_coords.size());
+  iassert(dim_num == range_coords.size());
 
   uint64_t ret = 1;
   for (unsigned d = 0; d < dim_num; ++d) {
@@ -1086,7 +1091,7 @@ int32_t Subarray::count_set_ranges() const {
 }
 
 bool Subarray::is_set(unsigned dim_idx) const {
-  assert(dim_idx < dim_num());
+  iassert(dim_idx < dim_num());
   return !range_subset_[dim_idx].is_implicitly_initialized();
 }
 
@@ -1116,9 +1121,8 @@ void Subarray::set_config(const QueryType query_type, const Config& config) {
       "sm.merge_overlapping_ranges_experimental", Config::MustFindMarker());
 
   if (query_type == QueryType::READ) {
-    bool found = false;
-    std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
-    assert(found);
+    const std::string read_range_oob_str =
+        config.get<std::string>("sm.read_range_oob", Config::must_find);
     if (read_range_oob_str != "error" && read_range_oob_str != "warn")
       throw SubarrayException(
           "[set_config] Invalid value " + read_range_oob_str +
@@ -1297,8 +1301,11 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
     std::reverse(ret.begin(), ret.end());
   } else {
     // Global order or Hilbert - single range
-    assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
-    assert(range_num() == 1);
+    iassert(
+        layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT,
+        "layout = {}",
+        layout_str(layout));
+    iassert(range_num() == 1);
     for (unsigned i = 0; i < dim_num; ++i)
       ret.push_back(0);
   }
@@ -1345,15 +1352,20 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
     return ret;
   }
 
+  iassert(
+      layout == Layout::ROW_MAJOR || layout == Layout::COL_MAJOR,
+      "layout = {}",
+      layout_str(layout));
+
   // Non-unary case (range_offsets_ must be computed)
   if (layout == Layout::ROW_MAJOR) {
-    assert(!range_offsets_.empty());
+    iassert(!range_offsets_.empty());
     for (unsigned d = 0; d < dim_num; ++d) {
       ret.emplace_back(range_subset_[d][tmp_idx / range_offsets_[d]]);
       tmp_idx %= range_offsets_[d];
     }
-  } else if (layout == Layout::COL_MAJOR) {
-    assert(!range_offsets_.empty());
+  } else {
+    iassert(!range_offsets_.empty());
     for (unsigned d = dim_num - 1;; --d) {
       ret.emplace_back(range_subset_[d][tmp_idx / range_offsets_[d]]);
       tmp_idx %= range_offsets_[d];
@@ -1361,8 +1373,6 @@ NDRange Subarray::ndrange(uint64_t range_idx) const {
         break;
     }
     std::reverse(ret.begin(), ret.end());
-  } else {  // GLOBAL_ORDER handled above
-    assert(false);
   }
 
   return ret;
@@ -1439,8 +1449,8 @@ void Subarray::split(
     const ByteVecValue& splitting_value,
     Subarray* r1,
     Subarray* r2) const {
-  assert(r1 != nullptr);
-  assert(r2 != nullptr);
+  iassert(r1 != nullptr);
+  iassert(r2 != nullptr);
   *r1 = Subarray(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
   *r2 = Subarray(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
 
@@ -1469,8 +1479,8 @@ void Subarray::split(
     const ByteVecValue& splitting_value,
     Subarray* r1,
     Subarray* r2) const {
-  assert(r1 != nullptr);
-  assert(r2 != nullptr);
+  iassert(r1 != nullptr);
+  iassert(r2 != nullptr);
   *r1 = Subarray(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
   *r2 = Subarray(array_, layout_, stats_->parent(), logger_, coalesce_ranges_);
 
@@ -1809,8 +1819,11 @@ void Subarray::compute_range_offsets() {
     std::reverse(range_offsets_.begin(), range_offsets_.end());
   } else {
     // Global order or Hilbert - single range
-    assert(layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT);
-    assert(range_num() == 1);
+    iassert(
+        layout == Layout::GLOBAL_ORDER || layout == Layout::HILBERT,
+        "layout = {}",
+        layout_str(layout));
+    iassert(range_num() == 1);
     range_offsets_.push_back(1);
     if (dim_num > 1) {
       for (unsigned int i = 1; i < dim_num; ++i)
@@ -2216,11 +2229,8 @@ void Subarray::precompute_tile_overlap(
   auto fragment_num = meta.size();
 
   // Lookup the target maximum tile overlap size.
-  bool found = false;
-  uint64_t max_tile_overlap_size = 0;
-  throw_if_not_ok(config->get<uint64_t>(
-      "sm.max_tile_overlap_size", &max_tile_overlap_size, &found));
-  assert(found);
+  const uint64_t max_tile_overlap_size =
+      config->get<uint64_t>("sm.max_tile_overlap_size", Config::must_find);
 
   uint64_t tile_overlap_start = start_range_idx;
   uint64_t tile_overlap_end = end_range_idx;
@@ -2416,12 +2426,12 @@ Subarray Subarray::clone() const {
 
 TileOverlap Subarray::compute_tile_overlap(
     uint64_t range_idx, unsigned fid) const {
-  assert(array_->array_schema_latest().dense());
+  iassert(array_->array_schema_latest().dense());
   auto type{array_->array_schema_latest().dimension_ptr(0)->type()};
 
   auto g = [&](auto T) {
     if constexpr (std::is_same_v<decltype(T), char>) {
-      assert(false);
+      stdx::unreachable();
       return TileOverlap();
     } else {
       return compute_tile_overlap<decltype(T)>(range_idx, fid);
@@ -2433,7 +2443,7 @@ TileOverlap Subarray::compute_tile_overlap(
 template <class T>
 TileOverlap Subarray::compute_tile_overlap(
     uint64_t range_idx, unsigned fid) const {
-  assert(array_->array_schema_latest().dense());
+  iassert(array_->array_schema_latest().dense());
   TileOverlap ret;
   auto ndrange = this->ndrange(range_idx);
 
@@ -2541,12 +2551,14 @@ void Subarray::get_expanded_coordinates(
           layout_;
   if (coords_layout == Layout::GLOBAL_ORDER ||
       coords_layout == Layout::HILBERT) {
-    assert(*start_coords == *end_coords);
+    iassert(*start_coords == *end_coords);
     return;
   }
 
-  assert(
-      coords_layout == Layout::ROW_MAJOR || coords_layout == Layout::COL_MAJOR);
+  iassert(
+      coords_layout == Layout::ROW_MAJOR || coords_layout == Layout::COL_MAJOR,
+      "layout = {}",
+      layout_str(coords_layout));
 
   const uint32_t dim_num = array_->array_schema_latest().dim_num();
 
@@ -2560,7 +2572,7 @@ void Subarray::get_expanded_coordinates(
       ++deviation_d;
     }
   } else {
-    assert(coords_layout == Layout::COL_MAJOR);
+    passert(coords_layout == Layout::COL_MAJOR);
     deviation_d = dim_num - 1;
     while (deviation_d > 0) {
       if ((*start_coords)[deviation_d] != (*end_coords)[deviation_d])
@@ -2576,7 +2588,7 @@ void Subarray::get_expanded_coordinates(
   if (coords_layout == Layout::ROW_MAJOR) {
     expand_d = deviation_d + 1;
   } else {
-    assert(coords_layout == Layout::COL_MAJOR);
+    passert(coords_layout == Layout::COL_MAJOR);
     expand_d = deviation_d - 1;
   }
 
@@ -2588,7 +2600,7 @@ void Subarray::get_expanded_coordinates(
       (*end_coords)[d] = range_subset_[d].num_ranges() - 1;
     }
   } else {
-    assert(coords_layout == Layout::COL_MAJOR);
+    passert(coords_layout == Layout::COL_MAJOR);
     for (int64_t d = expand_d; d >= 0; --d) {
       (*start_coords)[d] = 0;
       (*end_coords)[d] = range_subset_[d].num_ranges() - 1;

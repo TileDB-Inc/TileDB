@@ -35,6 +35,7 @@
 #include <sstream>
 
 #include "config.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
@@ -715,7 +716,7 @@ void Config::inherit(const Config& config) {
   auto set_params = config.set_params();
   for (const auto& p : set_params) {
     auto v = config.get(p, &found);
-    assert(found);
+    passert(found);
     throw_if_not_ok(set(p, v));
   }
 }

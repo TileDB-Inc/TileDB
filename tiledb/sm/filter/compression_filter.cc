@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -169,8 +170,7 @@ FilterType CompressionFilter::compressor_to_filter(Compressor compressor) {
     case Compressor::DELTA:
       return FilterType::FILTER_DELTA;
     default:
-      assert(false);
-      return FilterType::FILTER_NONE;
+      stdx::unreachable();
   }
 }
 
@@ -195,8 +195,7 @@ Compressor CompressionFilter::filter_to_compressor(FilterType type) {
     case FilterType::FILTER_DELTA:
       return Compressor::DELTA;
     default:
-      assert(false);
-      return Compressor::NO_COMPRESSION;
+      stdx::unreachable();
   }
 }
 
@@ -291,7 +290,7 @@ void CompressionFilter::run_forward(
   // Ensure space in output buffer for worst case.
   throw_if_not_ok(output->prepend_buffer(output_size_ub));
   Buffer* buffer_ptr = output->buffer_ptr(0);
-  assert(buffer_ptr != nullptr);
+  passert(buffer_ptr != nullptr);
   buffer_ptr->reset_offset();
 
   // Compress all parts.
@@ -324,10 +323,10 @@ Status CompressionFilter::run_reverse(
   // Get a buffer for output.
   RETURN_NOT_OK(output->prepend_buffer(0));
   Buffer* data_buffer = output->buffer_ptr(0);
-  assert(data_buffer != nullptr);
+  passert(data_buffer != nullptr);
   RETURN_NOT_OK(output_metadata->prepend_buffer(0));
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
-  assert(metadata_buffer != nullptr);
+  passert(metadata_buffer != nullptr);
 
   if ((filter_data_type_ == Datatype::STRING_ASCII ||
        filter_data_type_ == Datatype::STRING_UTF8) &&
@@ -395,7 +394,7 @@ Status CompressionFilter::compress_part(
           output);
       break;
     default:
-      assert(0);
+      stdx::unreachable();
   }
 
   if (output->size() > std::numeric_limits<uint32_t>::max())
@@ -440,7 +439,7 @@ Status CompressionFilter::decompress_part(
   Status st = Status::Ok();
   switch (compressor_) {
     case Compressor::NO_COMPRESSION:
-      assert(0);
+      stdx::unreachable();
       break;
     case Compressor::GZIP:
       GZip::decompress(&input_buffer, &output_buffer);
@@ -584,7 +583,7 @@ Status CompressionFilter::compress_var_string_coords(
   // Allocate output data buffer
   RETURN_NOT_OK(output.prepend_buffer(output_size_ub));
   Buffer* data_buffer = output.buffer_ptr(0);
-  assert(data_buffer != nullptr);
+  passert(data_buffer != nullptr);
   data_buffer->reset_offset();
   data_buffer->set_size(output_size_ub);
   auto output_view = span<std::byte>(
