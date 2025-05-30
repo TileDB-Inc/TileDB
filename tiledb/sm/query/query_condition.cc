@@ -31,10 +31,10 @@
  */
 
 #include "tiledb/sm/query/query_condition.h"
-#include "build/tiledb/oxidize/target/cxxbridge/expr/src/lib.rs.h"
 #include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/oxidize/expr.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
@@ -3006,4 +3006,4 @@ template Status QueryCondition::apply_sparse<uint8_t>(
 template Status QueryCondition::apply_sparse<uint64_t>(
     const QueryCondition::Params&, ResultTile&, tdb::pmr::vector<uint64_t>&);
 }  // namespace tiledb::sm
-                          
+

@@ -32,8 +32,8 @@
  */
 
 #include "tiledb.h"
-#include "build/tiledb/oxidize/target/cxxbridge/expr/src/lib.rs.h"
 #include "build/tiledb/oxidize/target/cxxbridge/rust/cxx.h"
+#include "tiledb/oxidize/expr.h"
 #include "tiledb_experimental.h"
 #include "tiledb_serialization.h"
 #include "tiledb_struct_def.h"
