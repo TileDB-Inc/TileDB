@@ -40,6 +40,7 @@
 #include "attribute_experimental.h"
 #include "dimension_label_experimental.h"
 #include "enumeration_experimental.h"
+#include "profile_experimental.h"
 #include "consolidation_plan_experimental.h"
 #include "profile_experimental.h"
 #include "query_condition_experimental.h"

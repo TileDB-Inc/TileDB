@@ -210,6 +210,31 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "C API: tiledb_config_set_profile argument validation", "[capi][config]") {
+  ordinary_config x;
+  SECTION("success") {
+    auto rc{tiledb_config_set_profile(x.config, "foo", "bar", &x.error)};
+    CHECK(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null profile name") {
+    auto rc{tiledb_config_set_profile(x.config, nullptr, "bar", &x.error)};
+    CHECK(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null profile dir") {
+    auto rc{tiledb_config_set_profile(x.config, "foo", nullptr, &x.error)};
+    CHECK(tiledb_status(rc) == TILEDB_OK);
+  }
+  SECTION("null config") {
+    auto rc{tiledb_config_set_profile(nullptr, "foo", "bar", &x.error)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null error") {
+    auto rc{tiledb_config_set_profile(x.config, "foo", "bar", nullptr)};
+    CHECK(tiledb_status(rc) == TILEDB_INVALID_ERROR);
+  }
+}
+
+TEST_CASE(
     "C API: tiledb_config_compare argument validation", "[capi][config]") {
   ordinary_config x, y;  // Empty configurations are equal.
   uint8_t result;

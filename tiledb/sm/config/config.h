@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@
 #include <vector>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/rest/rest_profile.h"
 
 /*
  * C++14 introduced the attribute [[deprecated]], but no conditional syntax
@@ -745,6 +746,18 @@ class Config {
    */
   Status unset(const std::string& param);
 
+  /**
+   * Sets the profile to use for the config.
+   *
+   * @param profile_name The name of the profile to set.
+   * @param profile_dir The home directory of the profile to set.
+   *
+   * Throws ConfigException if the profile is not found.
+   */
+  Status set_profile(
+      const std::optional<std::string>& profile_name = std::nullopt,
+      const std::optional<std::string>& profile_dir = std::nullopt);
+
   /** Inherits the **set** parameters of the input `config`. */
   void inherit(const Config& config);
 
@@ -765,6 +778,15 @@ class Config {
 
   /** Stores the parameters set by the user. */
   std::set<std::string> set_params_;
+
+  /** Stores the RestProfile loaded. */
+  mutable std::optional<RestProfile> rest_profile_;
+
+  /** Stores whether the default REST profile was previously attempted
+   * to be fetched and failed. This is used to avoid repeatedly trying to
+   * fetch the default profile if it has failed once.
+   */
+  mutable bool default_rest_profile_not_found_ = false;
 
   /* ********************************* */
   /*          PRIVATE CONSTANTS        */
@@ -812,18 +834,24 @@ class Config {
   const char* get_from_config(const std::string& param, bool* found) const;
 
   /**
-   * Get a configuration parameter from config object or environmental variables
+   * Get a configuration parameter from config object or a fallback
+   * (environmental variables or profiles).
+   *
+   * @pre When using the third (profiles) fallback, the profile to be
+   * parsed has been set on the config using `set_profile`.
+   * Elsewise, the default profile is used if found.
    *
    * The order we look for values are
-   * 1. user set config parameters
+   * 1. user-set config parameters
    * 2. env variables
-   * 3. default config value
+   * 3. user-set profiles
+   * 4. default config value
    *
    * @param param parameter to fetch
    * @param found pointer to bool to set if parameter was found or not
    * @return parameter value if found or empty string if not
    */
-  const char* get_from_config_or_env(
+  const char* get_from_config_or_fallback(
       const std::string& param, bool* found) const;
 
   template <class T, bool must_find_>

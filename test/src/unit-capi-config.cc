@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -101,9 +101,7 @@ void check_load_incorrect_file_cannot_open() {
   rc = tiledb_config_load_from_file(config, "non_existent_file", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
-  check_error(
-      error,
-      "[TileDB::Config] Error: Failed to open config file 'non_existent_file'");
+  check_error(error, "Config: Failed to open config file 'non_existent_file'");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
   CHECK(config == nullptr);
@@ -130,7 +128,7 @@ void check_load_incorrect_file_missing_value() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Missing parameter value (line: 1)");
   tiledb_error_free(&error);
   CHECK(error == nullptr);
@@ -160,7 +158,7 @@ void check_load_incorrect_file_extra_word() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Invalid line format (line: 3)");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
