@@ -75,7 +75,7 @@ jobs:
     container: ${{ matrix.manylinux || '' }}
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      VCPKG_BINARY_SOURCES: 'clear;'
 
     steps:
       - name: Checkout TileDB
@@ -84,12 +84,6 @@ jobs:
       - name: 'Homebrew setup'
         run: brew install automake ninja
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
-      - name: Export GitHub Actions cache variables
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - name: Set variables
         id: get-values
         run: |

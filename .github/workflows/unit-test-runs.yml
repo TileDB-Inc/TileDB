@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  VCPKG_BINARY_SOURCES: 'clear;'
 
 jobs:
   build:
@@ -47,14 +47,6 @@ jobs:
         if: ${{ startsWith(matrix.os, 'windows-') }}
         with:
           arch: x64
-
-      # Configure required environment variables for vcpkg to use
-      # GitHub's Action Cache
-      - uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: 'Print env'
         run: |
