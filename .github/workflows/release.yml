@@ -75,7 +75,6 @@ jobs:
     container: ${{ matrix.manylinux || '' }}
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
-      VCPKG_BINARY_SOURCES: 'clear;'
 
     steps:
       - name: Checkout TileDB

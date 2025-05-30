@@ -45,7 +45,6 @@ jobs:
         env:
           TILEDB_HOME: ${{ github.workspace }}
           MINGW_ARCH: ${{ matrix.msystem }}
-          VCPKG_BINARY_SOURCES: 'clear;'
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         shell: c:\rtools40\usr\bin\bash.exe --login {0}
       - name: Set variables

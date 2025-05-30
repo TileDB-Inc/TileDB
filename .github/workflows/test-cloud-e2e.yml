@@ -13,7 +13,6 @@ on:
       - release-*
 
 env:
-  VCPKG_BINARY_SOURCES: 'clear;'
   SCCACHE_GHA_ENABLED: "true"
 
 jobs:

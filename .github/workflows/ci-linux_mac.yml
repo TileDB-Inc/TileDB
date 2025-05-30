@@ -78,7 +78,6 @@ env:
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
   CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
   bootstrap_args: "--enable-assertions --enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'arm64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
-  VCPKG_BINARY_SOURCES: 'clear;'
   SCCACHE_GHA_ENABLED: "true"
 
 jobs:

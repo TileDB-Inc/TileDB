@@ -55,7 +55,6 @@ jobs:
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
-      VCPKG_BINARY_SOURCES: 'clear;'
     steps:
       - name: 'tiledb env prep'
         run: |
