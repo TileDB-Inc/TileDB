@@ -65,15 +65,17 @@ void CountAggregatorBase<ValidityPolicy>::validate_output_buffer(
 template <class ValidityPolicy>
 void CountAggregatorBase<ValidityPolicy>::aggregate_data(
     AggregateBuffer& input_data) {
-  tuple<uint8_t, uint64_t> res;
+  uint64_t res;
 
   if (input_data.is_count_bitmap()) {
-    res = aggregate_with_count_.template aggregate<uint64_t>(input_data);
+    res = std::get<1>(
+        aggregate_with_count_.template aggregate<uint64_t>(input_data));
   } else {
-    res = aggregate_with_count_.template aggregate<uint8_t>(input_data);
+    res = std::get<1>(
+        aggregate_with_count_.template aggregate<uint8_t>(input_data));
   }
 
-  count_ += std::get<1>(res);
+  count_ += res;
 }
 
 template <class ValidityPolicy>
