@@ -47,9 +47,9 @@ using namespace tiledb::common;
 
 namespace tiledb::sm::global_state {
 
-GlobalState& GlobalState::GetGlobalState() {
+shared_ptr<GlobalState> GlobalState::GetGlobalState() {
   // This is thread-safe in C++11.
-  static GlobalState globalState;
+  static shared_ptr<GlobalState> globalState = make_shared<GlobalState>(HERE());
   return globalState;
 }
 

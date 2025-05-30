@@ -60,18 +60,17 @@ StorageManagerCanonical::StorageManagerCanonical(
     ContextResources& resources,
     const shared_ptr<Logger>&,  // unused
     const Config& config)
-    : vfs_(resources.vfs())
+    : global_state_(global_state::GlobalState::GetGlobalState())
+    , vfs_(resources.vfs())
     , cancellation_in_progress_(false)
     , config_(config)
     , queries_in_progress_(0) {
-  auto& global_state = global_state::GlobalState::GetGlobalState();
-  global_state.init(config_);
-
-  global_state.register_storage_manager(this);
+  global_state_->init(config_);
+  global_state_->register_storage_manager(this);
 }
 
 StorageManagerCanonical::~StorageManagerCanonical() {
-  global_state::GlobalState::GetGlobalState().unregister_storage_manager(this);
+  global_state_->unregister_storage_manager(this);
 
   throw_if_not_ok(cancel_all_tasks());
 
