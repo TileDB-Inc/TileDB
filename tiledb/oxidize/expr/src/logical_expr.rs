@@ -333,7 +333,16 @@ fn leaf_ast_to_null_test(schema: &ArraySchema, ast: &ASTNode) -> Result<Expr, Er
     match *ast.get_op() {
         QueryConditionOp::EQ => Ok(Expr::IsNull(Box::new(column))),
         QueryConditionOp::NE => Ok(Expr::IsNotNull(Box::new(column))),
-        QueryConditionOp::ALWAYS_TRUE => Ok(Expr::Literal(ScalarValue::Boolean(Some(true)))),
+        QueryConditionOp::ALWAYS_TRUE => {
+            if field.nullable() {
+                // NB: `ALWAYS_TRUE` doesn't actually mean it,
+                // there is always a validity check in the query condition
+                // which we must replicate here
+                Ok(Expr::IsNotNull(Box::new(column)))
+            } else {
+                Ok(Expr::Literal(ScalarValue::Boolean(Some(true))))
+            }
+        }
         QueryConditionOp::ALWAYS_FALSE => Ok(Expr::Literal(ScalarValue::Boolean(Some(false)))),
         QueryConditionOp::LT
         | QueryConditionOp::LE
@@ -438,7 +447,28 @@ fn to_datafusion_impl(schema: &ArraySchema, query_condition: &ASTNode) -> Result
             )?),
             QueryConditionOp::IN => leaf_ast_to_in_list(schema, query_condition, false),
             QueryConditionOp::NOT_IN => leaf_ast_to_in_list(schema, query_condition, true),
-            QueryConditionOp::ALWAYS_TRUE => Ok(Expr::Literal(ScalarValue::Boolean(Some(true)))),
+            QueryConditionOp::ALWAYS_TRUE => {
+                let Some(field) = schema.field_cxx(query_condition.get_field_name()) else {
+                    return Err(UserError::UnknownField(
+                        query_condition
+                            .get_field_name()
+                            .to_string_lossy()
+                            .into_owned(),
+                    )
+                    .into());
+                };
+                if field.nullable() {
+                    let column = Expr::Column(Column::from_name(
+                        field.name().map_err(UserError::FieldNameNotUtf8)?,
+                    ));
+                    // NB: `ALWAYS_TRUE` doesn't actually mean it,
+                    // there is always a validity check in the query condition
+                    // which we must replicate here
+                    Ok(Expr::IsNotNull(Box::new(column)))
+                } else {
+                    Ok(Expr::Literal(ScalarValue::Boolean(Some(true))))
+                }
+            }
             QueryConditionOp::ALWAYS_FALSE => Ok(Expr::Literal(ScalarValue::Boolean(Some(false)))),
             invalid => return Err(InternalError::InvalidOp(invalid.repr.into()).into()),
         }
