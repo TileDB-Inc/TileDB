@@ -52,7 +52,7 @@ struct FileFx {
   tiledb_config_t* config_;
 
   // Vector of supported filesystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
 
   std::string compression_file_path_;
   uint32_t expected_nfilters_;

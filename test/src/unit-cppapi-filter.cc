@@ -36,6 +36,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 static void check_filters(
     const tiledb::FilterList& answer, const tiledb::FilterList& check) {
@@ -48,7 +49,7 @@ static void check_filters(
 }
 
 TEST_CASE("C++ API: Filter options", "[cppapi][filter]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // Test filter creation and option setting/getting
   Filter f(ctx, TILEDB_FILTER_BZIP2);
@@ -107,7 +108,7 @@ TEST_CASE("C++ API: Filter options", "[cppapi][filter]") {
 }
 
 TEST_CASE("C++ API: Filter lists", "[cppapi][filter]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   Filter f1(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION),
       f2(ctx, TILEDB_FILTER_BZIP2);
@@ -142,8 +143,8 @@ TEST_CASE("C++ API: Filter lists", "[cppapi][filter]") {
 TEST_CASE(
     "C++ API: Filter lists on array",
     "[cppapi][filter][rest-fails][sc-45554]") {
-  test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create schema with filter lists
@@ -298,8 +299,8 @@ TEST_CASE(
     "[cppapi][filter][rle-strings][dict-strings][sparse][rest]") {
   auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
 
-  test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create schema with filter lists
@@ -421,8 +422,8 @@ TEST_CASE(
     "[cppapi][filter][rle-strings][dict-strings][dense][rest]") {
   auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
 
-  test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create schema with filter lists
@@ -476,8 +477,8 @@ TEST_CASE(
     "[cppapi][filter][rle-strings][dict-strings][sparse][utf-8][rest]") {
   auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
 
-  test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create schema with filter lists
@@ -555,8 +556,8 @@ TEST_CASE(
     "[cppapi][filter][rle-strings][dict-strings][empty-strings][rest]") {
   auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
 
-  test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create array with string dimension and one attribute

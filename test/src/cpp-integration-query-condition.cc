@@ -38,9 +38,11 @@
 
 #include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 int num_rows = 20;
 int a_fill_value = -1;
@@ -328,8 +330,8 @@ TEST_CASE(
       TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Create an empty query condition
@@ -361,8 +363,8 @@ TEST_CASE(
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
 
-  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get(), false);
-  auto ctx2 = vfs_test_setup2.ctx();
+  auto vfs_test_setup2 = tiledb::test::VFSTempDir(config.ptr().get(), false);
+  auto ctx2 = vfs_test_setup2->ctx();
   Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 
@@ -386,8 +388,8 @@ TEST_CASE(
     "[query][query-condition][rest]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Define query condition (b < 4.0).
@@ -427,8 +429,8 @@ TEST_CASE(
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get(), false);
-  auto ctx2 = vfs_test_setup2.ctx();
+  auto vfs_test_setup2 = tiledb::test::VFSTempDir(config.ptr().get(), false);
+  auto ctx2 = vfs_test_setup2->ctx();
   Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 
@@ -513,8 +515,8 @@ TEST_CASE(
     "[query][query-condition][negation][rest]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  test::VFSTestSetup vfs_test_setup;
-  Context ctx{vfs_test_setup.ctx()};
+  test::VFSTempDir vfs_test_setup;
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Define query condition (b < 4.0).
@@ -558,7 +560,7 @@ TEST_CASE(
   }
 
   vfs_test_setup.update_config(config.ptr().get());
-  Context ctx2 = vfs_test_setup.ctx();
+  Context ctx2 = vfs_test_setup->ctx();
 
   Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
@@ -644,7 +646,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -775,7 +777,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -916,7 +918,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1043,7 +1045,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1190,7 +1192,7 @@ TEST_CASE(
     "[query][query-condition]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1355,7 +1357,7 @@ TEST_CASE(
     "[query][query-condition][utf8]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1536,7 +1538,7 @@ TEST_CASE(
 TEST_CASE(
     "Testing dense query condition with overlapping fragment domains",
     "[query][query-condition][dense][overlapping-fd]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1612,7 +1614,7 @@ TEST_CASE(
 TEST_CASE(
     "Testing sparse query condition with the same fragment domain.",
     "[query][query-condition][sparse][same-fd]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1691,7 +1693,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1836,7 +1838,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1996,7 +1998,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2141,7 +2143,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2305,7 +2307,7 @@ TEST_CASE(
     "[query][query-condition][dimension]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2487,7 +2489,7 @@ TEST_CASE(
 TEST_CASE(
     "Testing read query with simple QC, condition on dimensions, string dim",
     "[query][query-condition][dimension]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2569,7 +2571,7 @@ TEST_CASE(
     "[query][query-condition][attr-not-in-buffers]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -2688,7 +2690,7 @@ TEST_CASE(
 TEST_CASE(
     "Testing read query with simple QC, condition on attribute, bool attr",
     "[query][query-condition][dimension]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {

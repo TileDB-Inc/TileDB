@@ -43,7 +43,7 @@ using namespace tiledb::test;
 
 /** Tests for CPP API partial attribute write. */
 struct CppPartialAttrWriteFx {
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
 
   // TileDB context.
   Context ctx_;
@@ -83,7 +83,7 @@ CppPartialAttrWriteFx::CppPartialAttrWriteFx()
   Config config;
   config["sm.allow_separate_attribute_writes"] = "true";
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
 }
 
 void CppPartialAttrWriteFx::create_sparse_array(bool allows_dups) {
@@ -352,7 +352,7 @@ TEST_CASE_METHOD(
       array,
       query);
   write_sparse_a1(*query, {0, 1, 2, 3, 4, 5, 6, 7});
-  if (vfs_test_setup_.is_rest()) {
+  if (vfs_test_setup_->is_rest()) {
     CHECK_THROWS(query->finalize());
   } else {
     CHECK_THROWS_WITH(

@@ -43,6 +43,8 @@ TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "Get dimension label from schema",
     "[cppapi][ArraySchema][DimensionLabel]") {
+  auto ctx = get_ctx();
+
   // Set array name.
   auto array_name = fullpath("simple_array_with_label");
 

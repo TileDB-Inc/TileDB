@@ -92,6 +92,22 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 // objects that require a parent `Logger` object.
 shared_ptr<Logger> g_helper_logger(void);
 
+/**
+ * @return a vanilla context for CPP API tests which don't need to configure it.
+ *
+ * This reduces thread creation/joining overhead because not all
+ * tests need to construct/destruct a context.
+ */
+Context& vanilla_context_cpp(void);
+
+/**
+ * @return a vanilla context for C API tests which don't need to configure it.
+ *
+ * This reduces thread creation/joining overhead because not all
+ * tests need to construct/destruct a context.
+ */
+tiledb_ctx_t* vanilla_context_c(void);
+
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
