@@ -424,6 +424,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 
 # List of libraries to be linked to TILEDB_CORE_OBJECTS.
 set(TILEDB_CORE_OBJECTS_LIBS
+  assert
   baseline
 )
 

@@ -42,6 +42,7 @@ add_library(ast_test_support_lib STATIC EXCLUDE_FROM_ALL ${AST_TEST_SUPPORT_SOUR
 if (NOT MSVC)
   target_compile_options(ast_test_support_lib PRIVATE -Wno-deprecated-declarations)
 endif()
+target_link_libraries(ast_test_support_lib PUBLIC assert)
 ################################################################
 #
 # End ast_test_support_lib

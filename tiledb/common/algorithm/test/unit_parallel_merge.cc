@@ -30,6 +30,7 @@
 
 #include "tiledb/common/algorithm/parallel_merge.h"
 
+#include <test/support/assert_helpers.h>
 #include <test/support/src/mem_helpers.h>
 #include <test/support/tdb_catch.h>
 #include <test/support/tdb_rapidcheck.h>
@@ -134,11 +135,12 @@ struct VerifySplitPointStream {
   uint64_t which;
   MergeUnit search_bounds;
 
+  template <typename Asserter = tiledb::test::AsserterRapidcheck>
   void verify() {
-    RC_ASSERT(streams.size() == search_bounds.starts.size());
-    RC_ASSERT(search_bounds.starts.size() == search_bounds.ends.size());
+    ASSERTER(streams.size() == search_bounds.starts.size());
+    ASSERTER(search_bounds.starts.size() == search_bounds.ends.size());
 
-    RC_ASSERT(search_bounds.starts[which] < search_bounds.ends[which]);
+    ASSERTER(search_bounds.starts[which] < search_bounds.ends[which]);
 
     std::vector<std::span<T>> spans;
     for (auto& stream : streams) {
@@ -153,16 +155,16 @@ struct VerifySplitPointStream {
         which,
         search_bounds);
 
-    RC_ASSERT(result.ends[which] > 0);
+    ASSERTER(result.ends[which] > 0);
 
     const auto& split_point = streams[which][search_bounds.ends[which] - 1];
 
     for (size_t s = 0; s < streams.size(); s++) {
-      RC_ASSERT(result.starts[s] == search_bounds.starts[s]);
-      RC_ASSERT(result.ends[s] <= search_bounds.ends[s]);
+      ASSERTER(result.starts[s] == search_bounds.starts[s]);
+      ASSERTER(result.ends[s] <= search_bounds.ends[s]);
 
       for (size_t i = result.starts[s]; i < result.ends[s]; i++) {
-        RC_ASSERT(streams[s][i] <= split_point);
+        ASSERTER(streams[s][i] <= split_point);
       }
     }
   }
@@ -173,6 +175,7 @@ struct VerifyIdentifyMergeUnit {
   Streams<T> streams;
   uint64_t target_items;
 
+  template <typename Asserter = tiledb::test::AsserterRapidcheck>
   void verify() {
     std::vector<std::span<T>> spans;
     for (auto& stream : streams) {
@@ -186,18 +189,18 @@ struct VerifyIdentifyMergeUnit {
     auto cmp = std::less<T>{};
     auto result = ParallelMerge<decltype(spans)>::identify_merge_unit(
         spans, &cmp, memory, target_items);
-    RC_ASSERT(target_items == result.num_items());
+    ASSERTER(target_items == result.num_items());
 
     for (size_t s = 0; s < streams.size(); s++) {
       if (streams[s].empty()) {
-        RC_ASSERT(result.starts[s] == 0);
-        RC_ASSERT(result.ends[s] == 0);
+        ASSERTER(result.starts[s] == 0);
+        ASSERTER(result.ends[s] == 0);
       } else if (result.starts[s] == result.ends[s]) {
         // this stream is not used at all, its first item must exceed
         // what lies at the boundary for all other streams
         for (size_t s2 = 0; s2 < streams.size(); s2++) {
           if (result.starts[s2] != result.ends[s2]) {
-            RC_ASSERT(streams[s][0] >= streams[s2][result.ends[s2] - 1]);
+            ASSERTER(streams[s][0] >= streams[s2][result.ends[s2] - 1]);
           }
         }
       } else {
@@ -211,7 +214,7 @@ struct VerifyIdentifyMergeUnit {
             // we can infer no relation to `bound_item`
             continue;
           } else {
-            RC_ASSERT(bound_item <= streams[s2][result.ends[s2]]);
+            ASSERTER(bound_item <= streams[s2][result.ends[s2]]);
           }
         }
       }
@@ -227,6 +230,7 @@ struct VerifyTournamentMerge {
   Streams<T> streams;
   MergeUnit unit;
 
+  template <typename Asserter = tiledb::test::AsserterRapidcheck>
   void verify() {
     auto cmp = std::less<T>{};
 
@@ -245,7 +249,7 @@ struct VerifyTournamentMerge {
 
     auto result = ParallelMerge<decltype(spans)>::tournament_merge(
         spans, &cmp, unit, output_ptr);
-    RC_ASSERT(result.ok());
+    ASSERTER(result.ok());
 
     // compare against a naive and slow merge
     std::vector<T> inputcmp;
@@ -258,7 +262,7 @@ struct VerifyTournamentMerge {
     }
     std::sort(inputcmp.begin(), inputcmp.end());
 
-    RC_ASSERT(inputcmp == output);
+    ASSERTER(inputcmp == output);
   }
 };
 
@@ -268,6 +272,7 @@ struct VerifyParallelMerge {
   ParallelMergeOptions options;
   size_t pool_concurrency;
 
+  template <typename Asserter = tiledb::test::AsserterRapidcheck>
   void verify() {
     auto cmp = std::less<T>{};
 
@@ -304,14 +309,16 @@ struct VerifyParallelMerge {
     std::optional<uint64_t> bound;
     while ((bound = future->await()).has_value()) {
       if (prev_bound.has_value()) {
-        RC_ASSERT(*prev_bound < *bound);
-        RC_ASSERT(std::equal(
+        // NB: <= allows for a unit of size 0, which is unlikely but not
+        // impossible
+        ASSERTER(*prev_bound <= *bound);
+        ASSERTER(std::equal(
             inputcmp.begin() + *prev_bound,
             inputcmp.begin() + *bound,
             output.begin() + *prev_bound,
             output.begin() + *bound));
       } else {
-        RC_ASSERT(std::equal(
+        ASSERTER(std::equal(
             inputcmp.begin(),
             inputcmp.begin() + *bound,
             output.begin(),
@@ -320,7 +327,7 @@ struct VerifyParallelMerge {
       prev_bound = bound;
     }
 
-    RC_ASSERT(inputcmp == output);
+    ASSERTER(inputcmp == output);
   }
 };
 
@@ -1307,6 +1314,16 @@ TEST_CASE(
          8907676047014618471, 8913855313747888928});
 
     instance.verify();
+  }
+
+  SECTION("Empty merge unit") {
+    VerifyParallelMerge<uint64_t> instance;
+    instance.streams.push_back({0, 0, 0, 0});
+    instance.options.parallel_factor = 3;
+    instance.options.min_merge_items = 1;
+    instance.pool_concurrency = 1;
+
+    instance.verify<tiledb::test::AsserterCatch>();
   }
 
   SECTION("Rapidcheck") {

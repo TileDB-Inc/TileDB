@@ -25,7 +25,7 @@
 #
 
 add_executable(unit_capi_handle EXCLUDE_FROM_ALL)
-target_link_libraries(unit_capi_handle PUBLIC tiledb_Catch2WithMain)
+target_link_libraries(unit_capi_handle PUBLIC assert tiledb_Catch2WithMain)
 
 # Sources for code under test
 target_link_libraries(unit_capi_handle PUBLIC handle)

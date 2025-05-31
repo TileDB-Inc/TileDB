@@ -63,6 +63,7 @@ jobs:
             -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
+            -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_ARROW_TESTS=ON
 
