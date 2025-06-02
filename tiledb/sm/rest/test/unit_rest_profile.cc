@@ -221,10 +221,8 @@ TEST_CASE_METHOD(
   RestProfile p(create_profile());
 
   // Try to get a parameter with an empty name.
-  REQUIRE_THROWS_WITH(
-      p.get_param(""),
-      Catch::Matchers::ContainsSubstring(
-          "Failed to retrieve parameter; parameter name must not be empty."));
+  auto opt_emtpy_value = p.get_param("");
+  REQUIRE_FALSE(opt_emtpy_value.has_value());
 
   // Try to set a parameter with an empty name.
   REQUIRE_THROWS_WITH(
@@ -236,9 +234,8 @@ TEST_CASE_METHOD(
   p.set_param("rest.username", "");
 
   // Try to get a parameter with an invalid name (not starting with "rest.").
-  REQUIRE_THROWS_WITH(
-      p.get_param("username"),
-      Catch::Matchers::ContainsSubstring("Failed to retrieve parameter"));
+  auto opt_username_value = p.get_param("username");
+  REQUIRE_FALSE(opt_username_value.has_value());
 
   // Try to set a parameter with an invalid name (not starting with "rest.").
   REQUIRE_THROWS_WITH(

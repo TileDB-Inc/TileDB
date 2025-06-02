@@ -105,6 +105,12 @@ const std::string RestProfile::DEFAULT_PAYER_NAMESPACE{""};
 const std::string RestProfile::DEFAULT_TOKEN{""};
 const std::string RestProfile::DEFAULT_SERVER_ADDRESS{"https://api.tiledb.com"};
 const std::string RestProfile::DEFAULT_USERNAME{""};
+const std::vector<std::string> RestProfile::REST_PARAMETERS = {
+    "rest.password",
+    "rest.payer_namespace",
+    "rest.token",
+    "rest.server_address",
+    "rest.username"};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -162,17 +168,13 @@ void RestProfile::set_param(
   param_values_[param] = value;
 }
 
-const std::string& RestProfile::get_param(const std::string& param) const {
-  if (param.empty()) {
-    throw RestProfileException(
-        "Failed to retrieve parameter; parameter name must not be empty.");
-  }
-
+std::optional<const std::string> RestProfile::get_param(
+    const std::string& param) const {
   auto it = param_values_.find(param);
-  if (it == param_values_.end()) {
-    throw RestProfileException("Failed to retrieve parameter '" + param + "'");
+  if (it != param_values_.end()) {
+    return it->second;
   }
-  return it->second;
+  return std::nullopt;
 }
 
 /**
@@ -316,6 +318,13 @@ void RestProfile::load_from_json_file(const std::string& filename) {
     throw RestProfileException(
         "Failed to load profile; profile '" + name_ + "' does not exist.");
   }
+}
+
+bool RestProfile::can_have_parameter(std::string_view param) {
+  return std::find(
+             RestProfile::REST_PARAMETERS.begin(),
+             RestProfile::REST_PARAMETERS.end(),
+             param) != RestProfile::REST_PARAMETERS.end();
 }
 
 }  // namespace tiledb::sm

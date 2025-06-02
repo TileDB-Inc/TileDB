@@ -81,6 +81,9 @@ class RestProfile {
   /** The user's REST username. */
   static const std::string DEFAULT_USERNAME;
 
+  /** A vector of the REST parameters that can be set. */
+  static const std::vector<std::string> REST_PARAMETERS;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -138,12 +141,18 @@ class RestProfile {
   void set_param(const std::string& param, const std::string& value);
 
   /**
+   * Returns true if the given parameter can be handled by RestProfile.
+   */
+  static bool can_have_parameter(std::string_view param);
+
+  /**
    * Retrieves the value of the given parameter.
    *
    * @param param The parameter to fetch.
-   * @return The value of the given parameter.
+   * @return The value of the given parameter, or std::nullopt if the
+   * parameter does not exist.
    */
-  const std::string& get_param(const std::string& param) const;
+  std::optional<const std::string> get_param(const std::string& param) const;
 
   inline const std::map<std::string, std::string>& param_values() const {
     return param_values_;

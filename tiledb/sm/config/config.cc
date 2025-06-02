@@ -954,7 +954,7 @@ const char* Config::get_from_config_or_fallback(
     return value_env;
 
   // [3. profiles] -- only for rest.* params
-  if (param.rfind("rest.", 0) == 0) {
+  if (RestProfile::can_have_parameter(param)) {
     // If the there is no set profile and there was no previous attempt to
     // load the default profile, attempt to load it.
     if (!rest_profile_.has_value() && !default_rest_profile_not_found_) {
@@ -968,16 +968,15 @@ const char* Config::get_from_config_or_fallback(
     }
     // If the profile was loaded successfully, try to get the parameter from it.
     if (rest_profile_.has_value()) {
-      try {
-        const char* value = rest_profile_.value().get_param(param).c_str();
+      std::optional<std::string> value = rest_profile_.value().get_param(param);
+      if (value.has_value()) {
+        static std::string static_value;
+        static_value = value.value();
         *found = true;
-        return value;
-      } catch (const RestProfileException&) {
-        // Be silent if the parameter is not found in the profile.
+        return static_value.c_str();
       }
     }
   }
-
   // [4. default config value]
   *found = found_config;
 

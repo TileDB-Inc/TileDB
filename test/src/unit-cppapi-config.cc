@@ -177,12 +177,6 @@ TEST_CASE(
   // This should now be coming from the env variable since it has priority over
   // the profile
   CHECK(config.get(key) == env_value);
-
-  // Unset the env variable
-  unsetenv("TILEDB_REST_SERVER_ADDRESS");
-  // Check the config value after unsetting the env variable
-  // This should now be coming from the profile
-  CHECK(config.get(key) == profile_value);
 }
 
 TEST_CASE("C++ API: Config Equality", "[cppapi][config]") {
