@@ -230,6 +230,10 @@ else()
   message(STATUS "Building with std::pmr")
 endif()
 
+if (TILEDB_RUST)
+  include(FindCargo)
+endif ()
+
 #######################################################
 # Header Files
 #######################################################

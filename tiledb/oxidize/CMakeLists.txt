@@ -1,4 +1,4 @@
-find_program(CARGO cargo REQUIRED)
+# assumes cargo is found via `Modules/FindCargo.cmake`
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CARGO_PROFILE "dev")
