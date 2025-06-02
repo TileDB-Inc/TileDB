@@ -88,11 +88,11 @@ struct RestProfileFx {
 
   /** Returns true iff the profile's parameter values match the expected. */
   bool is_expected(RestProfile p, expected_values_t e) {
-    if (p.name() == e.name && p.get_param("rest.password") == e.password &&
-        p.get_param("rest.payer_namespace") == e.payer_namespace &&
-        p.get_param("rest.token") == e.token &&
-        p.get_param("rest.server_address") == e.server_address &&
-        p.get_param("rest.username") == e.username)
+    if (p.name() == e.name && *p.get_param("rest.password") == e.password &&
+        *p.get_param("rest.payer_namespace") == e.payer_namespace &&
+        *p.get_param("rest.token") == e.token &&
+        *p.get_param("rest.server_address") == e.server_address &&
+        *p.get_param("rest.username") == e.username)
       return true;
     return false;
   }
@@ -221,8 +221,8 @@ TEST_CASE_METHOD(
   RestProfile p(create_profile());
 
   // Try to get a parameter with an empty name.
-  auto opt_emtpy_value = p.get_param("");
-  REQUIRE_FALSE(opt_emtpy_value.has_value());
+  const std::string* value = p.get_param("");
+  REQUIRE(value == nullptr);
 
   // Try to set a parameter with an empty name.
   REQUIRE_THROWS_WITH(
@@ -234,8 +234,8 @@ TEST_CASE_METHOD(
   p.set_param("rest.username", "");
 
   // Try to get a parameter with an invalid name (not starting with "rest.").
-  auto opt_username_value = p.get_param("username");
-  REQUIRE_FALSE(opt_username_value.has_value());
+  value = p.get_param("username");
+  REQUIRE(value == nullptr);
 
   // Try to set a parameter with an invalid name (not starting with "rest.").
   REQUIRE_THROWS_WITH(
@@ -280,7 +280,7 @@ TEST_CASE_METHOD(
   // Create a second profile, ensuring the payer_namespace is inherited.
   RestProfile p2(create_profile());
   p2.load_from_file();
-  CHECK(p2.get_param("rest.payer_namespace") == payer_namespace);
+  CHECK(*p2.get_param("rest.payer_namespace") == payer_namespace);
 
   // Set a non-default token on the second profile.
   p2.set_param("rest.token", token);
@@ -295,7 +295,7 @@ TEST_CASE_METHOD(
   CHECK(is_expected(p2, e));
 
   // Ensure the first profile is now out of date.
-  CHECK(p.get_param("rest.token") == RestProfile::DEFAULT_TOKEN);
+  CHECK(*p.get_param("rest.token") == RestProfile::DEFAULT_TOKEN);
 }
 
 TEST_CASE_METHOD(
@@ -316,7 +316,7 @@ TEST_CASE_METHOD(
   // Create a second profile with non-default name and ensure the
   // payer_namespace and cloudtoken_ are NOT inherited.
   RestProfile p2(create_profile(name));
-  CHECK(p2.get_param("rest.payer_namespace") != payer_namespace);
+  CHECK(*p2.get_param("rest.payer_namespace") != payer_namespace);
   p2.save_to_file();
   e.name = name;
   e.payer_namespace = RestProfile::DEFAULT_PAYER_NAMESPACE;

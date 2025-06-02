@@ -968,12 +968,10 @@ const char* Config::get_from_config_or_fallback(
     }
     // If the profile was loaded successfully, try to get the parameter from it.
     if (rest_profile_.has_value()) {
-      std::optional<std::string> value = rest_profile_.value().get_param(param);
-      if (value.has_value()) {
-        static std::string static_value;
-        static_value = value.value();
+      const std::string* value = rest_profile_.value().get_param(param);
+      if (value) {
         *found = true;
-        return static_value.c_str();
+        return value->c_str();
       }
     }
   }

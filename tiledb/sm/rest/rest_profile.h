@@ -146,13 +146,13 @@ class RestProfile {
   static bool can_have_parameter(std::string_view param);
 
   /**
-   * Retrieves the value of the given parameter.
+   * Retrieves a pointer to the value of the given parameter.
    *
    * @param param The parameter to fetch.
-   * @return The value of the given parameter, or std::nullopt if the
-   * parameter does not exist.
+   * @return A pointer to the value of the parameter, or nullptr if the
+   * parameter is not set.
    */
-  std::optional<const std::string> get_param(const std::string& param) const;
+  const std::string* get_param(const std::string& param) const;
 
   inline const std::map<std::string, std::string>& param_values() const {
     return param_values_;
