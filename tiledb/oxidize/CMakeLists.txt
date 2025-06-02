@@ -23,7 +23,9 @@ if (WIN32)
     # using CFLAGS and CXXFLAGS.
     #
     # https://github.com/rust-lang/rust/issues/39016#issuecomment-853964918
-    set(TILEDB_OXIDIZE_CFLAGS "-MDd")
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(TILEDB_OXIDIZE_CFLAGS "-MDd")
+    endif ()
 
     # It is also necessary for some reason to specify the system libraries we need
     # to link with.  This should probably be obtained more scientfically
