@@ -42,7 +42,8 @@ endif ()
 #
 # Outputs:
 #   ${crate_name}_rs object library target
-#   Building this target produces the object library and also the `#[cxx::bridge]` files.
+#   Building this target produces the object library and also the `#[cxx::bridge]` files,
+#   which can be included in C++ source files via `#include "tiledb/oxidize/${crate_name}.h".
 function(add_crate)
     set(options)
     set(oneValueArgs NAME)
@@ -57,6 +58,12 @@ function(add_crate)
         message(SEND_ERROR "Function add_crate requires SOURCES argument, BRIDGES argument, or both")
     endif()
 
+    # Set up the `#[cxx::bridge]` file paths.
+    # Each crate can have one or more `BRIDGES` which are assumed to live in `src/`.
+    # This sets up the following mappings from bridge to header file:
+    # - `src/lib.rs` => `tiledb/oxidize/${ADD_CRATE_NAME}.h`
+    # - `src/module/mod.rs` => `tiledb/oxidize/module.h`
+    # - `src/module.rs` => `tiledb/oxidize/module.h`
     set(ADD_CRATE_BRIDGES_CC_OUT "")
     set(ADD_CRATE_BRIDGES_H_OUT "")
     set(ADD_CRATE_BRIDGES_H_DST "")
@@ -77,6 +84,7 @@ function(add_crate)
     list(TRANSFORM ADD_CRATE_BRIDGES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_CRATE_NAME}/)
     list(TRANSFORM ADD_CRATE_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_CRATE_NAME}/)
 
+    # Build the crate and produce `#[cxx::bridge]` output.
     add_custom_command(
         OUTPUT
             ${ADD_CRATE_BRIDGES_CC_OUT}
@@ -98,6 +106,7 @@ function(add_crate)
             ${CMAKE_CURRENT_BINARY_DIR}
     )
 
+    # Copy `#[cxx::bridge]` output to the target include directory with the sanitized name
     foreach (bridge_dst_h bridge_out_h IN ZIP_LISTS ADD_CRATE_BRIDGES_H_DST ADD_CRATE_BRIDGES_H_OUT)
         add_custom_command(
             OUTPUT
@@ -113,6 +122,8 @@ function(add_crate)
 
     add_custom_target(${ADD_CRATE_NAME}_h DEPENDS ${ADD_CRATE_BRIDGES_H_DST})
 
+    # And finally the object library to link with
+    #
     # Note: Object libraries are "{crate_name}_rs" to avoid clashing with the
     # existing object libraries.
     add_library(${ADD_CRATE_NAME}_rs OBJECT EXCLUDE_FROM_ALL ${ADD_CRATE_BRIDGES_CC_OUT})
@@ -147,4 +158,5 @@ add_crate(
         Cargo.toml
 )
 
+# `make clean` cleans up all cargo output and sanitized include paths
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} ${TILEDB_OXIDIZE_INCLUDE_DIR})
