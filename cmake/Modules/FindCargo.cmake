@@ -32,4 +32,4 @@ find_program(CARGO cargo REQUIRED)
 
 # `#[cxx::bridge]`-generated files will be sanitized and placed in
 # this directory to include from C++ source files
-set(TILEDB_OXIDIZE_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tiledb/oxidize/include PARENT_SCOPE)
+set(TILEDB_OXIDIZE_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tiledb/oxidize/include)
