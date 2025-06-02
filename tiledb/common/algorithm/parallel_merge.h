@@ -563,7 +563,7 @@ class ParallelMerge {
       uint64_t total_items,
       uint64_t target_unit_size,
       uint64_t p,
-      std::span<typename I::value_type::value_type> output,
+      std::span<T> output,
       ParallelMergeFuture* future) {
     const uint64_t output_end =
         std::min(total_items, (p + 1) * target_unit_size);
