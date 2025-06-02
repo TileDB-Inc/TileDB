@@ -290,12 +290,6 @@ struct VerifyIdentifyMergeUnit;
 template <typename T>
 struct VerifyTournamentMerge;
 
-template <typename T>
-concept ParallelMergeOutputBuffer = requires(T& buffer, size_t o) {
-  // require index operator lvalue assignment
-  buffer[o] = std::declval<decltype(buffer[o])>();
-};
-
 template <
     ParallelMergeable I,
     class Compare = std::less<typename I::value_type::value_type>>
@@ -328,9 +322,11 @@ class ParallelMerge {
    * identified by `unit`.  Writes results to the positions of `output`
    * identified by `unit`.
    */
-  template <ParallelMergeOutputBuffer O>
   static Status tournament_merge(
-      const I& streams, Compare* cmp, const MergeUnit& unit, O output) {
+      const I& streams,
+      Compare* cmp,
+      const MergeUnit& unit,
+      std::span<T> output) {
     std::vector<std::span<const T>> container;
     container.reserve(streams.size());
 
@@ -360,6 +356,7 @@ class ParallelMerge {
       // empty streams are not put on the priority queue
       iassert(!stream.empty());
 
+      iassert(o < output.size());
       output[o++] = stream.front();
 
       if (stream.size() > 1) {
@@ -558,7 +555,6 @@ class ParallelMerge {
    * to begin the tournament merge of that unit, and also identify
    * the next merge unit if there is another.
    */
-  template <ParallelMergeOutputBuffer O>
   static Status spawn_next_merge_unit(
       tiledb::common::ThreadPool* pool,
       const I& streams,
@@ -567,7 +563,7 @@ class ParallelMerge {
       uint64_t total_items,
       uint64_t target_unit_size,
       uint64_t p,
-      O output,
+      std::span<typename I::value_type::value_type> output,
       ParallelMergeFuture* future) {
     const uint64_t output_end =
         std::min(total_items, (p + 1) * target_unit_size);
@@ -578,7 +574,7 @@ class ParallelMerge {
     if (p == 0) {
       future->merge_bounds_[p] = accumulated_stream_bounds;
       auto unit_future = pool->execute(
-          tournament_merge<O>, streams, cmp, future->merge_bounds_[p], output);
+          tournament_merge, streams, cmp, future->merge_bounds_[p], output);
 
       future->merge_tasks_.push(ParallelMergeFuture::MergeUnitTask{
           .p_ = p, .task_ = std::move(unit_future)});
@@ -587,14 +583,14 @@ class ParallelMerge {
       future->merge_bounds_[p].ends = accumulated_stream_bounds.ends;
 
       auto unit_future = pool->execute(
-          tournament_merge<O>, streams, cmp, future->merge_bounds_[p], output);
+          tournament_merge, streams, cmp, future->merge_bounds_[p], output);
       future->merge_tasks_.push(ParallelMergeFuture::MergeUnitTask{
           .p_ = p, .task_ = std::move(unit_future)});
     }
 
     if (p < parallel_factor - 1) {
       pool->execute(
-          spawn_next_merge_unit<O>,
+          spawn_next_merge_unit,
           pool,
           streams,
           cmp,
@@ -611,21 +607,20 @@ class ParallelMerge {
     return tiledb::common::Status::Ok();
   }
 
-  template <ParallelMergeOutputBuffer O>
   static void spawn_merge_units(
       tiledb::common::ThreadPool& pool,
       size_t parallel_factor,
       uint64_t total_items,
       const I& streams,
       Compare& cmp,
-      O output,
+      std::span<T> output,
       ParallelMergeFuture& future) {
     // NB: round up, if there is a shorter merge unit it will be the last one.
     const uint64_t target_unit_size =
         (total_items + (parallel_factor - 1)) / parallel_factor;
 
     pool.execute(
-        spawn_next_merge_unit<O>,
+        spawn_next_merge_unit,
         &pool,
         streams,
         &cmp,
@@ -643,14 +638,13 @@ class ParallelMerge {
   friend struct VerifyTournamentMerge<T>;
 
  public:
-  template <ParallelMergeOutputBuffer O>
   static tdb::pmr::unique_ptr<ParallelMergeFuture> start(
       tiledb::common::ThreadPool& pool,
       ParallelMergeMemoryResources& memory,
       const ParallelMergeOptions& options,
       const I& streams,
       Compare& cmp,
-      O output) {
+      std::span<T> output) {
     uint64_t total_items = 0;
     for (const auto& stream : streams) {
       total_items += stream.size();
@@ -664,56 +658,24 @@ class ParallelMerge {
     tdb::pmr::unique_ptr<ParallelMergeFuture> future =
         tdb::pmr::emplace_unique<ParallelMergeFuture>(
             &memory.control, memory, parallel_factor);
-    ParallelMerge::spawn_merge_units<O>(
+    ParallelMerge::spawn_merge_units(
         pool, parallel_factor, total_items, streams, cmp, output, *future);
     return future;
   }
 };
 
-template <ParallelMergeable I, ParallelMergeOutputBuffer O, class Compare>
+template <ParallelMergeable I, class Compare>
 tdb::pmr::unique_ptr<ParallelMergeFuture> parallel_merge(
     tiledb::common::ThreadPool& pool,
     ParallelMergeMemoryResources& memory,
     const ParallelMergeOptions& options,
     const I& streams,
     Compare& cmp,
-    O output) {
-  return ParallelMerge<I, Compare>::template start<O>(
+    std::span<typename I::value_type::value_type> output) {
+  return ParallelMerge<I, Compare>::start(
       pool, memory, options, streams, cmp, output);
 }
 
 }  // namespace tiledb::algorithm
-
-namespace stdx {
-
-/**
- * Wrapper for `ParallelMergeOutputBuffer` types with a `size()` method
- * whose index operator asserts that indices are in bounds.
- */
-template <typename T>
-struct strict_index {
-  T value_;
-
- public:
-  strict_index(T&& value)
-      : value_(std::move(value)) {
-  }
-
-  template <typename IndexType>
-  decltype(value_[std::declval<IndexType>()]) operator[](IndexType i) {
-    assert(i < value_.size());
-    return value_[i];
-  }
-
-  template <typename IndexType>
-  decltype(std::declval<
-           std::add_const<decltype(value_)>>()[std::declval<IndexType>()])
-  operator[](IndexType i) const {
-    assert(i < value_.size());
-    return value_[i];
-  }
-};
-
-}  // namespace stdx
 
 #endif
