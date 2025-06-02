@@ -22,9 +22,7 @@ add_executable(
   try_assert.cc
 )
 
-find_package(spdlog CONFIG REQUIRED)
-
-target_link_libraries(try_assert PUBLIC spdlog::spdlog)
+target_link_libraries(try_assert PUBLIC assert)
 
 target_include_directories(try_assert
   PRIVATE
