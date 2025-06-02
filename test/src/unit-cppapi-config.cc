@@ -137,6 +137,7 @@ TEST_CASE(
   const std::string key = "rest.server_address";
   const std::string config_value = "test_config_localhost:8080";
   const std::string profile_value = "test_profile_localhost:8080";
+  const std::string env_value = "test_env_localhost:8080";
 
   // Set the config value
   config[key] = config_value;
@@ -164,7 +165,7 @@ TEST_CASE(
 
   // set an env variable using setenv_local("TILEDB_REST_SERVER_ADDRESS",
   // "test") to check the priority
-  setenv_local("TILEDB_REST_SERVER_ADDRESS", "test_env_localhost:8080");
+  setenv_local("TILEDB_REST_SERVER_ADDRESS", env_value.c_str());
   // Check the config value after setting the env variable
   // This should be still coming from the config since it has priority over both
   // the profile and the env variable
@@ -175,7 +176,7 @@ TEST_CASE(
   // Check the config value after unsetting
   // This should now be coming from the env variable since it has priority over
   // the profile
-  CHECK(config.get(key) == "test_env_localhost:8080");
+  CHECK(config.get(key) == env_value);
 
   // Unset the env variable
   unsetenv("TILEDB_REST_SERVER_ADDRESS");

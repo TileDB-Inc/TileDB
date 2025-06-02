@@ -718,12 +718,13 @@ void Config::inherit(const Config& config) {
 Status Config::set_profile(
     const std::optional<std::string>& profile_name,
     const std::optional<std::string>& profile_dir) {
-  // Create a Profile object
-  rest_profile_ = RestProfile(profile_name, profile_dir);
-
-  // Load the Profile
   try {
-    rest_profile_.value().load_from_file();
+    // Load the Profile
+    tiledb::sm::RestProfile loaded_profile =
+        RestProfile(profile_name, profile_dir);
+    loaded_profile.load_from_file();
+    // Set the profile
+    rest_profile_ = std::move(loaded_profile);
   } catch (const RestProfileException& e) {
     throw RestProfileException(
         "Failed to load profile; " + std::string(e.what()));
