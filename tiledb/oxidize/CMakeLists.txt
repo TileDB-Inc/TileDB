@@ -1,5 +1,18 @@
 # assumes cargo is found via `Modules/FindCargo.cmake`
 
+# now the sanitized rust header
+add_custom_command(
+    OUTPUT
+        ${RUST_H_DST}
+    COMMAND
+        ${CMAKE_COMMAND} -E copy ${RUST_H_OUT} ${RUST_H_DST}
+    DEPENDS
+        ${RUST_H_OUT}
+    WORKING_DIRECTORY
+        ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+
 # and now, the crates themselves!
 
 add_crate(

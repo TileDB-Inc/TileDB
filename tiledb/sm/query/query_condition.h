@@ -36,8 +36,8 @@
 #include <span>
 #include <unordered_set>
 
-#include "build/tiledb/oxidize/target/cxxbridge/rust/cxx.h"
 #include "tiledb/common/status.h"
+#include "tiledb/oxidize/rust.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
