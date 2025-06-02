@@ -31,6 +31,9 @@
 
 #include "tiledb/common/assert.h"
 
+#include <mutex>
+#include <vector>
+
 namespace tiledb::common {
 
 AssertFailure::AssertFailure(const std::string& what)
@@ -42,12 +45,39 @@ AssertFailure::AssertFailure(const std::string& what)
   throw AssertFailure(file, line, expr);
 }
 
+static std::mutex passertFailureCallbackMutex;
+static std::vector<std::function<void()>> passertFailureCallbacks;
+
+[[noreturn]] void passert_failure_abort(void) {
+  {
+    for (auto& callback : passertFailureCallbacks) {
+      std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
+      callback();
+    }
+  }
+
+  std::abort();
+}
+
 [[noreturn]] void passert_failure(
     const char* file, uint64_t line, const char* expr) {
   std::cerr << "FATAL TileDB core library internal error: " << expr
             << std::endl;
   std::cerr << "  " << file << ":" << line << std::endl;
-  std::abort();
+
+  passert_failure_abort();
+}
+
+PAssertFailureCallbackRegistration::PAssertFailureCallbackRegistration(
+    std::function<void()>&& callback) {
+  std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
+  passertFailureCallbacks.push_back(
+      std::forward<std::function<void()>>(callback));
+}
+
+PAssertFailureCallbackRegistration::~PAssertFailureCallbackRegistration() {
+  std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
+  passertFailureCallbacks.pop_back();
 }
 
 }  // namespace tiledb::common
