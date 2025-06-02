@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/mem_helpers.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -49,7 +50,7 @@ using tiledb::test::create_test_memory_tracker;
 template <class T, unsigned D>
 tdb::pmr::vector<NDRange> create_mbrs(
     const std::vector<T>& mbrs, shared_ptr<MemoryTracker> tracker) {
-  assert(mbrs.size() % 2 * D == 0);
+  iassert(mbrs.size() % (2 * D) == 0);
 
   uint64_t mbr_num = (uint64_t)(mbrs.size() / (2 * D));
   tdb::pmr::vector<NDRange> ret(
@@ -70,7 +71,7 @@ tdb::pmr::vector<NDRange> create_mbrs(
     const std::vector<T1>& r1,
     const std::vector<T2>& r2,
     shared_ptr<MemoryTracker> tracker) {
-  assert(r1.size() == r2.size());
+  iassert(r1.size() == r2.size());
 
   uint64_t mbr_num = (uint64_t)(r1.size() / 2);
   tdb::pmr::vector<NDRange> ret(
@@ -92,10 +93,10 @@ Domain create_domain(
     const std::vector<const void*>& dim_domains,
     const std::vector<const void*>& dim_tile_extents,
     shared_ptr<MemoryTracker> memory_tracker) {
-  assert(!dim_names.empty());
-  assert(dim_names.size() == dim_types.size());
-  assert(dim_names.size() == dim_domains.size());
-  assert(dim_names.size() == dim_tile_extents.size());
+  iassert(!dim_names.empty());
+  iassert(dim_names.size() == dim_types.size());
+  iassert(dim_names.size() == dim_domains.size());
+  iassert(dim_names.size() == dim_tile_extents.size());
 
   std::vector<shared_ptr<Dimension>> dimensions;
   for (size_t d = 0; d < dim_names.size(); ++d) {
@@ -829,7 +830,7 @@ TEST_CASE(
 template <unsigned D>
 tdb::pmr::vector<NDRange> create_str_mbrs(
     const std::vector<std::string>& mbrs, shared_ptr<MemoryTracker> tracker) {
-  assert(mbrs.size() % 2 * D == 0);
+  iassert(mbrs.size() % (2 * D) == 0);
 
   uint64_t mbr_num = (uint64_t)(mbrs.size() / (2 * D));
   tdb::pmr::vector<NDRange> ret(
@@ -852,8 +853,8 @@ tdb::pmr::vector<NDRange> create_str_int32_mbrs(
     const std::vector<std::string>& mbrs_str,
     const std::vector<int32_t> mbrs_int,
     shared_ptr<MemoryTracker> tracker) {
-  assert(mbrs_str.size() == mbrs_int.size());
-  assert(mbrs_str.size() % 2 == 0);
+  iassert(mbrs_str.size() == mbrs_int.size());
+  iassert(mbrs_str.size() % 2 == 0);
 
   uint64_t mbr_num = (uint64_t)(mbrs_str.size() / 2);
   tdb::pmr::vector<NDRange> ret(

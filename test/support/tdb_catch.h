@@ -57,6 +57,19 @@
 #include <catch2/reporters/catch_reporter_event_listener.hpp>
 #include <catch2/reporters/catch_reporter_registrars.hpp>
 
+namespace Catch {
+template <typename T>
+struct StringMaker<std::optional<T>> {
+  static std::string convert(std::optional<T> const& value) {
+    if (value.has_value()) {
+      return "Some(" + StringMaker<T>::convert(value.value()) + ")";
+    } else {
+      return "None";
+    }
+  }
+};
+}  // namespace Catch
+
 /*
  * Clean up preprocessor definitions
  */

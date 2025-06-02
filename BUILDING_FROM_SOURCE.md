@@ -53,7 +53,7 @@ To **install** to the configured prefix, run the following:
 $ make install
 ```
 
-Note that building against the installed shared library requires setting the library search path at build-time or run-time, as documented in [Usage](usage.md). System-wide installations requiring `sudo` permissions may avoid this step by running `sudo ldconfig` after installation.
+Note that building against the installed shared library requires setting the library search path at build-time or run-time, as documented in [Usage](USAGE.md). System-wide installations requiring `sudo` permissions may avoid this step by running `sudo ldconfig` after installation.
 
 Other helpful `Makefile` targets are as follows:
 

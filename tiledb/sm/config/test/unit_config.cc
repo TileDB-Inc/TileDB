@@ -127,6 +127,22 @@ TEST_CASE("Config::set_profile - failures", "[config]") {
   CHECK_THROWS(c.set_profile(profile_name, profile_dir).ok());
 }
 
+TEST_CASE("Config::set_params - set and unset", "[config]") {
+  Config c{};
+  std::string key{"the_key"};
+  std::string value{"the_value"};
+
+  // Set the parameter
+  CHECK(c.set(key, value).ok());
+  auto set_params = c.set_params();
+  CHECK(set_params.find(key) != set_params.end());
+
+  // Unset the parameter
+  CHECK(c.unset(key).ok());
+  set_params = c.set_params();
+  CHECK(set_params.find(key) == set_params.end());
+}
+
 TEST_CASE("Config::set_profile - found", "[config]") {
   Config c{};
   CHECK(c.set("rest.server_address", "http://test_server:8080").ok());

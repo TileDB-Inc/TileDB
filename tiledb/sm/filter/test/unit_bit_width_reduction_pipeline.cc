@@ -32,12 +32,20 @@
  *
  */
 
+#include "tiledb/sm/filter/bit_width_reduction_filter.h"
+#include "tiledb/sm/filter/test/filter_test_support.h"
+#include "tiledb/sm/filter/test/tile_data_generator.h"
+#include "tiledb/sm/tile/tile.h"
+
+#include "test/support/rapidcheck/datatype.h"
+
+#include <test/support/assert_helpers.h>
 #include <test/support/src/mem_helpers.h>
 #include <test/support/tdb_catch.h>
+#include <test/support/tdb_rapidcheck.h>
 #include <random>
-#include "../bit_width_reduction_filter.h"
-#include "filter_test_support.h"
 
+using namespace tiledb::common;
 using namespace tiledb::sm;
 
 TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
@@ -483,4 +491,51 @@ TEST_CASE(
   }
 
   WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+}
+
+TEST_CASE("Filter: Round trip BitWidthReduction", "[filter][rapidcheck]") {
+  tiledb::sm::Config config;
+
+  ThreadPool thread_pool(4);
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
+  auto doit = [&]<typename Asserter>(
+                  Datatype input_type, const std::vector<uint8_t>& data) {
+    VecDataGenerator<Asserter> tile_gen(input_type, data);
+
+    auto [input_tile, offsets_tile] = tile_gen.create_writer_tiles(tracker);
+
+    FilterPipeline pipeline;
+    pipeline.add_filter(BitWidthReductionFilter(input_type));
+
+    check_run_pipeline_roundtrip(
+        config,
+        thread_pool,
+        input_tile,
+        offsets_tile,
+        pipeline,
+        &tile_gen,
+        tracker);
+  };
+
+  SECTION("Example") {
+    const std::vector<uint8_t> data = {0, 0, 0, 0, 0, 0, 0, 1};
+    doit.operator()<tiledb::test::AsserterCatch>(Datatype::UINT64, data);
+  }
+
+  SECTION("Shrinking", "Examples found by rapidcheck") {
+    SECTION("Overflow") {
+      const std::vector<uint8_t> bytes = {0, 128, 127, 127};
+      doit.operator()<tiledb::test::AsserterCatch>(Datatype::INT16, bytes);
+    }
+  }
+
+  SECTION("Rapidcheck") {
+    rc::prop("Filter: Round trip BitWidthReduction", [doit]() {
+      const auto datatype = *rc::gen::arbitrary<Datatype>();
+      const auto bytes = *rc::make_input_bytes(datatype);
+
+      doit.operator()<tiledb::test::AsserterRapidcheck>(datatype, bytes);
+    });
+  }
 }

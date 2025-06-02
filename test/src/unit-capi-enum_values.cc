@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -82,6 +82,7 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_FILTER_DEPRECATED == 17);
   REQUIRE(TILEDB_FILTER_WEBP == 18);
   REQUIRE(TILEDB_FILTER_DELTA == 19);
+  REQUIRE(TILEDB_INTERNAL_FILTER_COUNT == 20);
 
   /** Filter option */
   REQUIRE(TILEDB_COMPRESSION_LEVEL == 0);
@@ -227,25 +228,53 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_POSITIVE_DELTA));
   REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_CHECKSUM_MD5, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == "CHECKSUM_MD5"));
+  REQUIRE(
       (tiledb_filter_type_from_str("CHECKSUM_MD5", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_CHECKSUM_MD5));
+  REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_CHECKSUM_SHA256, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == "CHECKSUM_SHA256"));
   REQUIRE(
       (tiledb_filter_type_from_str("CHECKSUM_SHA256", &filter_type) ==
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_CHECKSUM_SHA256));
   REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_DICTIONARY, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == "DICTIONARY_ENCODING"));
+  REQUIRE(
       (tiledb_filter_type_from_str("DICTIONARY_ENCODING", &filter_type) ==
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_DICTIONARY));
   REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_SCALE_FLOAT, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == "SCALE_FLOAT"));
+  REQUIRE(
       (tiledb_filter_type_from_str("SCALE_FLOAT", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_SCALE_FLOAT));
+  REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_XOR, &c_str) == TILEDB_OK &&
+       std::string(c_str) == "XOR"));
   REQUIRE(
       (tiledb_filter_type_from_str("XOR", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_XOR));
   REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_WEBP, &c_str) == TILEDB_OK &&
+       std::string(c_str) == "WEBP"));
+  REQUIRE(
       (tiledb_filter_type_from_str("WEBP", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_WEBP));
+  REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_DELTA, &c_str) == TILEDB_OK &&
+       std::string(c_str) == "DELTA"));
+  REQUIRE(
+      (tiledb_filter_type_from_str("DELTA", &filter_type) == TILEDB_OK &&
+       filter_type == TILEDB_FILTER_DELTA));
 
   tiledb_filter_option_t filter_option;
   REQUIRE(

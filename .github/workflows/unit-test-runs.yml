@@ -1,9 +1,7 @@
 name: unit-test-standalone
 on:
   workflow_call:
-
-env:
-  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,8 +9,9 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        build_type: [Release]
       fail-fast: false
-    name: Build - ${{ matrix.os }}
+    name: Build - ${{ matrix.os }} (${{ matrix.build_type }})
     timeout-minutes: 90
     defaults:
       run:
@@ -46,14 +45,6 @@ jobs:
         with:
           arch: x64
 
-      # Configure required environment variables for vcpkg to use
-      # GitHub's Action Cache
-      - uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"
@@ -66,15 +57,17 @@ jobs:
         shell: bash
         if: ${{ !startsWith(matrix.os, 'windows-') }}
 
-      - name: 'Build standalone unit tests'
+      - name: 'Configure build'
         run: |
           cmake -S . \
             -B build \
             -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
             -DTILEDB_SERIALIZATION=ON \
-            -DTILEDB_ASSERTIONS=ON \
             -DTILEDB_ARROW_TESTS=ON
+
+      - name: 'Build standalone unit tests'
+        run: |
           # Build all unit tests
           cmake --build build --target tests -j4
 

@@ -31,6 +31,7 @@
  */
 #include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -124,12 +125,8 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Ordered dimension label reader cannot process query condition");
   }
 
-  bool found = false;
-  if (!config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found)
-           .ok()) {
-    throw OrderedDimLabelReaderException("Cannot get setting");
-  }
-  assert(found);
+  memory_budget_ =
+      config_.get<uint64_t>("sm.mem.total_budget", Config::must_find);
 }
 
 /* ****************************** */
@@ -199,7 +196,7 @@ void OrderedDimLabelReader::label_read() {
 template <typename IndexType>
 void OrderedDimLabelReader::label_read() {
   // Sanity checks.
-  assert(std::is_integral<IndexType>::value);
+  iassert(std::is_integral<IndexType>::value);
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {

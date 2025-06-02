@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/checksum_sha256_filter.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -101,11 +102,8 @@ Status ChecksumSHA256Filter::run_reverse(
     FilterBuffer* output,
     const Config& config) const {
   // Fetch the skip checksum configuration parameter.
-  bool found;
-  bool skip_validation;
-  RETURN_NOT_OK(config.get<bool>(
-      "sm.skip_checksum_validation", &skip_validation, &found));
-  assert(found);
+  const bool skip_validation =
+      config.get<bool>("sm.skip_checksum_validation", Config::must_find);
 
   // Set output buffer to input buffer
   RETURN_NOT_OK(output->append_view(input));

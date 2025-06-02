@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 
@@ -182,7 +183,7 @@ Buffer::Buffer(const Buffer& buff)
 
   if (buff.owns_data_ && buff.data_ != nullptr) {
     data_ = tdb_malloc(alloced_size_);
-    assert(data_);
+    passert(data_);
     std::memcpy(data_, buff.data_, buff.alloced_size_);
   }
 }
@@ -201,7 +202,7 @@ void* Buffer::data() const {
 }
 
 void Buffer::advance_size(const uint64_t nbytes) {
-  assert(owns_data_);
+  iassert(owns_data_);
   size_ += nbytes;
 }
 
@@ -232,7 +233,7 @@ void* Buffer::data(const uint64_t offset) const {
 }
 
 uint64_t Buffer::free_space() const {
-  assert(alloced_size_ >= size_);
+  iassert(alloced_size_ >= size_);
   return alloced_size_ - size_;
 }
 

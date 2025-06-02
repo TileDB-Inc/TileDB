@@ -32,6 +32,7 @@
 
 #include <cmath>
 
+#include "tiledb/common/assert.h"
 #include "tiledb/sm/misc/rectangle.h"
 
 using namespace tiledb::common;
@@ -113,7 +114,7 @@ std::vector<std::array<T, 2>> intersection(
     const std::vector<std::array<T, 2>>& r1,
     const std::vector<std::array<T, 2>>& r2) {
   auto dim_num = r1.size();
-  assert(r2.size() == dim_num);
+  iassert(r2.size() == dim_num);
 
   std::vector<std::array<T, 2>> ret(dim_num);
   for (size_t d = 0; d < dim_num; ++d)
