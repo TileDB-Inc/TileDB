@@ -77,6 +77,7 @@ target_include_directories(
   tiledb_test_support_lib BEFORE PRIVATE
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
+    ${TILEDB_OXIDIZE_INCLUDE_DIR}
 )
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
