@@ -236,7 +236,8 @@ class Config {
     impl::check_config_error(err);
   }
 
-  /** Sets the profile to use for the current config object.
+  /**
+   * Sets the profile to use for the current config object.
    *
    * @param profile_name The name of the profile to use. If not provided,
    *                     the default profile will be used.
