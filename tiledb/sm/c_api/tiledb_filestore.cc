@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -89,8 +89,7 @@ int32_t tiledb_filestore_schema_create(
     // The user provided a uri, let's examine the file and get some insights
     // Get the file size, calculate a reasonable tile extent
     auto& vfs = ctx->resources().vfs();
-    uint64_t file_size;
-    throw_if_not_ok(vfs.file_size(tiledb::sm::URI(uri), &file_size));
+    uint64_t file_size = vfs.file_size(tiledb::sm::URI(uri));
     if (file_size) {
       tile_extent = compute_tile_extent_based_on_file_size(file_size);
     }
@@ -197,8 +196,7 @@ int32_t tiledb_filestore_uri_import(
 
   // Get the file size
   auto& vfs = ctx->resources().vfs();
-  uint64_t file_size;
-  throw_if_not_ok(vfs.file_size(tiledb::sm::URI(file_uri), &file_size));
+  uint64_t file_size = vfs.file_size(tiledb::sm::URI(file_uri));
   if (!file_size) {
     return TILEDB_OK;  // NOOP
   }
@@ -457,10 +455,10 @@ int32_t tiledb_filestore_uri_export(
     }
     throw_if_not_ok(query.submit());
 
-    throw_if_not_ok(vfs.write(
+    vfs.write(
         tiledb::sm::URI(file_uri),
         reinterpret_cast<char*>(data.data()),
-        write_size));
+        write_size);
 
     start_range = end_range + 1;
     end_range = std::min(file_size - 1, end_range + buffer_size);

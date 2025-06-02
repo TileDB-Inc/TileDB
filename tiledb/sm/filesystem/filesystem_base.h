@@ -105,9 +105,9 @@ class FilesystemBase {
    * Retrieves the size of a file.
    *
    * @param uri The URI of the file.
-   * @param size The file size to be retrieved.
+   * @return The size of the file.
    */
-  virtual void file_size(const URI& uri, uint64_t* size) const = 0;
+  virtual uint64_t file_size(const URI& uri) const = 0;
 
   /**
    * Retrieves all the entries contained in the parent.
@@ -115,7 +115,7 @@ class FilesystemBase {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  virtual std::vector<filesystem::directory_entry> ls_with_sizes(
+  virtual std::vector<common::filesystem::directory_entry> ls_with_sizes(
       const URI& parent) const = 0;
 
   /**
@@ -162,13 +162,14 @@ class FilesystemBase {
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    * @param use_read_ahead Whether to use the read-ahead cache.
+   * @return Status
    */
-  virtual void read(
+  virtual Status read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) const = 0;
+      bool use_read_ahead = true) = 0;
 
   /**
    * Syncs (flushes) a file. Note that for S3 this is a noop.

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -135,9 +135,9 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    * Returns the size of the input file.
    *
    * @param path The name of the file whose size is to be retrieved.
-   * @param nbytes Pointer to a value
+   * @return The size of the input file, in bytes.
    */
-  void file_size(const URI& path, uint64_t* size) const override;
+  uint64_t file_size(const URI& path) const override;
 
   /**
    * Move a given filesystem path.
@@ -182,13 +182,14 @@ class Posix : public FilesystemBase, public LocalFilesystem {
    * @param offset The offset in the file from which the read will start.
    * @param buffer The buffer into which the data will be written.
    * @param nbytes The size of the data to be read from the file.
+   * @return Status
    */
-  void read(
+  Status read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) const override;
+      bool use_read_ahead = true) override;
 
   /**
    * Syncs a file or directory.

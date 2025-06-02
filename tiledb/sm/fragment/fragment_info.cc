@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1126,7 +1126,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   if (fragment_id.array_format_version() <= 2) {
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
-    RETURN_NOT_OK_TUPLE(vfs.is_file(coords_uri, &sparse), nullopt);
+    sparse = vfs.is_file(coords_uri);
   } else {
     // Do nothing. It does not matter what the `sparse` value
     // is, since the FragmentMetadata object will load the correct

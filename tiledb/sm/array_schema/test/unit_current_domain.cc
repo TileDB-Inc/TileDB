@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -109,10 +109,8 @@ CurrentDomainFx<T>::~CurrentDomainFx() {
 
 template <class T>
 void CurrentDomainFx<T>::rm_array() {
-  bool is_dir;
-  throw_if_not_ok(ctx_.resources().vfs().is_dir(uri_, &is_dir));
-  if (is_dir) {
-    throw_if_not_ok(ctx_.resources().vfs().remove_dir(uri_));
+  if (ctx_.resources().vfs().is_dir(uri_)) {
+    ctx_.resources().vfs().remove_dir(uri_);
   }
 }
 

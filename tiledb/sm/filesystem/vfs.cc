@@ -138,26 +138,26 @@ Config VFS::config() const {
   return config_;
 }
 
-Status VFS::create_dir(const URI& uri) const {
+void VFS::create_dir(const URI& uri) const {
   if (!uri.is_s3() && !uri.is_azure() && !uri.is_gcs()) {
-    bool is_dir;
-    RETURN_NOT_OK(this->is_dir(uri, &is_dir));
-    if (is_dir)
-      return Status::Ok();
+    if (this->is_dir(uri)) {
+      return;
+    }
   }
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.create_dir(uri.to_path());
+    throw_if_not_ok(win_.create_dir(uri.to_path()));
+    return;
 #else
     posix_.create_dir(uri);
-    return Status::Ok();
+    return;
 #endif
   }
   if (uri.is_s3()) {
     if constexpr (s3_enabled) {
       // It is a noop for S3
-      return Status::Ok();
+      return;
     } else {
       throw BuiltWithout("S3");
     }
@@ -165,7 +165,7 @@ Status VFS::create_dir(const URI& uri) const {
   if (uri.is_azure()) {
     if constexpr (azure_enabled) {
       // It is a noop for Azure
-      return Status::Ok();
+      return;
     } else {
       throw BuiltWithout("Azure");
     }
@@ -173,28 +173,28 @@ Status VFS::create_dir(const URI& uri) const {
   if (uri.is_gcs()) {
     if constexpr (gcs_enabled) {
       // It is a noop for GCS
-      return Status::Ok();
+      return;
     } else {
       throw BuiltWithout("GCS");
     }
   }
   if (uri.is_memfs()) {
-    return memfs_.create_dir(uri.to_path());
+    throw_if_not_ok(memfs_.create_dir(uri.to_path()));
+    return;
   }
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
+uint64_t VFS::dir_size(const URI& dir_name) const {
   // Sanity check
-  bool is_dir;
-  RETURN_NOT_OK(this->is_dir(dir_name, &is_dir));
-  if (!is_dir)
+  if (!this->is_dir(dir_name)) {
     throw VFSException(
         "Cannot get directory size; Input '" + dir_name.to_string() +
         "' is not a directory");
+  }
 
   // Get all files in the tree rooted at `dir_name` and add their sizes
-  *dir_size = 0;
+  uint64_t dir_size = 0;
   std::list<URI> to_ls;
   to_ls.push_front(dir_name);
   do {
@@ -203,30 +203,31 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
 
     for (const auto& child : ls_with_sizes(uri)) {
       if (!child.is_directory()) {
-        *dir_size += child.file_size();
+        dir_size += child.file_size();
       } else {
         to_ls.push_back(URI(child.path().native()));
       }
     }
   } while (!to_ls.empty());
 
-  return Status::Ok();
+  return dir_size;
 }
 
-Status VFS::touch(const URI& uri) const {
+void VFS::touch(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "touch");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.touch(uri.to_path());
+    throw_if_not_ok(win_.touch(uri.to_path()));
+    return;
 #else
     posix_.touch(uri);
-    return Status::Ok();
+    return;
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().touch(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("S3");
 #endif
@@ -234,20 +235,22 @@ Status VFS::touch(const URI& uri) const {
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     azure().touch(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().touch(uri);
+    throw_if_not_ok(gcs().touch(uri));
+    return;
 #else
     throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.touch(uri.to_path());
+    throw_if_not_ok(memfs_.touch(uri.to_path()));
+    return;
   }
   throw UnsupportedURI(uri.to_string());
 }
@@ -257,12 +260,12 @@ Status VFS::cancel_all_tasks() {
   return Status::Ok();
 }
 
-Status VFS::create_bucket(const URI& uri) const {
+void VFS::create_bucket(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "create_bucket");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().create_bucket(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("S3");
 #endif
@@ -270,14 +273,15 @@ Status VFS::create_bucket(const URI& uri) const {
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     azure().create_container(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().create_bucket(uri);
+    throw_if_not_ok(gcs().create_bucket(uri));
+    return;
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -285,11 +289,11 @@ Status VFS::create_bucket(const URI& uri) const {
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::remove_bucket(const URI& uri) const {
+void VFS::remove_bucket(const URI& uri) const {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().remove_bucket(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("S3");
 #endif
@@ -297,14 +301,15 @@ Status VFS::remove_bucket(const URI& uri) const {
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     azure().remove_container(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().remove_bucket(uri);
+    throw_if_not_ok(gcs().remove_bucket(uri));
+    return;
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -312,12 +317,12 @@ Status VFS::remove_bucket(const URI& uri) const {
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::empty_bucket(const URI& uri) const {
+void VFS::empty_bucket(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "empty_bucket");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().empty_bucket(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("S3");
 #endif
@@ -325,14 +330,15 @@ Status VFS::empty_bucket(const URI& uri) const {
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     azure().empty_container(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().empty_bucket(uri);
+    throw_if_not_ok(gcs().empty_bucket(uri));
+    return;
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -340,28 +346,27 @@ Status VFS::empty_bucket(const URI& uri) const {
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::is_empty_bucket(
-    const URI& uri, [[maybe_unused]] bool* is_empty) const {
+bool VFS::is_empty_bucket(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "is_empty_bucket");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    *is_empty = s3().is_empty_bucket(uri);
-    return Status::Ok();
+    return s3().is_empty_bucket(uri);
 #else
     throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    *is_empty = azure().is_empty_container(uri);
-    return Status::Ok();
+    return azure().is_empty_container(uri);
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().is_empty_bucket(uri, is_empty);
+    bool is_empty;
+    throw_if_not_ok(gcs().is_empty_bucket(uri, &is_empty));
+    return is_empty;
 #else
     throw BuiltWithout("GCS");
 #endif
@@ -369,38 +374,43 @@ Status VFS::is_empty_bucket(
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::remove_dir(const URI& uri) const {
+void VFS::remove_dir(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "remove_dir");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.remove_dir(uri.to_path());
+    throw_if_not_ok(win_.remove_dir(uri.to_path()));
+    return;
 #else
     posix_.remove_dir(uri);
+    return;
 #endif
   } else if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().remove_dir(uri);
+    return;
 #else
     throw BuiltWithout("S3");
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     azure().remove_dir(uri);
+    return;
 #else
     throw BuiltWithout("Azure");
 #endif
   } else if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().remove_dir(uri);
+    throw_if_not_ok(gcs().remove_dir(uri));
+    return;
 #else
     throw BuiltWithout("GCS");
 #endif
   } else if (uri.is_memfs()) {
-    return memfs_.remove(uri.to_path(), true);
+    throw_if_not_ok(memfs_.remove(uri.to_path(), true));
+    return;
   } else {
     throw UnsupportedURI(uri.to_string());
   }
-  return Status::Ok();
 }
 
 void VFS::remove_dir_if_empty(const URI& uri) const {
@@ -417,28 +427,27 @@ void VFS::remove_dir_if_empty(const URI& uri) const {
 void VFS::remove_dirs(
     ThreadPool* compute_tp, const std::vector<URI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
-    bool is_dir;
-    throw_if_not_ok(this->is_dir(uris[i], &is_dir));
-    if (is_dir) {
-      throw_if_not_ok(remove_dir(uris[i]));
+    if (this->is_dir(uris[i])) {
+      remove_dir(uris[i]);
     }
     return Status::Ok();
   }));
 }
 
-Status VFS::remove_file(const URI& uri) const {
+void VFS::remove_file(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "remove_file");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.remove_file(uri.to_path());
+    throw_if_not_ok(win_.remove_file(uri.to_path()));
+    return;
 #else
     posix_.remove_file(uri);
-    return Status::Ok();
+    return;
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().remove_object(uri);
+    throw_if_not_ok(s3().remove_object(uri));
 #else
     throw BuiltWithout("S3");
 #endif
@@ -446,20 +455,22 @@ Status VFS::remove_file(const URI& uri) const {
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     azure().remove_blob(uri);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().remove_object(uri);
+    throw_if_not_ok(gcs().remove_object(uri));
+    return;
 #else
     throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.remove(uri.to_path(), false);
+    throw_if_not_ok(memfs_.remove(uri.to_path(), false));
+    return;
   }
   throw UnsupportedURI(uri.to_string());
 }
@@ -467,7 +478,7 @@ Status VFS::remove_file(const URI& uri) const {
 void VFS::remove_files(
     ThreadPool* compute_tp, const std::vector<URI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
-    throw_if_not_ok(remove_file(uris[i]));
+    remove_file(uris[i]);
     return Status::Ok();
   }));
 }
@@ -475,7 +486,7 @@ void VFS::remove_files(
 void VFS::remove_files(
     ThreadPool* compute_tp, const std::vector<TimestampedURI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
-    throw_if_not_ok(remove_file(uris[i].uri_));
+    remove_file(uris[i].uri_);
     return Status::Ok();
   }));
 }
@@ -497,20 +508,23 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
   return Status::Ok();
 }
 
-Status VFS::file_size(const URI& uri, uint64_t* size) const {
+uint64_t VFS::file_size(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "file_size");
   stats_->add_counter("file_size_num", 1);
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.file_size(uri.to_path(), size);
+    uint64_t size;
+    throw_if_not_ok(win_.file_size(uri.to_path(), &size));
+    return size;
 #else
-    posix_.file_size(uri, size);
-    return Status::Ok();
+    return posix_.file_size(uri);
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().object_size(uri, size);
+    uint64_t size;
+    throw_if_not_ok(s3().object_size(uri, &size));
+    return size;
 #else
     throw BuiltWithout("S3");
 #endif
@@ -518,148 +532,137 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     try {
-      *size = azure().blob_size(uri);
+      return azure().blob_size(uri);
     } catch (std::exception& e) {
-      return Status_Error(e.what());
+      throw VFSException(e.what());
     }
-    return Status::Ok();
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    try {
-      return gcs().object_size(uri, size);
-    } catch (std::exception& e) {
-      return Status_Error(e.what());
-    }
+    uint64_t size;
+    throw_if_not_ok(gcs().object_size(uri, &size));
+    return size;
 #else
     throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.file_size(uri.to_path(), size);
+    uint64_t size;
+    throw_if_not_ok(memfs_.file_size(uri.to_path(), &size));
+    return size;
   }
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::is_dir(const URI& uri, bool* is_dir) const {
+bool VFS::is_dir(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "is_dir");
   if (uri.is_file()) {
 #ifdef _WIN32
-    *is_dir = win_.is_dir(uri.to_path());
+    return win_.is_dir(uri.to_path());
 #else
-    *is_dir = posix_.is_dir(uri);
+    return posix_.is_dir(uri);
 #endif
-    return Status::Ok();
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().is_dir(uri, is_dir);
+    bool is_dir;
+    throw_if_not_ok(s3().is_dir(uri, &is_dir));
+    return is_dir;
 #else
-    *is_dir = false;
     throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    *is_dir = azure().is_dir(uri);
-    return Status::Ok();
+    return azure().is_dir(uri);
 #else
-    *is_dir = false;
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().is_dir(uri, is_dir);
+    bool is_dir;
+    throw_if_not_ok(gcs().is_dir(uri, &is_dir));
+    return is_dir;
 #else
-    *is_dir = false;
     throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
-    *is_dir = memfs_.is_dir(uri.to_path());
-    return Status::Ok();
+    return memfs_.is_dir(uri.to_path());
   }
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::is_file(const URI& uri, bool* is_file) const {
+bool VFS::is_file(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "is_file");
   stats_->add_counter("is_object_num", 1);
   if (uri.is_file()) {
 #ifdef _WIN32
-    *is_file = win_.is_file(uri.to_path());
+    return win_.is_file(uri.to_path());
 #else
-    *is_file = posix_.is_file(uri);
+    return posix_.is_file(uri);
 #endif
-    return Status::Ok();
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    RETURN_NOT_OK(s3().is_object(uri, is_file));
-    return Status::Ok();
+    bool is_file;
+    throw_if_not_ok(s3().is_object(uri, &is_file));
+    return is_file;
 #else
-    *is_file = false;
     throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    *is_file = azure().is_blob(uri);
-    return Status::Ok();
+    return azure().is_blob(uri);
 #else
-    *is_file = false;
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().is_object(uri, is_file);
+    bool is_file;
+    throw_if_not_ok(gcs().is_object(uri, &is_file));
+    return is_file;
 #else
-    *is_file = false;
     throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
-    *is_file = memfs_.is_file(uri.to_path());
-    return Status::Ok();
+    return memfs_.is_file(uri.to_path());
   }
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
+bool VFS::is_bucket(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "is_bucket");
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    *is_bucket = s3().is_bucket(uri);
-    return Status::Ok();
+    retun s3().is_bucket(uri);
 #else
-    *is_bucket = false;
     throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
-    *is_bucket = azure().is_container(uri);
-    return Status::Ok();
+    return azure().is_container(uri);
 #else
-    *is_bucket = false;
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    RETURN_NOT_OK(gcs().is_bucket(uri, is_bucket));
-    return Status::Ok();
+    bool is_bucket;
+    throw_if_not_ok(gcs().is_bucket(uri, &is_bucket));
+    return is_bucket;
 #else
-    *is_bucket = false;
     throw BuiltWithout("GCS");
 #endif
   }
-
   throw UnsupportedURI(uri.to_string());
 }
 
@@ -679,10 +682,7 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
   if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
-    bool flag = false;
-    throw_if_not_ok(this->is_dir(parent, &flag));
-
-    if (!flag) {
+    if (!this->is_dir(parent)) {
       return {};
     }
   }
@@ -728,22 +728,22 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
   return entries;
 }
 
-Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
+void VFS::move_file(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   // If new_uri exists, delete it or raise an error based on `force`
-  bool is_file;
-  RETURN_NOT_OK(this->is_file(new_uri, &is_file));
-  if (is_file)
-    RETURN_NOT_OK(remove_file(new_uri));
+  if (this->is_file(new_uri)) {
+    remove_file(new_uri);
+  }
 
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
 #ifdef _WIN32
-      return win_.move_path(old_uri.to_path(), new_uri.to_path());
+      throw_if_not_ok(win_.move_path(old_uri.to_path(), new_uri.to_path()));
+      return;
 #else
       posix_.move_file(old_uri, new_uri);
-      return Status::Ok();
+      return;
 #endif
     }
     throw UnsupportedOperation("Moving files");
@@ -753,7 +753,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_s3()) {
     if (new_uri.is_s3())
 #ifdef HAVE_S3
-      return s3().move_object(old_uri, new_uri);
+      throw_if_not_ok(s3().move_object(old_uri, new_uri));
+    return;
 #else
       throw BuiltWithout("S3");
 #endif
@@ -765,7 +766,7 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
       azure().move_object(old_uri, new_uri);
-    return Status::Ok();
+    return;
 #else
       throw BuiltWithout("Azure");
 #endif
@@ -776,7 +777,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
 #ifdef HAVE_GCS
-      return gcs().move_object(old_uri, new_uri);
+      throw_if_not_ok(gcs().move_object(old_uri, new_uri));
+    return;
 #else
       throw BuiltWithout("GCS");
 #endif
@@ -786,7 +788,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   // In-memory filesystem
   if (old_uri.is_memfs()) {
     if (new_uri.is_memfs()) {
-      return memfs_.move(old_uri.to_path(), new_uri.to_path());
+      throw_if_not_ok(memfs_.move(old_uri.to_path(), new_uri.to_path()));
+      return;
     }
     throw UnsupportedOperation("Moving files");
   }
@@ -795,16 +798,17 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   throw UnsupportedURI(old_uri.to_string() + ", " + new_uri.to_string());
 }
 
-Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
+void VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
 #ifdef _WIN32
-      return win_.move_path(old_uri.to_path(), new_uri.to_path());
+      throw_if_not_ok(win_.move_path(old_uri.to_path(), new_uri.to_path()));
+      return;
 #else
       posix_.move_dir(old_uri, new_uri);
-      return Status::Ok();
+      return;
 #endif
     }
     throw UnsupportedOperation("Moving directories");
@@ -815,7 +819,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
     if (new_uri.is_s3()) {
 #ifdef HAVE_S3
       s3().move_dir(old_uri, new_uri);
-      return Status::Ok();
+      return;
 #else
       throw BuiltWithout("S3");
 #endif
@@ -828,7 +832,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
     if (new_uri.is_azure())
 #ifdef HAVE_AZURE
       azure().move_dir(old_uri, new_uri);
-    return Status::Ok();
+    return;
 #else
       throw BuiltWithout("Azure");
 #endif
@@ -839,7 +843,8 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs())
 #ifdef HAVE_GCS
-      return gcs().move_dir(old_uri, new_uri);
+      throw_if_not_ok(gcs().move_dir(old_uri, new_uri));
+    return;
 #else
       throw BuiltWithout("GCS");
 #endif
@@ -849,7 +854,8 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   // In-memory filesystem
   if (old_uri.is_memfs()) {
     if (new_uri.is_memfs()) {
-      return memfs_.move(old_uri.to_path(), new_uri.to_path());
+      throw_if_not_ok(memfs_.move(old_uri.to_path(), new_uri.to_path()));
+      return;
     }
     throw UnsupportedOperation("Moving directories");
   }
@@ -858,13 +864,12 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
   throw UnsupportedURI(old_uri.to_string() + ", " + new_uri.to_string());
 }
 
-Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
+void VFS::copy_file(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   // If new_uri exists, delete it or raise an error based on `force`
-  bool is_file;
-  RETURN_NOT_OK(this->is_file(new_uri, &is_file));
-  if (is_file)
-    RETURN_NOT_OK(remove_file(new_uri));
+  if (this->is_file(new_uri)) {
+    remove_file(new_uri);
+  }
 
   // File
   if (old_uri.is_file()) {
@@ -873,7 +878,7 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
       throw VFSException("Copying files on Windows is not yet supported.");
 #else
       posix_.copy_file(old_uri, new_uri);
-      return Status::Ok();
+      return;
 #endif
     }
     throw UnsupportedOperation("Copying files");
@@ -884,7 +889,7 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
     if (new_uri.is_s3()) {
 #ifdef HAVE_S3
       s3().copy_file(old_uri, new_uri);
-      return Status::Ok();
+      return;
 #else
       throw BuiltWithout("S3");
 #endif
@@ -920,7 +925,7 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
   throw UnsupportedURI(old_uri.to_string() + ", " + new_uri.to_string());
 }
 
-Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
+void VFS::copy_dir(const URI& old_uri, const URI& new_uri) const {
   auto instrument = make_log_duration_instrument(old_uri, new_uri);
   // File
   if (old_uri.is_file()) {
@@ -930,7 +935,7 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
           "Copying directories on Windows is not yet supported.");
 #else
       posix_.copy_dir(old_uri, new_uri);
-      return Status::Ok();
+      return;
 #endif
     }
     throw UnsupportedOperation("Copying directories");
@@ -941,7 +946,7 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
     if (new_uri.is_s3()) {
 #ifdef HAVE_S3
       s3().copy_dir(old_uri, new_uri);
-      return Status::Ok();
+      return;
 #else
       throw BuiltWithout("S3");
 #endif
@@ -1056,8 +1061,7 @@ Status VFS::read_impl(
 #ifdef _WIN32
     return win_.read(uri.to_path(), offset, buffer, nbytes);
 #else
-    posix_.read(uri, offset, buffer, nbytes, false);
-    return Status::Ok();
+    return posix_.read(uri, offset, buffer, nbytes, false);
 #endif
   }
   if (uri.is_s3()) {
@@ -1199,47 +1203,46 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
   }
 }
 
-Status VFS::sync(const URI& uri) {
+void VFS::sync(const URI& uri) const {
   auto instrument = make_log_duration_instrument(uri, "sync");
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.sync(uri.to_path());
+    throw_if_not_ok(win_.sync(uri.to_path()));
+    return;
 #else
     posix_.sync(uri);
-    return Status::Ok();
+    return;
 #endif
   }
   if (uri.is_s3()) {
     if constexpr (s3_enabled) {
-      return Status::Ok();
+      return;  // no-op.
     } else {
       throw BuiltWithout("S3");
     }
   }
   if (uri.is_azure()) {
     if constexpr (azure_enabled) {
-      return Status::Ok();
+      return;  // no-op.
     } else {
       throw BuiltWithout("Azure");
     }
   }
   if (uri.is_gcs()) {
     if constexpr (gcs_enabled) {
-      return Status::Ok();
+      return;  // no-op.
     } else {
       throw BuiltWithout("GCS");
     }
   }
   if (uri.is_memfs()) {
-    return Status::Ok();
+    return;  // no-op.
   }
   throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::open_file(const URI& uri, VFSMode mode) {
-  bool is_file;
-  RETURN_NOT_OK(this->is_file(uri, &is_file));
-
+  bool is_file = this->is_file(uri);
   switch (mode) {
     case VFSMode::VFS_READ:
       if (!is_file)
@@ -1247,8 +1250,9 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
             "Cannot open file '" + uri.to_string() + "'; File does not exist");
       break;
     case VFSMode::VFS_WRITE:
-      if (is_file)
-        RETURN_NOT_OK(remove_file(uri));
+      if (is_file) {
+        remove_file(uri);
+      }
       break;
     case VFSMode::VFS_APPEND:
       if (uri.is_s3()) {
@@ -1334,7 +1338,7 @@ void VFS::finalize_and_close_file(const URI& uri) {
   throw_if_not_ok(close_file(uri));
 }
 
-Status VFS::write(
+void VFS::write(
     const URI& uri,
     const void* buffer,
     uint64_t buffer_size,
@@ -1345,16 +1349,17 @@ Status VFS::write(
 
   if (uri.is_file()) {
 #ifdef _WIN32
-    return win_.write(uri.to_path(), buffer, buffer_size);
+    throw_if_not_ok(win_.write(uri.to_path(), buffer, buffer_size));
+    return;
 #else
     posix_.write(uri, buffer, buffer_size);
-    return Status::Ok();
+    return;
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     s3().write(uri, buffer, buffer_size, remote_global_order_write);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("S3");
 #endif
@@ -1362,20 +1367,22 @@ Status VFS::write(
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     azure().write(uri, buffer, buffer_size);
-    return Status::Ok();
+    return;
 #else
     throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return gcs().write(uri, buffer, buffer_size);
+    throw_if_not_ok(gcs().write(uri, buffer, buffer_size));
+    return;
 #else
     throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
-    return memfs_.write(uri.to_path(), buffer, buffer_size);
+    throw_if_not_ok(memfs_.write(uri.to_path(), buffer, buffer_size));
+    return;
   }
   throw UnsupportedURI(uri.to_string());
 }

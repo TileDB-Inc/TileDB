@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -216,41 +216,41 @@ void Array::create(
   }
 
   // Create array directory
-  throw_if_not_ok(resources.vfs().create_dir(array_uri));
+  resources.vfs().create_dir(array_uri);
 
   // Create array schema directory
   URI array_schema_dir_uri =
       array_uri.join_path(constants::array_schema_dir_name);
-  throw_if_not_ok(resources.vfs().create_dir(array_schema_dir_uri));
+  resources.vfs().create_dir(array_schema_dir_uri);
 
   // Create the enumerations directory inside the array schema directory
   URI array_enumerations_uri =
       array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
-  throw_if_not_ok(resources.vfs().create_dir(array_enumerations_uri));
+  resources.vfs().create_dir(array_enumerations_uri);
 
   // Create commit directory
   URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
-  throw_if_not_ok(resources.vfs().create_dir(array_commit_uri));
+  resources.vfs().create_dir(array_commit_uri);
 
   // Create fragments directory
   URI array_fragments_uri =
       array_uri.join_path(constants::array_fragments_dir_name);
-  throw_if_not_ok(resources.vfs().create_dir(array_fragments_uri));
+  resources.vfs().create_dir(array_fragments_uri);
 
   // Create array metadata directory
   URI array_metadata_uri =
       array_uri.join_path(constants::array_metadata_dir_name);
-  throw_if_not_ok(resources.vfs().create_dir(array_metadata_uri));
+  resources.vfs().create_dir(array_metadata_uri);
 
   // Create fragment metadata directory
   URI array_fragment_metadata_uri =
       array_uri.join_path(constants::array_fragment_meta_dir_name);
-  throw_if_not_ok(resources.vfs().create_dir(array_fragment_metadata_uri));
+  resources.vfs().create_dir(array_fragment_metadata_uri);
 
   // Create dimension label directory
   URI array_dimension_labels_uri =
       array_uri.join_path(constants::array_dimension_labels_dir_name);
-  throw_if_not_ok(resources.vfs().create_dir(array_dimension_labels_uri));
+  resources.vfs().create_dir(array_dimension_labels_uri);
 
   // Store the array schema
   try {
@@ -282,7 +282,7 @@ void Array::create(
       store_array_schema(resources, array_schema, encryption_key);
     }
   } catch (...) {
-    throw_if_not_ok(resources.vfs().remove_dir(array_uri));
+    resources.vfs().remove_dir(array_uri);
     throw;
   }
 }
@@ -691,11 +691,9 @@ void Array::delete_fragments(
   auto vfs = &(resources.vfs());
   throw_if_not_ok(parallel_for(
       &resources.compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-        throw_if_not_ok(vfs->remove_dir(fragment_uris[i].uri_));
-        bool is_file = false;
-        throw_if_not_ok(vfs->is_file(commit_uris_to_delete[i], &is_file));
-        if (is_file) {
-          throw_if_not_ok(vfs->remove_file(commit_uris_to_delete[i]));
+        vfs->remove_dir(fragment_uris[i].uri_);
+        if (vfs->is_file(commit_uris_to_delete[i])) {
+          vfs->remove_file(commit_uris_to_delete[i]);
         }
         return Status::Ok();
       }));
@@ -1967,7 +1965,7 @@ void Array::upgrade_version(
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
-    throw_if_not_ok(resources.vfs().create_dir(array_schema_dir_uri));
+    resources.vfs().create_dir(array_schema_dir_uri);
 
     // Store array schema
     store_array_schema(resources, array_schema, encryption_key_cfg);
@@ -1975,17 +1973,17 @@ void Array::upgrade_version(
     // Create commit directory if necessary
     URI array_commit_uri =
         array_uri.join_path(constants::array_commits_dir_name);
-    throw_if_not_ok(resources.vfs().create_dir(array_commit_uri));
+    resources.vfs().create_dir(array_commit_uri);
 
     // Create fragments directory if necessary
     URI array_fragments_uri =
         array_uri.join_path(constants::array_fragments_dir_name);
-    throw_if_not_ok(resources.vfs().create_dir(array_fragments_uri));
+    resources.vfs().create_dir(array_fragments_uri);
 
     // Create fragment metadata directory if necessary
     URI array_fragment_metadata_uri =
         array_uri.join_path(constants::array_fragment_meta_dir_name);
-    throw_if_not_ok(resources.vfs().create_dir(array_fragment_metadata_uri));
+    resources.vfs().create_dir(array_fragment_metadata_uri);
   }
 }
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -96,7 +96,7 @@ Status FragmentMetaConsolidator::consolidate(
       first, last, write_version);
 
   auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
-  throw_if_not_ok(resources_.vfs().create_dir(frag_md_uri));
+  resources_.vfs().create_dir(frag_md_uri);
   uri = URI(frag_md_uri.to_string() + name + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
@@ -208,7 +208,7 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
         FragmentID fragment_id{uri};
         auto timestamp_range{fragment_id.timestamp_range()};
         if (timestamp_range.second != t_latest) {
-          throw_if_not_ok(vfs.remove_file(uri));
+          vfs.remove_file(uri);
         }
         return Status::Ok();
       }));

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,8 +39,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -70,12 +69,10 @@ Status VFSFileHandle::close() {
     RETURN_NOT_OK(vfs_->close_file(uri_));
 
     // Create an empty file if the file does not exist
-    bool exists;
-    RETURN_NOT_OK(vfs_->is_file(uri_, &exists));
-    if (!exists)
-      RETURN_NOT_OK(vfs_->touch(uri_));
+    if (!vfs_->is_file(uri_)) {
+      vfs_->touch(uri_);
+    }
   }
-
   is_open_ = false;
 
   return Status::Ok();
@@ -109,7 +106,8 @@ Status VFSFileHandle::sync() {
     return LOG_STATUS(st);
   }
 
-  return vfs_->sync(uri_);
+  vfs_->sync(uri_);
+  return Status::Ok();
 }
 
 URI VFSFileHandle::uri() const {
@@ -125,8 +123,8 @@ Status VFSFileHandle::write(const void* buffer, uint64_t nbytes) {
     return LOG_STATUS(st);
   }
 
-  return vfs_->write(uri_, buffer, nbytes);
+  vfs_->write(uri_, buffer, nbytes);
+  return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -528,18 +528,12 @@ void FragmentConsolidator::vacuum(const char* array_name) {
       &compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
         // Remove the commit file, if present.
         auto commit_uri = array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
-        bool is_file = false;
-        throw_if_not_ok(vfs.is_file(commit_uri, &is_file));
-        if (is_file) {
-          throw_if_not_ok(vfs.remove_file(commit_uri));
+        if (vfs.is_file(commit_uri)) {
+          vfs.remove_file(commit_uri);
         }
-
-        bool is_dir = false;
-        throw_if_not_ok(vfs.is_dir(fragment_uris_to_vacuum[i], &is_dir));
-        if (is_dir) {
-          throw_if_not_ok(vfs.remove_dir(fragment_uris_to_vacuum[i]));
+        if (vfs.is_dir(fragment_uris_to_vacuum[i])) {
+          vfs.remove_dir(fragment_uris_to_vacuum[i]);
         }
-
         return Status::Ok();
       }));
 
@@ -669,10 +663,9 @@ Status FragmentConsolidator::consolidate_internal(
   // Finalize write query
   auto st = query_w->finalize();
   if (!st.ok()) {
-    bool is_dir = false;
-    throw_if_not_ok(resources_.vfs().is_dir(*new_fragment_uri, &is_dir));
-    if (is_dir)
-      throw_if_not_ok(resources_.vfs().remove_dir(*new_fragment_uri));
+    if (resources_.vfs().is_dir(*new_fragment_uri)) {
+      resources_.vfs().remove_dir(*new_fragment_uri);
+    }
     return st;
   }
 
@@ -683,10 +676,9 @@ Status FragmentConsolidator::consolidate_internal(
       vac_uri,
       to_consolidate);
   if (!st.ok()) {
-    bool is_dir = false;
-    throw_if_not_ok(resources_.vfs().is_dir(*new_fragment_uri, &is_dir));
-    if (is_dir)
-      throw_if_not_ok(resources_.vfs().remove_dir(*new_fragment_uri));
+    if (resources_.vfs().is_dir(*new_fragment_uri)) {
+      resources_.vfs().remove_dir(*new_fragment_uri);
+    }
     return st;
   }
 
@@ -1093,7 +1085,7 @@ Status FragmentConsolidator::write_vacuum_file(
   }
 
   auto data = ss.str();
-  throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
+  resources_.vfs().write(vac_uri, data.c_str(), data.size());
   throw_if_not_ok(resources_.vfs().close_file(vac_uri));
 
   return Status::Ok();

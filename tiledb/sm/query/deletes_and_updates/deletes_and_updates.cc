@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -141,7 +141,7 @@ Status DeletesAndUpdates::dowork() {
   // Create the commit URI if needed.
   auto& array_dir = array_->array_directory();
   auto commit_uri = array_dir.get_commits_dir(write_version);
-  throw_if_not_ok(resources_.vfs().create_dir(commit_uri));
+  resources_.vfs().create_dir(commit_uri);
 
   // Serialize the negated condition (aud update values if they are not empty)
   // and write to disk.
