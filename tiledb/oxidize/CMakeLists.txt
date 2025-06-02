@@ -1,4 +1,4 @@
-find_program(CARGO cargo)
+find_program(CARGO cargo REQUIRED)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CARGO_PROFILE "dev")
