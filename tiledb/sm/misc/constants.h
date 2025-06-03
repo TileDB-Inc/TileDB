@@ -766,9 +766,6 @@ extern const std::string rest_header_prefix;
 /** The current RestProfile API version. */
 extern const format_version_t rest_profile_version;
 
-/** Filepath for the special local cloud profile files used in TileDB. */
-extern const std::string cloud_profile_filepath;
-
 /** Filepath for the special local RestProfile files used in TileDB. */
 extern const std::string rest_profile_filepath;
 

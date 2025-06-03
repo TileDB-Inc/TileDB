@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -100,6 +100,18 @@ capi_return_t tiledb_config_save_to_file(
     throw CAPIStatusException("Cannot save to file; null filename");
   }
   throw_if_not_ok(config->config().save_to_file(filename));
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_config_set_profile(
+    tiledb_config_t* config, const char* name, const char* dir) {
+  ensure_config_is_valid(config);
+  std::optional<std::string> profile_name_opt =
+      (name == nullptr) ? std::nullopt : std::make_optional(std::string(name));
+  std::optional<std::string> profile_dir_opt =
+      (dir == nullptr) ? std::nullopt : std::make_optional(std::string(dir));
+  throw_if_not_ok(
+      config->config().set_profile(profile_name_opt, profile_dir_opt));
   return TILEDB_OK;
 }
 
@@ -232,6 +244,16 @@ CAPI_INTERFACE(
     tiledb_error_t** error) {
   return api_entry_error<tiledb::api::tiledb_config_save_to_file>(
       error, config, filename);
+}
+
+CAPI_INTERFACE(
+    config_set_profile,
+    tiledb_config_t* config,
+    const char* name,
+    const char* dir,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_set_profile>(
+      error, config, name, dir);
 }
 
 /*

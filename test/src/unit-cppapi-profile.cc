@@ -45,7 +45,7 @@ struct ProfileCPPFx {
   tiledb::sm::TemporaryLocalDirectory tempdir_;
 
   ProfileCPPFx()
-      : name_(tiledb::sm::RestProfile::DEFAULT_NAME)
+      : name_(tiledb::sm::RestProfile::DEFAULT_PROFILE_NAME)
       , tempdir_("unit_cppapi_profile") {
   }
 
@@ -63,7 +63,7 @@ struct ProfileCPPFx {
 };
 
 struct expected_values_t {
-  std::string name = sm::RestProfile::DEFAULT_NAME;
+  std::string profile_name = sm::RestProfile::DEFAULT_PROFILE_NAME;
   std::string password = sm::RestProfile::DEFAULT_PASSWORD;
   std::string payer_namespace = sm::RestProfile::DEFAULT_PAYER_NAMESPACE;
   std::string token = sm::RestProfile::DEFAULT_TOKEN;
@@ -72,7 +72,8 @@ struct expected_values_t {
 };
 
 bool is_expected(const Profile& p, const expected_values_t& e) {
-  return p.get_name() == e.name && p.get_param("rest.username") == e.username &&
+  return p.name() == e.profile_name &&
+         p.get_param("rest.username") == e.username &&
          p.get_param("rest.password") == e.password &&
          p.get_param("rest.payer_namespace") == e.payer_namespace &&
          p.get_param("rest.server_address") == e.server_address &&
@@ -83,34 +84,32 @@ TEST_CASE_METHOD(
     ProfileCPPFx,
     "C++ API: Profile get_name validation",
     "[cppapi][profile][get_name]") {
-  const std::string homedir_ = tempdir_.path();
   SECTION("default, explicitly passed") {
-    Profile p(name_, homedir_);
-    REQUIRE(p.get_name() == name_);
+    Profile p(name_, tempdir_.path());
+    REQUIRE(p.name() == name_);
   }
   SECTION("default, inherited from nullptr") {
-    Profile p(std::nullopt, homedir_);
-    REQUIRE(p.get_name() == name_);
+    Profile p(std::nullopt, tempdir_.path());
+    REQUIRE(p.name() == name_);
   }
   SECTION("non-default") {
     const char* name = "non_default";
-    Profile p(name, homedir_);
-    REQUIRE(p.get_name() == name);
+    Profile p(name, tempdir_.path());
+    REQUIRE(p.name() == name);
   }
 }
 
 TEST_CASE_METHOD(
     ProfileCPPFx,
-    "C++ API: Profile get_homedir validation",
-    "[cppapi][profile][get_homedir]") {
-  auto homedir_ = tempdir_.path().c_str();
+    "C++ API: Profile get_dir validation",
+    "[cppapi][profile][get_dir]") {
   SECTION("explicitly passed") {
-    Profile p(name_, homedir_);
-    REQUIRE(p.get_homedir() == homedir_);
+    Profile p(name_, tempdir_.path());
+    REQUIRE(p.dir() == tempdir_.path());
   }
   SECTION("inherited from nullptr") {
     Profile p(name_, std::nullopt);
-    REQUIRE(p.get_homedir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p.dir() == tiledb::common::filesystem::home_directory());
   }
 }
 
@@ -241,7 +240,7 @@ TEST_CASE_METHOD(
     // check that the other profile is saved
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        p1.get_name()));
+        p1.name()));
   }
 }
 
@@ -290,17 +289,17 @@ TEST_CASE_METHOD(
     // check that the other profile is saved
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        p2.get_name()));
+        p2.name()));
     // attempt remove the tested profile
     REQUIRE_THROWS(p1.remove());
     // check that the other profile still exists
     REQUIRE(profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        p2.get_name()));
+        p2.name()));
     // check that the tested profile still does not exist
     REQUIRE(!profile_exists(
         tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
-        p1.get_name()));
+        p1.name()));
   }
 }
 
@@ -334,11 +333,11 @@ TEST_CASE_METHOD(
     expected_values_t expected;
 
     Profile p1;
-    REQUIRE(p1.get_name() == expected.name);
-    REQUIRE(p1.get_homedir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p1.name() == expected.profile_name);
+    REQUIRE(p1.dir() == tiledb::common::filesystem::home_directory());
 
     Profile p2(std::nullopt, std::nullopt);
-    REQUIRE(p2.get_name() == expected.name);
-    REQUIRE(p2.get_homedir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(p2.name() == expected.profile_name);
+    REQUIRE(p2.dir() == tiledb::common::filesystem::home_directory());
   }
 }

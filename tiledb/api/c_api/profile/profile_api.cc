@@ -38,31 +38,15 @@
 namespace tiledb::api {
 
 capi_return_t tiledb_profile_alloc(
-    const char* name, const char* homedir, tiledb_profile_t** profile) {
+    const char* name, const char* dir, tiledb_profile_t** profile) {
   ensure_output_pointer_is_valid(profile);
-  std::string name_str;
-  if (!name) {
-    // Passing nullptr resolves to the default case.
-    name_str = tiledb::sm::RestProfile::DEFAULT_NAME;
-  } else {
-    name_str = name;
-    if (name_str.empty()) {
-      throw CAPIException("[tiledb_profile_alloc] Name cannot be empty.");
-    }
-  }
 
-  std::string homedir_str;
-  if (!homedir) {
-    // Passing nullptr resolves to the default case.
-    homedir_str = tiledb::common::filesystem::home_directory();
-  } else {
-    homedir_str = homedir;
-    if (homedir_str.empty()) {
-      throw CAPIException("[tiledb_profile_alloc] Homedir cannot be empty.");
-    }
-  }
+  std::optional<std::string> name_str =
+      name ? std::make_optional(name) : std::nullopt;
+  std::optional<std::string> dir_str =
+      dir ? std::make_optional(dir) : std::nullopt;
 
-  *profile = tiledb_profile_t::make_handle(name_str, homedir_str);
+  *profile = tiledb_profile_t::make_handle(name_str, dir_str);
 
   return TILEDB_OK;
 }
@@ -81,22 +65,21 @@ capi_return_t tiledb_profile_get_name(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_profile_get_homedir(
-    tiledb_profile_t* profile, tiledb_string_handle_t** homedir) {
+capi_return_t tiledb_profile_get_dir(
+    tiledb_profile_t* profile, tiledb_string_handle_t** dir) {
   ensure_profile_is_valid(profile);
-  ensure_output_pointer_is_valid(homedir);
-  *homedir = tiledb_string_handle_t::make_handle(profile->profile()->homedir());
+  ensure_output_pointer_is_valid(dir);
+  *dir = tiledb_string_handle_t::make_handle(profile->profile()->dir());
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_profile_set_param(
     tiledb_profile_t* profile, const char* param, const char* value) {
   ensure_profile_is_valid(profile);
-  if (!param || !value) {
-    throw CAPIException(
-        "[tiledb_profile_set_param] Parameter or value cannot be null.");
+  if (!param) {
+    throw CAPIException("[tiledb_profile_set_param] Parameter cannot be null.");
   }
-  profile->profile()->set_param(param, value);
+  profile->profile()->set_param(param, value ? value : "");
   return TILEDB_OK;
 }
 
@@ -109,8 +92,16 @@ capi_return_t tiledb_profile_get_param(
   if (!param) {
     throw CAPIException("[tiledb_profile_get_param] Parameter cannot be null.");
   }
-  *value =
-      tiledb_string_handle_t::make_handle(profile->profile()->get_param(param));
+
+  const std::string* param_value = profile->profile()->get_param(param);
+
+  if (!param_value) {
+    throw CAPIException(
+        "[tiledb_profile_get_param] Parameter '" + std::string(param) +
+        "' does not exist in the profile.");
+  }
+
+  *value = tiledb_string_handle_t::make_handle(*param_value);
   return TILEDB_OK;
 }
 
@@ -136,9 +127,7 @@ capi_return_t tiledb_profile_dump_str(
     tiledb_profile_t* profile, tiledb_string_handle_t** out) {
   ensure_profile_is_valid(profile);
   ensure_output_pointer_is_valid(out);
-
   *out = tiledb_string_handle_t::make_handle(profile->profile()->dump());
-
   return TILEDB_OK;
 }
 
@@ -150,11 +139,11 @@ using tiledb::api::api_entry_void;
 CAPI_INTERFACE(
     profile_alloc,
     const char* name,
-    const char* homedir,
+    const char* dir,
     tiledb_profile_t** profile,
     tiledb_error_t** error) {
   return api_entry_error<tiledb::api::tiledb_profile_alloc>(
-      error, name, homedir, profile);
+      error, name, dir, profile);
 }
 
 CAPI_INTERFACE_VOID(profile_free, tiledb_profile_t** profile) {
@@ -171,12 +160,12 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    profile_get_homedir,
+    profile_get_dir,
     tiledb_profile_t* profile,
-    tiledb_string_handle_t** homedir,
+    tiledb_string_handle_t** dir,
     tiledb_error_t** error) {
-  return api_entry_error<tiledb::api::tiledb_profile_get_homedir>(
-      error, profile, homedir);
+  return api_entry_error<tiledb::api::tiledb_profile_get_dir>(
+      error, profile, dir);
 }
 
 CAPI_INTERFACE(
