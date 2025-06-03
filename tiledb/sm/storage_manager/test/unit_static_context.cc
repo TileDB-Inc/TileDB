@@ -30,25 +30,9 @@
  * This file defines unit tests for the checking StorageManager and GlobalState
  * lifetimes.
  */
+#include "tiledb/sm/cpp_api/context.h"
 
 #include <test/support/tdb_catch.h>
-#if defined(DELETE)
-#undef DELETE
-#endif
-#include <tiledb/sm/array/array.h>
-#include <tiledb/sm/array_schema/dimension.h>
-#include <tiledb/sm/enums/array_type.h>
-#include <tiledb/sm/enums/encryption_type.h>
-#include <tiledb/sm/storage_manager/context.h>
-#include <tiledb/sm/subarray/subarray.h>
-
-#include <test/support/src/helpers.h>
-#include <test/support/src/mem_helpers.h>
-
-using namespace tiledb;
-using namespace tiledb::common;
-using namespace tiledb::sm;
-using namespace tiledb::type;
 
 TEST_CASE("Static Context", "[context]") {
   // While non-obvious from this implementation, the issue here is that the
