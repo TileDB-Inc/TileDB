@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use datafusion::common::arrow::array::{
+use arrow::array::{
     self as aa, Array as ArrowArray, FixedSizeListArray, GenericListArray, PrimitiveArray,
 };
-use datafusion::common::arrow::buffer::{Buffer, NullBuffer, OffsetBuffer, ScalarBuffer};
-use datafusion::common::arrow::datatypes::{self as adt, ArrowPrimitiveType, Field};
-use datafusion::common::arrow::record_batch::RecordBatch;
-use oxidize::sm::query::readers::{ResultTile, TileTuple};
-use oxidize::sm::tile::Tile;
+use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer, ScalarBuffer};
+use arrow::datatypes::{self as adt, ArrowPrimitiveType, Field};
+use arrow::record_batch::RecordBatch;
+use tiledb_oxidize::sm::query::readers::{ResultTile, TileTuple};
+use tiledb_oxidize::sm::tile::Tile;
 
 use super::*;
 use crate::offsets::Error as OffsetsError;
@@ -39,7 +39,7 @@ pub struct ArrowRecordBatch {
 }
 
 pub fn to_record_batch(
-    schema: &DataFusionSchema,
+    schema: &ArrowSchema,
     tile: &ResultTile,
 ) -> Result<Box<ArrowRecordBatch>, Error> {
     let columns = schema
@@ -65,7 +65,7 @@ pub fn to_record_batch(
         })
         .collect::<Result<Vec<Arc<dyn ArrowArray>>, _>>()?;
 
-    let arrow = RecordBatch::try_new(Arc::clone(schema.0.inner()), columns);
+    let arrow = RecordBatch::try_new(Arc::clone(&schema.0), columns);
 
     // SAFETY: construction should ensure all the preconditions are met
     // "the vec of columns to not be empty" admittedly this is an assumption but we should have at

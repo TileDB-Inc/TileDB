@@ -16,26 +16,42 @@ add_custom_command(
 # and now, the crates themselves!
 
 add_crate(
-    NAME arithmetic
-    BRIDGES src/lib.rs
-    SOURCES Cargo.toml
-)
-
-add_crate(
-    NAME expr
+    NAME
+        arithmetic
     BRIDGES
         src/lib.rs
     SOURCES
         Cargo.toml
-        src/logical_expr.rs
+)
+
+add_crate(
+    NAME
+        arrow
+    BRIDGES
+        src/lib.rs
+    SOURCES
+        Cargo.toml
         src/offsets.rs
-        src/physical_expr.rs
         src/record_batch.rs
         src/schema.rs
 )
 
 add_crate(
-    NAME oxidize
+    NAME
+        expr
+    DEPENDS
+        arrow_rs
+    BRIDGES
+        src/lib.rs
+    SOURCES
+        Cargo.toml
+        src/logical_expr.rs
+        src/physical_expr.rs
+)
+
+add_crate(
+    NAME
+        oxidize
     BRIDGES
         src/sm/array_schema/mod.rs
         src/sm/enums/mod.rs
@@ -47,4 +63,4 @@ add_crate(
         Cargo.toml
 )
 
-set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} *.h)
+set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} ${TILEDB_OXIDIZE_INCLUDE_DIR})

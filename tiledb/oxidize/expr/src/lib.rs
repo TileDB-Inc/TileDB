@@ -4,23 +4,20 @@ mod ffi {
     extern "C++" {
         include!("tiledb/sm/array_schema/array_schema.h");
         include!("tiledb/sm/query/ast/query_ast.h");
-        include!("tiledb/sm/query/readers/result_tile.h");
 
-        type ArraySchema = oxidize::sm::array_schema::ArraySchema;
-        type ASTNode = oxidize::sm::query::ast::ASTNode;
-        type Datatype = oxidize::sm::enums::Datatype;
-        type ResultTile = oxidize::sm::query::readers::ResultTile;
+        type ArraySchema = tiledb_oxidize::sm::array_schema::ArraySchema;
+        type ASTNode = tiledb_oxidize::sm::query::ast::ASTNode;
+        type Datatype = tiledb_oxidize::sm::enums::Datatype;
     }
 
-    #[namespace = "tiledb::oxidize::datafusion::schema"]
-    extern "Rust" {
-        type DataFusionSchema;
+    extern "C++" {
+        include!("tiledb/oxidize/arrow.h");
 
-        #[cxx_name = "create"]
-        fn array_schema_to_dfschema(
-            schema: &ArraySchema,
-            select: &CxxVector<CxxString>,
-        ) -> Result<Box<DataFusionSchema>>;
+        #[namespace = "tiledb::oxidize::arrow::record_batch"]
+        type ArrowRecordBatch = tiledb_arrow::record_batch::ArrowRecordBatch;
+
+        #[namespace = "tiledb::oxidize::arrow::schema"]
+        type ArrowSchema = tiledb_arrow::schema::ArrowSchema;
     }
 
     #[namespace = "tiledb::oxidize::datafusion::logical_expr"]
@@ -35,17 +32,6 @@ mod ffi {
         ) -> Result<Box<LogicalExpr>>;
     }
 
-    #[namespace = "tiledb::oxidize::arrow"]
-    extern "Rust" {
-        type ArrowRecordBatch;
-
-        #[cxx_name = "to_record_batch"]
-        fn result_tile_to_record_batch(
-            schema: &DataFusionSchema,
-            tile: &ResultTile,
-        ) -> Result<Box<ArrowRecordBatch>>;
-    }
-
     #[namespace = "tiledb::oxidize::datafusion::physical_expr"]
     extern "Rust" {
         type PhysicalExpr;
@@ -55,7 +41,7 @@ mod ffi {
         // see the pdavis 65154 branch
         #[cxx_name = "create"]
         fn create_physical_expr(
-            schema: &DataFusionSchema,
+            schema: &ArrowSchema,
             expr: Box<LogicalExpr>,
         ) -> Result<Box<PhysicalExpr>>;
     }
@@ -75,12 +61,7 @@ mod ffi {
 }
 
 mod logical_expr;
-mod offsets;
 mod physical_expr;
-mod record_batch;
-mod schema;
 
 pub use logical_expr::{LogicalExpr, to_datafusion as query_condition_to_logical_expr};
 pub use physical_expr::{PhysicalExpr, PhysicalExprOutput, create_physical_expr};
-pub use record_batch::{ArrowRecordBatch, to_record_batch as result_tile_to_record_batch};
-pub use schema::{DataFusionSchema, to_datafusion_cxx as array_schema_to_dfschema};

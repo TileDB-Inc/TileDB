@@ -1,15 +1,17 @@
+use std::ops::Deref;
 use std::sync::Arc;
 
 use datafusion::common::arrow::datatypes::DataType as ArrowDataType;
 use datafusion::common::arrow::{array as aa, compute, datatypes as adt};
-use datafusion::common::{DataFusionError, ScalarValue};
+use datafusion::common::{DFSchema, DataFusionError, ScalarValue};
 use datafusion::execution::context::ExecutionProps;
 use datafusion::logical_expr::ColumnarValue;
 use datafusion::physical_plan::PhysicalExpr as DatafusionPhysicalExpr;
-use oxidize::sm::enums::Datatype;
+use tiledb_arrow::record_batch::ArrowRecordBatch;
+use tiledb_arrow::schema::ArrowSchema;
+use tiledb_oxidize::sm::enums::Datatype;
 
-use crate::schema;
-use crate::{ArrowRecordBatch, DataFusionSchema, LogicalExpr};
+use crate::LogicalExpr;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PhysicalExprError {
@@ -22,7 +24,7 @@ pub enum PhysicalExprError {
 #[derive(Debug, thiserror::Error)]
 pub enum PhysicalExprOutputError {
     #[error("Target type is unavailable: {0}")]
-    TypeUnavailable(#[source] schema::FieldError),
+    TypeUnavailable(#[source] tiledb_arrow::schema::FieldError),
     #[error("Cast expression result: {0}")]
     Cast(#[source] DataFusionError),
     #[error("Cannot read array as static datatype '{0}': found '{1}'")]
@@ -45,11 +47,16 @@ impl PhysicalExpr {
 }
 
 pub fn create_physical_expr(
-    schema: &DataFusionSchema,
+    schema: &ArrowSchema,
     expr: Box<LogicalExpr>,
 ) -> Result<Box<PhysicalExpr>, PhysicalExprError> {
+    let dfschema = DFSchema::from_field_specific_qualified_schema(
+        vec![None; schema.fields.len()],
+        schema.deref(),
+    )
+    .map_err(PhysicalExprError::Create)?;
     let dfexpr =
-        datafusion::physical_expr::create_physical_expr(&expr.0, &schema.0, &ExecutionProps::new())
+        datafusion::physical_expr::create_physical_expr(&expr.0, &dfschema, &ExecutionProps::new())
             .map_err(PhysicalExprError::Create)?;
     Ok(Box::new(PhysicalExpr(dfexpr)))
 }
@@ -70,8 +77,8 @@ impl PhysicalExprOutput {
         &self,
         datatype: Datatype,
     ) -> Result<Box<PhysicalExprOutput>, PhysicalExprOutputError> {
-        let arrow_type =
-            schema::arrow_datatype(datatype).map_err(PhysicalExprOutputError::TypeUnavailable)?;
+        let arrow_type = tiledb_arrow::schema::arrow_datatype(datatype)
+            .map_err(PhysicalExprOutputError::TypeUnavailable)?;
         let columnar_value = match &self.0 {
             ColumnarValue::Scalar(s) => ColumnarValue::Scalar(
                 s.cast_to(&arrow_type)

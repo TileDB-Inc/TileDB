@@ -430,6 +430,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 set(TILEDB_CORE_OBJECTS_LIBS
   assert
   baseline
+  arrow_rs
   expr_rs
   oxidize_rs
 )

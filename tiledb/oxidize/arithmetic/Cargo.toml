@@ -1,5 +1,5 @@
 [package]
-name = "arithmetic"
+name = "tiledb-arithmetic"
 edition = { workspace = true }
 rust-version = { workspace = true }
 version = { workspace = true }

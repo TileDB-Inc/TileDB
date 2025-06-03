@@ -34,6 +34,7 @@
 #include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/oxidize/arrow.h"
 #include "tiledb/oxidize/expr.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
@@ -173,7 +174,7 @@ void QueryCondition::rewrite_for_schema(
         auto logical_expr = tiledb::oxidize::datafusion::logical_expr::create(
             array_schema, *tree_.get());
         auto dfschema =
-            tiledb::oxidize::datafusion::schema::create(array_schema, select);
+            tiledb::oxidize::arrow::schema::create(array_schema, select);
         auto physical_expr =
             std::move(tiledb::oxidize::datafusion::physical_expr::create(
                 *dfschema, std::move(logical_expr)));
@@ -2958,7 +2959,7 @@ void QueryCondition::Datafusion::apply(
     ResultTile& result_tile,
     tdb::pmr::vector<BitmapType>& result_bitmap) const {
   const auto arrow =
-      tiledb::oxidize::arrow::to_record_batch(*schema_, result_tile);
+      tiledb::oxidize::arrow::record_batch::create(*schema_, result_tile);
   const auto predicate_eval = expr_->evaluate(*arrow);
   static_assert(
       std::is_same_v<BitmapType, uint8_t> ||

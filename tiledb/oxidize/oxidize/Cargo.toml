@@ -1,5 +1,5 @@
 [package]
-name = "oxidize"
+name = "tiledb-oxidize"
 edition = { workspace = true }
 rust-version = { workspace = true }
 version = { workspace = true }

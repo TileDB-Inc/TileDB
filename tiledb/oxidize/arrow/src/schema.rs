@@ -1,12 +1,12 @@
+use std::ops::Deref;
 use std::str::Utf8Error;
 use std::sync::Arc;
 
-use datafusion::common::arrow::datatypes::{
-    DataType as ArrowDataType, Field as ArrowField, Fields as ArrowFields,
+use arrow::datatypes::{
+    DataType as ArrowDataType, Field as ArrowField, Fields as ArrowFields, Schema,
 };
-use datafusion::common::{DFSchema, DataFusionError};
-use oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
-use oxidize::sm::enums::Datatype;
+use tiledb_oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
+use tiledb_oxidize::sm::enums::Datatype;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -14,8 +14,6 @@ pub enum Error {
     NameNotUtf8(Vec<u8>, Utf8Error),
     #[error("Error in field '{0}': {1}")]
     FieldError(String, FieldError),
-    #[error("Internal error constructing schema: {0}")]
-    DFSchema(DataFusionError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -26,20 +24,31 @@ pub enum FieldError {
     InternalInvalidDatatype(u8),
 }
 
-pub struct DataFusionSchema(pub DFSchema);
+pub struct ArrowSchema(pub Arc<Schema>);
 
-pub fn to_datafusion_cxx(
-    array_schema: &ArraySchema,
-    select: &cxx::Vector<cxx::String>,
-) -> Result<Box<DataFusionSchema>, Error> {
-    Ok(Box::new(DataFusionSchema(to_datafusion(
-        array_schema,
-        |field| select.iter().find(|s| *s == field.name_cxx()).is_some(),
-    )?)))
+impl Deref for ArrowSchema {
+    type Target = Arc<Schema>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-/// Returns a [DFSchema] which represents the physical field types of `array_schema`.
-pub fn to_datafusion<F>(array_schema: &ArraySchema, select: F) -> Result<DFSchema, Error>
+pub mod cxx {
+    use super::*;
+
+    pub fn to_arrow(
+        array_schema: &ArraySchema,
+        select: &::cxx::Vector<::cxx::String>,
+    ) -> Result<Box<ArrowSchema>, Error> {
+        Ok(Box::new(ArrowSchema(Arc::new(super::to_arrow(
+            array_schema,
+            |field: &Field| select.iter().find(|s| *s == field.name_cxx()).is_some(),
+        )?))))
+    }
+}
+
+/// Returns a [Schema] which represents the physical field types of `array_schema`.
+pub fn to_arrow<F>(array_schema: &ArraySchema, select: F) -> Result<Schema, Error>
 where
     F: Fn(&Field) -> bool,
 {
@@ -54,11 +63,10 @@ where
         Ok(ArrowField::new(field_name, arrow_type, true))
     });
 
-    DFSchema::from_unqualified_fields(
-        fields.collect::<Result<ArrowFields, Error>>()?,
-        Default::default(),
-    )
-    .map_err(Error::DFSchema)
+    Ok(Schema {
+        fields: fields.collect::<Result<ArrowFields, _>>()?,
+        metadata: Default::default(),
+    })
 }
 
 /// Returns an [ArrowDataType] which represents the physical data type of `field`.

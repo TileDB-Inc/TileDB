@@ -9,15 +9,14 @@ use datafusion::common::arrow::datatypes::Field as ArrowField;
 use datafusion::common::{Column, ScalarValue};
 use datafusion::logical_expr::expr::InList;
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator};
-use datatype::apply_physical_type;
 use itertools::Itertools;
 use num_traits::FromBytes;
-use oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
-use oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
-use oxidize::sm::misc::ByteVecValue;
-use oxidize::sm::query::ast::ASTNode;
-
-use crate::offsets::Error as OffsetsError;
+use tiledb_arrow::offsets::Error as OffsetsError;
+use tiledb_datatype::apply_physical_type;
+use tiledb_oxidize::sm::array_schema::{ArraySchema, CellValNum, Field};
+use tiledb_oxidize::sm::enums::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
+use tiledb_oxidize::sm::misc::ByteVecValue;
+use tiledb_oxidize::sm::query::ast::ASTNode;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -38,7 +37,7 @@ pub enum InternalError {
     #[error("Invalid number of arguments to NOT expression: expected 1, found {0}")]
     NotTree(usize),
     #[error("Error in field '{0}': {1}")]
-    SchemaField(String, crate::schema::FieldError),
+    SchemaField(String, tiledb_arrow::schema::FieldError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -123,7 +122,7 @@ fn leaf_ast_to_binary_expr(
             .map(ScalarValue::from)
             .peekable();
 
-        let expect_datatype = crate::schema::field_arrow_datatype(field).map_err(|e| {
+        let expect_datatype = tiledb_arrow::schema::field_arrow_datatype(field).map_err(|e| {
             InternalError::SchemaField(field.name_cxx().to_string_lossy().into_owned(), e)
         })?;
 
@@ -276,7 +275,7 @@ fn leaf_ast_to_in_list(schema: &ArraySchema, ast: &ASTNode, negated: bool) -> Re
                 };
                 assert!(!array_values.is_nullable());
 
-                let array_offsets = crate::offsets::try_from_bytes_and_num_values(
+                let array_offsets = tiledb_arrow::offsets::try_from_bytes_and_num_values(
                     field.datatype().value_size(),
                     ast.get_offsets().as_slice(),
                     ast.get_data().len(),

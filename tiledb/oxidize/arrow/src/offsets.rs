@@ -1,4 +1,4 @@
-use datafusion::common::arrow::buffer::{Buffer, OffsetBuffer, ScalarBuffer};
+use arrow::buffer::{Buffer, OffsetBuffer, ScalarBuffer};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
