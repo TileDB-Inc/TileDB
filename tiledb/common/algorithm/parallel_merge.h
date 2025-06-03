@@ -220,15 +220,6 @@ struct ParallelMergeFuture {
   friend class ParallelMerge;
 };
 
-template <
-    ParallelMergeable I,
-    class Compare = std::less<typename I::value_type::value_type>>
-tdb::pmr::unique_ptr<ParallelMergeFuture> parallel_merge(
-    tiledb::common::ThreadPool& pool,
-    const ParallelMergeOptions& options,
-    const I& streams,
-    std::remove_cv_t<typename I::value_type::value_type>* output);
-
 /**
  * Represents one sequential unit of the parallel merge.
  *
@@ -335,7 +326,7 @@ class ParallelMerge {
       const I& streams,
       Compare* cmp,
       const MergeUnit& unit,
-      std::remove_cv_t<typename I::value_type::value_type>* output) {
+      std::span<T> output) {
     std::vector<std::span<const T>> container;
     container.reserve(streams.size());
 
@@ -365,6 +356,7 @@ class ParallelMerge {
       // empty streams are not put on the priority queue
       iassert(!stream.empty());
 
+      iassert(o < output.size());
       output[o++] = stream.front();
 
       if (stream.size() > 1) {
@@ -571,7 +563,7 @@ class ParallelMerge {
       uint64_t total_items,
       uint64_t target_unit_size,
       uint64_t p,
-      std::remove_cv_t<typename I::value_type::value_type>* output,
+      std::span<T> output,
       ParallelMergeFuture* future) {
     const uint64_t output_end =
         std::min(total_items, (p + 1) * target_unit_size);
@@ -621,7 +613,7 @@ class ParallelMerge {
       uint64_t total_items,
       const I& streams,
       Compare& cmp,
-      std::remove_cv_t<typename I::value_type::value_type>* output,
+      std::span<T> output,
       ParallelMergeFuture& future) {
     // NB: round up, if there is a shorter merge unit it will be the last one.
     const uint64_t target_unit_size =
@@ -652,7 +644,7 @@ class ParallelMerge {
       const ParallelMergeOptions& options,
       const I& streams,
       Compare& cmp,
-      std::remove_cv_t<typename I::value_type::value_type>* output) {
+      std::span<T> output) {
     uint64_t total_items = 0;
     for (const auto& stream : streams) {
       total_items += stream.size();
@@ -679,7 +671,7 @@ tdb::pmr::unique_ptr<ParallelMergeFuture> parallel_merge(
     const ParallelMergeOptions& options,
     const I& streams,
     Compare& cmp,
-    std::remove_cv_t<typename I::value_type::value_type>* output) {
+    std::span<typename I::value_type::value_type> output) {
   return ParallelMerge<I, Compare>::start(
       pool, memory, options, streams, cmp, output);
 }
