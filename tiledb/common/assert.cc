@@ -68,6 +68,8 @@ static std::vector<std::function<void()>> passertFailureCallbacks;
   passert_failure_abort();
 }
 
+#ifdef TILEDB_ASSERTIONS
+
 PAssertFailureCallbackRegistration::PAssertFailureCallbackRegistration(
     std::function<void()>&& callback) {
   std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
@@ -79,5 +81,7 @@ PAssertFailureCallbackRegistration::~PAssertFailureCallbackRegistration() {
   std::unique_lock<std::mutex> lk(passertFailureCallbackMutex);
   passertFailureCallbacks.pop_back();
 }
+
+#endif
 
 }  // namespace tiledb::common
