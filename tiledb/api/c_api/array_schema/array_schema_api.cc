@@ -96,6 +96,28 @@ capi_return_t tiledb_array_schema_alloc(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_array_schema_alloc_at_timestamp(
+    tiledb_ctx_t* ctx,
+    tiledb_array_type_t array_type,
+    uint64_t timestamp,
+    tiledb_array_schema_t** array_schema) {
+  ensure_output_pointer_is_valid(array_schema);
+
+  if (timestamp == 0) {
+    throw CAPIException("timestamp cannot be 0");
+  }
+
+  // Create ArraySchema object
+  auto memory_tracker = ctx->resources().create_memory_tracker();
+  memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);
+  *array_schema = tiledb_array_schema_t::make_handle(
+      static_cast<tiledb::sm::ArrayType>(array_type),
+      memory_tracker,
+      std::make_pair(timestamp, timestamp));
+
+  return TILEDB_OK;
+}
+
 void tiledb_array_schema_free(tiledb_array_schema_t** array_schema) {
   ensure_output_pointer_is_valid(array_schema);
   ensure_array_schema_is_valid(*array_schema);
@@ -511,6 +533,17 @@ CAPI_INTERFACE(
     tiledb_array_schema_t** array_schema) {
   return api_entry_with_context<tiledb::api::tiledb_array_schema_alloc>(
       ctx, array_type, array_schema);
+}
+
+CAPI_INTERFACE(
+    array_schema_alloc_at_timestamp,
+    tiledb_ctx_t* ctx,
+    tiledb_array_type_t array_type,
+    uint64_t timestamp,
+    tiledb_array_schema_t** array_schema) {
+  return api_entry_with_context<
+      tiledb::api::tiledb_array_schema_alloc_at_timestamp>(
+      ctx, array_type, timestamp, array_schema);
 }
 
 CAPI_INTERFACE_VOID(array_schema_free, tiledb_array_schema_t** array_schema) {

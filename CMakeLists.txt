@@ -286,13 +286,8 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_dimension_label_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_serialization.h"
 )
-
-if (TILEDB_SERIALIZATION)
-    list(APPEND TILEDB_C_API_FILENAME_HEADERS
-        "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_serialization.h"
-    )
-endif()
 
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
@@ -331,6 +326,7 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/fragment_info/fragment_info_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/fragment_info/fragment_info_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/profile/profile_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/ndrectangle/ndrectangle_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
@@ -377,13 +373,15 @@ if (TILEDB_GCS)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_GCS)
 endif()
 
-if (TILEDB_HDFS)
-  target_compile_definitions(configuration_definitions INTERFACE -DHAVE_HDFS)
-endif()
-
 if (TILEDB_S3)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
+
+if (TILEDB_ASSERTIONS)
+  string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_DIR_PATH_SIZE)
+  add_compile_definitions(TILEDB_ASSERTIONS)
+  add_compile_definitions("__SOURCE_DIR_PATH_SIZE__=${SOURCE_DIR_PATH_SIZE}")
+endif ()
 
 ##################################
 # Local install

@@ -29,8 +29,7 @@ A useful bug report filed as a GitHub issue provides information about how to re
 
 ### Quickstart Workflow:
 
-Please see [building from source](https://docs.tiledb.com/main/how-to/installation/building-from-source)
-for dependencies and detailed build instructions.
+Please see [building from source](docs/building-from-source.md) for dependencies and detailed build instructions.
 
 [From a fork of TileDB](https://help.github.com/articles/fork-a-repo/)
 

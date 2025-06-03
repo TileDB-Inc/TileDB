@@ -172,6 +172,30 @@ TEST_CASE(
   SECTION("success") {
     rc = tiledb_subarray_add_point_ranges(x.ctx(), x.subarray, 0, ranges, 2);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+    // validate range_num
+    uint64_t range_num;
+    rc = tiledb_subarray_get_range_num(x.ctx(), x.subarray, 0, &range_num);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(range_num == 2);
+
+    // validate range
+    const void* start;
+    const void* end;
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 0, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(*static_cast<const int*>(start) == 1);
+    CHECK(*static_cast<const int*>(end) == 1);
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 1, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(*static_cast<const int*>(start) == 4);
+    CHECK(*static_cast<const int*>(end) == 4);
+    // there are only two ranges
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 2, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null context") {
     rc = tiledb_subarray_add_point_ranges(nullptr, x.subarray, 0, ranges, 2);
@@ -194,6 +218,96 @@ TEST_CASE(
   /**
    * No "invalid count" section here;
    * There is no way to programmatically (in)validate the count. An invalid
+   * value will result in a segfault from an OOB memcpy.
+   */
+}
+
+TEST_CASE(
+    "C API: tiledb_subarray_add_point_ranges_var argument validation",
+    "[capi][subarray]") {
+  capi_return_t rc;
+  ordinary_subarray_var x{};
+  const char* buffer = "aabcccddee";
+  uint64_t buffer_size = 10;
+  uint64_t offsets[] = {0, 2, 3, 6, 8};
+  uint64_t offsets_size = 5;
+
+  // According to the data passed, the expected ranges are:
+  // (aa, aa), (b, b), (ccc, ccc), (dd, dd), (ee, ee)
+
+  SECTION("success") {
+    rc = tiledb_subarray_add_point_ranges_var(
+        x.ctx(), x.subarray, 0, buffer, buffer_size, offsets, offsets_size);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+    // validate range_num
+    uint64_t range_num;
+    rc = tiledb_subarray_get_range_num(x.ctx(), x.subarray, 0, &range_num);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    REQUIRE(range_num == 5);
+
+    // validate range
+    const void* start;
+    const void* end;
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 0, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(std::string(static_cast<const char*>(start), 2) == "aa");
+    CHECK(std::string(static_cast<const char*>(end), 2) == "aa");
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 1, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(std::string(static_cast<const char*>(start), 1) == "b");
+    CHECK(std::string(static_cast<const char*>(end), 1) == "b");
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 2, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(std::string(static_cast<const char*>(start), 3) == "ccc");
+    CHECK(std::string(static_cast<const char*>(end), 3) == "ccc");
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 3, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(std::string(static_cast<const char*>(start), 2) == "dd");
+    CHECK(std::string(static_cast<const char*>(end), 2) == "dd");
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 4, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_OK);
+    CHECK(std::string(static_cast<const char*>(start), 2) == "ee");
+    CHECK(std::string(static_cast<const char*>(end), 2) == "ee");
+    // there are only five ranges
+    rc = tiledb_subarray_get_range(
+        x.ctx(), x.subarray, 0, 5, &start, &end, nullptr);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null context") {
+    rc = tiledb_subarray_add_point_ranges_var(
+        nullptr, x.subarray, 0, buffer, buffer_size, offsets, offsets_size);
+    REQUIRE(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
+  }
+  SECTION("null subarray") {
+    rc = tiledb_subarray_add_point_ranges_var(
+        x.ctx(), nullptr, 0, buffer, buffer_size, offsets, offsets_size);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("invalid dim_idx") {
+    rc = tiledb_subarray_add_point_ranges_var(
+        x.ctx(), x.subarray, 3, buffer, buffer_size, offsets, offsets_size);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null buffer_val") {
+    rc = tiledb_subarray_add_point_ranges_var(
+        x.ctx(), x.subarray, 0, nullptr, buffer_size, offsets, offsets_size);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null buffer_off") {
+    rc = tiledb_subarray_add_point_ranges_var(
+        x.ctx(), x.subarray, 0, buffer, buffer_size, nullptr, offsets_size);
+    REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+  }
+
+  /**
+   * No "invalid buffer_val_size" and "invalid buffer_off_size" sections here;
+   * There is no way to programmatically (in)validate the size. An invalid
    * value will result in a segfault from an OOB memcpy.
    */
 }

@@ -632,8 +632,8 @@ Status UnorderedWriter::sort_coords() {
 
 Status UnorderedWriter::unordered_write() {
   // Applicable only to unordered write on sparse arrays
-  assert(layout_ == Layout::UNORDERED);
-  assert(!array_schema_.dense());
+  iassert(layout_ == Layout::UNORDERED, "layout = {}", layout_str(layout_));
+  iassert(!array_schema_.dense());
 
   if (written_buffers_.size() >=
       array_schema_.dim_num() + array_schema_.attribute_num()) {

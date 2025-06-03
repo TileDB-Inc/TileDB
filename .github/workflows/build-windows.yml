@@ -10,7 +10,7 @@ env:
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableAssert'
 
 jobs:
   build:
@@ -55,7 +55,6 @@ jobs:
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
     steps:
       - name: 'tiledb env prep'
         run: |
@@ -71,14 +70,6 @@ jobs:
 
           write-host "BUILD_BUILDDIRECTORY=$env:BUILD_BUILDDIRECTORY" *>> $env:GITHUB_ENV
           write-host "BUILD_SOURCESDIRECTORY=$env:BUILD_SOURCESDIRECTORY" *>> $env:GITHUB_ENV
-
-      # Configure required environment variables for vcpkg to use
-      # GitHub's Action Cache
-      - uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: 'Print env'
         shell: cmd
@@ -151,9 +142,6 @@ jobs:
           if ($env:TILEDB_SERIALIZATION -eq "ON") {
             $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
           }
-          # if ($env:TILEDB_HDFS -eq "ON") {
-          #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
-          #}
           if ($env:TILEDB_TOOLS -eq "ON") {
             $bootstrapOptions = $bootstrapOptions + " -EnableTools"
           }
@@ -266,12 +254,23 @@ jobs:
 
           # Actually run tests
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe -d=yes ~[rapidcheck]"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
               Write-Host "Tests failed. tiledb_unit exit status: " $LastExitCocde
               $host.SetShouldExit($LastExitCode)
+          }
+
+          # Run rapidcheck tests as their own process so we can see the random seed for each
+          Invoke-Expression "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe --list-tests [rapidcheck] --verbosity quiet" | Foreach-Object {
+            $rapidcheck = "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe '$_'"
+            Write-Host "cmds: '$rapidcheck'"
+            Invoke-Expression $rapidcheck
+            if ($LastExitCode -ne 0) {
+              Write-Host "Rapidcheck test \"$_\" failed with exit status: " $LastExitCode
+              $host.SetShouldExit($LastExitCode)
+            }
           }
 
           $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\sm\filesystem\test\unit_vfs -d=yes"

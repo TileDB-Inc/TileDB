@@ -168,6 +168,7 @@ macro(TileDB_Environment_unit_test_end)
     # Catch2 is always a dependency of our unit tests
     find_package(Catch2 REQUIRED)
     target_link_libraries(${TileDB_Environment_unit_test_end_Unit_Test} PUBLIC tiledb_Catch2WithMain)
+    target_link_libraries(${TileDB_Environment_unit_test_end_Unit_Test} PUBLIC assert)
     foreach(Object_Library IN LISTS TileDB_Environment_unit_test_end_OL_Dependencies)
         target_link_libraries(${TileDB_Environment_unit_test_end_Unit_Test} PUBLIC ${Object_Library})
     endforeach()

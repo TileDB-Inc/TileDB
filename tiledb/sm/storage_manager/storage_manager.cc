@@ -74,14 +74,11 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 
   throw_if_not_ok(cancel_all_tasks());
 
-  bool found{false};
-  bool use_malloc_trim{false};
-  const Status& st =
-      config_.get<bool>("sm.mem.malloc_trim", &use_malloc_trim, &found);
-  if (st.ok() && found && use_malloc_trim) {
+  const bool use_malloc_trim =
+      config_.get<bool>("sm.mem.malloc_trim", Config::must_find);
+  if (use_malloc_trim) {
     tdb_malloc_trim();
   }
-  assert(found);
 }
 
 /* ****************************** */

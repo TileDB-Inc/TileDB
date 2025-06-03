@@ -7,6 +7,10 @@
 #include <string>
 #include <vector>
 
+#if defined(_MSC_VER)
+#include <crtdbg.h>
+#endif
+
 namespace tiledb {
 namespace test {
 
@@ -25,13 +29,16 @@ int main(const int argc, char** const argv) {
   // the value of these flags.
   if (std::getenv("CI") != nullptr) {
     _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    // Configures assert() failures to write message to stderr and fail-fast.
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
   }
 #endif
   Catch::Session session;
 
   // Define acceptable VFS values.
   const std::vector<std::string> vfs_fs = {
-      "native", "s3", "hdfs", "azure", "gcs", "rest-s3"};
+      "native", "s3", "azure", "gcs", "rest-s3"};
 
   // Build a pipe-separated string of acceptable VFS values.
   std::ostringstream vfs_fs_oss;

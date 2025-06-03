@@ -36,6 +36,7 @@ list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api")
 
 # Gather the test source files
 set(TILEDB_TEST_SUPPORT_SOURCES
+  rapidcheck/show.cc
   src/array_helpers.cc
   src/array_schema_helpers.cc
   src/ast_helpers.h
@@ -77,12 +78,6 @@ target_include_directories(
     ${TILEDB_CORE_INCLUDE_DIR}
     ${TILEDB_EXPORT_HEADER_DIR}
 )
-
-if (TILEDB_HDFS)
-  target_include_directories(tiledb_test_support_lib PRIVATE
-    "${CMAKE_SOURCE_DIR}/external/include"
-    )
-endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")

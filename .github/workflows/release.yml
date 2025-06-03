@@ -13,7 +13,7 @@ jobs:
   Package-Source-Release:
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout TileDB
@@ -47,12 +47,13 @@ jobs:
           - platform: windows-x86_64
             os: windows-2022
             triplet: x64-windows-release
+          # We can safely use the latest image, since the real job will run in the manylinux container.
           - platform: linux-x86_64
-            os: ubuntu-20.04
+            os: ubuntu-latest
             manylinux: quay.io/pypa/manylinux_2_28_x86_64
             triplet: x64-linux-release
           - platform: linux-x86_64-noavx2
-            os: ubuntu-20.04
+            os: ubuntu-latest
             cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
             triplet: x64-linux-release
             manylinux: quay.io/pypa/manylinux_2_28_x86_64
@@ -74,7 +75,6 @@ jobs:
     container: ${{ matrix.manylinux || '' }}
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
       - name: Checkout TileDB
@@ -83,12 +83,6 @@ jobs:
       - name: 'Homebrew setup'
         run: brew install automake ninja
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
-      - name: Export GitHub Actions cache variables
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - name: Set variables
         id: get-values
         run: |
@@ -112,7 +106,6 @@ jobs:
             -DTILEDB_S3=ON \
             -DTILEDB_AZURE=ON \
             -DTILEDB_GCS=ON \
-            -DTILEDB_HDFS=${{ startsWith(matrix.platform, 'windows') && 'OFF' || 'ON' }} \
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_WEBP=ON \
             -DTILEDB_TESTS=OFF \

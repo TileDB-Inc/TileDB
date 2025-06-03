@@ -13,7 +13,6 @@ on:
       - release-*
 
 env:
-  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 
 jobs:
@@ -31,19 +30,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Configure required environment variables for vcpkg to use
-      # GitHub's Action Cache
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
       - name: Prevent vpckg from building debug variants
         run: python ./scripts/ci/patch_vcpkg_triplets.py
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: 'Configure libtiledb'
         id: configure

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -774,6 +774,12 @@ extern const std::string redirection_header_key = "location";
 
 /** The config key prefix for REST custom headers. */
 const std::string rest_header_prefix = "rest.custom_headers.";
+
+/** The current RestProfile API version. */
+const format_version_t rest_profile_version = 1;
+
+/** Filepath for the special local RestProfile files used in TileDB. */
+const std::string rest_profile_filepath = ".tiledb/profiles.json";
 
 /** String describing MIME_AUTODETECT. */
 const std::string mime_autodetect_str = "AUTODETECT";

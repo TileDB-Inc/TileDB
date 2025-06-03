@@ -35,6 +35,7 @@
 #define TILEDB_DATATYPE_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/stdx/utility/to_underlying.h"
 
@@ -134,8 +135,7 @@ inline uint64_t datatype_size(Datatype type) noexcept {
       return sizeof(int64_t);
   }
 
-  assert(false);
-  return 0;
+  ::stdx::unreachable();
 }
 
 /** Returns the string representation of the input datatype. */

@@ -11,23 +11,28 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        build_type: [Debug, Release]
+        experimental: [OFF]
+        assertions: [ON]
+        sanitizer: [OFF]
         include:
-          - os: ubuntu-latest
-          - os: macos-latest
           - os: macos-latest # ASAN build
             sanitizer: "address"
+            assertions: ON
             base_triplet: "arm64-osx"
-          - os: macos-latest
+          - os: macos-latest # Arbitrary job to run EXPERIMENTAL=ON
+            build_type: Debug
+            sanitizer: OFF
             experimental: ON
           - os: windows-latest
-          - os: windows-latest
-            config: "Debug"
+            build_type: "Debug"
             # Insufficient space on default D:/ for debug build
             working_directory: "C:/"
       fail-fast: false
 
     name: |
-      ${{ matrix.os }} - Sanitizer: ${{ matrix.sanitizer || 'none' }} | Experimental: ${{ matrix.experimental || 'OFF' }} | ${{ matrix.config || 'Release' }}
+      ${{ matrix.os }} - Sanitizer: ${{ matrix.sanitizer }} | Experimental: ${{ matrix.experimental }} | Assertions: ${{ matrix.assertions }} | ${{ matrix.build_type }}
 
     env:
       TILEDB_NIGHTLY_BUILD: 1
@@ -42,38 +47,27 @@ jobs:
       - name: Configure TileDB CMake (not-Windows)
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
-          SANITIZER_ARG: ${{ matrix.sanitizer || 'OFF' }}
-          EXPERIMENTAL: ${{ matrix.experimental || 'OFF' }}
+          SANITIZER_ARG: ${{ matrix.sanitizer }}
+          EXPERIMENTAL: ${{ matrix.experimental }}
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_EXPERIMENTAL_FEATURES=$EXPERIMENTAL -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DTILEDB_SANITIZER=$SANITIZER_ARG -DTILEDB_VCPKG_BASE_TRIPLET=${{ matrix.base_triplet }}
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_EXPERIMENTAL_FEATURES=$EXPERIMENTAL -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTILEDB_SANITIZER=$SANITIZER_ARG -DTILEDB_ASSERTIONS=${{ matrix.assertions }} -DTILEDB_VCPKG_BASE_TRIPLET=${{ matrix.base_triplet }}
 
       - name: Configure TileDB CMake (Windows)
         if: contains(matrix.os, 'windows')
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake -B build -S $env:GITHUB_WORKSPACE -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }}
+          cmake -B build -S $env:GITHUB_WORKSPACE -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Build TileDB
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake --build build -j2 --config ${{ matrix.config || 'Release' }}
+          cmake --build build -j2 --config ${{ matrix.build_type }}
 
       - name: Test TileDB
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake --build build --target check --config ${{ matrix.config || 'Release' }}
-
-  test_hdfs_build:
-    uses: ./.github/workflows/ci-linux_mac.yml
-    with:
-      ci_backend: HDFS
-      matrix_image: ubuntu-24.04
-      matrix_compiler_cc: 'gcc-13'
-      matrix_compiler_cxx: 'g++-13'
-      timeout: 300
-      build_only: true
-      bootstrap_args: '--enable-hdfs --enable-static-tiledb --disable-werror'
+          cmake --build build --target check --config ${{ matrix.build_type }}
 
   test_static_linkage:
     runs-on: ${{ matrix.os }}
@@ -135,7 +129,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - test
-      - test_hdfs_build
       - test_static_linkage
     if: github.event_name == 'schedule' && (failure() || cancelled())
     steps:

@@ -34,9 +34,11 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/temporary_local_directory.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 
 using namespace tiledb::sm;
 
@@ -75,7 +77,7 @@ TEST_CASE("C++ API: Config iterator", "[cppapi][config]") {
     names.push_back(it->first);
   }
   // Check number of VFS params in default config object.
-  CHECK(names.size() == 70);
+  CHECK(names.size() == 67);
 }
 
 TEST_CASE("C++ API: Config Environment Variables", "[cppapi][config]") {
@@ -126,6 +128,55 @@ TEST_CASE(
   config[key] = value3;
   const std::string result3 = config[key];
   CHECK(result3 == value3);
+}
+
+TEST_CASE(
+    "C++ API: Config with Environment Variables and Profile Overrides",
+    "[cppapi][config]") {
+  tiledb::Config config;
+  const std::string key = "rest.server_address";
+  const std::string config_value = "test_config_localhost:8080";
+  const std::string profile_value = "test_profile_localhost:8080";
+  const std::string env_value = "test_env_localhost:8080";
+
+  // Set the config value
+  config[key] = config_value;
+  // Check the config value
+  CHECK(config.get(key) == config_value);
+
+  // Create a profile
+  const std::string profile_name = "test_profile";
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
+  const std::string profile_dir = tempdir_.path();
+  auto profile = tiledb::Profile(profile_name, profile_dir);
+
+  // Set the profile value
+  profile.set_param(key, profile_value);
+  // Check the profile value
+  CHECK(profile.get_param(key) == profile_value);
+  // Save the profile to disk
+  profile.save();
+  // Set the profile in the config
+  config.set_profile(profile_name, profile_dir);
+  // Check the config value after setting the profile
+  // This should be coming from the config since it has priority over the
+  // profile
+  CHECK(config.get(key) == config_value);
+
+  // set an env variable using setenv_local("TILEDB_REST_SERVER_ADDRESS",
+  // "test") to check the priority
+  setenv_local("TILEDB_REST_SERVER_ADDRESS", env_value.c_str());
+  // Check the config value after setting the env variable
+  // This should be still coming from the config since it has priority over both
+  // the profile and the env variable
+  CHECK(config.get(key) == config_value);
+
+  // Unset the config value
+  config.unset(key);
+  // Check the config value after unsetting
+  // This should now be coming from the env variable since it has priority over
+  // the profile
+  CHECK(config.get(key) == env_value);
 }
 
 TEST_CASE("C++ API: Config Equality", "[cppapi][config]") {

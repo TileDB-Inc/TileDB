@@ -14,7 +14,6 @@ option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)
 option(TILEDB_S3 "Enables S3/minio support using aws-cpp-sdk" OFF)
 option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-blobs-cpp" OFF)
 option(TILEDB_GCS "Enables GCS Storage support using google-cloud-cpp" OFF)
-option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
 option(TILEDB_ASSERTIONS "Build with assertions enabled (default off for release, on for debug build)." OFF)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
@@ -48,12 +47,10 @@ if (DEFINED TILEDB_VCPKG AND NOT TILEDB_VCPKG)
 endif()
 
 if (TILEDB_HDFS)
-  message(DEPRECATION "The HDFS storage backend is deprecated and receiving build-only official validation. It will be removed in TileDB 2.28.")
+  message(FATAL_ERROR "The HDFS storage backend is no longer supported.")
 endif()
 
 # enable assertions by default for debug builds
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(TILEDB_ASSERTIONS TRUE)
 endif()
-
-include(TileDBAssertions)

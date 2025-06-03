@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2024 TileDB, Inc.
+# Copyright (c) 2017-2025 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,16 +33,6 @@ set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")
 list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../tiledb/sm/c_api")
 
 # Gather the test source files
-set(TILEDB_TEST_SUPPORT_SOURCES
-  support/src/ast_helpers.h
-  support/src/ast_helpers.cc
-  support/src/helpers.h
-  support/src/helpers.cc
-  support/src/helpers-dimension.h
-  support/src/vfs_helpers.cc
-  support/src/serialization_wrappers.cc
-  )
-
 set(TILEDB_UNIT_TEST_SOURCES
   support/src/ast_helpers.h
   support/src/helpers.h
@@ -171,10 +161,12 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-global-order-writes-remote.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
+    src/unit-cppapi-incomplete-var.cc
     src/unit-cppapi-max-fragment-size.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-partial-attribute-write.cc
+    src/unit-cppapi-profile.cc
     src/unit-cppapi-query.cc
     src/unit-cppapi-query-condition.cc
     src/unit-cppapi-query-condition-enumerations.cc
@@ -201,6 +193,7 @@ if (TILEDB_SERIALIZATION)
     src/unit-capi-serialized_queries.cc
     src/unit-QueryCondition-serialization.cc
     src/unit-curl.cc
+    src/unit-rest-client-remote.cc
   )
 endif()
 
@@ -244,17 +237,6 @@ target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
 target_include_directories(tiledb_unit PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
 )
-
-# need to properly link the signal chaining library for catch to work with the jni hdfs interface
-# see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
-if (TILEDB_HDFS)
-  find_package(LIBJVM REQUIRED)
-  target_link_libraries(tiledb_unit
-    PUBLIC
-      LibJVM::libjvm
-      LibJVM::libjsig
-  )
-endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
@@ -364,13 +346,6 @@ if (DEFINED ENV{TILEDB_NIGHTLY_BUILD})
     COMMAND tiledb_unit --durations=yes --allow-running-no-tests [nightly_only]
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
-endif()
-
-if(TILEDB_HDFS)
-  # need to force flat namespace for the signal chaining to work on macOS
-  if (APPLE)
-    set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "DYLD_FORCE_FLAT_NAMESPACE=1")
-  endif()
 endif()
 
 # CI tests

@@ -45,6 +45,8 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
+#include "tiledb/sm/rest/rest_client.h"
+
 namespace tiledb::test {
 
 tiledb::sm::URI test_dir(const std::string& prefix) {
@@ -55,23 +57,14 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
 
   bool supports_s3 = false;
-  bool supports_hdfs = false;
   bool supports_azure = false;
   bool supports_gcs = false;
   bool supports_rest_s3 = false;
   get_supported_fs(
-      &supports_s3,
-      &supports_hdfs,
-      &supports_azure,
-      &supports_gcs,
-      &supports_rest_s3);
+      &supports_s3, &supports_azure, &supports_gcs, &supports_rest_s3);
 
   if (supports_s3) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
-  }
-
-  if (supports_hdfs) {
-    fs_vec.emplace_back(std::make_unique<SupportedFsHDFS>());
   }
 
   if (supports_azure) {
@@ -154,9 +147,14 @@ void vfs_test_create_temp_dir(
 }
 
 std::string vfs_array_uri(
-    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name) {
-  if (fs->is_rest()) {
-    return ("tiledb://unit/" + array_name);
+    const std::unique_ptr<SupportedFs>& fs,
+    const std::string& array_name,
+    tiledb_ctx_t* ctx) {
+  bool legacy = fs->is_rest() ? ctx->rest_client().rest_legacy() : false;
+  if (fs->is_rest() && legacy) {
+    return "tiledb://unit/" + array_name;
+  } else if (fs->is_rest() && !legacy) {
+    return "tiledb://workspace/unit/" + array_name;
   } else {
     return array_name;
   }
@@ -230,29 +228,6 @@ std::string SupportedFsS3::temp_dir() {
 
 bool SupportedFsS3::is_rest() {
   return rest_;
-}
-
-Status SupportedFsHDFS::prepare_config(
-    tiledb_config_t* config, tiledb_error_t* error) {
-  (void)config;
-  (void)error;
-  return Status::Ok();
-}
-
-Status SupportedFsHDFS::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  (void)ctx;
-  (void)vfs;
-  return Status::Ok();
-}
-
-Status SupportedFsHDFS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  (void)ctx;
-  (void)vfs;
-  return Status::Ok();
-}
-
-std::string SupportedFsHDFS::temp_dir() {
-  return temp_dir_;
 }
 
 Status SupportedFsAzure::prepare_config(
@@ -500,7 +475,7 @@ VFSTest::VFSTest(
     return;
   }
 
-  if (temp_dir_.is_file() || temp_dir_.is_memfs() || temp_dir_.is_hdfs()) {
+  if (temp_dir_.is_file() || temp_dir_.is_memfs()) {
     vfs_.create_dir(temp_dir_).ok();
   } else {
     vfs_.create_bucket(temp_dir_).ok();
@@ -549,6 +524,10 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
     }
   }
   std::sort(expected_results().begin(), expected_results().end());
+}
+
+bool VFSTestSetup::is_legacy_rest() {
+  return ctx_c->rest_client().rest_legacy();
 }
 
 }  // namespace tiledb::test

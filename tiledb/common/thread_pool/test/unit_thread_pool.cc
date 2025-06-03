@@ -98,12 +98,14 @@ size_t random_ms(size_t max = 3) {
  */
 void wait_all(
     ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
+  // This function gets called from multiple threads, so we must not use Catch2
+  // assertions because they are not thread-safe.
   if (use_wait) {
     for (auto& r : results) {
-      REQUIRE(r.wait().ok());
+      throw_if_not_ok(r.wait());
     }
   } else {
-    REQUIRE(pool.wait_all(results).ok());
+    throw_if_not_ok(pool.wait_all(results));
   }
 }
 

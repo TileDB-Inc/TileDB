@@ -33,6 +33,7 @@
 
 #include "tiledb/common/common.h"
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
@@ -205,7 +206,7 @@ void Array::create(
 
   std::lock_guard<std::mutex> lock{object_mtx};
   array_schema->set_array_uri(array_uri);
-  array_schema->generate_uri();
+  array_schema->generate_uri(array_schema->timestamp_range());
   array_schema->check(resources.config());
 
   // Check current domain is specified correctly if set
@@ -258,10 +259,10 @@ void Array::create(
       bool found = false;
       std::string encryption_key_from_cfg =
           resources.config().get("sm.encryption_key", &found);
-      assert(found);
+      passert(found, "No value for config {}", "sm.encryption_key");
       std::string encryption_type_from_cfg =
           resources.config().get("sm.encryption_type", &found);
-      assert(found);
+      passert(found, "No value for config {}", "sm.encryption_type");
       auto&& [st_enc, etc] = encryption_type_enum(encryption_type_from_cfg);
       throw_if_not_ok(st_enc);
       EncryptionType encryption_type_cfg = etc.value();
@@ -436,7 +437,10 @@ Status Array::open(
                .ok()) {
         throw ArrayException("Cannot get setting");
       }
-      assert(found);
+      iassert(
+          found,
+          "No value found for config {}",
+          "sm.allow_updates_experimental");
 
       if (!allow_updates) {
         throw ArrayException(
@@ -450,7 +454,7 @@ Status Array::open(
     if (!encryption_key) {
       bool found = false;
       encryption_key_from_cfg = config_.get("sm.encryption_key", &found);
-      assert(found);
+      passert(found, "No value found for config {}", "sm.encryption_key");
     }
 
     if (!encryption_key_from_cfg.empty()) {
@@ -459,7 +463,7 @@ Status Array::open(
       std::string encryption_type_from_cfg;
       bool found = false;
       encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
-      assert(found);
+      passert(found, "No value found for config {}", "sm.encryption_type");
       auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
       if (!st.ok()) {
         throw StatusException(st);
@@ -1934,10 +1938,10 @@ void Array::upgrade_version(
   bool found = false;
   std::string encryption_key_from_cfg =
       override_config.get("sm.encryption_key", &found);
-  assert(found);
+  passert(found, "No value found for config {}", "sm.encryption_key");
   std::string encryption_type_from_cfg =
       override_config.get("sm.encryption_type", &found);
-  assert(found);
+  passert(found, "No value found for config {}", "sm.encryption_type");
   auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
   throw_if_not_ok(st1);
   EncryptionType encryption_type_cfg = etc.value();

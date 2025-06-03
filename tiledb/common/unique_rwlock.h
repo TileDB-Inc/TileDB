@@ -34,6 +34,7 @@
 #ifndef TILEDB_UNIQUE_RWLOCK_H
 #define TILEDB_UNIQUE_RWLOCK_H
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/rwlock.h"
 
@@ -58,7 +59,7 @@ class UniqueRWLock final {
   explicit UniqueRWLock(RWLock* const rwlock)
       : rwlock_(rwlock)
       , locked_(false) {
-    assert(rwlock_);
+    passert(rwlock_);
 
     lock();
   }
@@ -78,7 +79,7 @@ class UniqueRWLock final {
 
   /** Acquires the read-write lock. */
   void lock() {
-    assert(!locked_);
+    passert(!locked_);
 
     if (R)
       rwlock_->read_lock();
@@ -90,7 +91,7 @@ class UniqueRWLock final {
 
   /** Releases the read-write lock. */
   void unlock() {
-    assert(locked_);
+    passert(locked_);
 
     if (R)
       rwlock_->read_unlock();

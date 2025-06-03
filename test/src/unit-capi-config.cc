@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -101,9 +101,7 @@ void check_load_incorrect_file_cannot_open() {
   rc = tiledb_config_load_from_file(config, "non_existent_file", &error);
   CHECK(rc == TILEDB_ERR);
   CHECK(error != nullptr);
-  check_error(
-      error,
-      "[TileDB::Config] Error: Failed to open config file 'non_existent_file'");
+  check_error(error, "Config: Failed to open config file 'non_existent_file'");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
   CHECK(config == nullptr);
@@ -130,7 +128,7 @@ void check_load_incorrect_file_missing_value() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Missing parameter value (line: 1)");
   tiledb_error_free(&error);
   CHECK(error == nullptr);
@@ -160,7 +158,7 @@ void check_load_incorrect_file_extra_word() {
   CHECK(error != nullptr);
   check_error(
       error,
-      "[TileDB::Config] Error: Failed to parse config file 'test_config.txt'; "
+      "Config: Failed to parse config file 'test_config.txt'; "
       "Invalid line format (line: 3)");
   tiledb_error_free(&error);
   tiledb_config_free(&config);
@@ -561,9 +559,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   rc = tiledb_config_set(config, "vfs.s3.scheme", "https", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
-  rc = tiledb_config_set(config, "vfs.hdfs.username", "stavros", &error);
-  CHECK(rc == TILEDB_OK);
-  CHECK(error == nullptr);
   rc = tiledb_config_set(config, "sm.var_offsets.mode", "elements", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -768,9 +763,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.verify_ssl"] = "true";
   all_param_values["vfs.s3.no_sign_request"] = "false";
   all_param_values["vfs.s3.install_sigpipe_handler"] = "true";
-  all_param_values["vfs.hdfs.username"] = "stavros";
-  all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
-  all_param_values["vfs.hdfs.name_node_uri"] = "";
   all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.config_source"] = "auto";
@@ -846,9 +838,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.config_source"] = "auto";
   vfs_param_values["s3.install_sigpipe_handler"] = "true";
-  vfs_param_values["hdfs.username"] = "stavros";
-  vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
-  vfs_param_values["hdfs.name_node_uri"] = "";
 
   std::map<std::string, std::string> gcs_param_values;
   gcs_param_values["endpoint"] = "";

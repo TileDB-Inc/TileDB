@@ -33,6 +33,7 @@
 #ifndef _WIN32
 
 #include "tiledb/sm/filesystem/posix.h"
+#include "tiledb/common/assert.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
@@ -71,7 +72,7 @@ class PosixDIR {
     if (dir_.has_value() && dir_.value() != nullptr) {
       // The only possible error is EBADF, which should not happen here.
       [[maybe_unused]] auto status = closedir(dir_.value());
-      assert(status == 0);
+      passert(status == 0);
     }
   }
 
@@ -114,7 +115,7 @@ class PosixDIR {
    */
   PosixDIR(optional<DIR*> dir = nullopt)
       : dir_(dir) {
-    assert(dir != nullptr);
+    passert(dir != nullptr);
   }
 
   /** The wrapped directory pointer. */
@@ -151,6 +152,8 @@ void Posix::create_dir(const URI& uri) const {
 
 void Posix::touch(const URI& uri) const {
   auto filename = uri.to_path();
+
+  throw_if_not_ok(ensure_directory(filename));
 
   int fd =
       ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, file_permissions_);
@@ -218,6 +221,8 @@ void Posix::file_size(const URI& uri, uint64_t* size) const {
 }
 
 void Posix::move_file(const URI& old_path, const URI& new_path) const {
+  auto new_uri_path = new_path.to_path();
+  throw_if_not_ok(ensure_directory(new_uri_path));
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
     throw IOError(std::string("Cannot move path: ") + strerror(errno));
   }
@@ -229,7 +234,9 @@ void Posix::move_dir(const URI& old_uri, const URI& new_uri) const {
 
 void Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
   std::ifstream src(old_uri.to_path(), std::ios::binary);
-  std::ofstream dst(new_uri.to_path(), std::ios::binary);
+  auto new_uri_path = new_uri.to_path();
+  throw_if_not_ok(ensure_directory(new_uri_path));
+  std::ofstream dst(new_uri_path, std::ios::binary);
   dst << src.rdbuf();
 }
 
@@ -256,7 +263,7 @@ void Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
       for (auto& path : child_paths)
         path_queue.emplace(std::move(path));
     } else {
-      assert(is_file(URI(file_name_abs)));
+      passert(is_file(URI(file_name_abs)), "file_name_abs = {}", file_name_abs);
       copy_file(
           URI(old_path + "/" + file_name), URI(new_path + "/" + file_name));
     }
@@ -365,6 +372,8 @@ void Posix::write(
   uint64_t file_offset = 0;
   if (is_file(URI(path))) {
     file_size(URI(path), &file_offset);
+  } else {
+    throw_if_not_ok(ensure_directory(path));
   }
 
   // Open or create file.
@@ -450,7 +459,7 @@ std::string Posix::current_dir() {
 }
 
 void Posix::adjacent_slashes_dedup(std::string* path) {
-  assert(utils::parse::starts_with(*path, "file://"));
+  iassert(utils::parse::starts_with(*path, "file://"));
   path->erase(
       std::unique(
           path->begin() + std::string("file://").size(),
@@ -510,7 +519,7 @@ void Posix::purge_dots_from_path(std::string* path) {
   if (path_size == 0 || *path == "file:///")
     return;
 
-  assert(utils::parse::starts_with(*path, "file:///"));
+  iassert(utils::parse::starts_with(*path, "file:///"));
 
   // Tokenize
   const char* token_c_str = path->c_str() + 8;

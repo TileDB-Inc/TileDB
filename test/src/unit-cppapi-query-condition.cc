@@ -34,9 +34,12 @@
 #include <test/support/tdb_catch.h>
 
 #include "test/support/src/array_helpers.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/query/query_condition.h"
 
 #include <numeric>
 
@@ -324,6 +327,189 @@ TEST_CASE("Query condition null test", "[query-condition]") {
           }
         }
       }
+    }
+  }
+}
+
+TEST_CASE(
+    "Query condition string comparison with null byte", "[query-condition]") {
+  const auto array_type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
+  const auto attr_datatype = GENERATE(
+      tiledb::sm::Datatype::CHAR,
+      tiledb::sm::Datatype::STRING_ASCII,
+      tiledb::sm::Datatype::STRING_UTF8);
+
+  Context ctx;
+  std::string uri("query_condition_string_comparison_null_byte");
+
+  // prepare data
+  const std::string fill_string("\0fill_value", 11);
+  const std::vector<std::string> strings = {
+      std::string("\0bar", 4),
+      std::string("\0foo", 4),
+      std::string("\0foobar", 7)};
+  std::vector<uint32_t> dimension;
+  std::vector<char> a_input;
+  std::vector<uint64_t> a_input_offsets = {0};
+
+  for (uint64_t i = 0; i < strings.size(); i++) {
+    dimension.push_back(i);
+    const auto& s = strings[i];
+    a_input.insert(a_input.end(), s.begin(), s.end());
+    a_input_offsets.push_back(a_input_offsets.back() + s.size());
+  }
+  a_input_offsets.erase(a_input_offsets.end() - 1);
+
+  DYNAMIC_SECTION(
+      "(array_type, datatype) = (" +
+      std::string(array_type == TILEDB_SPARSE ? "SPARSE" : "DENSE") + ", " +
+      tiledb::sm::datatype_str(attr_datatype) + ")") {
+    // create array
+    {
+      ArraySchema schema(ctx, array_type);
+
+      auto dim = Dimension::create<uint32_t>(
+          ctx, "id", {{0, static_cast<uint32_t>(strings.size())}});
+      auto dom = Domain(ctx);
+      dom.add_dimension(dim);
+      schema.set_domain(dom);
+
+      auto att = Attribute::create(
+                     ctx, "a", static_cast<tiledb_datatype_t>(attr_datatype))
+                     .set_cell_val_num(tiledb::sm::constants::var_num)
+                     .set_fill_value(fill_string.data(), fill_string.size());
+      schema.add_attribute(att);
+
+      Array::create(uri, schema);
+    }
+
+    test::DeleteArrayGuard delguard(ctx.ptr().get(), uri.c_str());
+
+    // insert data
+    {
+      Array array(ctx, uri, TILEDB_WRITE);
+      Query query(ctx, array);
+
+      if (array_type == TILEDB_SPARSE) {
+        query.set_data_buffer("id", dimension);
+      } else {
+        Subarray subarray(ctx, array);
+        subarray.add_range<uint32_t>(
+            0, 0, static_cast<uint32_t>(strings.size() - 1));
+        query.set_subarray(subarray);
+      }
+
+      query.set_data_buffer("a", a_input)
+          .set_offsets_buffer("a", a_input_offsets);
+
+      REQUIRE(query.submit() == Query::Status::COMPLETE);
+    }
+
+    // read back, applying condition
+    const auto eq_op = GENERATE(
+        sm::QueryConditionOp::LT,
+        sm::QueryConditionOp::LE,
+        sm::QueryConditionOp::EQ,
+        sm::QueryConditionOp::GE,
+        sm::QueryConditionOp::GT,
+        sm::QueryConditionOp::NE);
+    const auto cmp_idx = GENERATE(0, 1, 2);
+
+    DYNAMIC_SECTION(
+        "(eq_op, cmp_idx) = (" + query_condition_op_str(eq_op) + ", " +
+        std::to_string(cmp_idx) + ")") {
+      Array array(ctx, uri, TILEDB_READ);
+      Query query(ctx, array);
+
+      std::vector<uint32_t> r_dimension(dimension.size());
+      std::vector<char> a_output(256);
+      std::vector<uint64_t> a_output_offsets(a_input_offsets.size());
+
+      QueryCondition qc(ctx);
+      qc.init(
+          "a",
+          strings[cmp_idx].data(),
+          strings[cmp_idx].size(),
+          static_cast<tiledb_query_condition_op_t>(eq_op));
+
+      query.set_condition(qc)
+          .set_data_buffer("id", r_dimension)
+          .set_data_buffer("a", a_output)
+          .set_offsets_buffer("a", a_output_offsets);
+
+      if (array_type == TILEDB_DENSE) {
+        Subarray subarray(ctx, array);
+        subarray.add_range<uint32_t>(
+            0, 0, static_cast<uint32_t>(strings.size() - 1));
+        query.set_subarray(subarray);
+      }
+
+      REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+      auto table = query.result_buffer_elements();
+      r_dimension.resize(table["id"].second);
+      a_output_offsets.resize(table["a"].first);
+      a_output.resize(table["a"].second);
+
+      std::vector<std::string> strings_out;
+      for (uint64_t i = 0; i < r_dimension.size(); i++) {
+        const uint64_t end =
+            (i + 1 == r_dimension.size() ? a_output.size() :
+                                           a_output_offsets[i + 1]);
+        strings_out.push_back(
+            std::string(&a_output[a_output_offsets[i]], &a_output[end]));
+      }
+
+      std::vector<std::string> expect_strings;
+      for (uint64_t i = 0; i < strings.size(); i++) {
+        switch (eq_op) {
+          case sm::QueryConditionOp::LT:
+            if (strings[i] < strings[cmp_idx]) {
+              expect_strings.push_back(strings[i]);
+            } else if (array_type == TILEDB_DENSE) {
+              expect_strings.push_back(fill_string);
+            }
+            break;
+          case sm::QueryConditionOp::LE:
+            if (strings[i] <= strings[cmp_idx]) {
+              expect_strings.push_back(strings[i]);
+            } else if (array_type == TILEDB_DENSE) {
+              expect_strings.push_back(fill_string);
+            }
+            break;
+          case sm::QueryConditionOp::EQ:
+            if (strings[i] == strings[cmp_idx]) {
+              expect_strings.push_back(strings[i]);
+            } else if (array_type == TILEDB_DENSE) {
+              expect_strings.push_back(fill_string);
+            }
+            break;
+          case sm::QueryConditionOp::GE:
+            if (strings[i] >= strings[cmp_idx]) {
+              expect_strings.push_back(strings[i]);
+            } else if (array_type == TILEDB_DENSE) {
+              expect_strings.push_back(fill_string);
+            }
+            break;
+          case sm::QueryConditionOp::GT:
+            if (strings[i] > strings[cmp_idx]) {
+              expect_strings.push_back(strings[i]);
+            } else if (array_type == TILEDB_DENSE) {
+              expect_strings.push_back(fill_string);
+            }
+            break;
+          case sm::QueryConditionOp::NE:
+            if (strings[i] != strings[cmp_idx]) {
+              expect_strings.push_back(strings[i]);
+            } else if (array_type == TILEDB_DENSE) {
+              expect_strings.push_back(fill_string);
+            }
+            break;
+          default:
+            stdx::unreachable();
+        }
+      }
+      CHECK(expect_strings == strings_out);
     }
   }
 }

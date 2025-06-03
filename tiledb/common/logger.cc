@@ -40,6 +40,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #endif
 
+#include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"
 
 namespace tiledb::common {
@@ -57,7 +58,7 @@ spdlog::level::level_enum to_spdlog_level(Logger::Level lvl) {
     case Logger::Level::DBG:
       return spdlog::level::debug;
     default:
-      assert(lvl == Logger::Level::TRACE);
+      iassert(lvl == Logger::Level::TRACE);
       return spdlog::level::trace;
   }
 }

@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021-2024 TileDB, Inc.
+# Copyright (c) 2021-2025 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,7 @@ add_subdirectory(algorithm)
 add_subdirectory(dynamic_memory)
 add_subdirectory(evaluator)
 add_subdirectory(exception)
+add_subdirectory(filesystem)
 add_subdirectory(governor)
 add_subdirectory(interval)
 add_subdirectory(random)
@@ -52,6 +53,16 @@ add_subdirectory(util)
 
 get_gathered(COMMON_SOURCES)
 set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
+
+#
+# `assert` object library
+#
+commence(object_library assert)
+    this_target_sources(assert.cc)
+    # can be removed when c++20 `<format>` is consistently supported
+    find_package(fmt REQUIRED)
+    target_link_libraries(assert PUBLIC fmt::fmt)
+conclude(object_library)
 
 #
 # `baseline` object library

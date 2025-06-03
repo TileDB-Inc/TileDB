@@ -1210,7 +1210,13 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, simultaneous writes",
-    "[capi][non-rest][dense][dense-simultaneous-writes]") {
+    "[capi][non-rest][dense][dense-simultaneous-writes][.]") {
+  /* Catch2's assertion macros are not thread safe. In this test we are
+   * asserting inside threads using REQUIRE macros, which are not thread safe so
+   * it might fail. Opened SC-66006 to adapt this test to avoid the issue.
+   * https://github.com/catchorg/Catch2/blob/devel/docs/limitations.md#thread-safe-assertions
+   * for more. */
+
   // Parallel array open requests on the same array fail on
   // remote arrays, as locking cannot work on Cloud REST
   // server to synchronize them, so we exclude this test

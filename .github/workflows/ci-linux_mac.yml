@@ -77,8 +77,7 @@ env:
   CC: ${{ inputs.matrix_compiler_cc }}
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
   CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
-  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'arm64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
-  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  bootstrap_args: "--enable-assertions --enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'arm64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   SCCACHE_GHA_ENABLED: "true"
 
 jobs:
@@ -99,14 +98,6 @@ jobs:
             submodules: true
             fetch-depth: 0
 
-      # Configure required environment variables for vcpkg to use
-      # GitHub's Action Cache
-      - uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
       - name: Install Python
         if: ${{ !inputs.manylinux }}
         uses: actions/setup-python@v5
@@ -117,7 +108,7 @@ jobs:
         run: python3 ./scripts/ci/patch_vcpkg_triplets.py
 
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: 'Ubuntu Prelim'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
@@ -200,8 +191,15 @@ jobs:
           # Bypass Catch2 Framework stdout interception with awk on test output
           ./test/regression/tiledb_regression -d yes
           ./test/ci/test_assert -d yes
-          ./test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./test/tiledb_unit -d yes "~[rapidcheck]" | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
           ./tiledb/sm/filesystem/test/unit_vfs -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+          # Run rapidcheck tests as their own process so we can see the random seed for each
+          ./test/tiledb_unit --list-tests "[rapidcheck]" --verbosity quiet | while IFS= read -r testname; do
+            echo "START $testname"
+            ./test/tiledb_unit "$testname"
+            echo "END $testname"
+          done
 
           ctest -R tiledb_timing_unit | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 

@@ -249,10 +249,10 @@ struct DenseArrayFx {
 };
 
 DenseArrayFx::DenseArrayFx()
-    : fs_vec_(vfs_test_get_fs_vec())
-    , prefix_(vfs_array_uri(fs_vec_[0], fs_vec_[0]->temp_dir())) {
+    : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+  prefix_ = vfs_array_uri(fs_vec_[0], fs_vec_[0]->temp_dir(), ctx_);
   std::srand(0);
 }
 
@@ -2949,7 +2949,13 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayFx,
     "C API: Test dense array, simultaneous writes",
-    "[capi][dense][dense-simultaneous-writes][rest]") {
+    "[capi][dense][dense-simultaneous-writes][rest][.]") {
+  /* Catch2's assertion macros are not thread safe. In this test we are
+   * asserting inside threads using REQUIRE macros, which are not thread safe so
+   * it might fail. Opened SC-66006 to adapt this test to avoid the issue.
+   * https://github.com/catchorg/Catch2/blob/devel/docs/limitations.md#thread-safe-assertions
+   * for more. */
+
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);

@@ -16,6 +16,7 @@ trigger_pipeline:
 
   variables:
     TILEDB_REF: ${CI_COMMIT_REF_NAME}
+
   trigger:
     project: tiledb-inc/tiledb-internal
     strategy: depend

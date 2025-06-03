@@ -41,27 +41,23 @@
  * `CATCH_TEST_MACROS_HPP_INCLUDED`
  * which is the bridge between v2 and v3 compatibility for <rapidcheck/catch.h>
  */
-#include <test/support/stdx/optional.h>
 #include <test/support/tdb_catch.h>
 
-// forward declarations of `showValue` overloads
-// (these must be declared prior to including `rapidcheck/Show.hpp` for some
-// reason)
-namespace rc {
-namespace detail {
-
-/**
- * Specializes `show` for `std::optional<T>` to print the final test case after
- * shrinking
+/*
+ * `show.h` must be included next (well, before rapidcheck.h anyway)
+ * because seemingly the declarations of `showValue` overloads must
+ * be declared prior
  */
-template <stdx::is_optional_v T>
-void showValue(const T& value, std::ostream& os);
-
-}  // namespace detail
-}  // namespace rc
+#include <test/support/rapidcheck/show.h>
 
 #include <rapidcheck.h>
 #include <rapidcheck/catch.h>
+
+/*
+ * `show_templates.h` provides definitions of generic `showValue` templates
+ * and must be included after `show.h` and after `rapidcheck.h`
+ */
+#include <test/support/rapidcheck/show_templates.h>
 
 #include <type_traits>
 
@@ -104,21 +100,6 @@ struct Arbitrary<NonShrinking<T>> {
         [](T inner) { return NonShrinking<T>(std::move(inner)); }, inner);
   }
 };
-
-namespace detail {
-
-template <stdx::is_optional_v T>
-void showValue(const T& value, std::ostream& os) {
-  if (value.has_value()) {
-    os << "Some(";
-    show<typename T::value_type>(value.value(), os);
-    os << ")";
-  } else {
-    os << "None";
-  }
-}
-
-}  // namespace detail
 
 }  // namespace rc
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,8 +41,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * A filter type.
@@ -146,20 +145,20 @@ inline Status filter_type_enum(
   return Status::Ok();
 }
 
-/** Throws error if the input Filtertype enum is not between 0 and 16. */
-inline void ensure_filtertype_is_valid(uint8_t type) {
-  if (type > 18) {
+/** Throws error if the input FilterType is not a valid filter type. */
+inline void ensure_filtertype_is_valid(FilterType type) {
+  if (type >= FilterType::INTERNAL_FILTER_COUNT) {
     throw std::runtime_error(
-        "Invalid FilterType (" + std::to_string(type) + ")");
+        "Invalid FilterType (" + std::to_string(::stdx::to_underlying(type)) +
+        ")");
   }
 }
 
-/** Throws error if the input Filtertype's enum is not between 0 and 16. */
-inline void ensure_filtertype_is_valid(FilterType type) {
-  ensure_filtertype_is_valid(::stdx::to_underlying(type));
+/** Throws error if the input FilterType enum is not a valid filter type. */
+inline void ensure_filtertype_is_valid(uint8_t type) {
+  ensure_filtertype_is_valid(FilterType(type));
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FILTER_TYPE_H

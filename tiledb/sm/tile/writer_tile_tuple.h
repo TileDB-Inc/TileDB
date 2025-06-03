@@ -33,6 +33,7 @@
 #ifndef TILEDB_WRITER_TILE_TUPLE_H
 #define TILEDB_WRITER_TILE_TUPLE_H
 
+#include "tiledb/common/assert.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 
@@ -68,25 +69,25 @@ class WriterTileTuple {
 
   /** Returns the fixed tile. */
   inline WriterTile& fixed_tile() {
-    assert(!var_tile_.has_value());
+    iassert(!var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the fixed tile. */
   inline const WriterTile& fixed_tile() const {
-    assert(!var_tile_.has_value());
+    iassert(!var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the offset tile. */
   inline WriterTile& offset_tile() {
-    assert(var_tile_.has_value());
+    iassert(var_tile_.has_value());
     return fixed_tile_;
   }
 
   /** Returns the offset tile. */
   inline const WriterTile& offset_tile() const {
-    assert(var_tile_.has_value());
+    iassert(var_tile_.has_value());
     return fixed_tile_;
   }
 

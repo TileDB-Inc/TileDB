@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,9 @@
 #include "attribute_experimental.h"
 #include "dimension_label_experimental.h"
 #include "enumeration_experimental.h"
+#include "profile_experimental.h"
 #include "consolidation_plan_experimental.h"
+#include "profile_experimental.h"
 #include "query_condition_experimental.h"
 #include "query_experimental.h"
 #include "subarray_experimental.h"
