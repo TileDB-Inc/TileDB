@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  * @section DESCRIPTION
  *
  * This file declares the configuration section of the C API for TileDB. It
- * include both configurations and their iterators.
+ * includes both configurations and their iterators.
  */
 
 #ifndef TILEDB_CAPI_CONFIG_EXTERNAL_H
@@ -899,6 +899,33 @@ TILEDB_EXPORT capi_return_t tiledb_config_load_from_file(
 TILEDB_EXPORT capi_return_t tiledb_config_save_to_file(
     tiledb_config_t* config,
     const char* filename,
+    tiledb_error_t** error) TILEDB_NOEXCEPT;
+
+/**
+ * Sets the profile to use for the current config object.
+ * By default the config object uses the default profile stored in the
+ * default location, if any. This API allows to set a named profile
+ * instead or a profile stored in a different location that the home
+ * directory.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_error_t* error = NULL;
+ * tiledb_config_set_profile(config, "my_profile", "/path/to/profile", &error);
+ * @endcode
+ *
+ * @param config The config object.
+ * @param name The name of the profile to set.
+ * @param dir The directory of the profile to set.
+ * @param error Error object returned upon error (`NULL` if there is
+ *    no error).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_config_set_profile(
+    tiledb_config_t* config,
+    const char* name,
+    const char* dir,
     tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
