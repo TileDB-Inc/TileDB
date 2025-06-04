@@ -38,13 +38,8 @@
 include_guard()
 
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CARGO_PROFILE "dev")
-    set(CARGO_TARGET "debug")
-else ()
-    set(CARGO_PROFILE "release")
-    set(CARGO_TARGET "release")
-endif ()
+set(CARGO_PROFILE "$<IF:$<CONFIG:Debug>,dev,release>")
+set(CARGO_TARGET "$<IF:$<CONFIG:Debug>,debug,release>")
 
 set(CARGO_MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
 
@@ -61,9 +56,7 @@ if (WIN32)
     # using CFLAGS and CXXFLAGS.
     #
     # https://github.com/rust-lang/rust/issues/39016#issuecomment-853964918
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(TILEDB_OXIDIZE_CFLAGS "-MDd")
-    endif ()
+    set(TILEDB_OXIDIZE_CFLAGS "$<$<CONFIG:Debug>:-MDd>")
 
     # It is also necessary for some reason to specify the system libraries we need
     # to link with.  This should probably be obtained more scientfically
