@@ -116,6 +116,16 @@ const std::vector<std::string> RestProfile::REST_PARAMETERS = {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+/**
+ * Ensure the user's home directory is found.
+ * There's an edge case in which `sudo` does not always preserve the path to
+ * home directory. In this case, the home_directory() API does not throw, but
+ * instead returns an empty string. As such, we can check for a value in the
+ * returned path of the home_directory and throw an error to the user
+ * accordingly, so they may decide the proper course of action:
+ * set the $HOME path, or perhaps stop using `sudo`.
+ */
+
 RestProfile::RestProfile(
     const std::optional<std::string>& name,
     const std::optional<std::string>& dir)
@@ -123,30 +133,22 @@ RestProfile::RestProfile(
     , name_(
           name.has_value() && !name.value().empty() ?
               name.value() :
-              RestProfile::DEFAULT_PROFILE_NAME)
-    , dir_(
-          dir.has_value() && !dir.value().empty() ? dir.value() :
-                                                    home_directory())
-    , filepath_(dir_ + constants::rest_profile_filepath){};
-
-RestProfile::RestProfile(const std::string& name) {
-  /**
-   * Ensure the user's home directory is found.
-   * There's an edge case in which `sudo` does not always preserve the path to
-   * home directory. In this case, the home_directory() API does not throw, but
-   * instead returns an empty string. As such, we can check for a value in the
-   * returned path of the home_directory and throw an error to the user
-   * accordingly, so they may decide the proper course of action:
-   * set the $HOME path, or perhaps stop using `sudo`.
-   */
-  auto dir = home_directory();
-  if (dir.empty()) {
-    throw RestProfileException(
-        "Failed to create RestProfile; $HOME is not set.");
+              RestProfile::DEFAULT_PROFILE_NAME) {
+  if (dir.has_value() && !dir.value().empty()) {
+    dir_ = dir.value();
+    // Check if the provided directory ends with a slash, and add one if not.
+    if (dir_.back() != '/') {
+      dir_ += '/';
+    }
+  } else {
+    dir_ = home_directory() + constants::rest_profile_foldername + "/";
+    if (dir_.empty()) {
+      throw RestProfileException(
+          "Failed to create RestProfile; $HOME is not set.");
+    }
   }
-
-  RestProfile(name, dir);
-}
+  filepath_ = dir_ + constants::rest_profile_filename;
+};
 
 /* ****************************** */
 /*              API               */

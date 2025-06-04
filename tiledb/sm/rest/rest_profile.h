@@ -91,21 +91,14 @@ class RestProfile {
   /**
    * Constructor.
    *
-   * @param name The name of the RestProfile. Defaulted to "default".
-   */
-  RestProfile(const std::string& name = RestProfile::DEFAULT_PROFILE_NAME);
-
-  /**
-   * Constructor.
-   *
    * @param name The name of the RestProfile. If `std::nullopt`, the default
    * name is used.
    * @param dir The path to the local file that stores all profiles. If
    * `std::nullopt`, the home directory is used.
    */
   RestProfile(
-      const std::optional<std::string>& name,
-      const std::optional<std::string>& dir);
+      const std::optional<std::string>& name = std::nullopt,
+      const std::optional<std::string>& dir = std::nullopt);
 
   /** Destructor. */
   ~RestProfile() = default;
