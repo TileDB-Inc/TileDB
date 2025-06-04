@@ -84,8 +84,9 @@ Status vfs_test_init(
  * @param fs_vec The vector of supported filesystems
  * @param ctx The TileDB context.
  * @param vfs The VFS object.
+ * @throws if an error occurs
  */
-Status vfs_test_close(
+void vfs_test_close(
     const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs);
@@ -144,9 +145,9 @@ class SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
+   * @throws if an error occurs
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) = 0;
 
   /**
    * Get the name of the filesystem's directory
@@ -213,9 +214,9 @@ class SupportedFsS3 : public SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
+   * @throws if an error occurs
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Get the name of the filesystem's directory
@@ -300,9 +301,9 @@ class SupportedFsAzure : public SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
+   * @throws if an error occurs
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Get the name of the filesystem's directory
@@ -385,9 +386,9 @@ class SupportedFsGCS : public SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
+   * @throws if an error occurs
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Get the name of the filesystem's directory
@@ -476,9 +477,9 @@ class SupportedFsLocal : public SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
+   * @throws if an error occurs
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Get the name of the filesystem's directory
@@ -573,9 +574,9 @@ class SupportedFsMem : public SupportedFs {
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS object.
-   * @return Status OK if successful
+   * @throws if an error occurs
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual void close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Get the name of the filesystem's directory

@@ -258,7 +258,7 @@ DenseArrayFx::DenseArrayFx()
 
 DenseArrayFx::~DenseArrayFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   CHECK(vfs_ == nullptr);
   tiledb_ctx_free(&ctx_);

@@ -83,7 +83,7 @@ SparseNegFx::SparseNegFx()
 SparseNegFx::~SparseNegFx() {
   remove_temp_dir(fs_vec_[0]->temp_dir());
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }

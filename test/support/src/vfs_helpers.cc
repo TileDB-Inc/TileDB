@@ -42,6 +42,7 @@
 // after tdb_catch.h.
 #include "test/support/src/serialization_wrappers.h"
 
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
@@ -123,15 +124,13 @@ Status vfs_test_init(
   return Status::Ok();
 }
 
-Status vfs_test_close(
+void vfs_test_close(
     const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs) {
   for (auto& fs : fs_vec) {
-    RETURN_NOT_OK(fs->close(ctx, vfs));
+    fs->close(ctx, vfs);
   }
-
-  return Status::Ok();
 }
 
 void vfs_test_remove_temp_dir(
@@ -158,15 +157,16 @@ VFSTestContext::VFSTestContext(tiledb_config_t* config)
 }
 
 VFSTestContext::~VFSTestContext() {
-  vfs_test_close(fs_vec, ctx_c, vfs_c).ok();
+  vfs_test_close(fs_vec, ctx_c, vfs_c);
 
   tiledb_ctx_free(&ctx_c);
   tiledb_vfs_free(&vfs_c);
 }
 
 std::shared_ptr<const VFSTestContext> VFSTestContext::vanilla_instance() {
-  static std::shared_ptr<VFSTestContext> vanilla_instance(new VFSTestContext());
-  return vanilla_instance;
+  static std::shared_ptr<VFSTestContext> vanilla_instance_impl(
+      new VFSTestContext());
+  return vanilla_instance_impl;
 }
 
 VFSTempDir::VFSTempDir(tiledb_config_t* config, bool remove_tmpdir)
@@ -252,19 +252,20 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
+  throw_if_error(
+      ctx, tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket));
   if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()) == TILEDB_OK);
+    throw_if_error(ctx, tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()));
   }
 
-  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_bucket);
+  throw_if_error(
+      ctx, tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket));
 
-  return Status::Ok();
+  if (is_bucket) {
+    throw std::logic_error("Bucket still present after removal");
+  }
 }
 
 std::string SupportedFsS3::temp_dir() {
@@ -311,15 +312,13 @@ Status SupportedFsAzure::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_container = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, container_.c_str(), &is_container);
-  CHECK(rc == TILEDB_OK);
+  throw_if_error(
+      ctx, tiledb_vfs_is_bucket(ctx, vfs, container_.c_str(), &is_container));
   if (is_container) {
-    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, container_.c_str()) == TILEDB_OK);
+    throw_if_error(ctx, tiledb_vfs_remove_bucket(ctx, vfs, container_.c_str()));
   }
-
-  return Status::Ok();
 }
 
 std::string SupportedFsAzure::temp_dir() {
@@ -347,15 +346,13 @@ Status SupportedFsGCS::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsGCS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsGCS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, bucket_.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
+  throw_if_error(
+      ctx, tiledb_vfs_is_bucket(ctx, vfs, bucket_.c_str(), &is_bucket));
   if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, bucket_.c_str()) == TILEDB_OK);
+    throw_if_error(ctx, tiledb_vfs_remove_bucket(ctx, vfs, bucket_.c_str()));
   }
-
-  return Status::Ok();
 }
 
 std::string SupportedFsGCS::temp_dir() {
@@ -375,10 +372,9 @@ Status SupportedFsLocal::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   (void)ctx;
   (void)vfs;
-  return Status::Ok();
 }
 
 #ifdef _WIN32
@@ -416,10 +412,9 @@ Status SupportedFsMem::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsMem::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsMem::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   (void)ctx;
   (void)vfs;
-  return Status::Ok();
 }
 
 std::string SupportedFsMem::temp_dir() {
