@@ -12,4 +12,9 @@ fn main() {
     for bridge in bridge_sources {
         println!("cargo:rerun-if-changed={bridge}");
     }
+
+    let dir = std::env::var("CARGO_TARGET_DIR").unwrap();
+    let mut pb = std::path::PathBuf::from(dir);
+    pb.push("build_rs.cc");
+    std::fs::write(pb, &[]).unwrap();
 }

@@ -1,0 +1,14 @@
+[package]
+name = "bundle_rs"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+arithmetic.workspace = true
+datatype.workspace = true
+expr.workspace = true
+oxidize.workspace = true

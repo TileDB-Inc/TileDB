@@ -13,134 +13,68 @@ set(CARGO_MANIFEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml")
 set(CARGO_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/target")
 set(CARGO_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}/target/${CARGO_TARGET}")
 
+set(OXIDIZE_SOURCES "${CARGO_MANIFEST_PATH}")
 
-# Declares targets for building a Rust crate.
-
-# Inputs:
-#   NAME crate_name
-#   SOURCES source1 source2 ...
-#
-# Outputs:
-#   ${crate_name}_rs object library target
-#   Building this target produces the object library and also the `#[cxx::bridge]` files.
-function(add_crate)
-    set(options)
-    set(oneValueArgs NAME)
-    set(multiValueArgs BRIDGES SOURCES)
-    cmake_parse_arguments(ADD_CRATE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    if (NOT ADD_CRATE_NAME)
-        message(SEND_ERROR "Function add_crate requires a NAME argument")
-    endif()
-
-    if (NOT ADD_CRATE_SOURCES)
-        message(SEND_ERROR "Function add_crate requires one or more SOURCES arguments")
-    endif()
-
-    set(ADD_CRATE_BRIDGES_CC_OUT "")
-    set(ADD_CRATE_BRIDGES_H_OUT "")
-    set(ADD_CRATE_BRIDGES_H_DST "")
-    foreach (bridge ${ADD_CRATE_BRIDGES})
-      if (${bridge} MATCHES "src/lib.rs")
-        set(bridge_out "${ADD_CRATE_NAME}")
-      elseif (${bridge} MATCHES "src(\/.*)*\/(.*)\/mod.rs")
-        set(bridge_out "${ADD_CRATE_NAME}/${CMAKE_MATCH_1}/${CMAKE_MATCH_2}")
-      elseif (${bridge} MATCHES "src(\/.*)*\/(.*).rs")
-        set(bridge_out "${ADD_CRATE_NAME}/${CMAKE_MATCH_1}/${CMAKE_MATCH_2}")
-      else ()
-        # TODO: account for src/thing.rs or src/module_name/thing.rs
-        # TODO: error
-        message(SEND_ERROR "TODO")
-      endif ()
-      list(APPEND ADD_CRATE_BRIDGES_CC_OUT "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/${bridge}.cc")
-      list(APPEND ADD_CRATE_BRIDGES_H_OUT "${CARGO_INCLUDE_DIR}/cxxbridge/${ADD_CRATE_NAME}/${bridge}.h")
-      list(APPEND ADD_CRATE_BRIDGES_H_DST "${CMAKE_CURRENT_BINARY_DIR}/${bridge_out}.h")
-    endforeach ()
-    list(TRANSFORM ADD_CRATE_BRIDGES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_CRATE_NAME}/)
-    list(TRANSFORM ADD_CRATE_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/${ADD_CRATE_NAME}/)
-
-    add_custom_command(
-        OUTPUT
-            ${ADD_CRATE_BRIDGES_CC_OUT}
-            ${ADD_CRATE_BRIDGES_H_OUT}
-            "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        COMMAND
-            ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
-            ${CARGO}
-            build
-            "-q"
-            "--profile" ${CARGO_PROFILE}
-            "--manifest-path" ${CARGO_MANIFEST_PATH}
-            "-p" ${ADD_CRATE_NAME}
-        USES_TERMINAL
-        DEPENDS
-            ${ADD_CRATE_BRIDGES}
-            ${ADD_CRATE_SOURCES}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
-
-  # FIXME: this is not run
-  foreach (bridge_dst_h bridge_out_h IN ZIP_LISTS ADD_CRATE_BRIDGES_H_DST ADD_CRATE_BRIDGES_H_OUT)
-      add_custom_command(
-        OUTPUT
-          ${bridge_dst_h}
-        COMMAND
-          ${CMAKE_COMMAND} -E copy ${bridge_out_h} ${bridge_dst_h}
-        DEPENDS
-          ${bridge_out_h}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-      )
-    endforeach ()
-
-    # Note: Object libraries are "{crate_name}_rs" to avoid clashing with the
-    # existing object libraries.
-    add_library(${ADD_CRATE_NAME}_rs OBJECT EXCLUDE_FROM_ALL ${ADD_CRATE_BRIDGES_CC_OUT})
-    target_include_directories(
-        ${ADD_CRATE_NAME}_rs
-        PUBLIC
-            ${CARGO_INCLUDE_DIR}
-            ${CMAKE_SOURCE_DIR}
-            ${CMAKE_BINARY_DIR}/tiledb/
-    )
-    target_link_libraries(
-        ${ADD_CRATE_NAME}_rs
-        ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${ADD_CRATE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}
-    )
-endfunction ()
-
-
-# and now, the crates themselves!
-
-add_crate(
-    NAME arithmetic
-    BRIDGES src/lib.rs
-    SOURCES Cargo.toml
+list(APPEND OXIDIZE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/arithmetic/build.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arithmetic/Cargo.toml"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arithmetic/src/lib.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/bundle_rs/Cargo.toml"
+    "${CMAKE_CURRENT_SOURCE_DIR}/bundle_rs/src/lib.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/datatype/Cargo.toml"
+    "${CMAKE_CURRENT_SOURCE_DIR}/datatype/src/lib.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/expr/build.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/expr/Cargo.toml"
+    "${CMAKE_CURRENT_SOURCE_DIR}/expr/src/lib.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/expr/src/logical_expr.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/expr/src/offsets.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/expr/src/physical_expr.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/expr/src/record_batch.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/expr/src/schema.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/Cargo.toml"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/lib.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/sm/array_schema/mod.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/sm/enums/mod.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/sm/misc/mod.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/sm/mod.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/sm/query/ast/mod.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/sm/query/mod.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/sm/query/readers/mod.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/src/sm/tile/mod.rs"
+    "${CMAKE_CURRENT_SOURCE_DIR}/oxidize/build.rs"
 )
 
-add_crate(
-    NAME expr
-    BRIDGES
-        src/lib.rs
-    SOURCES
-        Cargo.toml
-        src/logical_expr.rs
-        src/offsets.rs
-        src/physical_expr.rs
-        src/record_batch.rs
-        src/schema.rs
+add_custom_command(
+    OUTPUT
+        "${CMAKE_CURRENT_BINARY_DIR}/target/build_rs.cc"
+        "${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}bundle_rs${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    COMMAND
+        ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/target"
+        ${CARGO}
+        build
+        "-q"
+        "--profile" ${CARGO_PROFILE}
+        "--manifest-path" ${CARGO_MANIFEST_PATH}
+        "-p"
+        "bundle_rs"
+    USES_TERMINAL
+    DEPENDS
+        ${OXIDIZE_SOURCES}
+    WORKING_DIRECTORY
+        ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_crate(
-    NAME oxidize
-    BRIDGES
-        src/sm/array_schema/mod.rs
-        src/sm/enums/mod.rs
-        src/sm/misc/mod.rs
-        src/sm/query/ast/mod.rs
-        src/sm/query/readers/mod.rs
-        src/sm/tile/mod.rs
-    SOURCES
-        Cargo.toml
+add_library(oxidize OBJECT ${CMAKE_CURRENT_BINARY_DIR}/target/build_rs.cc)
+
+target_include_directories(
+    oxidize
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}
+        ${CARGO_INCLUDE_DIR}
 )
 
-set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CARGO_INCLUDE_DIR} *.h)
+target_link_libraries(
+    oxidize
+    PUBLIC
+        ${CARGO_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}bundle_rs${CMAKE_STATIC_LIBRARY_SUFFIX}
+)

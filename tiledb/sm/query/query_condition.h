@@ -36,7 +36,7 @@
 #include <span>
 #include <unordered_set>
 
-#include "build/tiledb/oxidize/target/cxxbridge/rust/cxx.h"
+#include "cxxbridge/rust/cxx.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
@@ -45,10 +45,10 @@
 using namespace tiledb::common;
 
 namespace tiledb::oxidize::datafusion::schema {
-class DataFusionSchema;
+struct DataFusionSchema;
 }
 namespace tiledb::oxidize::datafusion::physical_expr {
-class PhysicalExpr;
+struct PhysicalExpr;
 }
 
 namespace tiledb {
