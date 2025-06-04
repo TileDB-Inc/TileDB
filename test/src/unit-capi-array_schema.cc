@@ -919,7 +919,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "- Cell val num: " + CELL_VAL_NUM_STR + "\n" + "- Filters: 2\n" +
       "  > BZIP2: COMPRESSION_LEVEL=5\n" +
       "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n" +
-      "- Fill value: " + FILL_VALUE_STR + "\n" + "### Current domain ###\n" +
+      "- Fill value: " + FILL_VALUE_STR + "\n\n" + "### Current domain ###\n" +
       "- Version: " +
       std::to_string(tiledb::sm::constants::current_domain_version) + "\n" +
       "- Empty: 1" + "\n";

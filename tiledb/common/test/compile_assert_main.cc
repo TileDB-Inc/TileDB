@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_experimental
+ * @file compile_baseline_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,30 +24,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file declares the experimental C++ API for TileDB.
  */
 
-#ifndef TILEDB_EXPERIMENTAL_CPP_H
-#define TILEDB_EXPERIMENTAL_CPP_H
+#include "../assert.h"
 
-#include "array_experimental.h"
-#include "array_schema_evolution.h"
-#include "array_schema_experimental.h"
-#include "as_built_experimental.h"
-#include "attribute_experimental.h"
-#include "dimension_label_experimental.h"
-#include "enumeration_experimental.h"
-#include "profile_experimental.h"
-#include "consolidation_plan_experimental.h"
-#include "profile_experimental.h"
-#include "query_condition_experimental.h"
-#include "query_experimental.h"
-#include "subarray_experimental.h"
-#include "vfs_experimental.h"
-#include "ndrectangle.h"
-#include "current_domain.h"
-
-#endif  // TILEDB_EXPERIMENTAL_CPP_H
+int main(int, char**) {
+  volatile bool i = 0;
+  iassert(i == 0, "Fatal error: i = {}", i);
+  passert(i == 0, "Fatal error: i = {}", i);
+  return 0;
+}

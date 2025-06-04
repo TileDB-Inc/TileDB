@@ -329,8 +329,12 @@ std::string global_logger_name(const Logger::Format format) {
 }
 
 Logger& global_logger(Logger::Format format) {
-  static Logger l(global_logger_name(format), Logger::Level::ERR, format, true);
-  return l;
+  // Note: We are *not* deallocating this root `Logger` instance so that
+  // during process exit, threads other than main will not trigger segfault's
+  // if they attempt to log after the main thread has exited.
+  static Logger* l = tiledb_new<Logger>(
+      HERE(), global_logger_name(format), Logger::Level::ERR, format, true);
+  return *l;
 }
 
 /** Logs a trace. */
