@@ -109,7 +109,9 @@ TEST_CASE_METHOD(
   }
   SECTION("inherited from nullptr") {
     Profile p(name_, std::nullopt);
-    REQUIRE(p.dir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(
+        p.dir() == tiledb::common::filesystem::home_directory() +
+                       tiledb::sm::constants::rest_profile_foldername + "/");
   }
 }
 
@@ -155,15 +157,15 @@ TEST_CASE_METHOD(
     Profile p(name_, tempdir_.path());
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // save the profile
     p.save();
     // check that the profiles file is created
     REQUIRE(std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // check that the profile is saved
     REQUIRE(profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath, name_));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename, name_));
   }
   SECTION("rest.username and rest.password set") {
     Profile p(name_, tempdir_.path());
@@ -171,15 +173,15 @@ TEST_CASE_METHOD(
     p.set_param("rest.password", "test_password");
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // save the profile
     p.save();
     // check that the profiles file is created
     REQUIRE(std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // check that the profile is saved
     REQUIRE(profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath, name_));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename, name_));
   }
   SECTION("rest.username set and rest.password not set") {
     Profile p(name_, tempdir_.path());
@@ -202,7 +204,7 @@ TEST_CASE_METHOD(
     expected_values_t expected;
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // save some parameters
     p.set_param("rest.username", "test_user");
     p.set_param("rest.password", "test_password");
@@ -210,7 +212,7 @@ TEST_CASE_METHOD(
     p.save();
     // check that the profiles file is created
     REQUIRE(std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
 
     // load the profile again
     Profile p2 = Profile::load(name_, tempdir_.path());
@@ -222,7 +224,7 @@ TEST_CASE_METHOD(
   SECTION("profiles file is present") {
     // check that the profiles file is not there
     REQUIRE(!std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // attempt to load the profile
     REQUIRE_THROWS(Profile::load(name_, tempdir_.path()));
   }
@@ -231,15 +233,15 @@ TEST_CASE_METHOD(
     Profile p2("another_profile", tempdir_.path());
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // save the other profile
     p1.save();
     // check that the profiles file is created
     REQUIRE(std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // check that the other profile is saved
     REQUIRE(profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename,
         p1.name()));
   }
 }
@@ -252,26 +254,26 @@ TEST_CASE_METHOD(
     Profile p(name_, tempdir_.path());
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // save the profile
     p.save();
     // check that the profiles file is created
     REQUIRE(std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // remove the profile
-    p.remove();
+    Profile::remove(name_, tempdir_.path());
     // check that the profiles file is still there
     REQUIRE(std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // check that the profile is removed
     REQUIRE(!profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath, name_));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename, name_));
   }
   SECTION("profiles file is present") {
     Profile p(name_, tempdir_.path());
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // attempt to remove the profile
     REQUIRE_THROWS(p.remove());
   }
@@ -280,25 +282,25 @@ TEST_CASE_METHOD(
     Profile p2("another_profile", tempdir_.path());
     // check that the profiles file was not there before
     REQUIRE(!std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // save the other profile
     p2.save();
     // check that the profiles file is created
     REQUIRE(std::filesystem::exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath));
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename));
     // check that the other profile is saved
     REQUIRE(profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename,
         p2.name()));
     // attempt remove the tested profile
     REQUIRE_THROWS(p1.remove());
     // check that the other profile still exists
     REQUIRE(profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename,
         p2.name()));
     // check that the tested profile still does not exist
     REQUIRE(!profile_exists(
-        tempdir_.path() + tiledb::sm::constants::rest_profile_filepath,
+        tempdir_.path() + tiledb::sm::constants::rest_profile_filename,
         p1.name()));
   }
 }
@@ -334,10 +336,14 @@ TEST_CASE_METHOD(
 
     Profile p1;
     REQUIRE(p1.name() == expected.profile_name);
-    REQUIRE(p1.dir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(
+        p1.dir() == tiledb::common::filesystem::home_directory() +
+                        tiledb::sm::constants::rest_profile_foldername + "/");
 
     Profile p2(std::nullopt, std::nullopt);
     REQUIRE(p2.name() == expected.profile_name);
-    REQUIRE(p2.dir() == tiledb::common::filesystem::home_directory());
+    REQUIRE(
+        p2.dir() == tiledb::common::filesystem::home_directory() +
+                        tiledb::sm::constants::rest_profile_foldername + "/");
   }
 }

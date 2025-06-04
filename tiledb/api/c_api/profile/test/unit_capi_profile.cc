@@ -271,11 +271,11 @@ TEST_CASE_METHOD(
   SECTION("success") {
     rc = tiledb_profile_save(profile, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
-    rc = tiledb_profile_remove(profile, &err);
+    rc = tiledb_profile_remove(name_, tempdir_.path().c_str(), &err);
     REQUIRE(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null profile") {
-    rc = tiledb_profile_remove(nullptr, &err);
+    rc = tiledb_profile_remove(nullptr, nullptr, &err);
     REQUIRE(tiledb_status(rc) == TILEDB_ERR);
   }
   tiledb_profile_free(&profile);
