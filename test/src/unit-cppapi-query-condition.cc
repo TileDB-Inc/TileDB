@@ -341,7 +341,7 @@ TEST_CASE(
       tiledb::sm::Datatype::STRING_ASCII,
       tiledb::sm::Datatype::STRING_UTF8);
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   std::string uri("query_condition_string_comparison_null_byte");
 
   // prepare data
