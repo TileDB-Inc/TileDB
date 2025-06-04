@@ -1320,8 +1320,9 @@ struct PAssertFailureCallbackShowRapidcheckInput {
   }
 
   void operator()() const {
-    std::cerr << "Last rapidcheck input: ";
+    std::cerr << "LAST RAPIDCHECK INPUT:" << std::endl;
     rc::show<decltype(inputs_)>(inputs_, std::cerr);
+    std::cerr << std::endl;
   }
 };
 
