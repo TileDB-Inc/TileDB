@@ -381,7 +381,13 @@ if (TILEDB_ASSERTIONS)
   string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_DIR_PATH_SIZE)
   add_compile_definitions(TILEDB_ASSERTIONS)
   add_compile_definitions("__SOURCE_DIR_PATH_SIZE__=${SOURCE_DIR_PATH_SIZE}")
-  add_compile_definitions("_GLIBCXX_ASSERTIONS")
+  if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    add_compile_definitions("_LIBCPP_DEBUG=1")
+  else if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    add_compile_definitions("_GLIBCXX_ASSERTIONS")
+  else if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    # TODO: ???
+  endif ()
 endif ()
 
 ##################################
