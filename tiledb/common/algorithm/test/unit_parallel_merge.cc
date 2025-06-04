@@ -236,10 +236,12 @@ struct VerifyTournamentMerge {
 
     std::vector<T> output(unit.num_items());
 
-    // SAFETY: the merge unit will begin writing at index
-    // `unit.output_start()`
-    T* output_buffer = output.data();
-    T* output_ptr = output_buffer - unit.output_start();
+    // The merge unit will begin writing at index `unit.output_start()`,
+    // so it should be safe to use a fake span where indexes prior to that are
+    // invalid
+    std::span<T> output_span(
+        output.data() - unit.output_start(),
+        unit.output_start() + unit.num_items());
 
     std::vector<std::span<T>> spans;
     for (size_t s = 0; s < streams.size(); s++) {
@@ -248,7 +250,7 @@ struct VerifyTournamentMerge {
     }
 
     auto result = ParallelMerge<decltype(spans)>::tournament_merge(
-        spans, &cmp, unit, output_ptr);
+        spans, &cmp, unit, output_span);
     ASSERTER(result.ok());
 
     // compare against a naive and slow merge
@@ -302,8 +304,7 @@ struct VerifyParallelMerge {
     ParallelMergeMemoryResources resources(*memory_tracker.get());
 
     ThreadPool pool(pool_concurrency);
-    auto future =
-        parallel_merge(pool, resources, options, spans, cmp, &output.data()[0]);
+    auto future = parallel_merge(pool, resources, options, spans, cmp, output);
 
     std::optional<uint64_t> prev_bound;
     std::optional<uint64_t> bound;
@@ -1434,8 +1435,8 @@ TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
                                           357, 400, 456, 468, 500, 579, 680,
                                           789, 791, 802, 890, 901, 913};
 
-    auto future = parallel_merge(
-        pool, resources, options, EXAMPLE_STREAMS, cmp, &output[0]);
+    auto future =
+        parallel_merge(pool, resources, options, EXAMPLE_STREAMS, cmp, output);
 
     future->block();
 
@@ -1456,7 +1457,7 @@ TEST_CASE("parallel merge example", "[algorithm][parallel_merge]") {
                                           246, 200, 135, 123, 100, 24};
 
     auto future =
-        parallel_merge(pool, resources, options, descending, cmp, &output[0]);
+        parallel_merge(pool, resources, options, descending, cmp, output);
 
     future->block();
 

@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_experimental
+ * @file tiledb/sm/storage_manager/test/main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,27 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the experimental C++ API for TileDB.
+ * This file defines a test `main()`
  */
 
-#ifndef TILEDB_EXPERIMENTAL_CPP_H
-#define TILEDB_EXPERIMENTAL_CPP_H
-
-#include "array_experimental.h"
-#include "array_schema_evolution.h"
-#include "array_schema_experimental.h"
-#include "as_built_experimental.h"
-#include "attribute_experimental.h"
-#include "dimension_label_experimental.h"
-#include "enumeration_experimental.h"
-#include "profile_experimental.h"
-#include "consolidation_plan_experimental.h"
-#include "profile_experimental.h"
-#include "query_condition_experimental.h"
-#include "query_experimental.h"
-#include "subarray_experimental.h"
-#include "vfs_experimental.h"
-#include "ndrectangle.h"
-#include "current_domain.h"
-
-#endif  // TILEDB_EXPERIMENTAL_CPP_H
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>

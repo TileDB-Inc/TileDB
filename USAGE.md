@@ -114,4 +114,4 @@ find_package(TileDB REQUIRED)
 target_link_libraries(MyExe PRIVATE TileDB::tiledb_static)
 ```
 
-You can see the [example CMake project](../examples/cmake_project) to see an example project structure that links against TileDB.
+You can see the [example CMake project](examples/cmake_project) to see an example project structure that links against TileDB.
