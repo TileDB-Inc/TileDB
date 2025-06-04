@@ -236,10 +236,19 @@ class Profile {
     }
   }
 
-  /** Removes the profile from the local file. */
-  void remove() {
+  /**
+   * Removes a profile from a profiles file in a given directory.
+   *
+   * @param name The name of the profile to remove.
+   * @param dir The directory path where the profiles file is located.
+   */
+  static void remove(
+      std::optional<std::string> name = std::nullopt,
+      std::optional<std::string> dir = std::nullopt) {
+    const char* n = name.has_value() ? name->c_str() : nullptr;
+    const char* h = dir.has_value() ? dir->c_str() : nullptr;
     tiledb_error_t* capi_error = nullptr;
-    int rc = tiledb_profile_remove(profile_.get(), &capi_error);
+    int rc = tiledb_profile_remove(n, h, &capi_error);
     if (rc != TILEDB_OK) {
       const char* msg_cstr;
       tiledb_error_message(capi_error, &msg_cstr);

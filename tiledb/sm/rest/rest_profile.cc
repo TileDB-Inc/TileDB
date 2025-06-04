@@ -141,6 +141,8 @@ RestProfile::RestProfile(
       dir_ += '/';
     }
   } else {
+    // We don't want to directly itneract with the home directory of the user,
+    // so we create a folder in the user's home directory.
     dir_ = home_directory() + constants::rest_profile_foldername + "/";
     if (dir_.empty()) {
       throw RestProfileException(
@@ -247,31 +249,24 @@ void RestProfile::load_from_file() {
   }
 }
 
-void RestProfile::remove_from_file() {
-  if (!std::filesystem::exists(filepath_)) {
-    throw RestProfileException(
-        "Failed to remove profile; file does not exist.");
+void RestProfile::remove_profile(
+    const std::optional<std::string>& name,
+    const std::optional<std::string>& dir) {
+  std::string profile_name = name.value_or(RestProfile::DEFAULT_PROFILE_NAME);
+  std::string profile_dir =
+      dir.value_or(home_directory() + constants::rest_profile_foldername + "/");
+
+  if (profile_dir.empty()) {
+    throw RestProfileException("Failed to remove profile; $HOME is not set.");
   }
 
-  // Read the file into a json object.
-  json data = read_file(filepath_);
-
-  // If a profile of the given name exists, remove it.
-  auto it = data.find(name_);
-  if (it == data.end()) {
-    throw RestProfileException(
-        "Failed to remove profile; profile does not exist.");
+  if (profile_dir.back() != '/') {
+    profile_dir += '/';
   }
-  data.erase(it);
 
-  // Write the json back to the file.
-  try {
-    write_file(data, filepath_);
-  } catch (const std::exception& e) {
-    throw RestProfileException(
-        "Failed to remove profile; error writing file: " +
-        std::string(e.what()));
-  }
+  std::string filepath = profile_dir + constants::rest_profile_filename;
+
+  remove_profile_from_file(profile_name, filepath);
 }
 
 json RestProfile::to_json() {
@@ -318,6 +313,34 @@ void RestProfile::load_from_json_file(const std::string& filename) {
   } else {
     throw RestProfileException(
         "Failed to load profile; profile '" + name_ + "' does not exist.");
+  }
+}
+
+void RestProfile::remove_profile_from_file(
+    const std::string& name, const std::string& filepath) {
+  if (!std::filesystem::exists(filepath)) {
+    throw RestProfileException(
+        "Failed to remove profile; file does not exist.");
+  }
+
+  // Read the file into a json object.
+  json data = read_file(filepath);
+
+  // If a profile of the given name exists, remove it.
+  auto it = data.find(name);
+  if (it == data.end()) {
+    throw RestProfileException(
+        "Failed to remove profile; profile does not exist.");
+  }
+  data.erase(it);
+
+  // Write the json back to the file.
+  try {
+    write_file(data, filepath);
+  } catch (const std::exception& e) {
+    throw RestProfileException(
+        "Failed to remove profile; error writing file: " +
+        std::string(e.what()));
   }
 }
 

@@ -117,9 +117,12 @@ capi_return_t tiledb_profile_load(tiledb_profile_t* profile) {
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_profile_remove(tiledb_profile_t* profile) {
-  ensure_profile_is_valid(profile);
-  profile->profile()->remove_from_file();
+capi_return_t tiledb_profile_remove(const char* name, const char* dir) {
+  std::optional<std::string> name_opt =
+      (name == nullptr) ? std::nullopt : std::make_optional(std::string(name));
+  std::optional<std::string> dir_opt =
+      (dir == nullptr) ? std::nullopt : std::make_optional(std::string(dir));
+  tiledb::sm::RestProfile::remove_profile(name_opt, dir_opt);
   return TILEDB_OK;
 }
 
@@ -199,8 +202,8 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    profile_remove, tiledb_profile_t* profile, tiledb_error_t** error) {
-  return api_entry_error<tiledb::api::tiledb_profile_remove>(error, profile);
+    profile_remove, const char* name, const char* dir, tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_profile_remove>(error, name, dir);
 }
 
 CAPI_INTERFACE(

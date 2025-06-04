@@ -215,15 +215,17 @@ TILEDB_EXPORT capi_return_t tiledb_profile_load(
     tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
- * Removes the given profile from the local file.
+ * Removes a profile from a given directory.
  *
- * @param[in] profile The profile.
+ * @param[in] name The profile name if you want to override the default.
+ * @param[in] dir The directory path that contains the profiles file. If `NULL`,
+ * the default directory is used.
  * @param[out] error Error object returned upon error (`NULL` if there is no
- * error).
- * @return TILEDB_EXPORT
+ *     error).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_profile_remove(
-    tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
+    const char* name, const char* dir, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Dumps a string representation of the given profile.

@@ -165,8 +165,16 @@ class RestProfile {
    */
   void load_from_file();
 
-  /** Removes this profile from the local file. */
-  void remove_from_file();
+  /**
+   * Removes the profile with the given name from profiles file of the given
+   * directory.
+   *
+   * @param name The name of the profile to remove.
+   * @param dir The path that store the profiles file.
+   */
+  static void remove_profile(
+      const std::optional<std::string>& name = std::nullopt,
+      const std::optional<std::string>& dir = std::nullopt);
 
   /**
    * Exports this profile's parameters and their values to a json object.
@@ -193,6 +201,15 @@ class RestProfile {
    * @param filepath The path of the file to load.
    */
   void load_from_json_file(const std::string& filepath);
+
+  /**
+   * Helper function to remove a profile from the profiles file.
+   *
+   * @param name The name of the profile to remove.
+   * @param filepath The path to the local file that stores all profiles.
+   */
+  static void remove_profile_from_file(
+      const std::string& name, const std::string& filepath);
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
