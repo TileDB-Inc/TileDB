@@ -1957,6 +1957,25 @@ TEST_CASE_METHOD(
         TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 100, 32, 6, false);
   }
 
+  SECTION("Shrinking") {
+    Subarray2DType<int, int> subarray = {std::make_pair(
+        std::optional<templates::Domain<int>>{templates::Domain<int>(44, 49)},
+        std::optional<templates::Domain<int>>{templates::Domain<int>(9, 24)})};
+    int value = 58;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "d1", &value, sizeof(int), tiledb::sm::QueryConditionOp::LT));
+    doit.operator()<tiledb::test::AsserterCatch>(
+        TILEDB_COL_MAJOR,
+        TILEDB_ROW_MAJOR,
+        3,
+        72,
+        120,
+        5,
+        true,
+        subarray,
+        std::move(qc));
+  }
+
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck out-of-order MBRs", [doit](bool allow_dups) {
       const auto tile_order =
