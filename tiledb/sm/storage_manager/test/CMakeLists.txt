@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2025 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,16 +22,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-
-include(common NO_POLICY_SCOPE)
-include(object_library)
-
 #
-# Object library `context_resources`
-#
-commence(object_library context_resources)
-    this_target_sources(context_resources.cc)
-    this_target_object_libraries(baseline config rest_client stats thread_pool vfs)
-conclude(object_library)
 
-add_test_subdirectory()
+include(unit_test)
+
+commence(unit_test static_context)
+    this_target_sources(main.cc unit_static_context.cc)
+    target_include_directories(unit_static_context PRIVATE
+        "$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>")
+    this_target_link_libraries(TILEDB_CORE_OBJECTS)
+    this_target_link_libraries(tiledb_test_support_lib)
+conclude(unit_test)
