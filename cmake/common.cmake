@@ -91,3 +91,9 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR})
 cmake_path(SET TILEDB_SOURCE_ROOT NORMALIZE ${CMAKE_SOURCE_DIR})
 cmake_path(APPEND TILEDB_SOURCE_ROOT "external/include" OUTPUT_VARIABLE TILEDB_EXTERNAL_INCLUDE)
+
+
+#
+# Add Rust-generated header files to the include path
+#
+include_directories(${TILEDB_OXIDIZE_INCLUDE_DIR})

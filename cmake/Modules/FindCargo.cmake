@@ -1,9 +1,10 @@
 #
-# tiledb/common/test/CMakeLists.txt
+# FindCargo.cmake
+#
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2025 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +24,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+# This file finds the Rust language toolchain and sets
+# definitions for building TileDB with Rust components.
+#
 
-include(unit_test)
+find_program(CARGO cargo REQUIRED)
 
-commence(unit_test arithmetic)
-    this_target_sources(main.cc unit_arithmetic.cc)
-    this_target_link_libraries(rapidcheck)
-    if (TILEDB_RUST)
-        this_target_object_libraries(arithmetic_rs)
-    endif ()
-conclude(unit_test)
-
-commence(unit_test experimental)
-    this_target_object_libraries(baseline)
-    this_target_sources(
-        main.cc
-        $<IF:$<BOOL:${TILEDB_EXPERIMENTAL_FEATURES}>,
-          unit_is_experimental.cc,
-          unit_is_not_experimental.cc>
-        )
-conclude(unit_test)
-
-commence(unit_test memory_tracker)
-    this_target_sources(main.cc unit_memory_tracker.cc unit_memory_tracker_types.cc)
-    this_target_object_libraries(baseline)
-conclude(unit_test)
-
+# `#[cxx::bridge]`-generated files will be sanitized and placed in
+# this directory to include from C++ source files
+set(TILEDB_OXIDIZE_INCLUDE_DIR ${CMAKE_BINARY_DIR}/tiledb/oxidize/include)
