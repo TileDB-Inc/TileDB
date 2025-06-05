@@ -86,7 +86,7 @@
 #ifndef TILEDB_ASSERT_H
 #define TILEDB_ASSERT_H
 
-#include <fmt/format.h>
+#include <spdlog/fmt/fmt.h>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
