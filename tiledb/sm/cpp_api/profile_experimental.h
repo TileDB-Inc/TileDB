@@ -64,8 +64,9 @@ class Profile {
    * preserve local files from in-test changes. Users may pass their own
    * `profile_dir`, but are encouraged to use `nullptr`, the default case.
    *
-   * @param name The profile name if you want to override the default.
-   * @param dir The directory path for the profile, or `nullptr` for the default
+   * @param name The profile name. If std::nullopt, the default name is used.
+   * @param dir The directory path that the profile will be stored. If
+   * `std::nullopt`, the home directory is used.
    * @throws ProfileException if the profile cannot be allocated.
    */
   explicit Profile(
@@ -105,7 +106,7 @@ class Profile {
    * Factory function to load a profile from the local file.
    *
    * @param name The profile name if you want to override the default.
-   * @param dir The local directory path that contains the profiles file.
+   * @param dir The directory path that contains the profiles file.
    * @return A Profile object loaded from the file.
    */
   static Profile load(
