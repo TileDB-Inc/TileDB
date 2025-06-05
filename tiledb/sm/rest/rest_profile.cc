@@ -137,14 +137,14 @@ RestProfile::RestProfile(
   if (dir.has_value() && !dir.value().empty()) {
     dir_ = ensure_trailing_slash(dir.value());
   } else {
-    // We don't want to directly itneract with the home directory of the user,
+    // We don't want to directly interact with the home directory of the user,
     // so we create a folder in the user's home directory.
-    std::string home = home_directory();
-    if (home.empty()) {
+    std::string homedir = home_directory();
+    if (homedir.empty()) {
       throw RestProfileException(
           "Failed to create RestProfile; $HOME is not set.");
     }
-    dir_ = ensure_trailing_slash(home + constants::rest_profile_foldername);
+    dir_ = ensure_trailing_slash(homedir + constants::rest_profile_foldername);
   }
   filepath_ = dir_ + constants::rest_profile_filename;
 };
@@ -250,14 +250,19 @@ void RestProfile::remove_profile(
     const std::optional<std::string>& name,
     const std::optional<std::string>& dir) {
   std::string profile_name = name.value_or(RestProfile::DEFAULT_PROFILE_NAME);
-  std::string profile_dir =
-      dir.value_or(home_directory() + constants::rest_profile_foldername + "/");
+  std::string profile_dir;
 
-  if (profile_dir.empty()) {
-    throw RestProfileException("Failed to remove profile; $HOME is not set.");
+  if (dir.has_value() && !dir.value().empty()) {
+    profile_dir = ensure_trailing_slash(dir.value());
+  } else {
+    std::string homedir = home_directory();
+    if (homedir.empty()) {
+      throw RestProfileException(
+          "Failed to create RestProfile; $HOME is not set.");
+    }
+    profile_dir =
+        ensure_trailing_slash(homedir + constants::rest_profile_foldername);
   }
-
-  profile_dir = ensure_trailing_slash(profile_dir);
 
   std::string filepath = profile_dir + constants::rest_profile_filename;
 

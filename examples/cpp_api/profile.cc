@@ -87,9 +87,9 @@ void create_array_with_profile(const std::string& profile_name) {
 }
 
 int main() {
-  // IMPORTANT NOTE: in case a profile of the same name already exists it will
-  // not be overwritten. If you want to overwrite it, you need to remove it
-  // first.
+  // IMPORTANT NOTE: Profiles are immutable. If you want to overwrite an
+  // existing Profile with a new one of the same name, you must first remove the
+  // old one.
   try {
     // Create, save, and print the config parameters for a named profile
     const std::string profile_name = "profile_example_123";

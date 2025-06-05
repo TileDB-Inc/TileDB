@@ -65,7 +65,7 @@ class Profile {
    * `profile_dir`, but are encouraged to use `nullptr`, the default case.
    *
    * @param name The profile name. If std::nullopt, the default name is used.
-   * @param dir The directory path that the profile will be stored. If
+   * @param dir The directory path on which the profile will be stored. If
    * `std::nullopt`, the home directory is used.
    * @throws ProfileException if the profile cannot be allocated.
    */

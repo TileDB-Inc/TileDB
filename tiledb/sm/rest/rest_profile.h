@@ -93,7 +93,7 @@ class RestProfile {
    *
    * @param name The name of the RestProfile. If `std::nullopt`, the default
    * name is used.
-   * @param dir The directory path that the profile will be stored. If
+   * @param dir The directory path on which the profile will be stored. If
    * `std::nullopt`, the home directory is used.
    */
   RestProfile(

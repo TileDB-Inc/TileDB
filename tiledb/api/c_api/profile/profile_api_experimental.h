@@ -64,7 +64,7 @@ typedef struct tiledb_profile_handle_t tiledb_profile_t;
  * @endcode
  *
  * @param[in] name The profile name, or `nullptr` for default.
- * @param[in] dir The directory path that the profile will be stored, or
+ * @param[in] dir The directory path on which the profile will be stored, or
  * `nullptr` for home directory.
  * @param[out] profile The profile object to be created.
  * @param[out] error Error object returned upon error (`NULL` if there is
