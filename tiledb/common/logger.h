@@ -36,7 +36,7 @@
 #ifndef TILEDB_LOGGER_H
 #define TILEDB_LOGGER_H
 
-#include <spdlog/fmt/fmt.h>
+#include <fmt/format.h>
 #include <atomic>
 #include <sstream>
 

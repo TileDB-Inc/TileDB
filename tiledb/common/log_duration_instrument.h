@@ -33,9 +33,8 @@
 #ifndef TILEDB_LOG_DURATION_INSTRUMENT_H
 #define TILEDB_LOG_DURATION_INSTRUMENT_H
 
-#include <spdlog/fmt/fmt.h>
-
-#include <spdlog/fmt/chrono.h>
+#include <fmt/format.h>
+#include <fmt/chrono.h>
 
 #include "tiledb/common/assert.h"
 #include "tiledb/common/logger.h"

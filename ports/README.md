@@ -36,8 +36,6 @@ For ease of review when patching existing ports, you are recommended to make one
 | `aws-sdk-cpp` | Patching to fix MinGW build failures.                                    |
 | `capnproto`   | Patching to fix compatibility with CMake 4.0 (PR 2272)                   |
 | `crc32c`      | Patching to fix compatibility with CMake 4.0 (PR 68)                     |
-| `fmt`         | Patching to update to version 1.11.4 (vcpkg PR 44774)                    |
 | `libmagic`    | Using a custom CMake-based port that is not accepted upstream.           |
 | `libfaketime` | Port does not yet exist upstream                                         |
 | `s2n`         | Patching to fix compatibility with CMake 4.0 (PR 4933)                   |
-| `spdlog`      | Patching to compile with `-fvisibility=hidden`                           |
