@@ -135,19 +135,16 @@ RestProfile::RestProfile(
               name.value() :
               RestProfile::DEFAULT_PROFILE_NAME) {
   if (dir.has_value() && !dir.value().empty()) {
-    dir_ = dir.value();
-    // Check if the provided directory ends with a slash, and add one if not.
-    if (dir_.back() != '/') {
-      dir_ += '/';
-    }
+    dir_ = ensure_trailing_slash(dir.value());
   } else {
     // We don't want to directly itneract with the home directory of the user,
     // so we create a folder in the user's home directory.
-    dir_ = home_directory() + constants::rest_profile_foldername + "/";
-    if (dir_.empty()) {
+    std::string home = home_directory();
+    if (home.empty()) {
       throw RestProfileException(
           "Failed to create RestProfile; $HOME is not set.");
     }
+    dir_ = ensure_trailing_slash(home + constants::rest_profile_foldername);
   }
   filepath_ = dir_ + constants::rest_profile_filename;
 };
@@ -260,9 +257,7 @@ void RestProfile::remove_profile(
     throw RestProfileException("Failed to remove profile; $HOME is not set.");
   }
 
-  if (profile_dir.back() != '/') {
-    profile_dir += '/';
-  }
+  profile_dir = ensure_trailing_slash(profile_dir);
 
   std::string filepath = profile_dir + constants::rest_profile_filename;
 
