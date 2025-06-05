@@ -743,6 +743,17 @@ class Dimension {
     return cell_val_num_ == constants::var_num;
   }
 
+  /**
+   * @return the size in bytes of one cell for this dimension, or
+   * `constants::var_size` if variable-length
+   */
+  uint64_t cell_size() const {
+    if (var_size()) {
+      return constants::var_size;
+    }
+    return cell_val_num_ * datatype_size(type_);
+  }
+
   class DimensionDispatch {
    public:
     DimensionDispatch(const Dimension& base)
