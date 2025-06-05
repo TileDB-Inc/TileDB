@@ -491,15 +491,24 @@ bool Domain::has_dimension(const std::string& name) const {
   return false;
 }
 
-unsigned Domain::get_dimension_index(const std::string& name) const {
+std::optional<unsigned> Domain::dimension_index(const std::string& name) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (dimension_ptrs_[d]->name() == name) {
       return d;
     }
   }
 
-  throw std::invalid_argument(
-      "Cannot get dimension index; Invalid dimension name");
+  return std::nullopt;
+}
+
+unsigned Domain::get_dimension_index(const std::string& name) const {
+  const auto maybe = dimension_index(name);
+  if (maybe.has_value()) {
+    return maybe.value();
+  } else {
+    throw std::invalid_argument(
+        "Cannot get dimension index; Invalid dimension name");
+  }
 }
 
 bool Domain::null_tile_extents() const {
