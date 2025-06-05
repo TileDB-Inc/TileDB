@@ -65,3 +65,20 @@ TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
   REQUIRE(retval == 0);
 #endif
 }
+
+TEST_CASE("CI: Test libc assertions configuration", "[ci][assertions]") {
+  int retval = system(TILEDB_PATH_TO_TRY_LIBC_ASSERT);
+
+  // report return value
+  std::cout << "retval is " << retval << " (0x" << std::hex << retval
+            << ") from " << TILEDB_PATH_TO_TRY_LIBC_ASSERT << std::endl;
+
+#ifdef TILEDB_ASSERTIONS
+  REQUIRE(
+      std::find(assert_exit_codes.begin(), assert_exit_codes.end(), retval) !=
+      assert_exit_codes.end());
+#else
+  (void)assert_exit_codes;
+  REQUIRE(retval == 0);
+#endif
+}

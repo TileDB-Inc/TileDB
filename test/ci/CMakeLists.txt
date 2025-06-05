@@ -15,6 +15,7 @@ target_compile_definitions(
   test_assert
   PRIVATE
   -DTILEDB_PATH_TO_TRY_ASSERT="$<TARGET_FILE:try_assert>"
+  -DTILEDB_PATH_TO_TRY_LIBC_ASSERT="$<TARGET_FILE:try_libc_assert>"
 )
 
 add_executable(
@@ -30,7 +31,12 @@ target_include_directories(try_assert
     Catch2::Catch2
 )
 
-add_dependencies(test_assert try_assert)
+add_executable(
+  try_libc_assert
+  try_libc_assert.cc
+)
+
+add_dependencies(test_assert try_assert try_libc_assert)
 
 add_test(
   NAME "test_ci_asserts"
