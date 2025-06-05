@@ -1058,6 +1058,14 @@ Status WriterBase::write_tiles(
               attr, idx - start_tile_idx, tiles[idx].max());
         }
       }
+
+      if (array_schema_.is_dim(attr)) {
+        frag_meta->convert_tile_global_order_bounds_sizes_to_offsets(attr);
+        for (uint64_t idx = start_tile_idx; idx < end_tile_idx; idx++) {
+          frag_meta->set_tile_global_order_bounds_var(
+              attr, idx - start_tile_idx, tiles[idx]);
+        }
+      }
       return Status::Ok();
     }));
   }
@@ -1127,10 +1135,16 @@ Status WriterBase::write_tiles(
         frag_meta->set_tile_min_var_size(name, tile_id, tile.min().size());
         frag_meta->set_tile_max_var_size(name, tile_id, tile.max().size());
       }
+      if (array_schema_.is_dim(name)) {
+        frag_meta->set_tile_global_order_bounds_fixed(name, tile_id, tile);
+      }
     } else {
       if (has_min_max_md && null_count != frag_meta->cell_num(tile_id)) {
         frag_meta->set_tile_min(name, tile_id, tile.min());
         frag_meta->set_tile_max(name, tile_id, tile.max());
+      }
+      if (array_schema_.is_dim(name)) {
+        frag_meta->set_tile_global_order_bounds_fixed(name, tile_id, tile);
       }
 
       if (has_sum_md) {

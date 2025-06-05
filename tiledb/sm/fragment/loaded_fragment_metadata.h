@@ -456,6 +456,38 @@ class LoadedFragmentMetadata {
     return tile_max_var_buffer_;
   }
 
+  inline const auto& tile_global_order_min_buffer() const {
+    return tile_global_order_min_buffer_;
+  }
+
+  inline const auto& tile_global_order_min_var_buffer() const {
+    return tile_global_order_min_var_buffer_;
+  }
+
+  inline const auto& tile_global_order_max_buffer() const {
+    return tile_global_order_max_buffer_;
+  }
+
+  inline const auto& tile_global_order_max_var_buffer() const {
+    return tile_global_order_max_var_buffer_;
+  }
+
+  inline auto& tile_global_order_min_buffer() {
+    return tile_global_order_min_buffer_;
+  }
+
+  inline auto& tile_global_order_min_var_buffer() {
+    return tile_global_order_min_var_buffer_;
+  }
+
+  inline auto& tile_global_order_max_buffer() {
+    return tile_global_order_max_buffer_;
+  }
+
+  inline auto& tile_global_order_max_var_buffer() {
+    return tile_global_order_max_var_buffer_;
+  }
+
   /** Returns an RTree for the MBRs. */
   inline const RTree& rtree() const {
     return rtree_;
@@ -654,6 +686,40 @@ class LoadedFragmentMetadata {
    * The tile max buffers variable length data.
    */
   tdb::pmr::vector<tdb::pmr::vector<char>> tile_max_var_buffer_;
+
+  /**
+   * The tile global order minima.
+   *
+   * The outer vector is indexed by dimension `d`.
+   * The inner vector is the concatenated values of the `d`th
+   * dimension of the global order minimum coordinate for each tile.
+   *
+   * For variable-length dimensions the value stored here is the offset
+   * into the corresponding variable-length buffer.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_global_order_min_buffer_;
+
+  /**
+   * The tile global order maxima.
+   *
+   * The outer vector is indexed by dimension `d`.
+   * The inner vector is the concatenated values of the `d`th
+   * dimension of the global order maximum coordinate for each tile.
+   *
+   * For variable-length dimensions the value stored here is the offset
+   * into the corresponding variable-length buffer.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_global_order_max_buffer_;
+
+  /**
+   * The tile global order minima, variable-length part.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_global_order_min_var_buffer_;
+
+  /**
+   * The tile global order maxima, variable-length part.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_global_order_max_var_buffer_;
 
   /**
    * The tile sum values, ignored for var sized attributes/dimensions.
