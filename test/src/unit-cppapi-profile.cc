@@ -110,8 +110,9 @@ TEST_CASE_METHOD(
   SECTION("inherited from nullptr") {
     Profile p(name_, std::nullopt);
     REQUIRE(
-        p.dir() == tiledb::common::filesystem::home_directory() +
-                       tiledb::sm::constants::rest_profile_foldername + "/");
+        p.dir() == tiledb::common::filesystem::ensure_trailing_slash(
+                       tiledb::common::filesystem::home_directory() +
+                       tiledb::sm::constants::rest_profile_foldername));
   }
 }
 
@@ -337,13 +338,15 @@ TEST_CASE_METHOD(
     Profile p1;
     REQUIRE(p1.name() == expected.profile_name);
     REQUIRE(
-        p1.dir() == tiledb::common::filesystem::home_directory() +
-                        tiledb::sm::constants::rest_profile_foldername + "/");
+        p1.dir() == tiledb::common::filesystem::ensure_trailing_slash(
+                        tiledb::common::filesystem::home_directory() +
+                        tiledb::sm::constants::rest_profile_foldername));
 
     Profile p2(std::nullopt, std::nullopt);
     REQUIRE(p2.name() == expected.profile_name);
     REQUIRE(
-        p2.dir() == tiledb::common::filesystem::home_directory() +
-                        tiledb::sm::constants::rest_profile_foldername + "/");
+        p2.dir() == tiledb::common::filesystem::ensure_trailing_slash(
+                        tiledb::common::filesystem::home_directory() +
+                        tiledb::sm::constants::rest_profile_foldername));
   }
 }
