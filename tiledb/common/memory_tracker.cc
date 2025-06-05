@@ -187,6 +187,8 @@ bool MemoryTrackerResource::do_is_equal(
 }
 
 MemoryTracker::~MemoryTracker() {
+  PAssertFailureCallbackRegistration dumpMemory(
+      PAssertFailureCallbackDumpMemoryTracker(*this));
   passert(
       total_counter_.fetch_add(0) == 0 &&
       "MemoryTracker destructed with outstanding allocations.");
@@ -228,10 +230,10 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
 }
 
 std::tuple<uint64_t, std::unordered_map<MemoryType, uint64_t>>
-MemoryTracker::get_counts() {
+MemoryTracker::get_counts() const {
   std::lock_guard<std::mutex> lg(mutex_);
 
-  auto total = total_counter_.fetch_add(0, std::memory_order_relaxed);
+  auto total = total_counter_.load(std::memory_order_relaxed);
   std::unordered_map<MemoryType, uint64_t> by_type;
   std::vector<MemoryType> to_del;
   for (auto& [mem_type, resource] : resources_) {
@@ -244,6 +246,26 @@ MemoryTracker::get_counts() {
 uint64_t MemoryTracker::generate_id() {
   static std::atomic<uint64_t> curr_id{0};
   return curr_id.fetch_add(1);
+}
+
+nlohmann::json MemoryTracker::to_json() const {
+  nlohmann::json val;
+
+  // Set an distinguishing id
+  val["tracker_id"] = std::to_string(get_id());
+
+  // Mark the stats with the tracker type.
+  val["tracker_type"] = memory_tracker_type_to_str(get_type());
+
+  // Add memory stats
+  auto [total, by_type] = get_counts();
+  val["total_memory"] = total;
+  val["by_type"] = nlohmann::json::object();
+  for (auto& [type, count] : by_type) {
+    val["by_type"][memory_type_to_str(type)] = count;
+  }
+
+  return val;
 }
 
 shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker(
@@ -315,22 +337,7 @@ std::string MemoryTrackerManager::to_json() {
       continue;
     }
 
-    nlohmann::json val;
-
-    // Set an distinguishing id
-    val["tracker_id"] = std::to_string(ptr->get_id());
-
-    // Mark the stats with the tracker type.
-    val["tracker_type"] = memory_tracker_type_to_str(ptr->get_type());
-
-    // Add memory stats
-    auto [total, by_type] = ptr->get_counts();
-    val["total_memory"] = total;
-    val["by_type"] = nlohmann::json::object();
-    for (auto& [type, count] : by_type) {
-      val["by_type"][memory_type_to_str(type)] = count;
-    }
-    rv.push_back(val);
+    rv.push_back(ptr->to_json());
 
     idx++;
   }
@@ -454,6 +461,13 @@ void MemoryTrackerReporter::run() {
       continue;
     }
   }
+}
+
+void PAssertFailureCallbackDumpMemoryTracker::operator()() const {
+  const auto json = tracker_.to_json();
+
+  std::cerr << "MEMORY REPORT:" << std::endl;
+  std::cerr << json << std::endl;
 }
 
 }  // namespace tiledb::sm
