@@ -27,8 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * When run, this program will create a simple 2D sparse array, write some data
- * to it, and read a slice of the data back.
+ * When run, this program will create a named profile with some custom rest
+ * parameters, save it in the default profiles location
+ * ({homedir}/.tiledb/profiles.json), and then create a config object that uses
+ * this profile. It will then print the parameters of the config object, which
+ * should come from the profile. Finally, it will create an array using the
+ * profile, and then remove the profile.
  */
 
 #include <iostream>
@@ -37,60 +41,64 @@
 
 using namespace tiledb;
 
-void create_and_save_profile(
-    std::optional<std::string> profile_name = std::nullopt) {
-  Profile profile = profile_name ? Profile(profile_name.value()) : Profile();
-  profile.set_param(
-      "rest.token", profile_name ? "named_custom_token" : "my_custom_token");
-  profile.set_param(
-      "rest.server_address",
-      profile_name ? "https://named.custom.server.address" :
-                     "https://my.custom.server.address");
+void create_and_save_profile(const std::string& profile_name) {
+  Profile profile(profile_name);
+  profile.set_param("rest.token", "my_custom_token");
+  profile.set_param("rest.server_address", "https://my.custom.server.address");
   profile.save();
 }
 
-void print_config(std::optional<std::string> profile_name = std::nullopt) {
-  // Create a config object. The default profile will be used automatically if
-  // it exists.
+void print_config(const std::string& profile_name) {
+  // Create a config object and set the profile to use.
   Config config;
-
-  if (profile_name.has_value()) {
-    config.set_profile(profile_name.value());
-  }
+  config.set_profile(profile_name);
 
   // Print the parameters of the config. They should come from the profile.
-  std::cout << "Config parameters coming from "
-            << (profile_name.has_value() ? profile_name.value() : "default")
-            << " profile" << std::endl;
+  std::cout << "Config parameters coming from profile " << profile_name << ":"
+            << std::endl;
   std::cout << "rest.token: " << config.get("rest.token") << std::endl;
   std::cout << "rest.server_address: " << config.get("rest.server_address")
             << std::endl
             << std::endl;
 }
 
-int main() {
-  // IMPORTANT NOTE: both the default and the named profiles  will not be
-  // overwritten in case they already exist. If you want to overwrite them, you
-  // need to remove them first.
-  try {
-    // Create, save, and print the config parameters for the default profile
-    create_and_save_profile();
-    print_config();
-    // Remove the default profile ONLY if it was created as part of this example
-    Profile::remove();
-  } catch (const ProfileException& e) {
-    std::cerr << "Error creating default profile: " << e.what() << std::endl;
-  }
+void create_array_with_profile(const std::string& profile_name) {
+  // Create a config object and set the profile to use.
+  Config config;
+  config.set_profile(profile_name);
+  // Create a context using the config
+  Context ctx(config);
 
+  // Create a schema for an array
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(Domain(ctx).add_dimension(
+      Dimension::create<int32_t>(ctx, "d1", {{1, 100}}, 10)));
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_tile_order(TILEDB_ROW_MAJOR);
+  schema.set_capacity(100);
+  schema.add_attributes(Attribute::create<int32_t>(ctx, "a1"));
+  schema.add_attributes(Attribute::create<int32_t>(ctx, "a2"));
+  schema.check();
+  // Create an array using the schema and the credentials from the profile
+  const std::string array_uri = "tiledb://my_workspace/my_teamspace/my_array";
+  Array::create(array_uri, schema);
+}
+
+int main() {
+  // IMPORTANT NOTE: in case a profile of the same name already exists it will
+  // not be overwritten. If you want to overwrite it, you need to remove it
+  // first.
   try {
     // Create, save, and print the config parameters for a named profile
     const std::string profile_name = "profile_example_123";
     create_and_save_profile(profile_name);
     print_config(profile_name);
-    // Remove the named profile
+    // Create an array using the profile
+    create_array_with_profile(profile_name);
+    // Remove the profile
     Profile::remove(profile_name);
   } catch (const ProfileException& e) {
-    std::cerr << "Error creating named profile: " << e.what() << std::endl;
+    std::cerr << "Error creating profile: " << e.what() << std::endl;
   }
 
   return 0;
