@@ -43,6 +43,32 @@ find_package(Threads REQUIRED)
 # Compile all core sources with PIC
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+find_package(Git REQUIRED)
+
+# fmt
+if(NOT EXISTS "${CMAKE_BINARY_DIR}/external/fmt")
+  execute_process(COMMAND ${GIT_EXECUTABLE} clone https://github.com/fmtlib/fmt.git "${CMAKE_BINARY_DIR}/external/fmt")
+endif()
+if(NOT TARGET fmt)
+  add_library(fmt INTERFACE)
+  target_include_directories(fmt INTERFACE "${CMAKE_BINARY_DIR}/external/fmt/include")
+  target_compile_definitions(fmt INTERFACE FMT_HEADER_ONLY)
+  if(MSVC)
+    add_compile_options(/utf-8)
+  endif()
+endif()
+
+# spdlog
+if(NOT EXISTS "${CMAKE_BINARY_DIR}/external/spdlog")
+  execute_process(COMMAND ${GIT_EXECUTABLE} clone https://github.com/gabime/spdlog.git "${CMAKE_BINARY_DIR}/external/spdlog")
+endif()
+if(NOT TARGET spdlog)
+  add_library(spdlog INTERFACE)
+  target_include_directories(spdlog INTERFACE "${CMAKE_BINARY_DIR}/external/spdlog/include")
+  target_compile_definitions(spdlog INTERFACE SPDLOG_FMT_EXTERNAL)
+  target_link_libraries(spdlog INTERFACE fmt)
+endif()
+
 ############################################################
 # Subdirectories
 ############################################################
@@ -571,7 +597,6 @@ endif()
 # which is installed here.
 find_package(BZip2 REQUIRED)
 find_package(LZ4 MODULE REQUIRED)
-find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(zstd CONFIG REQUIRED)
 find_package(LibMagic MODULE REQUIRED)
@@ -579,7 +604,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
     lz4::lz4
-    spdlog::spdlog
+	spdlog
     ZLIB::ZLIB
     zstd::libzstd
     libmagic

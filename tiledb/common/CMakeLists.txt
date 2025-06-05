@@ -59,9 +59,7 @@ set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
 #
 commence(object_library assert)
     this_target_sources(assert.cc)
-    # can be removed when c++20 `<format>` is consistently supported
-    find_package(fmt REQUIRED)
-    target_link_libraries(assert PUBLIC fmt::fmt)
+    target_link_libraries(assert PUBLIC fmt)
 conclude(object_library)
 
 #
@@ -82,9 +80,7 @@ commence(object_library baseline)
     if (TILEDB_USE_CPP17_PMR)
       this_target_sources(polymorphic_allocator/polymorphic_allocator.cc)
     endif()
-    find_package(spdlog REQUIRED)
-    target_link_libraries(baseline PUBLIC spdlog::spdlog)
-    target_link_libraries(baseline PUBLIC common)
+    target_link_libraries(baseline PUBLIC common spdlog)
 conclude(object_library)
 
 #
