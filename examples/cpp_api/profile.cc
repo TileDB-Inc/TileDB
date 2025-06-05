@@ -33,6 +33,8 @@
  * this profile. It will then print the parameters of the config object, which
  * should come from the profile. Finally, it will create an array using the
  * profile, and then remove the profile.
+ *
+ * @note This example is not running on CI since it requires serialization.
  */
 
 #include <iostream>
