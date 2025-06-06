@@ -816,7 +816,7 @@ void SparseGlobalOrderReader<BitmapType>::preprocess_compute_result_tile_order(
         future.merge_options_,
         future.fragment_result_tiles_,
         *static_cast<ResultTileCmp*>(future.cmp_.get()),
-        &preprocess_tile_order_.tiles_[0]);
+        preprocess_tile_order_.tiles_);
   };
 
   switch (array_schema_.cell_order()) {

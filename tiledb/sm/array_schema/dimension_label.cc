@@ -330,7 +330,6 @@ std::ostream& operator<<(
   (dl.label_cell_val_num() == tiledb::sm::constants::var_num) ?
       os << "- Label cell val num: var\n" :
       os << "- Label cell val num: " << dl.label_cell_val_num() << std::endl;
-  os << std::endl;
 
   return os;
 }

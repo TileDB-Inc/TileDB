@@ -73,13 +73,15 @@ void Watchdog::watchdog_thread(Watchdog* watchdog) {
     return;
   }
 
+  auto global_state = GlobalState::GetGlobalState();
+
   while (true) {
     std::unique_lock<std::mutex> lck(watchdog->mtx_);
     watchdog->cv_.wait_for(
         lck, std::chrono::milliseconds(constants::watchdog_thread_sleep_ms));
 
     if (SignalHandlers::signal_received()) {
-      for (auto* sm : GlobalState::GetGlobalState().storage_managers()) {
+      for (auto* sm : global_state->storage_managers()) {
         throw_if_not_ok(sm->cancel_all_tasks());
       }
     }

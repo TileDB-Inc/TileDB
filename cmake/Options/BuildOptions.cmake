@@ -25,6 +25,7 @@ option(TILEDB_SERIALIZATION "If true, enables building with support for query se
 option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
 option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
 option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" ON)
+option(TILEDB_RUST "If true, enables building Rust components" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
 option(TILEDB_DISABLE_AUTO_VCPKG "Do not automatically download vcpkg. Ignored if CMAKE_TOOLCHAIN_FILE or ENV{VCPKG_ROOT} is set." OFF)

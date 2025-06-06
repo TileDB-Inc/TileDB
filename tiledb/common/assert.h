@@ -76,15 +76,19 @@
  * state. If the claim is false, is there any path whatsoever to
  * recovery (including "don't do that again")? If not, then `passert`
  * is a good choice.
+ *
+ * For simplicity, the routines which implement `iassert` and `passert`
+ * are compiled whether or not `TILEDB_ASSERTIONS` is enabled;
+ * the feature merely toggles what the `passert` and `iassert`
+ * macros expand to.
  */
 
 #ifndef TILEDB_ASSERT_H
 #define TILEDB_ASSERT_H
 
-#ifdef TILEDB_ASSERTIONS
-
-#include <spdlog/fmt/fmt.h>
+#include <fmt/format.h>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 
 #define __SOURCE__ (&__FILE__[__SOURCE_DIR_PATH_SIZE__])
@@ -98,9 +102,11 @@ namespace tiledb::common {
  * of this exception would report it as such.
  */
 class [[nodiscard]] AssertFailure : public std::exception {
+  AssertFailure(const std::string& what);
+
  public:
   AssertFailure(const char* file, uint64_t line, const char* expr)
-      : what_(fmt::format(
+      : AssertFailure(fmt::format(
             "TileDB core library internal error: {}:{}: {}",
             file,
             line,
@@ -114,7 +120,7 @@ class [[nodiscard]] AssertFailure : public std::exception {
       const char* expr,
       fmt::format_string<Args...> fmt,
       Args&&... fmt_args)
-      : what_(fmt::format(
+      : AssertFailure(fmt::format(
             "TileDB core library internal error: {}:{}: {}\nDetails: {}",
             file,
             line,
@@ -140,10 +146,8 @@ class [[nodiscard]] AssertFailure : public std::exception {
  *
  * Called when the argument to `iassert` is false.
  */
-[[noreturn]] [[maybe_unused]] static void iassert_failure(
-    const char* file, uint64_t line, const char* expr) {
-  throw AssertFailure(file, line, expr);
-}
+[[noreturn]] void iassert_failure(
+    const char* file, uint64_t line, const char* expr);
 
 /**
  * Assertion failure which results in an internal error.
@@ -166,6 +170,11 @@ template <typename... Args>
 }
 
 /**
+ * Aborts the process upon `passert` failure.
+ */
+[[noreturn]] void passert_failure_abort(void);
+
+/**
  * Assertion failure which results in a process panic.
  * SIGABRT is raised.
  *
@@ -175,14 +184,8 @@ template <typename... Args>
  *
  * Called when the argument to `passert` is false.
  */
-template <typename... Args>
-[[noreturn]] [[maybe_unused]] static void passert_failure(
-    const char* file, uint64_t line, const char* expr) {
-  std::cerr << "FATAL TileDB core library internal error: " << expr
-            << std::endl;
-  std::cerr << "  " << file << ":" << line << std::endl;
-  std::abort();
-}
+[[noreturn]] void passert_failure(
+    const char* file, uint64_t line, const char* expr);
 
 /**
  * Assertion failure which results in a process panic.
@@ -206,10 +209,27 @@ template <typename... Args>
   std::cerr << "  " << file << ":" << line << std::endl;
   std::cerr << "  Details: "
             << fmt::format(fmt, std::forward<Args>(fmt_args)...) << std::endl;
-  std::abort();
+
+  passert_failure_abort();
 }
 
+/**
+ * Registers a callback to run upon `passert` failure.
+ * This can be used to print any diagnostic info prior to aborting the process.
+ */
+struct PAssertFailureCallbackRegistration {
+#ifdef TILEDB_ASSERTIONS
+  PAssertFailureCallbackRegistration(std::function<void()>&& callback);
+  ~PAssertFailureCallbackRegistration();
+#else
+  PAssertFailureCallbackRegistration(std::function<void()>&&) {
+  }
+#endif
+};
+
 }  // namespace tiledb::common
+
+#ifdef TILEDB_ASSERTIONS
 
 #define iassert(condition, ...)                             \
   do {                                                      \
@@ -233,10 +253,12 @@ template <typename... Args>
 
 #define iassert(condition, ...) \
   do {                          \
+    (void)(sizeof(condition));  \
   } while (0)
 
 #define passert(condition, ...) \
   do {                          \
+    (void)(sizeof(condition));  \
   } while (0)
 
 #endif

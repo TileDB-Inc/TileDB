@@ -1308,6 +1308,21 @@ TEST_CASE_METHOD(
   CHECK(retrieved_data == expected_correct_data);
 }
 
+template <typename... Args>
+struct PAssertFailureCallbackShowRapidcheckInput {
+  std::tuple<const Args&...> inputs_;
+
+  PAssertFailureCallbackShowRapidcheckInput(const Args&... inputs)
+      : inputs_(inputs...) {
+  }
+
+  void operator()() const {
+    std::cerr << "LAST RAPIDCHECK INPUT:" << std::endl;
+    rc::show<decltype(inputs_)>(inputs_, std::cerr);
+    std::cerr << std::endl;
+  }
+};
+
 /**
  * Tests that the reader will not yield results out of order across multiple
  * iterations or `submit`s if the fragments are heavily skewed when the memory
@@ -1340,6 +1355,10 @@ TEST_CASE_METHOD(
                   const std::vector<templates::Domain<int>>& subarray =
                       std::vector<templates::Domain<int>>(),
                   tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
+    PAssertFailureCallbackRegistration showInput(
+        PAssertFailureCallbackShowRapidcheckInput(
+            fragment_size, num_user_cells, extent, subarray, *condition.get()));
+
     // Write a fragment F0 with unique coordinates
     InstanceType::FragmentType fragment0;
     fragment0.dim_.resize(fragment_size);
@@ -1465,6 +1484,10 @@ TEST_CASE_METHOD(
                   size_t num_user_cells,
                   const std::vector<templates::Domain<int>>& subarray = {},
                   tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
+    PAssertFailureCallbackRegistration showInput(
+        PAssertFailureCallbackShowRapidcheckInput(
+            fragment_size, num_user_cells, subarray, *condition.get()));
+
     templates::Fragment1D<int, int> fragment0;
     templates::Fragment1D<int, int> fragment1;
 
@@ -1564,6 +1587,15 @@ TEST_CASE_METHOD(
                   const std::vector<templates::Domain<int>>& subarray =
                       std::vector<templates::Domain<int>>(),
                   tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
+    PAssertFailureCallbackRegistration showInput(
+        PAssertFailureCallbackShowRapidcheckInput(
+            num_fragments,
+            fragment_size,
+            num_user_cells,
+            allow_dups,
+            subarray,
+            *condition.get()));
+
     const uint64_t total_budget = 100000;
     const double ratio_coords = 0.2;
 
@@ -1683,6 +1715,16 @@ TEST_CASE_METHOD(
                   bool allow_dups,
                   const Subarray1DType<int>& subarray = {},
                   tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
+    PAssertFailureCallbackRegistration showInput(
+        PAssertFailureCallbackShowRapidcheckInput(
+            num_fragments,
+            fragment_size,
+            num_user_cells,
+            tile_capacity,
+            allow_dups,
+            subarray,
+            *condition.get()));
+
     FxRun1D instance;
     instance.num_user_cells = num_user_cells;
     instance.subarray = subarray;
@@ -1844,6 +1886,18 @@ TEST_CASE_METHOD(
                   bool allow_dups,
                   const Subarray2DType<int, int>& subarray = {},
                   tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
+    PAssertFailureCallbackRegistration showInput(
+        PAssertFailureCallbackShowRapidcheckInput(
+            tile_order,
+            cell_order,
+            num_fragments,
+            fragment_size,
+            num_user_cells,
+            tile_capacity,
+            allow_dups,
+            subarray,
+            *condition.get()));
+
     FxRun2D instance;
     instance.num_user_cells = num_user_cells;
     instance.capacity = tile_capacity;
@@ -1931,6 +1985,25 @@ TEST_CASE_METHOD(
         TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR, 4, 100, 32, 6, false);
   }
 
+  SECTION("Shrinking") {
+    Subarray2DType<int, int> subarray = {std::make_pair(
+        std::optional<templates::Domain<int>>{templates::Domain<int>(44, 49)},
+        std::optional<templates::Domain<int>>{templates::Domain<int>(9, 24)})};
+    int value = 58;
+    tdb_unique_ptr<tiledb::sm::ASTNode> qc(new tiledb::sm::ASTNodeVal(
+        "d1", &value, sizeof(int), tiledb::sm::QueryConditionOp::LT));
+    doit.operator()<tiledb::test::AsserterCatch>(
+        TILEDB_COL_MAJOR,
+        TILEDB_ROW_MAJOR,
+        3,
+        72,
+        120,
+        5,
+        true,
+        subarray,
+        std::move(qc));
+  }
+
   SECTION("Rapidcheck") {
     rc::prop("rapidcheck out-of-order MBRs", [doit](bool allow_dups) {
       const auto tile_order =
@@ -2008,6 +2081,18 @@ TEST_CASE_METHOD(
                   bool allow_dups,
                   const Subarray2DType<int, int>& subarray = {},
                   tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
+    PAssertFailureCallbackRegistration showInput(
+        PAssertFailureCallbackShowRapidcheckInput(
+            tile_order,
+            cell_order,
+            approximate_memory_tiles,
+            num_user_cells,
+            num_fragments,
+            tile_capacity,
+            allow_dups,
+            subarray,
+            *condition.get()));
+
     FxRun2D instance;
     instance.tile_order_ = tile_order;
     instance.cell_order_ = cell_order;
@@ -2161,6 +2246,10 @@ TEST_CASE_METHOD(
                   templates::Dimension<Datatype::INT64> dimension,
                   const Subarray1DType<int64_t>& subarray = {},
                   tdb_unique_ptr<tiledb::sm::ASTNode> condition = nullptr) {
+    PAssertFailureCallbackRegistration showInput(
+        PAssertFailureCallbackShowRapidcheckInput(
+            num_fragments, dimension, subarray, *condition.get()));
+
     const size_t fragment_size =
         std::min<size_t>(1024 * 32, dimension.domain.num_cells());
 
@@ -3104,7 +3193,11 @@ TEST_CASE_METHOD(
     "fragments",
     "[sparse-global-order][sub-millisecond][rest][rapidcheck]") {
   auto doit = [this]<typename Asserter>(
-                  const std::vector<uint64_t> fragment_same_timestamp_runs) {
+                  const std::vector<uint64_t>& fragment_same_timestamp_runs) {
+    PAssertFailureCallbackRegistration showInput{
+        PAssertFailureCallbackShowRapidcheckInput(
+            fragment_same_timestamp_runs)};
+
     uint64_t num_fragments = 0;
     for (const auto same_timestamp_run : fragment_same_timestamp_runs) {
       num_fragments += same_timestamp_run;

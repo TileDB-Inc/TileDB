@@ -47,8 +47,6 @@ typedef struct tiledb_profile_handle_t tiledb_profile_t;
 /**
  * Allocates a TileDB profile object.
  *
- * @note Users may specify the path, or use `nullptr` for the default.
- *
  * **Example:**
  *
  * @code{.c}
@@ -66,7 +64,8 @@ typedef struct tiledb_profile_handle_t tiledb_profile_t;
  * @endcode
  *
  * @param[in] name The profile name, or `nullptr` for default.
- * @param[in] homedir The path to `$HOME` directory, or `nullptr` for default.
+ * @param[in] dir The directory path on which the profile will be stored, or
+ * `nullptr` for home directory.
  * @param[out] profile The profile object to be created.
  * @param[out] error Error object returned upon error (`NULL` if there is
  *     no error).
@@ -74,7 +73,7 @@ typedef struct tiledb_profile_handle_t tiledb_profile_t;
  */
 TILEDB_EXPORT capi_return_t tiledb_profile_alloc(
     const char* name,
-    const char* homedir,
+    const char* dir,
     tiledb_profile_t** profile,
     tiledb_error_t** error) TILEDB_NOEXCEPT;
 
@@ -98,7 +97,7 @@ TILEDB_EXPORT void tiledb_profile_free(tiledb_profile_t** profile)
     TILEDB_NOEXCEPT;
 
 /**
- * Retrieves the name from the given profile.
+ * Retrieves the name of the given profile.
  *
  * **Example:**
  *
@@ -123,7 +122,7 @@ TILEDB_EXPORT capi_return_t tiledb_profile_get_name(
     tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
- * Retrieves the homedir from the given profile.
+ * Retrieves the directory of the given profile.
  *
  * **Example:**
  *
@@ -131,20 +130,20 @@ TILEDB_EXPORT capi_return_t tiledb_profile_get_name(
  * tiledb_profile_t* profile;
  * tiledb_error_t* error = NULL;
  * tiledb_profile_alloc(&profile, &error);
- * tiledb_string_t* homedir;
- * tiledb_profile_get_homedir(profile, &homedir);
+ * tiledb_string_t* profile_dir;
+ * tiledb_profile_get_dir(profile, &profile_dir);
  * tiledb_profile_free(&profile);
  * @endcode
  *
  * @param[in] profile The profile.
- * @param[out] homedir The homedir of the profile, to be retrieved.
+ * @param[out] dir The directory of the profile, to be retrieved.
  * @param[out] error Error object returned upon error (`NULL` if there is
  *     no error).
  * @return TILEDB_EXPORT
  */
-TILEDB_EXPORT capi_return_t tiledb_profile_get_homedir(
+TILEDB_EXPORT capi_return_t tiledb_profile_get_dir(
     tiledb_profile_t* profile,
-    tiledb_string_t** homedir,
+    tiledb_string_t** dir,
     tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
@@ -215,15 +214,18 @@ TILEDB_EXPORT capi_return_t tiledb_profile_load(
     tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
- * Removes the given profile from the local file.
+ * Removes a profile from the profiles file in the given directory.
  *
- * @param[in] profile The profile.
+ * @param[in] name The name of the profile to be removed. If `NULL`, the
+ * default name is used.
+ * @param[in] dir The directory path that contains the profiles file. If `NULL`,
+ * the home directory is used.
  * @param[out] error Error object returned upon error (`NULL` if there is no
- * error).
- * @return TILEDB_EXPORT
+ *     error).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_profile_remove(
-    tiledb_profile_t* profile, tiledb_error_t** error) TILEDB_NOEXCEPT;
+    const char* name, const char* dir, tiledb_error_t** error) TILEDB_NOEXCEPT;
 
 /**
  * Dumps a string representation of the given profile.
