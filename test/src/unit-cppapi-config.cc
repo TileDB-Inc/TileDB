@@ -131,8 +131,51 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "C++ API: Config Profile Selection via Env and Config",
+    "[cppapi][config][profile]") {
+  // Create two profiles with different values for the same key.
+  const std::string key = "rest.server_address";
+  const std::string profile1_name = "profile1";
+  const std::string profile2_name = "profile2";
+  const std::string profile1_value = "profile1_localhost:8080";
+  const std::string profile2_value = "profile2_localhost:8080";
+
+  tiledb::sm::TemporaryLocalDirectory tempdir_;
+  const std::string profile_dir = tempdir_.path();
+
+  // Create profile1
+  auto profile1 = tiledb::Profile(profile1_name, profile_dir);
+  profile1.set_param(key, profile1_value);
+  profile1.save();
+
+  // Create profile2
+  auto profile2 = tiledb::Profile(profile2_name, profile_dir);
+  profile2.set_param(key, profile2_value);
+  profile2.save();
+
+  // Set the environment variable to select profile1
+  setenv_local("TILEDB_PROFILE_NAME", profile1_name.c_str());
+
+  // Create config and set profile_dir
+  tiledb::Config config;
+  config["profile_dir"] = profile_dir;
+
+  // Should pick up profile1 from env
+  CHECK(config.get(key) == profile1_value);
+
+  // Now override with profile2 via config
+  config["profile_name"] = profile2_name;
+
+  // Should pick up profile2, overriding the env variable
+  CHECK(config.get(key) == profile2_value);
+
+  // Unset the profile name environment variable
+  setenv_local("TILEDB_PROFILE_NAME", "");
+}
+
+TEST_CASE(
     "C++ API: Config with Environment Variables and Profile Overrides",
-    "[cppapi][config]") {
+    "[cppapi][config][profile]") {
   tiledb::Config config;
   const std::string key = "rest.server_address";
   const std::string config_value = "test_config_localhost:8080";
@@ -156,8 +199,9 @@ TEST_CASE(
   CHECK(profile.get_param(key) == profile_value);
   // Save the profile to disk
   profile.save();
-  // Set the profile in the config
-  config.set_profile(profile_name, profile_dir);
+  // Set the profile details in the config
+  config["profile_name"] = profile_name;
+  config["profile_dir"] = profile_dir;
   // Check the config value after setting the profile
   // This should be coming from the config since it has priority over the
   // profile

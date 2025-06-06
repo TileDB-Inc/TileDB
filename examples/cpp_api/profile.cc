@@ -34,7 +34,8 @@
  * should come from the profile. Finally, it will create an array using the
  * profile, and then remove the profile.
  *
- * @note This example is not running on CI since it requires serialization.
+ * @note This example is not running on CI since it requires access to a TileDB
+ * REST server.
  */
 
 #include <iostream>
@@ -53,7 +54,7 @@ void create_and_save_profile(const std::string& profile_name) {
 void print_config(const std::string& profile_name) {
   // Create a config object and set the profile to use.
   Config config;
-  config.set_profile(profile_name);
+  config["profile_name"] = profile_name;
 
   // Print the parameters of the config. They should come from the profile.
   std::cout << "Config parameters coming from profile " << profile_name << ":"
@@ -67,7 +68,7 @@ void print_config(const std::string& profile_name) {
 void create_array_with_profile(const std::string& profile_name) {
   // Create a config object and set the profile to use.
   Config config;
-  config.set_profile(profile_name);
+  config["profile_name"] = profile_name;
   // Create a context using the config
   Context ctx(config);
 
