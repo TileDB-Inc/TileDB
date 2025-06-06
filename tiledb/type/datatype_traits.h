@@ -230,6 +230,11 @@ struct datatype_traits<Datatype::STRING_ASCII> {
   using value_type = char;
 };
 
+template <>
+struct datatype_traits<Datatype::STRING_UTF8> {
+  using value_type = char;
+};
+
 }  // namespace tiledb::type
 
 #endif

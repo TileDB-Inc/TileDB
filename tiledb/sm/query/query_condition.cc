@@ -3007,4 +3007,3 @@ template Status QueryCondition::apply_sparse<uint8_t>(
 template Status QueryCondition::apply_sparse<uint64_t>(
     const QueryCondition::Params&, ResultTile&, tdb::pmr::vector<uint64_t>&);
 }  // namespace tiledb::sm
-
