@@ -70,7 +70,8 @@ add_custom_command(
   COMMAND
     ${CARGO} install cxxbridge-cmd --root ${CARGO_INSTALL_ROOT}
   COMMAND
-    ${CARGO_INSTALL_BIN}/cxxbridge --header > "${TILEDB_OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/rust.h"
+    ${CARGO_INSTALL_BIN}/cxxbridge --header > "${OXIDIZE_RUST_H}"
+  VERBATIM
   WORKING_DIRECTORY
     ${CMAKE_BINARY_DIR}
 )
