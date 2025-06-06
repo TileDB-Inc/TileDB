@@ -58,7 +58,7 @@ struct DenseVectorFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
 
   // Functions
   DenseVectorFx();
@@ -81,7 +81,7 @@ DenseVectorFx::DenseVectorFx()
 
 DenseVectorFx::~DenseVectorFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }

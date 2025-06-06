@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/config/config.h"
 
@@ -42,18 +43,16 @@
 #include <sstream>
 #include <thread>
 
+using namespace tiledb::test;
 using tiledb::sm::Config;
 
 void remove_file(const std::string& filename) {
   // Remove file
-  tiledb_ctx_t* ctx = nullptr;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   tiledb_vfs_t* vfs = nullptr;
   REQUIRE(tiledb_vfs_alloc(ctx, nullptr, &vfs) == TILEDB_OK);
   CHECK(tiledb_vfs_remove_file(ctx, vfs, filename.c_str()) == TILEDB_OK);
   tiledb_vfs_free(&vfs);
-  tiledb_ctx_free(&ctx);
 }
 
 void check_load_correct_file() {
@@ -540,14 +539,10 @@ TEST_CASE("C API: Test config", "[capi][config]") {
 }
 
 TEST_CASE("C API: Test config iter", "[capi][config]") {
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
   // Populate a config
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  rc = tiledb_config_alloc(&config, &error);
+  int rc = tiledb_config_alloc(&config, &error);
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(config, "config.logging_level", "2", &error);
@@ -1138,7 +1133,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
 
   // Clean up
   tiledb_config_free(&config);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE("C API: Test config from file", "[capi][config]") {

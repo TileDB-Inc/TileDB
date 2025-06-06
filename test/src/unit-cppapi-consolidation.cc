@@ -36,16 +36,17 @@
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 void remove_array(const std::string& array_name) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
 
 void create_array(const std::string& array_name) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Domain domain(ctx);
   auto d = Dimension::create<int>(ctx, "d", {{1, 3}}, 2);
   domain.add_dimensions(d);
@@ -57,7 +58,7 @@ void create_array(const std::string& array_name) {
 }
 
 void create_array_2d(const std::string& array_name) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Domain domain(ctx);
   auto d1 = Dimension::create<int>(ctx, "d1", {{1, 10}}, 2);
   auto d2 = Dimension::create<int>(ctx, "d2", {{1, 10}}, 2);
@@ -74,7 +75,7 @@ void write_array(
     const std::string& array_name,
     const std::vector<int>& subarray,
     std::vector<int> values) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
@@ -90,7 +91,7 @@ void read_array(
     const std::string& array_name,
     const std::vector<int>& subarray,
     const std::vector<int>& c_values) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_ROW_MAJOR);
@@ -119,7 +120,7 @@ TEST_CASE(
 
   read_array(array_name, {1, 3}, {1, 2, 3});
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Config config;
   config["sm.consolidation.buffer_size"] = "4";
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
@@ -215,7 +216,7 @@ TEST_CASE(
 
   read_array(array_name, {1, 3}, {1, 2, 3});
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Config config;
   config["sm.consolidation.buffer_size"] = "4";
   REQUIRE_NOTHROW(Array::consolidate(ctx, array_name, &config));
@@ -239,7 +240,7 @@ TEST_CASE(
 
   read_array(array_name, {1, 3}, {1, 2, 3});
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
 
@@ -270,7 +271,7 @@ TEST_CASE(
   std::string array_name = "cppapi_consolidation";
   remove_array(array_name);
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   Config config;
   std::string fragment_name1;
   std::string fragment_name2;
@@ -496,7 +497,7 @@ TEST_CASE(
   std::string array_name = "cppapi_consolidation_current_domain";
   remove_array(array_name);
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   Domain domain(ctx);
   auto d1 = Dimension::create<int32_t>(ctx, "d1", {{0, 1000000000}}, 50);

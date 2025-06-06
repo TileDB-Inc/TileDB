@@ -56,7 +56,7 @@ struct IncompleteFx {
   const char* SPARSE_ARRAY_NAME = "test_async_sparse";
 
   // VFS setup
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
 
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -85,7 +85,7 @@ struct IncompleteFx {
 };
 
 IncompleteFx::IncompleteFx()
-    : ctx_(vfs_test_setup_.ctx_c)
+    : ctx_(vfs_test_setup_->ctx_c)
     , sparse_array_uri_(vfs_test_setup_.array_uri(SPARSE_ARRAY_NAME))
     , dense_array_uri_(vfs_test_setup_.array_uri(DENSE_ARRAY_NAME)) {
 }
@@ -1184,7 +1184,7 @@ TEST_CASE_METHOD(
     "C API: Test incomplete read queries, sparse force retry",
     "[capi][incomplete][sparse][retries][sc-49128][rest]") {
   // This test is testing CURL logic and only makes sense on REST-CI
-  if (!vfs_test_setup_.is_rest()) {
+  if (!vfs_test_setup_->is_rest()) {
     return;
   }
 
@@ -1207,7 +1207,7 @@ TEST_CASE_METHOD(
 
   // Update the context with config
   vfs_test_setup_.update_config(cfg);
-  ctx_ = vfs_test_setup_.ctx_c;
+  ctx_ = vfs_test_setup_->ctx_c;
   tiledb_config_free(&cfg);
 
   create_sparse_array();

@@ -41,6 +41,7 @@
 #include <numeric>
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 struct CPPMaxFragmentSizeFx {
   const int max_domain = 1000000;
@@ -454,7 +455,7 @@ TEST_CASE(
     "Global Order Writer Resume Writes Bug is Fixed",
     "[global-order-writer][bug][sc34072]") {
   std::string array_name = "cpp_max_fragment_size_bug";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   auto cleanup = [&]() {
     auto obj = Object::object(ctx, array_name);

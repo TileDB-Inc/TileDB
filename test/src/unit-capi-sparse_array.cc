@@ -86,7 +86,7 @@ struct SparseArrayFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
   // Path to prepend to array name according to filesystem/mode
   std::string prefix_;
 
@@ -228,7 +228,7 @@ SparseArrayFx::~SparseArrayFx() {
     remove_temp_dir(fs->temp_dir());
 
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
@@ -7010,6 +7010,8 @@ TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "Write sparse array without setting layout",
     "[capi][sparse][query]") {
+  auto ctx = get_ctx();
+
   // Create the array.
   uint64_t domain[2]{0, 3};
   uint64_t x_tile_extent{4};
@@ -7104,7 +7106,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Get the array directory
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::sm::ContextResources& resources = ctx.ptr()->context().resources();
   tiledb::sm::URI array_uri(array_name);
   tiledb::sm::ArrayDirectory array_dir =

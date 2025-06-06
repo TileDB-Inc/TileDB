@@ -52,7 +52,7 @@ struct SparseNegFx2 {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
   // Path to prepend to array name according to filesystem/mode
   std::string prefix_;
 
@@ -82,7 +82,7 @@ SparseNegFx2::SparseNegFx2()
 SparseNegFx2::~SparseNegFx2() {
   remove_temp_dir(fs_vec_[0]->temp_dir());
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
