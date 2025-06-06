@@ -46,6 +46,7 @@ Configuration:
     --disable-stats                 disables internal TileDB statistics
     --disable-avx2                  disables use of AVX2 instructions
     --disable-webp                  disables building of webp library
+    --enable-rust                   enable building Rust tests
     --enable-static-tiledb          enables building TileDB as a static library (deprecated, use --linkage=static)
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
@@ -106,6 +107,7 @@ tiledb_ccache="OFF"
 tiledb_arrow_tests="OFF"
 tiledb_experimental_features="OFF"
 tiledb_build_webp="ON"
+tiledb_build_rust="OFF"
 tiledb_tests_aws_s3_config="OFF"
 enable_multiple=""
 while test $# != 0; do
@@ -125,6 +127,7 @@ while test $# != 0; do
     --disable-stats) tiledb_stats="OFF";;
     --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
     --disable-webp) tiledb_build_webp="OFF";;
+    --enable-rust) tiledb_build_rust="ON";;
     --enable-assertions) tiledb_assertions="ON";;
     --enable-debug) build_type="Debug";;
     --enable-release-symbols) build_type="RelWithDebInfo";;
@@ -172,6 +175,7 @@ for en in "${enables[@]}"; do
     static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
                     enable_static_tiledb="ON";;
     aws-s3-config) tiledb_tests_aws_s3_config="ON";;
+    rust) tiledb_build_rust="ON";;
     *) die "Unknown option: --enable-$en" ;;
   esac
 done
@@ -213,6 +217,7 @@ cmake -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
     -DTILEDB_WEBP=${tiledb_build_webp} \
+    -DTILEDB_RUST=${tiledb_build_rust} \
     -DTILEDB_REMOVE_DEPRECATIONS=${tiledb_remove_deprecations} \
     -DTILEDB_SANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \

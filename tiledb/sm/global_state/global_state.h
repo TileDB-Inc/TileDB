@@ -37,6 +37,7 @@
 #include <set>
 #include <string>
 
+#include "tiledb/common/common.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
@@ -59,8 +60,11 @@ class GlobalState {
   GlobalState& operator=(const GlobalState&) = delete;
   GlobalState& operator=(const GlobalState&&) = delete;
 
+  /** Constructor. */
+  GlobalState();
+
   /** Returns a reference to the singleton GlobalState instance. */
-  static GlobalState& GetGlobalState();
+  static shared_ptr<GlobalState> GetGlobalState();
 
   /**
    * Initializes all TileDB global state in an idempotent and threadsafe way.
@@ -101,9 +105,6 @@ class GlobalState {
 
   /** Mutex protecting list of StorageManagers. */
   std::mutex storage_managers_mtx_;
-
-  /** Constructor. */
-  GlobalState();
 };
 
 }  // namespace global_state

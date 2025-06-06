@@ -1,0 +1,15 @@
+[package]
+name = "arithmetic"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cxx = { workspace = true }
+num-traits = { workspace = true }
+
+[build-dependencies]
+cxx-build = { workspace = true }
+
+[lib]
+crate-type = ["staticlib"]

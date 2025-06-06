@@ -230,6 +230,10 @@ else()
   message(STATUS "Building with std::pmr")
 endif()
 
+if (TILEDB_RUST)
+  include(FindCargo)
+endif ()
+
 #######################################################
 # Header Files
 #######################################################
@@ -286,13 +290,8 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_dimension_label_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_serialization.h"
 )
-
-if (TILEDB_SERIALIZATION)
-    list(APPEND TILEDB_C_API_FILENAME_HEADERS
-        "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_serialization.h"
-    )
-endif()
 
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
@@ -381,6 +380,10 @@ endif()
 if (TILEDB_S3)
   target_compile_definitions(configuration_definitions INTERFACE -DHAVE_S3)
 endif()
+
+if (TILEDB_RUST)
+    add_compile_definitions("HAVE_RUST")
+endif ()
 
 if (TILEDB_ASSERTIONS)
   string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_DIR_PATH_SIZE)

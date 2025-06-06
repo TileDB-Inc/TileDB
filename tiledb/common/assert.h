@@ -88,6 +88,7 @@
 
 #include <fmt/format.h>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 
 #define __SOURCE__ (&__FILE__[__SOURCE_DIR_PATH_SIZE__])
@@ -169,6 +170,11 @@ template <typename... Args>
 }
 
 /**
+ * Aborts the process upon `passert` failure.
+ */
+[[noreturn]] void passert_failure_abort(void);
+
+/**
  * Assertion failure which results in a process panic.
  * SIGABRT is raised.
  *
@@ -203,8 +209,23 @@ template <typename... Args>
   std::cerr << "  " << file << ":" << line << std::endl;
   std::cerr << "  Details: "
             << fmt::format(fmt, std::forward<Args>(fmt_args)...) << std::endl;
-  std::abort();
+
+  passert_failure_abort();
 }
+
+/**
+ * Registers a callback to run upon `passert` failure.
+ * This can be used to print any diagnostic info prior to aborting the process.
+ */
+struct PAssertFailureCallbackRegistration {
+#ifdef TILEDB_ASSERTIONS
+  PAssertFailureCallbackRegistration(std::function<void()>&& callback);
+  ~PAssertFailureCallbackRegistration();
+#else
+  PAssertFailureCallbackRegistration(std::function<void()>&&) {
+  }
+#endif
+};
 
 }  // namespace tiledb::common
 

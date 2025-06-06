@@ -1,9 +1,9 @@
 #
-# tiledb/common/test/CMakeLists.txt
+# tiledb/sm/storage_manager/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2025 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,10 @@
 
 include(unit_test)
 
-commence(unit_test arithmetic)
-    this_target_sources(main.cc unit_arithmetic.cc)
-    this_target_link_libraries(rapidcheck)
-    if (TILEDB_RUST)
-        this_target_object_libraries(arithmetic_rs)
-    endif ()
+commence(unit_test static_context)
+    this_target_sources(main.cc unit_static_context.cc)
+    target_include_directories(unit_static_context PRIVATE
+        "$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>")
+    this_target_link_libraries(TILEDB_CORE_OBJECTS)
+    this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)
-
-commence(unit_test memory_tracker)
-    this_target_sources(main.cc unit_memory_tracker.cc unit_memory_tracker_types.cc)
-    this_target_object_libraries(baseline)
-conclude(unit_test)
-

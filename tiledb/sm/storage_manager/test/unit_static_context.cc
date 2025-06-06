@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_experimental
+ * @file tiledb/sm/storage_manager/test/unit_static_context.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2025 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2025 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,27 +27,23 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the experimental C++ API for TileDB.
+ * This file defines unit tests for the checking StorageManager and GlobalState
+ * lifetimes.
  */
+#include "tiledb/sm/cpp_api/context.h"
 
-#ifndef TILEDB_EXPERIMENTAL_CPP_H
-#define TILEDB_EXPERIMENTAL_CPP_H
+#include <test/support/tdb_catch.h>
 
-#include "array_experimental.h"
-#include "array_schema_evolution.h"
-#include "array_schema_experimental.h"
-#include "as_built_experimental.h"
-#include "attribute_experimental.h"
-#include "dimension_label_experimental.h"
-#include "enumeration_experimental.h"
-#include "profile_experimental.h"
-#include "consolidation_plan_experimental.h"
-#include "profile_experimental.h"
-#include "query_condition_experimental.h"
-#include "query_experimental.h"
-#include "subarray_experimental.h"
-#include "vfs_experimental.h"
-#include "ndrectangle.h"
-#include "current_domain.h"
-
-#endif  // TILEDB_EXPERIMENTAL_CPP_H
+TEST_CASE("Static Context", "[context]") {
+  // While non-obvious from this implementation, the issue here is that the
+  // destructor of the `static std::optional<Context>` is run after the other
+  // static instance finalizers for GlobalState and Logger. This ordering ends
+  // up causing a segfault when the `Context` attempts to use those resources
+  // after they have been destructed.
+  //
+  // Thus, the actual assertion of this test is that we don't segfault which
+  // is reported as an error by Catch2.
+  static tiledb::Config cfg;
+  static std::optional<tiledb::Context> ctx;
+  ctx = std::make_optional(tiledb::Context(cfg));
+}
