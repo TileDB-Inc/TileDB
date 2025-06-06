@@ -7097,10 +7097,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse, commits, mixed versions",
     "[capi][consolidation][commits][mixed-versions][non-rest]") {
-  if constexpr (is_experimental_build) {
-    return;
-  }
-
   if (!vfs_test_setup_.is_local()) {
     return;
   }
@@ -7353,7 +7349,7 @@ TEST_CASE_METHOD(
   // vfs_copy_dir is only supported on Posix and S3.
   // Experimental builds throw when attempting to write to an array with
   // previous format version.
-  if (!vfs_test_setup_.is_local() || is_experimental_build) {
+  if (!vfs_test_setup_.is_local()) {
     return;
   }
 

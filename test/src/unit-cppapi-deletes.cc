@@ -513,10 +513,6 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, open for delete invalid version",
     "[cppapi][deletes][invalid-version]") {
-  if constexpr (is_experimental_build) {
-    return;
-  }
-
   std::string v11_arrays_dir =
       std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
   std::string exception;
@@ -1609,10 +1605,6 @@ TEST_CASE_METHOD(
     return;
   }
 
-  if constexpr (is_experimental_build) {
-    return;
-  }
-
   remove_sparse_array();
   test::create_sparse_array_v11(ctx_.ptr().get(), array_name_);
   // Write first fragment.
@@ -1889,10 +1881,6 @@ TEST_CASE_METHOD(
     "[cppapi][deletes][array][older_version]") {
   // Copying across filesystems is not supported currently
   if (!vfs_test_setup_.is_local()) {
-    return;
-  }
-
-  if constexpr (is_experimental_build) {
     return;
   }
 

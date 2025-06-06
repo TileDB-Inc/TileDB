@@ -464,10 +464,6 @@ TEST_CASE_METHOD(
     "old array",
     "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups][non-"
     "rest]") {
-  if constexpr (is_experimental_build) {
-    return;
-  }
-
   remove_sparse_array();
   test::create_sparse_array_v11(ctx_.ptr().get(), SPARSE_ARRAY_NAME);
   // Write first fragment.

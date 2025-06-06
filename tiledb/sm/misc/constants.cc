@@ -690,18 +690,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 22;
-
-/**
- * The TileDB serialization format version number.
- *
- * Conditionally set the high bit on the base_format_version to
- * easily identify that the build is experimental.
- **/
-const format_version_t format_version =
-    is_experimental_build ?
-        0b10000000000000000000000000000000 | base_format_version :
-        base_format_version;
+const format_version_t format_version = 22;
 
 /** The lowest version supported for back compat writes. */
 const format_version_t back_compat_writes_min_format_version = 7;

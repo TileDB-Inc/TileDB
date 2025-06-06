@@ -1798,25 +1798,14 @@ Array::open_for_writes() {
   auto&& [array_schema_latest, array_schemas_all] =
       array_directory().load_array_schemas(*encryption_key(), memory_tracker_);
 
-  // If building experimentally, this library should not be able to
-  // write to newer-versioned or older-versioned arrays
-  // Else, this library should not be able to write to newer-versioned arrays
+  // The library should not be able to write to newer-versioned arrays
   // (but it is ok to write to older arrays)
   auto version = array_schema_latest->version();
-  if constexpr (is_experimental_build) {
-    if (version != constants::format_version) {
-      throw ArrayException(
-          "Cannot open array for writes; Array format version (" +
-          std::to_string(version) + ") is not the library format version (" +
-          std::to_string(constants::format_version) + ")");
-    }
-  } else {
-    if (version > constants::format_version) {
-      throw ArrayException(
-          "Cannot open array for writes; Array format version (" +
-          std::to_string(version) + ") is newer than library format version (" +
-          std::to_string(constants::format_version) + ")");
-    }
+  if (version > constants::format_version) {
+    throw ArrayException(
+        "Cannot open array for writes; Array format version (" +
+        std::to_string(version) + ") is newer than library format version (" +
+        std::to_string(constants::format_version) + ")");
   }
 
   return {array_schema_latest, array_schemas_all};
