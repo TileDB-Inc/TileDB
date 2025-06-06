@@ -212,7 +212,7 @@ function(oxidize_bundle)
   add_library(${OXIDIZE_BUNDLE_NAME}_cc OBJECT ${OXIDIZE_BUNDLE_EXPORT_CC})
   add_dependencies(oxidize_tiledb_core_objects_cc ${OXIDIZE_BUNDLE_EXPORT_H})
   target_include_directories(oxidize_tiledb_core_objects_cc PUBLIC ${CMAKE_SOURCE_DIR} ${TILEDB_OXIDIZE_INCLUDE_DIR})
-  target_link_libraries(oxidize_tiledb_core_objects_cc PUBLIC oxidize_tiledb_core_objects)
+  target_link_libraries(oxidize_tiledb_core_objects_cc PUBLIC assert_header oxidize_tiledb_core_objects)
 endfunction ()
 
 oxidize_bridge(

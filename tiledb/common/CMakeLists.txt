@@ -54,14 +54,17 @@ add_subdirectory(util)
 get_gathered(COMMON_SOURCES)
 set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
 
+add_library(assert_header INTERFACE)
+    # can be removed when c++20 `<format>` is consistently supported
+find_package(fmt REQUIRED)
+target_link_libraries(assert_header INTERFACE fmt::fmt)
+
 #
 # `assert` object library
 #
 commence(object_library assert)
     this_target_sources(assert.cc)
-    # can be removed when c++20 `<format>` is consistently supported
-    find_package(fmt REQUIRED)
-    target_link_libraries(assert PUBLIC fmt::fmt)
+    target_link_libraries(assert PUBLIC assert_header)
 conclude(object_library)
 
 #
