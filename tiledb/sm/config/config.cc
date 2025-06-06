@@ -931,11 +931,13 @@ const char* Config::get_from_profile(
           get_from_config_or_fallback("profile_name", &found_name);
       std::optional<std::string> profile_name =
           found_name ? std::make_optional(profile_name_cstr) : std::nullopt;
+
       bool found_dir = false;
       const char* profile_dir_cstr =
           get_from_config_or_fallback("profile_dir", &found_dir);
       std::optional<std::string> profile_dir =
           found_dir ? std::make_optional(profile_dir_cstr) : std::nullopt;
+
       try {
         // Create a Profile object and load the profile
         rest_profile_ = RestProfile(profile_name, profile_dir);
@@ -943,7 +945,8 @@ const char* Config::get_from_profile(
       } catch (const std::exception&) {
         // Throw an exception if the user has specified profile-related
         // parameters but the profile could not be loaded.
-        if (profile_name.has_value() || profile_dir.has_value()) {
+        if ((profile_name.has_value() && !profile_name.value().empty()) ||
+            (profile_dir.has_value() && !profile_dir.value().empty())) {
           throw ConfigException(
               "Failed to load the REST profile. "
               "Please check the profile name and directory parameters.");
