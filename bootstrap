@@ -60,10 +60,8 @@ Configuration:
     --enable-azure                  enables the azure storage backend
     --enable-gcs                    enables the gcs storage backend
     --enable-serialization          enables query serialization support
-    --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
-    --enable-experimental-features  enables experimental TileDB features
     --enable-aws-s3-config          enables AWS S3 configuration for tests
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
@@ -145,7 +143,6 @@ while test $# != 0; do
     --enable-tools) tiledb_tools="ON";;
     --enable-ccache) tiledb_ccache="ON";;
     --enable-arrow-tests) tiledb_arrow_tests="ON";;
-    --enable-experimental-features) tiledb_experimental_features="ON";;
     --enable-aws-s3-config) tiledb_tests_aws_s3_config="ON";;
     --enable=*) s=`arg "$1"`
                 enable_multiple+="${enable_multiple:+,}${s}";;
@@ -174,7 +171,6 @@ for en in "${enables[@]}"; do
     hdfs) tiledb_hdfs="ON";;
     static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
                     enable_static_tiledb="ON";;
-    experimental-features) tiledb_experimental_features="ON";;
     aws-s3-config) tiledb_tests_aws_s3_config="ON";;
     *) die "Unknown option: --enable-$en" ;;
   esac

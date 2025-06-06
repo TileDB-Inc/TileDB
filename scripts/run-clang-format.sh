@@ -34,7 +34,7 @@ echo "Running clang-format version:" `$CLANG_FORMAT --version`
 pushd $SOURCE_DIR
 
 src=$SOURCE_DIR
-SOURCE_PATHS=($src/tiledb $src/test $src/examples $src/tools $src/experimental)
+SOURCE_PATHS=($src/tiledb $src/test $src/examples $src/tools)
 FIND_FILES=(-name "*.cc" -or -name "*.c" -or -name "*.h")
 
 if [ "$APPLY_FIXES" == "1" ]; then
