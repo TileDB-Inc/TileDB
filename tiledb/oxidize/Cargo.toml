@@ -3,6 +3,8 @@ resolver = "2"
 members = [
   "arithmetic",
   "arrow",
+  "bundle/core-objects",
+  "bundle/unit-arithmetic",
   "datatype",
   "expr",
   "oxidize",
@@ -23,5 +25,7 @@ itertools = { version = "0.14" }
 num-traits = "0.2"
 tiledb-oxidize = { path = "oxidize" }
 tiledb-arrow = { path = "arrow" }
+tiledb-arithmetic = { path = "arithmetic" }
 tiledb-datatype = { path = "datatype" }
+tiledb-expr = { path = "expr" }
 thiserror = { version = "2" }

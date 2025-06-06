@@ -17,6 +17,3 @@ tiledb-oxidize = { workspace = true }
 
 [build-dependencies]
 cxx-build = { workspace = true }
-
-[lib]
-crate-type = ["staticlib"]

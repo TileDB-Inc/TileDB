@@ -430,9 +430,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 set(TILEDB_CORE_OBJECTS_LIBS
   assert
   baseline
-  arrow_rs
-  expr_rs
-  oxidize_rs
+  oxidize_tiledb_core_objects_cc
 )
 
 list(TRANSFORM TILEDB_CORE_OBJECTS_LIBS PREPEND "$<TARGET_OBJECTS:" OUTPUT_VARIABLE TILEDB_CORE_OBJECTS_LIBS_SOURCES)
