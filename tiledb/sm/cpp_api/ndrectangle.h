@@ -316,6 +316,11 @@ class NDRectangle {
     return ndim;
   }
 
+  /** Returns the context that the ndrectangle belongs to. */
+  const Context& context() const {
+    return ctx_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -373,6 +378,20 @@ inline std::array<std::string, 2> NDRectangle::range(unsigned dim_idx) {
   std::string end_str(static_cast<const char*>(range.max), range.max_size);
 
   return {std::move(start_str), std::move(end_str)};
+}
+
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+/** Get a string representation of the ndrectangle for an output stream. */
+inline std::ostream& operator<<(std::ostream& os, const NDRectangle& ndr) {
+  auto& ctx = ndr.context();
+  tiledb_string_t* tdb_string;
+  ctx.handle_error(tiledb_ndrectangle_dump_str(
+      ctx.ptr().get(), ndr.ptr().get(), &tdb_string));
+  os << impl::convert_to_string(&tdb_string).value();
+  return os;
 }
 
 }  // namespace tiledb
