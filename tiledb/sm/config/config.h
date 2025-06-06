@@ -81,6 +81,12 @@ class Config {
   /*        CONFIG DEFAULTS         */
   /* ****************************** */
 
+  /** The default name for the profile. */
+  static const std::string PROFILE_NAME;
+
+  /** The default directory for profiles. */
+  static const std::string PROFILE_DIR;
+
   /** The default address for rest server. */
   static const std::string REST_SERVER_DEFAULT_ADDRESS;
 
