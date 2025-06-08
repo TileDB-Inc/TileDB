@@ -75,8 +75,9 @@ jobs:
   ci6:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
+      ci_option: SERIALIZATION
       matrix_image: ubuntu-22.04
-      bootstrap_args: 'serialization --enable-release-symbols'
+      bootstrap_args: '--enable-serialization --enable-release-symbols'
 
   ci7:
     uses: ./.github/workflows/ci-linux_mac.yml
