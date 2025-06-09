@@ -4,6 +4,7 @@
 # FIXME: need to not do this if done already
 # so that you can build offline
 include(FetchContent)
+set(FETCHCONTENT_UPDATES_DISCONNECTED TRUE)
 FetchContent_Declare(
   Corrosion
   GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
