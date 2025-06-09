@@ -65,16 +65,19 @@ target_link_libraries(oxidize_tiledb_core_objects_cc PUBLIC oxidize_tiledb_core_
 
 set(OXIDIZE_RUST_H ${TILEDB_OXIDIZE_INCLUDE_DIR}/tiledb/oxidize/rust.h)
 
-add_custom_command(
-  OUTPUT
-    ${OXIDIZE_RUST_H}
+execute_process(
   COMMAND
     ${CARGO} install cxxbridge-cmd --root ${CARGO_INSTALL_ROOT}
+)
+execute_process(
   COMMAND
-    ${CARGO_INSTALL_BIN}/cxxbridge --header > "${OXIDIZE_RUST_H}"
-  VERBATIM
-  WORKING_DIRECTORY
-    ${CMAKE_BINARY_DIR}
+    ${CMAKE_COMMAND} -E make_directory ${TILEDB_OXIDIZE_INCLUDE_DIR}/tiledb/oxidize
+)
+execute_process(
+  COMMAND
+    ${CARGO_INSTALL_BIN}/cxxbridge --header
+  OUTPUT_FILE
+    ${OXIDIZE_RUST_H}
 )
 
 function(oxidize_bridge)
