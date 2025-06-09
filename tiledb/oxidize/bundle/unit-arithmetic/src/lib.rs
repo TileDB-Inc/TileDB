@@ -1,1 +1,1 @@
-pub use arithmetic;
+pub use tiledb_arithmetic;
