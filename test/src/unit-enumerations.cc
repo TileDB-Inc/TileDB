@@ -2029,7 +2029,7 @@ TEST_CASE_METHOD(
   auto qc1 = create_qc("attr1", std::string("cat"), QueryConditionOp::EQ);
   auto qc2 = qc1;
 
-  qc2.rewrite_for_schema(array->config(), *(schema.get()));
+  qc2.rewrite_for_schema(*(schema.get()));
 
   // Assert that the rewritten tree matches in the right places while also
   // different to verify the assertion of having been rewritten.
@@ -2064,7 +2064,7 @@ TEST_CASE_METHOD(
   auto qc1 = create_qc("attr1", "cthulu", QueryConditionOp::EQ);
   auto qc2 = qc1;
 
-  qc2.rewrite_for_schema(array->config(), *(schema.get()));
+  qc2.rewrite_for_schema(*(schema.get()));
 
   // Assert that the rewritten tree matches in the right places while also
   // different to verify the assertion of having been rewritten.
@@ -2103,7 +2103,7 @@ TEST_CASE_METHOD(
   auto qc1 = create_qc("attr1", vals, QueryConditionOp::IN);
   auto qc2 = qc1;
 
-  qc2.rewrite_for_schema(array->config(), *(schema.get()));
+  qc2.rewrite_for_schema(*(schema.get()));
 
   // Assert that the rewritten tree matches in the right places while also
   // different to verify the assertion of having been rewritten.
@@ -2138,7 +2138,7 @@ TEST_CASE_METHOD(
   auto qc2 = qc1;
 
   // Check that the value was converted to 0.
-  REQUIRE_NOTHROW(qc1.rewrite_for_schema(array->config(), *(schema.get())));
+  REQUIRE_NOTHROW(qc1.rewrite_for_schema(*(schema.get())));
   REQUIRE(qc1.ast()->get_op() == QueryConditionOp::ALWAYS_FALSE);
   REQUIRE(qc1.ast()->get_data().rvalue_as<int>() == 0);
 
@@ -2160,7 +2160,7 @@ TEST_CASE_METHOD(
   array->load_all_enumerations();
   schema = array->array_schema_latest_ptr();
 
-  REQUIRE_NOTHROW(qc2.rewrite_for_schema(array->config(), *(schema.get())));
+  REQUIRE_NOTHROW(qc2.rewrite_for_schema(*(schema.get())));
 }
 
 TEST_CASE_METHOD(
@@ -2168,7 +2168,6 @@ TEST_CASE_METHOD(
     "QueryCondition - Skip enumeration rewrite",
     "[enumeration][query-condition][skip-rewrite]") {
   create_array();
-  auto array = get_array(QueryType::READ);
   auto schema = get_array_schema_latest();
 
   // Almost exactly the same test as before, except this time we call
@@ -2179,7 +2178,7 @@ TEST_CASE_METHOD(
   qc1.set_use_enumeration(false);
   auto qc2 = qc1;
 
-  qc2.rewrite_for_schema(array->config(), *(schema.get()));
+  qc2.rewrite_for_schema(*(schema.get()));
 
   auto& tree1 = qc1.ast();
   auto& tree2 = qc2.ast();
@@ -2203,11 +2202,10 @@ TEST_CASE_METHOD(
     "QueryCondition - Rewrite - No failure on unknown attribute",
     "[enumeration][query-condition]") {
   create_array();
-  auto array = get_array(QueryType::READ);
   auto schema = get_array_schema_latest();
 
   auto qc1 = create_qc("not_an_attr", (int)2, QueryConditionOp::EQ);
-  qc1.rewrite_for_schema(array->config(), *(schema.get()));
+  qc1.rewrite_for_schema(*(schema.get()));
 }
 
 TEST_CASE_METHOD(
@@ -2215,11 +2213,10 @@ TEST_CASE_METHOD(
     "QueryCondition - Rewrite - Enumeration Not Loaded",
     "[enumeration][query-condition][error]") {
   create_array();
-  auto array = get_array(QueryType::READ);
   auto schema = get_array_schema_latest();
 
   auto qc1 = create_qc("attr1", (int)2, QueryConditionOp::EQ);
-  REQUIRE_THROWS(qc1.rewrite_for_schema(array->config(), *(schema.get())));
+  REQUIRE_THROWS(qc1.rewrite_for_schema(*(schema.get())));
 }
 
 TEST_CASE_METHOD(
@@ -2236,7 +2233,7 @@ TEST_CASE_METHOD(
   array->get_enumeration("test_enmr");
 
   auto qc1 = create_qc("attr1", (int)2, QueryConditionOp::LT);
-  REQUIRE_THROWS(qc1.rewrite_for_schema(array->config(), *(schema.get())));
+  REQUIRE_THROWS(qc1.rewrite_for_schema(*(schema.get())));
 }
 
 TEST_CASE_METHOD(
@@ -2245,11 +2242,10 @@ TEST_CASE_METHOD(
     "[enumeration][query-condition][coverage]") {
   // Check that qc.rewrite_for_schema doesn't throw on an empty QC
   create_array();
-  auto array = get_array(QueryType::READ);
   auto schema = get_array_schema_latest();
 
   QueryCondition qc;
-  CHECK_NOTHROW(qc.rewrite_for_schema(array->config(), *(schema.get())));
+  CHECK_NOTHROW(qc.rewrite_for_schema(*(schema.get())));
 }
 
 TEST_CASE_METHOD(
