@@ -534,7 +534,7 @@ Status Reader::compute_range_result_coords(
       QueryCondition::Params params(
           query_memory_tracker_, *(frag_meta->array_schema().get()));
       RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-          params, *tile, result_bitmap));
+          params, *tile, std::span(result_bitmap)));
     }
 
     // Gather results

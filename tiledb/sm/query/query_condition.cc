@@ -633,7 +633,7 @@ void QueryCondition::apply_ast_node(
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
-    tdb::pmr::vector<uint8_t>& result_cell_bitmap) const {
+    std::span<uint8_t> result_cell_bitmap) const {
   const std::string& field_name = node->get_field_name();
   const void* condition_value_content = node->get_value_ptr();
   const size_t condition_value_size = node->get_value_size();
@@ -800,7 +800,7 @@ void QueryCondition::apply_ast_node(
     const ByteVecValue& fill_value,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
-    tdb::pmr::vector<uint8_t>& result_cell_bitmap) const {
+    std::span<uint8_t> result_cell_bitmap) const {
   switch (node->get_op()) {
     case QueryConditionOp::ALWAYS_TRUE:
       apply_ast_node<T, QueryConditionOp::ALWAYS_TRUE, CombinationOp>(
@@ -939,7 +939,7 @@ void QueryCondition::apply_ast_node(
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
-    tdb::pmr::vector<uint8_t>& result_cell_bitmap) const {
+    std::span<uint8_t> result_cell_bitmap) const {
   std::string node_field_name = node->get_field_name();
 
   const auto nullable = array_schema.is_nullable(node_field_name);
@@ -1201,7 +1201,7 @@ void QueryCondition::apply_tree(
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
-    tdb::pmr::vector<uint8_t>& result_cell_bitmap) const {
+    std::span<uint8_t> result_cell_bitmap) const {
   const auto& array_schema = params.GetSchema();
   if (!node->is_expr()) {
     apply_ast_node(

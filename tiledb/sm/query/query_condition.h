@@ -452,7 +452,7 @@ class QueryCondition {
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
+      std::span<uint8_t> result_cell_bitmap) const;
 
   /**
    * Applies a value node on primitive-typed result cell slabs.
@@ -477,7 +477,7 @@ class QueryCondition {
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
+      std::span<uint8_t> result_cell_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -499,7 +499,7 @@ class QueryCondition {
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
+      std::span<uint8_t> result_cell_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to
@@ -523,7 +523,7 @@ class QueryCondition {
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
+      std::span<uint8_t> result_cell_bitmap) const;
 
   /**
    * Applies a value node on a dense result tile,
