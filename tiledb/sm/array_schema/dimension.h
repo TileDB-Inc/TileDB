@@ -70,6 +70,13 @@ enum class Datatype : uint8_t;
 
 class DimensionDispatch;
 
+class DimensionException : public StatusException {
+ public:
+  explicit DimensionException(const std::string& message)
+      : StatusException("Dimension", message) {
+  }
+};
+
 /** Manipulates a TileDB dimension.
  *
  * Note: as laid out in the Storage Format,
@@ -135,7 +142,7 @@ class Dimension {
   unsigned cell_val_num() const;
 
   /** Sets the number of values per coordinate. */
-  Status set_cell_val_num(unsigned int cell_val_num);
+  void set_cell_val_num(unsigned int cell_val_num);
 
   /** Returns the size (in bytes) of a coordinate in this dimension. */
   [[nodiscard]] inline size_t coord_size() const {
@@ -359,7 +366,7 @@ class Dimension {
    *     - for real domains, if any range bound is NaN
    *
    */
-  Status check_range(const Range& range) const;
+  void check_range(const Range& range) const;
 
   /**
    * Performs correctness checks on the input range. Returns `true`
@@ -532,7 +539,7 @@ class Dimension {
    * Returns error if the input coordinate is out-of-bounds with respect
    * to the dimension domain.
    */
-  Status oob(const void* coord) const;
+  void oob(const void* coord) const;
 
   /**
    * Returns true if the input coordinate is out-of-bounds with respect
@@ -681,27 +688,26 @@ class Dimension {
    *
    * @param serializer The object the dimension is serialized into.
    * @param version The array schema version
-   * @return Status
    */
   void serialize(Serializer& serializer, uint32_t version) const;
 
   /** Sets the domain. */
-  Status set_domain(const void* domain);
+  void set_domain(const void* domain);
 
   /** Sets the domain. */
-  Status set_domain(const Range& domain);
+  void set_domain(const Range& domain);
 
   /** Sets the domain without type, null, or bounds checks. */
-  Status set_domain_unsafe(const void* domain);
+  void set_domain_unsafe(const void* domain);
 
   /** Sets the filter pipeline for this dimension. */
   void set_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the tile extent. */
-  Status set_tile_extent(const void* tile_extent);
+  void set_tile_extent(const void* tile_extent);
 
   /** Sets the tile extent. */
-  Status set_tile_extent(const ByteVecValue& tile_extent);
+  void set_tile_extent(const ByteVecValue& tile_extent);
 
   /**
    * If the tile extent is `null`, this function sets the
@@ -709,7 +715,7 @@ class Dimension {
    *
    * @note This is applicable only to dense arrays.
    */
-  Status set_null_tile_extent_to_range();
+  void set_null_tile_extent_to_range();
 
   /**
    * If the tile extent is `null`, this function sets the
@@ -720,7 +726,7 @@ class Dimension {
    * @note This is applicable only to dense arrays.
    */
   template <class T>
-  Status set_null_tile_extent_to_range();
+  void set_null_tile_extent_to_range();
 
   /** Returns the tile extent. */
   inline const ByteVecValue& tile_extent() const {
@@ -825,7 +831,7 @@ class Dimension {
   /* ********************************* */
 
   /** Returns an error if the set domain is invalid. */
-  Status check_domain() const;
+  void check_domain() const;
 
   /**
    * Returns an error if the set domain is invalid.
@@ -834,25 +840,25 @@ class Dimension {
   template <
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  Status check_domain() const {
+  void check_domain() const {
     passert(!domain_.empty());
     auto domain = (const T*)domain_.data();
 
     // Upper bound should not be smaller than lower
-    if (domain[1] < domain[0])
-      return LOG_STATUS(Status_DimensionError(
+    if (domain[1] < domain[0]) {
+      throw DimensionException(
           "Domain check failed; Upper domain bound should "
-          "not be smaller than the lower one"));
+          "not be smaller than the lower one");
+    }
 
     // Domain range must not exceed the maximum unsigned number
     // for integer domains
     if (domain[0] == std::numeric_limits<T>::min() &&
-        domain[1] == std::numeric_limits<T>::max())
-      return LOG_STATUS(Status_DimensionError(
+        domain[1] == std::numeric_limits<T>::max()) {
+      throw DimensionException(
           "Domain check failed; Domain range (upper + lower + 1) is larger "
-          "than the maximum unsigned number"));
-
-    return Status::Ok();
+          "than the maximum unsigned number");
+    }
   }
 
   /**
@@ -862,47 +868,46 @@ class Dimension {
   template <
       typename T,
       typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
-  Status check_domain() const {
+  void check_domain() const {
     passert(!domain_.empty());
     auto domain = (const T*)domain_.data();
 
     // Check for NAN and INF
-    if (std::isinf(domain[0]) || std::isinf(domain[1]))
-      return LOG_STATUS(
-          Status_DimensionError("Domain check failed; domain contains NaN"));
-    if (std::isnan(domain[0]) || std::isnan(domain[1]))
-      return LOG_STATUS(
-          Status_DimensionError("Domain check failed; domain contains NaN"));
+    if (std::isinf(domain[0]) || std::isinf(domain[1])) {
+      throw DimensionException("Domain check failed; domain contains NaN");
+    }
+    if (std::isnan(domain[0]) || std::isnan(domain[1])) {
+      throw DimensionException("Domain check failed; domain contains NaN");
+    }
 
     // Upper bound should not be smaller than lower
-    if (domain[1] < domain[0])
-      return LOG_STATUS(Status_DimensionError(
+    if (domain[1] < domain[0]) {
+      throw DimensionException(
           "Domain check failed; Upper domain bound should "
-          "not be smaller than the lower one"));
-
-    return Status::Ok();
+          "not be smaller than the lower one");
+    }
   }
 
   /** Returns an error if the set tile extent is invalid. */
-  Status check_tile_extent() const;
+  void check_tile_extent() const;
 
   /** Returns an error if the set tile extent is invalid. */
   template <class T>
-  Status check_tile_extent() const;
+  void check_tile_extent() const;
 
   /**
    * Returns an error if the set tile extent exceeds the
    * upper floor.
    */
   template <typename T>
-  Status check_tile_extent_upper_floor(const T* domain, T tile_extent) const;
+  void check_tile_extent_upper_floor(const T* domain, T tile_extent) const;
 
   /**
    * The internal work routine for `check_tile_extent_upper_floor`
    * that accepts a template type for the floor type.
    */
   template <typename T_EXTENT, typename T_FLOOR>
-  Status check_tile_extent_upper_floor_internal(
+  void check_tile_extent_upper_floor_internal(
       const T_EXTENT* domain, T_EXTENT tile_extent) const;
 
   /** Throws error if the input type is not a supported Dimension Datatype. */

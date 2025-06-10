@@ -482,7 +482,7 @@ void Domain::get_tile_subarray(
   }
 }
 
-Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
+void Domain::has_dimension(const std::string& name, bool* has_dim) const {
   *has_dim = false;
 
   for (const auto dim : dimension_ptrs_) {
@@ -491,8 +491,6 @@ Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
       break;
     }
   }
-
-  return Status::Ok();
 }
 
 unsigned Domain::get_dimension_index(const std::string& name) const {
@@ -528,10 +526,10 @@ void Domain::serialize(Serializer& serializer, uint32_t version) const {
   }
 }
 
-Status Domain::set_null_tile_extents_to_range() {
-  for (auto& d : dimensions_)
-    RETURN_NOT_OK(d->set_null_tile_extent_to_range());
-  return Status::Ok();
+void Domain::set_null_tile_extents_to_range() {
+  for (auto& d : dimensions_) {
+    d->set_null_tile_extent_to_range();
+  }
 }
 
 template <class T>
