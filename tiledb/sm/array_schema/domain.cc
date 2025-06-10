@@ -123,7 +123,7 @@ Layout Domain::tile_order() const {
   return tile_order_;
 }
 
-Status Domain::add_dimension(shared_ptr<Dimension> dim) {
+void Domain::add_dimension(shared_ptr<Dimension> dim) {
   auto p{dim.get()};
   if (p == nullptr) {
     // Class invariant prohibits null dimensions in a domain.
@@ -135,8 +135,6 @@ Status Domain::add_dimension(shared_ptr<Dimension> dim) {
 
   // Compute number of cells per tile
   compute_cell_num_per_tile();
-
-  return Status::Ok();
 }
 
 bool Domain::all_dims_fixed() const {
