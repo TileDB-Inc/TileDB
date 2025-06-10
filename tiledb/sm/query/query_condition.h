@@ -317,7 +317,7 @@ class QueryCondition {
   Status apply_sparse(
       const QueryCondition::Params& params,
       ResultTile& result_tile,
-      tdb::pmr::vector<BitmapType>& result_bitmap);
+      std::span<BitmapType> result_bitmap);
 
   /**
    * Reverse the query condition using De Morgan's law.
@@ -414,7 +414,7 @@ class QueryCondition {
     void apply(
         const QueryCondition::Params& params,
         ResultTile& result_tile,
-        tdb::pmr::vector<BitmapType>& result_bitmap) const;
+        std::span<BitmapType> result_bitmap) const;
   };
   std::optional<Datafusion> datafusion_;
 
@@ -659,7 +659,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile,
@@ -682,7 +682,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile.
@@ -701,7 +701,7 @@ class QueryCondition {
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -720,7 +720,7 @@ class QueryCondition {
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to a set of cells.
@@ -740,7 +740,7 @@ class QueryCondition {
       const QueryCondition::Params& params,
       ResultTile& result_tile,
       CombinationOp combination_op,
-      tdb::pmr::vector<BitmapType>& result_bitmap) const;
+      std::span<BitmapType> result_bitmap) const;
 };
 
 }  // namespace sm

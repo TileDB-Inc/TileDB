@@ -2439,7 +2439,7 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
   const void* condition_value_content = node->get_value_ptr();
   const size_t condition_value_size = node->get_value_size();
@@ -2527,7 +2527,7 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   switch (node->get_op()) {
     case QueryConditionOp::ALWAYS_TRUE:
       apply_ast_node_sparse<
@@ -2623,7 +2623,7 @@ void QueryCondition::apply_ast_node_sparse(
     const bool var_size,
     const bool nullable,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   if (nullable) {
     apply_ast_node_sparse<T, BitmapType, CombinationOp, std::true_type>(
         node, result_tile, var_size, combination_op, result_bitmap);
@@ -2639,7 +2639,7 @@ void QueryCondition::apply_ast_node_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   std::string node_field_name = node->get_field_name();
   // If the tile_tuple is null it may have been skipped by this fragment in
   // ReaderBase::skip_field. This is the case for evolved attributes / dims.
@@ -2815,7 +2815,7 @@ void QueryCondition::apply_tree_sparse(
     const QueryCondition::Params& params,
     ResultTile& result_tile,
     CombinationOp combination_op,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   const auto& array_schema = params.GetSchema();
   if (!node->is_expr()) {
     apply_ast_node_sparse<BitmapType>(
@@ -2914,7 +2914,7 @@ template <typename BitmapType>
 Status QueryCondition::apply_sparse(
     const QueryCondition::Params& params,
     ResultTile& result_tile,
-    tdb::pmr::vector<BitmapType>& result_bitmap) {
+    std::span<BitmapType> result_bitmap) {
   if (datafusion_.has_value()) {
     try {
       datafusion_.value().apply(params, result_tile, result_bitmap);
@@ -2954,7 +2954,7 @@ template <typename BitmapType>
 void QueryCondition::Datafusion::apply(
     const QueryCondition::Params&,
     ResultTile& result_tile,
-    tdb::pmr::vector<BitmapType>& result_bitmap) const {
+    std::span<BitmapType> result_bitmap) const {
   const auto arrow =
       tiledb::oxidize::arrow::record_batch::create(*schema_, result_tile);
   const auto predicate_eval = expr_->evaluate(*arrow);
@@ -2966,7 +2966,9 @@ void QueryCondition::Datafusion::apply(
     const auto bitmap = predicate_out_u8->values_u8();
     if (predicate_out_u8->is_scalar() && bitmap.empty()) {
       // all NULLs
-      result_bitmap.assign(result_bitmap.size(), 0);
+      for (auto& result : result_bitmap) {
+        result = 0;
+      }
     } else if (predicate_out_u8->is_scalar()) {
       // all the same value
       for (auto& result : result_bitmap) {
@@ -2985,12 +2987,18 @@ void QueryCondition::Datafusion::apply(
     const auto bitmap = predicate_out_u64->values_u64();
     if (predicate_out_u64->is_scalar() && bitmap.empty()) {
       // all NULLs
-      result_bitmap.assign(result_bitmap.size(), 0);
+      for (auto& result : result_bitmap) {
+        result = 0;
+      }
     } else if (predicate_out_u64->is_scalar()) {
       // all the same value
-      result_bitmap.assign(result_bitmap.size(), bitmap[0]);
+      for (auto& result : result_bitmap) {
+        result = result * bitmap[0];
+      }
     } else if (bitmap.size() == result_bitmap.size()) {
-      result_bitmap.assign(bitmap.begin(), bitmap.end());
+      for (uint64_t i = 0; i < result_bitmap.size(); i++) {
+        result_bitmap[i] *= bitmap[i];
+      }
     } else {
       throw std::logic_error(
           "Expression evaluation bitmap has unexpected size");
@@ -3000,7 +3008,7 @@ void QueryCondition::Datafusion::apply(
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const QueryCondition::Params&, ResultTile&, tdb::pmr::vector<uint8_t>&);
+    const QueryCondition::Params&, ResultTile&, std::span<uint8_t>);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const QueryCondition::Params&, ResultTile&, tdb::pmr::vector<uint64_t>&);
+    const QueryCondition::Params&, ResultTile&, std::span<uint64_t>);
 }  // namespace tiledb::sm
