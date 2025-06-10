@@ -30,7 +30,7 @@ commence(unit_test arithmetic)
     this_target_sources(main.cc unit_arithmetic.cc)
     this_target_link_libraries(rapidcheck)
     if (TILEDB_RUST)
-        this_target_object_libraries(oxidize_unit_arithmetic_cxxbridge)
+        this_target_object_libraries(unit_arithmetic_oxidize)
     endif ()
 conclude(unit_test)
 

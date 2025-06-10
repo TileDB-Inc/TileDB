@@ -8,5 +8,5 @@ version = { workspace = true }
 tiledb-arithmetic = { workspace = true }
 
 [lib]
-name = "oxidize_unit_arithmetic"
+name = "unit_arithmetic_rs"
 crate-type = ["staticlib"]

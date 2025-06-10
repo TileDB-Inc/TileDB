@@ -9,5 +9,5 @@ tiledb-arrow = { workspace = true }
 tiledb-expr = { workspace = true }
 
 [lib]
-name = "oxidize_tiledb_core_objects"
+name = "tiledb_core_objects_rs"
 crate-type = ["staticlib"]
