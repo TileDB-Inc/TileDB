@@ -840,8 +840,25 @@ Status Query::process() {
           return Status::Ok();
         }));
 
-    auto timer_se = stats_->start_timer("query_condition_rewrite_for_schema");
-    condition_->rewrite_for_schema(config_, array_schema());
+    {
+      auto timer_se = stats_->start_timer("query_condition_rewrite_for_schema");
+      condition_->rewrite_for_schema(array_schema());
+    }
+
+    // experimental feature - maybe evaluate using datafusion
+    const auto evaluator =
+        config_.get<std::string>("sm.query.condition_evaluator");
+    if (evaluator == "datafusion") {
+      auto timer_se =
+          stats_->start_timer("query_condition_rewrite_to_datafusion");
+      condition_->rewrite_to_datafusion(array_schema());
+    } else if (evaluator.has_value() && evaluator != "ast") {
+      std::stringstream ss;
+      ss << "Invalid value for parameter 'sm.query.condition_evaluator': found "
+            "'"
+         << evaluator.value() << "', expected 'datafusion' or 'ast'";
+      throw QueryException(ss.str());
+    }
   }
 
   if (type_ == QueryType::READ) {

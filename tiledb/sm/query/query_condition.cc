@@ -156,38 +156,35 @@ Status QueryCondition::init(
   return Status::Ok();
 }
 
-void QueryCondition::rewrite_for_schema(
-    const Config& config, const ArraySchema& array_schema) {
+void QueryCondition::rewrite_for_schema(const ArraySchema& array_schema) {
   if (!tree_) {
     return;
   }
 
   tree_->rewrite_for_schema(array_schema);
+}
 
-  const auto eval = config.get<std::string>("sm.query.condition_evaluator");
-  if (eval == "datafusion") {
-    if (!datafusion_.has_value()) {
-      std::vector<std::string> select(
-          field_names().begin(), field_names().end());
+bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
+  if (!datafusion_.has_value()) {
+    std::vector<std::string> select(field_names().begin(), field_names().end());
 
-      try {
-        auto logical_expr = tiledb::oxidize::datafusion::logical_expr::create(
-            array_schema, *tree_.get());
-        auto dfschema =
-            tiledb::oxidize::arrow::schema::create(array_schema, select);
-        auto physical_expr =
-            std::move(tiledb::oxidize::datafusion::physical_expr::create(
-                *dfschema, std::move(logical_expr)));
+    try {
+      auto logical_expr = tiledb::oxidize::datafusion::logical_expr::create(
+          array_schema, *tree_.get());
+      auto dfschema =
+          tiledb::oxidize::arrow::schema::create(array_schema, select);
+      auto physical_expr =
+          std::move(tiledb::oxidize::datafusion::physical_expr::create(
+              *dfschema, std::move(logical_expr)));
 
-        datafusion_.emplace(std::move(dfschema), std::move(physical_expr));
-      } catch (const ::rust::Error& e) {
-        throw std::logic_error(
-            "Unexpected error compiling expression: " + std::string(e.what()));
-      }
+      datafusion_.emplace(std::move(dfschema), std::move(physical_expr));
+    } catch (const ::rust::Error& e) {
+      throw std::logic_error(
+          "Unexpected error compiling expression: " + std::string(e.what()));
     }
-  } else if (eval.has_value() && eval != "ast") {
-    throw std::runtime_error("TODO bad config");
+    return false;
   }
+  return true;
 }
 
 Status QueryCondition::check(const ArraySchema& array_schema) const {

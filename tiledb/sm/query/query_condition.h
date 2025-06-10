@@ -192,8 +192,20 @@ class QueryCondition {
    * @param array_schema The current array schema with all required enumerations
    * loaded.
    */
-  void rewrite_for_schema(
-      const Config& config, const ArraySchema& array_schema);
+  void rewrite_for_schema(const ArraySchema& array_schema);
+
+  /**
+   * If desired and possible, rewrite the query condition to use Datafusion to
+   * evaluate.
+   *
+   * Note that this is basically for testing, this isn't expected to be a
+   * production feature - we will have other entry points for Datafusion which
+   * make more sense. Datafusion evaluation appears to be slightly slower, which
+   * makes some sense since we must create arrow and datafusion data structures.
+   *
+   * @return true if a rewrite occurred, false otherwise
+   */
+  bool rewrite_to_datafusion(const ArraySchema& array_schema);
 
   /**
    * Verifies that the current state contains supported comparison
