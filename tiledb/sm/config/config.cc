@@ -922,7 +922,6 @@ const char* Config::get_from_config(
 
 const char* Config::get_from_profile(
     const std::string& param, bool* found) const {
-
   if (param == "profile_name" || param == "profile_dir") {
     // If the parameter is profile_name or profile_dir, we do not
     // want to have an infinite recursion. So, we return early.
