@@ -741,3 +741,31 @@ TEST_CASE_METHOD(
     vfs.remove_dir(array_name);
   }
 }
+
+TEST_CASE(
+    "C++ API: CurrentDomain - Dump", "[cppapi][ArraySchema][currentDomain]") {
+  tiledb::Context ctx;
+  // Create domain
+  tiledb::Domain domain(ctx);
+  auto d1 = tiledb::Dimension::create<int32_t>(ctx, "x", {{0, 100}}, 10);
+  auto d2 = tiledb::Dimension::create<int32_t>(ctx, "y", {{0, 100}}, 10);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+  // Create an NDRectangle and set ranges
+  tiledb::NDRectangle ndrect(ctx, domain);
+  int range_one[] = {10, 20};
+  int range_two[] = {30, 40};
+  ndrect.set_range(0, range_one[0], range_one[1]);
+  ndrect.set_range(1, range_two[0], range_two[1]);
+  // Create a currentDomain and set the NDRectangle
+  tiledb::CurrentDomain cdn(ctx);
+  cdn.set_ndrectangle(ndrect);
+
+  // Check that operator<< works correctly
+  std::stringstream ss;
+  ss << cdn;
+  CHECK(ss.str().find("### Current domain ###") != std::string::npos);
+  CHECK(ss.str().find("Version:") != std::string::npos);
+  CHECK(ss.str().find("Empty: 0") != std::string::npos);
+  CHECK(ss.str().find("Type: NDRECTANGLE") != std::string::npos);
+}
