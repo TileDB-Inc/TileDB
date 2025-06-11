@@ -871,7 +871,7 @@ class Config {
    *    The logging format configured (DEFAULT or JSON)
    *    **Default**: "DEFAULT"
    * - `profile_name` <br>
-   *    The name of the Profile to be used for REST transactions. <br>
+   *    The name of the Profile to be used for REST configuration. <br>
    *    **Default**: ""
    * - `profile_dir` <br>
    *    The directory where the user profiles are stored. <br>
