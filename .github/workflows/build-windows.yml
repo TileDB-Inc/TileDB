@@ -339,7 +339,7 @@ jobs:
           Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api\") -Filter *.exe |
           Foreach-Object {
             if ($_.Name -ieq "profile_cpp.exe" -or
-                $_.Name -ieq "writing_remote_global.exe") {
+                $_.Name -ieq "writing_remote_global_cpp.exe") {
               Write-Host "Skipping $_.Name"
               return
             }

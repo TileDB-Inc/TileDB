@@ -38,7 +38,7 @@ do
     continue
   fi;
   # Skip examples that require access to a TileDB Server
-  if [ "${example##*/}" == profile.cc ] || ["${example##*/}" == writing_remote_global.cc ]; then
+  if [ "${example##*/}" == profile.cc ] || [ "${example##*/}" == writing_remote_global.cc ]; then
     continue
   fi;
 
