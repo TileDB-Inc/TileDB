@@ -43,7 +43,8 @@ cxxbridge(
   NAME
     test-support
   SOURCES
-    oxidize.cc
+    array_schema.cc
+    query.cc
     lib.rs
 )
 

@@ -3450,6 +3450,7 @@ dependencies = [
  "proptest",
  "tiledb-common",
  "tiledb-oxidize",
+ "tiledb-test-support",
 ]
 
 [[package]]

@@ -1,9 +1,9 @@
-#include "tiledb/oxidize/test-support/cc/oxidize.h"
+#include "tiledb/oxidize/test-support/cc/array_schema.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-namespace tiledb::oxidize {
+namespace tiledb::test::oxidize {
 
 std::unique_ptr<Attribute> new_attribute(
     const std::string& name, Datatype dt, bool nullable) {
@@ -27,4 +27,4 @@ std::unique_ptr<ArraySchema> new_array_schema(
   return std::make_unique<ArraySchema>(array_type, memory_tracker);
 }
 
-}  // namespace tiledb::oxidize
+}  // namespace tiledb::test::oxidize

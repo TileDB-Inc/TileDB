@@ -1,14 +1,14 @@
 #[cxx::bridge]
 mod ffi {
     #[namespace = "tiledb::sm"]
-    #[derive(Debug)]
+    #[derive(Copy, Debug)]
     enum ArrayType {
         DENSE,
         SPARSE,
     }
 
     #[namespace = "tiledb::sm"]
-    #[derive(Debug)]
+    #[derive(Copy, Debug)]
     enum Layout {
         ROW_MAJOR,
         COL_MAJOR,
@@ -18,7 +18,7 @@ mod ffi {
     }
 
     #[namespace = "tiledb::sm"]
-    #[derive(Debug)]
+    #[derive(Copy, Debug)]
     enum Datatype {
         INT32,
         INT64,
@@ -77,6 +77,7 @@ mod ffi {
     }
 
     #[namespace = "tiledb::sm"]
+    #[derive(Copy, Debug)]
     enum QueryConditionOp {
         LT,
         LE,
@@ -91,6 +92,7 @@ mod ffi {
     }
 
     #[namespace = "tiledb::sm"]
+    #[derive(Copy, Debug)]
     enum QueryConditionCombinationOp {
         AND,
         OR,

@@ -142,7 +142,7 @@ class ASTNode {
    * @return tdb_unique_ptr<ASTNode> The combined node.
    */
   virtual tdb_unique_ptr<ASTNode> combine(
-      const tdb_unique_ptr<ASTNode>& rhs,
+      const ASTNode& rhs,
       const QueryConditionCombinationOp& combination_op) = 0;
 
   /**
@@ -435,7 +435,7 @@ class ASTNodeVal : public ASTNode {
    * @return tdb_unique_ptr<ASTNode> The combined node.
    */
   tdb_unique_ptr<ASTNode> combine(
-      const tdb_unique_ptr<ASTNode>& rhs,
+      const ASTNode& rhs,
       const QueryConditionCombinationOp& combination_op) override;
 
   /**
@@ -683,7 +683,7 @@ class ASTNodeExpr : public ASTNode {
    * @return tdb_unique_ptr<ASTNode> The combined node.
    */
   tdb_unique_ptr<ASTNode> combine(
-      const tdb_unique_ptr<ASTNode>& rhs,
+      const ASTNode& rhs,
       const QueryConditionCombinationOp& combination_op) override;
 
   /**

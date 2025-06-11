@@ -1,12 +1,12 @@
-#ifndef TILEDB_OXIDIZE_TEST_SUPPORT_H
-#define TILEDB_OXIDIZE_TEST_SUPPORT_H
+#ifndef TILEDB_OXIDIZE_TEST_SUPPORT_ARRAY_SCHEMA_H
+#define TILEDB_OXIDIZE_TEST_SUPPORT_ARRAY_SCHEMA_H
 
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 
-namespace tiledb::oxidize {
+namespace tiledb::test::oxidize {
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -50,6 +50,6 @@ std::unique_ptr<ArraySchema> new_array_schema(
   return attr;
 }
 
-}  // namespace tiledb::oxidize
+}  // namespace tiledb::test::oxidize
 
 #endif

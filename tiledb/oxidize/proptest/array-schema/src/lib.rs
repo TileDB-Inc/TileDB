@@ -3,6 +3,7 @@ pub mod enums;
 use itertools::Itertools;
 use tiledb_oxidize::sm::array_schema::{ArraySchema, Attribute, Dimension, Domain};
 use tiledb_pod::array::schema::{AttributeData, DimensionData, DomainData, SchemaData};
+use tiledb_test_support::array_schema as tiledb_test_support;
 
 pub fn schema_from_pod(pod: &SchemaData) -> anyhow::Result<cxx::SharedPtr<ArraySchema>> {
     let domain = domain_from_pod(&pod.domain)?;
