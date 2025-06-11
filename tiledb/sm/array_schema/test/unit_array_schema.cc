@@ -102,24 +102,22 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
     auto& domain{const_cast<Domain&>(schema.domain())};
     TestDimension td("x", Datatype::UINT64);
     auto d{td.dimension()};
-    auto st{domain.add_dimension(d)};
+    domain.add_dimension(d);
     /*
      * `add_dimension()` does not incrementally validate that names are unique.
      * If this changes the following check will fail.
      */
-    CHECK(st.ok());
     REQUIRE_THROWS(schema.check_without_config());
   }
 
   DYNAMIC_SECTION("Attribute names must be unique - " + name) {
     TestAttribute ta{"a", Datatype::UINT64};
     auto a{ta.attribute()};
-    auto st{schema.add_attribute(a)};
+    schema.add_attribute(a);
     /*
      * `add_attribute()` does not incrementally validate that names are unique.
      * If this changes the following check will fail.
      */
-    CHECK(st.ok());
     REQUIRE_THROWS(schema.check_without_config());
   }
 
@@ -133,12 +131,11 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
   DYNAMIC_SECTION("Attribute name may not be a dimension name - " + name) {
     TestAttribute ta{"x", Datatype::UINT64};
     auto a{ta.attribute()};
-    auto st{schema.add_attribute(a)};
+    schema.add_attribute(a);
     /*
      * `add_attribute()` does not incrementally validate that names are unique.
      * If this changes the following check will fail.
      */
-    CHECK(st.ok());
     REQUIRE_THROWS(schema.check_without_config());
   }
 
@@ -218,8 +215,7 @@ TEST_CASE("ArraySchema::has_ordered_attributes, true", "[array_schema]") {
       {TestAttribute("a", Datatype::UINT64)}};
   auto schema{test_schema.schema()};
   // TestAttribute does not yet support DataOrder
-  auto st{schema.add_attribute(make_shared<Attribute>(
-      HERE(), "b", Datatype::FLOAT64, 1, DataOrder::INCREASING_DATA))};
-  REQUIRE(st.ok());
+  schema.add_attribute(make_shared<Attribute>(
+      HERE(), "b", Datatype::FLOAT64, 1, DataOrder::INCREASING_DATA));
   CHECK(schema.has_ordered_attributes());
 }

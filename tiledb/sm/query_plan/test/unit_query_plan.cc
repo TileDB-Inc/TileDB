@@ -76,8 +76,8 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
   uint64_t tile_extent = 1;
   shared_ptr<Dimension> dim = make_shared<Dimension>(
       HERE(), std::string("dim"), Datatype::UINT64, memory_tracker_);
-  throw_if_not_ok(dim->set_domain(&dim_dom));
-  throw_if_not_ok(dim->set_tile_extent(&tile_extent));
+  dim->set_domain(&dim_dom);
+  dim->set_tile_extent(&tile_extent);
 
   std::vector<shared_ptr<Dimension>> dims = {dim};
   shared_ptr<Domain> domain = make_shared<Domain>(
@@ -86,11 +86,11 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
   // Create the ArraySchema
   shared_ptr<ArraySchema> schema = make_shared<ArraySchema>(
       HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
-  throw_if_not_ok(schema->set_domain(domain));
-  throw_if_not_ok(schema->add_attribute(
+  schema->set_domain(domain);
+  schema->add_attribute(
       make_shared<Attribute>(
           HERE(), std::string("attr"), Datatype::UINT64, false),
-      false));
+      false);
   EncryptionKey key;
   throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
