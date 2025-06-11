@@ -111,7 +111,7 @@ class Domain {
    * @param dim The dimension to be added.
    * @return Status
    */
-  void add_dimension(shared_ptr<Dimension> dim);
+  Status add_dimension(shared_ptr<Dimension> dim);
 
   /** Returns true if all dimensions have fixed-sized domain datatypes. */
   bool all_dims_fixed() const;
