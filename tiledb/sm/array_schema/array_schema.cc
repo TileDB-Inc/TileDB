@@ -1174,17 +1174,6 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
   // #TODO Add security validation
   auto version = deserializer.read<uint32_t>();
   if (version > constants::format_version) {
-    if constexpr (!is_experimental_build) {
-      auto base_version =
-          (version & (1 << 31)) ? (version | (0 << 31)) : version;
-      if (base_version > constants::format_version) {
-        throw ArraySchemaException(
-            "Failed to deserialize; Array format version (" +
-            std::to_string(base_version) +
-            ") is newer than the library format version (" +
-            std::to_string(constants::format_version) + ")");
-      }
-    }
     throw ArraySchemaException(
         "Failed to deserialize; Array format version (" +
         std::to_string(version) +

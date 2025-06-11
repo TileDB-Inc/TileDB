@@ -158,6 +158,11 @@ class CurrentDomain {
     return static_cast<bool>(ret);
   }
 
+  /** Returns the context that the current domain belongs to. */
+  const Context& context() const {
+    return ctx_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -172,6 +177,20 @@ class CurrentDomain {
   /** An auxiliary deleter. */
   impl::Deleter deleter_;
 };
+
+/* ********************************* */
+/*               MISC                */
+/* ********************************* */
+
+/** Get a string representation of the current domain for an output stream. */
+inline std::ostream& operator<<(std::ostream& os, const CurrentDomain& cd) {
+  auto& ctx = cd.context();
+  tiledb_string_t* tdb_string;
+  ctx.handle_error(tiledb_current_domain_dump_str(
+      ctx.ptr().get(), cd.ptr().get(), &tdb_string));
+  os << impl::convert_to_string(&tdb_string).value();
+  return os;
+}
 
 }  // namespace tiledb
 
