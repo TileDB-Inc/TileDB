@@ -1,5 +1,5 @@
 /**
- * @file test/support/stdx/tuple.h
+ * @file test/support/stdx/span.h
  *
  * @section LICENSE
  *
