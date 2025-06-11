@@ -319,8 +319,9 @@ class ArraySchema {
    * @param name Name of attribute to check for
    * @param has_attr Set to true if the array schema has a attribute of the
    * given name.
+   * @return Status
    */
-  void has_attribute(const std::string& name, bool* has_attr) const;
+  Status has_attribute(const std::string& name, bool* has_attr) const;
 
   bool has_ordered_attributes() const;
 
@@ -363,8 +364,9 @@ class ArraySchema {
    *     to `false` will allow adding attributes starting with `__`, noting
    *     that particular care must be taken (i.e., the user must know what
    *     they are doing in this case).
+   * @return Status
    */
-  void add_attribute(
+  Status add_attribute(
       shared_ptr<const Attribute> attr, bool check_special = true);
 
   /**
@@ -388,8 +390,9 @@ class ArraySchema {
    * Drops an attribute.
    *
    * @param attr_name The name of the attribute to be removed.
+   * @return Status
    */
-  void drop_attribute(const std::string& attr_name);
+  Status drop_attribute(const std::string& attr_name);
 
   /**
    * Add an Enumeration to this ArraySchema.
@@ -512,25 +515,25 @@ class ArraySchema {
    * Sets whether the array allows coordinate duplicates.
    * It errors out if set to `1` for dense arrays.
    */
-  void set_allows_dups(bool allows_dups);
+  Status set_allows_dups(bool allows_dups);
 
   /** Sets an array URI. */
   void set_array_uri(const URI& array_uri);
 
   /** Sets the filter pipeline for the variable cell offsets. */
-  void set_cell_var_offsets_filter_pipeline(const FilterPipeline& pipeline);
+  Status set_cell_var_offsets_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the filter pipeline for the validity cell offsets. */
-  void set_cell_validity_filter_pipeline(const FilterPipeline& pipeline);
+  Status set_cell_validity_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the filter pipeline for the coordinates. */
-  void set_coords_filter_pipeline(const FilterPipeline& pipeline);
+  Status set_coords_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
 
   /** Sets the cell order. */
-  void set_cell_order(Layout cell_order);
+  Status set_cell_order(Layout cell_order);
 
   /**
    * Sets a filter on a dimension label filter in an array schema.
@@ -557,10 +560,10 @@ class ArraySchema {
    * Sets the domain. The function returns an error if the array has been
    * previously set to be a key-value store.
    */
-  void set_domain(shared_ptr<Domain> domain);
+  Status set_domain(shared_ptr<Domain> domain);
 
   /** Sets the tile order. */
-  void set_tile_order(Layout tile_order);
+  Status set_tile_order(Layout tile_order);
 
   /** Set version of schema, only used for serialization */
   void set_version(format_version_t version);
@@ -774,17 +777,17 @@ class ArraySchema {
   void check_attribute_dimension_label_names() const;
 
   /**
-   * Throws an exception if double delta compression is used in the zipped
+   * Returns error if double delta compression is used in the zipped
    * coordinate filters and is inherited by a dimension.
    */
-  void check_double_delta_compressor(
+  Status check_double_delta_compressor(
       const FilterPipeline& coords_filters) const;
 
   /**
-   * Throws an exception if RLE or Dictionary encoding is used for string
+   * Returns error if RLE or Dictionary encoding is used for string
    * dimensions but it is not the only filter in the filter list.
    */
-  void check_string_compressor(const FilterPipeline& coords_filters) const;
+  Status check_string_compressor(const FilterPipeline& coords_filters) const;
 
   void check_webp_filter() const;
 

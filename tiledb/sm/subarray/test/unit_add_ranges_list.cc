@@ -71,11 +71,10 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   std::shared_ptr<tiledb::sm::Domain> sp_dom = make_shared<tiledb::sm::Domain>(
       HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker);
   uint64_t local_DIM_DOMAIN[4] = {1, 12, 1, 12};
-  sp_dim1->set_domain(&local_DIM_DOMAIN[0]);
-  sp_dim2->set_domain(&local_DIM_DOMAIN[2]);
-  sp_dim1->set_tile_extent(&tile_extents[0]);
-  sp_dim2->set_tile_extent(&tile_extents[1]);
-
+  CHECK(sp_dim1->set_domain(&local_DIM_DOMAIN[0]).ok());
+  CHECK(sp_dim2->set_domain(&local_DIM_DOMAIN[2]).ok());
+  CHECK(sp_dim1->set_tile_extent(&tile_extents[0]).ok());
+  CHECK(sp_dim2->set_tile_extent(&tile_extents[1]).ok());
   std::shared_ptr<tiledb::sm::Attribute> sp_attrib =
       make_shared<tiledb::sm::Attribute>(HERE(), "a1", Datatype::INT32);
   tiledb::sm::Domain dom{
@@ -85,9 +84,8 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
           HERE(),
           tiledb::sm::ArrayType::DENSE,
           tiledb::test::create_test_memory_tracker());
-  sp_as->set_domain(sp_dom);
-  sp_as->add_attribute(sp_attrib);
-
+  CHECK(sp_as->set_domain(sp_dom).ok());
+  CHECK(sp_as->add_attribute(sp_attrib).ok());
   tiledb::sm::Config cfg;
   tiledb::sm::Context ctx(cfg);
   tiledb::sm::Array a(ctx.resources(), tiledb::sm::URI{"mem://junk"});

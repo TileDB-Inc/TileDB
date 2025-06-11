@@ -87,11 +87,11 @@ struct tiledb_dimension_handle_t
   }
 
   inline void set_domain(const void* x) {
-    dimension_->set_domain(x);
+    throw_if_not_ok(dimension_->set_domain(x));
   }
 
   inline void set_tile_extent(const void* x) {
-    dimension_->set_tile_extent(x);
+    throw_if_not_ok(dimension_->set_tile_extent(x));
   }
 
   inline void set_filter_pipeline(const tiledb::sm::FilterPipeline& x) {
@@ -99,7 +99,7 @@ struct tiledb_dimension_handle_t
   }
 
   inline void set_cell_val_num(unsigned int x) {
-    dimension_->set_cell_val_num(x);
+    throw_if_not_ok(dimension_->set_cell_val_num(x));
   }
 
   [[nodiscard]] inline const tiledb::sm::FilterPipeline& filters() const {
