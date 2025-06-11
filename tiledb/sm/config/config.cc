@@ -923,6 +923,14 @@ const char* Config::get_from_config(
 
 const char* Config::get_from_profile(
     const std::string& param, bool* found) const {
+
+  if (param == "profile_name" || param == "profile_dir") {
+    // If the parameter is profile_name or profile_dir, we do not
+    // want to have an infinite recursion. So, we return early.
+    *found = false;
+    return "";
+  }
+
   if (RestProfile::can_have_parameter(param)) {
     // If there is no profile loaded yet and we have not attempted to load it,
     // we try to load the configure specified profile.
