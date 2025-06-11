@@ -47,6 +47,10 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
+#ifdef HAVE_RUST
+#include "tiledb/oxidize/unit_query_condition.h"
+#endif
+
 #include <test/support/tdb_catch.h>
 #include <iostream>
 
@@ -5082,3 +5086,50 @@ TEST_CASE(
     }
   }
 }
+
+#ifdef HAVE_RUST
+
+namespace tiledb::test {
+
+void instance_query_condition_datafusion(
+    const tiledb::sm::ArraySchema& array_schema,
+    const ResultTile& tile,
+    const tiledb::sm::ASTNode& ast) {
+  using Asserter = tiledb::test::AsserterRapidcheck;
+
+  // set up datafusion evaluation
+  QueryCondition datafusion(std::move(ast->clone()));
+  datafusion.rewrite_for_schema(array_schema);
+  datafusion.rewrite_to_datafusion(array_schema);
+  ASSERTER(datafusion.datafusion_.has_value());
+
+  // set up traditional TileDB evaluation
+  QueryCondition ast(std::move(ast));
+  ast.rewrite_for_schema(array_schema);
+  ASSERTER(!ast.datafusion_.has_value());
+
+  // set up evaluation
+  QueryCondition::Params params(
+      tiledb::test::get_test_memory_tracker(), array_schema);
+
+  // evaluate datafusion
+  datafusion.apply_sparse(params, tile, datafusion_bitmap);
+
+  // evaluate traditional ast
+  ast.apply_sparse(params, tile, ast_bitmap);
+
+  // compare
+  ASSERTER(datafusion_bitmap == ast_bitmap);
+}
+
+}  // namespace tiledb::test
+
+TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
+  SECTION("Example") {
+  }
+
+  SECTION("Rapidcheck") {
+  }
+}
+
+#endif

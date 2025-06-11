@@ -21,6 +21,8 @@ mod ffi {
         fn num_children(&self) -> u64;
         fn get_child(&self, i: u64) -> *const ASTNode;
     }
+
+    impl SharedPtr<ASTNode> {}
 }
 
 pub use ffi::ASTNode;

@@ -1,5 +1,6 @@
 fn main() {
     let bridge_sources = vec![
+        "src/common/memory_tracker.rs",
         "src/sm/array_schema/mod.rs",
         "src/sm/enums/mod.rs",
         "src/sm/misc/mod.rs",

@@ -30,6 +30,7 @@ cxxbridge(
   NAME
     oxidize
   SOURCES
+    common/memory_tracker.rs
     sm/array_schema/mod.rs
     sm/enums/mod.rs
     sm/query/readers/mod.rs
@@ -37,6 +38,14 @@ cxxbridge(
     sm/misc/mod.rs
     sm/tile/mod.rs
 ) 
+
+cxxbridge(
+  NAME
+    test-support
+  SOURCES
+    oxidize.cc
+    lib.rs
+)
 
 oxidize(
   NAME
@@ -54,5 +63,16 @@ oxidize(
     arithmetic
 )
 
+oxidize(
+  NAME
+    unit_query_condition
+  SOURCES
+    lib.rs
+  EXPORT
+    arrow
+    expr
+    oxidize
+    test-support
+)
 
 set_property(DIRECTORY PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${TILEDB_OXIDIZE_INCLUDE_DIR})

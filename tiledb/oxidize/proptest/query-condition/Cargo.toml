@@ -1,0 +1,12 @@
+[package]
+name = "tiledb-proptest-query-condition"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+cxx = { workspace = true }
+proptest = { workspace = true }
+tiledb-common = { workspace = true }
+tiledb-oxidize = { workspace = true }

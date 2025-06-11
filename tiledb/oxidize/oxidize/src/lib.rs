@@ -5,6 +5,7 @@
 //! The module structure reflects the structure of the parent
 //! `tiledb` directory.
 
+pub mod common;
 pub mod sm;
 
 /// Returns a safe slice over the raw data.

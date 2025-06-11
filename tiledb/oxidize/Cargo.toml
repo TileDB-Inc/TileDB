@@ -5,9 +5,13 @@ members = [
   "arrow",
   "bundle/core-objects",
   "bundle/unit-arithmetic",
+  "bundle/unit-query-condition",
   "datatype",
   "expr",
   "oxidize",
+  "proptest/array-schema",
+  "proptest/result-tile",
+  "test-support",
 ]
 
 [workspace.package]
@@ -23,9 +27,18 @@ cxx-build = "1"
 datafusion = { version = "47", features = [] }
 itertools = { version = "0.14" }
 num-traits = "0.2"
-tiledb-oxidize = { path = "oxidize" }
+proptest = { version = "1.6" }
+tiledb-api = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "pod" ] }
 tiledb-arrow = { path = "arrow" }
 tiledb-arithmetic = { path = "arithmetic" }
+tiledb-common = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
 tiledb-datatype = { path = "datatype" }
 tiledb-expr = { path = "expr" }
+tiledb-oxidize = { path = "oxidize" }
+tiledb-pod = { git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
+tiledb-proptest-array-schema = { path = "proptest/array-schema" }
+tiledb-proptest-query-condition = { path = "proptest/query-condition" }
+tiledb-proptest-result-tile = { path = "proptest/result-tile" }
+tiledb-test-support = { path = "test-support" }
+tiledb-test-cells = { package = "cells", git = "https://github.com/TileDB-Inc/tiledb-rs.git", branch = "main", features = [ "proptest-strategies" ] }
 thiserror = { version = "2" }

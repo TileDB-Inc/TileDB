@@ -29,6 +29,8 @@ mod ffi {
         fn cell_num(&self) -> u64;
         fn tile_tuple(&self, s: &CxxString) -> *const TileTuple;
     }
+
+    impl SharedPtr<ResultTile> {}
 }
 
 pub use ffi::{ResultTile, TileTuple};

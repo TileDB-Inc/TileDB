@@ -1,0 +1,26 @@
+[package]
+name = "tiledb-unit_query_condition"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+cxx = { workspace = true }
+proptest = { workspace = true }
+tiledb-arrow = { workspace = true }
+tiledb-expr = { workspace = true }
+tiledb-oxidize = { workspace = true }
+tiledb-pod = { workspace = true }
+tiledb-common = { workspace = true }
+tiledb-test-cells = { workspace = true }
+tiledb-proptest-array-schema = { workspace = true }
+tiledb-proptest-result-tile = { workspace = true }
+tiledb-proptest-query-condition = { workspace = true }
+
+[build-dependencies]
+cxx-build = { workspace = true }
+
+[lib]
+name = "unit_query_condition_rs"
+crate-type = ["staticlib"]

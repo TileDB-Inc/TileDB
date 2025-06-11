@@ -3,6 +3,13 @@ mod ffi {
     #[namespace = "tiledb::sm"]
     extern "C++" {
         type Datatype = crate::sm::enums::Datatype;
+        type Layout = crate::sm::enums::Layout;
+    }
+
+    #[namespace = "tiledb::sm"]
+    unsafe extern "C++" {
+        include!("tiledb/oxidize/oxidize/cc/array_schema.h");
+        type ConstAttribute;
     }
 
     #[namespace = "tiledb::sm"]
@@ -18,6 +25,8 @@ mod ffi {
 
         #[cxx_name = "type"]
         fn datatype(&self) -> Datatype;
+
+        fn set_cell_val_num(self: Pin<&mut Attribute>, cell_val_num: u32);
     }
 
     #[namespace = "tiledb::sm"]
@@ -43,6 +52,8 @@ mod ffi {
         fn dim_num(&self) -> u32;
         fn dimension_ptr(&self, d: u32) -> *const Dimension;
         fn shared_dimension(&self, name: &CxxString) -> SharedPtr<Dimension>;
+
+        fn add_dimension(self: Pin<&mut Domain>, dim: SharedPtr<Dimension>);
     }
 
     #[namespace = "tiledb::sm"]
@@ -59,14 +70,34 @@ mod ffi {
 
         #[cxx_name = "attribute"]
         fn attribute_by_name(&self, name: &CxxString) -> *const Attribute;
+
+        fn set_domain(self: Pin<&mut ArraySchema>, domain: SharedPtr<Domain>);
+        fn add_attribute(
+            self: Pin<&mut ArraySchema>,
+            attribute: SharedPtr<ConstAttribute>,
+            check_special: bool,
+        );
+        fn set_tile_order(self: Pin<&mut ArraySchema>, order: Layout);
+        fn set_cell_order(self: Pin<&mut ArraySchema>, order: Layout);
+        fn set_capacity(self: Pin<&mut ArraySchema>, capacity: u64);
+        fn set_allows_dups(self: Pin<&mut ArraySchema>, allows_dups: bool);
     }
+
+    impl SharedPtr<Attribute> {}
+    impl SharedPtr<Dimension> {}
+    impl SharedPtr<Domain> {}
+    impl SharedPtr<ArraySchema> {}
+    impl UniquePtr<Attribute> {}
+    impl UniquePtr<Dimension> {}
+    impl UniquePtr<Domain> {}
+    impl UniquePtr<ArraySchema> {}
 }
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::num::NonZeroU32;
 use std::str::Utf8Error;
 
-pub use ffi::{ArraySchema, Attribute, Datatype, Dimension, Domain};
+pub use ffi::{ArraySchema, Attribute, ConstAttribute, Datatype, Dimension, Domain};
 
 #[derive(Debug)]
 pub enum CellValNum {
@@ -94,6 +125,16 @@ impl Display for CellValNum {
             CellValNum::Single => write!(f, "1"),
             CellValNum::Fixed(nz) => write!(f, "{nz}"),
             CellValNum::Var => write!(f, "{}", u32::MAX),
+        }
+    }
+}
+
+impl From<CellValNum> for u32 {
+    fn from(value: CellValNum) -> Self {
+        match value {
+            CellValNum::Single => 1,
+            CellValNum::Fixed(nz) => nz.get(),
+            CellValNum::Var => u32::MAX,
         }
     }
 }

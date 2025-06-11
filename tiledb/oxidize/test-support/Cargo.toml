@@ -1,0 +1,12 @@
+[package]
+name = "tiledb-test-support"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+cxx = { workspace = true }
+tiledb-oxidize = { workspace = true }
+
+[build-dependencies]
+cxx-build = { workspace = true }

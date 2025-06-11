@@ -2,6 +2,23 @@
 mod ffi {
     #[namespace = "tiledb::sm"]
     #[derive(Debug)]
+    enum ArrayType {
+        DENSE,
+        SPARSE,
+    }
+
+    #[namespace = "tiledb::sm"]
+    #[derive(Debug)]
+    enum Layout {
+        ROW_MAJOR,
+        COL_MAJOR,
+        GLOBAL_ORDER,
+        UNORDERED,
+        HILBERT,
+    }
+
+    #[namespace = "tiledb::sm"]
+    #[derive(Debug)]
     enum Datatype {
         INT32,
         INT64,
@@ -81,7 +98,7 @@ mod ffi {
     }
 }
 
-pub use ffi::{Datatype, QueryConditionCombinationOp, QueryConditionOp};
+pub use ffi::{ArrayType, Datatype, Layout, QueryConditionCombinationOp, QueryConditionOp};
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
 

@@ -1,0 +1,12 @@
+[package]
+name = "tiledb-proptest-result-tile"
+edition = { workspace = true }
+rust-version = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+cxx = { workspace = true }
+proptest = { workspace = true }
+tiledb-oxidize = { workspace = true }
+tiledb-test-cells = { workspace = true }
