@@ -682,9 +682,6 @@ extern const std::string vfsmode_append_str;
 /** The TileDB library version in format { major, minor, revision }. */
 extern const int32_t library_version[3];
 
-/** The TileDB serialization base format version number. */
-extern const uint32_t base_format_version;
-
 /** The TileDB serialization format version number. */
 extern const format_version_t format_version;
 

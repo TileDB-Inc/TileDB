@@ -37,8 +37,8 @@ do
   if [ "${example##*/}" == png_ingestion_webp.cc ]; then
     continue
   fi;
-  # Skip Profile example as it requires access to a TileDB REST server
-  if [ "${example##*/}" == profile.cc ]; then
+  # Skip examples that require access to a TileDB Server
+  if [ "${example##*/}" == profile.cc ] || [ "${example##*/}" == writing_remote_global.cc ]; then
     continue
   fi;
 
