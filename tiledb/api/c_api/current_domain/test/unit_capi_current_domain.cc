@@ -44,7 +44,7 @@ using namespace tiledb::test;
 
 struct CAPICurrentDomainFx : TemporaryDirectoryFixture {
   CAPICurrentDomainFx()
-      : array_name_(temp_dir_ + "curent_domain_array") {
+      : array_name_(vfs_temp_.temp_dir_ + "curent_domain_array") {
     create_domain();
   }
   ~CAPICurrentDomainFx() {
@@ -62,6 +62,8 @@ void CAPICurrentDomainFx::create_domain() {
   // Create dimensions
   uint64_t tile_extents[] = {2, 2};
   uint64_t dim_domain[] = {1, 10, 1, 10};
+
+  auto ctx = get_ctx();
 
   int rc = tiledb_dimension_alloc(
       ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1_);
@@ -89,6 +91,8 @@ TEST_CASE_METHOD(
     CAPICurrentDomainFx,
     "C API: argument validation",
     "[capi][current_domain][args]") {
+  auto ctx = get_ctx();
+
   CHECK(
       tiledb_current_domain_create(nullptr, nullptr) == TILEDB_INVALID_CONTEXT);
   CHECK(tiledb_current_domain_create(ctx, nullptr) == TILEDB_ERR);
@@ -136,6 +140,8 @@ TEST_CASE_METHOD(
     CAPICurrentDomainFx,
     "C API: Setting ND rectangles works",
     "[capi][current_domain][ndr]") {
+  auto ctx = get_ctx();
+
   tiledb_current_domain_t* crd = nullptr;
   REQUIRE(tiledb_current_domain_create(ctx, &crd) == TILEDB_OK);
 

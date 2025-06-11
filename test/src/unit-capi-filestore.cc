@@ -52,7 +52,7 @@ struct FileFx {
   tiledb_config_t* config_;
 
   // Vector of supported filesystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
 
   std::string compression_file_path_;
   uint32_t expected_nfilters_;
@@ -77,7 +77,7 @@ FileFx::FileFx()
 
 FileFx::~FileFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
   tiledb_config_free(&config_);

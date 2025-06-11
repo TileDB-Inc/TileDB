@@ -56,6 +56,8 @@ TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "Error when setting invalid layout on sparse write",
     "[capi][query]") {
+  auto ctx = get_ctx();
+
   // Create the array.
   uint64_t domain[2]{0, 3};
   uint64_t x_tile_extent{4};
@@ -103,6 +105,7 @@ TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "Error setting invalid layout for dense array",
     "[capi][query]") {
+  auto ctx = get_ctx();
   // Create the array.
   uint64_t x_tile_extent{4};
   uint64_t domain[2]{0, 3};

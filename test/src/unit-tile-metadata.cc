@@ -41,6 +41,7 @@
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 template <typename TestType>
 struct CPPFixedTileMetadataFx {
@@ -64,8 +65,7 @@ struct CPPFixedTileMetadataFx {
     }
 
     // Create TileDB context
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
 
     // The array will be one dimension "d", with domain [0,999].
     uint32_t dim_domain[]{0, 999};
@@ -107,7 +107,6 @@ struct CPPFixedTileMetadataFx {
     tiledb_dimension_free(&d);
     tiledb_domain_free(&domain);
     tiledb_array_schema_free(&array_schema);
-    tiledb_ctx_free(&ctx);
   }
 
   void write_fragment(
@@ -274,8 +273,7 @@ struct CPPFixedTileMetadataFx {
       bool all_null,
       uint64_t cell_val_num) {
     // Open array.
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
     tiledb_array_t* array;
     int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
     CHECK(rc == TILEDB_OK);
@@ -611,7 +609,6 @@ struct CPPFixedTileMetadataFx {
 
     // Clean up.
     tiledb_array_free(&array);
-    tiledb_ctx_free(&ctx);
   }
 
   std::vector<std::vector<TestType>> correct_tile_mins_;
@@ -825,8 +822,7 @@ struct CPPVarTileMetadataFx {
   void check_metadata(
       uint64_t f, tiledb_layout_t layout, bool nullable, bool all_null) {
     // Open array.
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
     tiledb_array_t* array;
     int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
     CHECK(rc == TILEDB_OK);
@@ -1015,7 +1011,6 @@ struct CPPVarTileMetadataFx {
 
     // Clean up.
     tiledb_array_free(&array);
-    tiledb_ctx_free(&ctx);
   }
 
   std::vector<std::vector<int>> correct_tile_mins_;
@@ -1075,8 +1070,7 @@ struct CPPFixedTileMetadataPartialFx {
 
   void create_array() {
     // Create TileDB context
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
 
     // The array will be two dimension "d1" and "d2", with domain [1,8].
     uint32_t dim_domain[]{1, 8};
@@ -1114,7 +1108,6 @@ struct CPPFixedTileMetadataPartialFx {
     tiledb_dimension_free(&d2);
     tiledb_domain_free(&domain);
     tiledb_array_schema_free(&array_schema);
-    tiledb_ctx_free(&ctx);
   }
 
   void write_fragment() {
@@ -1157,8 +1150,7 @@ struct CPPFixedTileMetadataPartialFx {
 
   void check_metadata() {
     // Open array.
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
     tiledb_array_t* array;
     int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
     CHECK(rc == TILEDB_OK);
@@ -1235,7 +1227,6 @@ struct CPPFixedTileMetadataPartialFx {
 
     // Clean up.
     tiledb_array_free(&array);
-    tiledb_ctx_free(&ctx);
   }
 
   const char* ARRAY_NAME = "tile_metadata_unit_array";
@@ -1268,8 +1259,7 @@ struct CPPVarTileMetadataPartialFx {
 
   void create_array() {
     // Create TileDB context
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
 
     // The array will be two dimension "d1" and "d2", with domain [1,8].
     uint32_t dim_domain[]{1, 8};
@@ -1308,7 +1298,6 @@ struct CPPVarTileMetadataPartialFx {
     tiledb_dimension_free(&d2);
     tiledb_domain_free(&domain);
     tiledb_array_schema_free(&array_schema);
-    tiledb_ctx_free(&ctx);
   }
 
   void write_fragment() {
@@ -1337,8 +1326,7 @@ struct CPPVarTileMetadataPartialFx {
 
   void check_metadata() {
     // Open array.
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
     tiledb_array_t* array;
     int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
     CHECK(rc == TILEDB_OK);
@@ -1411,7 +1399,6 @@ struct CPPVarTileMetadataPartialFx {
 
     // Clean up.
     tiledb_array_free(&array);
-    tiledb_ctx_free(&ctx);
   }
 
   const char* ARRAY_NAME = "tile_metadata_unit_array";
@@ -1444,8 +1431,7 @@ struct CPPTileMetadataStringDimFx {
 
   void create_array() {
     // Create TileDB context
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
 
     // The array will be two string dimension "d1" and "d2".
     tiledb_dimension_t* d1;
@@ -1480,7 +1466,6 @@ struct CPPTileMetadataStringDimFx {
     tiledb_dimension_free(&d2);
     tiledb_domain_free(&domain);
     tiledb_array_schema_free(&array_schema);
-    tiledb_ctx_free(&ctx);
   }
 
   void write_fragment() {
@@ -1505,8 +1490,7 @@ struct CPPTileMetadataStringDimFx {
 
   void check_metadata() {
     // Open array.
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(NULL, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
     tiledb_array_t* array;
     int rc = tiledb_array_alloc(ctx, ARRAY_NAME, &array);
     CHECK(rc == TILEDB_OK);
@@ -1607,7 +1591,6 @@ struct CPPTileMetadataStringDimFx {
 
     // Clean up.
     tiledb_array_free(&array);
-    tiledb_ctx_free(&ctx);
   }
 
   const char* ARRAY_NAME = "tile_metadata_unit_array";

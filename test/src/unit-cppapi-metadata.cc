@@ -60,7 +60,7 @@ using namespace tiledb::test;
 struct CPPMetadataFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
   std::string temp_dir_;
   std::string array_name_;
   const char* ARRAY_NAME = "test_metadata";
@@ -161,7 +161,7 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Put metadata in an array opened for reads - error
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::Array array(ctx, std::string(array_name_), TILEDB_READ);
   int v = 5;
   CHECK_THROWS(array.put_metadata("key", TILEDB_INT32, 1, &v));
@@ -188,7 +188,7 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Open array in write mode
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::Array array(ctx, std::string(array_name_), TILEDB_WRITE);
 
   // Write items
@@ -272,7 +272,7 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Open array in write mode
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::Array array(ctx, std::string(array_name_), TILEDB_WRITE);
 
   // Write UTF-8 (≥ holds 3 bytes)
@@ -312,7 +312,7 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Create and open array in write mode
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::Array array(
       ctx,
       std::string(array_name_),
@@ -490,7 +490,7 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Create and open array in write mode
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items
@@ -537,7 +537,7 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Open array in write mode
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::Array array(ctx, array_name_, TILEDB_WRITE);
 
   // Write items

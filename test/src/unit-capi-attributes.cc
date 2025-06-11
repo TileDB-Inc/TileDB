@@ -59,7 +59,7 @@ struct Attributesfx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filesystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
 
   // Functions
   Attributesfx();
@@ -80,7 +80,7 @@ Attributesfx::Attributesfx()
 
 Attributesfx::~Attributesfx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
@@ -264,7 +264,7 @@ TEST_CASE_METHOD(
       CHECK(buffer_read_size == sizeof(buffer_read_c));
 
       remove_temp_dir(temp_dir);
-      CHECK(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+      vfs_test_close(fs_vec_, ctx_, vfs_);
     }
   }
 }

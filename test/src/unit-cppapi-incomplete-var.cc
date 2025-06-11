@@ -99,12 +99,12 @@ struct Cells {
 };
 
 struct IncompleteVarFx {
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
   mutable Context ctx_;
   std::string uri_;
 
   tiledb_ctx_t* context_c() const {
-    return vfs_test_setup_.ctx_c;
+    return vfs_test_setup_->ctx_c;
   }
 
   Context& context() const {

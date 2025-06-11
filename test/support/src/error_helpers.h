@@ -99,6 +99,7 @@ std::optional<std::string> error_if_any(tiledb_ctx_t* ctx, auto apirc) {
  * did not return `TILEDB_OK`.
  */
 void throw_if_error(tiledb_ctx_t* ctx, capi_return_t thing);
+void throw_if_error(Status thing);
 
 }  // namespace tiledb::test
 

@@ -34,9 +34,12 @@
 #include <vector>
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/webp_filter.h"
+
+using namespace tiledb::test;
 
 // For optional visual verification that images appear as expected.
 #ifdef PNG_FOUND
@@ -229,7 +232,7 @@ TEMPLATE_LIST_TEST_CASE(
     "[cppapi][filter][webp]",
     TestTypes) {
   if constexpr (webp_filter_exists) {
-    Context ctx;
+    Context& ctx = vanilla_context_cpp();
     VFS vfs(ctx);
     if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
@@ -336,7 +339,7 @@ TEMPLATE_LIST_TEST_CASE(
     "[cppapi][filter][webp][longtest]",
     DimensionTypes) {
   if constexpr (webp_filter_exists) {
-    Context ctx;
+    Context& ctx = vanilla_context_cpp();
     VFS vfs(ctx);
     if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
@@ -474,8 +477,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
   if constexpr (webp_filter_exists) {
-    tiledb_ctx_t* ctx;
-    tiledb_ctx_alloc(nullptr, &ctx);
+    tiledb_ctx_t* const ctx = vanilla_context_c();
     tiledb_vfs_t* vfs;
     tiledb_vfs_alloc(ctx, nullptr, &vfs);
     int32_t is_dir = false;

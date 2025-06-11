@@ -45,7 +45,7 @@ struct AnyFx {
   const float C3 = 1.2f;
   const double C4 = 2.3;
 
-  tiledb::test::VFSTestSetup vfs_test_setup_;
+  tiledb::test::VFSTempDir vfs_test_setup_;
 
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
@@ -55,7 +55,7 @@ struct AnyFx {
 
 // Create a simple dense 1D array
 void AnyFx::create_array(const std::string& array_name) {
-  tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
+  tiledb_ctx_t* ctx = vfs_test_setup_->ctx_c;
 
   // Create dimensions
   uint64_t dim_domain[] = {1, 4};
@@ -110,7 +110,7 @@ void AnyFx::create_array(const std::string& array_name) {
 }
 
 void AnyFx::write_array(const std::string& array_name) {
-  tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
+  tiledb_ctx_t* ctx = vfs_test_setup_->ctx_c;
 
   // Open array
   tiledb_array_t* array;
@@ -164,7 +164,7 @@ void AnyFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   // Calling finalize on a remote Global order write query is not allowed
   rc = tiledb_query_finalize(ctx, query);
-  if (vfs_test_setup_.is_rest()) {
+  if (vfs_test_setup_->is_rest()) {
     REQUIRE(rc == TILEDB_ERR);
   } else {
     REQUIRE(rc == TILEDB_OK);
@@ -180,7 +180,7 @@ void AnyFx::write_array(const std::string& array_name) {
 }
 
 void AnyFx::read_array(const std::string& array_name) {
-  tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
+  tiledb_ctx_t* ctx = vfs_test_setup_->ctx_c;
 
   // Open array
   tiledb_array_t* array;
@@ -254,9 +254,9 @@ void AnyFx::read_array(const std::string& array_name) {
 }
 
 void AnyFx::delete_array(const std::string& array_name) {
-  auto obj = tiledb::Object::object(vfs_test_setup_.ctx(), array_name);
+  auto obj = tiledb::Object::object(vfs_test_setup_->ctx(), array_name);
   if (obj.type() == tiledb::Object::Type::Array) {
-    tiledb_array_delete(vfs_test_setup_.ctx_c, array_name.c_str());
+    tiledb_array_delete(vfs_test_setup_->ctx_c, array_name.c_str());
   }
 }
 

@@ -41,6 +41,7 @@
 #include "tiledb/sm/misc/constants.h"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 struct Point {
   int coords[3];
@@ -53,7 +54,7 @@ struct CPPArrayFx {
 
   CPPArrayFx(shared_ptr<tiledb_config_t> config = nullptr)
       : vfs_test_setup_(config.get())
-      , ctx(vfs_test_setup_.ctx())
+      , ctx(vfs_test_setup_->ctx())
       , array_uri_{vfs_test_setup_.array_uri("cpp_unit_array")} {
     Domain domain(ctx);
     auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, d1_tile);
@@ -79,7 +80,7 @@ struct CPPArrayFx {
     Array::create(ctx, array_uri_, schema);
   }
 
-  test::VFSTestSetup vfs_test_setup_;
+  test::VFSTempDir vfs_test_setup_;
   Context ctx;
   std::string array_uri_;
 };
@@ -156,8 +157,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     tiledb::Config cfg;
     cfg["a"] = "1";
     cfg["b"] = "10";
-    auto vfs_test_setup1 = tiledb::test::VFSTestSetup(cfg.ptr().get());
-    auto ctx1 = vfs_test_setup1.ctx();
+    auto vfs_test_setup1 = tiledb::test::VFSTempDir(cfg.ptr().get());
+    auto ctx1 = vfs_test_setup1->ctx();
     auto array_uri1 = vfs_test_setup1.array_uri("cpp_unit_array1");
 
     // Create an array with ctx
@@ -209,7 +210,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     uint64_t* offsets_back;
     uint64_t offsets_back_nelem = 0;
 
-    if (vfs_test_setup_.is_rest()) {
+    if (vfs_test_setup_->is_rest()) {
       // this API is not supported on remote arrays
       REQUIRE_THROWS(
           Array::encryption_type(ctx, array_uri_) == TILEDB_NO_ENCRYPTION);
@@ -264,7 +265,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     query.finalize();
     array.close();
 
-    if (!vfs_test_setup_.is_rest()) {
+    if (!vfs_test_setup_->is_rest()) {
       tiledb::Array::consolidate(ctx, array_uri_);
 
       std::fill(std::begin(a1), std::end(a1), 0);
@@ -459,8 +460,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
 TEST_CASE(
     "C++ API: Zero length buffer",
     "[cppapi][zero-length][rest-fails][sc-40479]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array_1d")};
 
   tiledb_layout_t write_layout = TILEDB_GLOBAL_ORDER;
@@ -573,8 +574,8 @@ TEST_CASE(
 }
 
 TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array_1d")};
 
   ArraySchema schema(ctx, TILEDB_SPARSE);
@@ -614,8 +615,8 @@ TEST_CASE(
   for (auto tile_layout : tile_layouts) {
     for (auto cell_layout : cell_layouts) {
       for (int tile_extent : tile_extents) {
-        tiledb::test::VFSTestSetup vfs_test_setup{};
-        Context ctx{vfs_test_setup.ctx()};
+        tiledb::test::VFSTempDir vfs_test_setup{};
+        Context ctx{vfs_test_setup->ctx()};
         auto array_name{vfs_test_setup.array_uri("cpp_unit_array")};
 
         // Create
@@ -670,7 +671,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Consolidation of empty arrays",
     "[cppapi][consolidation][non-rest]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
 
@@ -917,8 +918,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Open array with anonymous attribute",
     "[cppapi][open-array-anon-attr][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cppapi_open_array_anon_attr")};
 
   // Create array
@@ -938,8 +939,8 @@ TEST_CASE(
 }
 
 TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cppapi_open_array_at")};
 
   // Create array
@@ -1144,8 +1145,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Writing single cell with global order",
     "[cppapi][sparse][global][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create
@@ -1191,8 +1192,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Writing single byte cell with global order",
     "[cppapi][std::byte][rest-fails][sc-40489]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   auto datatype = GENERATE(
@@ -1236,8 +1237,8 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Write cell with large cell val num", "[cppapi][sparse][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create array with a large fixed-length attribute
@@ -1293,8 +1294,8 @@ using namespace tiledb::test;
 
 TEST_CASE(
     "C++ API: Test heterogeneous dimensions", "[cppapi][sparse][heter][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create array
@@ -1356,8 +1357,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test string dimensions, 1d",
     "[cppapi][sparse][string-dims][1d][rest-fails][sc-40489]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create array
@@ -1486,8 +1487,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test string dimensions, 1d, col-major",
     "[cppapi][sparse][string-dims][1d][col-major][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("test_string_dims")};
 
   // Create array
@@ -1550,8 +1551,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Sparse global order, dimension only read",
     "[cppapi][sparse][global][read][dimension-only][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create
@@ -1596,8 +1597,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Unordered with dups, dimension only read",
     "[cppapi][sparse][unordered][dups][read][dimension-only][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create
@@ -1643,8 +1644,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Read subarray with multiple ranges",
     "[cppapi][dense][multi-range][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create
@@ -1691,8 +1692,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Array open VFS calls, dense",
     "[cppapi][dense][vfs-calls][non-rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  tiledb::test::VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
 
   // Create
@@ -1742,7 +1743,7 @@ TEST_CASE(
     "C++ API: Array open VFS calls, sparse",
     "[cppapi][sparse][vfs-calls][non-rest]") {
   const std::string array_name = "cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -1797,7 +1798,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Array write and read from MemFS", "[cppapi][memfs][non-rest]") {
   const std::string array_name = "mem://cpp_unit_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // Create
   Domain domain(ctx);
@@ -1944,7 +1945,7 @@ TEST_CASE(
       std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
   std::string old_array_name(arrays_dir + "/non_split_coords_v1_4_0");
   std::string new_array_name(arrays_dir + "/experimental_array_vUINT32_MAX");
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // Try writing to an older-versioned array
   REQUIRE_THROWS_WITH(
@@ -2059,7 +2060,7 @@ TEST_CASE(
 
 TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {
   const std::string array_name_1d = "cpp_unit_array_1d";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   bool dups = GENERATE(true, false);

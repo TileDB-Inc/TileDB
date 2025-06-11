@@ -75,6 +75,15 @@ namespace tiledb::test {
 // Command line arguments.
 std::string g_vfs;
 
+Context& vanilla_context_cpp(void) {
+  static Context vanilla_impl;
+  return vanilla_impl;
+}
+
+tiledb_ctx_t* vanilla_context_c(void) {
+  return vanilla_context_cpp().ptr().get();
+}
+
 void throw_if_setup_failed(capi_return_t rc) {
   if (rc != TILEDB_OK) {
     throw std::runtime_error("Test setup failed.");
@@ -178,6 +187,10 @@ void throw_if_error(tiledb_ctx_t* ctx, capi_return_t thing) {
   if (err.has_value()) {
     throw std::runtime_error(err.value());
   }
+}
+
+void throw_if_error(Status thing) {
+  throw_if_not_ok(thing);
 }
 
 int store_g_vfs(std::string&& vfs, std::vector<std::string> vfs_fs) {

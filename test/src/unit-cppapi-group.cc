@@ -57,7 +57,7 @@ struct GroupCPPFx {
   const std::string ARRAY = "array/";
 
   // TileDB context
-  tiledb::test::VFSTestSetup vfs_test_setup_;
+  tiledb::test::VFSTempDir vfs_test_setup_;
   tiledb_ctx_t* ctx_c_;
   tiledb::Context ctx_;
 
@@ -74,8 +74,8 @@ struct GroupCPPFx {
 };
 
 GroupCPPFx::GroupCPPFx()
-    : ctx_c_(vfs_test_setup_.ctx_c)
-    , ctx_(vfs_test_setup_.ctx()) {
+    : ctx_c_(vfs_test_setup_->ctx_c)
+    , ctx_(vfs_test_setup_->ctx()) {
 }
 
 void GroupCPPFx::set_group_timestamp(
@@ -195,7 +195,7 @@ TEST_CASE_METHOD(
 
   // For some reason we don't yet allow group metadata consolidation so
   // disabling for the time being from REST testing
-  if (!vfs_test_setup_.is_rest()) {
+  if (!vfs_test_setup_->is_rest()) {
     // Consolidate and vacuum metadata with default config
     group.consolidate_metadata(ctx_, group1_uri);
     group.vacuum_metadata(ctx_, group1_uri);
@@ -378,7 +378,7 @@ TEST_CASE_METHOD(
   // REST server if the form `tiledb://UUID` so they don't match the initial
   // `tiledb://{namespace}/fs://temp_dir/name` format, so let's only compare the
   // other fields of the objects.
-  if (vfs_test_setup_.is_rest()) {
+  if (vfs_test_setup_->is_rest()) {
     REQUIRE_THAT(
         read_group_details(group1),
         Catch::Matchers::UnorderedEquals(group1_exp_det));
@@ -422,7 +422,7 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
-  if (vfs_test_setup_.is_rest()) {
+  if (vfs_test_setup_->is_rest()) {
     REQUIRE_THAT(
         read_group_details(group1),
         Catch::Matchers::UnorderedEquals(group1_exp_det));
@@ -528,7 +528,7 @@ TEST_CASE_METHOD(
   // REST server if the form `tiledb://UUID` so they don't match the initial
   // `tiledb://{namespace}/fs://temp_dir/name` format, so let's only compare the
   // other fields of the objects.
-  if (vfs_test_setup_.is_rest()) {
+  if (vfs_test_setup_->is_rest()) {
     // Those checks fail for REST because of sc-57858: names are not empty as
     // they are supposed to but are equal to the REST Uri of the asset
     REQUIRE_THAT(
@@ -574,7 +574,7 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_READ);
 
-  if (vfs_test_setup_.is_rest()) {
+  if (vfs_test_setup_->is_rest()) {
     REQUIRE_THAT(
         read_group_details(group1),
         Catch::Matchers::UnorderedEquals(group1_exp_det));
@@ -611,12 +611,12 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_vfs_create_dir(
           ctx_.ptr().get(),
-          vfs_test_setup_.vfs_c,
+          vfs_test_setup_->vfs_c,
           (group1_uri + "/arrays").c_str()) == TILEDB_OK);
   REQUIRE(
       tiledb_vfs_create_dir(
           ctx_.ptr().get(),
-          vfs_test_setup_.vfs_c,
+          vfs_test_setup_->vfs_c,
           (group2_uri + "/arrays").c_str()) == TILEDB_OK);
 
   const std::string array1_relative_uri("arrays/array1");
@@ -747,12 +747,12 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_vfs_create_dir(
           ctx_.ptr().get(),
-          vfs_test_setup_.vfs_c,
+          vfs_test_setup_->vfs_c,
           (group1_uri + "/arrays").c_str()) == TILEDB_OK);
   REQUIRE(
       tiledb_vfs_create_dir(
           ctx_.ptr().get(),
-          vfs_test_setup_.vfs_c,
+          vfs_test_setup_->vfs_c,
           (group2_uri + "/arrays").c_str()) == TILEDB_OK);
 
   const std::string array1_relative_uri("arrays/array1");
@@ -903,7 +903,7 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_vfs_create_dir(
           ctx_.ptr().get(),
-          vfs_test_setup_.vfs_c,
+          vfs_test_setup_->vfs_c,
           (group1_uri + "/arrays").c_str()) == TILEDB_OK);
 
   const std::string array1_relative_uri("arrays/array1");
@@ -1017,7 +1017,7 @@ TEST_CASE(
     "C++ API: Group delete recursive", "[cppapi][group][delete][recursive]") {
   // Initialize context and VFS.
   // NOTE: This test makes sense to only run on the local filesystem.
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
 
   // Setup group structure
@@ -1070,8 +1070,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Group with Relative URI members, write/read, rest",
     "[cppapi][group][relative][rest]") {
-  VFSTestSetup vfs_test_setup;
-  tiledb::Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup;
+  tiledb::Context ctx{vfs_test_setup->ctx()};
   auto group_name{vfs_test_setup.array_uri("groups_relative")};
   auto subgroup_name = group_name + "/subgroup";
 
@@ -1082,7 +1082,7 @@ TEST_CASE(
   // Open group in write mode
   {
     auto group = tiledb::Group(ctx, group_name, TILEDB_WRITE);
-    if (vfs_test_setup.is_rest()) {
+    if (vfs_test_setup->is_rest()) {
       CHECK_THROWS_WITH(
           group.add_member("subgroup", true, "subgroup"),
           Catch::Matchers::EndsWith("Cannot add member; Remote groups do not "
@@ -1094,7 +1094,7 @@ TEST_CASE(
     group.close();
   }
 
-  if (!vfs_test_setup.is_rest()) {
+  if (!vfs_test_setup->is_rest()) {
     auto group = tiledb::Group(ctx, group_name, TILEDB_READ);
 
     auto subgroup_member = group.member("subgroup");

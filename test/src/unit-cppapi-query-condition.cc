@@ -34,6 +34,7 @@
 #include <test/support/tdb_catch.h>
 
 #include "test/support/src/array_helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
@@ -44,6 +45,7 @@
 #include <numeric>
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 TEST_CASE("Query condition null test", "[query-condition]") {
   const auto array_type = GENERATE(TILEDB_SPARSE, TILEDB_DENSE);
@@ -59,7 +61,7 @@ TEST_CASE("Query condition null test", "[query-condition]") {
     return;
   }
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   std::string uri("query_condition_null_test");
 
   DYNAMIC_SECTION(
@@ -339,7 +341,7 @@ TEST_CASE(
       tiledb::sm::Datatype::STRING_ASCII,
       tiledb::sm::Datatype::STRING_UTF8);
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   std::string uri("query_condition_string_comparison_null_byte");
 
   // prepare data

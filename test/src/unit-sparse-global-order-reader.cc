@@ -438,7 +438,7 @@ concept InstanceType = requires(const T& instance) {
 };
 
 struct CSparseGlobalOrderFx {
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
 
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_global_order";
@@ -447,7 +447,7 @@ struct CSparseGlobalOrderFx {
   SparseGlobalOrderReaderMemoryBudget memory_;
 
   tiledb_ctx_t* context() const {
-    return vfs_test_setup_.ctx_c;
+    return vfs_test_setup_->ctx_c;
   }
 
   template <typename Asserter = tiledb::test::AsserterCatch>
@@ -1929,7 +1929,7 @@ TEST_CASE_METHOD(
       // check that we actually have out-of-order MBRs
       // (disable on REST where we have no metadata)
       // (disable with rapidcheck where this may not be guaranteed)
-      if (!vfs_test_setup_.is_rest() &&
+      if (!vfs_test_setup_->is_rest() &&
           std::is_same<Asserter, tiledb::test::AsserterCatch>::value) {
         bool any_out_of_order = false;
         for (size_t f = 0; !any_out_of_order && f < fragment_metadata.size();
@@ -2735,7 +2735,7 @@ TEST_CASE_METHOD(
     "[sparse-global-order][user-buffer][too-small][rest]") {
   std::string array_name =
       vfs_test_setup_.array_uri("test_sparse_global_order");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -2808,7 +2808,7 @@ TEST_CASE_METHOD(
   config["sm.mem.total_budget"] = "20000";
   std::string array_name =
       vfs_test_setup_.array_uri("test_sparse_global_order");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -3569,7 +3569,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
       if (err.has_value()) {
         if (err->find("Cannot load enough tiles to emit results from all "
                       "fragments in global order") != std::string::npos) {
-          if (!vfs_test_setup_.is_rest()) {
+          if (!vfs_test_setup_->is_rest()) {
             // skip for REST since we will not have access to tile sizes
             const auto can_complete =
                 can_complete_in_memory_budget<Asserter, Instance>(
@@ -3582,7 +3582,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
           return;
         }
         if (err->find("Cannot set array memory budget") != std::string::npos) {
-          if (!vfs_test_setup_.is_rest()) {
+          if (!vfs_test_setup_->is_rest()) {
             // skip for REST since we will not have accurate array memory
             const uint64_t array_usage =
                 array->array()->memory_tracker()->get_memory_usage();
@@ -3714,7 +3714,7 @@ void CSparseGlobalOrderFx::run_execute(Instance& instance) {
 
   // lastly, check the correctness of our memory budgeting function
   // (skip for REST since we will not have access to tile sizes)
-  if (!vfs_test_setup_.is_rest()) {
+  if (!vfs_test_setup_->is_rest()) {
     const auto can_complete = can_complete_in_memory_budget<Asserter, Instance>(
         context(), array_name_.c_str(), instance);
     if (can_complete.has_value()) {

@@ -61,7 +61,7 @@ uint64_t UTF8_OFFSET_4_FOR_EMPTY =
     sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
 
 struct StringEmptyFx {
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
   tiledb_ctx_t* ctx;
   StringEmptyFx();
   void create_array(const std::string& array_name);
@@ -70,7 +70,7 @@ struct StringEmptyFx {
 };
 
 StringEmptyFx::StringEmptyFx()
-    : ctx(vfs_test_setup_.ctx_c) {
+    : ctx(vfs_test_setup_->ctx_c) {
 }
 
 // Create a simple dense 1D array with three string attributes
@@ -447,7 +447,7 @@ TEST_CASE_METHOD(
 }
 
 struct StringEmptyFx2 {
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
   Context ctx;
   StringEmptyFx2();
   void create_array(const std::string& array_name);
@@ -464,7 +464,7 @@ struct StringEmptyFx2 {
 };
 
 StringEmptyFx2::StringEmptyFx2()
-    : ctx(vfs_test_setup_.ctx()){};
+    : ctx(vfs_test_setup_->ctx()){};
 
 void StringEmptyFx2::create_array(const std::string& array_name) {
   Domain domain(ctx);
@@ -526,7 +526,7 @@ TEST_CASE_METHOD(
 }
 
 struct StringEmptyFx3 {
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
   Context ctx;
   StringEmptyFx3();
   std::vector<uint64_t> offsets = {
@@ -535,7 +535,7 @@ struct StringEmptyFx3 {
 };
 
 StringEmptyFx3::StringEmptyFx3()
-    : ctx(vfs_test_setup_.ctx()){};
+    : ctx(vfs_test_setup_->ctx()){};
 
 TEST_CASE_METHOD(
     StringEmptyFx3,

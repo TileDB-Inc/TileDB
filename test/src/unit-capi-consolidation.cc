@@ -48,7 +48,7 @@ using namespace tiledb::test;
 
 /** Tests for C API consolidation. */
 struct ConsolidationFx {
-  VFSTestSetup vfs_test_setup_;
+  VFSTempDir vfs_test_setup_;
 
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -174,8 +174,8 @@ struct ConsolidationFx {
 };
 
 ConsolidationFx::ConsolidationFx()
-    : ctx_(vfs_test_setup_.ctx_c)
-    , vfs_(vfs_test_setup_.vfs_c)
+    : ctx_(vfs_test_setup_->ctx_c)
+    , vfs_(vfs_test_setup_->vfs_c)
     , dense_vector_uri_(
           vfs_test_setup_.array_uri("test_consolidate_dense_vector"))
     , dense_vector_frag_dir_(vfs_test_setup_.array_uri(
@@ -259,8 +259,8 @@ void ConsolidationFx::create_dense_vector() {
     REQUIRE(err == nullptr);
     // Create new context
     vfs_test_setup_.update_config(cfg);
-    ctx_ = vfs_test_setup_.ctx_c;
-    vfs_ = vfs_test_setup_.vfs_c;
+    ctx_ = vfs_test_setup_->ctx_c;
+    vfs_ = vfs_test_setup_->vfs_c;
     tiledb_config_free(&cfg);
   }
   rc = tiledb_array_create(ctx_, dense_vector_uri_.c_str(), array_schema);
@@ -360,8 +360,8 @@ void ConsolidationFx::create_dense_array() {
     REQUIRE(err == nullptr);
     // Create new context
     vfs_test_setup_.update_config(cfg);
-    ctx_ = vfs_test_setup_.ctx_c;
-    vfs_ = vfs_test_setup_.vfs_c;
+    ctx_ = vfs_test_setup_->ctx_c;
+    vfs_ = vfs_test_setup_->vfs_c;
     tiledb_config_free(&cfg);
   }
   rc = tiledb_array_create(ctx_, dense_array_uri_.c_str(), array_schema);
@@ -462,8 +462,8 @@ void ConsolidationFx::create_sparse_array() {
     REQUIRE(err == nullptr);
     // Create new context
     vfs_test_setup_.update_config(cfg);
-    ctx_ = vfs_test_setup_.ctx_c;
-    vfs_ = vfs_test_setup_.vfs_c;
+    ctx_ = vfs_test_setup_->ctx_c;
+    vfs_ = vfs_test_setup_->vfs_c;
     tiledb_config_free(&cfg);
   }
   rc = tiledb_array_create(ctx_, sparse_array_uri_.c_str(), array_schema);
@@ -566,8 +566,8 @@ void ConsolidationFx::create_sparse_heterogeneous_array() {
     REQUIRE(err == nullptr);
     // Create new context
     vfs_test_setup_.update_config(cfg);
-    ctx_ = vfs_test_setup_.ctx_c;
-    vfs_ = vfs_test_setup_.vfs_c;
+    ctx_ = vfs_test_setup_->ctx_c;
+    vfs_ = vfs_test_setup_->vfs_c;
     tiledb_config_free(&cfg);
   }
   rc = tiledb_array_create(
@@ -669,8 +669,8 @@ void ConsolidationFx::create_sparse_string_array() {
     REQUIRE(err == nullptr);
     // Do not remove the array when recreating context to set the new config
     vfs_test_setup_.update_config(cfg);
-    ctx_ = vfs_test_setup_.ctx_c;
-    vfs_ = vfs_test_setup_.vfs_c;
+    ctx_ = vfs_test_setup_->ctx_c;
+    vfs_ = vfs_test_setup_->vfs_c;
     tiledb_config_free(&cfg);
   }
   rc =
@@ -4660,7 +4660,7 @@ void ConsolidationFx::vacuum_sparse(
 }
 
 void ConsolidationFx::remove_array(const std::string& array_name) {
-  if (!vfs_test_setup_.is_rest()) {
+  if (!vfs_test_setup_->is_rest()) {
     if (!is_array(array_name))
       return;
 
@@ -6374,7 +6374,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == 2);
 
-  if (!vfs_test_setup_.is_rest()) {
+  if (!vfs_test_setup_->is_rest()) {
     // This will vacuum fragments - no effect on consolidated fragment metadata
     rc = tiledb_array_vacuum(ctx_, dense_vector_uri_.c_str(), NULL);
     CHECK(rc == TILEDB_OK);
@@ -6608,8 +6608,8 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
 
   vfs_test_setup_.update_config(config);
-  ctx_ = vfs_test_setup_.ctx_c;
-  vfs_ = vfs_test_setup_.vfs_c;
+  ctx_ = vfs_test_setup_->ctx_c;
+  vfs_ = vfs_test_setup_->vfs_c;
 
   // Consolidate - this will consolidate only the fragment metadata
   rc =
@@ -6647,8 +6647,8 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
 
   vfs_test_setup_.update_config(config);
-  ctx_ = vfs_test_setup_.ctx_c;
-  vfs_ = vfs_test_setup_.vfs_c;
+  ctx_ = vfs_test_setup_->ctx_c;
+  vfs_ = vfs_test_setup_->vfs_c;
 
   rc = tiledb_array_vacuum(ctx_, sparse_string_array_uri_.c_str(), nullptr);
   CHECK(rc == TILEDB_OK);
@@ -6839,7 +6839,7 @@ TEST_CASE_METHOD(
 
     // After fragment consolidation and vacuuming, array is still valid.
     // Fragment consolidation not yet supported on remote arrays
-    if (!vfs_test_setup_.is_rest()) {
+    if (!vfs_test_setup_->is_rest()) {
       consolidate_dense();
       vacuum_dense();
       read_dense_full_subarray();
@@ -6881,7 +6881,7 @@ TEST_CASE_METHOD(
 
     // After fragment consolidation and vacuuming, array is still valid.
     // Fragment consolidation not yet supported on remote arrays
-    if (!vfs_test_setup_.is_rest()) {
+    if (!vfs_test_setup_->is_rest()) {
       consolidate_dense();
       vacuum_dense();
       read_dense_subarray_full();
@@ -6899,7 +6899,7 @@ TEST_CASE_METHOD(
     }
   }
 
-  if (!vfs_test_setup_.is_rest()) {
+  if (!vfs_test_setup_->is_rest()) {
     SECTION("- write (encrypted) subarray, full") {
       remove_dense_array();
       encryption_type_ = TILEDB_AES_256_GCM;
@@ -6980,7 +6980,7 @@ TEST_CASE_METHOD(
 
     // After fragment consolidation and vacuuming, array is still valid.
     // Fragment consolidation not yet supported on remote arrays
-    if (!vfs_test_setup_.is_rest()) {
+    if (!vfs_test_setup_->is_rest()) {
       consolidate_sparse();
       vacuum_sparse();
       read_sparse_full_unordered();
@@ -7023,7 +7023,7 @@ TEST_CASE_METHOD(
 
     // After fragment consolidation and vacuuming, array is still valid.
     // Fragment consolidation not yet supported on remote arrays
-    if (!vfs_test_setup_.is_rest()) {
+    if (!vfs_test_setup_->is_rest()) {
       consolidate_sparse();
       vacuum_sparse();
       read_sparse_unordered_full();
@@ -7041,7 +7041,7 @@ TEST_CASE_METHOD(
     }
   }
 
-  if (!vfs_test_setup_.is_rest()) {
+  if (!vfs_test_setup_->is_rest()) {
     SECTION("- write (encrypted) unordered, full") {
       remove_sparse_array();
       encryption_type_ = TILEDB_AES_256_GCM;
@@ -7101,7 +7101,7 @@ TEST_CASE_METHOD(
     return;
   }
 
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
 
@@ -7353,7 +7353,7 @@ TEST_CASE_METHOD(
   // vfs_copy_dir is only supported on Posix and S3.
   // Experimental builds throw when attempting to write to an array with
   // previous format version.
-  if (!vfs_test_setup_.is_local() || is_experimental_build) {
+  if (!vfs_test_setup_->is_local() || is_experimental_build) {
     return;
   }
 
@@ -7538,7 +7538,7 @@ TEST_CASE_METHOD(
   if constexpr (tiledb::platform::is_os_windows) {
     return;
   }
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
   char* manylinux_var = getenv("TILEDB_MANYLINUX");
@@ -7642,7 +7642,7 @@ TEST_CASE_METHOD(
   if constexpr (tiledb::platform::is_os_windows) {
     return;
   }
-  if (!vfs_test_setup_.is_local()) {
+  if (!vfs_test_setup_->is_local()) {
     return;
   }
   char* manylinux_var = getenv("TILEDB_MANYLINUX");

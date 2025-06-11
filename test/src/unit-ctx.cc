@@ -40,6 +40,8 @@
 #include <cstring>
 #include <iostream>
 
+using namespace tiledb::test;
+
 TEST_CASE("C API: Test context tags", "[capi][ctx-tags]") {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);

@@ -430,15 +430,15 @@ TEST_CASE(
   auto reader_type = GENERATE("legacy", "refactored");
   tiledb::Config cfg;
   cfg["sm.query.dense.reader"] = reader_type;
-  tiledb::test::VFSTestSetup vfs_test_setup(cfg.ptr().get());
+  tiledb::test::VFSTempDir vfs_test_setup(cfg.ptr().get());
 
   // SC-45976 : Different behaviour between local and remote arrays when
   // submitting query with ranges oob of domain
-  if (!vfs_test_setup.is_rest()) {
+  if (!vfs_test_setup->is_rest()) {
     return;
   }
 
-  tiledb::Context ctx(vfs_test_setup.ctx());
+  tiledb::Context ctx(vfs_test_setup->ctx());
   std::string array_name = vfs_test_setup.array_uri("cpp_unit_array");
 
   // Create
@@ -513,7 +513,7 @@ TEST_CASE(
     "C++ API: Test subarray (incomplete) - Subarray-query",
     "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -722,7 +722,7 @@ TEST_CASE(
 #endif
   const std::string array_name = "cpp_unit_array";
   bool coalesce = GENERATE(true, false);
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1221,7 +1221,7 @@ TEST_CASE(
       std::make_pair(TILEDB_ROW_MAJOR, TILEDB_GLOBAL_ORDER));
 
   const std::string array_name = "cpp_unit_array";
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1269,7 +1269,7 @@ TEST_CASE(
   serialize = GENERATE(true, false);
 #endif
   const std::string array_name = "cpp_unit_array";
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
@@ -1313,7 +1313,7 @@ TEST_CASE(
     "C++ API: Subarray merge unsorted overlapping ranges on sparse reads",
     "[cppapi][subarray][merge_overlapping_ranges]") {
   const std::string array_name = "cpp_unit_array";
-  tiledb::Context ctx;
+  tiledb::Context& ctx = vanilla_context_cpp();
   tiledb::VFS vfs(ctx);
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);

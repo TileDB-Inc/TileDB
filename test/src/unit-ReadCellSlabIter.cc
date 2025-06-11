@@ -58,7 +58,7 @@ using namespace tiledb::test;
 struct ReadCellSlabIterFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
   std::string temp_dir_;
   std::string array_name_;
   const char* ARRAY_NAME = "read_cell_slab_iter";

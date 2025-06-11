@@ -33,11 +33,13 @@
 #include <random>
 #include <vector>
 
+#include "test/support/src/helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 std::string xor_array_name = "cpp_unit_array";
 int xor_dim_hi = 10;
@@ -136,7 +138,7 @@ TEMPLATE_TEST_CASE(
     int32_t,
     int64_t) {
   // Setup.
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(xor_array_name))

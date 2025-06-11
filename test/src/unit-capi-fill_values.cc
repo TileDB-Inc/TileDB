@@ -32,9 +32,12 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
+
+using namespace tiledb::test;
 
 void check_dump(
     tiledb_ctx_t* ctx, tiledb_attribute_t* a, const std::string& gold_out) {
@@ -56,13 +59,11 @@ TEST_CASE(
   int32_t value = 5;
   uint64_t value_size = sizeof(int32_t);
 
-  tiledb_ctx_t* ctx;
-  int32_t rc = tiledb_ctx_alloc(nullptr, &ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   // Fixed-sized
   tiledb_attribute_t* a;
-  rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
+  auto rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
   CHECK(rc == TILEDB_OK);
 
   // Null value
@@ -187,7 +188,6 @@ TEST_CASE(
   check_dump(ctx, a, dump);
 
   // Clean up
-  tiledb_ctx_free(&ctx);
   tiledb_attribute_free(&a);
 }
 
@@ -197,13 +197,11 @@ TEST_CASE(
   int32_t value = 5;
   uint64_t value_size = sizeof(int32_t);
 
-  tiledb_ctx_t* ctx;
-  int32_t rc = tiledb_ctx_alloc(nullptr, &ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   // Fixed-sized, nullable
   tiledb_attribute_t* a;
-  rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
+  auto rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_nullable(ctx, a, 1);
   CHECK(rc == TILEDB_OK);
@@ -285,6 +283,5 @@ TEST_CASE(
   check_dump(ctx, a, dump);
 
   // Clean up
-  tiledb_ctx_free(&ctx);
   tiledb_attribute_free(&a);
 }

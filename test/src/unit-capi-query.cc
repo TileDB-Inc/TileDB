@@ -58,7 +58,7 @@ struct QueryFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
 
   // Functions
   QueryFx();
@@ -80,7 +80,7 @@ QueryFx::QueryFx()
 
 QueryFx::~QueryFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }
@@ -747,16 +747,13 @@ TEST_CASE_METHOD(
   tiledb_array_type_t array_type =
       layout == TILEDB_UNORDERED ? TILEDB_SPARSE : TILEDB_DENSE;
 
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* const ctx = vanilla_context_c();
   int rc;
   {
     tiledb_array_schema_t* schema;
     tiledb_domain_t* domain;
     tiledb_dimension_t* dim;
     tiledb_attribute_t* attr;
-
-    rc = tiledb_ctx_alloc(nullptr, &ctx);
-    REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_array_schema_alloc(ctx, array_type, &schema);
     REQUIRE(rc == TILEDB_OK);
@@ -826,5 +823,4 @@ TEST_CASE_METHOD(
     tiledb_query_free(&query);
     tiledb_array_free(&array);
   }
-  tiledb_ctx_free(&ctx);
 }

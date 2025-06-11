@@ -145,7 +145,7 @@ void write_2d_array(
 }
 
 TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 
@@ -250,8 +250,8 @@ TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
 TEST_CASE(
     "C++ API: Test Hilbert, test 2D, int32, write unordered, read global",
     "[cppapi][hilbert][2d][int32][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -368,7 +368,7 @@ TEST_CASE(
     Config cfg;
     cfg["sm.merge_overlapping_ranges_experimental"] = "false";
     vfs_test_setup.update_config(cfg.ptr().get());
-    ctx = vfs_test_setup.ctx();
+    ctx = vfs_test_setup->ctx();
 
     // regression test for sc-11244
     Array array_r(ctx, array_name, TILEDB_READ);
@@ -409,8 +409,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, int32, 2D, partitioner",
     "[cppapi][hilbert][2d][int32][partitioner][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -521,8 +521,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, test writing in global order",
     "[cppapi][hilbert][write][global-order][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -552,8 +552,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, slicing",
     "[cppapi][hilbert][read][slicing][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -616,8 +616,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, multiple fragments, read in global order",
     "[cppapi][hilbert][read][multiple-fragments][global-order][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -669,8 +669,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, unsplittable",
     "[cppapi][hilbert][read][2d][int32][unsplittable][rest-fails][sc-43108]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -774,8 +774,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2D, int32, negative, read/write in global order",
     "[cppapi][hilbert][int32][negative][write][read][global-order][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -827,8 +827,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, int32, negative, 2D, partitioner",
     "[cppapi][hilbert][2d][int32][negative][partitioner][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -940,8 +940,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, negative, slicing",
     "[cppapi][hilbert][2d][int32][negative][read][slicing][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1008,8 +1008,8 @@ TEST_CASE(
     "global order",
     "[cppapi][hilbert][2d][int32][negative][read][multiple-fragments][global-"
     "order][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1119,8 +1119,8 @@ TEST_CASE(
     "C++ API: Test Hilbert, 2d, int32, negative, unsplittable",
     "[cppapi][hilbert][read][2d][int32][negative][unsplittable][rest-fails][sc-"
     "43108]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1151,8 +1151,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2D, float32, read/write in global order",
     "[cppapi][hilbert][float32][write][read][global-order][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1209,8 +1209,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, float32, 2D, partitioner",
     "[cppapi][hilbert][2d][float32][partitioner]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1337,8 +1337,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, float32, slicing",
     "[cppapi][hilbert][2d][float32][read][slicing][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1405,8 +1405,8 @@ TEST_CASE(
     "global order",
     "[cppapi][hilbert][2d][float32][read][multiple-fragments][global-"
     "order][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1536,8 +1536,8 @@ TEST_CASE(
     "C++ API: Test Hilbert, 2d, float32, unsplittable",
     "[cppapi][hilbert][read][2d][float32][unsplittable][rest-fails][sc-"
     "43108]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1568,8 +1568,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2D, string, read/write in global order",
     "[cppapi][hilbert][string][write][read][global-order][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1648,8 +1648,8 @@ TEST_CASE(
     "global order",
     "[cppapi][hilbert][2d][string][read][multiple-fragments][global-"
     "order][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1734,7 +1734,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, string, consolidation",
     "[cppapi][hilbert][2d][string][consolidation][non-rest]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 
@@ -1840,8 +1840,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, string, slicing",
     "[cppapi][hilbert][2d][string][read][slicing][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -1955,8 +1955,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, string, 2D, partitioner",
     "[cppapi][hilbert][2d][string][partitioner][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
@@ -2190,8 +2190,8 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, 2d, string, unsplittable",
     "[cppapi][hilbert][read][2d][string][unsplittable][rest]") {
-  VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
+  VFSTempDir vfs_test_setup{};
+  Context ctx{vfs_test_setup->ctx()};
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array

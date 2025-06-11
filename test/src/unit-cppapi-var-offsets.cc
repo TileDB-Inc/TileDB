@@ -39,7 +39,7 @@
 using namespace tiledb;
 
 struct VariableOffsetsFx {
-  test::VFSTestSetup vfs_test_setup_;
+  test::VFSTempDir vfs_test_setup_;
 
   void create_sparse_array(Context ctx, const std::string& array_name) {
     Domain dom(ctx);
@@ -464,7 +464,7 @@ TEST_CASE_METHOD(
     "C++ API: Test element offsets : sparse array",
     "[var-offsets][element-offset][sparse][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_element_offset");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
   create_sparse_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
@@ -513,7 +513,7 @@ TEST_CASE_METHOD(
     // Change config of offsets format from bytes to elements
     config["sm.var_offsets.mode"] = "elements";
     vfs_test_setup_.update_config(config.ptr().get());
-    ctx = vfs_test_setup_.ctx();
+    ctx = vfs_test_setup_->ctx();
 
     std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
 
@@ -557,7 +557,7 @@ TEST_CASE_METHOD(
     "C++ API: Test element offsets : dense array",
     "[var-offsets][element-offset][dense][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_element_offset");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
   create_dense_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
@@ -584,7 +584,7 @@ TEST_CASE_METHOD(
     // Change config of offsets format from bytes to elements
     config["sm.var_offsets.mode"] = "elements";
     vfs_test_setup_.update_config(config.ptr().get());
-    ctx = vfs_test_setup_.ctx();
+    ctx = vfs_test_setup_->ctx();
 
     std::vector<uint64_t> element_offsets = {0, 1, 3, 5};
 
@@ -606,7 +606,7 @@ TEST_CASE_METHOD(
     "C++ API: Test offsets extra element: sparse array",
     "[var-offsets][extra-offset][sparse][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_extra_offset");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
   create_sparse_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
@@ -641,7 +641,7 @@ TEST_CASE_METHOD(
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
 
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
@@ -683,7 +683,7 @@ TEST_CASE_METHOD(
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
 
         // Write data with extra element indicating the total number of elements
         element_offsets.push_back(data.size());
@@ -725,7 +725,7 @@ TEST_CASE_METHOD(
       SECTION("Query unwritten coordinates") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
 
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
@@ -766,7 +766,7 @@ TEST_CASE_METHOD(
 
       SECTION("User offsets buffer too small") {
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
 
         Array array_w(ctx, array_name, TILEDB_WRITE);
         std::vector<int64_t> d1 = {1, 2, 3, 4};
@@ -893,7 +893,7 @@ TEST_CASE_METHOD(
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
 
@@ -974,7 +974,7 @@ TEST_CASE_METHOD(
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
 
         // Write data with extra element indicating total number of elements
         element_offsets.push_back(data.size());
@@ -997,7 +997,7 @@ TEST_CASE_METHOD(
                 TILEDB_ROW_MAJOR);
           }
           // SC-45586
-          if (!vfs_test_setup_.is_rest()) {
+          if (!vfs_test_setup_->is_rest()) {
             SECTION("Global order read") {
               partial_read_and_check_sparse_array(
                   ctx,
@@ -1034,7 +1034,7 @@ TEST_CASE_METHOD(
                 TILEDB_ROW_MAJOR);
           }
           // SC-45586
-          if (!vfs_test_setup_.is_rest()) {
+          if (!vfs_test_setup_->is_rest()) {
             SECTION("Global order read") {
               partial_read_and_check_sparse_array(
                   ctx,
@@ -1067,7 +1067,7 @@ TEST_CASE_METHOD(
 
         // Submit read query
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
         Array array(ctx, array_name, TILEDB_READ);
         Query query(ctx, array, TILEDB_READ);
 
@@ -1147,7 +1147,7 @@ TEST_CASE_METHOD(
     "C++ API: Test offsets extra element: dense array",
     "[var-offsets][extra-offset][dense][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_extra_offset");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
   create_dense_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
@@ -1168,12 +1168,12 @@ TEST_CASE_METHOD(
     SECTION("Extra element") {
       config["sm.var_offsets.extra_element"] = "true";
       vfs_test_setup_.update_config(config.ptr().get());
-      ctx = vfs_test_setup_.ctx();
+      ctx = vfs_test_setup_->ctx();
 
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
 
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
@@ -1193,7 +1193,7 @@ TEST_CASE_METHOD(
       SECTION("Element offsets") {
         config["sm.var_offsets.mode"] = "elements";
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
         // Write data with extra element indicating the total number of
         // elements
         element_offsets.push_back(data.size());
@@ -1211,12 +1211,12 @@ TEST_CASE_METHOD(
       }
 
       // SC-45586
-      if (!vfs_test_setup_.is_rest()) {
+      if (!vfs_test_setup_->is_rest()) {
         SECTION("User offsets buffer too small") {
           // Use element offsets to cover this code path as well
           config["sm.var_offsets.mode"] = "elements";
           vfs_test_setup_.update_config(config.ptr().get());
-          ctx = vfs_test_setup_.ctx();
+          ctx = vfs_test_setup_->ctx();
 
           Array array_w(ctx, array_name, TILEDB_WRITE);
           Query query_w(ctx, array_w, TILEDB_WRITE);
@@ -1315,7 +1315,7 @@ TEST_CASE_METHOD(
       SECTION("Byte offsets (default config)") {
         CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
 
         // Write data with extra element indicating total number of bytes
         data_offsets.push_back(sizeof(data[0]) * data.size());
@@ -1347,11 +1347,11 @@ TEST_CASE_METHOD(
         }
       }
       // SC-45586
-      if (!vfs_test_setup_.is_rest()) {
+      if (!vfs_test_setup_->is_rest()) {
         SECTION("Element offsets") {
           config["sm.var_offsets.mode"] = "elements";
           vfs_test_setup_.update_config(config.ptr().get());
-          ctx = vfs_test_setup_.ctx();
+          ctx = vfs_test_setup_->ctx();
 
           // Write data with extra element indicating total number of elements
           element_offsets.push_back(data.size());
@@ -1387,7 +1387,7 @@ TEST_CASE_METHOD(
 
       SECTION("User offsets buffer too small") {
         vfs_test_setup_.update_config(config.ptr().get());
-        ctx = vfs_test_setup_.ctx();
+        ctx = vfs_test_setup_->ctx();
         // Write data with extra element
         data_offsets.push_back(sizeof(data[0]) * data.size());
         write_dense_array(
@@ -1475,7 +1475,7 @@ TEST_CASE_METHOD(
     "C++ API: Test 32-bit offsets: sparse array",
     "[var-offsets][32bit-offset][sparse][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_32bit_offset");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
   create_sparse_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
@@ -1486,7 +1486,7 @@ TEST_CASE_METHOD(
   // Change config of offsets bitsize from 64 to 32
   config["sm.var_offsets.bitsize"] = 32;
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx = vfs_test_setup_.ctx();
+  ctx = vfs_test_setup_->ctx();
 
   SECTION("Byte offsets (default case)") {
     CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
@@ -1529,7 +1529,7 @@ TEST_CASE_METHOD(
     // Change config of offsets format from bytes to elements
     config["sm.var_offsets.mode"] = "elements";
     vfs_test_setup_.update_config(config.ptr().get());
-    ctx = vfs_test_setup_.ctx();
+    ctx = vfs_test_setup_->ctx();
 
     // Create 32 bit element offsets buffer to use
     std::vector<uint32_t> data_element_offsets = {0, 1, 3, 5};
@@ -1571,7 +1571,7 @@ TEST_CASE_METHOD(
   SECTION("Extra element") {
     config["sm.var_offsets.extra_element"] = "true";
     vfs_test_setup_.update_config(config.ptr().get());
-    ctx = vfs_test_setup_.ctx();
+    ctx = vfs_test_setup_->ctx();
 
     // Check the extra element is included in the offsets
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
@@ -1617,7 +1617,7 @@ TEST_CASE_METHOD(
     "C++ API: Test 32-bit offsets: dense array",
     "[var-offsets][32bit-offset][dense][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_32bit_offset");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
   create_dense_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
@@ -1628,7 +1628,7 @@ TEST_CASE_METHOD(
   // Change config of offsets bitsize from 64 to 32
   config["sm.var_offsets.bitsize"] = 32;
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx = vfs_test_setup_.ctx();
+  ctx = vfs_test_setup_->ctx();
 
   SECTION("Byte offsets (default case)") {
     CHECK((std::string)config["sm.var_offsets.mode"] == "bytes");
@@ -1649,7 +1649,7 @@ TEST_CASE_METHOD(
     // Change config of offsets format from bytes to elements
     config["sm.var_offsets.mode"] = "elements";
     vfs_test_setup_.update_config(config.ptr().get());
-    ctx = vfs_test_setup_.ctx();
+    ctx = vfs_test_setup_->ctx();
 
     // Create 32 bit element offsets buffer to use
     std::vector<uint32_t> data_element_offsets = {0, 1, 3, 5};
@@ -1669,7 +1669,7 @@ TEST_CASE_METHOD(
   SECTION("Extra element") {
     config["sm.var_offsets.extra_element"] = "true";
     vfs_test_setup_.update_config(config.ptr().get());
-    ctx = vfs_test_setup_.ctx();
+    ctx = vfs_test_setup_->ctx();
 
     // Check the extra element is included in the offsets
     uint32_t data_size = static_cast<uint32_t>(sizeof(data[0]) * data.size());
@@ -1694,7 +1694,7 @@ TEST_CASE_METHOD(
     "[var-offsets-dim][32bit-offset][sparse][rest]") {
   std::string array_name =
       vfs_test_setup_.array_uri("test_32bit_offset_string_dim");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
 
   /*
     Write an array with string dimension and make sure we get back
@@ -1736,7 +1736,7 @@ TEST_CASE_METHOD(
     // Add extra element
     config["sm.var_offsets.extra_element"] = "true";
     vfs_test_setup_.update_config(config.ptr().get());
-    ctx = vfs_test_setup_.ctx();
+    ctx = vfs_test_setup_->ctx();
 
     std::vector<uint32_t> offsets_back(5);
     std::string data_back;
@@ -1770,7 +1770,7 @@ TEST_CASE_METHOD(
     // Add extra element
     config["sm.var_offsets.extra_element"] = "true";
     vfs_test_setup_.update_config(config.ptr().get());
-    ctx = vfs_test_setup_.ctx();
+    ctx = vfs_test_setup_->ctx();
 
     std::vector<uint32_t> offsets_back(14);
 
@@ -1815,7 +1815,7 @@ TEST_CASE_METHOD(
     "[var-offsets-dim][extra-offset][sparse][rest]") {
   std::string array_name =
       vfs_test_setup_.array_uri("test_32bit_offset_string_dim");
-  auto ctx = vfs_test_setup_.ctx();
+  auto ctx = vfs_test_setup_->ctx();
 
   /*
    * Use the `sm.var_offsets.extra_element` option on the write

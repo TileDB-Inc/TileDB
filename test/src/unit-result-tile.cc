@@ -140,8 +140,7 @@ TEST_CASE_METHOD(
     "pos_with_given_result_sum test",
     "[resulttilewithbitmap][pos_with_given_result_sum][pos_with_given_result_"
     "sum]") {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
+  tiledb_ctx_t* const ctx = vanilla_context_c();
 
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &array_schema);

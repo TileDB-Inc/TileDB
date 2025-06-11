@@ -49,7 +49,7 @@ struct RESTEnumerationFx {
 
   void create_array(const std::string& array_name);
 
-  tiledb::test::VFSTestSetup vfs_test_setup_;
+  tiledb::test::VFSTempDir vfs_test_setup_;
   shared_ptr<sm::MemoryTracker> memory_tracker_;
   std::string uri_;
   Context ctx_;
@@ -155,16 +155,16 @@ TEST_CASE_METHOD(
     "Load Enumerations - All Schemas",
     "[enumeration][array][load-all-enumerations][all-schemas][rest]") {
   uri_ = vfs_test_setup_.array_uri("load_enmrs_all_schemas");
-  auto config = vfs_test_setup_.ctx().config();
+  auto config = vfs_test_setup_->ctx().config();
   bool load_enmrs = GENERATE(true, false);
   config["rest.load_enumerations_on_array_open"] =
       load_enmrs ? "true" : "false";
   vfs_test_setup_.update_config(config.ptr().get());
-  ctx_ = vfs_test_setup_.ctx();
+  ctx_ = vfs_test_setup_->ctx();
 
   create_array(uri_);
   Array opened_array(ctx_, uri_, TILEDB_READ);
-  if (!vfs_test_setup_.is_rest() && load_enmrs) {
+  if (!vfs_test_setup_->is_rest() && load_enmrs) {
     if (opened_array.ptr()->array()->use_refactored_array_open()) {
       CHECK_NOTHROW(
           ArrayExperimental::load_enumerations_all_schemas(ctx_, opened_array));
@@ -227,7 +227,7 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(sm::Array::evolve_array_schema(
       ctx_.ptr()->resources(), uri, ase.get(), array->get_encryption_key()));
   CHECK(array->reopen().ok());
-  if (load_enmrs && !vfs_test_setup_.is_rest()) {
+  if (load_enmrs && !vfs_test_setup_->is_rest()) {
     array->load_all_enumerations(array->use_refactored_array_open());
   }
   schema = array->array_schema_latest_ptr();
@@ -239,7 +239,7 @@ TEST_CASE_METHOD(
   expected_enmrs[schema_name_2] = {enmr1, enmr2, var_enmr.ptr()->enumeration()};
   actual_enmrs = array->get_enumerations_all_schemas();
   if (!load_enmrs) {
-    if (!vfs_test_setup_.is_rest()) {
+    if (!vfs_test_setup_->is_rest()) {
       array->load_all_enumerations(array->use_refactored_array_open());
     }
     REQUIRE(schema->is_enumeration_loaded("my_enum") == true);
@@ -257,7 +257,7 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(sm::Array::evolve_array_schema(
       ctx_.ptr()->resources(), uri, ase.get(), array->get_encryption_key()));
   CHECK(array->reopen().ok());
-  if (load_enmrs && !vfs_test_setup_.is_rest()) {
+  if (load_enmrs && !vfs_test_setup_->is_rest()) {
     array->load_all_enumerations(array->use_refactored_array_open());
   }
   schema = array->array_schema_latest_ptr();
@@ -271,7 +271,7 @@ TEST_CASE_METHOD(
   expected_enmrs[schema_name_3] = {enmr2, var_enmr.ptr()->enumeration()};
   actual_enmrs = array->get_enumerations_all_schemas();
   if (!load_enmrs) {
-    if (!vfs_test_setup_.is_rest()) {
+    if (!vfs_test_setup_->is_rest()) {
       array->load_all_enumerations(array->use_refactored_array_open());
     }
     REQUIRE_THROWS_WITH(
@@ -397,7 +397,7 @@ TEST_CASE_METHOD(
 
 RESTEnumerationFx::RESTEnumerationFx()
     : memory_tracker_(tiledb::test::create_test_memory_tracker())
-    , ctx_(vfs_test_setup_.ctx()){};
+    , ctx_(vfs_test_setup_->ctx()){};
 
 void RESTEnumerationFx::create_array(const std::string& array_name) {
   // Create a simple array for testing. This ends up with just five elements in

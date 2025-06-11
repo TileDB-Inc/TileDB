@@ -38,8 +38,8 @@
 
 TEST_CASE("REST capabilities endpoint", "[rest][capabilities]") {
   using tiledb::sm::RestCapabilities;
-  tiledb::test::VFSTestSetup vfs_test_setup;
-  if (!vfs_test_setup.is_rest()) {
+  tiledb::test::VFSTempDir vfs_test_setup;
+  if (!vfs_test_setup->is_rest()) {
     return;
   }
 

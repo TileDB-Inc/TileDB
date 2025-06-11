@@ -31,13 +31,15 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 TEST_CASE("C++ API: Datetime attribute", "[cppapi][datetime]") {
   const std::string array_name = "cpp_unit_datetime_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))
@@ -91,7 +93,7 @@ TEST_CASE("C++ API: Datetime attribute", "[cppapi][datetime]") {
 
 TEST_CASE("C++ API: Datetime dimension", "[cppapi][datetime]") {
   const std::string array_name = "cpp_unit_datetime_array";
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   if (vfs.is_dir(array_name))

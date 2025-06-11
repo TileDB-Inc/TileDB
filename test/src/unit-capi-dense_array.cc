@@ -102,7 +102,7 @@ struct DenseArrayFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<std::unique_ptr<SupportedFs>>& fs_vec_;
 
   // Path to prepend to array name according to filesystem/mode
   std::string prefix_;
@@ -258,7 +258,7 @@ DenseArrayFx::DenseArrayFx()
 
 DenseArrayFx::~DenseArrayFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  vfs_test_close(fs_vec_, ctx_, vfs_);
   tiledb_vfs_free(&vfs_);
   CHECK(vfs_ == nullptr);
   tiledb_ctx_free(&ctx_);
@@ -4384,6 +4384,8 @@ TEST_CASE_METHOD(
     TemporaryDirectoryFixture,
     "C API: Test dense array write without setting layout",
     "[capi][query]") {
+  auto ctx = get_ctx();
+
   // Create the array.
   uint64_t x_tile_extent{4};
   uint64_t domain[2]{0, 3};

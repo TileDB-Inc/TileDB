@@ -73,6 +73,8 @@ class ExampleArray : public TemporaryDirectoryFixture {
   ExampleArray()
       : domain_{1, 4}
       , t_domain_{1, 8} {
+    auto ctx = get_ctx();
+
     // Create an array schema
     uint64_t tile_extent{4};
     auto array_schema = create_array_schema(
@@ -140,6 +142,8 @@ class ExampleArray : public TemporaryDirectoryFixture {
       std::vector<double>& z1,
       std::vector<double>& z2,
       std::vector<int64_t>& time) {
+    auto ctx = get_ctx();
+
     // Open array for writing.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -226,6 +230,8 @@ class ExampleArray : public TemporaryDirectoryFixture {
       const std::vector<double>& expected_z1,
       const std::vector<double>& expected_z2,
       const std::vector<int64_t>& expected_time) {
+    auto ctx = get_ctx();
+
     // Open array for reading.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));

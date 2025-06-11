@@ -101,13 +101,10 @@ struct Query2Fx {
 };
 
 Query2Fx::Query2Fx() {
-  ctx_ = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx_) == TILEDB_OK);
+  ctx_ = vanilla_context_c();
 }
 
 Query2Fx::~Query2Fx() {
-  tiledb_ctx_free(&ctx_);
-  CHECK(ctx_ == nullptr);
 }
 
 bool Query2Fx::is_array(const std::string& array_name) {

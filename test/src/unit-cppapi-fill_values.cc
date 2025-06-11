@@ -33,6 +33,7 @@
 
 #include <test/support/tdb_catch.h>
 
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
@@ -40,6 +41,7 @@
 #include <iostream>
 
 using namespace tiledb;
+using namespace tiledb::test;
 
 void check_dump(const Attribute& attr, const std::string& gold_out) {
   std::stringstream ss;
@@ -47,7 +49,7 @@ void check_dump(const Attribute& attr, const std::string& gold_out) {
   CHECK(gold_out == ss.str());
 
   // Clean up
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 }
 
@@ -59,7 +61,7 @@ void create_array_1d(
     std::array<double, 2> fill_double = {
         {tiledb::sm::constants::empty_float64,
          tiledb::sm::constants::empty_float64}}) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
 
   Domain domain(ctx);
@@ -95,7 +97,7 @@ void create_array_1d(
 
 void write_array_1d_partial(
     const std::string& array_name, bool nullable_attributes = false) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   std::vector<int32_t> a1 = {3, 4};
   std::vector<uint8_t> a1_validity = {1, 0};
@@ -136,7 +138,7 @@ void read_array_1d_partial(
     std::array<double, 2> fill_double = {
         {tiledb::sm::constants::empty_float64,
          tiledb::sm::constants::empty_float64}}) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   std::vector<int32_t> a1(10);
   std::vector<uint8_t> a1_validity(10);
@@ -256,7 +258,7 @@ void read_array_1d_empty(
     std::array<double, 2> fill_double = {
         {tiledb::sm::constants::empty_float64,
          tiledb::sm::constants::empty_float64}}) {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   std::vector<int32_t> a1(10);
   std::vector<char> a2_val(100);
@@ -300,7 +302,7 @@ TEST_CASE(
   int32_t value = 5;
   uint64_t value_size = sizeof(int32_t);
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // Fixed-sized
   auto a = tiledb::Attribute::create<int32_t>(ctx, "a");
@@ -415,7 +417,7 @@ TEST_CASE(
   int32_t value = 5;
   uint64_t value_size = sizeof(int32_t);
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // Fixed-sized
   auto a = tiledb::Attribute::create<int32_t>(ctx, "a");
@@ -486,7 +488,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test fill values, partial array",
     "[cppapi][fill-values][partial]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "fill_values_partial";
 
@@ -510,7 +512,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Test fill values, empty array", "[cppapi][fill-values][empty]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "fill_values_empty";
 
@@ -533,7 +535,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test result estimation, empty dense arrays",
     "[cppapi][fill-values][empty][est-result]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "fill_values_est_result_empty";
 
@@ -600,7 +602,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test result estimation, partial dense arrays",
     "[cppapi][fill-values][partial][est-result]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "fill_values_est_result_partial";
 
@@ -670,7 +672,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test fill values, partial array, nullable",
     "[cppapi][fill-values][partial][nullable]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "fill_values_partial_nullable";
 
@@ -695,7 +697,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test result estimation, partial dense arrays, nullable",
     "[cppapi][fill-values][partial][est-result][nullable]") {
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
   VFS vfs(ctx);
   std::string array_name = "fill_values_est_result_partial_nullable";
 
@@ -777,7 +779,7 @@ TEST_CASE(
     "[cppapi][fill-values]") {
   const char* uri = "dense-attribute-int32-var-size-fill-value";
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // create array if needed
   if (Object::object(ctx, uri).type() != Object::Type::Array) {
@@ -919,7 +921,7 @@ TEST_CASE(
                    std::string(allow_duplicates ? "allow-dups" : "no-dups") +
                    std::string("-attribute-int32-var-size-fill-value");
 
-  Context ctx;
+  Context& ctx = vanilla_context_cpp();
 
   // create array if needed
   if (Object::object(ctx, uri.c_str()).type() != Object::Type::Array) {

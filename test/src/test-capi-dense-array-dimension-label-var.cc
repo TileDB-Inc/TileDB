@@ -76,6 +76,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
    * @param label_order Label order for the dimension label.
    */
   void create_example(tiledb_data_order_t label_order, void* index_domain) {
+    auto ctx = get_ctx();
     // Create an array schema
     uint64_t x_tile_extent{4};
     auto array_schema = create_array_schema(
@@ -121,6 +122,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
       std::vector<double> input_attr_data,
       std::string input_label_data,
       std::vector<uint64_t> input_label_offsets) {
+    auto ctx = get_ctx();
     // Open array for writing.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -179,6 +181,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
       const std::vector<double> expected_attr_data,
       const std::string expected_label_data,
       const std::vector<uint64_t> expected_label_offsets) {
+    auto ctx = get_ctx();
     // Open array for reading.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
@@ -251,6 +254,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
       const std::vector<double> expected_attr_data,
       const std::string expected_label_data,
       const std::vector<uint64_t> expected_label_offsets) {
+    auto ctx = get_ctx();
     // Open array for reading.
     tiledb_array_t* array;
     require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));

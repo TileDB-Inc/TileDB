@@ -42,6 +42,7 @@
 // after tdb_catch.h.
 #include "test/support/src/serialization_wrappers.h"
 
+#include "test/support/src/error_helpers.h"
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
@@ -53,8 +54,11 @@ tiledb::sm::URI test_dir(const std::string& prefix) {
   return tiledb::sm::URI(prefix + "tiledb-" + std::to_string(PRNG::get()()));
 }
 
-std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
-  std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+const std::vector<std::unique_ptr<SupportedFs>>& vfs_test_get_fs_vec() {
+  static std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+  if (!fs_vec.empty()) {
+    return fs_vec;
+  }
 
   bool supports_s3 = false;
   bool supports_azure = false;
@@ -120,15 +124,13 @@ Status vfs_test_init(
   return Status::Ok();
 }
 
-Status vfs_test_close(
+void vfs_test_close(
     const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs) {
   for (auto& fs : fs_vec) {
-    RETURN_NOT_OK(fs->close(ctx, vfs));
+    fs->close(ctx, vfs);
   }
-
-  return Status::Ok();
 }
 
 void vfs_test_remove_temp_dir(
@@ -144,6 +146,49 @@ void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path) {
   vfs_test_remove_temp_dir(ctx, vfs, path);
   CHECK(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
+}
+
+VFSTestContext::VFSTestContext(tiledb_config_t* config)
+    : fs_vec(vfs_test_get_fs_vec())
+    , ctx_c{nullptr}
+    , vfs_c{nullptr}
+    , cfg_c{config} {
+  vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
+}
+
+VFSTestContext::~VFSTestContext() {
+  vfs_test_close(fs_vec, ctx_c, vfs_c);
+
+  tiledb_ctx_free(&ctx_c);
+  tiledb_vfs_free(&vfs_c);
+}
+
+std::shared_ptr<const VFSTestContext> VFSTestContext::vanilla_instance() {
+  static std::shared_ptr<VFSTestContext> vanilla_instance_impl(
+      new VFSTestContext());
+  return vanilla_instance_impl;
+}
+
+VFSTempDir::VFSTempDir(tiledb_config_t* config, bool remove_tmpdir)
+    : context_(VFSTestContext::vanilla_instance()) {
+  if (config) {
+    update_config(config);
+  }
+
+  temp_dir_ = context_->fs_vec[0]->temp_dir();
+
+  if (remove_tmpdir) {
+    vfs_test_remove_temp_dir(context_->ctx_c, context_->vfs_c, temp_dir_);
+  }
+  tiledb_vfs_create_dir(context_->ctx_c, context_->vfs_c, temp_dir_.c_str());
+}
+
+VFSTempDir::~VFSTempDir() {
+  vfs_test_remove_temp_dir(context_->ctx_c, context_->vfs_c, temp_dir_);
+}
+
+void VFSTempDir::update_config(tiledb_config_t* config) {
+  context_.reset(new VFSTestContext(config));
 }
 
 std::string vfs_array_uri(
@@ -207,19 +252,20 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
+  throw_if_error(
+      ctx, tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket));
   if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()) == TILEDB_OK);
+    throw_if_error(ctx, tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()));
   }
 
-  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_bucket);
+  throw_if_error(
+      ctx, tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket));
 
-  return Status::Ok();
+  if (is_bucket) {
+    throw std::logic_error("Bucket still present after removal");
+  }
 }
 
 std::string SupportedFsS3::temp_dir() {
@@ -266,15 +312,13 @@ Status SupportedFsAzure::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsAzure::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_container = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, container_.c_str(), &is_container);
-  CHECK(rc == TILEDB_OK);
+  throw_if_error(
+      ctx, tiledb_vfs_is_bucket(ctx, vfs, container_.c_str(), &is_container));
   if (is_container) {
-    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, container_.c_str()) == TILEDB_OK);
+    throw_if_error(ctx, tiledb_vfs_remove_bucket(ctx, vfs, container_.c_str()));
   }
-
-  return Status::Ok();
 }
 
 std::string SupportedFsAzure::temp_dir() {
@@ -302,15 +346,13 @@ Status SupportedFsGCS::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsGCS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsGCS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, bucket_.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
+  throw_if_error(
+      ctx, tiledb_vfs_is_bucket(ctx, vfs, bucket_.c_str(), &is_bucket));
   if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, bucket_.c_str()) == TILEDB_OK);
+    throw_if_error(ctx, tiledb_vfs_remove_bucket(ctx, vfs, bucket_.c_str()));
   }
-
-  return Status::Ok();
 }
 
 std::string SupportedFsGCS::temp_dir() {
@@ -330,10 +372,9 @@ Status SupportedFsLocal::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   (void)ctx;
   (void)vfs;
-  return Status::Ok();
 }
 
 #ifdef _WIN32
@@ -371,10 +412,9 @@ Status SupportedFsMem::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-Status SupportedFsMem::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
+void SupportedFsMem::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   (void)ctx;
   (void)vfs;
-  return Status::Ok();
 }
 
 std::string SupportedFsMem::temp_dir() {
@@ -387,7 +427,7 @@ void TemporaryDirectoryFixture::alloc_encrypted_ctx(
     tiledb_ctx_t** ctx_with_encrypt) const {
   // Get the configuration settings for the fixture's context.
   tiledb_config_t* config;
-  require_tiledb_ok(tiledb_ctx_get_config(ctx, &config));
+  require_tiledb_ok(tiledb_ctx_get_config(vfs_temp_->ctx_c, &config));
 
   // Change the configuration to match the desired encryption settings.
   tiledb_error_t* error;
@@ -411,9 +451,9 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
     tiledb_array_schema_t* array_schema,
     const bool serialize) {
   auto array_uri = fullpath(std::move(name));
-  require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
+  require_tiledb_ok(tiledb_array_schema_check(vfs_temp_->ctx_c, array_schema));
   require_tiledb_ok(tiledb_array_create_serialization_wrapper(
-      ctx, array_uri, array_schema, serialize));
+      get_ctx(), array_uri, array_schema, serialize));
   return array_uri;
 }
 
@@ -526,7 +566,7 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
   std::sort(expected_results().begin(), expected_results().end());
 }
 
-bool VFSTestSetup::is_legacy_rest() {
+bool VFSTestContext::is_legacy_rest() const {
   return ctx_c->rest_client().rest_legacy();
 }
 
