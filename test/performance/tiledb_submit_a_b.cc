@@ -370,12 +370,12 @@ tiledb::common::Status assertGlobalOrder(
 
   for (uint64_t i = start + 1; i < end; i++) {
     const auto prevtuple = std::apply(
-        [&]<typename... Ts>(const std::vector<Ts>&... dims) {
+        [&]<typename... Ts>(const query_buffers<Ts>&... dims) {
           return global_cell_cmp_std_tuple(std::make_tuple(dims[i - 1]...));
         },
         data.dimensions());
     const auto nexttuple = std::apply(
-        [&]<typename... Ts>(const std::vector<Ts>&... dims) {
+        [&]<typename... Ts>(const query_buffers<Ts>&... dims) {
           return global_cell_cmp_std_tuple(std::make_tuple(dims[i]...));
         },
         data.dimensions());
@@ -438,7 +438,7 @@ static void check_compatibility(const tiledb::Array& array) {
 
   unsigned d = 0;
   std::apply(
-      [&]<typename... Ts>(std::vector<Ts>...) {
+      [&]<typename... Ts>(query_buffers<Ts>...) {
         (require_type<Ts>::dimension(*schema.domain().shared_dimension(d++)),
          ...);
       },
@@ -446,7 +446,7 @@ static void check_compatibility(const tiledb::Array& array) {
 
   unsigned a = 0;
   std::apply(
-      [&]<typename... Ts>(std::vector<Ts>...) {
+      [&]<typename... Ts>(query_buffers<Ts>...) {
         (require_type<Ts>::attribute(*schema.attribute(a++)), ...);
       },
       stdx::decay_tuple<AttributeTuple>());
@@ -510,23 +510,15 @@ static void run(
   auto do_submit = [&](auto& key, auto& query, auto& outdata)
       -> std::pair<tiledb::Query::Status, uint64_t> {
     // make field size locations
-    auto dimension_sizes =
-        templates::query::make_field_sizes<Asserter>(outdata.dimensions());
-    auto attribute_sizes =
-        templates::query::make_field_sizes<Asserter>(outdata.attributes());
+    auto field_sizes = templates::query::make_field_sizes<Asserter>(outdata);
 
     // add fields to query
     templates::query::set_fields<Asserter>(
         ctx.ptr().get(),
         query.ptr().get(),
-        dimension_sizes,
-        outdata.dimensions(),
-        dimension_name);
-    templates::query::set_fields<Asserter>(
-        ctx.ptr().get(),
-        query.ptr().get(),
-        attribute_sizes,
-        outdata.attributes(),
+        field_sizes,
+        outdata,
+        dimension_name,
         attribute_name);
 
     tiledb::Query::Status status;
@@ -535,19 +527,15 @@ static void run(
       status = query.submit();
     }
 
-    const uint64_t dim_num_cells = templates::query::num_cells<Asserter>(
-        outdata.dimensions(), dimension_sizes);
-    const uint64_t att_num_cells = templates::query::num_cells<Asserter>(
-        outdata.attributes(), attribute_sizes);
+    const uint64_t num_cells =
+        templates::query::num_cells<Asserter>(outdata, field_sizes);
 
-    ASSERTER(dim_num_cells == att_num_cells);
-
-    if (dim_num_cells < outdata.size()) {
+    if (num_cells < outdata.size()) {
       // since the user buffer did not fill up the query must be complete
       ASSERTER(status == tiledb::Query::Status::COMPLETE);
     }
 
-    return std::make_pair(status, dim_num_cells);
+    return std::make_pair(status, num_cells);
   };
 
   while (true) {
