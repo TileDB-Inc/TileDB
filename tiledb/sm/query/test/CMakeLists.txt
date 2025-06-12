@@ -32,6 +32,10 @@ commence(unit_test query)
     this_target_link_libraries(tiledb_test_support_lib)
     this_target_link_libraries(ast_test_support_lib)
 
+    if (TILEDB_RUST)
+      this_target_link_libraries(unit_query_condition_oxidize)
+    endif ()
+
     # We want tests to continue as normal even as the API is changing,
     # so don't warn for deprecations, since they'll be escalated to errors.
     if (NOT MSVC)

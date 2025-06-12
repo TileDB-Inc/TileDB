@@ -48,6 +48,7 @@
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 #ifdef HAVE_RUST
+#include "test/support/assert_helpers.h"
 #include "tiledb/oxidize/unit_query_condition.h"
 #endif
 
@@ -5097,38 +5098,141 @@ void instance_query_condition_datafusion(
     const tiledb::sm::ASTNode& ast) {
   using Asserter = tiledb::test::AsserterRapidcheck;
 
-  // set up datafusion evaluation
-  QueryCondition datafusion(std::move(ast->clone()));
-  datafusion.rewrite_for_schema(array_schema);
-  datafusion.rewrite_to_datafusion(array_schema);
-  ASSERTER(datafusion.datafusion_.has_value());
-
   // set up traditional TileDB evaluation
-  QueryCondition ast(std::move(ast));
-  ast.rewrite_for_schema(array_schema);
-  ASSERTER(!ast.datafusion_.has_value());
+  QueryCondition qc_ast(ast.clone());
+  qc_ast.rewrite_for_schema(array_schema);
 
-  // set up evaluation
+  // set up datafusion evaluation
+  QueryCondition qc_datafusion(ast.clone());
+  qc_datafusion.rewrite_for_schema(array_schema);
+  const bool datafusion_ok = qc_datafusion.rewrite_to_datafusion(array_schema);
+  ASSERTER(datafusion_ok);
+
+  // prepare to evaluate
   QueryCondition::Params params(
       tiledb::test::get_test_memory_tracker(), array_schema);
 
-  // evaluate datafusion
-  datafusion.apply_sparse(params, tile, datafusion_bitmap);
+  std::vector<uint8_t> bitmap_ast(tile.cell_num(), 0);
+  std::vector<uint8_t> bitmap_datafusion(tile.cell_num(), 0);
 
   // evaluate traditional ast
-  ast.apply_sparse(params, tile, ast_bitmap);
+  const auto status_ast =
+      qc_ast.apply_sparse<uint8_t>(params, tile, bitmap_ast);
+  ASSERTER(status_ast.ok());
+
+  // evaluate datafusion
+  const auto status_datafusion =
+      qc_datafusion.apply_sparse<uint8_t>(params, tile, bitmap_datafusion);
+  ASSERTER(status_datafusion.ok());
 
   // compare
-  ASSERTER(datafusion_bitmap == ast_bitmap);
+  ASSERTER(bitmap_ast == bitmap_datafusion);
 }
 
 }  // namespace tiledb::test
 
 TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
+  using tiledb::test::instance_query_condition_datafusion;
+
   SECTION("Example") {
+    ArraySchema schema(
+        ArrayType::SPARSE, tiledb::test::get_test_memory_tracker());
+    schema.shared_domain()->add_dimension(std::make_shared<Dimension>(
+        "d", Datatype::UINT64, tiledb::test::get_test_memory_tracker()));
+    schema.add_attribute(std::make_shared<Attribute>("a", Datatype::UINT64));
+
+    std::vector<uint64_t> values_d = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    std::vector<uint64_t> values_a = {
+        1,
+        22,
+        333,
+        4444,
+        55555,
+        666666,
+        7777777,
+        88888888,
+        999999999,
+        1010101010};
+
+    ResultTileSizes d_sizes(
+        values_d.size() * sizeof(uint64_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt);
+    ResultTileData d_data(values_d.data(), nullptr, nullptr);
+
+    ResultTileSizes a_sizes(
+        values_a.size() * sizeof(uint64_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt);
+    ResultTileData a_data(values_a.data(), nullptr, nullptr);
+
+    ResultTile tile(tiledb::test::get_test_memory_tracker());
+    tile.init_attr_tile(
+        constants::format_version, schema, "d", d_sizes, d_data);
+    tile.init_attr_tile(
+        constants::format_version, schema, "a", a_sizes, a_data);
+
+    SECTION("a < 100000") {
+      uint64_t value = 100000;
+      ASTNodeVal ast(
+          "a", &value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::LT);
+      instance_query_condition_datafusion(schema, tile, ast);
+    }
+
+    SECTION("d != 6") {
+      uint64_t value = 6;
+      ASTNodeVal ast(
+          "d", &value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::NE);
+      instance_query_condition_datafusion(schema, tile, ast);
+    }
+
+    SECTION("4 <= d <= 8") {
+      uint64_t lb_value = 4;
+      tdb_unique_ptr<ASTNode> lb(new ASTNodeVal(
+          "d", &lb_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::GE));
+      instance_query_condition_datafusion(schema, tile, *lb);
+
+      uint64_t ub_value = 8;
+      tdb_unique_ptr<ASTNode> ub(new ASTNodeVal(
+          "d", &ub_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::LE));
+      instance_query_condition_datafusion(schema, tile, *ub);
+
+      std::vector<tdb_unique_ptr<ASTNode>> args;
+      args.push_back(std::move(lb));
+      args.push_back(std::move(ub));
+      ASTNodeExpr ast(std::move(args), QueryConditionCombinationOp::AND);
+
+      instance_query_condition_datafusion(schema, tile, ast);
+    }
+
+    SECTION("d < 4 OR a > 1000000") {
+      uint64_t d_value = 4;
+      tdb_unique_ptr<ASTNode> left(new ASTNodeVal(
+          "d", &d_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::LT));
+      instance_query_condition_datafusion(schema, tile, *left);
+
+      uint64_t a_value = 1000000;
+      tdb_unique_ptr<ASTNode> right(new ASTNodeVal(
+          "a", &a_value, sizeof(uint64_t), tiledb::sm::QueryConditionOp::GT));
+      instance_query_condition_datafusion(schema, tile, *right);
+
+      std::vector<tdb_unique_ptr<ASTNode>> args;
+      args.push_back(std::move(left));
+      args.push_back(std::move(right));
+      ASTNodeExpr ast(std::move(args), QueryConditionCombinationOp::OR);
+
+      instance_query_condition_datafusion(schema, tile, ast);
+    }
   }
 
-  SECTION("Rapidcheck") {
+  SECTION("Proptest") {
+    tiledb::test::proptest_query_condition_datafusion();
   }
 }
 
