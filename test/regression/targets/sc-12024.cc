@@ -38,8 +38,8 @@ TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse]") {
     q.set_data_buffer("Z", z);
     REQUIRE_THROWS_WITH(
         q.submit(),
-        "[TileDB::Dimension] Error: Coordinate -682.75 is out of domain "
-        "bounds [-682.73999, 929.42999] on dimension 'Z'");
+        "[TileDB::Dimension] Error: Dimension: Coordinate -682.75 is out of "
+        "domain bounds [-682.73999, 929.42999] on dimension 'Z'");
   }
   {
     Query q(ctx, array, TILEDB_WRITE);
@@ -52,8 +52,8 @@ TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse]") {
     q.set_data_buffer("Z", z);
     REQUIRE_THROWS_WITH(
         q.submit(),
-        "[TileDB::Dimension] Error: Coordinate 139200.34 is out of domain "
-        "bounds [139200.34375, 140000.1875] on dimension 'Y'");
+        "[TileDB::Dimension] Error: Dimension: Coordinate 139200.34 is out of "
+        "domain bounds [139200.34375, 140000.1875] on dimension 'Y'");
   }
 
   array.close();

@@ -140,7 +140,7 @@ int32_t tiledb_filestore_schema_create(
         memory_tracker);
 
     auto domain = make_shared<tiledb::sm::Domain>(HERE(), memory_tracker);
-    throw_if_not_ok(domain->add_dimension(dim));
+    domain->add_dimension(dim);
 
     auto attr = make_shared<tiledb::sm::Attribute>(
         HERE(),

@@ -100,7 +100,6 @@ TEST_CASE(
 
   SECTION("Internal dimension label") {
     // Create dimension label array schema.
-    Status st;
     auto schema = make_shared<ArraySchema>(
         HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
     std::vector<shared_ptr<Dimension>> dims{make_shared<Dimension>(
@@ -108,19 +107,19 @@ TEST_CASE(
         "index",
         Datatype::UINT32,
         tiledb::test::get_test_memory_tracker())};
+
     uint32_t domain1[2]{1, 64};
-    st = dims[0]->set_domain(&domain1[0]);
-    REQUIRE(st.ok());
-    st = schema->set_domain(make_shared<Domain>(
+    dims[0]->set_domain(&domain1[0]);
+
+    schema->set_domain(make_shared<Domain>(
         HERE(),
         Layout::ROW_MAJOR,
         dims,
         Layout::ROW_MAJOR,
         tiledb::test::get_test_memory_tracker()));
-    REQUIRE(st.ok());
-    st = schema->add_attribute(
+    schema->add_attribute(
         make_shared<Attribute>(HERE(), "label", Datatype::FLOAT64));
-    REQUIRE(st.ok());
+
     schema->check_without_config();
 
     // Create dimension label.

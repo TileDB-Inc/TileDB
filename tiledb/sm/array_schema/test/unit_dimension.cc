@@ -442,7 +442,7 @@ TEST_CASE("Dimension::oob format") {
   auto memory_tracker = tiledb::test::get_test_memory_tracker();
   Dimension d("X", Datatype::FLOAT64, memory_tracker);
   double d_dom[2]{-682.73999, 929.42999};
-  REQUIRE(d.set_domain(Range(&d_dom, sizeof(d_dom))).ok());
+  d.set_domain(Range(&d_dom, sizeof(d_dom)));
   double x{-682.75};
   std::string error{};
   bool b{Dimension::oob<double>(&d, &x, &error)};

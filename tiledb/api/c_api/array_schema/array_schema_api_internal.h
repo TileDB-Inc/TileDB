@@ -79,7 +79,8 @@ struct tiledb_array_schema_handle_t
 
   Status add_attribute(
       shared_ptr<const tiledb::sm::Attribute> attr, bool check_special = true) {
-    return array_schema_->add_attribute(attr, check_special);
+    array_schema_->add_attribute(attr, check_special);
+    return Status::Ok();
   }
 
   void add_dimension_label(
@@ -174,7 +175,8 @@ struct tiledb_array_schema_handle_t
   }
 
   Status has_attribute(const std::string& name, bool* has_attr) const {
-    return array_schema_->has_attribute(name, has_attr);
+    *has_attr = array_schema_->has_attribute(name);
+    return Status::Ok();
   }
 
   bool is_dim_label(const std::string& name) const {
@@ -182,7 +184,8 @@ struct tiledb_array_schema_handle_t
   }
 
   Status set_allows_dups(bool allows_dups) {
-    return array_schema_->set_allows_dups(allows_dups);
+    array_schema_->set_allows_dups(allows_dups);
+    return Status::Ok();
   }
 
   void set_capacity(uint64_t capacity) {
@@ -209,30 +212,36 @@ struct tiledb_array_schema_handle_t
   }
 
   Status set_domain(shared_ptr<tiledb::sm::Domain> domain) {
-    return array_schema_->set_domain(domain);
+    array_schema_->set_domain(domain);
+    return Status::Ok();
   }
 
   Status set_cell_order(tiledb::sm::Layout cell_order) {
-    return array_schema_->set_cell_order(cell_order);
+    array_schema_->set_cell_order(cell_order);
+    return Status::Ok();
   }
 
   Status set_cell_validity_filter_pipeline(
       const tiledb::sm::FilterPipeline& pipeline) {
-    return array_schema_->set_cell_validity_filter_pipeline(pipeline);
+    array_schema_->set_cell_validity_filter_pipeline(pipeline);
+    return Status::Ok();
   }
 
   Status set_cell_var_offsets_filter_pipeline(
       const tiledb::sm::FilterPipeline& pipeline) {
-    return array_schema_->set_cell_var_offsets_filter_pipeline(pipeline);
+    array_schema_->set_cell_var_offsets_filter_pipeline(pipeline);
+    return Status::Ok();
   }
 
   Status set_coords_filter_pipeline(
       const tiledb::sm::FilterPipeline& pipeline) {
-    return array_schema_->set_coords_filter_pipeline(pipeline);
+    array_schema_->set_coords_filter_pipeline(pipeline);
+    return Status::Ok();
   }
 
   Status set_tile_order(tiledb::sm::Layout tile_order) {
-    return array_schema_->set_tile_order(tile_order);
+    array_schema_->set_tile_order(tile_order);
+    return Status::Ok();
   }
 
   shared_ptr<const tiledb::sm::Attribute> shared_attribute(

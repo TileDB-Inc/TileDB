@@ -51,10 +51,10 @@ TEST_CASE(
   auto memory_tracker = get_test_memory_tracker();
   Dimension d1("d1", Datatype::INT32, memory_tracker);
   int32_t dom1[] = {0, 100};
-  CHECK(d1.set_domain(dom1).ok());
+  d1.set_domain(dom1);
   Dimension d2("d2", Datatype::INT32, memory_tracker);
   int32_t dom2[] = {0, 200};
-  CHECK(d2.set_domain(dom2).ok());
+  d2.set_domain(dom2);
 
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);
@@ -166,10 +166,10 @@ TEST_CASE(
   auto memory_tracker = get_test_memory_tracker();
   Dimension d1("d1", Datatype::INT32, memory_tracker);
   int32_t dom1[] = {-50, 50};
-  CHECK(d1.set_domain(dom1).ok());
+  d1.set_domain(dom1);
   Dimension d2("d2", Datatype::INT32, memory_tracker);
   int32_t dom2[] = {-100, 100};
-  CHECK(d2.set_domain(dom2).ok());
+  d2.set_domain(dom2);
 
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);
@@ -281,10 +281,10 @@ TEST_CASE(
   auto memory_tracker = get_test_memory_tracker();
   Dimension d1("d1", Datatype::FLOAT32, memory_tracker);
   float dom1[] = {0.0f, 1.0f};
-  CHECK(d1.set_domain(dom1).ok());
+  d1.set_domain(dom1);
   Dimension d2("d2", Datatype::FLOAT32, memory_tracker);
   float dom2[] = {0.0f, 2.0f};
-  CHECK(d2.set_domain(dom2).ok());
+  d2.set_domain(dom2);
 
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);
@@ -525,7 +525,7 @@ TEST_CASE(
   auto memory_tracker = get_test_memory_tracker();
   Dimension d1("d1", Datatype::INT32, memory_tracker);
   int32_t dom1[] = {0, 100};
-  CHECK(d1.set_domain(dom1).ok());
+  d1.set_domain(dom1);
 
   // Set number of buckets
   Hilbert h(2);
@@ -547,7 +547,7 @@ TEST_CASE(
   auto memory_tracker = get_test_memory_tracker();
   Dimension d1("d1", Datatype::INT32, memory_tracker);
   int32_t dom1[] = {-50, 50};
-  CHECK(d1.set_domain(dom1).ok());
+  d1.set_domain(dom1);
 
   // Set number of buckets
   Hilbert h(2);
@@ -569,7 +569,7 @@ TEST_CASE(
   auto memory_tracker = get_test_memory_tracker();
   Dimension d1("d1", Datatype::FLOAT32, memory_tracker);
   float dom1[] = {0.0f, 1.0f};
-  CHECK(d1.set_domain(dom1).ok());
+  d1.set_domain(dom1);
 
   // Set number of buckets
   Hilbert h(2);

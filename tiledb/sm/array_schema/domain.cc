@@ -123,7 +123,7 @@ Layout Domain::tile_order() const {
   return tile_order_;
 }
 
-Status Domain::add_dimension(shared_ptr<Dimension> dim) {
+void Domain::add_dimension(shared_ptr<Dimension> dim) {
   auto p{dim.get()};
   if (p == nullptr) {
     // Class invariant prohibits null dimensions in a domain.
@@ -135,8 +135,6 @@ Status Domain::add_dimension(shared_ptr<Dimension> dim) {
 
   // Compute number of cells per tile
   compute_cell_num_per_tile();
-
-  return Status::Ok();
 }
 
 bool Domain::all_dims_fixed() const {
@@ -484,17 +482,13 @@ void Domain::get_tile_subarray(
   }
 }
 
-Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
-  *has_dim = false;
-
+bool Domain::has_dimension(const std::string& name) const {
   for (const auto dim : dimension_ptrs_) {
     if (name == dim->name()) {
-      *has_dim = true;
-      break;
+      return true;
     }
   }
-
-  return Status::Ok();
+  return false;
 }
 
 unsigned Domain::get_dimension_index(const std::string& name) const {
@@ -530,10 +524,10 @@ void Domain::serialize(Serializer& serializer, uint32_t version) const {
   }
 }
 
-Status Domain::set_null_tile_extents_to_range() {
-  for (auto& d : dimensions_)
-    RETURN_NOT_OK(d->set_null_tile_extent_to_range());
-  return Status::Ok();
+void Domain::set_null_tile_extents_to_range() {
+  for (auto& d : dimensions_) {
+    d->set_null_tile_extent_to_range();
+  }
 }
 
 template <class T>
