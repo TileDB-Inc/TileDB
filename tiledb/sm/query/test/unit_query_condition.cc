@@ -5135,10 +5135,17 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
   using tiledb::test::instance_query_condition_datafusion;
 
   SECTION("Example") {
+    uint64_t d_domain[2] = {0, 10};
+    std::shared_ptr<Dimension> dimension = std::make_shared<Dimension>(
+        "d", Datatype::UINT64, tiledb::test::get_test_memory_tracker());
+    dimension->set_domain(&d_domain[0]);
+
     ArraySchema schema(
         ArrayType::SPARSE, tiledb::test::get_test_memory_tracker());
-    schema.shared_domain()->add_dimension(std::make_shared<Dimension>(
-        "d", Datatype::UINT64, tiledb::test::get_test_memory_tracker()));
+    std::shared_ptr<Domain> domain =
+        std::make_shared<Domain>(tiledb::test::get_test_memory_tracker());
+    domain->add_dimension(dimension);
+    schema.set_domain(domain);
     schema.add_attribute(std::make_shared<Attribute>("a", Datatype::UINT64));
 
     std::vector<uint64_t> values_d = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
