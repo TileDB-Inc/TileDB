@@ -182,9 +182,9 @@ bool QueryCondition::rewrite_to_datafusion(const ArraySchema& array_schema) {
       throw std::logic_error(
           "Unexpected error compiling expression: " + std::string(e.what()));
     }
-    return false;
+    return true;
   }
-  return true;
+  return false;
 }
 
 Status QueryCondition::check(const ArraySchema& array_schema) const {
