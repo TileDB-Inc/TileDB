@@ -13,6 +13,7 @@ mod ffi {
         include!("tiledb/sm/enums/query_condition_combination_op.h");
         include!("tiledb/sm/enums/query_condition_op.h");
         include!("tiledb/sm/query/ast/query_ast.h");
+        include!("tiledb/sm/query/readers/result_tile.h");
 
         type ArrayType = tiledb_oxidize::sm::enums::ArrayType;
         type Datatype = tiledb_oxidize::sm::enums::Datatype;
@@ -27,6 +28,8 @@ mod ffi {
         type ASTNode = tiledb_oxidize::sm::query::ast::ASTNode;
         type QueryConditionOp = tiledb_oxidize::sm::enums::QueryConditionOp;
         type QueryConditionCombinationOp = tiledb_oxidize::sm::enums::QueryConditionCombinationOp;
+
+        type ResultTile = tiledb_oxidize::sm::query::readers::ResultTile;
     }
 
     #[namespace = "tiledb::test"]
@@ -94,13 +97,29 @@ mod ffi {
 
         fn new_ast_negate(arg: SharedPtr<ASTNode>) -> SharedPtr<ASTNode>;
     }
+
+    #[namespace = "tiledb::test::oxidize"]
+    unsafe extern "C++" {
+        include!("tiledb/oxidize/test-support/cc/result_tile.h");
+
+        fn new_result_tile(memory_tracker: SharedPtr<MemoryTracker>) -> SharedPtr<ResultTile>;
+
+        fn init_attr_tile(
+            tile: SharedPtr<ResultTile>,
+            schema: &ArraySchema,
+            field: &CxxString,
+            data: &[u8],
+            offsets: &[u64],
+        );
+    }
 }
+
+pub use ffi::get_test_memory_tracker;
 
 pub mod array_schema {
     pub use crate::ffi::{
         array_schema_to_shared, as_const_attribute, attribute_to_shared, dimension_to_shared,
-        domain_to_shared, get_test_memory_tracker, new_array_schema, new_attribute, new_dimension,
-        new_domain,
+        domain_to_shared, new_array_schema, new_attribute, new_dimension, new_domain,
     };
 }
 
@@ -109,4 +128,8 @@ pub mod query {
         new_ast_combination, new_ast_negate, new_ast_value_node, new_ast_value_node_null,
         new_ast_value_node_var,
     };
+}
+
+pub mod result_tile {
+    pub use crate::ffi::{init_attr_tile, new_result_tile};
 }

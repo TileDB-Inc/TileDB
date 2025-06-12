@@ -1264,6 +1264,8 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
 };
 
 using TileTuple = ResultTile::TileTuple;
+using ResultTileSizes = ResultTile::TileSizes;
+using ResultTileData = ResultTile::TileData;
 
 }  // namespace sm
 }  // namespace tiledb

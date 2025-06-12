@@ -71,6 +71,8 @@ mod ffi {
         #[cxx_name = "attribute"]
         fn attribute_by_name(&self, name: &CxxString) -> *const Attribute;
 
+        fn var_size(&self, name: &CxxString) -> bool;
+
         fn set_domain(self: Pin<&mut ArraySchema>, domain: SharedPtr<Domain>);
         fn add_attribute(
             self: Pin<&mut ArraySchema>,

@@ -3458,10 +3458,13 @@ name = "tiledb-proptest-result-tile"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arrow",
  "cells",
  "cxx",
  "proptest",
+ "tiledb-arrow",
  "tiledb-oxidize",
+ "tiledb-test-support",
 ]
 
 [[package]]

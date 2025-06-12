@@ -45,6 +45,7 @@ cxxbridge(
   SOURCES
     array_schema.cc
     query.cc
+    result_tile.cc
     lib.rs
 )
 

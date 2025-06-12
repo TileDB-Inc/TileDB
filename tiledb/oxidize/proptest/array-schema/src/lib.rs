@@ -3,12 +3,11 @@ pub mod enums;
 use itertools::Itertools;
 use tiledb_oxidize::sm::array_schema::{ArraySchema, Attribute, Dimension, Domain};
 use tiledb_pod::array::schema::{AttributeData, DimensionData, DomainData, SchemaData};
-use tiledb_test_support::array_schema as tiledb_test_support;
 
 pub fn schema_from_pod(pod: &SchemaData) -> anyhow::Result<cxx::SharedPtr<ArraySchema>> {
     let domain = domain_from_pod(&pod.domain)?;
 
-    let mut schema = tiledb_test_support::new_array_schema(
+    let mut schema = tiledb_test_support::array_schema::new_array_schema(
         enums::convert_array_type(pod.array_type),
         tiledb_test_support::get_test_memory_tracker(),
     );
@@ -28,9 +27,10 @@ pub fn schema_from_pod(pod: &SchemaData) -> anyhow::Result<cxx::SharedPtr<ArrayS
             .map(attribute_from_pod)
             .process_results(|attrs| {
                 attrs.for_each(|attr| {
-                    schema
-                        .as_mut()
-                        .add_attribute(tiledb_test_support::as_const_attribute(attr), false)
+                    schema.as_mut().add_attribute(
+                        tiledb_test_support::array_schema::as_const_attribute(attr),
+                        false,
+                    )
                 })
             })?;
 
@@ -57,11 +57,15 @@ pub fn schema_from_pod(pod: &SchemaData) -> anyhow::Result<cxx::SharedPtr<ArrayS
         // validity filters
     }
 
-    Ok(tiledb_test_support::array_schema_to_shared(schema))
+    Ok(tiledb_test_support::array_schema::array_schema_to_shared(
+        schema,
+    ))
 }
 
 pub fn domain_from_pod(pod: &DomainData) -> anyhow::Result<cxx::SharedPtr<Domain>> {
-    let mut d = tiledb_test_support::new_domain(tiledb_test_support::get_test_memory_tracker());
+    let mut d = tiledb_test_support::array_schema::new_domain(
+        tiledb_test_support::get_test_memory_tracker(),
+    );
 
     {
         let Some(mut d) = d.as_mut() else {
@@ -73,13 +77,13 @@ pub fn domain_from_pod(pod: &DomainData) -> anyhow::Result<cxx::SharedPtr<Domain
             .process_results(move |dims| dims.for_each(move |dim| d.as_mut().add_dimension(dim)))?;
     }
 
-    Ok(tiledb_test_support::domain_to_shared(d))
+    Ok(tiledb_test_support::array_schema::domain_to_shared(d))
 }
 
 pub fn dimension_from_pod(pod: &DimensionData) -> anyhow::Result<cxx::SharedPtr<Dimension>> {
     cxx::let_cxx_string!(name = &pod.name);
 
-    let mut dimension = tiledb_test_support::new_dimension(
+    let mut dimension = tiledb_test_support::array_schema::new_dimension(
         &name,
         enums::convert_datatype(pod.datatype),
         tiledb_test_support::get_test_memory_tracker(),
@@ -95,13 +99,15 @@ pub fn dimension_from_pod(pod: &DimensionData) -> anyhow::Result<cxx::SharedPtr<
         // filters
     }
 
-    Ok(tiledb_test_support::dimension_to_shared(dimension))
+    Ok(tiledb_test_support::array_schema::dimension_to_shared(
+        dimension,
+    ))
 }
 
 pub fn attribute_from_pod(pod: &AttributeData) -> anyhow::Result<cxx::SharedPtr<Attribute>> {
     cxx::let_cxx_string!(name = &pod.name);
 
-    let mut attribute = tiledb_test_support::new_attribute(
+    let mut attribute = tiledb_test_support::array_schema::new_attribute(
         &name,
         enums::convert_datatype(pod.datatype),
         pod.nullability.unwrap_or(false),
@@ -121,5 +127,7 @@ pub fn attribute_from_pod(pod: &AttributeData) -> anyhow::Result<cxx::SharedPtr<
         // enumeration
     }
 
-    Ok(tiledb_test_support::attribute_to_shared(attribute))
+    Ok(tiledb_test_support::array_schema::attribute_to_shared(
+        attribute,
+    ))
 }
