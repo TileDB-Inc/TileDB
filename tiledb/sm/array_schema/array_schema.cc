@@ -799,9 +799,9 @@ void ArraySchema::add_attribute(
 
   // Do not allow attributes with special names
   if (check_special && attr->name().find(constants::special_name_prefix) == 0) {
-    std::string msg = "Cannot add attribute; Attribute names starting with '";
-    msg += std::string(constants::special_name_prefix) + "' are reserved";
-    throw ArraySchemaException(msg);
+    throw ArraySchemaException(
+        "Cannot add attribute: names starting with '" +
+        std::string(constants::special_name_prefix) + "' are reserved");
   }
 
   auto enmr_name = attr->get_enumeration_name();
@@ -936,12 +936,15 @@ void ArraySchema::add_dimension_label(
 void ArraySchema::drop_attribute(const std::string& attr_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (attr_name.empty()) {
-    throw ArraySchemaException("Cannot remove an empty name attribute");
+    throw ArraySchemaException(
+        "Cannot remove attribute '" + attr_name +
+        "': empty string is reserved");
   }
 
   if (!attribute(attr_name)) {
     // Not exists.
-    throw ArraySchemaException("Cannot remove a non-exist attribute");
+    throw ArraySchemaException(
+        "Cannot remove attribute '" + attr_name + "': not found");
   }
   attribute_map_.erase(attr_name);
 
