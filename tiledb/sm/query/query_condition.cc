@@ -209,7 +209,7 @@ Status QueryCondition::combine(
 
   combined_cond->field_names_.clear();
   combined_cond->enumeration_field_names_.clear();
-  combined_cond->tree_ = this->tree_->combine(rhs.tree_, combination_op);
+  combined_cond->tree_ = this->tree_->combine(*rhs.tree_, combination_op);
   return Status::Ok();
 }
 
