@@ -1347,7 +1347,12 @@ Status RestClientRemote::post_group_create_to_rest(
   const std::string cache_key = group_ns + ":" + group_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns;
+  std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns;
+
+  // Include the group URI in the request route if we are not using legacy REST.
+  if (!rest_legacy()) {
+    url += "/" + curlc.url_escape(group_uri);
+  }
 
   // Create the group and check for error
   Buffer returned_data;
@@ -1415,7 +1420,7 @@ Status RestClientRemote::patch_group_to_rest(const URI& uri, Group* group) {
   const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
                           "/" + curlc.url_escape(group_uri);
 
-  // Put the data
+  // Patch the data
   Buffer returned_data;
   return curlc.patch_data(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
