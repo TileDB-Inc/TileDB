@@ -1430,7 +1430,7 @@ template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
@@ -1531,7 +1531,7 @@ template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
@@ -1692,7 +1692,7 @@ template <typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
@@ -2005,7 +2005,7 @@ template <typename CombinationOp>
 void QueryCondition::apply_tree_dense(
     const tdb_unique_ptr<ASTNode>& node,
     const QueryCondition::Params& params,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
     const uint64_t stride,
@@ -2129,7 +2129,7 @@ void QueryCondition::apply_tree_dense(
 
 Status QueryCondition::apply_dense(
     const QueryCondition::Params& params,
-    ResultTile* result_tile,
+    const ResultTile* result_tile,
     const uint64_t start,
     const uint64_t length,
     const uint64_t src_cell,
@@ -2436,7 +2436,7 @@ template <
     typename nullable>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
     std::span<BitmapType> result_bitmap) const {
@@ -2524,7 +2524,7 @@ template <
     typename nullable>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
     std::span<BitmapType> result_bitmap) const {
@@ -2619,7 +2619,7 @@ void QueryCondition::apply_ast_node_sparse(
 template <typename T, typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     const bool var_size,
     const bool nullable,
     CombinationOp combination_op,
@@ -2637,7 +2637,7 @@ template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     CombinationOp combination_op,
     std::span<BitmapType> result_bitmap) const {
   std::string node_field_name = node->get_field_name();
@@ -2813,7 +2813,7 @@ template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_tree_sparse(
     const tdb_unique_ptr<ASTNode>& node,
     const QueryCondition::Params& params,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     CombinationOp combination_op,
     std::span<BitmapType> result_bitmap) const {
   const auto& array_schema = params.GetSchema();
@@ -2913,7 +2913,7 @@ void QueryCondition::apply_tree_sparse(
 template <typename BitmapType>
 Status QueryCondition::apply_sparse(
     const QueryCondition::Params& params,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     std::span<BitmapType> result_bitmap) {
   if (datafusion_.has_value()) {
     try {
@@ -2953,7 +2953,7 @@ uint64_t QueryCondition::condition_index() const {
 template <typename BitmapType>
 void QueryCondition::Datafusion::apply(
     const QueryCondition::Params&,
-    ResultTile& result_tile,
+    const ResultTile& result_tile,
     std::span<BitmapType> result_bitmap) const {
   const auto arrow =
       tiledb::oxidize::arrow::record_batch::create(*schema_, result_tile);
@@ -3008,7 +3008,7 @@ void QueryCondition::Datafusion::apply(
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const QueryCondition::Params&, ResultTile&, std::span<uint8_t>);
+    const QueryCondition::Params&, const ResultTile&, std::span<uint8_t>);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const QueryCondition::Params&, ResultTile&, std::span<uint64_t>);
+    const QueryCondition::Params&, const ResultTile&, std::span<uint64_t>);
 }  // namespace tiledb::sm

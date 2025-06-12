@@ -297,7 +297,7 @@ class QueryCondition {
    */
   Status apply_dense(
       const QueryCondition::Params& params,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
       const uint64_t src_cell,
@@ -316,7 +316,7 @@ class QueryCondition {
   template <typename BitmapType>
   Status apply_sparse(
       const QueryCondition::Params& params,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       std::span<BitmapType> result_bitmap);
 
   /**
@@ -413,7 +413,7 @@ class QueryCondition {
     template <typename BitmapType>
     void apply(
         const QueryCondition::Params& params,
-        ResultTile& result_tile,
+        const ResultTile& result_tile,
         std::span<BitmapType> result_bitmap) const;
   };
   std::optional<Datafusion> datafusion_;
@@ -545,7 +545,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -575,7 +575,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -604,7 +604,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -630,7 +630,7 @@ class QueryCondition {
   void apply_tree_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const QueryCondition::Params& params,
-      ResultTile* result_tile,
+      const ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -656,7 +656,7 @@ class QueryCondition {
       typename nullable>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
       std::span<BitmapType> result_bitmap) const;
@@ -679,7 +679,7 @@ class QueryCondition {
       typename nullable>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
       std::span<BitmapType> result_bitmap) const;
@@ -697,7 +697,7 @@ class QueryCondition {
   template <typename T, typename BitmapType, typename CombinationOp>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
@@ -718,7 +718,7 @@ class QueryCondition {
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       CombinationOp combination_op,
       std::span<BitmapType> result_bitmap) const;
 
@@ -738,7 +738,7 @@ class QueryCondition {
   void apply_tree_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const QueryCondition::Params& params,
-      ResultTile& result_tile,
+      const ResultTile& result_tile,
       CombinationOp combination_op,
       std::span<BitmapType> result_bitmap) const;
 };
