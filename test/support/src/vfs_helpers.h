@@ -864,7 +864,8 @@ struct VFSTestSetup {
     if (is_legacy_rest()) {
       return "tiledb://unit/" + temp_dir + array_name;
     } else {
-      return "tiledb://workspace/unit/" + temp_dir + array_name;
+      // Include a space in the URI to test URL encoding.
+      return "tiledb://unit workspace/unit teamspace/" + temp_dir + array_name;
     }
   }
 
