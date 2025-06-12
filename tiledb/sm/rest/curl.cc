@@ -340,6 +340,26 @@ std::string Curl::url_escape(const std::string& url) const {
   return escaped;
 }
 
+std::string Curl::url_escape_namespace(const std::string& ns) const {
+  if (curl_.get() == nullptr) {
+    return "";
+  }
+
+  // If the namespace contains a path seperator we are talking to 3.0 REST.
+  auto separator = ns.find('/');
+  if (separator != std::string::npos) {
+    // Encode workspace and teamspace, preserving the path separator.
+    std::string workspace, teamspace;
+    workspace = ns.substr(0, separator);
+    teamspace = ns.substr(separator + 1, ns.size() - 1);
+    return url_escape(workspace) + "/" + url_escape(teamspace);
+  } else {
+    // Legacy namespaces can only contain letters, numbers, and `-`. Encoding
+    // this would be a noop so we can return as-is.
+    return ns;
+  }
+}
+
 Status Curl::set_headers(struct curl_slist** headers) const {
   CURL* curl = curl_.get();
   if (curl == nullptr)
