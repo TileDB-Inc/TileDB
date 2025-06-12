@@ -1,3 +1,6 @@
+pub use tiledb_arrow;
+pub use tiledb_expr;
+
 #[cxx::bridge]
 mod ffi {
     #[namespace = "tiledb::sm"]

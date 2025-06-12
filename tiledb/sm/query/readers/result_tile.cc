@@ -68,6 +68,13 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+ResultTile::ResultTile(shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , frag_idx_(0)
+    , tile_idx_(0)
+    , cell_num_(0) {
+}
+
 ResultTile::ResultTile(
     unsigned frag_idx,
     uint64_t tile_idx,
