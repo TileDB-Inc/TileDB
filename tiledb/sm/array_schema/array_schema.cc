@@ -695,15 +695,13 @@ ArraySchema::dimension_size_type ArraySchema::dim_num() const {
   return domain_->dim_num();
 }
 
-void ArraySchema::has_attribute(const std::string& name, bool* has_attr) const {
-  *has_attr = false;
-
+bool ArraySchema::has_attribute(const std::string& name) const {
   for (auto& attr : attributes_) {
     if (name == attr->name()) {
-      *has_attr = true;
-      break;
+      return true;
     }
   }
+  return false;
 }
 
 bool ArraySchema::has_ordered_attributes() const {
@@ -889,17 +887,11 @@ void ArraySchema::add_dimension_label(
   // names.
   if (check_name) {
     // Check no attribute with this name
-    bool has_matching_name{false};
-    has_attribute(name, &has_matching_name);
-    if (has_matching_name) {
+    if (has_attribute(name)) {
       throw ArraySchemaException(
           "Cannot add a dimension label with name '" + std::string(name) +
           "'. An attribute with that name already exists.");
-    }
-
-    // Check no dimension with this name
-    domain_->has_dimension(name, &has_matching_name);
-    if (has_matching_name) {
+    } else if (domain_->has_dimension(name)) {
       throw ArraySchemaException(
           "Cannot add a dimension label with name '" + std::string(name) +
           "'. A dimension with that name already exists.");

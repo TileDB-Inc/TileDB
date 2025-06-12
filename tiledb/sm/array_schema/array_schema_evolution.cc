@@ -151,8 +151,7 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
 
   // Drop attributes.
   for (auto& attr_name : attributes_to_drop_) {
-    bool has_attr = false;
-    schema->has_attribute(attr_name, &has_attr);
+    const bool has_attr = schema->has_attribute(attr_name);
     if (!has_attr) {
       throw ArraySchemaEvolutionException(
           "Cannot drop attribute; Input attribute name refers to a dimension "

@@ -320,7 +320,7 @@ class ArraySchema {
    * @param has_attr Set to true if the array schema has a attribute of the
    * given name.
    */
-  void has_attribute(const std::string& name, bool* has_attr) const;
+  bool has_attribute(const std::string& name) const;
 
   bool has_ordered_attributes() const;
 

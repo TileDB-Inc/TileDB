@@ -105,17 +105,8 @@ struct tiledb_domain_handle_t
     return domain_->shared_dimension(name);
   }
 
-  /**
-   * Not-yet facade for `Domain::has_dimension`.
-   *
-   * This is the signature that the underlying  function ought to have at this
-   * point. The original is not changed yet to avoid rewriting the one in
-   * `Domain` as part of larger changes, mostly unrelated.
-   */
   [[nodiscard]] bool has_dimension(const std::string& name) const {
-    bool b;
-    domain_->has_dimension(name, &b);
-    return b;
+    return domain_->has_dimension(name);
   }
 
   friend std::ostream& operator<<(

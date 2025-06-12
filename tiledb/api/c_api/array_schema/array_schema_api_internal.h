@@ -175,7 +175,7 @@ struct tiledb_array_schema_handle_t
   }
 
   Status has_attribute(const std::string& name, bool* has_attr) const {
-    array_schema_->has_attribute(name, has_attr);
+    *has_attr = array_schema_->has_attribute(name);
     return Status::Ok();
   }
 

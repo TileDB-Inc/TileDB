@@ -384,9 +384,10 @@ class Domain {
    * Checks if the domain has a dimension of the given name.
    *
    * @param name Name of dimension to check for
-   * @param has_dim Set to true if the domain has a dimension of the given name.
+   * @return true if the domain has a dimension of the given name, false
+   * otherwise
    */
-  void has_dimension(const std::string& name, bool* has_dim) const;
+  bool has_dimension(const std::string& name) const;
 
   /**
    * Gets the index in the domain of a given dimension name

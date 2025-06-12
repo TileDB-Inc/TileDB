@@ -482,15 +482,13 @@ void Domain::get_tile_subarray(
   }
 }
 
-void Domain::has_dimension(const std::string& name, bool* has_dim) const {
-  *has_dim = false;
-
+bool Domain::has_dimension(const std::string& name) const {
   for (const auto dim : dimension_ptrs_) {
     if (name == dim->name()) {
-      *has_dim = true;
-      break;
+      return true;
     }
   }
+  return false;
 }
 
 unsigned Domain::get_dimension_index(const std::string& name) const {
