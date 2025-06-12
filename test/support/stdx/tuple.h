@@ -33,6 +33,9 @@
 #ifndef TILEDB_TEST_SUPPORT_TUPLE_H
 #define TILEDB_TEST_SUPPORT_TUPLE_H
 
+#include <utility>
+#include <vector>
+
 namespace stdx {
 
 template <typename... Ts>
@@ -90,20 +93,61 @@ template <typename Tuple>
 using value_type_tuple_t = decltype(value_type_tuple_f(std::declval<Tuple>()));
 
 /**
+ * Provides types and definitions for splitting a tuple into
+ * left and right tuples at field N.
+ */
+template <typename Tuple, size_t N>
+struct split_tuple {
+ private:
+  template <size_t... iprefix, size_t... isuffix>
+  static auto impl(
+      Tuple& tuple,
+      std::index_sequence<iprefix...>,
+      std::index_sequence<isuffix...>) {
+    return std::make_pair(
+        std::forward_as_tuple(std::get<iprefix>(tuple)...),
+        std::forward_as_tuple(std::get<N + isuffix>(tuple)...));
+  }
+
+  template <size_t... iprefix, size_t... isuffix>
+  static auto impl(
+      const Tuple& tuple,
+      std::index_sequence<iprefix...>,
+      std::index_sequence<isuffix...>) {
+    return std::make_pair(
+        std::forward_as_tuple(std::get<iprefix>(tuple)...),
+        std::forward_as_tuple(std::get<N + isuffix>(tuple)...));
+  }
+
+ public:
+  static auto value(Tuple& tuple) {
+    return impl(
+        tuple,
+        std::make_index_sequence<N>{},
+        std::make_index_sequence<std::tuple_size_v<Tuple> - N>{});
+  }
+
+  static auto value(const Tuple& value) {
+    return impl(
+        value,
+        std::make_index_sequence<N>{},
+        std::make_index_sequence<std::tuple_size_v<Tuple> - N>{});
+  }
+};
+
+/**
  * Given two tuples of vectors, extends each of the fields of `dst`
  * with the corresponding field of `src`.
  */
-template <typename... Ts>
+template <template <typename T> typename Container, typename... Ts>
 void extend(
-    std::tuple<std::vector<Ts>&...>& dest,
-    std::tuple<const std::vector<Ts>&...> src) {
+    std::tuple<Container<Ts>&...>& dest,
+    std::tuple<const Container<Ts>&...> src) {
   std::apply(
-      [&](std::vector<Ts>&... dest_col) {
+      [&](Container<Ts>&... dest_col) {
         std::apply(
-            [&](const std::vector<Ts>&... src_col) {
-              (dest_col.reserve(dest_col.size() + src_col.size()), ...);
-              (dest_col.insert(dest_col.end(), src_col.begin(), src_col.end()),
-               ...);
+            [&](const Container<Ts>&... src_col) {
+              (dest_col.extend(src_col), ...);
             },
             src);
       },
@@ -116,14 +160,14 @@ void extend(
  *
  * @return a new tuple containing just the selected positions
  */
-template <typename... Ts>
-std::tuple<std::vector<Ts>...> select(
-    std::tuple<const std::vector<Ts>&...> records,
+template <template <typename T> typename Container, typename... Ts>
+std::tuple<Container<Ts>...> select(
+    std::tuple<const Container<Ts>&...> records,
     std::span<const uint64_t> idxs) {
-  std::tuple<std::vector<Ts>...> selected;
+  std::tuple<Container<Ts>...> selected;
 
   auto select_into = [&idxs]<typename T>(
-                         std::vector<T>& dest, std::span<const T> src) {
+                         Container<T>& dest, const Container<T>& src) {
     dest.reserve(idxs.size());
     for (auto i : idxs) {
       dest.push_back(src[i]);
@@ -131,10 +175,10 @@ std::tuple<std::vector<Ts>...> select(
   };
 
   std::apply(
-      [&](std::vector<Ts>&... sel) {
+      [&](Container<Ts>&... sel) {
         std::apply(
-            [&](const std::vector<Ts>&... col) {
-              (select_into.template operator()<Ts>(sel, std::span(col)), ...);
+            [&](const Container<Ts>&... col) {
+              (select_into.template operator()<Ts>(sel, col), ...);
             },
             records);
       },

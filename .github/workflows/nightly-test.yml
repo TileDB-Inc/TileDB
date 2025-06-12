@@ -19,6 +19,7 @@ jobs:
           - os: macos-latest # ASAN build
             sanitizer: "address"
             assertions: ON
+            build_type: "Release"
             base_triplet: "arm64-osx"
           - os: windows-latest
             build_type: "Debug"

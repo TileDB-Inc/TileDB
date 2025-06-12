@@ -45,6 +45,8 @@ enum class Datatype : uint8_t;
 enum class Compressor : uint8_t;
 enum class SerializationType : uint8_t;
 
+constexpr uint32_t cell_val_num_var = std::numeric_limits<uint32_t>::max();
+
 namespace constants {
 
 // The following aggregate constants are declared static to avoid a SIOF
