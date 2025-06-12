@@ -64,7 +64,7 @@ fn strat_query_condition_datafusion()
         .prop_flat_map(|schema| {
             let schema = Rc::new(schema);
             let strat_cells = any_with::<Cells>(CellsParameters {
-                schema: Some(CellsStrategySchema::ReadSchema(Rc::clone(&schema))),
+                schema: Some(CellsStrategySchema::WriteSchema(Rc::clone(&schema))),
                 ..Default::default()
             });
             (Just(schema), strat_cells)

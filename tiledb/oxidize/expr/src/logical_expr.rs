@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::Utf8Error;
 use std::sync::Arc;
 
@@ -60,9 +61,9 @@ pub enum UserError {
 
 pub struct LogicalExpr(pub Expr);
 
-impl LogicalExpr {
-    pub fn to_string(&self) -> String {
-        self.0.human_display().to_string()
+impl Display for LogicalExpr {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        self.0.human_display().fmt(f)
     }
 }
 
@@ -350,7 +351,7 @@ fn leaf_ast_to_null_test(schema: &ArraySchema, ast: &ASTNode) -> Result<Expr, Er
             // TODO: are these invalid?
             Ok(Expr::Literal(ScalarValue::Boolean(Some(false))))
         }
-        invalid => return Err(InternalError::InvalidOp(invalid.repr.into()).into()),
+        invalid => Err(InternalError::InvalidOp(invalid.repr.into()).into()),
     }
 }
 
@@ -405,10 +406,10 @@ fn to_datafusion_impl(schema: &ArraySchema, query_condition: &ASTNode) -> Result
                 if children.len() != 1 {
                     return Err(InternalError::NotTree(children.len()).into());
                 }
-                let negate_arg = to_datafusion_impl(schema, &children[0])?;
+                let negate_arg = to_datafusion_impl(schema, children[0])?;
                 Ok(!negate_arg)
             }
-            invalid => return Err(InternalError::InvalidCombinationOp(invalid.repr.into()).into()),
+            invalid => Err(InternalError::InvalidCombinationOp(invalid.repr.into()).into()),
         }
     } else if query_condition.is_null_test() {
         leaf_ast_to_null_test(schema, query_condition)

@@ -81,7 +81,7 @@ pub fn try_new(
 
     let sbuf = ScalarBuffer::<i64>::from(unsafe {
         // SAFETY: slice has a trusted upper length
-        Buffer::try_from_trusted_len_iter(raw_offsets.map(|o| try_element_offset(o)))?
+        Buffer::try_from_trusted_len_iter(raw_offsets.map(try_element_offset))?
     });
     if sbuf[0] < 0 {
         return Err(Error::NegativeOffset(sbuf[0]));

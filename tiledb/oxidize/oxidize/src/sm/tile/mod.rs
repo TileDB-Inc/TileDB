@@ -18,6 +18,9 @@ pub use ffi::Tile;
 
 impl Tile {
     pub fn as_slice<'a>(&self) -> &'a [u8] {
-        crate::raw_as_slice::<'a>(self.data(), self.size() as usize)
+        unsafe {
+            // SAFETY: `self.data()` is NULL if and only if `self.size() == 0`
+            crate::raw_as_slice::<'a>(self.data(), self.size() as usize)
+        }
     }
 }

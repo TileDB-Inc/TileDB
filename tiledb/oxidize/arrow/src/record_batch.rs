@@ -60,8 +60,7 @@ pub fn to_record_batch(
                 // SAFETY: diverging `is_null` above
                 &*ptr_tile
             };
-            Ok(tile_to_arrow_array(f, tile)
-                .map_err(|e| Error::FieldError(f.name().to_owned(), e))?)
+            tile_to_arrow_array(f, tile).map_err(|e| Error::FieldError(f.name().to_owned(), e))
         })
         .collect::<Result<Vec<Arc<dyn ArrowArray>>, _>>()?;
 
@@ -102,6 +101,9 @@ fn to_arrow_array(
                 .collect::<NullBuffer>(),
         )
     } else if f.is_nullable() {
+        // NB: this is allowed even for nullable fields, it means that none of
+        // the cells is `NULL`.  Note that due to schema evolution the arrow
+        // field is always declared nullable.
         None
     } else {
         None

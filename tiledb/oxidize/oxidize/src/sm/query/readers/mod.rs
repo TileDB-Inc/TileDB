@@ -14,10 +14,22 @@ mod ffi {
         fn has_validity_tile(&self) -> bool;
         fn fixed_tile(&self) -> &Tile;
 
+        /// Returns a reference to the variable data [Tile].
+        ///
+        /// # Safety
+        ///
+        /// Caller must ensure that `self.has_var_tile()` returns `true`.
         #[cxx_name = "var_tile"]
+        #[allow(clippy::missing_safety_doc)] // false positive
         unsafe fn var_tile_unchecked(&self) -> &Tile;
 
+        /// Returns a reference to the validity [Tile].
+        ///
+        /// # Safety
+        ///
+        /// Caller must ensure that `self.has_validity_tile()` returns `true`.
         #[cxx_name = "validity_tile"]
+        #[allow(clippy::missing_safety_doc)] // false positive
         unsafe fn validity_tile_unchecked(&self) -> &Tile;
     }
 

@@ -9,7 +9,12 @@ pub mod common;
 pub mod sm;
 
 /// Returns a safe slice over the raw data.
-pub(self) fn raw_as_slice<'a, T>(ptr: *const T, len: usize) -> &'a [T] {
+///
+/// # Safety
+///
+/// Caller must ensure that `ptr` is valid for `len` elements.
+/// If `len` is zero then `ptr` is permitted to be `NULL`.
+pub unsafe fn raw_as_slice<'a, T>(ptr: *const T, len: usize) -> &'a [T] {
     if ptr.is_null() {
         assert_eq!(0, len);
         // SAFETY: as long as the above assert holds

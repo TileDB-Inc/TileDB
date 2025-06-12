@@ -57,11 +57,7 @@ fn ast_from_predicate(predicate: &Predicate) -> anyhow::Result<cxx::SharedPtr<AS
                     // SAFETY: only way that `as_ptr_and_size()` is `None`
                     unreachable!()
                 };
-                let value_bytes = strs
-                    .iter()
-                    .map(|s| s.bytes())
-                    .flatten()
-                    .collect::<Vec<u8>>();
+                let value_bytes = strs.iter().flat_map(|s| s.bytes()).collect::<Vec<u8>>();
                 let value_offsets = strs
                     .iter()
                     .scan(0u64, |state, s| {

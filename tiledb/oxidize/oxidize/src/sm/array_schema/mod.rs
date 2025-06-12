@@ -224,7 +224,9 @@ impl ArraySchema {
             // SAFETY: the domain owns another shared_ptr ref, so this
             // will live at least as long as the domain, which lives
             // at least as long as `self`
-            Field::Dimension(unsafe { core::mem::transmute::<_, &'a Dimension>(d) })
+            // FIXME: that's not quite true because `ArraySchema::set_domain`
+            // frees the old one, though this is not likely to occur
+            Field::Dimension(unsafe { core::mem::transmute::<&Dimension, &'a Dimension>(d) })
         })
     }
 
@@ -239,7 +241,7 @@ impl ArraySchema {
     pub fn fields(&self) -> impl Iterator<Item = Field> {
         self.domain()
             .dimensions()
-            .map(|d| Field::Dimension(d))
-            .chain(self.attributes().map(|a| Field::Attribute(a)))
+            .map(Field::Dimension)
+            .chain(self.attributes().map(Field::Attribute))
     }
 }

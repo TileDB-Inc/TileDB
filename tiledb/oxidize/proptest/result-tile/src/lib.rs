@@ -11,6 +11,8 @@ use tiledb_test_cells::{Cells, FieldData, typed_field_data_go};
 
 /// Packages a `ResultTile` with the buffers which contain the tile data.
 pub struct PackagedResultTile {
+    /// Buffers underlying the [ResultTile].
+    #[allow(dead_code)]
     buffers: RecordBatch,
     // NB: tile data borrows the record batch columns, this is for sure "unsafe"
     // but should be fine since the contents are behind an `Arc`
@@ -24,9 +26,9 @@ impl Deref for PackagedResultTile {
     }
 }
 
-pub fn result_tile_from_cells<'a>(
+pub fn result_tile_from_cells(
     schema: &ArraySchema,
-    cells: &'a Cells,
+    cells: &Cells,
 ) -> anyhow::Result<PackagedResultTile> {
     let result_tile = tiledb_test_support::result_tile::new_result_tile(
         tiledb_test_support::get_test_memory_tracker(),

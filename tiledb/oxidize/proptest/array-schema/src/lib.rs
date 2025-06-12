@@ -90,7 +90,7 @@ pub fn dimension_from_pod(pod: &DimensionData) -> anyhow::Result<cxx::SharedPtr<
     );
 
     {
-        let Some(dimension) = dimension.as_mut() else {
+        let Some(_dimension) = dimension.as_mut() else {
             unreachable!();
         };
 

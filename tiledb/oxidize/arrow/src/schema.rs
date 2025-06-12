@@ -42,7 +42,7 @@ pub mod cxx {
     ) -> Result<Box<ArrowSchema>, Error> {
         Ok(Box::new(ArrowSchema(Arc::new(super::to_arrow(
             array_schema,
-            |field: &Field| select.iter().find(|s| *s == field.name_cxx()).is_some(),
+            |field: &Field| select.iter().any(|s| s == field.name_cxx()),
         )?))))
     }
 }
