@@ -558,8 +558,7 @@ void Dimension::oob(const void* coord) const {
   }
 
   std::string err_msg;
-  auto ret = dispatch_->oob(coord, &err_msg);
-  if (ret) {
+  if (dispatch_->oob(coord, &err_msg)) {
     throw DimensionException(err_msg);
   }
 }
