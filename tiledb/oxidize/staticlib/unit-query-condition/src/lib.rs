@@ -38,9 +38,7 @@ use tiledb_common::query::condition::QueryConditionExpr;
 use tiledb_common::query::condition::strategy::Parameters as QueryConditionParameters;
 use tiledb_pod::array::schema::SchemaData;
 use tiledb_test_cells::Cells;
-use tiledb_test_cells::strategy::{
-    CellsAsQueryConditionSchema, CellsParameters, CellsStrategySchema,
-};
+use tiledb_test_cells::strategy::{CellsParameters, CellsStrategySchema, SchemaWithDomain};
 
 fn instance_query_condition_datafusion(
     schema: &SchemaData,
@@ -72,7 +70,7 @@ fn strat_query_condition_datafusion()
         .prop_flat_map(|(schema, cells)| {
             let cells = Rc::new(cells);
             let strat_params = any_with::<QueryConditionExpr>(QueryConditionParameters {
-                domain: Some(Rc::new(CellsAsQueryConditionSchema::new(Rc::clone(&cells)))),
+                domain: Some(Rc::new(SchemaWithDomain::new(Rc::clone(&schema), &cells))),
                 ..Default::default()
             });
             (
