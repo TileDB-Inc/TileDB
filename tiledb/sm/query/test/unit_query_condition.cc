@@ -5157,6 +5157,16 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
     schema->set_domain(domain);
     schema->add_attribute(std::make_shared<Attribute>("a", Datatype::UINT64));
 
+    std::shared_ptr<Attribute> v =
+        std::make_shared<Attribute>("v", Datatype::STRING_ASCII, true);
+    v->set_cell_val_num(constants::var_num);
+    schema->add_attribute(v);
+
+    std::shared_ptr<Attribute> f =
+        std::make_shared<Attribute>("f", Datatype::UINT16, true);
+    f->set_cell_val_num(4);
+    schema->add_attribute(f);
+
     std::vector<uint64_t> values_d = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     std::vector<uint64_t> values_a = {
         1,
@@ -5169,6 +5179,18 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
         88888888,
         999999999,
         1010101010};
+
+    // NB: offsets for tiles are arrow-like, i.e. N elements have N+1 offsets
+    std::string values_v = {
+        "oneonetwoonetwothreeonetwothreefouronetwothreefourfiveonetwothreefourf"
+        "ivesix"};
+    std::vector<uint64_t> offsets_v = {0, 3, 3, 9, 9, 20, 20, 35, 35, 54, 76};
+    std::vector<uint8_t> validity_v = {1, 0, 1, 0, 1, 0, 1, 0, 1, 1};
+
+    std::vector<uint16_t> values_f = {
+        1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5,  5,  5,  5,
+        6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10};
+    std::vector<uint8_t> validity_f = {1, 1, 0, 1, 1, 0, 1, 1, 0, 1};
 
     ResultTileSizes d_sizes(
         values_d.size() * sizeof(uint64_t),
@@ -5188,17 +5210,50 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
         std::nullopt);
     ResultTileData a_data(values_a.data(), nullptr, nullptr);
 
+    ResultTileSizes v_sizes(
+        offsets_v.size() * sizeof(uint64_t),
+        0,
+        values_v.size(),
+        0,
+        validity_v.size() * sizeof(uint8_t),
+        0);
+    ResultTileData v_data(offsets_v.data(), values_v.data(), validity_v.data());
+
+    ResultTileSizes f_sizes(
+        values_f.size() * sizeof(uint16_t),
+        0,
+        std::nullopt,
+        std::nullopt,
+        validity_f.size() * sizeof(uint8_t),
+        0);
+    ResultTileData f_data(values_f.data(), nullptr, validity_f.data());
+
     ResultTile tile(
         *schema, values_d.size(), tiledb::test::get_test_memory_tracker());
     tile.init_coord_tile(
         constants::format_version, *schema, "d", d_sizes, d_data, 0);
     tile.init_attr_tile(
         constants::format_version, *schema, "a", a_sizes, a_data);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "v", v_sizes, v_data);
+    tile.init_attr_tile(
+        constants::format_version, *schema, "f", f_sizes, f_data);
 
     tile.tile_tuple("d")->fixed_tile().write(
         values_d.data(), 0, values_d.size() * sizeof(uint64_t));
     tile.tile_tuple("a")->fixed_tile().write(
         values_a.data(), 0, values_a.size() * sizeof(uint64_t));
+
+    tile.tile_tuple("v")->fixed_tile().write(
+        offsets_v.data(), 0, offsets_v.size() * sizeof(uint64_t));
+    tile.tile_tuple("v")->var_tile().write(&values_v[0], 0, sizeof(values_v));
+    tile.tile_tuple("v")->validity_tile().write(
+        validity_v.data(), 0, validity_v.size() * sizeof(uint8_t));
+
+    tile.tile_tuple("f")->fixed_tile().write(
+        values_f.data(), 0, values_f.size() * sizeof(uint16_t));
+    tile.tile_tuple("f")->validity_tile().write(
+        validity_f.data(), 0, validity_f.size() * sizeof(uint8_t));
 
     SECTION("a < 100000") {
       uint64_t value = 100000;
@@ -5241,6 +5296,52 @@ TEST_CASE("QueryCondition: Apache DataFusion evaluation", "[QueryCondition]") {
       const auto results =
           instance_query_condition_datafusion(*schema, tile, ast);
       CHECK(results == std::vector<uint8_t>{0, 0, 0, 1, 1, 1, 1, 1, 0, 0});
+    }
+
+    SECTION("v = 'onetwothree'") {
+      std::string value = "onetwothree";
+      ASTNodeVal ast(
+          "v", value.data(), value.size(), tiledb::sm::QueryConditionOp::EQ);
+      const auto results =
+          instance_query_condition_datafusion(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 0, 0, 1, 0, 0, 0, 0, 0});
+    }
+
+    SECTION("f != {5, 5, 5, 5}") {
+      uint16_t value[] = {5, 5, 5, 5};
+      ASTNodeVal ast(
+          "f", &value[0], sizeof(value), tiledb::sm::QueryConditionOp::NE);
+      const auto results =
+          instance_query_condition_datafusion(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{1, 1, 0, 1, 0, 0, 1, 1, 0, 1});
+    }
+
+    SECTION("v IS NOT NULL") {
+      ASTNodeVal ast("v", nullptr, 0, tiledb::sm::QueryConditionOp::NE);
+      const auto results =
+          instance_query_condition_datafusion(*schema, tile, ast);
+      CHECK(results == validity_v);
+    }
+
+    SECTION("v IS NULL") {
+      ASTNodeVal ast("v", nullptr, 0, tiledb::sm::QueryConditionOp::EQ);
+      const auto results =
+          instance_query_condition_datafusion(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{0, 1, 0, 1, 0, 1, 0, 1, 0, 0});
+    }
+
+    SECTION("v IS NOT NULL") {
+      ASTNodeVal ast("f", nullptr, 0, tiledb::sm::QueryConditionOp::NE);
+      const auto results =
+          instance_query_condition_datafusion(*schema, tile, ast);
+      CHECK(results == validity_f);
+    }
+
+    SECTION("v IS NULL") {
+      ASTNodeVal ast("f", nullptr, 0, tiledb::sm::QueryConditionOp::EQ);
+      const auto results =
+          instance_query_condition_datafusion(*schema, tile, ast);
+      CHECK(results == std::vector<uint8_t>{0, 0, 1, 0, 0, 1, 0, 0, 1, 0});
     }
 
     SECTION("d < 4 OR a > 1000000") {
