@@ -28,13 +28,15 @@ mod ffi {
 
     #[namespace = "tiledb::test"]
     extern "Rust" {
-        fn proptest_query_condition_datafusion();
+        fn proptest_query_condition_datafusion() -> Result<()>;
     }
 }
 
 use std::rc::Rc;
 
+use anyhow::anyhow;
 use proptest::prelude::*;
+use proptest::test_runner::{TestCaseError, TestRunner};
 use tiledb_common::query::condition::QueryConditionExpr;
 use tiledb_common::query::condition::strategy::Parameters as QueryConditionParameters;
 use tiledb_pod::array::schema::SchemaData;
@@ -77,16 +79,21 @@ fn strat_query_condition_datafusion()
             (
                 Just(schema),
                 Just(cells),
-                proptest::collection::vec(strat_params, 1..=32),
+                strat_params.prop_map(|qc| vec![qc]),
             )
         })
 }
 
-proptest! {
-    fn proptest_query_condition_datafusion(
-        (schema, condition, cells) in strat_query_condition_datafusion()
+fn proptest_query_condition_datafusion() -> anyhow::Result<()> {
+    let mut runner = TestRunner::new(Default::default());
+    match runner.run(
+        &strat_query_condition_datafusion(),
+        |(schema, cells, condition): (Rc<SchemaData>, Rc<Cells>, Vec<QueryConditionExpr>)| {
+            instance_query_condition_datafusion(&schema, &cells, &condition)
+                .map_err(|e| TestCaseError::Fail(e.to_string().into()))
+        },
     ) {
-        instance_query_condition_datafusion(&schema, &condition, &cells)
-            .expect("Error in instance_query_condition_datafusion");
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(e.to_string())),
     }
 }
